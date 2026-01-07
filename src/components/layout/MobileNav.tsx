@@ -6,13 +6,14 @@ import {
   Users, 
   ClipboardList,
   Menu,
-  X,
-  HardHat
+  HardHat,
+  LogOut
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -25,6 +26,12 @@ const navItems = [
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = () => {
+    setOpen(false);
+    signOut();
+  };
 
   return (
     <header className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-4">
@@ -45,7 +52,7 @@ export function MobileNav() {
           <div className="flex h-16 items-center justify-between border-b border-border px-4">
             <span className="font-semibold">Menu</span>
           </div>
-          <nav className="space-y-1 p-4">
+          <nav className="flex-1 space-y-1 p-4">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -66,6 +73,22 @@ export function MobileNav() {
               );
             })}
           </nav>
+          
+          <div className="border-t border-border p-4 space-y-2">
+            {user && (
+              <div className="px-3 py-2 text-xs text-muted-foreground truncate">
+                {user.email}
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-5 w-5" />
+              Sign Out
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
     </header>

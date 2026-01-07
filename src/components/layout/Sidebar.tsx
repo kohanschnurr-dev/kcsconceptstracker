@@ -5,10 +5,13 @@ import {
   Users, 
   ClipboardList,
   Settings,
-  HardHat
+  HardHat,
+  LogOut
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -20,6 +23,7 @@ const navItems = [
 
 export function Sidebar() {
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-sidebar">
@@ -58,14 +62,20 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-border p-4">
-          <NavLink
-            to="/settings"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        <div className="border-t border-border p-4 space-y-2">
+          {user && (
+            <div className="px-3 py-2 text-xs text-muted-foreground truncate">
+              {user.email}
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+            onClick={signOut}
           >
-            <Settings className="h-5 w-5" />
-            Settings
-          </NavLink>
+            <LogOut className="h-5 w-5" />
+            Sign Out
+          </Button>
         </div>
       </div>
     </aside>
