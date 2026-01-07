@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   DollarSign, 
   FolderKanban, 
@@ -18,6 +19,7 @@ import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { mockProjects, mockExpenses, mockVendors } from '@/data/mockData';
 
 export default function Index() {
+  const navigate = useNavigate();
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(mockProjects[0]?.id || null);
 
@@ -95,7 +97,7 @@ export default function Index() {
               <ProjectCard
                 key={project.id}
                 project={project}
-                onClick={() => setSelectedProjectId(project.id)}
+                onClick={() => navigate(`/projects/${project.id}`)}
               />
             ))}
           </div>

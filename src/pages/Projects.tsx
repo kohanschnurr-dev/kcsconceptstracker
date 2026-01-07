@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
@@ -8,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockProjects } from '@/data/mockData';
 
 export default function Projects() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('all');
 
@@ -60,7 +62,11 @@ export default function Projects() {
         {/* Projects Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <ProjectCard 
+              key={project.id} 
+              project={project} 
+              onClick={() => navigate(`/projects/${project.id}`)}
+            />
           ))}
         </div>
 
