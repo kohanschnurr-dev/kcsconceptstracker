@@ -1,0 +1,73 @@
+import { useState } from 'react';
+import { 
+  LayoutDashboard, 
+  FolderKanban, 
+  Receipt, 
+  Users, 
+  ClipboardList,
+  Menu,
+  X,
+  HardHat
+} from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+
+const navItems = [
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: FolderKanban, label: 'Projects', path: '/projects' },
+  { icon: Receipt, label: 'Expenses', path: '/expenses' },
+  { icon: Users, label: 'Vendors', path: '/vendors' },
+  { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
+];
+
+export function MobileNav() {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  return (
+    <header className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-4">
+      <div className="flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+          <HardHat className="h-4 w-4 text-primary-foreground" />
+        </div>
+        <span className="font-semibold">FlipTracker</span>
+      </div>
+
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-64 bg-sidebar p-0">
+          <div className="flex h-16 items-center justify-between border-b border-border px-4">
+            <span className="font-semibold">Menu</span>
+          </div>
+          <nav className="space-y-1 p-4">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.label}
+                </NavLink>
+              );
+            })}
+          </nav>
+        </SheetContent>
+      </Sheet>
+    </header>
+  );
+}
