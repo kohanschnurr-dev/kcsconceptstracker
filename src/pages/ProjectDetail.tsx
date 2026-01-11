@@ -1,4 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -10,45 +11,121 @@ import {
   ClipboardList,
   AlertTriangle,
   CheckCircle2,
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { mockProjects, mockExpenses, mockDailyLogs } from '@/data/mockData';
-import { BUDGET_CATEGORIES, TEXAS_SALES_TAX } from '@/types';
+import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+
+interface DBProject {
+  id: string;
+  name: string;
+  address: string;
+  status: 'active' | 'complete' | 'on_hold';
+  total_budget: number;
+  start_date: string;
+}
+
+interface DBCategory {
+  id: string;
+  project_id: string;
+  category: string;
+  estimated_budget: number;
+}
+
+interface DBExpense {
+  id: string;
+  project_id: string;
+  category_id: string;
+  vendor_name: string | null;
+  description: string | null;
+  amount: number;
+  date: string;
+  payment_method: string | null;
+  includes_tax: boolean;
+}
+
+interface DBDailyLog {
+  id: string;
+  project_id: string;
+  date: string;
+  work_performed: string | null;
+  issues: string | null;
+  contractors_on_site: string[] | null;
+}
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  
+  const [project, setProject] = useState<DBProject | null>(null);
+  const [categories, setCategories] = useState<(DBCategory & { actualSpent: number })[]>([]);
+  const [expenses, setExpenses] = useState<DBExpense[]>([]);
+  const [dailyLogs, setDailyLogs] = useState<DBDailyLog[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const project = mockProjects.find(p => p.id === id);
-  const projectExpenses = mockExpenses.filter(e => e.projectId === id);
-  const projectLogs = mockDailyLogs.filter(l => l.projectId === id);
+  useEffect(() => {
+    const fetchProjectData = async () => {
+      if (!id) return;
+      
+      setLoading(true);
+      
+      // Fetch project
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      
+      if (projectError) {
+        console.error('Error fetching project:', projectError);
+        setLoading(false);
+        return;
+      }
+      
+      if (!projectData) {
+        setLoading(false);
+        return;
+      }
+      
+      setProject(projectData);
+      
+      // Fetch categories, expenses, and logs in parallel
+      const [categoriesRes, expensesRes, logsRes] = await Promise.all([
+        supabase.from('project_categories').select('*').eq('project_id', id),
+        supabase.from('expenses').select('*').eq('project_id', id).order('date', { ascending: false }),
+        supabase.from('daily_logs').select('*').eq('project_id', id).order('date', { ascending: false })
+      ]);
+      
+      const categoriesData = categoriesRes.data || [];
+      const expensesData = expensesRes.data || [];
+      
+      // Calculate actual spent per category
+      const categoriesWithSpent = categoriesData.map(cat => {
+        const categoryExpenses = expensesData.filter(e => e.category_id === cat.id);
+        const actualSpent = categoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+        return { ...cat, actualSpent };
+      });
+      
+      setCategories(categoriesWithSpent);
+      setExpenses(expensesData);
+      setDailyLogs(logsRes.data || []);
+      setLoading(false);
+    };
+    
+    fetchProjectData();
+  }, [id]);
 
-  if (!project) {
-    return (
-      <MainLayout>
-        <div className="flex flex-col items-center justify-center py-20">
-          <h2 className="text-xl font-semibold mb-2">Project not found</h2>
-          <p className="text-muted-foreground mb-4">This project doesn't exist or has been removed.</p>
-          <Button onClick={() => navigate('/projects')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Projects
-          </Button>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  const totalSpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
-  const percentSpent = (totalSpent / project.totalBudget) * 100;
-  const remaining = project.totalBudget - totalSpent;
+  const totalSpent = categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
+  const percentSpent = project ? (totalSpent / project.total_budget) * 100 : 0;
+  const remaining = project ? project.total_budget - totalSpent : 0;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -67,8 +144,8 @@ export default function ProjectDetail() {
     });
   };
 
-  const getStatusIcon = () => {
-    switch (project.status) {
+  const getStatusIcon = (status: string) => {
+    switch (status) {
       case 'active':
         return <Clock className="h-4 w-4" />;
       case 'complete':
@@ -79,11 +156,38 @@ export default function ProjectDetail() {
   };
 
   const getVarianceStatus = (actual: number, estimated: number) => {
+    if (estimated === 0) return 'on-track';
     const variance = ((actual - estimated) / estimated) * 100;
     if (variance > 5) return 'over';
     if (variance < -5) return 'under';
     return 'on-track';
   };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Loading project...</p>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!project) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center py-20">
+          <h2 className="text-xl font-semibold mb-2">Project not found</h2>
+          <p className="text-muted-foreground mb-4">This project doesn't exist or has been removed.</p>
+          <Button onClick={() => navigate('/projects')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Projects
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -108,11 +212,11 @@ export default function ProjectDetail() {
                     'gap-1',
                     project.status === 'active' && 'bg-success/20 text-success border-success/30',
                     project.status === 'complete' && 'bg-primary/20 text-primary border-primary/30',
-                    project.status === 'on-hold' && 'bg-warning/20 text-warning border-warning/30'
+                    project.status === 'on_hold' && 'bg-warning/20 text-warning border-warning/30'
                   )}
                 >
-                  {getStatusIcon()}
-                  {project.status}
+                  {getStatusIcon(project.status)}
+                  {project.status.replace('_', ' ')}
                 </Badge>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -122,7 +226,7 @@ export default function ProjectDetail() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" />
-                  Started {formatDate(project.startDate)}
+                  Started {formatDate(project.start_date)}
                 </span>
               </div>
             </div>
@@ -139,7 +243,7 @@ export default function ProjectDetail() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Budget</p>
-                  <p className="text-xl font-semibold font-mono">{formatCurrency(project.totalBudget)}</p>
+                  <p className="text-xl font-semibold font-mono">{formatCurrency(project.total_budget)}</p>
                 </div>
               </div>
             </CardContent>
@@ -193,7 +297,7 @@ export default function ProjectDetail() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Expenses</p>
-                  <p className="text-xl font-semibold">{projectExpenses.length}</p>
+                  <p className="text-xl font-semibold">{expenses.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -209,7 +313,7 @@ export default function ProjectDetail() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{percentSpent.toFixed(1)}% of budget used</span>
-                <span className="font-mono">{formatCurrency(totalSpent)} / {formatCurrency(project.totalBudget)}</span>
+                <span className="font-mono">{formatCurrency(totalSpent)} / {formatCurrency(project.total_budget)}</span>
               </div>
               <div className="progress-bar h-3">
                 <div
@@ -228,8 +332,8 @@ export default function ProjectDetail() {
         <Tabs defaultValue="breakdown" className="space-y-4">
           <TabsList>
             <TabsTrigger value="breakdown">Budget Breakdown</TabsTrigger>
-            <TabsTrigger value="expenses">Expenses ({projectExpenses.length})</TabsTrigger>
-            <TabsTrigger value="logs">Daily Logs ({projectLogs.length})</TabsTrigger>
+            <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
+            <TabsTrigger value="logs">Daily Logs ({dailyLogs.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="breakdown">
@@ -238,76 +342,80 @@ export default function ProjectDetail() {
                 <CardTitle className="text-lg">Category Breakdown</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Category</TableHead>
-                        <TableHead className="text-right">Estimated</TableHead>
-                        <TableHead className="text-right">Actual</TableHead>
-                        <TableHead className="text-right">Variance</TableHead>
-                        <TableHead className="text-right">Remaining</TableHead>
-                        <TableHead>Progress</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {project.categories.map((cat) => {
-                        const label = BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label || cat.category;
-                        const variance = cat.actualSpent - cat.estimatedBudget;
-                        const variancePercent = cat.estimatedBudget > 0 
-                          ? ((variance / cat.estimatedBudget) * 100).toFixed(1)
-                          : '0';
-                        const progress = cat.estimatedBudget > 0 
-                          ? (cat.actualSpent / cat.estimatedBudget) * 100 
-                          : 0;
-                        const remaining = cat.estimatedBudget - cat.actualSpent;
-                        const status = getVarianceStatus(cat.actualSpent, cat.estimatedBudget);
+                {categories.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No budget categories set up yet</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Category</TableHead>
+                          <TableHead className="text-right">Estimated</TableHead>
+                          <TableHead className="text-right">Actual</TableHead>
+                          <TableHead className="text-right">Variance</TableHead>
+                          <TableHead className="text-right">Remaining</TableHead>
+                          <TableHead>Progress</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {categories.map((cat) => {
+                          const label = BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label || cat.category;
+                          const variance = cat.actualSpent - cat.estimated_budget;
+                          const variancePercent = cat.estimated_budget > 0 
+                            ? ((variance / cat.estimated_budget) * 100).toFixed(1)
+                            : '0';
+                          const progress = cat.estimated_budget > 0 
+                            ? (cat.actualSpent / cat.estimated_budget) * 100 
+                            : 0;
+                          const remaining = cat.estimated_budget - cat.actualSpent;
+                          const status = getVarianceStatus(cat.actualSpent, cat.estimated_budget);
 
-                        return (
-                          <TableRow key={cat.id}>
-                            <TableCell className="font-medium">{label}</TableCell>
-                            <TableCell className="text-right font-mono">
-                              {formatCurrency(cat.estimatedBudget)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {formatCurrency(cat.actualSpent)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className={cn(
-                                'font-mono',
-                                status === 'over' && 'text-destructive',
-                                status === 'under' && 'text-success',
-                                status === 'on-track' && 'text-muted-foreground'
-                              )}>
-                                {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
-                                <span className="text-xs ml-1">({variancePercent}%)</span>
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className={cn(
-                                'font-mono',
-                                remaining < 0 ? 'text-destructive' : 'text-success'
-                              )}>
-                                {formatCurrency(remaining)}
-                              </span>
-                            </TableCell>
-                            <TableCell className="w-32">
-                              <div className="progress-bar">
-                                <div
-                                  className={cn(
-                                    'progress-fill',
-                                    progress > 105 ? 'bg-destructive' : progress > 90 ? 'bg-warning' : 'bg-success'
-                                  )}
-                                  style={{ width: `${Math.min(progress, 100)}%` }}
-                                />
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                          return (
+                            <TableRow key={cat.id}>
+                              <TableCell className="font-medium">{label}</TableCell>
+                              <TableCell className="text-right font-mono">
+                                {formatCurrency(cat.estimated_budget)}
+                              </TableCell>
+                              <TableCell className="text-right font-mono">
+                                {formatCurrency(cat.actualSpent)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <span className={cn(
+                                  'font-mono',
+                                  status === 'over' && 'text-destructive',
+                                  status === 'under' && 'text-success',
+                                  status === 'on-track' && 'text-muted-foreground'
+                                )}>
+                                  {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
+                                  <span className="text-xs ml-1">({variancePercent}%)</span>
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <span className={cn(
+                                  'font-mono',
+                                  remaining < 0 ? 'text-destructive' : 'text-success'
+                                )}>
+                                  {formatCurrency(remaining)}
+                                </span>
+                              </TableCell>
+                              <TableCell className="w-32">
+                                <div className="progress-bar">
+                                  <div
+                                    className={cn(
+                                      'progress-fill',
+                                      progress > 105 ? 'bg-destructive' : progress > 90 ? 'bg-warning' : 'bg-success'
+                                    )}
+                                    style={{ width: `${Math.min(progress, 100)}%` }}
+                                  />
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -321,7 +429,7 @@ export default function ProjectDetail() {
                 </Button>
               </CardHeader>
               <CardContent>
-                {projectExpenses.length === 0 ? (
+                {expenses.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">No expenses recorded yet</p>
                 ) : (
                   <div className="overflow-x-auto">
@@ -337,31 +445,28 @@ export default function ProjectDetail() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {projectExpenses.map((expense) => {
-                          const category = project.categories.find(c => c.id === expense.categoryId);
+                        {expenses.map((expense) => {
+                          const category = categories.find(c => c.id === expense.category_id);
                           const categoryLabel = category 
                             ? BUDGET_CATEGORIES.find(b => b.value === category.category)?.label 
                             : 'Unknown';
-                          const totalAmount = expense.includesTax 
-                            ? expense.amount 
-                            : expense.amount * (1 + TEXAS_SALES_TAX);
 
                           return (
                             <TableRow key={expense.id}>
                               <TableCell>{formatDate(expense.date)}</TableCell>
-                              <TableCell className="font-medium">{expense.vendorName}</TableCell>
-                              <TableCell className="max-w-[200px] truncate">{expense.description}</TableCell>
+                              <TableCell className="font-medium">{expense.vendor_name || '-'}</TableCell>
+                              <TableCell className="max-w-[200px] truncate">{expense.description || '-'}</TableCell>
                               <TableCell>
                                 <Badge variant="secondary">{categoryLabel}</Badge>
                               </TableCell>
                               <TableCell className="text-right font-mono">
                                 {formatCurrency(expense.amount)}
-                                {expense.includesTax && (
+                                {expense.includes_tax && (
                                   <span className="text-xs text-muted-foreground ml-1">(incl. tax)</span>
                                 )}
                               </TableCell>
                               <TableCell>
-                                <Badge variant="outline">{expense.paymentMethod}</Badge>
+                                <Badge variant="outline">{expense.payment_method || '-'}</Badge>
                               </TableCell>
                             </TableRow>
                           );
@@ -383,27 +488,27 @@ export default function ProjectDetail() {
                 </Button>
               </CardHeader>
               <CardContent>
-                {projectLogs.length === 0 ? (
+                {dailyLogs.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">No daily logs recorded yet</p>
                 ) : (
                   <div className="space-y-4">
-                    {projectLogs.map((log) => (
+                    {dailyLogs.map((log) => (
                       <div key={log.id} className="p-4 rounded-lg bg-muted/50 border border-border">
                         <div className="flex items-center gap-2 mb-2">
                           <ClipboardList className="h-4 w-4 text-primary" />
                           <span className="font-medium">{formatDate(log.date)}</span>
                         </div>
-                        {log.workPerformed && (
+                        {log.work_performed && (
                           <div className="mb-2">
                             <p className="text-sm text-muted-foreground">Work Performed:</p>
-                            <p className="text-sm">{log.workPerformed}</p>
+                            <p className="text-sm">{log.work_performed}</p>
                           </div>
                         )}
                         {log.issues && (
                           <div className="p-2 rounded bg-warning/10 border border-warning/20">
                             <p className="text-sm text-warning flex items-center gap-1">
                               <AlertTriangle className="h-3.5 w-3.5" />
-                              Issue: {log.issues}
+                              Issues: {log.issues}
                             </p>
                           </div>
                         )}
