@@ -5,7 +5,8 @@ import {
   FolderKanban, 
   AlertTriangle,
   Users,
-  Plus
+  Plus,
+  TrendingUp
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -13,6 +14,8 @@ import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { BudgetBreakdown } from '@/components/dashboard/BudgetBreakdown';
 import { RecentExpenses } from '@/components/dashboard/RecentExpenses';
 import { VendorComplianceTable } from '@/components/dashboard/VendorComplianceTable';
+import { SpendingDonutChart } from '@/components/dashboard/SpendingDonutChart';
+import { SpendingTrendChart } from '@/components/dashboard/SpendingTrendChart';
 import { QuickActionButton } from '@/components/QuickActionButton';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { NewProjectModal } from '@/components/NewProjectModal';
@@ -20,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Project, CategoryBudget, Vendor, Expense } from '@/types';
+import { startOfMonth, isAfter } from 'date-fns';
 
 interface DBCategory {
   id: string;
@@ -188,6 +192,21 @@ export default function Index() {
     !v.hasW9 || (v.insuranceExpiry && new Date(v.insuranceExpiry) < new Date())
   ).length;
 
+  // This month stats
+  const monthStart = startOfMonth(new Date());
+  const thisMonthExpenses = expenses.filter(e => isAfter(new Date(e.date), monthStart));
+  const thisMonthTotal = thisMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Get all categories from all projects for chart
+  const allCategories = projects.flatMap(p => p.categories);
+  
+  // Transform expenses for charts
+  const chartExpenses = expenses.map(e => ({
+    categoryId: e.categoryId,
+    amount: e.amount,
+    date: e.date,
+  }));
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -227,10 +246,10 @@ export default function Index() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Active Projects"
-            value={activeProjects.length.toString()}
-            subtitle={`${projects.length} total`}
-            icon={FolderKanban}
+            title="This Month"
+            value={formatCurrency(thisMonthTotal)}
+            subtitle={`${thisMonthExpenses.length} transactions`}
+            icon={TrendingUp}
             variant="default"
           />
           <StatCard
@@ -255,6 +274,17 @@ export default function Index() {
             variant={vendorsNeedingAttention > 0 ? 'warning' : 'success'}
           />
         </div>
+
+        {/* Charts Section */}
+        {expenses.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <SpendingDonutChart 
+              expenses={chartExpenses} 
+              categories={allCategories.map(c => ({ id: c.id, category: c.category }))}
+            />
+            <SpendingTrendChart expenses={chartExpenses} days={7} />
+          </div>
+        )}
 
         {/* Projects Section */}
         <div>

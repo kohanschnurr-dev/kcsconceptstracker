@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Search, Download, Receipt } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Search, Download, Receipt, Calendar } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,12 +11,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { BUDGET_CATEGORIES, type Project, type CategoryBudget } from '@/types';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { QuickBooksIntegration } from '@/components/QuickBooksIntegration';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 
 interface DBProject {
   id: string;
@@ -52,6 +60,7 @@ export default function Expenses() {
   const [search, setSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [expenses, setExpenses] = useState<DBExpense[]>([]);
@@ -145,25 +154,70 @@ export default function Expenses() {
     return BUDGET_CATEGORIES.find(b => b.value === category.category)?.label || category.category;
   };
 
-  const filteredExpenses = expenses.filter((expense) => {
-    const matchesSearch = 
-      (expense.vendor_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (expense.description?.toLowerCase() || '').includes(search.toLowerCase());
-    
-    const matchesProject = projectFilter === 'all' || expense.project_id === projectFilter;
-    
-    // For category filter, we need to check the category of the expense
-    let matchesCategory = categoryFilter === 'all';
-    if (!matchesCategory) {
-      const project = projects.find(p => p.id === expense.project_id);
-      const category = project?.categories.find(c => c.id === expense.category_id);
-      matchesCategory = category?.category === categoryFilter;
-    }
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((expense) => {
+      const matchesSearch = 
+        (expense.vendor_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+        (expense.description?.toLowerCase() || '').includes(search.toLowerCase());
+      
+      const matchesProject = projectFilter === 'all' || expense.project_id === projectFilter;
+      
+      // For category filter, we need to check the category of the expense
+      let matchesCategory = categoryFilter === 'all';
+      if (!matchesCategory) {
+        const project = projects.find(p => p.id === expense.project_id);
+        const category = project?.categories.find(c => c.id === expense.category_id);
+        matchesCategory = category?.category === categoryFilter;
+      }
 
-    return matchesSearch && matchesProject && matchesCategory;
-  });
+      // Date range filter
+      let matchesDateRange = true;
+      if (dateRange?.from) {
+        const expenseDate = new Date(expense.date);
+        matchesDateRange = isAfter(expenseDate, startOfDay(dateRange.from)) || 
+                          expenseDate.toDateString() === dateRange.from.toDateString();
+        if (dateRange.to) {
+          matchesDateRange = matchesDateRange && 
+            (isBefore(expenseDate, endOfDay(dateRange.to)) || 
+             expenseDate.toDateString() === dateRange.to.toDateString());
+        }
+      }
+
+      return matchesSearch && matchesProject && matchesCategory && matchesDateRange;
+    });
+  }, [expenses, search, projectFilter, categoryFilter, dateRange, projects]);
 
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
+  const exportToCSV = () => {
+    const headers = ['Date', 'Vendor', 'Project', 'Category', 'Payment Method', 'Amount', 'Tax', 'Status', 'Description'];
+    const rows = filteredExpenses.map(e => [
+      e.date,
+      e.vendor_name || '',
+      getProjectName(e.project_id),
+      getCategoryLabel(e.category_id, e.project_id),
+      e.payment_method || '',
+      e.amount.toString(),
+      e.tax_amount?.toString() || '0',
+      e.status,
+      e.description || ''
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `expenses-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+    
+    toast({
+      title: 'Export complete',
+      description: `${filteredExpenses.length} expenses exported to CSV`,
+    });
+  };
 
   return (
     <MainLayout>
@@ -175,7 +229,7 @@ export default function Expenses() {
             <p className="text-muted-foreground mt-1">Track all project costs</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={exportToCSV}>
               <Download className="h-4 w-4" />
               Export
             </Button>
@@ -187,8 +241,8 @@ export default function Expenses() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-wrap gap-4">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search expenses..."
@@ -198,7 +252,7 @@ export default function Expenses() {
             />
           </div>
           <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="All Projects" />
             </SelectTrigger>
             <SelectContent>
@@ -211,7 +265,7 @@ export default function Expenses() {
             </SelectContent>
           </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
@@ -223,6 +277,42 @@ export default function Expenses() {
               ))}
             </SelectContent>
           </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2 min-w-[180px] justify-start">
+                <Calendar className="h-4 w-4" />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <span>{format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}</span>
+                  ) : (
+                    <span>{format(dateRange.from, 'MMM d, yyyy')}</span>
+                  )
+                ) : (
+                  <span>Date Range</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="range"
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={1}
+              />
+              {dateRange && (
+                <div className="p-2 border-t">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => setDateRange(undefined)}
+                  >
+                    Clear dates
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* QuickBooks Integration */}
