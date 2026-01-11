@@ -33,13 +33,9 @@ export function useQuickBooks() {
         return;
       }
 
-      const response = await supabase.functions.invoke('quickbooks-auth', {
-        body: null,
-        headers: {},
+      const { data, error } = await supabase.functions.invoke('quickbooks-auth', {
+        body: { action: 'status' },
       });
-
-      // Parse URL params since we're calling with action in query
-      const { data, error } = await supabase.functions.invoke('quickbooks-auth?action=status');
       
       if (error) {
         console.error('Error checking QuickBooks status:', error);
@@ -57,7 +53,9 @@ export function useQuickBooks() {
 
   const connect = useCallback(async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('quickbooks-auth?action=authorize');
+      const { data, error } = await supabase.functions.invoke('quickbooks-auth', {
+        body: { action: 'authorize' },
+      });
       
       if (error) {
         toast({
@@ -108,7 +106,9 @@ export function useQuickBooks() {
 
   const disconnect = useCallback(async () => {
     try {
-      const { error } = await supabase.functions.invoke('quickbooks-auth?action=disconnect');
+      const { error } = await supabase.functions.invoke('quickbooks-auth', {
+        body: { action: 'disconnect' },
+      });
       
       if (error) {
         toast({
