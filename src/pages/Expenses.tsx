@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Download, Receipt } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -11,17 +11,112 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mockExpenses, mockProjects } from '@/data/mockData';
-import { BUDGET_CATEGORIES } from '@/types';
+import { BUDGET_CATEGORIES, type Project, type CategoryBudget } from '@/types';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { QuickBooksIntegration } from '@/components/QuickBooksIntegration';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface DBProject {
+  id: string;
+  name: string;
+  address: string;
+  total_budget: number;
+  start_date: string;
+  status: 'active' | 'complete' | 'on_hold';
+}
+
+interface DBCategory {
+  id: string;
+  project_id: string;
+  category: string;
+  estimated_budget: number;
+}
+
+interface DBExpense {
+  id: string;
+  project_id: string;
+  category_id: string;
+  amount: number;
+  date: string;
+  vendor_name: string | null;
+  payment_method: 'cash' | 'check' | 'card' | 'transfer' | null;
+  status: 'estimate' | 'actual';
+  description: string | null;
+  includes_tax: boolean;
+  tax_amount: number | null;
+}
 
 export default function Expenses() {
   const [search, setSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [expenses, setExpenses] = useState<DBExpense[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      // Fetch projects with their categories
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (projectsError) throw projectsError;
+
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('project_categories')
+        .select('*');
+
+      if (categoriesError) throw categoriesError;
+
+      const { data: expensesData, error: expensesError } = await supabase
+        .from('expenses')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (expensesError) throw expensesError;
+
+      // Transform to match Project type
+      const transformedProjects: Project[] = (projectsData || []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        address: p.address,
+        totalBudget: p.total_budget,
+        startDate: p.start_date,
+        status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
+        categories: (categoriesData || [])
+          .filter((c: DBCategory) => c.project_id === p.id)
+          .map((c: DBCategory) => ({
+            id: c.id,
+            projectId: c.project_id,
+            category: c.category as CategoryBudget['category'],
+            estimatedBudget: c.estimated_budget,
+            actualSpent: 0,
+          })),
+      }));
+
+      setProjects(transformedProjects);
+      setExpenses(expensesData || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load data',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -40,35 +135,35 @@ export default function Expenses() {
   };
 
   const getProjectName = (projectId: string) => {
-    return mockProjects.find(p => p.id === projectId)?.name || projectId;
+    return projects.find(p => p.id === projectId)?.name || projectId;
   };
 
   const getCategoryLabel = (categoryId: string, projectId: string) => {
-    const project = mockProjects.find(p => p.id === projectId);
+    const project = projects.find(p => p.id === projectId);
     const category = project?.categories.find(c => c.id === categoryId);
     if (!category) return categoryId;
     return BUDGET_CATEGORIES.find(b => b.value === category.category)?.label || category.category;
   };
 
-  const filteredExpenses = mockExpenses.filter((expense) => {
+  const filteredExpenses = expenses.filter((expense) => {
     const matchesSearch = 
-      expense.vendorName.toLowerCase().includes(search.toLowerCase()) ||
-      expense.description.toLowerCase().includes(search.toLowerCase());
+      (expense.vendor_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (expense.description?.toLowerCase() || '').includes(search.toLowerCase());
     
-    const matchesProject = projectFilter === 'all' || expense.projectId === projectFilter;
+    const matchesProject = projectFilter === 'all' || expense.project_id === projectFilter;
     
     // For category filter, we need to check the category of the expense
     let matchesCategory = categoryFilter === 'all';
     if (!matchesCategory) {
-      const project = mockProjects.find(p => p.id === expense.projectId);
-      const category = project?.categories.find(c => c.id === expense.categoryId);
+      const project = projects.find(p => p.id === expense.project_id);
+      const category = project?.categories.find(c => c.id === expense.category_id);
       matchesCategory = category?.category === categoryFilter;
     }
 
     return matchesSearch && matchesProject && matchesCategory;
   });
 
-  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
   return (
     <MainLayout>
@@ -108,7 +203,7 @@ export default function Expenses() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Projects</SelectItem>
-              {mockProjects.map((project) => (
+              {projects.map((project) => (
                 <SelectItem key={project.id} value={project.id}>
                   {project.name}
                 </SelectItem>
@@ -131,7 +226,7 @@ export default function Expenses() {
         </div>
 
         {/* QuickBooks Integration */}
-        <QuickBooksIntegration projects={mockProjects} />
+        <QuickBooksIntegration projects={projects} onExpenseImported={fetchData} />
 
         {/* Summary */}
         <div className="glass-card p-4 flex items-center justify-between">
@@ -151,7 +246,7 @@ export default function Expenses() {
           <div className="text-right text-sm text-muted-foreground">
             <p>TX Sales Tax (8.25%)</p>
             <p className="font-mono text-foreground">
-              {formatCurrency(filteredExpenses.filter(e => e.includesTax).reduce((sum, e) => sum + (e.taxAmount || 0), 0))}
+              {formatCurrency(filteredExpenses.filter(e => e.includes_tax).reduce((sum, e) => sum + (e.tax_amount || 0), 0))}
             </p>
           </div>
         </div>
@@ -177,22 +272,22 @@ export default function Expenses() {
                     <td className="whitespace-nowrap">{formatDate(expense.date)}</td>
                     <td>
                       <div>
-                        <p className="font-medium">{expense.vendorName}</p>
+                        <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
                         <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                           {expense.description}
                         </p>
                       </div>
                     </td>
-                    <td>{getProjectName(expense.projectId)}</td>
+                    <td>{getProjectName(expense.project_id)}</td>
                     <td>
                       <Badge variant="secondary" className="text-xs">
-                        {getCategoryLabel(expense.categoryId, expense.projectId)}
+                        {getCategoryLabel(expense.category_id, expense.project_id)}
                       </Badge>
                     </td>
-                    <td className="capitalize">{expense.paymentMethod}</td>
+                    <td className="capitalize">{expense.payment_method}</td>
                     <td className="text-right font-mono">
                       {formatCurrency(expense.amount)}
-                      {expense.includesTax && (
+                      {expense.includes_tax && (
                         <span className="text-xs text-muted-foreground ml-1">+tax</span>
                       )}
                     </td>
@@ -226,7 +321,7 @@ export default function Expenses() {
       <QuickExpenseModal
         open={expenseModalOpen}
         onOpenChange={setExpenseModalOpen}
-        projects={mockProjects}
+        projects={projects}
       />
     </MainLayout>
   );
