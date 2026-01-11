@@ -20,14 +20,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { BUDGET_CATEGORIES, TEXAS_SALES_TAX, Project, PaymentMethod } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface QuickExpenseModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projects: Project[];
+  onExpenseCreated?: () => void;
 }
 
-export function QuickExpenseModal({ open, onOpenChange, projects }: QuickExpenseModalProps) {
+export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreated }: QuickExpenseModalProps) {
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [amount, setAmount] = useState('');
@@ -35,6 +37,7 @@ export function QuickExpenseModal({ open, onOpenChange, projects }: QuickExpense
   const [description, setDescription] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [includeTax, setIncludeTax] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const calculateTax = () => {
     const baseAmount = parseFloat(amount) || 0;
@@ -46,7 +49,7 @@ export function QuickExpenseModal({ open, onOpenChange, projects }: QuickExpense
     return includeTax ? baseAmount + calculateTax() : baseAmount;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedProject || !selectedCategory || !amount || !vendor) {
@@ -58,21 +61,50 @@ export function QuickExpenseModal({ open, onOpenChange, projects }: QuickExpense
       return;
     }
 
-    // In a real app, this would save to the database
-    toast({
-      title: 'Expense logged',
-      description: `${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(calculateTotal())} added to ${BUDGET_CATEGORIES.find(c => c.value === selectedCategory)?.label}`,
-    });
+    setIsSubmitting(true);
 
-    // Reset form
-    setSelectedProject('');
-    setSelectedCategory('');
-    setAmount('');
-    setVendor('');
-    setDescription('');
-    setPaymentMethod('card');
-    setIncludeTax(false);
-    onOpenChange(false);
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .insert({
+          project_id: selectedProject,
+          category_id: selectedCategory,
+          amount: calculateTotal(),
+          vendor_name: vendor,
+          description: description || null,
+          payment_method: paymentMethod,
+          status: 'actual',
+          includes_tax: includeTax,
+          tax_amount: includeTax ? calculateTax() : null,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Expense logged',
+        description: `$${calculateTotal().toFixed(2)} added successfully`,
+      });
+
+      // Reset form
+      setSelectedProject('');
+      setSelectedCategory('');
+      setAmount('');
+      setVendor('');
+      setDescription('');
+      setPaymentMethod('card');
+      setIncludeTax(false);
+      onOpenChange(false);
+      onExpenseCreated?.();
+    } catch (error: any) {
+      console.error('Error creating expense:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to log expense.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const selectedProjectData = projects.find(p => p.id === selectedProject);
@@ -203,8 +235,8 @@ export function QuickExpenseModal({ open, onOpenChange, projects }: QuickExpense
               <Camera className="h-4 w-4" />
               Add Receipt
             </Button>
-            <Button type="submit" className="flex-1">
-              Log Expense
+            <Button type="submit" className="flex-1" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Log Expense'}
             </Button>
           </div>
         </form>
