@@ -23,6 +23,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { PhotoGallery } from '@/components/project/PhotoGallery';
+import { MilestonesTimeline } from '@/components/project/MilestonesTimeline';
+import { ProjectNotes } from '@/components/project/ProjectNotes';
+import { SpendingChart } from '@/components/project/SpendingChart';
+import { ProfitCalculator } from '@/components/project/ProfitCalculator';
+import { BudgetAlerts } from '@/components/project/BudgetAlerts';
+import { ProjectVendors } from '@/components/project/ProjectVendors';
 
 interface DBProject {
   id: string;
@@ -31,6 +38,8 @@ interface DBProject {
   status: 'active' | 'complete' | 'on_hold';
   total_budget: number;
   start_date: string;
+  purchase_price?: number;
+  arv?: number;
 }
 
 interface DBCategory {
@@ -77,7 +86,6 @@ export default function ProjectDetail() {
       
       setLoading(true);
       
-      // Fetch project
       const { data: projectData, error: projectError } = await supabase
         .from('projects')
         .select('*')
@@ -97,7 +105,6 @@ export default function ProjectDetail() {
       
       setProject(projectData);
       
-      // Fetch categories, expenses, and logs in parallel
       const [categoriesRes, expensesRes, logsRes] = await Promise.all([
         supabase.from('project_categories').select('*').eq('project_id', id),
         supabase.from('expenses').select('*').eq('project_id', id).order('date', { ascending: false }),
@@ -107,7 +114,6 @@ export default function ProjectDetail() {
       const categoriesData = categoriesRes.data || [];
       const expensesData = expensesRes.data || [];
       
-      // Calculate actual spent per category
       const categoriesWithSpent = categoriesData.map(cat => {
         const categoryExpenses = expensesData.filter(e => e.category_id === cat.id);
         const actualSpent = categoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
@@ -153,14 +159,6 @@ export default function ProjectDetail() {
       default:
         return <AlertTriangle className="h-4 w-4" />;
     }
-  };
-
-  const getVarianceStatus = (actual: number, estimated: number) => {
-    if (estimated === 0) return 'on-track';
-    const variance = ((actual - estimated) / estimated) * 100;
-    if (variance > 5) return 'over';
-    if (variance < -5) return 'under';
-    return 'on-track';
   };
 
   if (loading) {
@@ -328,15 +326,39 @@ export default function ProjectDetail() {
           </CardContent>
         </Card>
 
+        {/* Budget Alerts */}
+        <BudgetAlerts categories={categories} totalBudget={project.total_budget} totalSpent={totalSpent} />
+
         {/* Tabs for detailed views */}
-        <Tabs defaultValue="breakdown" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="breakdown">Budget Breakdown</TabsTrigger>
-            <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
-            <TabsTrigger value="logs">Daily Logs ({dailyLogs.length})</TabsTrigger>
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="financials">Financials</TabsTrigger>
+            <TabsTrigger value="team">Team</TabsTrigger>
+            <TabsTrigger value="photos">Photos</TabsTrigger>
+            <TabsTrigger value="logs">Logs ({dailyLogs.length})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="breakdown">
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <MilestonesTimeline projectId={id!} />
+              <ProjectNotes projectId={id!} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="financials" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ProfitCalculator 
+                projectId={id!}
+                totalBudget={project.total_budget}
+                totalSpent={totalSpent}
+                initialPurchasePrice={project.purchase_price || 0}
+                initialArv={project.arv || 0}
+              />
+              <SpendingChart categories={categories} totalBudget={project.total_budget} />
+            </div>
+            
+            {/* Budget Breakdown Table */}
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="text-lg">Category Breakdown</CardTitle>
@@ -352,62 +374,20 @@ export default function ProjectDetail() {
                           <TableHead>Category</TableHead>
                           <TableHead className="text-right">Estimated</TableHead>
                           <TableHead className="text-right">Actual</TableHead>
-                          <TableHead className="text-right">Variance</TableHead>
                           <TableHead className="text-right">Remaining</TableHead>
-                          <TableHead>Progress</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {categories.map((cat) => {
                           const label = BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label || cat.category;
-                          const variance = cat.actualSpent - cat.estimated_budget;
-                          const variancePercent = cat.estimated_budget > 0 
-                            ? ((variance / cat.estimated_budget) * 100).toFixed(1)
-                            : '0';
-                          const progress = cat.estimated_budget > 0 
-                            ? (cat.actualSpent / cat.estimated_budget) * 100 
-                            : 0;
                           const remaining = cat.estimated_budget - cat.actualSpent;
-                          const status = getVarianceStatus(cat.actualSpent, cat.estimated_budget);
-
                           return (
                             <TableRow key={cat.id}>
                               <TableCell className="font-medium">{label}</TableCell>
-                              <TableCell className="text-right font-mono">
-                                {formatCurrency(cat.estimated_budget)}
-                              </TableCell>
-                              <TableCell className="text-right font-mono">
-                                {formatCurrency(cat.actualSpent)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <span className={cn(
-                                  'font-mono',
-                                  status === 'over' && 'text-destructive',
-                                  status === 'under' && 'text-success',
-                                  status === 'on-track' && 'text-muted-foreground'
-                                )}>
-                                  {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
-                                  <span className="text-xs ml-1">({variancePercent}%)</span>
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <span className={cn(
-                                  'font-mono',
-                                  remaining < 0 ? 'text-destructive' : 'text-success'
-                                )}>
-                                  {formatCurrency(remaining)}
-                                </span>
-                              </TableCell>
-                              <TableCell className="w-32">
-                                <div className="progress-bar">
-                                  <div
-                                    className={cn(
-                                      'progress-fill',
-                                      progress > 105 ? 'bg-destructive' : progress > 90 ? 'bg-warning' : 'bg-success'
-                                    )}
-                                    style={{ width: `${Math.min(progress, 100)}%` }}
-                                  />
-                                </div>
+                              <TableCell className="text-right font-mono">{formatCurrency(cat.estimated_budget)}</TableCell>
+                              <TableCell className="text-right font-mono">{formatCurrency(cat.actualSpent)}</TableCell>
+                              <TableCell className={cn("text-right font-mono", remaining < 0 ? 'text-destructive' : 'text-success')}>
+                                {formatCurrency(remaining)}
                               </TableCell>
                             </TableRow>
                           );
@@ -420,63 +400,12 @@ export default function ProjectDetail() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="expenses">
-            <Card className="glass-card">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg">Expenses</CardTitle>
-                <Button size="sm" asChild>
-                  <Link to="/expenses">View All</Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {expenses.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No expenses recorded yet</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Vendor</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Category</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                          <TableHead>Payment</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {expenses.map((expense) => {
-                          const category = categories.find(c => c.id === expense.category_id);
-                          const categoryLabel = category 
-                            ? BUDGET_CATEGORIES.find(b => b.value === category.category)?.label 
-                            : 'Unknown';
+          <TabsContent value="team">
+            <ProjectVendors projectId={id!} />
+          </TabsContent>
 
-                          return (
-                            <TableRow key={expense.id}>
-                              <TableCell>{formatDate(expense.date)}</TableCell>
-                              <TableCell className="font-medium">{expense.vendor_name || '-'}</TableCell>
-                              <TableCell className="max-w-[200px] truncate">{expense.description || '-'}</TableCell>
-                              <TableCell>
-                                <Badge variant="secondary">{categoryLabel}</Badge>
-                              </TableCell>
-                              <TableCell className="text-right font-mono">
-                                {formatCurrency(expense.amount)}
-                                {expense.includes_tax && (
-                                  <span className="text-xs text-muted-foreground ml-1">(incl. tax)</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline">{expense.payment_method || '-'}</Badge>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="photos">
+            <PhotoGallery projectId={id!} />
           </TabsContent>
 
           <TabsContent value="logs">
