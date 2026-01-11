@@ -20,9 +20,10 @@ import type { Project } from '@/types';
 
 interface QuickBooksIntegrationProps {
   projects: Project[];
+  onExpenseImported?: () => void;
 }
 
-export function QuickBooksIntegration({ projects }: QuickBooksIntegrationProps) {
+export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBooksIntegrationProps) {
   const {
     isConnected,
     isDemoMode,
@@ -62,7 +63,10 @@ export function QuickBooksIntegration({ projects }: QuickBooksIntegrationProps) 
 
     if (!projectId || !categoryId) return;
 
-    await categorizeExpense(expenseId, projectId, categoryId);
+    const success = await categorizeExpense(expenseId, projectId, categoryId);
+    if (success && onExpenseImported) {
+      onExpenseImported();
+    }
   };
 
   const getProjectCategories = (projectId: string) => {
