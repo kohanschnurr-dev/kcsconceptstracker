@@ -1,5 +1,11 @@
-import { useState } from 'react';
-import { Camera, DollarSign, X } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Camera, DollarSign, X, Upload, Loader2 } from 'lucide-react';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +27,7 @@ import { Switch } from '@/components/ui/switch';
 import { BUDGET_CATEGORIES, TEXAS_SALES_TAX, Project, PaymentMethod } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface QuickExpenseModalProps {
   open: boolean;
@@ -29,15 +36,28 @@ interface QuickExpenseModalProps {
   onExpenseCreated?: () => void;
 }
 
-export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreated }: QuickExpenseModalProps) {
+function ExpenseForm({ 
+  projects, 
+  onExpenseCreated, 
+  onClose 
+}: { 
+  projects: Project[]; 
+  onExpenseCreated?: () => void;
+  onClose: () => void;
+}) {
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [amount, setAmount] = useState('');
   const [vendor, setVendor] = useState('');
   const [description, setDescription] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [includeTax, setIncludeTax] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const calculateTax = () => {
     const baseAmount = parseFloat(amount) || 0;
@@ -47,6 +67,51 @@ export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreat
   const calculateTotal = () => {
     const baseAmount = parseFloat(amount) || 0;
     return includeTax ? baseAmount + calculateTax() : baseAmount;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setReceiptFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setReceiptPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadReceipt = async (): Promise<string | null> => {
+    if (!receiptFile) return null;
+    
+    setIsUploading(true);
+    try {
+      const fileExt = receiptFile.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `receipts/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('project-photos')
+        .upload(filePath, receiptFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('project-photos')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading receipt:', error);
+      toast({
+        title: 'Upload failed',
+        description: 'Could not upload receipt image.',
+        variant: 'destructive',
+      });
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,6 +129,8 @@ export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreat
     setIsSubmitting(true);
 
     try {
+      const receiptUrl = await uploadReceipt();
+
       const { error } = await supabase
         .from('expenses')
         .insert({
@@ -76,6 +143,8 @@ export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreat
           status: 'actual',
           includes_tax: includeTax,
           tax_amount: includeTax ? calculateTax() : null,
+          date: date,
+          receipt_url: receiptUrl,
         });
 
       if (error) throw error;
@@ -85,15 +154,7 @@ export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreat
         description: `$${calculateTotal().toFixed(2)} added successfully`,
       });
 
-      // Reset form
-      setSelectedProject('');
-      setSelectedCategory('');
-      setAmount('');
-      setVendor('');
-      setDescription('');
-      setPaymentMethod('card');
-      setIncludeTax(false);
-      onOpenChange(false);
+      onClose();
       onExpenseCreated?.();
     } catch (error: any) {
       console.error('Error creating expense:', error);
@@ -107,139 +168,235 @@ export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreat
     }
   };
 
-  const selectedProjectData = projects.find(p => p.id === selectedProject);
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 p-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Project</Label>
+          <Select value={selectedProject} onValueChange={setSelectedProject}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select project" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.filter(p => p.status === 'active').map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Category</Label>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {BUDGET_CATEGORIES.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Amount</Label>
+          <div className="relative">
+            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="pl-9 font-mono text-lg"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Date</Label>
+          <Input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Vendor</Label>
+          <Input
+            placeholder="Home Depot, contractor..."
+            value={vendor}
+            onChange={(e) => setVendor(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Payment</Label>
+          <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="card">Card</SelectItem>
+              <SelectItem value="check">Check</SelectItem>
+              <SelectItem value="cash">Cash</SelectItem>
+              <SelectItem value="transfer">Transfer</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Description (optional)</Label>
+        <Textarea
+          placeholder="What was purchased?"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+        />
+      </div>
+
+      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+        <div className="flex items-center gap-2">
+          <Switch
+            id="tax"
+            checked={includeTax}
+            onCheckedChange={setIncludeTax}
+          />
+          <Label htmlFor="tax" className="text-sm cursor-pointer">
+            Add TX Sales Tax (8.25%)
+          </Label>
+        </div>
+        {includeTax && amount && (
+          <span className="text-sm font-mono text-muted-foreground">
+            +${calculateTax().toFixed(2)}
+          </span>
+        )}
+      </div>
+
+      {/* Receipt Upload */}
+      <div className="space-y-2">
+        <Label>Receipt (optional)</Label>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        {receiptPreview ? (
+          <div className="relative">
+            <img 
+              src={receiptPreview} 
+              alt="Receipt preview" 
+              className="w-full h-32 object-cover rounded-lg border border-border"
+            />
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              className="absolute top-2 right-2 h-6 w-6"
+              onClick={() => {
+                setReceiptFile(null);
+                setReceiptPreview(null);
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Camera className="h-4 w-4" />
+            Add Receipt Photo
+          </Button>
+        )}
+      </div>
+
+      {amount && (
+        <div className="flex items-center justify-between p-4 rounded-lg bg-primary/10 border border-primary/20">
+          <span className="text-sm font-medium">Total</span>
+          <span className="text-xl font-mono font-semibold text-primary">
+            ${calculateTotal().toFixed(2)}
+          </span>
+        </div>
+      )}
+
+      <Button 
+        type="submit" 
+        className="w-full" 
+        disabled={isSubmitting || isUploading}
+      >
+        {isSubmitting || isUploading ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            {isUploading ? 'Uploading...' : 'Saving...'}
+          </>
+        ) : (
+          'Log Expense'
+        )}
+      </Button>
+    </form>
+  );
+}
+
+export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreated }: QuickExpenseModalProps) {
+  const isMobile = useIsMobile();
+
+  const handleClose = () => onOpenChange(false);
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader className="border-b border-border">
+            <DrawerTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-primary" />
+              Quick Log Expense
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="overflow-y-auto">
+            <ExpenseForm 
+              projects={projects} 
+              onExpenseCreated={onExpenseCreated}
+              onClose={handleClose}
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
+      <DialogContent className="sm:max-w-lg bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-primary" />
             Quick Log Expense
           </DialogTitle>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Project</Label>
-            <Select value={selectedProject} onValueChange={setSelectedProject}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.filter(p => p.status === 'active').map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Category</Label>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {BUDGET_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Amount</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="pl-9 font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Payment</Label>
-              <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="card">Card</SelectItem>
-                  <SelectItem value="check">Check</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="transfer">Transfer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Vendor</Label>
-            <Input
-              placeholder="Home Depot, contractor name..."
-              value={vendor}
-              onChange={(e) => setVendor(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Description</Label>
-            <Textarea
-              placeholder="What was purchased?"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-            />
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="tax"
-                checked={includeTax}
-                onCheckedChange={setIncludeTax}
-              />
-              <Label htmlFor="tax" className="text-sm cursor-pointer">
-                Add TX Sales Tax (8.25%)
-              </Label>
-            </div>
-            {includeTax && amount && (
-              <span className="text-sm font-mono text-muted-foreground">
-                +${calculateTax().toFixed(2)}
-              </span>
-            )}
-          </div>
-
-          {amount && (
-            <div className="flex items-center justify-between p-4 rounded-lg bg-primary/10 border border-primary/20">
-              <span className="text-sm font-medium">Total</span>
-              <span className="text-xl font-mono font-semibold text-primary">
-                ${calculateTotal().toFixed(2)}
-              </span>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 pt-2">
-            <Button type="button" variant="outline" className="flex-1 gap-2">
-              <Camera className="h-4 w-4" />
-              Add Receipt
-            </Button>
-            <Button type="submit" className="flex-1" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Log Expense'}
-            </Button>
-          </div>
-        </form>
+        <ExpenseForm 
+          projects={projects} 
+          onExpenseCreated={onExpenseCreated}
+          onClose={handleClose}
+        />
       </DialogContent>
     </Dialog>
   );
