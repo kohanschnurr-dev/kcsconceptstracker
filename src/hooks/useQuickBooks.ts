@@ -17,8 +17,111 @@ interface QuickBooksExpense {
   updated_at: string;
 }
 
+// Sample mock data for demo mode
+const MOCK_QB_EXPENSES: QuickBooksExpense[] = [
+  {
+    id: 'mock-qb-1',
+    qb_id: 'QB-12345',
+    vendor_name: 'Home Depot',
+    amount: 1247.89,
+    date: '2025-01-08',
+    description: 'Lumber and building materials for framing',
+    payment_method: 'card',
+    is_imported: false,
+    project_id: null,
+    category_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'mock-qb-2',
+    qb_id: 'QB-12346',
+    vendor_name: 'Ferguson Plumbing',
+    amount: 3420.00,
+    date: '2025-01-07',
+    description: 'Water heater and supply lines',
+    payment_method: 'check',
+    is_imported: false,
+    project_id: null,
+    category_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'mock-qb-3',
+    qb_id: 'QB-12347',
+    vendor_name: 'Lowes',
+    amount: 892.45,
+    date: '2025-01-06',
+    description: 'Electrical panels and wiring supplies',
+    payment_method: 'card',
+    is_imported: false,
+    project_id: null,
+    category_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'mock-qb-4',
+    qb_id: 'QB-12348',
+    vendor_name: 'ABC Roofing Supply',
+    amount: 5680.00,
+    date: '2025-01-05',
+    description: '30-year architectural shingles - full roof',
+    payment_method: 'transfer',
+    is_imported: false,
+    project_id: null,
+    category_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'mock-qb-5',
+    qb_id: 'QB-12349',
+    vendor_name: 'Texas HVAC Wholesale',
+    amount: 4250.00,
+    date: '2025-01-04',
+    description: '3-ton AC unit with install kit',
+    payment_method: 'check',
+    is_imported: false,
+    project_id: null,
+    category_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'mock-qb-6',
+    qb_id: 'QB-12350',
+    vendor_name: 'Cabinet Depot',
+    amount: 8900.00,
+    date: '2025-01-03',
+    description: 'Kitchen cabinet set - shaker style white',
+    payment_method: 'card',
+    is_imported: false,
+    project_id: null,
+    category_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'mock-qb-7',
+    qb_id: 'QB-12351',
+    vendor_name: 'Floor & Decor',
+    amount: 2156.78,
+    date: '2025-01-02',
+    description: 'LVP flooring - 1200 sq ft',
+    payment_method: 'card',
+    is_imported: false,
+    project_id: null,
+    category_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
 export function useQuickBooks() {
   const [isConnected, setIsConnected] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingExpenses, setPendingExpenses] = useState<QuickBooksExpense[]>([]);
@@ -50,6 +153,16 @@ export function useQuickBooks() {
       setIsLoading(false);
     }
   }, []);
+
+  const enableDemoMode = useCallback(() => {
+    setIsDemoMode(true);
+    setIsConnected(true);
+    setPendingExpenses([...MOCK_QB_EXPENSES]);
+    toast({
+      title: 'Demo Mode Enabled',
+      description: 'Using sample QuickBooks data for testing',
+    });
+  }, [toast]);
 
   const connect = useCallback(async () => {
     try {
@@ -105,6 +218,17 @@ export function useQuickBooks() {
   }, [toast]);
 
   const disconnect = useCallback(async () => {
+    if (isDemoMode) {
+      setIsDemoMode(false);
+      setIsConnected(false);
+      setPendingExpenses([]);
+      toast({
+        title: 'Demo Mode Disabled',
+        description: 'Sample data cleared',
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase.functions.invoke('quickbooks-auth', {
         body: { action: 'disconnect' },
@@ -128,9 +252,21 @@ export function useQuickBooks() {
     } catch (error) {
       console.error('Error disconnecting QuickBooks:', error);
     }
-  }, [toast]);
+  }, [toast, isDemoMode]);
 
   const syncExpenses = useCallback(async (startDate?: string, endDate?: string) => {
+    if (isDemoMode) {
+      setIsSyncing(true);
+      // Simulate sync delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast({
+        title: 'Demo Sync Complete',
+        description: `${MOCK_QB_EXPENSES.length} sample expenses available`,
+      });
+      setIsSyncing(false);
+      return;
+    }
+
     setIsSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke('quickbooks-sync', {
@@ -163,9 +299,13 @@ export function useQuickBooks() {
     } finally {
       setIsSyncing(false);
     }
-  }, [toast]);
+  }, [toast, isDemoMode]);
 
   const fetchPendingExpenses = useCallback(async () => {
+    if (isDemoMode) {
+      return; // Mock data already set
+    }
+
     try {
       const { data, error } = await supabase
         .from('quickbooks_expenses')
@@ -182,13 +322,23 @@ export function useQuickBooks() {
     } catch (error) {
       console.error('Error fetching pending expenses:', error);
     }
-  }, []);
+  }, [isDemoMode]);
 
   const categorizeExpense = useCallback(async (
     expenseId: string, 
     projectId: string, 
     categoryId: string
   ) => {
+    if (isDemoMode) {
+      // Remove from pending in demo mode
+      setPendingExpenses(prev => prev.filter(e => e.id !== expenseId));
+      toast({
+        title: 'Categorized',
+        description: 'Expense categorized and imported successfully',
+      });
+      return true;
+    }
+
     try {
       const { error } = await supabase
         .from('quickbooks_expenses')
@@ -221,20 +371,21 @@ export function useQuickBooks() {
       console.error('Error categorizing expense:', error);
       return false;
     }
-  }, [toast, fetchPendingExpenses]);
+  }, [toast, fetchPendingExpenses, isDemoMode]);
 
   useEffect(() => {
     checkConnection();
   }, [checkConnection]);
 
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && !isDemoMode) {
       fetchPendingExpenses();
     }
-  }, [isConnected, fetchPendingExpenses]);
+  }, [isConnected, fetchPendingExpenses, isDemoMode]);
 
   return {
     isConnected,
+    isDemoMode,
     isLoading,
     isSyncing,
     pendingExpenses,
@@ -243,5 +394,6 @@ export function useQuickBooks() {
     syncExpenses,
     categorizeExpense,
     fetchPendingExpenses,
+    enableDemoMode,
   };
 }

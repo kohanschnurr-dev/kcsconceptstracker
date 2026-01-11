@@ -25,6 +25,7 @@ interface QuickBooksIntegrationProps {
 export function QuickBooksIntegration({ projects }: QuickBooksIntegrationProps) {
   const {
     isConnected,
+    isDemoMode,
     isLoading,
     isSyncing,
     pendingExpenses,
@@ -32,6 +33,7 @@ export function QuickBooksIntegration({ projects }: QuickBooksIntegrationProps) 
     disconnect,
     syncExpenses,
     categorizeExpense,
+    enableDemoMode,
   } = useQuickBooks();
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -94,7 +96,7 @@ export function QuickBooksIntegration({ projects }: QuickBooksIntegrationProps) 
                 <h3 className="font-medium">QuickBooks Integration</h3>
                 <div className="flex items-center gap-2">
                   <Badge variant={isConnected ? "default" : "secondary"} className="text-xs">
-                    {isConnected ? "Connected" : "Not Connected"}
+                    {isDemoMode ? "Demo Mode" : isConnected ? "Connected" : "Not Connected"}
                   </Badge>
                   {pendingExpenses.length > 0 && (
                     <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
@@ -136,10 +138,15 @@ export function QuickBooksIntegration({ projects }: QuickBooksIntegrationProps) 
                 <p className="text-muted-foreground mb-4">
                   Connect your QuickBooks account to automatically import expenses
                 </p>
-                <Button onClick={connect} className="gap-2">
-                  <Link2 className="h-4 w-4" />
-                  Connect QuickBooks
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button onClick={connect} className="gap-2">
+                    <Link2 className="h-4 w-4" />
+                    Connect QuickBooks
+                  </Button>
+                  <Button variant="outline" onClick={enableDemoMode} className="gap-2">
+                    Try Demo Mode
+                  </Button>
+                </div>
               </div>
             ) : (
               <>
@@ -254,6 +261,7 @@ export function QuickBooksIntegration({ projects }: QuickBooksIntegrationProps) 
                     className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-2"
                   >
                     <Link2Off className="h-4 w-4" />
+                    {isDemoMode ? 'Exit Demo Mode' : 'Disconnect QuickBooks'}
                     Disconnect QuickBooks
                   </Button>
                 </div>
