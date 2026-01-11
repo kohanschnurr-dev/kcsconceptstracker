@@ -25,16 +25,26 @@ serve(async (req) => {
     
     // Get action from query param (for OAuth callback) or from body
     let action = url.searchParams.get("action");
-    let body: any = {};
+    let body: Record<string, unknown> = {};
     
-    if (!action && req.method === "POST") {
+    // Always try to parse body for POST requests
+    if (req.method === "POST") {
       try {
-        body = await req.json();
-        action = body.action;
-      } catch {
-        // No body or invalid JSON
+        const text = await req.text();
+        console.log("Request body text:", text);
+        if (text) {
+          body = JSON.parse(text);
+          console.log("Parsed body:", JSON.stringify(body));
+          if (!action && body.action) {
+            action = body.action as string;
+          }
+        }
+      } catch (e) {
+        console.log("Failed to parse body:", e);
       }
     }
+    
+    console.log("Action:", action, "Method:", req.method);
     
     // Get user from auth header
     const authHeader = req.headers.get("Authorization");
