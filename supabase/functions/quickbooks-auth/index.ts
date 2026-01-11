@@ -22,7 +22,19 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const action = url.searchParams.get("action");
+    
+    // Get action from query param (for OAuth callback) or from body
+    let action = url.searchParams.get("action");
+    let body: any = {};
+    
+    if (!action && req.method === "POST") {
+      try {
+        body = await req.json();
+        action = body.action;
+      } catch {
+        // No body or invalid JSON
+      }
+    }
     
     // Get user from auth header
     const authHeader = req.headers.get("Authorization");
