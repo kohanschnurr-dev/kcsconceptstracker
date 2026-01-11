@@ -156,12 +156,173 @@ export type Database = {
           },
         ]
       }
+      project_milestones: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          project_id: string
+          sort_order: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          project_id: string
+          sort_order?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          project_id?: string
+          sort_order?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_reminder: boolean | null
+          project_id: string
+          reminder_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_reminder?: boolean | null
+          project_id: string
+          reminder_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_reminder?: boolean | null
+          project_id?: string
+          reminder_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_photos: {
+        Row: {
+          caption: string | null
+          category: string | null
+          created_at: string
+          file_path: string
+          id: string
+          project_id: string
+        }
+        Insert: {
+          caption?: string | null
+          category?: string | null
+          created_at?: string
+          file_path: string
+          id?: string
+          project_id: string
+        }
+        Update: {
+          caption?: string | null
+          category?: string | null
+          created_at?: string
+          file_path?: string
+          id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_photos_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_vendors: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          project_id: string
+          scheduled_date: string | null
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          project_id: string
+          scheduled_date?: string | null
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          project_id?: string
+          scheduled_date?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_vendors_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_vendors_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           address: string
+          arv: number | null
           created_at: string
           id: string
           name: string
+          purchase_price: number | null
           start_date: string
           status: Database["public"]["Enums"]["project_status"]
           total_budget: number
@@ -170,9 +331,11 @@ export type Database = {
         }
         Insert: {
           address: string
+          arv?: number | null
           created_at?: string
           id?: string
           name: string
+          purchase_price?: number | null
           start_date?: string
           status?: Database["public"]["Enums"]["project_status"]
           total_budget?: number
@@ -181,9 +344,11 @@ export type Database = {
         }
         Update: {
           address?: string
+          arv?: number | null
           created_at?: string
           id?: string
           name?: string
+          purchase_price?: number | null
           start_date?: string
           status?: Database["public"]["Enums"]["project_status"]
           total_budget?: number
