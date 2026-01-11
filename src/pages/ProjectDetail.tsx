@@ -31,7 +31,6 @@ import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { BudgetAlerts } from '@/components/project/BudgetAlerts';
 import { ProjectVendors } from '@/components/project/ProjectVendors';
 import { ExportReports } from '@/components/project/ExportReports';
-import { StatDrilldownModal } from '@/components/project/StatDrilldownModal';
 
 interface DBProject {
   id: string;
@@ -83,7 +82,6 @@ export default function ProjectDetail() {
   const [expenses, setExpenses] = useState<DBExpense[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DBDailyLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [drilldownType, setDrilldownType] = useState<'budget' | 'spent' | 'remaining' | 'expenses' | null>(null);
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -236,11 +234,11 @@ export default function ProjectDetail() {
           </div>
         </div>
 
-        {/* Summary Cards - Clickable */}
+        {/* Summary Cards - Clickable - Navigate to Budget Page */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card 
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-primary/50"
-            onClick={() => setDrilldownType('budget')}
+            onClick={() => navigate(`/projects/${id}/budget`)}
           >
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
@@ -257,7 +255,7 @@ export default function ProjectDetail() {
 
           <Card 
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-warning/50"
-            onClick={() => setDrilldownType('spent')}
+            onClick={() => navigate(`/projects/${id}/budget`)}
           >
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
@@ -274,7 +272,7 @@ export default function ProjectDetail() {
 
           <Card 
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-success/50"
-            onClick={() => setDrilldownType('remaining')}
+            onClick={() => navigate(`/projects/${id}/budget`)}
           >
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
@@ -303,7 +301,7 @@ export default function ProjectDetail() {
 
           <Card 
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-muted-foreground/50"
-            onClick={() => setDrilldownType('expenses')}
+            onClick={() => navigate(`/projects/${id}/budget`)}
           >
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
@@ -318,17 +316,6 @@ export default function ProjectDetail() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Stat Drilldown Modal */}
-        <StatDrilldownModal
-          type={drilldownType}
-          open={drilldownType !== null}
-          onOpenChange={(open) => !open && setDrilldownType(null)}
-          totalBudget={project.total_budget}
-          totalSpent={totalSpent}
-          categories={categories}
-          expenses={expenses}
-        />
 
         {/* Budget Progress */}
         <Card className="glass-card">
