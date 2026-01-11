@@ -330,11 +330,47 @@ export function useQuickBooks() {
     categoryId: string
   ) => {
     if (isDemoMode) {
+      // Find the expense to get its data
+      const expense = pendingExpenses.find(e => e.id === expenseId);
+      if (!expense) {
+        toast({
+          title: 'Error',
+          description: 'Expense not found',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      // Insert into the real expenses table
+      const { error } = await supabase
+        .from('expenses')
+        .insert({
+          project_id: projectId,
+          category_id: categoryId,
+          amount: expense.amount,
+          date: expense.date,
+          vendor_name: expense.vendor_name,
+          description: expense.description,
+          payment_method: expense.payment_method as 'cash' | 'check' | 'card' | 'transfer' || 'card',
+          status: 'actual',
+          includes_tax: false,
+        });
+
+      if (error) {
+        console.error('Error inserting expense:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to import expense: ' + error.message,
+          variant: 'destructive',
+        });
+        return false;
+      }
+
       // Remove from pending in demo mode
       setPendingExpenses(prev => prev.filter(e => e.id !== expenseId));
       toast({
-        title: 'Categorized',
-        description: 'Expense categorized and imported successfully',
+        title: 'Imported!',
+        description: 'Expense added to your project',
       });
       return true;
     }
@@ -371,7 +407,7 @@ export function useQuickBooks() {
       console.error('Error categorizing expense:', error);
       return false;
     }
-  }, [toast, fetchPendingExpenses, isDemoMode]);
+  }, [toast, fetchPendingExpenses, isDemoMode, pendingExpenses]);
 
   useEffect(() => {
     checkConnection();
