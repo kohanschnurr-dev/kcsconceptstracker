@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Filter, Download, Receipt } from 'lucide-react';
+import { Plus, Search, Download, Receipt } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { mockExpenses, mockProjects } from '@/data/mockData';
-import { BUDGET_CATEGORIES, TEXAS_SALES_TAX } from '@/types';
+import { BUDGET_CATEGORIES } from '@/types';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
+import { QuickBooksIntegration } from '@/components/QuickBooksIntegration';
 import { cn } from '@/lib/utils';
 
 export default function Expenses() {
@@ -128,6 +129,9 @@ export default function Expenses() {
             </SelectContent>
           </Select>
         </div>
+
+        {/* QuickBooks Integration */}
+        <QuickBooksIntegration projects={mockProjects} />
 
         {/* Summary */}
         <div className="glass-card p-4 flex items-center justify-between">
