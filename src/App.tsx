@@ -13,6 +13,8 @@ import Vendors from "./pages/Vendors";
 import DailyLogs from "./pages/DailyLogs";
 import Auth from "./pages/Auth";
 import QuickBooksCallback from "./pages/QuickBooksCallback";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import EULA from "./pages/EULA";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +28,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/eula" element={<EULA />} />
             <Route path="/quickbooks-callback" element={<ProtectedRoute><QuickBooksCallback /></ProtectedRoute>} />
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
