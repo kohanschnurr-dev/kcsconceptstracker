@@ -507,27 +507,77 @@ export type Database = {
     }
     Enums: {
       budget_category:
-        | "foundation"
         | "plumbing"
+        | "roofing"
+        | "misc"
+        | "flooring"
+        | "painting"
+        | "garage"
+        | "foundation_repair"
         | "hvac"
+        | "drywall"
+        | "main_bathroom"
+        | "carpentry"
+        | "light_fixtures"
+        | "appliances"
+        | "natural_gas"
+        | "permits_inspections"
+        | "landscaping"
+        | "dumpsters_trash"
+        | "windows"
+        | "cabinets"
+        | "countertops"
+        | "bathroom"
         | "electrical"
-        | "roof"
-        | "interior"
         | "kitchen"
-        | "fixtures"
+        | "demolition"
+        | "fencing"
+        | "doors"
+        | "water_heater"
+        | "brick_siding_stucco"
+        | "framing"
+        | "hardware"
+        | "insulation"
+        | "pest_control"
+        | "pool"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
       project_status: "active" | "complete" | "on_hold"
       vendor_trade:
-        | "foundation"
         | "plumbing"
+        | "roofing"
+        | "misc"
+        | "flooring"
+        | "painting"
+        | "garage"
+        | "foundation_repair"
         | "hvac"
+        | "drywall"
+        | "main_bathroom"
+        | "carpentry"
+        | "light_fixtures"
+        | "appliances"
+        | "natural_gas"
+        | "permits_inspections"
+        | "landscaping"
+        | "dumpsters_trash"
+        | "windows"
+        | "cabinets"
+        | "countertops"
+        | "bathroom"
         | "electrical"
-        | "roof"
-        | "interior"
         | "kitchen"
-        | "fixtures"
+        | "demolition"
+        | "fencing"
+        | "doors"
+        | "water_heater"
+        | "brick_siding_stucco"
+        | "framing"
+        | "hardware"
+        | "insulation"
+        | "pest_control"
+        | "pool"
         | "general"
     }
     CompositeTypes: {
@@ -657,28 +707,78 @@ export const Constants = {
   public: {
     Enums: {
       budget_category: [
-        "foundation",
         "plumbing",
+        "roofing",
+        "misc",
+        "flooring",
+        "painting",
+        "garage",
+        "foundation_repair",
         "hvac",
+        "drywall",
+        "main_bathroom",
+        "carpentry",
+        "light_fixtures",
+        "appliances",
+        "natural_gas",
+        "permits_inspections",
+        "landscaping",
+        "dumpsters_trash",
+        "windows",
+        "cabinets",
+        "countertops",
+        "bathroom",
         "electrical",
-        "roof",
-        "interior",
         "kitchen",
-        "fixtures",
+        "demolition",
+        "fencing",
+        "doors",
+        "water_heater",
+        "brick_siding_stucco",
+        "framing",
+        "hardware",
+        "insulation",
+        "pest_control",
+        "pool",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer"],
       pricing_model: ["flat", "hourly"],
       project_status: ["active", "complete", "on_hold"],
       vendor_trade: [
-        "foundation",
         "plumbing",
+        "roofing",
+        "misc",
+        "flooring",
+        "painting",
+        "garage",
+        "foundation_repair",
         "hvac",
+        "drywall",
+        "main_bathroom",
+        "carpentry",
+        "light_fixtures",
+        "appliances",
+        "natural_gas",
+        "permits_inspections",
+        "landscaping",
+        "dumpsters_trash",
+        "windows",
+        "cabinets",
+        "countertops",
+        "bathroom",
         "electrical",
-        "roof",
-        "interior",
         "kitchen",
-        "fixtures",
+        "demolition",
+        "fencing",
+        "doors",
+        "water_heater",
+        "brick_siding_stucco",
+        "framing",
+        "hardware",
+        "insulation",
+        "pest_control",
+        "pool",
         "general",
       ],
     },
