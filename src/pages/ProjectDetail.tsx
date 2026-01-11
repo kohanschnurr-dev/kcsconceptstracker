@@ -30,6 +30,7 @@ import { SpendingChart } from '@/components/project/SpendingChart';
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { BudgetAlerts } from '@/components/project/BudgetAlerts';
 import { ProjectVendors } from '@/components/project/ProjectVendors';
+import { ExportReports } from '@/components/project/ExportReports';
 
 interface DBProject {
   id: string;
@@ -59,6 +60,8 @@ interface DBExpense {
   date: string;
   payment_method: string | null;
   includes_tax: boolean;
+  tax_amount: number | null;
+  status: string;
 }
 
 interface DBDailyLog {
@@ -357,6 +360,22 @@ export default function ProjectDetail() {
               />
               <SpendingChart categories={categories} totalBudget={project.total_budget} />
             </div>
+            
+            {/* Export Reports */}
+            <ExportReports 
+              project={{
+                id: project.id,
+                name: project.name,
+                address: project.address,
+                total_budget: project.total_budget,
+                start_date: project.start_date,
+                status: project.status,
+                purchase_price: project.purchase_price,
+                arv: project.arv,
+              }}
+              categories={categories}
+              expenses={expenses}
+            />
             
             {/* Budget Breakdown Table */}
             <Card className="glass-card">
