@@ -20,7 +20,10 @@ import {
   Plus,
   Loader2,
   ArrowUpDown,
-  X
+  X,
+  Pencil,
+  Trash2,
+  MoreHorizontal
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -31,10 +34,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { EditExpenseModal, DeleteExpenseDialog } from '@/components/project/ExpenseActions';
 
 interface DBProject {
   id: string;
@@ -90,47 +95,55 @@ export default function ProjectBudget() {
   
   // Expanded categories
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  
+  // Edit/Delete modals
+  const [editingExpense, setEditingExpense] = useState<DBExpense | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState<DBExpense | null>(null);
+
+  const fetchData = async () => {
+    if (!id) return;
+    setLoading(true);
+    
+    const { data: projectData, error: projectError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (projectError || !projectData) {
+      console.error('Error fetching project:', projectError);
+      setLoading(false);
+      return;
+    }
+    
+    setProject(projectData);
+    
+    const [categoriesRes, expensesRes] = await Promise.all([
+      supabase.from('project_categories').select('*').eq('project_id', id),
+      supabase.from('expenses').select('*').eq('project_id', id).order('date', { ascending: false })
+    ]);
+    
+    const categoriesData = categoriesRes.data || [];
+    const expensesData = expensesRes.data || [];
+    
+    const categoriesWithSpent = categoriesData.map(cat => {
+      const categoryExpenses = expensesData.filter(e => e.category_id === cat.id);
+      const actualSpent = categoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+      return { ...cat, actualSpent };
+    });
+    
+    setCategories(categoriesWithSpent);
+    setExpenses(expensesData);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!id) return;
-      setLoading(true);
-      
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (projectError || !projectData) {
-        console.error('Error fetching project:', projectError);
-        setLoading(false);
-        return;
-      }
-      
-      setProject(projectData);
-      
-      const [categoriesRes, expensesRes] = await Promise.all([
-        supabase.from('project_categories').select('*').eq('project_id', id),
-        supabase.from('expenses').select('*').eq('project_id', id).order('date', { ascending: false })
-      ]);
-      
-      const categoriesData = categoriesRes.data || [];
-      const expensesData = expensesRes.data || [];
-      
-      const categoriesWithSpent = categoriesData.map(cat => {
-        const categoryExpenses = expensesData.filter(e => e.category_id === cat.id);
-        const actualSpent = categoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
-        return { ...cat, actualSpent };
-      });
-      
-      setCategories(categoriesWithSpent);
-      setExpenses(expensesData);
-      setLoading(false);
-    };
-    
     fetchData();
   }, [id]);
+
+  const refreshData = () => {
+    fetchData();
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -482,7 +495,7 @@ export default function ProjectBudget() {
                             categoryExpenses
                               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                               .map((exp) => (
-                                <div key={exp.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border">
+                                <div key={exp.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border group/expense">
                                   <div className="flex items-center gap-3">
                                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
                                       {getPaymentIcon(exp.payment_method)}
@@ -492,9 +505,35 @@ export default function ProjectBudget() {
                                       <p className="text-xs text-muted-foreground">{exp.description || 'No description'}</p>
                                     </div>
                                   </div>
-                                  <div className="text-right">
-                                    <p className="font-mono font-medium">{formatCurrency(Number(exp.amount))}</p>
-                                    <p className="text-xs text-muted-foreground">{formatDate(exp.date)}</p>
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-right">
+                                      <p className="font-mono font-medium">{formatCurrency(Number(exp.amount))}</p>
+                                      <p className="text-xs text-muted-foreground">{formatDate(exp.date)}</p>
+                                    </div>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="h-7 w-7 opacity-0 group-hover/expense:opacity-100 transition-opacity"
+                                        >
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => setEditingExpense(exp)}>
+                                          <Pencil className="h-4 w-4 mr-2" />
+                                          Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                          onClick={() => setDeletingExpense(exp)}
+                                          className="text-destructive focus:text-destructive"
+                                        >
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Delete
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </div>
                                 </div>
                               ))
@@ -636,12 +675,13 @@ export default function ProjectBudget() {
                       </div>
                     </TableHead>
                     <TableHead className="text-center hidden sm:table-cell">Payment</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredExpenses.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                         {expenses.length === 0 ? (
                           <div className="flex flex-col items-center gap-2">
                             <Receipt className="h-8 w-8 opacity-50" />
@@ -663,7 +703,7 @@ export default function ProjectBudget() {
                     </TableRow>
                   ) : (
                     filteredExpenses.map((exp) => (
-                      <TableRow key={exp.id} className="hover:bg-muted/50">
+                      <TableRow key={exp.id} className="hover:bg-muted/50 group">
                         <TableCell className="text-sm">{formatDate(exp.date)}</TableCell>
                         <TableCell>
                           <div className="font-medium text-sm truncate max-w-[150px]">
@@ -693,6 +733,32 @@ export default function ProjectBudget() {
                             {getPaymentIcon(exp.payment_method)}
                           </div>
                         </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setEditingExpense(exp)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => setDeletingExpense(exp)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -702,6 +768,23 @@ export default function ProjectBudget() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Expense Modal */}
+      <EditExpenseModal
+        expense={editingExpense}
+        categories={categories}
+        open={editingExpense !== null}
+        onOpenChange={(open) => !open && setEditingExpense(null)}
+        onExpenseUpdated={refreshData}
+      />
+
+      {/* Delete Expense Dialog */}
+      <DeleteExpenseDialog
+        expense={deletingExpense}
+        open={deletingExpense !== null}
+        onOpenChange={(open) => !open && setDeletingExpense(null)}
+        onExpenseDeleted={refreshData}
+      />
     </MainLayout>
   );
 }
