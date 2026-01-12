@@ -23,7 +23,8 @@ import {
   X,
   Pencil,
   Trash2,
-  MoreHorizontal
+  MoreHorizontal,
+  Settings2
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -34,12 +35,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { EditExpenseModal, DeleteExpenseDialog } from '@/components/project/ExpenseActions';
+import { CategoryBudgetModal, DeleteCategoryDialog } from '@/components/project/CategoryBudgetModal';
 
 interface DBProject {
   id: string;
@@ -99,6 +101,11 @@ export default function ProjectBudget() {
   // Edit/Delete modals
   const [editingExpense, setEditingExpense] = useState<DBExpense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<DBExpense | null>(null);
+  
+  // Category modals
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<(DBCategory & { actualSpent: number }) | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<(DBCategory & { actualSpent: number }) | null>(null);
 
   const fetchData = async () => {
     if (!id) return;
@@ -424,12 +431,36 @@ export default function ProjectBudget() {
 
         {/* Category Breakdown - Expandable */}
         <Card className="glass-card">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle className="text-lg">Budget by Category</CardTitle>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                setEditingCategory(null);
+                setCategoryModalOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Category
+            </Button>
           </CardHeader>
           <CardContent className="space-y-2">
             {categories.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No budget categories set up yet</p>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Settings2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground mb-2">No budget categories set up yet</p>
+                <p className="text-sm text-muted-foreground mb-4">Add categories to track your project expenses by type</p>
+                <Button 
+                  onClick={() => {
+                    setEditingCategory(null);
+                    setCategoryModalOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add First Category
+                </Button>
+              </div>
             ) : (
               categories
                 .sort((a, b) => b.actualSpent - a.actualSpent)
@@ -441,16 +472,16 @@ export default function ProjectBudget() {
                   
                   return (
                     <Collapsible key={cat.id} open={isExpanded} onOpenChange={() => toggleCategory(cat.id)}>
-                      <CollapsibleTrigger asChild>
-                        <div 
-                          className={cn(
-                            "p-4 rounded-lg border cursor-pointer transition-all hover:bg-muted/50",
-                            remaining < 0 && "border-destructive/50 bg-destructive/5",
-                            remaining >= 0 && percentUsed >= 80 && "border-warning/50 bg-warning/5"
-                          )}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
+                      <div 
+                        className={cn(
+                          "p-4 rounded-lg border transition-all hover:bg-muted/50 group/category",
+                          remaining < 0 && "border-destructive/50 bg-destructive/5",
+                          remaining >= 0 && percentUsed >= 80 && "border-warning/50 bg-warning/5"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center gap-2 cursor-pointer flex-1">
                               {isExpanded ? (
                                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
                               ) : (
@@ -467,26 +498,61 @@ export default function ProjectBudget() {
                                 <Badge variant="outline" className="text-xs text-warning border-warning">At Risk</Badge>
                               )}
                             </div>
+                          </CollapsibleTrigger>
+                          <div className="flex items-center gap-3">
                             <div className="text-right">
                               <p className="font-mono font-semibold">{formatCurrency(cat.actualSpent)}</p>
                               <p className="text-xs text-muted-foreground">of {formatCurrency(cat.estimated_budget)}</p>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Progress 
-                              value={Math.min(percentUsed, 100)} 
-                              className={cn(
-                                "h-2 flex-1",
-                                remaining < 0 && "[&>div]:bg-destructive",
-                                remaining >= 0 && percentUsed >= 80 && "[&>div]:bg-warning"
-                              )}
-                            />
-                            <span className="text-xs text-muted-foreground w-16 text-right">
-                              {remaining >= 0 ? formatCurrency(remaining) : `-${formatCurrency(Math.abs(remaining))}`} left
-                            </span>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 opacity-0 group-hover/category:opacity-100 transition-opacity"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingCategory(cat);
+                                  setCategoryModalOpen(true);
+                                }}>
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Edit Budget
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeletingCategory(cat);
+                                  }}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Category
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
-                      </CollapsibleTrigger>
+                        <div className="flex items-center gap-2">
+                          <Progress 
+                            value={Math.min(percentUsed, 100)} 
+                            className={cn(
+                              "h-2 flex-1",
+                              remaining < 0 && "[&>div]:bg-destructive",
+                              remaining >= 0 && percentUsed >= 80 && "[&>div]:bg-warning"
+                            )}
+                          />
+                          <span className="text-xs text-muted-foreground w-16 text-right">
+                            {remaining >= 0 ? formatCurrency(remaining) : `-${formatCurrency(Math.abs(remaining))}`} left
+                          </span>
+                        </div>
+                      </div>
                       <CollapsibleContent>
                         <div className="mt-2 ml-6 border-l-2 border-muted pl-4 space-y-2">
                           {categoryExpenses.length === 0 ? (
@@ -784,6 +850,27 @@ export default function ProjectBudget() {
         open={deletingExpense !== null}
         onOpenChange={(open) => !open && setDeletingExpense(null)}
         onExpenseDeleted={refreshData}
+      />
+
+      {/* Category Budget Modal */}
+      <CategoryBudgetModal
+        projectId={id || ''}
+        existingCategories={categories}
+        editingCategory={editingCategory}
+        open={categoryModalOpen}
+        onOpenChange={(open) => {
+          setCategoryModalOpen(open);
+          if (!open) setEditingCategory(null);
+        }}
+        onCategoryUpdated={refreshData}
+      />
+
+      {/* Delete Category Dialog */}
+      <DeleteCategoryDialog
+        category={deletingCategory}
+        open={deletingCategory !== null}
+        onOpenChange={(open) => !open && setDeletingCategory(null)}
+        onCategoryDeleted={refreshData}
       />
     </MainLayout>
   );
