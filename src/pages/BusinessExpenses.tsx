@@ -31,6 +31,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
+import { BusinessQuickBooksIntegration } from '@/components/BusinessQuickBooksIntegration';
 
 interface DBBusinessExpense {
   id: string;
@@ -252,6 +253,9 @@ export default function BusinessExpenses() {
             </Button>
           </div>
         </div>
+
+        {/* QuickBooks Integration */}
+        <BusinessQuickBooksIntegration onExpenseImported={fetchData} />
 
         {/* Filters */}
         <div className="flex flex-wrap gap-4">
