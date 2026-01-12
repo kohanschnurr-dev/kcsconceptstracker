@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { BudgetCategory } from '@/types';
 
 interface QuickBooksExpense {
   id: string;
@@ -364,8 +365,56 @@ export function useQuickBooks() {
   const categorizeExpense = useCallback(async (
     expenseId: string, 
     projectId: string, 
-    categoryId: string
+    categoryValue: string // Now accepts category value like "plumbing" instead of UUID
   ) => {
+    // First, find or create the project_category
+    let categoryId: string;
+    
+    // Check if category already exists for this project
+    const { data: existingCategory, error: findError } = await supabase
+      .from('project_categories')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('category', categoryValue as BudgetCategory)
+      .maybeSingle();
+    
+    if (findError) {
+      console.error('Error finding category:', findError);
+      toast({
+        title: 'Error',
+        description: 'Failed to find category',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    
+    if (existingCategory) {
+      categoryId = existingCategory.id;
+    } else {
+      // Create new project_category
+      const { data: newCategory, error: createError } = await supabase
+        .from('project_categories')
+        .insert({
+          project_id: projectId,
+          category: categoryValue as BudgetCategory,
+          estimated_budget: 0,
+        })
+        .select('id')
+        .single();
+      
+      if (createError || !newCategory) {
+        console.error('Error creating category:', createError);
+        toast({
+          title: 'Error',
+          description: 'Failed to create category',
+          variant: 'destructive',
+        });
+        return false;
+      }
+      
+      categoryId = newCategory.id;
+    }
+
     if (isDemoMode) {
       // Find the expense to get its data
       const expense = pendingExpenses.find(e => e.id === expenseId);
