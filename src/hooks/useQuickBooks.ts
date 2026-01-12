@@ -324,6 +324,43 @@ export function useQuickBooks() {
     }
   }, [isDemoMode]);
 
+  const deleteExpense = useCallback(async (expenseId: string) => {
+    if (isDemoMode) {
+      setPendingExpenses(prev => prev.filter(e => e.id !== expenseId));
+      toast({
+        title: 'Removed',
+        description: 'Expense removed from list',
+      });
+      return true;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('quickbooks_expenses')
+        .delete()
+        .eq('id', expenseId);
+
+      if (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to delete expense',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      setPendingExpenses(prev => prev.filter(e => e.id !== expenseId));
+      toast({
+        title: 'Removed',
+        description: 'Expense deleted successfully',
+      });
+      return true;
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      return false;
+    }
+  }, [toast, isDemoMode]);
+
   const categorizeExpense = useCallback(async (
     expenseId: string, 
     projectId: string, 
@@ -429,6 +466,7 @@ export function useQuickBooks() {
     disconnect,
     syncExpenses,
     categorizeExpense,
+    deleteExpense,
     fetchPendingExpenses,
     enableDemoMode,
   };
