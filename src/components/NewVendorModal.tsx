@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { BUDGET_CATEGORIES, type BudgetCategory } from '@/types';
+import { VENDOR_TRADES, type VendorTrade } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -68,7 +68,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendo
         .from('vendors')
         .insert({
           name,
-          trade: trade as BudgetCategory,
+          trade: trade as VendorTrade,
           phone: phone || null,
           email: email || null,
           has_w9: hasW9,
@@ -135,7 +135,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendo
                 <SelectValue placeholder="Select trade" />
               </SelectTrigger>
               <SelectContent>
-                {BUDGET_CATEGORIES.map((cat) => (
+                {VENDOR_TRADES.map((cat) => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>

@@ -51,6 +51,42 @@ export type BudgetCategory =
   | 'subscriptions'
   | 'tools_equipment_business'
   | 'travel_expenses';
+// Vendor trades (subset of categories + 'general')
+export type VendorTrade = 
+  | 'plumbing'
+  | 'roofing'
+  | 'misc'
+  | 'flooring'
+  | 'painting'
+  | 'garage'
+  | 'foundation_repair'
+  | 'hvac'
+  | 'drywall'
+  | 'main_bathroom'
+  | 'carpentry'
+  | 'light_fixtures'
+  | 'appliances'
+  | 'natural_gas'
+  | 'permits_inspections'
+  | 'landscaping'
+  | 'dumpsters_trash'
+  | 'windows'
+  | 'cabinets'
+  | 'countertops'
+  | 'bathroom'
+  | 'electrical'
+  | 'kitchen'
+  | 'demolition'
+  | 'fencing'
+  | 'doors'
+  | 'water_heater'
+  | 'brick_siding_stucco'
+  | 'framing'
+  | 'hardware'
+  | 'insulation'
+  | 'pest_control'
+  | 'pool'
+  | 'general';
 
 export type ExpenseStatus = 'estimate' | 'actual';
 export type PaymentMethod = 'cash' | 'check' | 'card' | 'transfer';
@@ -91,7 +127,7 @@ export interface Expense {
 export interface Vendor {
   id: string;
   name: string;
-  trade: BudgetCategory;
+  trade: VendorTrade;
   phone: string;
   email: string;
   hasW9: boolean;
@@ -155,6 +191,12 @@ export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'insulation', label: 'Insulation' },
   { value: 'pest_control', label: 'Pest Control' },
   { value: 'pool', label: 'Pool' },
+];
+
+// Vendor trades (construction trades + general)
+export const VENDOR_TRADES: { value: VendorTrade; label: string }[] = [
+  ...BUDGET_CATEGORIES.map(c => ({ value: c.value as VendorTrade, label: c.label })),
+  { value: 'general', label: 'General' },
 ];
 
 // Business expense categories (for KCS Concepts)
