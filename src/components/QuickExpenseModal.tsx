@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { ALL_CATEGORIES, BUDGET_CATEGORIES, TEXAS_SALES_TAX, Project, PaymentMethod } from '@/types';
+import { ALL_CATEGORIES, BUDGET_CATEGORIES, TEXAS_SALES_TAX, Project, PaymentMethod, BudgetCategory } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -129,13 +129,41 @@ function ExpenseForm({
     setIsSubmitting(true);
 
     try {
+      // First, find or create the project_category
+      const { data: existingCategory, error: fetchError } = await supabase
+        .from('project_categories')
+        .select('id')
+        .eq('project_id', selectedProject)
+        .eq('category', selectedCategory as BudgetCategory)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      let categoryId = existingCategory?.id;
+
+      // If category doesn't exist for this project, create it
+      if (!categoryId) {
+        const { data: newCategory, error: createError } = await supabase
+          .from('project_categories')
+          .insert({
+            project_id: selectedProject,
+            category: selectedCategory as BudgetCategory,
+            estimated_budget: 0,
+          })
+          .select('id')
+          .single();
+
+        if (createError) throw createError;
+        categoryId = newCategory.id;
+      }
+
       const receiptUrl = await uploadReceipt();
 
       const { error } = await supabase
         .from('expenses')
         .insert({
           project_id: selectedProject,
-          category_id: selectedCategory,
+          category_id: categoryId,
           amount: calculateTotal(),
           vendor_name: vendor,
           description: description || null,
