@@ -142,11 +142,10 @@ export interface Expense {
 export interface Vendor {
   id: string;
   name: string;
-  trade: VendorTrade;
+  trades: VendorTrade[];
   phone: string;
   email: string;
   hasW9: boolean;
-  insuranceExpiry: string;
   reliabilityRating: number;
   pricingModel: 'flat' | 'hourly';
 }

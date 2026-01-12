@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Phone, Mail, Star } from 'lucide-react';
+import { Users, Phone, Mail, Star, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { VENDOR_TRADES, type VendorTrade } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,22 +31,37 @@ interface NewVendorModalProps {
 
 export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendorModalProps) {
   const [name, setName] = useState('');
-  const [trade, setTrade] = useState<string>('');
+  const [trades, setTrades] = useState<VendorTrade[]>([]);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [hasW9, setHasW9] = useState(false);
-  const [insuranceExpiry, setInsuranceExpiry] = useState('');
   const [reliabilityRating, setReliabilityRating] = useState(3);
   const [pricingModel, setPricingModel] = useState<'flat' | 'hourly'>('flat');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleAddTrade = (trade: string) => {
+    if (trade && !trades.includes(trade as VendorTrade)) {
+      setTrades([...trades, trade as VendorTrade]);
+    }
+  };
+
+  const handleRemoveTrade = (trade: VendorTrade) => {
+    setTrades(trades.filter(t => t !== trade));
+  };
+
+  const getTradeLabel = (trade: string) => {
+    return VENDOR_TRADES.find(t => t.value === trade)?.label || trade;
+  };
+
+  const availableTrades = VENDOR_TRADES.filter(t => !trades.includes(t.value));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name || !trade) {
+    if (!name || trades.length === 0) {
       toast({
         title: 'Missing fields',
-        description: 'Please fill in name and trade.',
+        description: 'Please fill in name and select at least one trade.',
         variant: 'destructive',
       });
       return;
@@ -68,11 +84,10 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendo
         .from('vendors')
         .insert({
           name,
-          trade: trade as VendorTrade,
+          trades: trades,
           phone: phone || null,
           email: email || null,
           has_w9: hasW9,
-          insurance_expiry: insuranceExpiry || null,
           reliability_rating: reliabilityRating,
           pricing_model: pricingModel,
           user_id: user.id,
@@ -87,11 +102,10 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendo
 
       // Reset form
       setName('');
-      setTrade('');
+      setTrades([]);
       setPhone('');
       setEmail('');
       setHasW9(false);
-      setInsuranceExpiry('');
       setReliabilityRating(3);
       setPricingModel('flat');
       onOpenChange(false);
@@ -129,19 +143,42 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendo
           </div>
 
           <div className="space-y-2">
-            <Label>Trade *</Label>
-            <Select value={trade} onValueChange={setTrade}>
+            <Label>Trades *</Label>
+            <Select onValueChange={handleAddTrade} value="">
               <SelectTrigger>
-                <SelectValue placeholder="Select trade" />
+                <SelectValue placeholder="Add a trade" />
               </SelectTrigger>
               <SelectContent>
-                {VENDOR_TRADES.map((cat) => (
+                {availableTrades.map((cat) => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {trades.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {trades.map((trade) => (
+                  <Badge 
+                    key={trade} 
+                    variant="secondary" 
+                    className="gap-1 pr-1"
+                  >
+                    {getTradeLabel(trade)}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTrade(trade)}
+                      className="ml-1 hover:bg-muted rounded-full p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {trades.length === 0 && (
+              <p className="text-xs text-muted-foreground">Select one or more trades</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -174,28 +211,17 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendo
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Pricing Model</Label>
-              <Select value={pricingModel} onValueChange={(v) => setPricingModel(v as 'flat' | 'hourly')}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="flat">Flat Rate</SelectItem>
-                  <SelectItem value="hourly">Hourly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Insurance Expiry</Label>
-              <Input
-                type="date"
-                value={insuranceExpiry}
-                onChange={(e) => setInsuranceExpiry(e.target.value)}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Pricing Model</Label>
+            <Select value={pricingModel} onValueChange={(v) => setPricingModel(v as 'flat' | 'hourly')}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="flat">Flat Rate</SelectItem>
+                <SelectItem value="hourly">Hourly</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

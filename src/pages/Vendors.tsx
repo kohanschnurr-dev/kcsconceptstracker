@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Star, CheckCircle, XCircle, AlertTriangle, Users } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Star, CheckCircle, XCircle, Users } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,11 +13,10 @@ import { cn } from '@/lib/utils';
 interface Vendor {
   id: string;
   name: string;
-  trade: string;
+  trades: string[];
   phone: string | null;
   email: string | null;
   has_w9: boolean;
-  insurance_expiry: string | null;
   reliability_rating: number | null;
   pricing_model: 'flat' | 'hourly' | null;
 }
@@ -56,30 +55,8 @@ export default function Vendors() {
 
   const filteredVendors = vendors.filter((vendor) =>
     vendor.name.toLowerCase().includes(search.toLowerCase()) ||
-    vendor.trade.toLowerCase().includes(search.toLowerCase())
+    vendor.trades.some(t => t.toLowerCase().includes(search.toLowerCase()))
   );
-
-  const isInsuranceExpired = (expiryDate: string | null) => {
-    if (!expiryDate) return false;
-    return new Date(expiryDate) < new Date();
-  };
-
-  const isInsuranceExpiringSoon = (expiryDate: string | null) => {
-    if (!expiryDate) return false;
-    const expiry = new Date(expiryDate);
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-    return expiry <= thirtyDaysFromNow && expiry >= new Date();
-  };
-
-  const formatDate = (date: string | null) => {
-    if (!date) return 'Not set';
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
 
   const getTradeLabel = (trade: string) => {
     return BUDGET_CATEGORIES.find(b => b.value === trade)?.label || trade;
@@ -128,9 +105,7 @@ export default function Vendors() {
             {/* Vendors Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredVendors.map((vendor) => {
-                const expired = isInsuranceExpired(vendor.insurance_expiry);
-                const expiringSoon = isInsuranceExpiringSoon(vendor.insurance_expiry);
-                const hasComplianceIssues = expired || !vendor.has_w9;
+                const hasComplianceIssues = !vendor.has_w9;
 
                 return (
                   <div
@@ -143,9 +118,18 @@ export default function Vendors() {
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <h3 className="font-semibold">{vendor.name}</h3>
-                        <Badge variant="secondary" className="mt-1">
-                          {getTradeLabel(vendor.trade)}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {vendor.trades.map((trade) => (
+                            <Badge key={trade} variant="secondary" className="text-xs">
+                              {getTradeLabel(trade)}
+                            </Badge>
+                          ))}
+                          {vendor.trades.length === 0 && (
+                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                              No trades
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-0.5">
                         {[...Array(5)].map((_, i) => (
@@ -184,7 +168,7 @@ export default function Vendors() {
                     </div>
 
                     {/* Compliance Status */}
-                    <div className="pt-4 border-t border-border space-y-2">
+                    <div className="pt-4 border-t border-border">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">W9 on file</span>
                         {vendor.has_w9 ? (
@@ -193,33 +177,12 @@ export default function Vendors() {
                           <XCircle className="h-5 w-5 text-destructive" />
                         )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Insurance</span>
-                        <div className="flex items-center gap-2">
-                          {expired ? (
-                            <XCircle className="h-5 w-5 text-destructive" />
-                          ) : expiringSoon ? (
-                            <AlertTriangle className="h-5 w-5 text-warning" />
-                          ) : vendor.insurance_expiry ? (
-                            <CheckCircle className="h-5 w-5 text-success" />
-                          ) : (
-                            <AlertTriangle className="h-5 w-5 text-muted-foreground" />
-                          )}
-                          <span className={cn(
-                            'text-xs',
-                            expired && 'text-destructive',
-                            expiringSoon && 'text-warning'
-                          )}>
-                            {formatDate(vendor.insurance_expiry)}
-                          </span>
-                        </div>
-                      </div>
                     </div>
 
                     {hasComplianceIssues && (
                       <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                         <p className="text-xs text-destructive font-medium">
-                          ⚠️ Resolve compliance issues before payment
+                          ⚠️ W9 required before payment
                         </p>
                       </div>
                     )}
