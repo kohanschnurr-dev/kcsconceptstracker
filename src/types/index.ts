@@ -47,6 +47,7 @@ export type BudgetCategory =
   | 'utilities'
   | 'variable'
   | 'water_heater'
+  | 'wholesale_fee'
   | 'windows'
   // Business expense categories
   | 'cloud_storage'
@@ -217,6 +218,7 @@ export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'utilities', label: 'Utilities' },
   { value: 'variable', label: 'Variable' },
   { value: 'water_heater', label: 'Water Heater' },
+  { value: 'wholesale_fee', label: 'Wholesale Fee' },
   { value: 'windows', label: 'Windows' },
 ];
 

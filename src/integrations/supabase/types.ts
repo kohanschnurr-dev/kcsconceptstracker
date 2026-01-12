@@ -644,6 +644,7 @@ export type Database = {
         | "utilities"
         | "variable"
         | "drain_line_repair"
+        | "wholesale_fee"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
@@ -880,6 +881,7 @@ export const Constants = {
         "utilities",
         "variable",
         "drain_line_repair",
+        "wholesale_fee",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer"],
