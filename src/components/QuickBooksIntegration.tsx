@@ -1,7 +1,14 @@
 import { useState } from 'react';
-import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check } from 'lucide-react';
+import { format, subDays } from 'date-fns';
+import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -14,6 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 import { useQuickBooks } from '@/hooks/useQuickBooks';
 import { BUDGET_CATEGORIES } from '@/types';
 import type { Project } from '@/types';
@@ -34,12 +42,15 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     disconnect,
     syncExpenses,
     categorizeExpense,
+    deleteExpense,
     enableDemoMode,
   } = useQuickBooks();
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Record<string, string>>({});
   const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
+  const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
+  const [endDate, setEndDate] = useState<Date>(new Date());
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -49,7 +60,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     }).format(amount);
   };
 
-  const formatDate = (date: string) => {
+  const formatDateDisplay = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -72,6 +83,16 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
   const getProjectCategories = (projectId: string) => {
     const project = projects.find(p => p.id === projectId);
     return project?.categories || [];
+  };
+
+  const handleSync = () => {
+    const startStr = format(startDate, 'yyyy-MM-dd');
+    const endStr = format(endDate, 'yyyy-MM-dd');
+    syncExpenses(startStr, endStr);
+  };
+
+  const handleDelete = async (expenseId: string) => {
+    await deleteExpense(expenseId);
   };
 
   if (isLoading) {
@@ -111,21 +132,6 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {isConnected && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    syncExpenses();
-                  }}
-                  disabled={isSyncing}
-                  className="gap-2"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                  {isSyncing ? 'Syncing...' : 'Sync'}
-                </Button>
-              )}
               {isExpanded ? (
                 <ChevronUp className="h-5 w-5 text-muted-foreground" />
               ) : (
@@ -154,27 +160,80 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
               </div>
             ) : (
               <>
+                {/* Date Range Picker Section */}
+                <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border">
+                  <span className="text-sm font-medium">Sync Range:</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "justify-start text-left font-normal",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, "MMM d, yyyy") : "Start date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={(date) => date && setStartDate(date)}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <span className="text-muted-foreground">to</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "justify-start text-left font-normal",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, "MMM d, yyyy") : "End date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={(date) => date && setEndDate(date)}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Button
+                    size="sm"
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className="gap-2"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                    {isSyncing ? 'Syncing...' : 'Sync Expenses'}
+                  </Button>
+                </div>
+
                 {pendingExpenses.length === 0 ? (
                   <div className="text-center py-6">
                     <Check className="h-12 w-12 mx-auto text-success mb-3" />
                     <p className="text-muted-foreground">
                       All expenses have been categorized!
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => syncExpenses()}
-                      disabled={isSyncing}
-                      className="mt-3 gap-2"
-                    >
-                      <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                      Sync New Expenses
-                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm text-muted-foreground">
-                      Categorize these expenses to import them into your projects:
+                      Categorize these expenses to import them into your projects, or delete ones you don't need:
                     </p>
                     <div className="max-h-[400px] overflow-y-auto space-y-3">
                       {pendingExpenses.map((expense) => (
@@ -182,16 +241,27 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                           key={expense.id}
                           className="p-3 rounded-lg border border-border bg-muted/20"
                         >
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                          <div className="flex items-start gap-3">
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
                                 <p className="font-medium">{expense.vendor_name || 'Unknown Vendor'}</p>
-                                <p className="font-mono font-semibold">
-                                  {formatCurrency(expense.amount)}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-mono font-semibold">
+                                    {formatCurrency(expense.amount)}
+                                  </p>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleDelete(expense.id)}
+                                    title="Remove this expense"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                <span>{formatDate(expense.date)}</span>
+                                <span>{formatDateDisplay(expense.date)}</span>
                                 {expense.description && (
                                   <>
                                     <span>•</span>
@@ -266,7 +336,6 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                   >
                     <Link2Off className="h-4 w-4" />
                     {isDemoMode ? 'Exit Demo Mode' : 'Disconnect QuickBooks'}
-                    Disconnect QuickBooks
                   </Button>
                 </div>
               </>
