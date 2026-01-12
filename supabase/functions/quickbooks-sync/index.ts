@@ -52,6 +52,27 @@ async function refreshToken(supabase: any, userId: string, refreshTokenValue: st
   return tokens.access_token;
 }
 
+async function queryQuickBooks(realmId: string, accessToken: string, query: string) {
+  const encodedQuery = encodeURIComponent(query);
+  const response = await fetch(
+    `${QB_API_BASE}/${realmId}/query?query=${encodedQuery}`,
+    {
+      headers: {
+        "Accept": "application/json",
+        "Authorization": `Bearer ${accessToken}`,
+      },
+    }
+  );
+  
+  if (!response.ok) {
+    console.error(`QuickBooks API error for query "${query}":`, await response.text());
+    return [];
+  }
+  
+  const data = await response.json();
+  return data.QueryResponse || {};
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -104,101 +125,126 @@ serve(async (req) => {
       );
     }
 
-    // Parse request body for date range
+    // Parse request body for date range - default to last 365 days for more data
     const body = await req.json().catch(() => ({}));
-    const startDate = body.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const startDate = body.startDate || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const endDate = body.endDate || new Date().toISOString().split('T')[0];
 
-    // Query QuickBooks for purchases/expenses
-    const query = `SELECT * FROM Purchase WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`;
-    const encodedQuery = encodeURIComponent(query);
+    console.log(`Syncing expenses from ${startDate} to ${endDate}`);
 
-    const qbResponse = await fetch(
-      `${QB_API_BASE}/${tokenData.realm_id}/query?query=${encodedQuery}`,
-      {
-        headers: {
-          "Accept": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    if (!qbResponse.ok) {
-      const errorText = await qbResponse.text();
-      console.error("QuickBooks API error:", errorText);
-      return new Response(JSON.stringify({ error: "Failed to fetch expenses from QuickBooks" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const qbData = await qbResponse.json();
-    const purchases = qbData.QueryResponse?.Purchase || [];
-
-    // Also fetch Bills
-    const billQuery = `SELECT * FROM Bill WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`;
-    const encodedBillQuery = encodeURIComponent(billQuery);
-
-    const billResponse = await fetch(
-      `${QB_API_BASE}/${tokenData.realm_id}/query?query=${encodedBillQuery}`,
-      {
-        headers: {
-          "Accept": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    let bills: any[] = [];
-    if (billResponse.ok) {
-      const billData = await billResponse.json();
-      bills = billData.QueryResponse?.Bill || [];
-    }
-
-    // Transform and upsert expenses
     const expenses: any[] = [];
+    const realmId = tokenData.realm_id;
+
+    // 1. Fetch Purchases (direct purchases, credit card charges, etc.)
+    const purchaseQuery = `SELECT * FROM Purchase WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' MAXRESULTS 1000`;
+    const purchaseResponse = await queryQuickBooks(realmId, accessToken, purchaseQuery);
+    const purchases = purchaseResponse.Purchase || [];
+    console.log(`Found ${purchases.length} purchases`);
 
     for (const purchase of purchases) {
-      const expense = {
+      expenses.push({
         user_id: user.id,
         qb_id: `purchase_${purchase.Id}`,
-        vendor_name: purchase.EntityRef?.name || "Unknown Vendor",
+        vendor_name: purchase.EntityRef?.name || extractVendorFromDescription(purchase.PrivateNote || purchase.Line?.[0]?.Description) || "Unknown Vendor",
         amount: purchase.TotalAmt || 0,
         date: purchase.TxnDate,
         description: purchase.PrivateNote || purchase.Line?.[0]?.Description || "",
         payment_method: mapPaymentMethod(purchase.PaymentType),
         is_imported: false,
-      };
-      expenses.push(expense);
+      });
     }
 
+    // 2. Fetch Bills
+    const billQuery = `SELECT * FROM Bill WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' MAXRESULTS 1000`;
+    const billResponse = await queryQuickBooks(realmId, accessToken, billQuery);
+    const bills = billResponse.Bill || [];
+    console.log(`Found ${bills.length} bills`);
+
     for (const bill of bills) {
-      const expense = {
+      expenses.push({
         user_id: user.id,
         qb_id: `bill_${bill.Id}`,
         vendor_name: bill.VendorRef?.name || "Unknown Vendor",
         amount: bill.TotalAmt || 0,
         date: bill.TxnDate,
         description: bill.PrivateNote || bill.Line?.[0]?.Description || "",
-        payment_method: "transfer", // Bills are typically paid via transfer
+        payment_method: "transfer",
         is_imported: false,
-      };
-      expenses.push(expense);
+      });
     }
+
+    // 3. Fetch Expenses (Expense reports)
+    const expenseQuery = `SELECT * FROM Purchase WHERE PaymentType = 'Cash' AND TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' MAXRESULTS 1000`;
+    // This is already covered by purchases above
+
+    // 4. Fetch Deposits (money received - for tracking income)
+    const depositQuery = `SELECT * FROM Deposit WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' MAXRESULTS 1000`;
+    const depositResponse = await queryQuickBooks(realmId, accessToken, depositQuery);
+    const deposits = depositResponse.Deposit || [];
+    console.log(`Found ${deposits.length} deposits`);
+
+    // 5. Fetch Transfers
+    const transferQuery = `SELECT * FROM Transfer WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' MAXRESULTS 1000`;
+    const transferResponse = await queryQuickBooks(realmId, accessToken, transferQuery);
+    const transfers = transferResponse.Transfer || [];
+    console.log(`Found ${transfers.length} transfers`);
+
+    for (const transfer of transfers) {
+      expenses.push({
+        user_id: user.id,
+        qb_id: `transfer_${transfer.Id}`,
+        vendor_name: transfer.ToAccountRef?.name || transfer.FromAccountRef?.name || "Transfer",
+        amount: transfer.Amount || 0,
+        date: transfer.TxnDate,
+        description: transfer.PrivateNote || `Transfer: ${transfer.FromAccountRef?.name || ''} → ${transfer.ToAccountRef?.name || ''}`,
+        payment_method: "transfer",
+        is_imported: false,
+      });
+    }
+
+    // 6. Fetch JournalEntries that might represent expenses
+    const journalQuery = `SELECT * FROM JournalEntry WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' MAXRESULTS 1000`;
+    const journalResponse = await queryQuickBooks(realmId, accessToken, journalQuery);
+    const journals = journalResponse.JournalEntry || [];
+    console.log(`Found ${journals.length} journal entries`);
+
+    // 7. Fetch Checks
+    const checkQuery = `SELECT * FROM Purchase WHERE PaymentType = 'Check' AND TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' MAXRESULTS 1000`;
+    // Already covered by purchases
+
+    // 8. Fetch Credit Card charges specifically
+    const ccQuery = `SELECT * FROM Purchase WHERE PaymentType = 'CreditCard' AND TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' MAXRESULTS 1000`;
+    // Already covered by purchases
+
+    // 9. Fetch VendorCredits
+    const vendorCreditQuery = `SELECT * FROM VendorCredit WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' MAXRESULTS 1000`;
+    const vendorCreditResponse = await queryQuickBooks(realmId, accessToken, vendorCreditQuery);
+    const vendorCredits = vendorCreditResponse.VendorCredit || [];
+    console.log(`Found ${vendorCredits.length} vendor credits`);
+
+    console.log(`Total expenses to sync: ${expenses.length}`);
 
     // Upsert expenses (using service role to bypass RLS for batch operations)
     const serviceSupabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     
+    let successCount = 0;
     for (const expense of expenses) {
-      await serviceSupabase
+      const { error } = await serviceSupabase
         .from("quickbooks_expenses")
         .upsert(expense, { onConflict: "user_id,qb_id" });
+      
+      if (!error) {
+        successCount++;
+      } else {
+        console.error("Error upserting expense:", error);
+      }
     }
 
     return new Response(JSON.stringify({ 
       success: true, 
-      synced: expenses.length,
-      message: `Synced ${expenses.length} expenses from QuickBooks`
+      synced: successCount,
+      total: expenses.length,
+      message: `Synced ${successCount} expenses from QuickBooks (${purchases.length} purchases, ${bills.length} bills, ${transfers.length} transfers)`
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -220,4 +266,23 @@ function mapPaymentMethod(qbPaymentType: string): string {
     "ECheck": "transfer",
   };
   return mapping[qbPaymentType] || "transfer";
+}
+
+function extractVendorFromDescription(description: string | undefined): string | null {
+  if (!description) return null;
+  
+  // Try to extract vendor name from common patterns
+  // e.g., "Zelle Ralph Checri" -> "Zelle Ralph Checri"
+  // e.g., "THE HOME DEPOT #0564" -> "Home Depot"
+  
+  const knownVendors = ["Home Depot", "Lowes", "Menards", "Amazon", "Walmart", "Costco"];
+  for (const vendor of knownVendors) {
+    if (description.toLowerCase().includes(vendor.toLowerCase())) {
+      return vendor;
+    }
+  }
+  
+  // Return first few words as vendor name
+  const words = description.split(/\s+/).slice(0, 3).join(" ");
+  return words.length > 3 ? words : null;
 }
