@@ -97,6 +97,12 @@ export default function Index() {
 
       if (expensesError) throw expensesError;
 
+      // Fetch QuickBooks imported expenses
+      const { data: qbExpensesData } = await supabase
+        .from('quickbooks_expenses')
+        .select('*')
+        .eq('is_imported', true);
+
       // Fetch vendors
       const { data: vendorsData, error: vendorsError } = await supabase
         .from('vendors')
@@ -105,10 +111,16 @@ export default function Index() {
 
       if (vendorsError) throw vendorsError;
 
-      // Calculate actual spent per category
+      // Calculate actual spent per category (include both regular and QB expenses)
       const expensesByCategory: Record<string, number> = {};
       (expensesData || []).forEach((e: DBExpense) => {
         expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
+      });
+      // Include QuickBooks imported expenses
+      (qbExpensesData || []).forEach((e: any) => {
+        if (e.category_id) {
+          expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
+        }
       });
 
       // Transform projects

@@ -47,14 +47,25 @@ export default function Projects() {
 
       if (categoriesError) throw categoriesError;
 
-      // Get expenses to calculate actual spent
+      // Get expenses to calculate actual spent (from both regular expenses and QuickBooks)
       const { data: expensesData } = await supabase
         .from('expenses')
         .select('category_id, amount');
 
+      const { data: qbExpensesData } = await supabase
+        .from('quickbooks_expenses')
+        .select('category_id, amount')
+        .eq('is_imported', true);
+
       const expensesByCategory: Record<string, number> = {};
       (expensesData || []).forEach(e => {
         expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
+      });
+      // Include QuickBooks imported expenses
+      (qbExpensesData || []).forEach(e => {
+        if (e.category_id) {
+          expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
+        }
       });
 
       const transformedProjects: Project[] = (projectsData || []).map((p) => ({

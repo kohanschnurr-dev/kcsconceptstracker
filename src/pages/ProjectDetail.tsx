@@ -120,18 +120,30 @@ export default function ProjectDetail() {
       
       setProject(projectData);
       
-      const [categoriesRes, expensesRes, logsRes] = await Promise.all([
+      const [categoriesRes, expensesRes, qbExpensesRes, logsRes] = await Promise.all([
         supabase.from('project_categories').select('*').eq('project_id', id),
         supabase.from('expenses').select('*').eq('project_id', id).order('date', { ascending: false }),
+        supabase.from('quickbooks_expenses').select('*').eq('project_id', id).eq('is_imported', true).order('date', { ascending: false }),
         supabase.from('daily_logs').select('*').eq('project_id', id).order('date', { ascending: false })
       ]);
       
       const categoriesData = categoriesRes.data || [];
       const expensesData = expensesRes.data || [];
+      const qbExpensesData = qbExpensesRes.data || [];
+      
+      // Combine regular expenses and QuickBooks expenses for category calculations
+      const allExpensesByCategoryId: Record<string, number> = {};
+      expensesData.forEach(e => {
+        allExpensesByCategoryId[e.category_id] = (allExpensesByCategoryId[e.category_id] || 0) + Number(e.amount);
+      });
+      qbExpensesData.forEach(e => {
+        if (e.category_id) {
+          allExpensesByCategoryId[e.category_id] = (allExpensesByCategoryId[e.category_id] || 0) + Number(e.amount);
+        }
+      });
       
       const categoriesWithSpent = categoriesData.map(cat => {
-        const categoryExpenses = expensesData.filter(e => e.category_id === cat.id);
-        const actualSpent = categoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+        const actualSpent = allExpensesByCategoryId[cat.id] || 0;
         return { ...cat, actualSpent };
       });
       
