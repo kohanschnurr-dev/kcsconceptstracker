@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { BusinessQuickBooksIntegration } from '@/components/BusinessQuickBooksIntegration';
+import { BusinessExpenseTrendChart } from '@/components/dashboard/BusinessExpenseTrendChart';
 
 interface DBBusinessExpense {
   id: string;
@@ -256,6 +257,14 @@ export default function BusinessExpenses() {
 
         {/* QuickBooks Integration */}
         <BusinessQuickBooksIntegration onExpenseImported={fetchData} />
+
+        {/* Expense Trend Chart */}
+        {expenses.length > 0 && (
+          <BusinessExpenseTrendChart 
+            expenses={expenses} 
+            getCategoryLabel={getCategoryLabel} 
+          />
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap gap-4">
