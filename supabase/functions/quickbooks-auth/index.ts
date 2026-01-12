@@ -69,7 +69,8 @@ serve(async (req) => {
 
     if (action === "authorize") {
       // Generate the OAuth authorization URL
-      const redirectUri = `${url.origin}/quickbooks-auth?action=callback`;
+      // Use the full edge function URL for redirect
+      const redirectUri = `${SUPABASE_URL}/functions/v1/quickbooks-auth?action=callback`;
       const state = crypto.randomUUID();
       
       const authUrl = new URL(QB_AUTH_URL);
@@ -96,7 +97,7 @@ serve(async (req) => {
         });
       }
 
-      const redirectUri = `${url.origin}/quickbooks-auth?action=callback`;
+      const redirectUri = `${SUPABASE_URL}/functions/v1/quickbooks-auth?action=callback`;
 
       // Exchange code for tokens
       const tokenResponse = await fetch(QB_TOKEN_URL, {
