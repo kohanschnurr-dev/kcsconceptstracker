@@ -359,6 +359,7 @@ export type Database = {
       }
       quickbooks_expenses: {
         Row: {
+          account_name: string | null
           amount: number
           category_id: string | null
           created_at: string
@@ -374,6 +375,7 @@ export type Database = {
           vendor_name: string | null
         }
         Insert: {
+          account_name?: string | null
           amount: number
           category_id?: string | null
           created_at?: string
@@ -389,6 +391,7 @@ export type Database = {
           vendor_name?: string | null
         }
         Update: {
+          account_name?: string | null
           amount?: number
           category_id?: string | null
           created_at?: string
