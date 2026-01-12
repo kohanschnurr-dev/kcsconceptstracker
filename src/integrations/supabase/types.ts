@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      business_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          includes_tax: boolean
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          receipt_url: string | null
+          tax_amount: number | null
+          updated_at: string
+          user_id: string
+          vendor_name: string | null
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          includes_tax?: boolean
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          receipt_url?: string | null
+          tax_amount?: number | null
+          updated_at?: string
+          user_id: string
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          includes_tax?: boolean
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          receipt_url?: string | null
+          tax_amount?: number | null
+          updated_at?: string
+          user_id?: string
+          vendor_name?: string | null
+        }
+        Relationships: []
+      }
       daily_logs: {
         Row: {
           contractors_on_site: string[] | null

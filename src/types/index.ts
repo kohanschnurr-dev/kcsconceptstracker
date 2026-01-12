@@ -250,7 +250,4 @@ export const BUSINESS_EXPENSE_CATEGORIES: { value: BudgetCategory; label: string
 // Helper to get all categories (for lookups)
 export const ALL_CATEGORIES = [...BUDGET_CATEGORIES, ...BUSINESS_EXPENSE_CATEGORIES];
 
-// KCS Concepts project name constant
-export const KCS_CONCEPTS_PROJECT_NAME = 'KCS Concepts';
-
 export const TEXAS_SALES_TAX = 0.0825;
