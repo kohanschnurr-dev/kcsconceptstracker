@@ -583,6 +583,18 @@ export type Database = {
         | "subscriptions"
         | "tools_equipment_business"
         | "travel_expenses"
+        | "cleaning_final_punch"
+        | "closing_costs"
+        | "driveway_concrete"
+        | "food"
+        | "hoa"
+        | "insurance_project"
+        | "railing"
+        | "staging"
+        | "taxes"
+        | "tile"
+        | "utilities"
+        | "variable"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
@@ -622,6 +634,11 @@ export type Database = {
         | "pest_control"
         | "pool"
         | "general"
+        | "cleaning_final_punch"
+        | "driveway_concrete"
+        | "railing"
+        | "staging"
+        | "tile"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -799,6 +816,18 @@ export const Constants = {
         "subscriptions",
         "tools_equipment_business",
         "travel_expenses",
+        "cleaning_final_punch",
+        "closing_costs",
+        "driveway_concrete",
+        "food",
+        "hoa",
+        "insurance_project",
+        "railing",
+        "staging",
+        "taxes",
+        "tile",
+        "utilities",
+        "variable",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer"],
@@ -839,6 +868,11 @@ export const Constants = {
         "pest_control",
         "pool",
         "general",
+        "cleaning_final_punch",
+        "driveway_concrete",
+        "railing",
+        "staging",
+        "tile",
       ],
     },
   },
