@@ -1,39 +1,51 @@
 export type ProjectStatus = 'active' | 'complete' | 'on-hold';
 
 export type BudgetCategory = 
-  | 'plumbing'
-  | 'roofing'
-  | 'misc'
-  | 'flooring'
-  | 'painting'
-  | 'garage'
-  | 'foundation_repair'
-  | 'hvac'
-  | 'drywall'
-  | 'main_bathroom'
-  | 'carpentry'
-  | 'light_fixtures'
   | 'appliances'
-  | 'natural_gas'
-  | 'permits_inspections'
-  | 'landscaping'
-  | 'dumpsters_trash'
-  | 'windows'
-  | 'cabinets'
-  | 'countertops'
   | 'bathroom'
-  | 'electrical'
-  | 'kitchen'
-  | 'demolition'
-  | 'fencing'
-  | 'doors'
-  | 'water_heater'
   | 'brick_siding_stucco'
+  | 'cabinets'
+  | 'carpentry'
+  | 'cleaning_final_punch'
+  | 'closing_costs'
+  | 'countertops'
+  | 'demolition'
+  | 'doors'
+  | 'driveway_concrete'
+  | 'drywall'
+  | 'dumpsters_trash'
+  | 'electrical'
+  | 'fencing'
+  | 'flooring'
+  | 'food'
+  | 'foundation_repair'
   | 'framing'
+  | 'garage'
   | 'hardware'
+  | 'hoa'
+  | 'hvac'
   | 'insulation'
+  | 'insurance_project'
+  | 'kitchen'
+  | 'landscaping'
+  | 'light_fixtures'
+  | 'main_bathroom'
+  | 'misc'
+  | 'natural_gas'
+  | 'painting'
+  | 'permits_inspections'
   | 'pest_control'
+  | 'plumbing'
   | 'pool'
+  | 'railing'
+  | 'roofing'
+  | 'staging'
+  | 'taxes'
+  | 'tile'
+  | 'utilities'
+  | 'variable'
+  | 'water_heater'
+  | 'windows'
   // Business expense categories
   | 'cloud_storage'
   | 'continuing_education'
@@ -156,41 +168,53 @@ export interface ChangeOrder {
   approved: boolean;
 }
 
-// Construction/Renovation categories
+// Construction/Renovation categories (alphabetically sorted)
 export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
-  { value: 'plumbing', label: 'Plumbing' },
-  { value: 'roofing', label: 'Roofing' },
-  { value: 'misc', label: 'Misc.' },
-  { value: 'flooring', label: 'Flooring' },
-  { value: 'painting', label: 'Painting' },
-  { value: 'garage', label: 'Garage' },
-  { value: 'foundation_repair', label: 'Foundation Repair' },
-  { value: 'hvac', label: 'HVAC' },
-  { value: 'drywall', label: 'Drywall' },
-  { value: 'main_bathroom', label: 'Main Bathroom' },
-  { value: 'carpentry', label: 'Carpentry (Trim, Baseboards, etc.)' },
-  { value: 'light_fixtures', label: 'Light Fixtures' },
   { value: 'appliances', label: 'Appliances' },
-  { value: 'natural_gas', label: 'Natural Gas' },
-  { value: 'permits_inspections', label: 'Permits & Inspections' },
-  { value: 'landscaping', label: 'Landscaping' },
-  { value: 'dumpsters_trash', label: 'Dumpsters / Trash Hauling' },
-  { value: 'windows', label: 'Windows' },
-  { value: 'cabinets', label: 'Cabinets' },
-  { value: 'countertops', label: 'Countertops' },
   { value: 'bathroom', label: 'Bathroom' },
-  { value: 'electrical', label: 'Electrical' },
-  { value: 'kitchen', label: 'Kitchen' },
-  { value: 'demolition', label: 'Demolition' },
-  { value: 'fencing', label: 'Fencing' },
-  { value: 'doors', label: 'Doors' },
-  { value: 'water_heater', label: 'Water Heater' },
   { value: 'brick_siding_stucco', label: 'Brick / Siding / Stucco' },
+  { value: 'cabinets', label: 'Cabinets' },
+  { value: 'carpentry', label: 'Carpentry (Trim, Baseboards, etc.)' },
+  { value: 'cleaning_final_punch', label: 'Cleaning / Final Punch' },
+  { value: 'closing_costs', label: 'Closing Costs' },
+  { value: 'countertops', label: 'Countertops' },
+  { value: 'demolition', label: 'Demolition' },
+  { value: 'doors', label: 'Doors' },
+  { value: 'driveway_concrete', label: 'Driveway / Concrete Work' },
+  { value: 'drywall', label: 'Drywall' },
+  { value: 'dumpsters_trash', label: 'Dumpsters / Trash Hauling' },
+  { value: 'electrical', label: 'Electrical' },
+  { value: 'fencing', label: 'Fencing' },
+  { value: 'flooring', label: 'Flooring' },
+  { value: 'food', label: 'Food' },
+  { value: 'foundation_repair', label: 'Foundation Repair' },
   { value: 'framing', label: 'Framing' },
+  { value: 'garage', label: 'Garage' },
+  { value: 'natural_gas', label: 'Gas' },
   { value: 'hardware', label: 'Hardware' },
+  { value: 'hoa', label: 'HOA' },
+  { value: 'hvac', label: 'HVAC' },
   { value: 'insulation', label: 'Insulation' },
+  { value: 'insurance_project', label: 'Insurance' },
+  { value: 'kitchen', label: 'Kitchen' },
+  { value: 'landscaping', label: 'Landscaping' },
+  { value: 'light_fixtures', label: 'Light Fixtures' },
+  { value: 'main_bathroom', label: 'Main Bathroom' },
+  { value: 'misc', label: 'Misc.' },
+  { value: 'painting', label: 'Painting' },
+  { value: 'permits_inspections', label: 'Permits & Inspections' },
   { value: 'pest_control', label: 'Pest Control' },
+  { value: 'plumbing', label: 'Plumbing' },
   { value: 'pool', label: 'Pool' },
+  { value: 'railing', label: 'Railing' },
+  { value: 'roofing', label: 'Roofing' },
+  { value: 'staging', label: 'Staging' },
+  { value: 'taxes', label: 'Taxes' },
+  { value: 'tile', label: 'Tile' },
+  { value: 'utilities', label: 'Utilities' },
+  { value: 'variable', label: 'Variable' },
+  { value: 'water_heater', label: 'Water Heater' },
+  { value: 'windows', label: 'Windows' },
 ];
 
 // Vendor trades (construction trades + general)
