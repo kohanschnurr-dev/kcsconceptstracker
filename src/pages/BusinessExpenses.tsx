@@ -182,10 +182,18 @@ export default function BusinessExpenses() {
     });
   };
 
+  // Helper to format category values: "tech_equipment" -> "Tech Equipment"
+  const formatCategoryValue = (value: string) => {
+    return value
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   const getCategoryLabel = (categoryId: string) => {
     const category = kcsProject?.categories.find(c => c.id === categoryId);
-    if (!category) return categoryId;
-    return ALL_CATEGORIES.find(b => b.value === category.category)?.label || category.category;
+    if (!category) return formatCategoryValue(categoryId);
+    return ALL_CATEGORIES.find(b => b.value === category.category)?.label || formatCategoryValue(category.category);
   };
 
   const filteredExpenses = useMemo(() => {
