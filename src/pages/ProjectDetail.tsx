@@ -12,7 +12,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  Loader2
+  Loader2,
+  ChevronDown
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +38,7 @@ import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { BudgetAlerts } from '@/components/project/BudgetAlerts';
 import { ProjectVendors } from '@/components/project/ProjectVendors';
 import { ExportReports } from '@/components/project/ExportReports';
+import { useToast } from '@/hooks/use-toast';
 
 interface DBProject {
   id: string;
@@ -82,6 +90,8 @@ export default function ProjectDetail() {
   const [expenses, setExpenses] = useState<DBExpense[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DBDailyLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -164,6 +174,34 @@ export default function ProjectDetail() {
     }
   };
 
+  const handleStatusChange = async (newStatus: 'active' | 'complete' | 'on_hold') => {
+    if (!project || newStatus === project.status) return;
+    
+    setUpdatingStatus(true);
+    
+    const { error } = await supabase
+      .from('projects')
+      .update({ status: newStatus })
+      .eq('id', project.id);
+    
+    if (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update project status',
+        variant: 'destructive',
+      });
+    } else {
+      setProject({ ...project, status: newStatus });
+      toast({
+        title: 'Status updated',
+        description: `Project marked as ${newStatus.replace('_', ' ')}`,
+      });
+    }
+    
+    setUpdatingStatus(false);
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -208,17 +246,49 @@ export default function ProjectDetail() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl font-semibold">{project.name}</h1>
-                <Badge
-                  className={cn(
-                    'gap-1',
-                    project.status === 'active' && 'bg-success/20 text-success border-success/30',
-                    project.status === 'complete' && 'bg-primary/20 text-primary border-primary/30',
-                    project.status === 'on_hold' && 'bg-warning/20 text-warning border-warning/30'
-                  )}
-                >
-                  {getStatusIcon(project.status)}
-                  {project.status.replace('_', ' ')}
-                </Badge>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild disabled={updatingStatus}>
+                    <Badge
+                      className={cn(
+                        'gap-1 cursor-pointer hover:opacity-80 transition-opacity',
+                        project.status === 'active' && 'bg-success/20 text-success border-success/30',
+                        project.status === 'complete' && 'bg-primary/20 text-primary border-primary/30',
+                        project.status === 'on_hold' && 'bg-warning/20 text-warning border-warning/30'
+                      )}
+                    >
+                      {updatingStatus ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        getStatusIcon(project.status)
+                      )}
+                      {project.status.replace('_', ' ')}
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Badge>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem 
+                      onClick={() => handleStatusChange('active')}
+                      className={cn(project.status === 'active' && 'bg-muted')}
+                    >
+                      <Clock className="h-4 w-4 mr-2 text-success" />
+                      Active
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleStatusChange('complete')}
+                      className={cn(project.status === 'complete' && 'bg-muted')}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2 text-primary" />
+                      Complete
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleStatusChange('on_hold')}
+                      className={cn(project.status === 'on_hold' && 'bg-muted')}
+                    >
+                      <AlertTriangle className="h-4 w-4 mr-2 text-warning" />
+                      On Hold
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
