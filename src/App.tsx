@@ -10,6 +10,7 @@ import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import ProjectBudget from "./pages/ProjectBudget";
 import Expenses from "./pages/Expenses";
+import BusinessExpenses from "./pages/BusinessExpenses";
 import Vendors from "./pages/Vendors";
 import DailyLogs from "./pages/DailyLogs";
 import Auth from "./pages/Auth";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
             <Route path="/projects/:id/budget" element={<ProtectedRoute><ProjectBudget /></ProtectedRoute>} />
             <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+            <Route path="/business-expenses" element={<ProtectedRoute><BusinessExpenses /></ProtectedRoute>} />
             <Route path="/vendors" element={<ProtectedRoute><Vendors /></ProtectedRoute>} />
             <Route path="/logs" element={<ProtectedRoute><DailyLogs /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />

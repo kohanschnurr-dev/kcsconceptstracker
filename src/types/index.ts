@@ -33,7 +33,24 @@ export type BudgetCategory =
   | 'hardware'
   | 'insulation'
   | 'pest_control'
-  | 'pool';
+  | 'pool'
+  // Business expense categories
+  | 'cloud_storage'
+  | 'continuing_education'
+  | 'crm_software'
+  | 'gas_mileage'
+  | 'internet_phone'
+  | 'tech_equipment'
+  | 'licensing_fees'
+  | 'marketing_advertising'
+  | 'meals_entertainment'
+  | 'office_supplies'
+  | 'online_courses'
+  | 'postage_shipping'
+  | 'professional_dues'
+  | 'subscriptions'
+  | 'tools_equipment_business'
+  | 'travel_expenses';
 
 export type ExpenseStatus = 'estimate' | 'actual';
 export type PaymentMethod = 'cash' | 'check' | 'card' | 'transfer';
@@ -103,6 +120,7 @@ export interface ChangeOrder {
   approved: boolean;
 }
 
+// Construction/Renovation categories
 export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'plumbing', label: 'Plumbing' },
   { value: 'roofing', label: 'Roofing' },
@@ -138,5 +156,31 @@ export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'pest_control', label: 'Pest Control' },
   { value: 'pool', label: 'Pool' },
 ];
+
+// Business expense categories (for KCS Concepts)
+export const BUSINESS_EXPENSE_CATEGORIES: { value: BudgetCategory; label: string }[] = [
+  { value: 'cloud_storage', label: 'Cloud Storage or Backup Services' },
+  { value: 'continuing_education', label: 'Continuing Education Classes' },
+  { value: 'crm_software', label: 'CRM or Business Management Software' },
+  { value: 'gas_mileage', label: 'Gas and Mileage Reimbursement' },
+  { value: 'internet_phone', label: 'Internet and Phone Service' },
+  { value: 'tech_equipment', label: 'Laptop or Tech Equipment' },
+  { value: 'licensing_fees', label: 'Licensing and Renewal Fees' },
+  { value: 'marketing_advertising', label: 'Marketing and Advertising' },
+  { value: 'meals_entertainment', label: 'Meals and Entertainment (Client Meetings)' },
+  { value: 'office_supplies', label: 'Office Supplies' },
+  { value: 'online_courses', label: 'Online Course Materials' },
+  { value: 'postage_shipping', label: 'Postage and Shipping' },
+  { value: 'professional_dues', label: 'Professional Membership Dues' },
+  { value: 'subscriptions', label: 'Subscriptions' },
+  { value: 'tools_equipment_business', label: 'Tools and Equipment' },
+  { value: 'travel_expenses', label: 'Travel Expenses (Airfare, Hotel, Rental Car)' },
+];
+
+// Helper to get all categories (for lookups)
+export const ALL_CATEGORIES = [...BUDGET_CATEGORIES, ...BUSINESS_EXPENSE_CATEGORIES];
+
+// KCS Concepts project name constant
+export const KCS_CONCEPTS_PROJECT_NAME = 'KCS Concepts';
 
 export const TEXAS_SALES_TAX = 0.0825;

@@ -567,6 +567,22 @@ export type Database = {
         | "insulation"
         | "pest_control"
         | "pool"
+        | "cloud_storage"
+        | "continuing_education"
+        | "crm_software"
+        | "gas_mileage"
+        | "internet_phone"
+        | "tech_equipment"
+        | "licensing_fees"
+        | "marketing_advertising"
+        | "meals_entertainment"
+        | "office_supplies"
+        | "online_courses"
+        | "postage_shipping"
+        | "professional_dues"
+        | "subscriptions"
+        | "tools_equipment_business"
+        | "travel_expenses"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
@@ -767,6 +783,22 @@ export const Constants = {
         "insulation",
         "pest_control",
         "pool",
+        "cloud_storage",
+        "continuing_education",
+        "crm_software",
+        "gas_mileage",
+        "internet_phone",
+        "tech_equipment",
+        "licensing_fees",
+        "marketing_advertising",
+        "meals_entertainment",
+        "office_supplies",
+        "online_courses",
+        "postage_shipping",
+        "professional_dues",
+        "subscriptions",
+        "tools_equipment_business",
+        "travel_expenses",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer"],
