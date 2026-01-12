@@ -595,6 +595,7 @@ export type Database = {
         | "tile"
         | "utilities"
         | "variable"
+        | "drain_line_repair"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
@@ -639,6 +640,7 @@ export type Database = {
         | "railing"
         | "staging"
         | "tile"
+        | "drain_line_repair"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -828,6 +830,7 @@ export const Constants = {
         "tile",
         "utilities",
         "variable",
+        "drain_line_repair",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer"],
@@ -873,6 +876,7 @@ export const Constants = {
         "railing",
         "staging",
         "tile",
+        "drain_line_repair",
       ],
     },
   },

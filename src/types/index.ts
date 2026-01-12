@@ -11,6 +11,7 @@ export type BudgetCategory =
   | 'countertops'
   | 'demolition'
   | 'doors'
+  | 'drain_line_repair'
   | 'driveway_concrete'
   | 'drywall'
   | 'dumpsters_trash'
@@ -180,6 +181,7 @@ export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'countertops', label: 'Countertops' },
   { value: 'demolition', label: 'Demolition' },
   { value: 'doors', label: 'Doors' },
+  { value: 'drain_line_repair', label: 'Drain Line Repair' },
   { value: 'driveway_concrete', label: 'Driveway / Concrete Work' },
   { value: 'drywall', label: 'Drywall' },
   { value: 'dumpsters_trash', label: 'Dumpsters / Trash Hauling' },
