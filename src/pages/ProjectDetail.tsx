@@ -276,22 +276,24 @@ export default function ProjectDetail() {
                 <h1 className="text-2xl font-semibold">{project.name}</h1>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild disabled={updatingStatus}>
-                    <Badge
-                      className={cn(
-                        'gap-1 cursor-pointer hover:opacity-80 transition-opacity',
-                        project.status === 'active' && 'bg-success/20 text-success border-success/30',
-                        project.status === 'complete' && 'bg-primary/20 text-primary border-primary/30',
-                        project.status === 'on_hold' && 'bg-warning/20 text-warning border-warning/30'
-                      )}
-                    >
-                      {updatingStatus ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        getStatusIcon(project.status)
-                      )}
-                      {project.status.replace('_', ' ')}
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Badge>
+                    <button className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-full">
+                      <Badge
+                        className={cn(
+                          'gap-1 cursor-pointer hover:opacity-80 transition-opacity',
+                          project.status === 'active' && 'bg-success/20 text-success border-success/30',
+                          project.status === 'complete' && 'bg-primary/20 text-primary border-primary/30',
+                          project.status === 'on_hold' && 'bg-warning/20 text-warning border-warning/30'
+                        )}
+                      >
+                        {updatingStatus ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          getStatusIcon(project.status)
+                        )}
+                        {project.status.replace('_', ' ')}
+                        <ChevronDown className="h-3 w-3 ml-1" />
+                      </Badge>
+                    </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
                     <DropdownMenuItem 
