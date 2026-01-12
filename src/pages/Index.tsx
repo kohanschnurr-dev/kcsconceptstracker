@@ -35,11 +35,10 @@ interface DBCategory {
 interface DBVendor {
   id: string;
   name: string;
-  trade: string;
+  trades: string[];
   phone: string | null;
   email: string | null;
   has_w9: boolean;
-  insurance_expiry: string | null;
   reliability_rating: number | null;
   pricing_model: 'flat' | 'hourly' | null;
 }
@@ -136,11 +135,10 @@ export default function Index() {
       const transformedVendors: Vendor[] = (vendorsData || []).map((v: DBVendor) => ({
         id: v.id,
         name: v.name,
-        trade: v.trade as Vendor['trade'],
+        trades: v.trades as Vendor['trades'],
         phone: v.phone || '',
         email: v.email || '',
         hasW9: v.has_w9,
-        insuranceExpiry: v.insurance_expiry || '',
         reliabilityRating: v.reliability_rating || 0,
         pricingModel: v.pricing_model || 'flat',
       }));
@@ -189,9 +187,7 @@ export default function Index() {
   const overbudgetCount = projects.reduce((count, p) => 
     count + p.categories.filter(cat => cat.actualSpent > cat.estimatedBudget * 1.05).length, 0
   );
-  const vendorsNeedingAttention = vendors.filter(v => 
-    !v.hasW9 || (v.insuranceExpiry && new Date(v.insuranceExpiry) < new Date())
-  ).length;
+  const vendorsNeedingAttention = vendors.filter(v => !v.hasW9).length;
 
   // This month stats
   const monthStart = startOfMonth(new Date());

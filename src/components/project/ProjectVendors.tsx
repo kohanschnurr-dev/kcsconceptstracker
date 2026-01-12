@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 interface Vendor {
   id: string;
   name: string;
-  trade: string;
+  trades: string[];
   phone: string | null;
   email: string | null;
   reliability_rating: number | null;
@@ -196,7 +196,7 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                   <SelectContent>
                     {availableVendors.map(vendor => (
                       <SelectItem key={vendor.id} value={vendor.id}>
-                        {vendor.name} ({vendor.trade})
+                        {vendor.name} ({vendor.trades.join(', ') || 'No trades'})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -238,9 +238,9 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium">{pv.vendor?.name || 'Unknown'}</span>
-                      <Badge className={cn("text-xs", getTradeBadgeColor(pv.vendor?.trade || 'general'))}>
+                      <Badge className={cn("text-xs", getTradeBadgeColor(pv.vendor?.trades?.[0] || 'general'))}>
                         <Wrench className="h-3 w-3 mr-1" />
-                        {pv.vendor?.trade}
+                        {pv.vendor?.trades?.join(', ') || 'No trades'}
                       </Badge>
                     </div>
                     

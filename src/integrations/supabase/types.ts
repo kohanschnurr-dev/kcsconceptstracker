@@ -537,12 +537,11 @@ export type Database = {
           email: string | null
           has_w9: boolean
           id: string
-          insurance_expiry: string | null
           name: string
           phone: string | null
           pricing_model: Database["public"]["Enums"]["pricing_model"] | null
           reliability_rating: number | null
-          trade: Database["public"]["Enums"]["vendor_trade"]
+          trades: string[]
           updated_at: string
           user_id: string
         }
@@ -551,12 +550,11 @@ export type Database = {
           email?: string | null
           has_w9?: boolean
           id?: string
-          insurance_expiry?: string | null
           name: string
           phone?: string | null
           pricing_model?: Database["public"]["Enums"]["pricing_model"] | null
           reliability_rating?: number | null
-          trade: Database["public"]["Enums"]["vendor_trade"]
+          trades?: string[]
           updated_at?: string
           user_id: string
         }
@@ -565,12 +563,11 @@ export type Database = {
           email?: string | null
           has_w9?: boolean
           id?: string
-          insurance_expiry?: string | null
           name?: string
           phone?: string | null
           pricing_model?: Database["public"]["Enums"]["pricing_model"] | null
           reliability_rating?: number | null
-          trade?: Database["public"]["Enums"]["vendor_trade"]
+          trades?: string[]
           updated_at?: string
           user_id?: string
         }
