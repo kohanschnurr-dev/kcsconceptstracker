@@ -228,26 +228,61 @@ serve(async (req) => {
     console.log(`Total expenses to sync: ${expenses.length}`);
 
     // Upsert expenses (using service role to bypass RLS for batch operations)
+    // IMPORTANT: Preserve project_id, category_id, and is_imported for already-assigned expenses
     const serviceSupabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     
     let successCount = 0;
+    let skippedCount = 0;
+    
     for (const expense of expenses) {
-      const { error } = await serviceSupabase
+      // First, check if this expense already exists and has been assigned
+      const { data: existing } = await serviceSupabase
         .from("quickbooks_expenses")
-        .upsert(expense, { onConflict: "user_id,qb_id" });
+        .select("id, project_id, category_id, is_imported")
+        .eq("user_id", expense.user_id)
+        .eq("qb_id", expense.qb_id)
+        .maybeSingle();
       
-      if (!error) {
-        successCount++;
+      if (existing && (existing.project_id || existing.is_imported)) {
+        // Expense was already assigned - only update non-assignment fields
+        const { error } = await serviceSupabase
+          .from("quickbooks_expenses")
+          .update({
+            vendor_name: expense.vendor_name,
+            amount: expense.amount,
+            date: expense.date,
+            description: expense.description,
+            payment_method: expense.payment_method,
+            account_name: expense.account_name,
+            // Preserve: project_id, category_id, is_imported
+          })
+          .eq("id", existing.id);
+        
+        if (!error) {
+          skippedCount++;
+        } else {
+          console.error("Error updating existing expense:", error);
+        }
       } else {
-        console.error("Error upserting expense:", error);
+        // New expense or not yet assigned - full upsert
+        const { error } = await serviceSupabase
+          .from("quickbooks_expenses")
+          .upsert(expense, { onConflict: "user_id,qb_id" });
+        
+        if (!error) {
+          successCount++;
+        } else {
+          console.error("Error upserting expense:", error);
+        }
       }
     }
 
     return new Response(JSON.stringify({ 
       success: true, 
       synced: successCount,
+      preserved: skippedCount,
       total: expenses.length,
-      message: `Synced ${successCount} expenses from QuickBooks (${purchases.length} purchases, ${bills.length} bills, ${transfers.length} transfers)`
+      message: `Synced ${successCount} new expenses, preserved ${skippedCount} already-assigned expenses`
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
