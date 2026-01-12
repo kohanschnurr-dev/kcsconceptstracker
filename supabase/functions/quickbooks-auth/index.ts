@@ -16,6 +16,56 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const QB_AUTH_URL = "https://appcenter.intuit.com/connect/oauth2";
 const QB_TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
 
+// Refresh the access token using the refresh token
+async function refreshAccessToken(userId: string, refreshTokenValue: string, realmId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const tokenResponse = await fetch(QB_TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": `Basic ${btoa(`${QB_CLIENT_ID}:${QB_CLIENT_SECRET}`)}`,
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshTokenValue,
+      }),
+    });
+
+    const tokens = await tokenResponse.json();
+
+    if (tokens.error) {
+      console.error("Token refresh error:", tokens);
+      return { success: false, error: tokens.error_description || tokens.error };
+    }
+
+    const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+
+    // Use service role to update tokens
+    const serviceSupabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+    
+    const { error: updateError } = await serviceSupabase
+      .from("quickbooks_tokens")
+      .update({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expires_at: expiresAt.toISOString(),
+      })
+      .eq("user_id", userId);
+
+    if (updateError) {
+      console.error("Error updating tokens:", updateError);
+      return { success: false, error: "Failed to save refreshed tokens" };
+    }
+
+    console.log("Successfully refreshed QuickBooks token for user:", userId);
+    return { success: true };
+  } catch (error) {
+    console.error("Error refreshing token:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
 // Get the app URL for redirects (fallback to localhost for dev)
 const APP_URL = Deno.env.get("APP_URL") || "https://lovable.dev";
 
@@ -237,7 +287,7 @@ serve(async (req) => {
       // Check if user is connected to QuickBooks
       const { data: tokenData, error: tokenError } = await supabase
         .from("quickbooks_tokens")
-        .select("expires_at, realm_id")
+        .select("expires_at, realm_id, refresh_token")
         .eq("user_id", user.id)
         .single();
 
@@ -248,6 +298,33 @@ serve(async (req) => {
       }
 
       const isExpired = new Date(tokenData.expires_at) < new Date();
+      
+      // If token is expired, try to refresh it automatically
+      if (isExpired && tokenData.refresh_token) {
+        console.log("Access token expired, attempting to refresh...");
+        const refreshResult = await refreshAccessToken(user.id, tokenData.refresh_token, tokenData.realm_id);
+        
+        if (refreshResult.success) {
+          // Token was refreshed successfully
+          return new Response(JSON.stringify({ 
+            connected: true,
+            realmId: tokenData.realm_id,
+            refreshed: true,
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        } else {
+          // Refresh failed - user needs to reconnect
+          console.error("Token refresh failed:", refreshResult.error);
+          return new Response(JSON.stringify({ 
+            connected: false,
+            needsReconnect: true,
+            error: refreshResult.error,
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
       
       return new Response(JSON.stringify({ 
         connected: !isExpired,
