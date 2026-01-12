@@ -1,4 +1,5 @@
 export type ProjectStatus = 'active' | 'complete' | 'on-hold';
+export type ProjectType = 'fix_flip' | 'rental';
 
 export type BudgetCategory = 
   | 'appliances'
@@ -111,6 +112,7 @@ export interface Project {
   totalBudget: number;
   startDate: string;
   status: ProjectStatus;
+  projectType: ProjectType;
   categories: CategoryBudget[];
 }
 

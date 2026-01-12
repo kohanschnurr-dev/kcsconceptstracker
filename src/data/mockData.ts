@@ -8,6 +8,7 @@ export const mockProjects: Project[] = [
     totalBudget: 85000,
     startDate: '2024-11-15',
     status: 'active',
+    projectType: 'fix_flip',
     categories: [
       { id: 'c1', projectId: '1', category: 'foundation_repair', estimatedBudget: 12000, actualSpent: 11500 },
       { id: 'c2', projectId: '1', category: 'plumbing', estimatedBudget: 8000, actualSpent: 9200 },
@@ -26,6 +27,7 @@ export const mockProjects: Project[] = [
     totalBudget: 65000,
     startDate: '2024-12-01',
     status: 'active',
+    projectType: 'fix_flip',
     categories: [
       { id: 'c9', projectId: '2', category: 'foundation_repair', estimatedBudget: 8000, actualSpent: 7500 },
       { id: 'c10', projectId: '2', category: 'plumbing', estimatedBudget: 6000, actualSpent: 3200 },
@@ -44,6 +46,7 @@ export const mockProjects: Project[] = [
     totalBudget: 120000,
     startDate: '2024-09-01',
     status: 'complete',
+    projectType: 'fix_flip',
     categories: [
       { id: 'c17', projectId: '3', category: 'foundation_repair', estimatedBudget: 18000, actualSpent: 17200 },
       { id: 'c18', projectId: '3', category: 'plumbing', estimatedBudget: 12000, actualSpent: 14500 },
