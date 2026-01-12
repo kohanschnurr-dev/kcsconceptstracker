@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useQuickBooks } from '@/hooks/useQuickBooks';
-import { ALL_CATEGORIES } from '@/types';
+import { ALL_CATEGORIES, BUDGET_CATEGORIES, type BudgetCategory } from '@/types';
 import type { Project } from '@/types';
 
 // Helper to format category values: "tech_equipment" -> "Tech Equipment"
@@ -32,6 +32,15 @@ const formatCategoryValue = (value: string) => {
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+};
+
+// Get appropriate categories based on project type
+const getCategoriesForProject = (projectName: string) => {
+  // Business project gets business categories, flip projects get budget categories
+  if (projectName === 'KCS Concepts') {
+    return ALL_CATEGORIES;
+  }
+  return BUDGET_CATEGORIES;
 };
 
 interface QuickBooksIntegrationProps {
@@ -311,10 +320,11 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                               </SelectTrigger>
                               <SelectContent>
                                 {selectedProject[expense.id] &&
-                                  getProjectCategories(selectedProject[expense.id]).map((cat) => (
-                                    <SelectItem key={cat.id} value={cat.id}>
-                                      {ALL_CATEGORIES.find((b) => b.value === cat.category)?.label ||
-                                        formatCategoryValue(cat.category)}
+                                  getCategoriesForProject(
+                                    projects.find(p => p.id === selectedProject[expense.id])?.name || ''
+                                  ).map((cat) => (
+                                    <SelectItem key={cat.value} value={cat.value}>
+                                      {cat.label}
                                     </SelectItem>
                                   ))}
                               </SelectContent>
