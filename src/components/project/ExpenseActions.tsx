@@ -30,6 +30,7 @@ interface Expense {
   includes_tax: boolean;
   tax_amount: number | null;
   status: string;
+  isQuickBooks?: boolean; // Flag to identify QB expenses
 }
 
 interface EditExpenseModalProps {
@@ -83,20 +84,40 @@ export function EditExpenseModal({ expense, categories, open, onOpenChange, onEx
 
     const taxAmount = includesTax ? calculateTax() : null;
 
-    const { error } = await supabase
-      .from('expenses')
-      .update({
-        category_id: categoryId,
-        amount: parseFloat(amount),
-        vendor_name: vendorName || null,
-        description: description || null,
-        date: date,
-        payment_method: (paymentMethod || null) as 'cash' | 'check' | 'card' | 'transfer' | null,
-        includes_tax: includesTax,
-        tax_amount: taxAmount,
-        status: status as 'estimate' | 'actual',
-      })
-      .eq('id', expense.id);
+    let error;
+
+    if (expense.isQuickBooks) {
+      // Update QuickBooks expense table
+      const result = await supabase
+        .from('quickbooks_expenses')
+        .update({
+          category_id: categoryId,
+          amount: parseFloat(amount),
+          vendor_name: vendorName || null,
+          description: description || null,
+          date: date,
+          payment_method: paymentMethod || null,
+        })
+        .eq('id', expense.id);
+      error = result.error;
+    } else {
+      // Update regular expense table
+      const result = await supabase
+        .from('expenses')
+        .update({
+          category_id: categoryId,
+          amount: parseFloat(amount),
+          vendor_name: vendorName || null,
+          description: description || null,
+          date: date,
+          payment_method: (paymentMethod || null) as 'cash' | 'check' | 'card' | 'transfer' | null,
+          includes_tax: includesTax,
+          tax_amount: taxAmount,
+          status: status as 'estimate' | 'actual',
+        })
+        .eq('id', expense.id);
+      error = result.error;
+    }
 
     setLoading(false);
 
@@ -246,10 +267,23 @@ export function DeleteExpenseDialog({ expense, open, onOpenChange, onExpenseDele
 
     setLoading(true);
 
-    const { error } = await supabase
-      .from('expenses')
-      .delete()
-      .eq('id', expense.id);
+    let error;
+    
+    if (expense.isQuickBooks) {
+      // Delete from QuickBooks expenses table
+      const result = await supabase
+        .from('quickbooks_expenses')
+        .delete()
+        .eq('id', expense.id);
+      error = result.error;
+    } else {
+      // Delete from regular expenses table
+      const result = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', expense.id);
+      error = result.error;
+    }
 
     setLoading(false);
 

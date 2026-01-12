@@ -73,6 +73,7 @@ interface DBExpense {
   includes_tax: boolean;
   tax_amount: number | null;
   status: string;
+  isQuickBooks?: boolean;
 }
 
 type SortField = 'date' | 'amount' | 'vendor' | 'category';
@@ -158,7 +159,7 @@ export default function ProjectBudget() {
       tax_amount: null,
       status: 'actual',
       isQuickBooks: true
-    } as DBExpense & { isQuickBooks: boolean }));
+    }));
     
     const allExpenses = [...expensesData, ...qbAsExpenses].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
