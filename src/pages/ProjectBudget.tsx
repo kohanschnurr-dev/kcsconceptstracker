@@ -125,22 +125,47 @@ export default function ProjectBudget() {
     
     setProject(projectData);
     
-    const [categoriesRes, expensesRes] = await Promise.all([
+    const [categoriesRes, expensesRes, qbExpensesRes] = await Promise.all([
       supabase.from('project_categories').select('*').eq('project_id', id),
-      supabase.from('expenses').select('*').eq('project_id', id).order('date', { ascending: false })
+      supabase.from('expenses').select('*').eq('project_id', id).order('date', { ascending: false }),
+      supabase.from('quickbooks_expenses').select('*').eq('project_id', id).eq('is_imported', true).order('date', { ascending: false })
     ]);
     
     const categoriesData = categoriesRes.data || [];
     const expensesData = expensesRes.data || [];
+    const qbExpensesData = qbExpensesRes.data || [];
     
+    // Combine regular expenses with QB imported expenses for category calculations
     const categoriesWithSpent = categoriesData.map(cat => {
-      const categoryExpenses = expensesData.filter(e => e.category_id === cat.id);
-      const actualSpent = categoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
-      return { ...cat, actualSpent };
+      const regularCategoryExpenses = expensesData.filter(e => e.category_id === cat.id);
+      const qbCategoryExpenses = qbExpensesData.filter(e => e.category_id === cat.id);
+      const regularSpent = regularCategoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+      const qbSpent = qbCategoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+      return { ...cat, actualSpent: regularSpent + qbSpent };
     });
     
+    // Merge expenses for display - convert QB expenses to match DBExpense format
+    const qbAsExpenses: DBExpense[] = qbExpensesData.map(qb => ({
+      id: qb.id,
+      project_id: qb.project_id || '',
+      category_id: qb.category_id || '',
+      vendor_name: qb.vendor_name,
+      description: qb.description,
+      amount: qb.amount,
+      date: qb.date,
+      payment_method: qb.payment_method,
+      includes_tax: false,
+      tax_amount: null,
+      status: 'actual',
+      isQuickBooks: true
+    } as DBExpense & { isQuickBooks: boolean }));
+    
+    const allExpenses = [...expensesData, ...qbAsExpenses].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
     setCategories(categoriesWithSpent);
-    setExpenses(expensesData);
+    setExpenses(allExpenses);
     setLoading(false);
   };
 
