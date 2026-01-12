@@ -116,6 +116,7 @@ export default function BusinessExpenses() {
         totalBudget: projectData.total_budget,
         startDate: projectData.start_date,
         status: projectData.status === 'on_hold' ? 'on-hold' : projectData.status as 'active' | 'complete',
+        projectType: projectData.project_type as 'fix_flip' | 'rental',
         categories: (categoriesData || []).map((c: any) => ({
           id: c.id,
           projectId: c.project_id,

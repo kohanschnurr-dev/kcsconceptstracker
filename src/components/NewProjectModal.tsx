@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Building2, MapPin, DollarSign, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Building2, MapPin, DollarSign, Calendar, Hammer, Home } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BUDGET_CATEGORIES } from '@/types';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BUDGET_CATEGORIES, type ProjectType } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -17,14 +18,21 @@ interface NewProjectModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onProjectCreated?: () => void;
+  defaultProjectType?: ProjectType;
 }
 
-export function NewProjectModal({ open, onOpenChange, onProjectCreated }: NewProjectModalProps) {
+export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultProjectType = 'fix_flip' }: NewProjectModalProps) {
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [totalBudget, setTotalBudget] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [projectType, setProjectType] = useState<ProjectType>(defaultProjectType);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Update project type when defaultProjectType changes
+  useEffect(() => {
+    setProjectType(defaultProjectType);
+  }, [defaultProjectType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +69,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated }: NewPro
           start_date: startDate,
           user_id: user.id,
           status: 'active',
+          project_type: projectType,
         })
         .select()
         .single();
@@ -91,6 +100,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated }: NewPro
       setAddress('');
       setTotalBudget('');
       setStartDate(new Date().toISOString().split('T')[0]);
+      setProjectType(defaultProjectType);
       onOpenChange(false);
       onProjectCreated?.();
     } catch (error: any) {
@@ -116,10 +126,27 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated }: NewPro
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Project Type Selection */}
+          <div className="space-y-2">
+            <Label>Project Type</Label>
+            <Tabs value={projectType} onValueChange={(v) => setProjectType(v as ProjectType)}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="fix_flip" className="gap-2">
+                  <Hammer className="h-4 w-4" />
+                  Fix & Flip
+                </TabsTrigger>
+                <TabsTrigger value="rental" className="gap-2">
+                  <Home className="h-4 w-4" />
+                  Rental
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
           <div className="space-y-2">
             <Label>Project Name *</Label>
             <Input
-              placeholder="Oak Cliff Flip, Downtown Bungalow..."
+              placeholder={projectType === 'fix_flip' ? "Oak Cliff Flip, Downtown Bungalow..." : "Rental Property 1, Main St Duplex..."}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />

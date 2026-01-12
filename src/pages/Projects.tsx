@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FolderKanban } from 'lucide-react';
+import { Plus, Search, FolderKanban, Home, Hammer } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { NewProjectModal } from '@/components/NewProjectModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { Project, CategoryBudget } from '@/types';
+import type { Project, CategoryBudget, ProjectType } from '@/types';
 
 interface DBCategory {
   id: string;
@@ -22,7 +22,8 @@ export default function Projects() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState('all');
+  const [mainTab, setMainTab] = useState<'fix_flip' | 'rental'>('fix_flip');
+  const [statusTab, setStatusTab] = useState('all');
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -63,6 +64,7 @@ export default function Projects() {
         totalBudget: p.total_budget,
         startDate: p.start_date,
         status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
+        projectType: (p.project_type || 'fix_flip') as 'fix_flip' | 'rental',
         categories: (categoriesData || [])
           .filter((c: DBCategory) => c.project_id === p.id)
           .map((c: DBCategory) => ({
@@ -87,51 +89,45 @@ export default function Projects() {
     }
   };
 
-  const filteredProjects = projects.filter((project) => {
-    const matchesSearch = project.name.toLowerCase().includes(search.toLowerCase()) ||
-      project.address.toLowerCase().includes(search.toLowerCase());
+  const getFilteredProjects = (type: ProjectType) => {
+    return projects.filter((project) => {
+      const matchesType = project.projectType === type;
+      const matchesSearch = project.name.toLowerCase().includes(search.toLowerCase()) ||
+        project.address.toLowerCase().includes(search.toLowerCase());
+      
+      if (statusTab === 'all') return matchesType && matchesSearch;
+      return matchesType && matchesSearch && project.status === statusTab;
+    });
+  };
+
+  const fixFlipProjects = getFilteredProjects('fix_flip');
+  const rentalProjects = getFilteredProjects('rental');
+
+  const getStatusCounts = (type: ProjectType) => {
+    const typeProjects = projects.filter(p => p.projectType === type);
+    return {
+      total: typeProjects.length,
+      active: typeProjects.filter(p => p.status === 'active').length,
+      complete: typeProjects.filter(p => p.status === 'complete').length,
+    };
+  };
+
+  const fixFlipCounts = getStatusCounts('fix_flip');
+  const rentalCounts = getStatusCounts('rental');
+
+  const renderProjectGrid = (filteredProjects: Project[], type: ProjectType) => {
+    const counts = type === 'fix_flip' ? fixFlipCounts : rentalCounts;
     
-    if (tab === 'all') return matchesSearch;
-    return matchesSearch && project.status === tab;
-  });
-
-  const activeCount = projects.filter(p => p.status === 'active').length;
-  const completeCount = projects.filter(p => p.status === 'complete').length;
-
-  return (
-    <MainLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold">Projects</h1>
-            <p className="text-muted-foreground mt-1">Manage your fix & flip properties</p>
-          </div>
-          <Button className="gap-2" onClick={() => setModalOpen(true)}>
-            <Plus className="h-4 w-4" />
-            New Project
-          </Button>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search projects..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsList>
-              <TabsTrigger value="all">All ({projects.length})</TabsTrigger>
-              <TabsTrigger value="active">Active ({activeCount})</TabsTrigger>
-              <TabsTrigger value="complete">Complete ({completeCount})</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+    return (
+      <div className="space-y-4">
+        {/* Status Filter Tabs */}
+        <Tabs value={statusTab} onValueChange={setStatusTab}>
+          <TabsList>
+            <TabsTrigger value="all">All ({counts.total})</TabsTrigger>
+            <TabsTrigger value="active">Active ({counts.active})</TabsTrigger>
+            <TabsTrigger value="complete">Complete ({counts.complete})</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {/* Loading State */}
         {isLoading ? (
@@ -162,12 +158,14 @@ export default function Projects() {
               <div className="text-center py-12 glass-card">
                 <FolderKanban className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                 <p className="text-muted-foreground mb-4">
-                  {projects.length === 0 ? 'No projects yet' : 'No projects match your search'}
+                  {counts.total === 0 
+                    ? `No ${type === 'fix_flip' ? 'fix & flip' : 'rental'} projects yet` 
+                    : 'No projects match your search'}
                 </p>
-                {projects.length === 0 && (
+                {counts.total === 0 && (
                   <Button onClick={() => setModalOpen(true)} className="gap-2">
                     <Plus className="h-4 w-4" />
-                    Create Your First Project
+                    Create Your First {type === 'fix_flip' ? 'Flip' : 'Rental'}
                   </Button>
                 )}
               </div>
@@ -175,11 +173,63 @@ export default function Projects() {
           </>
         )}
       </div>
+    );
+  };
+
+  return (
+    <MainLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold">Projects</h1>
+            <p className="text-muted-foreground mt-1">Manage your properties</p>
+          </div>
+          <Button className="gap-2" onClick={() => setModalOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New Project
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search projects..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        {/* Main Type Tabs */}
+        <Tabs value={mainTab} onValueChange={(v) => { setMainTab(v as 'fix_flip' | 'rental'); setStatusTab('all'); }}>
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="fix_flip" className="gap-2">
+              <Hammer className="h-4 w-4" />
+              Fix & Flips ({fixFlipCounts.total})
+            </TabsTrigger>
+            <TabsTrigger value="rental" className="gap-2">
+              <Home className="h-4 w-4" />
+              Rentals ({rentalCounts.total})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="fix_flip" className="mt-6">
+            {renderProjectGrid(fixFlipProjects, 'fix_flip')}
+          </TabsContent>
+
+          <TabsContent value="rental" className="mt-6">
+            {renderProjectGrid(rentalProjects, 'rental')}
+          </TabsContent>
+        </Tabs>
+      </div>
 
       <NewProjectModal
         open={modalOpen}
         onOpenChange={setModalOpen}
         onProjectCreated={fetchProjects}
+        defaultProjectType={mainTab}
       />
     </MainLayout>
   );

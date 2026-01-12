@@ -322,6 +322,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          project_type: Database["public"]["Enums"]["project_type"]
           purchase_price: number | null
           start_date: string
           status: Database["public"]["Enums"]["project_status"]
@@ -335,6 +336,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          project_type?: Database["public"]["Enums"]["project_type"]
           purchase_price?: number | null
           start_date?: string
           status?: Database["public"]["Enums"]["project_status"]
@@ -348,6 +350,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          project_type?: Database["public"]["Enums"]["project_type"]
           purchase_price?: number | null
           start_date?: string
           status?: Database["public"]["Enums"]["project_status"]
@@ -600,6 +603,7 @@ export type Database = {
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
       project_status: "active" | "complete" | "on_hold"
+      project_type: "fix_flip" | "rental"
       vendor_trade:
         | "plumbing"
         | "roofing"
@@ -836,6 +840,7 @@ export const Constants = {
       payment_method: ["cash", "check", "card", "transfer"],
       pricing_model: ["flat", "hourly"],
       project_status: ["active", "complete", "on_hold"],
+      project_type: ["fix_flip", "rental"],
       vendor_trade: [
         "plumbing",
         "roofing",

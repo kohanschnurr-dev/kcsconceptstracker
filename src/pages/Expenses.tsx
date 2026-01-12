@@ -128,6 +128,7 @@ export default function Expenses() {
           totalBudget: p.total_budget,
           startDate: p.start_date,
           status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
+          projectType: p.project_type as 'fix_flip' | 'rental',
           categories: (categoriesData || [])
             .filter((c: DBCategory) => c.project_id === p.id)
             .map((c: DBCategory) => ({
