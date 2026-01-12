@@ -1,0 +1,17 @@
+-- Add business expense categories to the budget_category enum
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'cloud_storage';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'continuing_education';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'crm_software';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'gas_mileage';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'internet_phone';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'tech_equipment';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'licensing_fees';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'marketing_advertising';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'meals_entertainment';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'office_supplies';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'online_courses';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'postage_shipping';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'professional_dues';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'subscriptions';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'tools_equipment_business';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'travel_expenses';

@@ -4,8 +4,7 @@ import {
   Receipt, 
   Users, 
   ClipboardList,
-  Settings,
-  HardHat,
+  Briefcase,
   LogOut
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -17,6 +16,7 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
   { icon: Receipt, label: 'Expenses', path: '/expenses' },
+  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
   { icon: Users, label: 'Vendors', path: '/vendors' },
   { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
 ];
@@ -31,7 +31,7 @@ export function Sidebar() {
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-border px-6">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <HardHat className="h-5 w-5 text-primary-foreground" />
+            <Briefcase className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
             <h1 className="font-semibold text-foreground">FlipTracker</h1>

@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { BUDGET_CATEGORIES, TEXAS_SALES_TAX, Project, PaymentMethod } from '@/types';
+import { ALL_CATEGORIES, BUDGET_CATEGORIES, TEXAS_SALES_TAX, Project, PaymentMethod } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
