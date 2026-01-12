@@ -10,10 +10,14 @@ const QB_CLIENT_ID = Deno.env.get("QUICKBOOKS_CLIENT_ID");
 const QB_CLIENT_SECRET = Deno.env.get("QUICKBOOKS_CLIENT_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 // QuickBooks OAuth endpoints
 const QB_AUTH_URL = "https://appcenter.intuit.com/connect/oauth2";
 const QB_TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
+
+// Get the app URL for redirects (fallback to localhost for dev)
+const APP_URL = Deno.env.get("APP_URL") || "https://lovable.dev";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -46,7 +50,136 @@ serve(async (req) => {
     
     console.log("Action:", action, "Method:", req.method);
     
-    // Get user from auth header
+    // Handle callback separately - it doesn't have auth header (browser redirect)
+    if (action === "callback") {
+      const code = url.searchParams.get("code");
+      const realmId = url.searchParams.get("realmId");
+      const state = url.searchParams.get("state");
+
+      console.log("Callback received - code:", !!code, "realmId:", realmId, "state:", state);
+
+      if (!code || !realmId || !state) {
+        // Check for error from QuickBooks
+        const error = url.searchParams.get("error");
+        const errorDescription = url.searchParams.get("error_description");
+        if (error) {
+          console.error("QuickBooks error:", error, errorDescription);
+          return new Response(
+            `<html><body><h1>Connection Failed</h1><p>${errorDescription || error}</p><script>setTimeout(() => window.close(), 3000);</script></body></html>`,
+            { headers: { "Content-Type": "text/html" } }
+          );
+        }
+        return new Response(
+          `<html><body><h1>Error</h1><p>Missing required parameters</p></body></html>`,
+          { headers: { "Content-Type": "text/html" } }
+        );
+      }
+
+      // Use service role to look up state and get user_id
+      const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+      
+      // Look up the state to get user_id
+      const { data: stateData, error: stateError } = await supabaseAdmin
+        .from("quickbooks_oauth_states")
+        .select("user_id, expires_at")
+        .eq("state", state)
+        .single();
+
+      if (stateError || !stateData) {
+        console.error("State lookup error:", stateError);
+        return new Response(
+          `<html><body><h1>Error</h1><p>Invalid or expired state. Please try connecting again.</p></body></html>`,
+          { headers: { "Content-Type": "text/html" } }
+        );
+      }
+
+      // Check if state is expired
+      if (new Date(stateData.expires_at) < new Date()) {
+        await supabaseAdmin.from("quickbooks_oauth_states").delete().eq("state", state);
+        return new Response(
+          `<html><body><h1>Error</h1><p>Authorization expired. Please try connecting again.</p></body></html>`,
+          { headers: { "Content-Type": "text/html" } }
+        );
+      }
+
+      const userId = stateData.user_id;
+      const redirectUri = `${SUPABASE_URL}/functions/v1/quickbooks-auth?action=callback`;
+
+      // Exchange code for tokens
+      const tokenResponse = await fetch(QB_TOKEN_URL, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Basic ${btoa(`${QB_CLIENT_ID}:${QB_CLIENT_SECRET}`)}`,
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: redirectUri,
+        }),
+      });
+
+      const tokens = await tokenResponse.json();
+      console.log("Token response status:", tokenResponse.status);
+
+      if (tokens.error) {
+        console.error("Token error:", tokens);
+        return new Response(
+          `<html><body><h1>Error</h1><p>${tokens.error_description || tokens.error}</p></body></html>`,
+          { headers: { "Content-Type": "text/html" } }
+        );
+      }
+
+      // Calculate expiration time
+      const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+
+      // Store tokens in database using service role
+      const { error: upsertError } = await supabaseAdmin
+        .from("quickbooks_tokens")
+        .upsert({
+          user_id: userId,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          realm_id: realmId,
+          expires_at: expiresAt.toISOString(),
+        }, { onConflict: 'user_id' });
+
+      if (upsertError) {
+        console.error("Error storing tokens:", upsertError);
+        return new Response(
+          `<html><body><h1>Error</h1><p>Failed to save connection. Please try again.</p></body></html>`,
+          { headers: { "Content-Type": "text/html" } }
+        );
+      }
+
+      // Clean up the used state
+      await supabaseAdmin.from("quickbooks_oauth_states").delete().eq("state", state);
+
+      // Return success HTML that closes the popup
+      return new Response(
+        `<!DOCTYPE html>
+        <html>
+          <head><title>Connected!</title></head>
+          <body style="font-family: system-ui; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f0f9ff;">
+            <div style="text-align: center; padding: 2rem;">
+              <div style="font-size: 48px; margin-bottom: 1rem;">✅</div>
+              <h1 style="color: #0f766e; margin: 0;">Connected to QuickBooks!</h1>
+              <p style="color: #6b7280;">You can close this window and return to the app.</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'quickbooks-connected' }, '*');
+                  setTimeout(() => window.close(), 2000);
+                }
+              </script>
+            </div>
+          </body>
+        </html>`,
+        { headers: { "Content-Type": "text/html" } }
+      );
+    }
+
+    // All other actions require authentication
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -68,10 +201,25 @@ serve(async (req) => {
     }
 
     if (action === "authorize") {
-      // Generate the OAuth authorization URL
-      // Use the full edge function URL for redirect
-      const redirectUri = `${SUPABASE_URL}/functions/v1/quickbooks-auth?action=callback`;
+      // Generate state and store it with user_id
       const state = crypto.randomUUID();
+      const redirectUri = `${SUPABASE_URL}/functions/v1/quickbooks-auth?action=callback`;
+      
+      // Store state with user_id for callback lookup
+      const { error: stateError } = await supabase
+        .from("quickbooks_oauth_states")
+        .insert({
+          user_id: user.id,
+          state: state,
+        });
+
+      if (stateError) {
+        console.error("Error storing state:", stateError);
+        return new Response(JSON.stringify({ error: "Failed to initialize authorization" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       
       const authUrl = new URL(QB_AUTH_URL);
       authUrl.searchParams.set("client_id", QB_CLIENT_ID!);
@@ -81,71 +229,6 @@ serve(async (req) => {
       authUrl.searchParams.set("state", state);
 
       return new Response(JSON.stringify({ authUrl: authUrl.toString(), state }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "callback") {
-      // Handle OAuth callback
-      const code = url.searchParams.get("code");
-      const realmId = url.searchParams.get("realmId");
-
-      if (!code || !realmId) {
-        return new Response(JSON.stringify({ error: "Missing code or realmId" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const redirectUri = `${SUPABASE_URL}/functions/v1/quickbooks-auth?action=callback`;
-
-      // Exchange code for tokens
-      const tokenResponse = await fetch(QB_TOKEN_URL, {
-        method: "POST",
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Authorization": `Basic ${btoa(`${QB_CLIENT_ID}:${QB_CLIENT_SECRET}`)}`,
-        },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          code,
-          redirect_uri: redirectUri,
-        }),
-      });
-
-      const tokens = await tokenResponse.json();
-
-      if (tokens.error) {
-        return new Response(JSON.stringify({ error: tokens.error_description || tokens.error }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Calculate expiration time
-      const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
-
-      // Store tokens in database
-      const { error: upsertError } = await supabase
-        .from("quickbooks_tokens")
-        .upsert({
-          user_id: user.id,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          realm_id: realmId,
-          expires_at: expiresAt.toISOString(),
-        });
-
-      if (upsertError) {
-        console.error("Error storing tokens:", upsertError);
-        return new Response(JSON.stringify({ error: "Failed to store tokens" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
