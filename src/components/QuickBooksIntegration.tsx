@@ -23,8 +23,16 @@ import {
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useQuickBooks } from '@/hooks/useQuickBooks';
-import { BUDGET_CATEGORIES } from '@/types';
+import { ALL_CATEGORIES } from '@/types';
 import type { Project } from '@/types';
+
+// Helper to format category values: "tech_equipment" -> "Tech Equipment"
+const formatCategoryValue = (value: string) => {
+  return value
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
 
 interface QuickBooksIntegrationProps {
   projects: Project[];
@@ -305,8 +313,8 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                                 {selectedProject[expense.id] &&
                                   getProjectCategories(selectedProject[expense.id]).map((cat) => (
                                     <SelectItem key={cat.id} value={cat.id}>
-                                      {BUDGET_CATEGORIES.find((b) => b.value === cat.category)?.label ||
-                                        cat.category}
+                                      {ALL_CATEGORIES.find((b) => b.value === cat.category)?.label ||
+                                        formatCategoryValue(cat.category)}
                                     </SelectItem>
                                   ))}
                               </SelectContent>
