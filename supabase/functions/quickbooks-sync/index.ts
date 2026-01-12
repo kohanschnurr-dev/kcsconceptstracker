@@ -150,6 +150,7 @@ serve(async (req) => {
         date: purchase.TxnDate,
         description: purchase.PrivateNote || purchase.Line?.[0]?.Description || "",
         payment_method: mapPaymentMethod(purchase.PaymentType),
+        account_name: purchase.AccountRef?.name || purchase.Credit?.AccountRef?.name || "Unknown Account",
         is_imported: false,
       });
     }
@@ -169,6 +170,7 @@ serve(async (req) => {
         date: bill.TxnDate,
         description: bill.PrivateNote || bill.Line?.[0]?.Description || "",
         payment_method: "transfer",
+        account_name: bill.APAccountRef?.name || "Accounts Payable",
         is_imported: false,
       });
     }
@@ -198,6 +200,7 @@ serve(async (req) => {
         date: transfer.TxnDate,
         description: transfer.PrivateNote || `Transfer: ${transfer.FromAccountRef?.name || ''} → ${transfer.ToAccountRef?.name || ''}`,
         payment_method: "transfer",
+        account_name: transfer.FromAccountRef?.name || "Unknown Account",
         is_imported: false,
       });
     }
