@@ -17,7 +17,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { BUDGET_CATEGORIES, ALL_CATEGORIES, KCS_CONCEPTS_PROJECT_NAME, type Project, type CategoryBudget } from '@/types';
+import { BUDGET_CATEGORIES, ALL_CATEGORIES, type Project, type CategoryBudget } from '@/types';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { QuickBooksIntegration } from '@/components/QuickBooksIntegration';
 import { cn } from '@/lib/utils';
@@ -118,9 +118,8 @@ export default function Expenses() {
 
       if (qbExpensesError) throw qbExpensesError;
 
-      // Transform to match Project type - exclude KCS Concepts
+      // Transform to match Project type
       const transformedProjects: Project[] = (projectsData || [])
-        .filter((p: any) => p.name !== KCS_CONCEPTS_PROJECT_NAME)
         .map((p) => ({
           id: p.id,
           name: p.name,
@@ -128,7 +127,7 @@ export default function Expenses() {
           totalBudget: p.total_budget,
           startDate: p.start_date,
           status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
-          projectType: p.project_type as 'fix_flip' | 'rental',
+          projectType: (p.project_type || 'fix_flip') as 'fix_flip' | 'rental',
           categories: (categoriesData || [])
             .filter((c: DBCategory) => c.project_id === p.id)
             .map((c: DBCategory) => ({
@@ -140,19 +139,14 @@ export default function Expenses() {
             })),
         }));
 
-      // Get KCS project ID to exclude its expenses
-      const kcsProject = (projectsData || []).find((p: any) => p.name === KCS_CONCEPTS_PROJECT_NAME);
-
-      // Combine manual expenses with imported QuickBooks expenses - exclude KCS expenses
-      const manualExpenses: DBExpense[] = (expensesData || [])
-        .filter((e: any) => !kcsProject || e.project_id !== kcsProject.id)
-        .map(e => ({
-          ...e,
-          source: 'manual' as const,
-        }));
+      // Combine manual expenses with imported QuickBooks expenses
+      const manualExpenses: DBExpense[] = (expensesData || []).map(e => ({
+        ...e,
+        source: 'manual' as const,
+      }));
 
       const qbExpenses: DBExpense[] = (qbExpensesData || [])
-        .filter((e: DBQuickBooksExpense) => e.project_id && e.category_id && (!kcsProject || e.project_id !== kcsProject.id))
+        .filter((e: DBQuickBooksExpense) => e.project_id && e.category_id)
         .map((e: DBQuickBooksExpense) => ({
           id: e.id,
           project_id: e.project_id!,

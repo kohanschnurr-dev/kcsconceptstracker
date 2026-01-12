@@ -1,8 +1,7 @@
-import { MapPin, Calendar, TrendingUp } from 'lucide-react';
+import { MapPin, Calendar, TrendingUp, Home, Hammer } from 'lucide-react';
 import { Project, BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 
 interface ProjectCardProps {
   project: Project;
@@ -11,19 +10,16 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project, onClick }: ProjectCardProps) {
   const totalSpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
-  const percentSpent = (totalSpent / project.totalBudget) * 100;
-  const remaining = project.totalBudget - totalSpent;
+  const isRental = project.projectType === 'rental';
+  
+  // Only calculate budget metrics for fix & flips
+  const percentSpent = isRental ? 0 : (totalSpent / project.totalBudget) * 100;
+  const remaining = isRental ? 0 : project.totalBudget - totalSpent;
 
-  // Check for overbudget categories
-  const overbudgetCategories = project.categories.filter(
+  // Check for overbudget categories (only for fix & flips)
+  const overbudgetCategories = isRental ? [] : project.categories.filter(
     (cat) => cat.actualSpent > cat.estimatedBudget * 1.05
   );
-
-  const getStatusColor = () => {
-    if (percentSpent > 100) return 'destructive';
-    if (percentSpent > 90) return 'warning';
-    return 'success';
-  };
 
   const getProgressColor = () => {
     if (percentSpent > 100) return 'bg-destructive';
@@ -55,7 +51,14 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
     >
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="font-semibold text-lg">{project.name}</h3>
+          <div className="flex items-center gap-2">
+            {isRental ? (
+              <Home className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Hammer className="h-4 w-4 text-muted-foreground" />
+            )}
+            <h3 className="font-semibold text-lg">{project.name}</h3>
+          </div>
           <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
             <MapPin className="h-3.5 w-3.5" />
             <span>{project.address}</span>
@@ -73,35 +76,52 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
         </Badge>
       </div>
 
-      {/* Budget Progress */}
-      <div className="space-y-2 mb-4">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Budget Progress</span>
-          <span className="font-mono font-medium">{percentSpent.toFixed(1)}%</span>
+      {/* Budget Progress - Only for Fix & Flips */}
+      {!isRental && (
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Budget Progress</span>
+            <span className="font-mono font-medium">{percentSpent.toFixed(1)}%</span>
+          </div>
+          <div className="progress-bar">
+            <div
+              className={cn('progress-fill', getProgressColor())}
+              style={{ width: `${Math.min(percentSpent, 100)}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{formatCurrency(totalSpent)} spent</span>
+            <span>{formatCurrency(project.totalBudget)} total</span>
+          </div>
         </div>
-        <div className="progress-bar">
-          <div
-            className={cn('progress-fill', getProgressColor())}
-            style={{ width: `${Math.min(percentSpent, 100)}%` }}
-          />
+      )}
+
+      {/* Rental - Show total expenses */}
+      {isRental && (
+        <div className="mb-4 p-3 rounded-lg bg-muted/50">
+          <p className="text-xs text-muted-foreground">Total Expenses</p>
+          <p className="font-mono font-semibold text-lg">{formatCurrency(totalSpent)}</p>
         </div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{formatCurrency(totalSpent)} spent</span>
-          <span>{formatCurrency(project.totalBudget)} total</span>
-        </div>
-      </div>
+      )}
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-        <div>
-          <p className="text-xs text-muted-foreground">Remaining</p>
-          <p className={cn(
-            'font-mono font-semibold',
-            remaining < 0 ? 'text-destructive' : 'text-success'
-          )}>
-            {formatCurrency(remaining)}
-          </p>
-        </div>
+        {!isRental ? (
+          <div>
+            <p className="text-xs text-muted-foreground">Remaining</p>
+            <p className={cn(
+              'font-mono font-semibold',
+              remaining < 0 ? 'text-destructive' : 'text-success'
+            )}>
+              {formatCurrency(remaining)}
+            </p>
+          </div>
+        ) : (
+          <div>
+            <p className="text-xs text-muted-foreground">Type</p>
+            <p className="text-sm font-medium">Rental Property</p>
+          </div>
+        )}
         <div>
           <p className="text-xs text-muted-foreground">Start Date</p>
           <div className="flex items-center gap-1 text-sm">
@@ -111,8 +131,8 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
         </div>
       </div>
 
-      {/* Overbudget Warning */}
-      {overbudgetCategories.length > 0 && (
+      {/* Overbudget Warning - Only for Fix & Flips */}
+      {!isRental && overbudgetCategories.length > 0 && (
         <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
           <div className="flex items-center gap-2 text-destructive text-sm font-medium">
             <TrendingUp className="h-4 w-4" />

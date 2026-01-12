@@ -16,6 +16,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +46,7 @@ interface DBProject {
   name: string;
   address: string;
   status: 'active' | 'complete' | 'on_hold';
+  project_type: 'fix_flip' | 'rental';
   total_budget: number;
   start_date: string;
   purchase_price?: number;
@@ -202,6 +204,32 @@ export default function ProjectDetail() {
     setUpdatingStatus(false);
   };
 
+  const handleConvertToRental = async () => {
+    if (!project) return;
+    
+    const { error } = await supabase
+      .from('projects')
+      .update({ project_type: 'rental', status: 'active' })
+      .eq('id', project.id);
+    
+    if (error) {
+      console.error('Error converting to rental:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to convert project to rental',
+        variant: 'destructive',
+      });
+    } else {
+      setProject({ ...project, project_type: 'rental', status: 'active' });
+      toast({
+        title: 'Converted to Rental',
+        description: 'This project is now a rental property',
+      });
+    }
+  };
+
+  const isRental = project?.project_type === 'rental';
+
   if (loading) {
     return (
       <MainLayout>
@@ -287,6 +315,15 @@ export default function ProjectDetail() {
                       <AlertTriangle className="h-4 w-4 mr-2 text-warning" />
                       On Hold
                     </DropdownMenuItem>
+                    {!isRental && project.status === 'complete' && (
+                      <>
+                        <div className="my-1 border-t border-border" />
+                        <DropdownMenuItem onClick={handleConvertToRental}>
+                          <Home className="h-4 w-4 mr-2 text-blue-500" />
+                          Convert to Rental
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
