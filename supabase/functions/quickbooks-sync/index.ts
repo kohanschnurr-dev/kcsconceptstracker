@@ -125,9 +125,9 @@ serve(async (req) => {
       );
     }
 
-    // Parse request body for date range - default to last 365 days for more data
+    // Parse request body for date range - default to last 30 days
     const body = await req.json().catch(() => ({}));
-    const startDate = body.startDate || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const startDate = body.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const endDate = body.endDate || new Date().toISOString().split('T')[0];
 
     console.log(`Syncing expenses from ${startDate} to ${endDate}`);
