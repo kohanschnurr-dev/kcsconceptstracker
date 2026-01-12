@@ -54,6 +54,19 @@ interface DBExpense {
   description: string | null;
   includes_tax: boolean;
   tax_amount: number | null;
+  source?: 'manual' | 'quickbooks';
+}
+
+interface DBQuickBooksExpense {
+  id: string;
+  project_id: string | null;
+  category_id: string | null;
+  amount: number;
+  date: string;
+  vendor_name: string | null;
+  payment_method: string | null;
+  description: string | null;
+  is_imported: boolean;
 }
 
 export default function Expenses() {
@@ -94,6 +107,17 @@ export default function Expenses() {
 
       if (expensesError) throw expensesError;
 
+      // Fetch imported QuickBooks expenses
+      const { data: qbExpensesData, error: qbExpensesError } = await supabase
+        .from('quickbooks_expenses')
+        .select('*')
+        .eq('is_imported', true)
+        .not('project_id', 'is', null)
+        .not('category_id', 'is', null)
+        .order('date', { ascending: false });
+
+      if (qbExpensesError) throw qbExpensesError;
+
       // Transform to match Project type
       const transformedProjects: Project[] = (projectsData || []).map((p) => ({
         id: p.id,
@@ -113,8 +137,35 @@ export default function Expenses() {
           })),
       }));
 
+      // Combine manual expenses with imported QuickBooks expenses
+      const manualExpenses: DBExpense[] = (expensesData || []).map(e => ({
+        ...e,
+        source: 'manual' as const,
+      }));
+
+      const qbExpenses: DBExpense[] = (qbExpensesData || [])
+        .filter((e: DBQuickBooksExpense) => e.project_id && e.category_id)
+        .map((e: DBQuickBooksExpense) => ({
+          id: e.id,
+          project_id: e.project_id!,
+          category_id: e.category_id!,
+          amount: e.amount,
+          date: e.date,
+          vendor_name: e.vendor_name,
+          payment_method: e.payment_method as DBExpense['payment_method'],
+          status: 'actual' as const,
+          description: e.description,
+          includes_tax: false,
+          tax_amount: null,
+          source: 'quickbooks' as const,
+        }));
+
+      const allExpenses = [...manualExpenses, ...qbExpenses].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
       setProjects(transformedProjects);
-      setExpenses(expensesData || []);
+      setExpenses(allExpenses);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -361,11 +412,18 @@ export default function Expenses() {
                   <tr key={expense.id} className="hover:bg-muted/20 transition-colors cursor-pointer">
                     <td className="whitespace-nowrap">{formatDate(expense.date)}</td>
                     <td>
-                      <div>
-                        <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
-                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                          {expense.description}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                            {expense.description}
+                          </p>
+                        </div>
+                        {expense.source === 'quickbooks' && (
+                          <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">
+                            QB
+                          </Badge>
+                        )}
                       </div>
                     </td>
                     <td>{getProjectName(expense.project_id)}</td>
