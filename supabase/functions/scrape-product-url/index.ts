@@ -13,7 +13,8 @@ interface ProductData {
   lead_time_days: number | null;
   dimensions: string | null;
   brand: string | null;
-  description: string | null;
+  tile_size: string | null;
+  material: string | null;
   image_url: string | null;
   source_store: string;
   specs: Record<string, string>;
@@ -72,7 +73,8 @@ function extractProductData(markdown: string, url: string): ProductData {
   let lead_time_days: number | null = null;
   let dimensions: string | null = null;
   let brand: string | null = null;
-  let description: string | null = null;
+  let tile_size: string | null = null;
+  let material: string | null = null;
   let image_url: string | null = null;
   const specs: Record<string, string> = {};
   
@@ -164,6 +166,48 @@ function extractProductData(markdown: string, url: string): ProductData {
       if (dimensions) break;
     }
   }
+
+  // Extract tile size (e.g., 12x24, 4x12, 3x6)
+  const tileSizePatterns = [
+    /(?:tile\s*size|size)[:\s]*(\d+\s*(?:x|by)\s*\d+)/gi,
+    /(\d{1,2})\s*(?:"|in\.?|inch(?:es)?)\s*(?:x|by)\s*(\d{1,2})\s*(?:"|in\.?|inch(?:es)?)/gi,
+    /(\d{1,2}x\d{1,2})/gi,
+  ];
+  
+  for (const pattern of tileSizePatterns) {
+    const match = markdown.match(pattern);
+    if (match) {
+      tile_size = match[1]?.trim() || match[0].trim();
+      // Clean up format
+      tile_size = tile_size.replace(/\s+/g, '').replace(/by/gi, 'x');
+      if (tile_size) break;
+    }
+  }
+
+  // Extract material (ceramic, porcelain, natural stone, etc.)
+  const materialPatterns = [
+    /(?:material|type)[:\s]+([^\n,]+)/gi,
+    /\b(porcelain|ceramic|natural\s*stone|marble|travertine|slate|granite|quartzite|limestone|glass|mosaic)\b/gi,
+  ];
+  
+  for (const pattern of materialPatterns) {
+    const match = markdown.match(pattern);
+    if (match) {
+      material = match[1]?.trim() || match[0].trim();
+      // Capitalize first letter
+      material = material.charAt(0).toUpperCase() + material.slice(1).toLowerCase();
+      if (material) break;
+    }
+  }
+
+  // Also try to extract material from title/name
+  if (!material && name) {
+    const nameMaterialMatch = name.match(/\b(porcelain|ceramic|natural\s*stone|marble|travertine|slate|granite|quartzite|limestone|glass|mosaic)\b/gi);
+    if (nameMaterialMatch) {
+      material = nameMaterialMatch[0].trim();
+      material = material.charAt(0).toUpperCase() + material.slice(1).toLowerCase();
+    }
+  }
   
   // Extract lead time / delivery for Dallas DFW area
   lead_time_days = parseLeadTime(markdown);
@@ -193,6 +237,10 @@ function extractProductData(markdown: string, url: string): ProductData {
       }
     }
   }
+
+  // Add tile_size and material to specs if found
+  if (tile_size) specs['tile_size'] = tile_size;
+  if (material) specs['material'] = material;
   
   // Clean up name
   if (name.length > 200) {
@@ -207,7 +255,8 @@ function extractProductData(markdown: string, url: string): ProductData {
     lead_time_days,
     dimensions,
     brand,
-    description: null,
+    tile_size,
+    material,
     image_url,
     source_store: store,
     specs,
