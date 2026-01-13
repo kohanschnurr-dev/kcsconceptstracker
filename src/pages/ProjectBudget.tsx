@@ -703,63 +703,80 @@ export default function ProjectBudget() {
               <CardTitle className="text-lg">Expense Breakdown by Category</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categories
-                        .filter(c => c.actualSpent > 0)
-                        .map(cat => ({
-                          name: getCategoryName(cat.category),
-                          value: cat.actualSpent,
-                          percent: totalSpent > 0 ? (cat.actualSpent / totalSpent) * 100 : 0
-                        }))
-                        .sort((a, b) => b.value - a.value)
-                        .slice(0, 8)}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} (${percent.toFixed(1)}%)`}
-                      labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
-                    >
-                      {categories
-                        .filter(c => c.actualSpent > 0)
-                        .sort((a, b) => b.actualSpent - a.actualSpent)
-                        .slice(0, 8)
-                        .map((_, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={CHART_COLORS[index % CHART_COLORS.length]}
-                            stroke="transparent"
-                          />
-                        ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number, name: string, props: any) => [
-                        `${formatCurrency(value)} (${props.payload.percent.toFixed(1)}%)`,
-                        name
-                      ]}
-                      contentStyle={{
-                        backgroundColor: 'hsl(220, 18%, 13%)',
-                        border: '1px solid hsl(220, 15%, 22%)',
-                        borderRadius: '8px',
-                        color: 'hsl(210, 20%, 95%)',
-                      }}
-                    />
-                    <Legend
-                      layout="horizontal"
-                      verticalAlign="bottom"
-                      align="center"
-                      wrapperStyle={{ paddingTop: '20px' }}
-                      formatter={(value) => (
-                        <span className="text-xs text-muted-foreground">{value}</span>
-                      )}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Pie Chart - no labels, just the donut */}
+                <div className="h-[250px] w-full lg:w-[300px] flex-shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categories
+                          .filter(c => c.actualSpent > 0)
+                          .map(cat => ({
+                            name: getCategoryName(cat.category),
+                            value: cat.actualSpent,
+                            percent: totalSpent > 0 ? (cat.actualSpent / totalSpent) * 100 : 0
+                          }))
+                          .sort((a, b) => b.value - a.value)}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {categories
+                          .filter(c => c.actualSpent > 0)
+                          .sort((a, b) => b.actualSpent - a.actualSpent)
+                          .map((_, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={CHART_COLORS[index % CHART_COLORS.length]}
+                              stroke="transparent"
+                            />
+                          ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, name: string, props: any) => [
+                          `${formatCurrency(value)} (${props.payload.percent.toFixed(1)}%)`,
+                          name
+                        ]}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          color: 'hsl(var(--foreground))',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                {/* Legend as a scrollable list */}
+                <div className="flex-1 max-h-[250px] overflow-y-auto pr-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {categories
+                      .filter(c => c.actualSpent > 0)
+                      .sort((a, b) => b.actualSpent - a.actualSpent)
+                      .map((cat, index) => {
+                        const percent = totalSpent > 0 ? (cat.actualSpent / totalSpent) * 100 : 0;
+                        return (
+                          <div key={cat.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
+                            <div 
+                              className="w-3 h-3 rounded-sm flex-shrink-0" 
+                              style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{getCategoryName(cat.category)}</p>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-sm font-mono">{formatCurrency(cat.actualSpent)}</p>
+                              <p className="text-xs text-muted-foreground">{percent.toFixed(1)}%</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
