@@ -18,29 +18,16 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
   { icon: Receipt, label: 'Expenses', path: '/expenses' },
+  { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
   { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
   { icon: Users, label: 'Vendors', path: '/vendors' },
   { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
   { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
-  { icon: ShoppingCart, label: 'Procurement', path: '/calculator?tab=procurement' },
 ];
 
 export function Sidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
-
-  const isActiveLink = (itemPath: string) => {
-    const [pathname, search] = itemPath.split('?');
-    if (search) {
-      // For links with query params, match both pathname and query
-      return location.pathname === pathname && location.search === `?${search}`;
-    }
-    // For regular links, just match pathname (but not if we're on a tab variant)
-    if (pathname === '/calculator' && location.search.includes('tab=')) {
-      return false;
-    }
-    return location.pathname === pathname;
-  };
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-sidebar">
@@ -59,7 +46,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
-            const isActive = isActiveLink(item.path);
+            const isActive = location.pathname === item.path;
             return (
               <NavLink
                 key={item.path}
