@@ -542,7 +542,7 @@ export default function ProjectBudget() {
           <TabsContent value="budget" className="space-y-6">
             {/* Summary Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="glass-card">
+              <Card className="glass-card">
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 mb-1">
                 <DollarSign className="h-4 w-4 text-primary" />
@@ -1238,7 +1238,6 @@ export default function ProjectBudget() {
             </div>
           </CardContent>
         </Card>
-      </div>
           </TabsContent>
 
           <TabsContent value="procurement">
@@ -1248,6 +1247,7 @@ export default function ProjectBudget() {
             />
           </TabsContent>
         </Tabs>
+      </div>
 
       {/* Edit Expense Modal */}
       <EditExpenseModal
