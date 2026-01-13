@@ -120,6 +120,10 @@ export default function ProjectBudget() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<(DBCategory & { actualSpent: number }) | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<(DBCategory & { actualSpent: number }) | null>(null);
+  
+  // All Expenses collapsed state - show only 7 by default
+  const [showAllExpenses, setShowAllExpenses] = useState(false);
+  const VISIBLE_EXPENSE_COUNT = 7;
 
   const fetchData = async () => {
     if (!id) return;
@@ -1040,7 +1044,10 @@ export default function ProjectBudget() {
             {/* Results summary */}
             <div className="flex items-center justify-between text-sm text-muted-foreground border-b pb-3">
               <span>
-                Showing <span className="font-medium text-foreground">{filteredExpenses.length}</span> of {expenses.length} expenses
+                Showing <span className="font-medium text-foreground">
+                  {showAllExpenses ? filteredExpenses.length : Math.min(VISIBLE_EXPENSE_COUNT, filteredExpenses.length)}
+                </span> of {filteredExpenses.length} expenses
+                {filteredExpenses.length !== expenses.length && ` (filtered from ${expenses.length})`}
               </span>
               <span className="font-mono font-medium text-foreground">
                 Total: {formatCurrency(filteredTotal)}
@@ -1125,7 +1132,7 @@ export default function ProjectBudget() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredExpenses.map((exp) => (
+                    (showAllExpenses ? filteredExpenses : filteredExpenses.slice(0, VISIBLE_EXPENSE_COUNT)).map((exp) => (
                       <TableRow key={exp.id} className="hover:bg-muted/50 group">
                         <TableCell className="text-sm">{formatDate(exp.date)}</TableCell>
                         <TableCell>
@@ -1187,6 +1194,30 @@ export default function ProjectBudget() {
                   )}
                 </TableBody>
               </Table>
+              
+              {/* Show More/Less Button */}
+              {filteredExpenses.length > VISIBLE_EXPENSE_COUNT && (
+                <div className="flex justify-center py-3 border-t">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setShowAllExpenses(!showAllExpenses)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {showAllExpenses ? (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-1 rotate-180" />
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-1" />
+                        Show {filteredExpenses.length - VISIBLE_EXPENSE_COUNT} More
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
