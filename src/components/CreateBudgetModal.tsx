@@ -162,25 +162,45 @@ export function CreateBudgetModal({
         existingCategories?.map(c => [c.category, c.id]) || []
       );
 
-      // Prepare upsert data
-      const categoriesToUpsert = BUDGET_CATEGORIES
-        .filter(cat => parseFloat(categoryBudgets[cat.value]) > 0)
-        .map(cat => {
+      // Prepare category data - update existing or insert new
+      const categoriesToUpdate = [];
+      const categoriesToInsert = [];
+
+      for (const cat of BUDGET_CATEGORIES) {
+        const budgetValue = parseFloat(categoryBudgets[cat.value]) || 0;
+        if (budgetValue > 0) {
           const existingId = existingCategoryMap.get(cat.value);
-          return {
-            ...(existingId ? { id: existingId } : {}),
-            project_id: selectedProject,
-            category: cat.value,
-            estimated_budget: parseFloat(categoryBudgets[cat.value]) || 0,
-          };
-        });
+          if (existingId) {
+            categoriesToUpdate.push({
+              id: existingId,
+              estimated_budget: budgetValue,
+            });
+          } else {
+            categoriesToInsert.push({
+              project_id: selectedProject,
+              category: cat.value,
+              estimated_budget: budgetValue,
+            });
+          }
+        }
+      }
 
-      // Upsert categories
-      const { error: upsertError } = await supabase
-        .from('project_categories')
-        .upsert(categoriesToUpsert, { onConflict: 'id' });
+      // Update existing categories
+      for (const cat of categoriesToUpdate) {
+        const { error } = await supabase
+          .from('project_categories')
+          .update({ estimated_budget: cat.estimated_budget })
+          .eq('id', cat.id);
+        if (error) throw error;
+      }
 
-      if (upsertError) throw upsertError;
+      // Insert new categories
+      if (categoriesToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('project_categories')
+          .insert(categoriesToInsert);
+        if (insertError) throw insertError;
+      }
 
       // Update project total budget
       const { error: updateError } = await supabase
