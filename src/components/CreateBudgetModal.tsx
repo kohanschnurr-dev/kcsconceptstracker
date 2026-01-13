@@ -279,25 +279,27 @@ export function CreateBudgetModal({
             </Button>
           </div>
 
-          {/* Category Budgets - Grid Layout */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {BUDGET_CATEGORIES.map(category => (
-            <div key={category.value} className="flex items-center gap-2">
-              <Label className="w-36 text-xs flex-shrink-0" title={category.label}>
-                {category.label}
-              </Label>
-                <div className="relative flex-1">
-                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={categoryBudgets[category.value]}
-                    onChange={(e) => handleCategoryChange(category.value, e.target.value)}
-                    className="pl-7 font-mono h-9"
-                  />
+          {/* Category Budgets - Grid Layout (A-Z down columns) */}
+          <div className="grid grid-rows-[repeat(16,minmax(0,1fr))] grid-flow-col gap-2">
+            {[...BUDGET_CATEGORIES]
+              .sort((a, b) => a.label.localeCompare(b.label))
+              .map(category => (
+                <div key={category.value} className="flex items-center gap-2">
+                  <Label className="w-36 text-xs flex-shrink-0" title={category.label}>
+                    {category.label}
+                  </Label>
+                  <div className="relative flex-1">
+                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={categoryBudgets[category.value]}
+                      onChange={(e) => handleCategoryChange(category.value, e.target.value)}
+                      className="pl-7 font-mono h-9"
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
 
           {/* Actions */}
