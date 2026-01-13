@@ -7,7 +7,10 @@ import {
   ClipboardList,
   Menu,
   HardHat,
-  LogOut
+  LogOut,
+  ShoppingCart,
+  Briefcase,
+  Calculator
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -19,8 +22,11 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
   { icon: Receipt, label: 'Expenses', path: '/expenses' },
+  { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
+  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
   { icon: Users, label: 'Vendors', path: '/vendors' },
   { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
+  { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
 ];
 
 export function MobileNav() {

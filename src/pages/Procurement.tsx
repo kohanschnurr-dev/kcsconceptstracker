@@ -49,10 +49,10 @@ interface ProcurementItem {
   tax_rate: number;
   lead_time_days: number | null;
   phase: Phase | null;
-  status: ItemStatus;
+  status: ItemStatus | null;
   finish: string | null;
   notes: string | null;
-  bulk_discount_eligible: boolean;
+  bulk_discount_eligible: boolean | null;
 }
 
 interface Project {
@@ -144,7 +144,7 @@ export default function Procurement() {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.model_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.notes?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
+    const matchesStatus = filterStatus === 'all' || (item.status || 'researching') === filterStatus;
     const matchesPhase = filterPhase === 'all' || item.phase === filterPhase;
     const matchesProject = filterProject === 'all' || 
       (filterProject === 'unassigned' ? !item.project_id : item.project_id === filterProject);
@@ -153,11 +153,11 @@ export default function Procurement() {
 
   // Summary stats
   const cartTotal = filteredItems
-    .filter(i => i.status === 'in_cart')
+    .filter(i => (i.status || 'researching') === 'in_cart')
     .reduce((sum, i) => sum + calculateItemTotal(i), 0);
   
   const orderedTotal = filteredItems
-    .filter(i => i.status === 'ordered')
+    .filter(i => (i.status || 'researching') === 'ordered')
     .reduce((sum, i) => sum + calculateItemTotal(i), 0);
 
   const totalItems = filteredItems.length;
@@ -177,8 +177,9 @@ export default function Procurement() {
     }
   };
 
-  const getStatusBadge = (status: ItemStatus) => {
-    const statusInfo = STATUSES.find(s => s.value === status);
+  const getStatusBadge = (status: ItemStatus | null) => {
+    const effectiveStatus = status || 'researching';
+    const statusInfo = STATUSES.find(s => s.value === effectiveStatus);
     if (!statusInfo) return null;
     const Icon = statusInfo.icon;
     return (
@@ -481,13 +482,13 @@ function ProcurementItemModal({
         model_number: item.model_number || '',
         unit_price: item.unit_price.toString(),
         quantity: item.quantity.toString(),
-        includes_tax: item.includes_tax,
+        includes_tax: item.includes_tax ?? false,
         lead_time_days: item.lead_time_days?.toString() || '',
         phase: item.phase || 'rough_in',
-        status: item.status,
+        status: item.status || 'researching',
         finish: item.finish || '',
         notes: item.notes || '',
-        bulk_discount_eligible: item.bulk_discount_eligible,
+        bulk_discount_eligible: item.bulk_discount_eligible ?? false,
       });
     } else {
       setFormData({
