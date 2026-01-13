@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,12 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Upload, X, ImageIcon } from 'lucide-react';
 
 interface Bundle {
   id: string;
   name: string;
   description: string | null;
   project_id: string | null;
+  cover_image_url?: string | null;
 }
 
 interface Project {
@@ -32,9 +34,12 @@ interface Props {
 export function BundleModal({ open, onOpenChange, bundle, projects, onSave }: Props) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState<string>('');
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -42,13 +47,44 @@ export function BundleModal({ open, onOpenChange, bundle, projects, onSave }: Pr
         setName(bundle.name);
         setDescription(bundle.description || '');
         setProjectId(bundle.project_id || '');
+        setCoverImageUrl(bundle.cover_image_url || null);
       } else {
         setName('');
         setDescription('');
         setProjectId('');
+        setCoverImageUrl(null);
       }
     }
   }, [bundle, open]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploading(true);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('bundle-covers')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      toast.error('Failed to upload image');
+      console.error(uploadError);
+      setUploading(false);
+      return;
+    }
+
+    const { data } = supabase.storage.from('bundle-covers').getPublicUrl(fileName);
+    setCoverImageUrl(data.publicUrl);
+    setUploading(false);
+    toast.success('Image uploaded');
+  };
+
+  const handleRemoveImage = () => {
+    setCoverImageUrl(null);
+  };
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -63,6 +99,7 @@ export function BundleModal({ open, onOpenChange, bundle, projects, onSave }: Pr
       description: description.trim() || null,
       project_id: projectId || null,
       user_id: user?.id,
+      cover_image_url: coverImageUrl,
     };
 
     let error;
@@ -93,7 +130,7 @@ export function BundleModal({ open, onOpenChange, bundle, projects, onSave }: Pr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{bundle ? 'Edit Bundle' : 'Create Bundle'}</DialogTitle>
         </DialogHeader>
@@ -119,6 +156,53 @@ export function BundleModal({ open, onOpenChange, bundle, projects, onSave }: Pr
           </div>
 
           <div>
+            <Label>Cover Photo</Label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept="image/*"
+              className="hidden"
+            />
+            {coverImageUrl ? (
+              <div className="relative mt-2 rounded-lg overflow-hidden aspect-video">
+                <img
+                  src={coverImageUrl}
+                  alt="Bundle cover"
+                  className="w-full h-full object-cover"
+                />
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-8 w-8"
+                  onClick={handleRemoveImage}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full mt-2 h-24 border-dashed"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  {uploading ? (
+                    <span className="text-sm text-muted-foreground">Uploading...</span>
+                  ) : (
+                    <>
+                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Click to upload cover photo</span>
+                    </>
+                  )}
+                </div>
+              </Button>
+            )}
+          </div>
+
+          <div>
             <Label>Assign to Project</Label>
             <Select 
               value={projectId || '__unassigned__'} 
@@ -139,7 +223,7 @@ export function BundleModal({ open, onOpenChange, bundle, projects, onSave }: Pr
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={loading}>
+          <Button onClick={handleSubmit} disabled={loading || uploading}>
             {loading ? 'Saving...' : bundle ? 'Update Bundle' : 'Create Bundle'}
           </Button>
         </DialogFooter>
