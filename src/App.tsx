@@ -15,6 +15,8 @@ import Vendors from "./pages/Vendors";
 import DailyLogs from "./pages/DailyLogs";
 import BudgetCalculator from "./pages/BudgetCalculator";
 import Procurement from "./pages/Procurement";
+import Bundles from "./pages/Bundles";
+import BundleDetail from "./pages/BundleDetail";
 import Auth from "./pages/Auth";
 import QuickBooksCallback from "./pages/QuickBooksCallback";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -45,6 +47,8 @@ const App = () => (
             <Route path="/logs" element={<ProtectedRoute><DailyLogs /></ProtectedRoute>} />
             <Route path="/calculator" element={<ProtectedRoute><BudgetCalculator /></ProtectedRoute>} />
             <Route path="/procurement" element={<ProtectedRoute><Procurement /></ProtectedRoute>} />
+            <Route path="/bundles" element={<ProtectedRoute><Bundles /></ProtectedRoute>} />
+            <Route path="/bundles/:id" element={<ProtectedRoute><BundleDetail /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

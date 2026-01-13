@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,6 @@ import {
   Truck,
   CheckCircle2,
   Clock,
-  AlertTriangle,
   Pencil,
   Trash2,
   FolderOpen,
@@ -94,6 +94,7 @@ const STORES: { value: SourceStore; label: string }[] = [
 const TEXAS_TAX_RATE = 0.0825;
 
 export default function Procurement() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [items, setItems] = useState<ProcurementItem[]>([]);
   const [bundles, setBundles] = useState<Bundle[]>([]);
@@ -290,13 +291,16 @@ export default function Procurement() {
             </CardContent>
           </Card>
           
-          <Card className="glass-card">
+          <Card 
+            className="glass-card cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => navigate('/bundles')}
+          >
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 mb-1">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-                <span className="text-sm text-muted-foreground">Unassigned</span>
+                <Layers className="h-4 w-4 text-primary" />
+                <span className="text-sm text-muted-foreground">Bundles</span>
               </div>
-              <p className="text-2xl font-bold">{unassignedCount}</p>
+              <p className="text-2xl font-bold">{bundles.length}</p>
             </CardContent>
           </Card>
         </div>
