@@ -36,6 +36,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -120,6 +122,11 @@ export default function ProjectBudget() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<(DBCategory & { actualSpent: number }) | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<(DBCategory & { actualSpent: number }) | null>(null);
+  
+  // Edit total budget
+  const [editBudgetOpen, setEditBudgetOpen] = useState(false);
+  const [newBudgetValue, setNewBudgetValue] = useState('');
+  const [savingBudget, setSavingBudget] = useState(false);
 
   const fetchData = async () => {
     if (!id) return;
@@ -189,6 +196,39 @@ export default function ProjectBudget() {
 
   const refreshData = () => {
     fetchData();
+  };
+
+  const handleEditBudget = () => {
+    setNewBudgetValue(project?.total_budget?.toString() || '');
+    setEditBudgetOpen(true);
+  };
+
+  const handleSaveBudget = async () => {
+    if (!id || !newBudgetValue) return;
+    
+    const budgetAmount = parseFloat(newBudgetValue.replace(/[^0-9.]/g, ''));
+    if (isNaN(budgetAmount) || budgetAmount < 0) {
+      toast.error('Please enter a valid budget amount');
+      return;
+    }
+    
+    setSavingBudget(true);
+    
+    const { error } = await supabase
+      .from('projects')
+      .update({ total_budget: budgetAmount })
+      .eq('id', id);
+    
+    if (error) {
+      toast.error('Failed to update budget');
+      console.error(error);
+    } else {
+      toast.success('Budget updated successfully');
+      setProject(prev => prev ? { ...prev, total_budget: budgetAmount } : null);
+      setEditBudgetOpen(false);
+    }
+    
+    setSavingBudget(false);
   };
 
   const formatCurrency = (amount: number) => {
@@ -569,11 +609,14 @@ export default function ProjectBudget() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="glass-card">
+          <Card className="glass-card group cursor-pointer hover:border-primary/50 transition-colors" onClick={handleEditBudget}>
             <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <DollarSign className="h-4 w-4 text-primary" />
-                <span className="text-sm text-muted-foreground">Total Budget</span>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-primary" />
+                  <span className="text-sm text-muted-foreground">Total Budget</span>
+                </div>
+                <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <p className="text-2xl font-bold font-mono">{formatCurrency(project.total_budget)}</p>
             </CardContent>
@@ -1226,6 +1269,47 @@ export default function ProjectBudget() {
         onOpenChange={(open) => !open && setDeletingCategory(null)}
         onCategoryDeleted={refreshData}
       />
+
+      {/* Edit Total Budget Dialog */}
+      <Dialog open={editBudgetOpen} onOpenChange={setEditBudgetOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Total Budget</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="budget">Budget Amount</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="budget"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={newBudgetValue}
+                  onChange={(e) => setNewBudgetValue(e.target.value.replace(/[^0-9.]/g, ''))}
+                  className="pl-9 font-mono"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditBudgetOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveBudget} disabled={savingBudget}>
+              {savingBudget ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Budget'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
