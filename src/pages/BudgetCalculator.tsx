@@ -4,14 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Calculator, DollarSign, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ClipboardList } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { CreateBudgetModal } from '@/components/CreateBudgetModal';
 
 export default function BudgetCalculator() {
   const [purchasePrice, setPurchasePrice] = useState<string>('');
   const [arv, setArv] = useState<string>('');
   const [rehabBudget, setRehabBudget] = useState<string>('');
-
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
   const purchasePriceNum = parseFloat(purchasePrice) || 0;
   const arvNum = parseFloat(arv) || 0;
   const rehabBudgetNum = parseFloat(rehabBudget) || 0;
@@ -58,6 +59,16 @@ export default function BudgetCalculator() {
             Analyze potential deals with profit projections and the 70% rule
           </p>
         </div>
+
+        {/* Create Budget Button */}
+        <Button 
+          onClick={() => setShowBudgetModal(true)}
+          className="w-full sm:w-auto"
+          size="lg"
+        >
+          <ClipboardList className="h-5 w-5 mr-2" />
+          Create Category Budget
+        </Button>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Input Section */}
@@ -282,6 +293,13 @@ export default function BudgetCalculator() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Create Budget Modal */}
+      <CreateBudgetModal
+        open={showBudgetModal}
+        onOpenChange={setShowBudgetModal}
+        initialTotalBudget={rehabBudgetNum}
+      />
     </MainLayout>
   );
 }
