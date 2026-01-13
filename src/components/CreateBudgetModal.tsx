@@ -224,7 +224,7 @@ export function CreateBudgetModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-6xl max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[95vw] lg:max-w-7xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
@@ -284,8 +284,8 @@ export function CreateBudgetModal({
             {[...BUDGET_CATEGORIES]
               .sort((a, b) => a.label.localeCompare(b.label))
               .map(category => (
-                <div key={category.value} className="flex items-center gap-2">
-                  <Label className="w-36 text-xs flex-shrink-0" title={category.label}>
+                <div key={category.value} className="flex items-center gap-3">
+                  <Label className="w-44 text-sm flex-shrink-0" title={category.label}>
                     {category.label}
                   </Label>
                   <div className="relative flex-1">
