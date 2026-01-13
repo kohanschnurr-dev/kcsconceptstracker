@@ -586,14 +586,14 @@ function ProcurementItemModal({
             <div className="col-span-2">
               <Label>Assign to Project</Label>
               <Select 
-                value={formData.project_id} 
-                onValueChange={(v) => setFormData({ ...formData, project_id: v })}
+                value={formData.project_id || '__unassigned__'} 
+                onValueChange={(v) => setFormData({ ...formData, project_id: v === '__unassigned__' ? '' : v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select project (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="__unassigned__">Unassigned</SelectItem>
                   {projects.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
