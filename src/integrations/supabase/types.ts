@@ -175,6 +175,90 @@ export type Database = {
           },
         ]
       }
+      procurement_items: {
+        Row: {
+          bulk_discount_eligible: boolean | null
+          category_id: string | null
+          created_at: string
+          finish: string | null
+          id: string
+          includes_tax: boolean
+          lead_time_days: number | null
+          model_number: string | null
+          name: string
+          notes: string | null
+          phase: string | null
+          project_id: string
+          quantity: number
+          source_store: string | null
+          source_url: string | null
+          status: string | null
+          tax_rate: number | null
+          unit_price: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          bulk_discount_eligible?: boolean | null
+          category_id?: string | null
+          created_at?: string
+          finish?: string | null
+          id?: string
+          includes_tax?: boolean
+          lead_time_days?: number | null
+          model_number?: string | null
+          name: string
+          notes?: string | null
+          phase?: string | null
+          project_id: string
+          quantity?: number
+          source_store?: string | null
+          source_url?: string | null
+          status?: string | null
+          tax_rate?: number | null
+          unit_price?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          bulk_discount_eligible?: boolean | null
+          category_id?: string | null
+          created_at?: string
+          finish?: string | null
+          id?: string
+          includes_tax?: boolean
+          lead_time_days?: number | null
+          model_number?: string | null
+          name?: string
+          notes?: string | null
+          phase?: string | null
+          project_id?: string
+          quantity?: number
+          source_store?: string | null
+          source_url?: string | null
+          status?: string | null
+          tax_rate?: number | null
+          unit_price?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "project_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_categories: {
         Row: {
           category: Database["public"]["Enums"]["budget_category"]

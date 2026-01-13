@@ -24,7 +24,8 @@ import {
   Pencil,
   Trash2,
   MoreHorizontal,
-  Settings2
+  Settings2,
+  ShoppingCart
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -36,12 +37,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { EditExpenseModal, DeleteExpenseDialog } from '@/components/project/ExpenseActions';
 import { CategoryBudgetModal, DeleteCategoryDialog } from '@/components/project/CategoryBudgetModal';
+import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 const CHART_COLORS = [
@@ -523,8 +526,22 @@ export default function ProjectBudget() {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Tabs for Budget vs Procurement */}
+        <Tabs defaultValue="budget" className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="budget" className="gap-2">
+              <DollarSign className="h-4 w-4" />
+              Budget & Expenses
+            </TabsTrigger>
+            <TabsTrigger value="procurement" className="gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              Procurement
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="budget" className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="glass-card">
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 mb-1">
@@ -1222,6 +1239,15 @@ export default function ProjectBudget() {
           </CardContent>
         </Card>
       </div>
+          </TabsContent>
+
+          <TabsContent value="procurement">
+            <ProcurementTab 
+              projectId={id || ''} 
+              categories={categories}
+            />
+          </TabsContent>
+        </Tabs>
 
       {/* Edit Expense Modal */}
       <EditExpenseModal
