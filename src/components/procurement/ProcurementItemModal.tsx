@@ -165,7 +165,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
     label: 'Tile', 
     icon: Grid3X3, 
     color: 'bg-teal-500/10 text-teal-600 border-teal-500/30',
-    fields: ['tile_size', 'material', 'sqft', 'grout_color'],
+    fields: ['tile_size', 'material', 'grout_color'],
     placeholders: { tile_size: '12x24, 4x12, 3x6', material: 'Ceramic, Porcelain, Natural stone', grout_color: 'White, Gray, Charcoal' }
   },
   { 
