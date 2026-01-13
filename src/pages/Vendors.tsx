@@ -111,8 +111,7 @@ export default function Vendors() {
                   <div
                     key={vendor.id}
                     className={cn(
-                      'glass-card p-5 hover:border-primary/50 transition-all cursor-pointer animate-slide-up',
-                      hasComplianceIssues && 'border-destructive/30'
+                      'glass-card p-5 hover:border-primary/50 transition-all cursor-pointer animate-slide-up'
                     )}
                   >
                     <div className="flex items-start justify-between mb-4">
@@ -179,13 +178,6 @@ export default function Vendors() {
                       </div>
                     </div>
 
-                    {hasComplianceIssues && (
-                      <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                        <p className="text-xs text-destructive font-medium">
-                          ⚠️ W9 required before payment
-                        </p>
-                      </div>
-                    )}
                   </div>
                 );
               })}
