@@ -98,6 +98,7 @@ export default function ProjectBudget() {
   
   // Expanded categories
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [categorySectionOpen, setCategorySectionOpen] = useState(false);
   
   // Edit/Delete modals
   const [editingExpense, setEditingExpense] = useState<DBExpense | null>(null);
@@ -389,6 +390,62 @@ export default function ProjectBudget() {
   const remaining = project ? project.total_budget - totalSpent : 0;
   const filteredTotal = filteredExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
 
+  // Monthly spending calculations
+  const spendingAnalytics = useMemo(() => {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+    const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+    const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+    
+    // This month spending
+    const thisMonthSpending = expenses.reduce((sum, exp) => {
+      const expDate = new Date(exp.date);
+      if (expDate.getMonth() === thisMonth && expDate.getFullYear() === thisYear) {
+        return sum + Number(exp.amount);
+      }
+      return sum;
+    }, 0);
+    
+    // Last month spending
+    const lastMonthSpending = expenses.reduce((sum, exp) => {
+      const expDate = new Date(exp.date);
+      if (expDate.getMonth() === lastMonth && expDate.getFullYear() === lastMonthYear) {
+        return sum + Number(exp.amount);
+      }
+      return sum;
+    }, 0);
+    
+    // This week spending (last 7 days)
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thisWeekSpending = expenses.reduce((sum, exp) => {
+      const expDate = new Date(exp.date);
+      if (expDate >= weekAgo) {
+        return sum + Number(exp.amount);
+      }
+      return sum;
+    }, 0);
+    
+    // Average daily spending
+    const projectStart = new Date(project?.start_date || now);
+    const daysSinceStart = Math.max(1, Math.ceil((now.getTime() - projectStart.getTime()) / (24 * 60 * 60 * 1000)));
+    const avgDailySpending = totalSpent / daysSinceStart;
+    
+    // Month over month change
+    const monthChange = lastMonthSpending > 0 
+      ? ((thisMonthSpending - lastMonthSpending) / lastMonthSpending) * 100
+      : thisMonthSpending > 0 ? 100 : 0;
+
+    return {
+      thisMonthSpending,
+      lastMonthSpending,
+      thisWeekSpending,
+      avgDailySpending,
+      monthChange,
+      daysSinceStart
+    };
+  }, [expenses, project, totalSpent]);
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -543,6 +600,69 @@ export default function ProjectBudget() {
           </Card>
         </div>
 
+        {/* Spending Analytics */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="glass-card">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Calendar className="h-4 w-4 text-blue-500" />
+                <span className="text-sm text-muted-foreground">This Month</span>
+              </div>
+              <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.thisMonthSpending)}</p>
+              <div className="flex items-center gap-1 mt-1">
+                {spendingAnalytics.monthChange !== 0 && (
+                  <>
+                    {spendingAnalytics.monthChange > 0 ? (
+                      <TrendingUp className="h-3 w-3 text-destructive" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3 text-success" />
+                    )}
+                    <span className={cn(
+                      "text-xs",
+                      spendingAnalytics.monthChange > 0 ? "text-destructive" : "text-success"
+                    )}>
+                      {Math.abs(spendingAnalytics.monthChange).toFixed(0)}% vs last month
+                    </span>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Last Month</span>
+              </div>
+              <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.lastMonthSpending)}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="h-4 w-4 text-purple-500" />
+                <span className="text-sm text-muted-foreground">This Week</span>
+              </div>
+              <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.thisWeekSpending)}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="h-4 w-4 text-cyan-500" />
+                <span className="text-sm text-muted-foreground">Avg. Daily</span>
+              </div>
+              <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.avgDailySpending)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                over {spendingAnalytics.daysSinceStart} days
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Budget Progress */}
         <Card className="glass-card">
           <CardContent className="pt-6">
@@ -561,23 +681,38 @@ export default function ProjectBudget() {
           </CardContent>
         </Card>
 
-        {/* Category Breakdown - Expandable */}
-        <Card className="glass-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle className="text-lg">Budget by Category</CardTitle>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => {
-                setEditingCategory(null);
-                setCategoryModalOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Category
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-2">
+        {/* Category Breakdown - Collapsible Section */}
+        <Collapsible open={categorySectionOpen} onOpenChange={setCategorySectionOpen}>
+          <Card className="glass-card">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+                <div className="flex items-center gap-2">
+                  {categorySectionOpen ? (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  <CardTitle className="text-lg">Budget by Category</CardTitle>
+                  <Badge variant="outline" className="text-xs">
+                    {categories.length} categories
+                  </Badge>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingCategory(null);
+                    setCategoryModalOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Category
+                </Button>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-2 pt-0">
             {categories.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Settings2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
@@ -746,8 +881,10 @@ export default function ProjectBudget() {
                   );
                 })
             )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {/* All Expenses with Filters */}
         <Card className="glass-card">
