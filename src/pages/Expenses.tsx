@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Download, Receipt, Calendar, Trash2 } from 'lucide-react';
+import { Plus, Search, Download, Receipt, Calendar } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -17,16 +16,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { BUDGET_CATEGORIES, ALL_CATEGORIES, type Project, type CategoryBudget } from '@/types';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
@@ -89,9 +78,6 @@ export default function Expenses() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [expenses, setExpenses] = useState<DBExpense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedExpenses, setSelectedExpenses] = useState<Set<string>>(new Set());
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -256,72 +242,6 @@ export default function Expenses() {
 
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
-  const allSelected = filteredExpenses.length > 0 && filteredExpenses.every(e => selectedExpenses.has(e.id));
-  const someSelected = filteredExpenses.some(e => selectedExpenses.has(e.id));
-
-  const toggleSelectAll = () => {
-    if (allSelected) {
-      setSelectedExpenses(new Set());
-    } else {
-      setSelectedExpenses(new Set(filteredExpenses.map(e => e.id)));
-    }
-  };
-
-  const toggleExpenseSelection = (id: string) => {
-    const newSelection = new Set(selectedExpenses);
-    if (newSelection.has(id)) {
-      newSelection.delete(id);
-    } else {
-      newSelection.add(id);
-    }
-    setSelectedExpenses(newSelection);
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedExpenses.size === 0) return;
-    
-    setIsDeleting(true);
-    try {
-      const expensesToDelete = expenses.filter(e => selectedExpenses.has(e.id));
-      const manualIds = expensesToDelete.filter(e => e.source === 'manual').map(e => e.id);
-      const qbIds = expensesToDelete.filter(e => e.source === 'quickbooks').map(e => e.id);
-
-      if (manualIds.length > 0) {
-        const { error } = await supabase
-          .from('expenses')
-          .delete()
-          .in('id', manualIds);
-        if (error) throw error;
-      }
-
-      if (qbIds.length > 0) {
-        const { error } = await supabase
-          .from('quickbooks_expenses')
-          .delete()
-          .in('id', qbIds);
-        if (error) throw error;
-      }
-
-      toast({
-        title: 'Expenses deleted',
-        description: `Successfully deleted ${selectedExpenses.size} expense(s)`,
-      });
-
-      setSelectedExpenses(new Set());
-      setDeleteDialogOpen(false);
-      fetchData();
-    } catch (error) {
-      console.error('Error deleting expenses:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete expenses',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
   const exportToCSV = () => {
     const headers = ['Date', 'Vendor', 'Project', 'Category', 'Payment Method', 'Amount', 'Tax', 'Status', 'Description'];
     const rows = filteredExpenses.map(e => [
@@ -362,16 +282,6 @@ export default function Expenses() {
             <p className="text-muted-foreground mt-1">Track all project costs</p>
           </div>
           <div className="flex items-center gap-2">
-            {selectedExpenses.size > 0 && (
-              <Button 
-                variant="destructive" 
-                className="gap-2" 
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete ({selectedExpenses.size})
-              </Button>
-            )}
             <Button variant="outline" className="gap-2" onClick={exportToCSV}>
               <Download className="h-4 w-4" />
               Export
@@ -490,13 +400,6 @@ export default function Expenses() {
             <table className="data-table">
               <thead>
                 <tr className="bg-muted/30">
-                  <th className="w-10">
-                    <Checkbox
-                      checked={allSelected}
-                      onCheckedChange={toggleSelectAll}
-                      className={cn(someSelected && !allSelected && "data-[state=checked]:bg-primary/50")}
-                    />
-                  </th>
                   <th>Date</th>
                   <th>Vendor</th>
                   <th>Project</th>
@@ -508,20 +411,7 @@ export default function Expenses() {
               </thead>
               <tbody>
                 {filteredExpenses.map((expense) => (
-                  <tr 
-                    key={expense.id} 
-                    className={cn(
-                      "hover:bg-muted/20 transition-colors cursor-pointer",
-                      selectedExpenses.has(expense.id) && "bg-primary/5"
-                    )}
-                  >
-                    <td>
-                      <Checkbox
-                        checked={selectedExpenses.has(expense.id)}
-                        onCheckedChange={() => toggleExpenseSelection(expense.id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </td>
+                  <tr key={expense.id} className="hover:bg-muted/20 transition-colors cursor-pointer">
                     <td className="whitespace-nowrap">{formatDate(expense.date)}</td>
                     <td>
                       <div className="flex items-center gap-2">
@@ -583,27 +473,6 @@ export default function Expenses() {
         onOpenChange={setExpenseModalOpen}
         projects={projects}
       />
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedExpenses.size} Expense(s)?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the selected expenses from your records.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleBulkDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </MainLayout>
   );
 }
