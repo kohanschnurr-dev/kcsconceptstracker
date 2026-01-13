@@ -188,7 +188,7 @@ export type Database = {
           name: string
           notes: string | null
           phase: string | null
-          project_id: string
+          project_id: string | null
           quantity: number
           source_store: string | null
           source_url: string | null
@@ -210,7 +210,7 @@ export type Database = {
           name: string
           notes?: string | null
           phase?: string | null
-          project_id: string
+          project_id?: string | null
           quantity?: number
           source_store?: string | null
           source_url?: string | null
@@ -232,7 +232,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phase?: string | null
-          project_id?: string
+          project_id?: string | null
           quantity?: number
           source_store?: string | null
           source_url?: string | null
