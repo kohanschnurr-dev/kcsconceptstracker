@@ -6,7 +6,8 @@ import {
   ClipboardList,
   Briefcase,
   LogOut,
-  Calculator
+  Calculator,
+  ShoppingCart
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,7 @@ const navItems = [
   { icon: Users, label: 'Vendors', path: '/vendors' },
   { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
   { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
+  { icon: ShoppingCart, label: 'Procurement', path: '/calculator?tab=procurement' },
 ];
 
 export function Sidebar() {
