@@ -42,6 +42,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { EditExpenseModal, DeleteExpenseDialog } from '@/components/project/ExpenseActions';
 import { CategoryBudgetModal, DeleteCategoryDialog } from '@/components/project/CategoryBudgetModal';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+
+const CHART_COLORS = [
+  'hsl(32, 95%, 55%)',   // primary orange
+  'hsl(142, 76%, 36%)',  // success green
+  'hsl(200, 80%, 50%)',  // blue
+  'hsl(270, 60%, 55%)',  // purple
+  'hsl(0, 72%, 51%)',    // red
+  'hsl(45, 93%, 47%)',   // warning yellow
+  'hsl(180, 70%, 45%)',  // teal
+  'hsl(320, 70%, 50%)',  // pink
+];
 
 interface DBProject {
   id: string;
@@ -680,6 +692,75 @@ export default function ProjectBudget() {
             />
           </CardContent>
         </Card>
+
+        {/* Expense Breakdown Pie Chart */}
+        {categories.filter(c => c.actualSpent > 0).length > 0 && (
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="text-lg">Expense Breakdown by Category</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categories
+                        .filter(c => c.actualSpent > 0)
+                        .map(cat => ({
+                          name: getCategoryName(cat.category),
+                          value: cat.actualSpent,
+                          percent: totalSpent > 0 ? (cat.actualSpent / totalSpent) * 100 : 0
+                        }))
+                        .sort((a, b) => b.value - a.value)
+                        .slice(0, 8)}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={70}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} (${percent.toFixed(1)}%)`}
+                      labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                    >
+                      {categories
+                        .filter(c => c.actualSpent > 0)
+                        .sort((a, b) => b.actualSpent - a.actualSpent)
+                        .slice(0, 8)
+                        .map((_, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                            stroke="transparent"
+                          />
+                        ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number, name: string, props: any) => [
+                        `${formatCurrency(value)} (${props.payload.percent.toFixed(1)}%)`,
+                        name
+                      ]}
+                      contentStyle={{
+                        backgroundColor: 'hsl(220, 18%, 13%)',
+                        border: '1px solid hsl(220, 15%, 22%)',
+                        borderRadius: '8px',
+                        color: 'hsl(210, 20%, 95%)',
+                      }}
+                    />
+                    <Legend
+                      layout="horizontal"
+                      verticalAlign="bottom"
+                      align="center"
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      formatter={(value) => (
+                        <span className="text-xs text-muted-foreground">{value}</span>
+                      )}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Category Breakdown - Collapsible Section */}
         <Collapsible open={categorySectionOpen} onOpenChange={setCategorySectionOpen}>
