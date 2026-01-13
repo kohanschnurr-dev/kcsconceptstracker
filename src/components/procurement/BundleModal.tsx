@@ -39,6 +39,7 @@ export function BundleModal({ open, onOpenChange, bundle, projects, onSave }: Pr
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState<string>('');
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -57,9 +58,8 @@ export function BundleModal({ open, onOpenChange, bundle, projects, onSave }: Pr
     }
   }, [bundle, open]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
+  const uploadFile = async (file: File) => {
+    if (!user) return;
 
     setUploading(true);
     const fileExt = file.name.split('.').pop();
@@ -80,6 +80,34 @@ export function BundleModal({ open, onOpenChange, bundle, projects, onSave }: Pr
     setCoverImageUrl(data.publicUrl);
     setUploading(false);
     toast.success('Image uploaded');
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (!file || !file.type.startsWith('image/')) {
+      toast.error('Please drop an image file');
+      return;
+    }
+    await uploadFile(file);
   };
 
   const handleRemoveImage = () => {
@@ -181,24 +209,30 @@ export function BundleModal({ open, onOpenChange, bundle, projects, onSave }: Pr
                 </Button>
               </div>
             ) : (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full mt-2 h-24 border-dashed"
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
+                className={`w-full mt-2 h-24 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer transition-colors ${
+                  isDragging 
+                    ? 'border-primary bg-primary/10' 
+                    : 'border-muted-foreground/25 hover:border-primary/50'
+                }`}
               >
                 <div className="flex flex-col items-center gap-2">
                   {uploading ? (
                     <span className="text-sm text-muted-foreground">Uploading...</span>
                   ) : (
                     <>
-                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Click to upload cover photo</span>
+                      <Upload className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {isDragging ? 'Drop image here' : 'Drag & drop or click to upload'}
+                      </span>
                     </>
                   )}
                 </div>
-              </Button>
+              </div>
             )}
           </div>
 
