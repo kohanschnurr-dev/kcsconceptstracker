@@ -280,8 +280,8 @@ export function CreateBudgetModal({
           </div>
 
           {/* Category Budgets */}
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-3">
+          <ScrollArea className="h-[300px] pr-4">
+            <div className="space-y-3 pb-2">
               {BUDGET_CATEGORIES.map(category => (
                 <div key={category.value} className="flex items-center gap-3">
                   <Label className="w-32 text-sm truncate" title={category.label}>
