@@ -218,7 +218,10 @@ export default function ProjectBudget() {
     return BUDGET_CATEGORIES.find(b => b.value === categoryValue)?.label || categoryValue;
   };
 
-  // Calculate budget status with color gradient based on variance severity
+  // Calculate budget status with color gradient based on percentage over budget
+  // Green: 0% over (at or under budget)
+  // Yellow: 0-10% over budget
+  // Red: over 10% over budget
   const getBudgetStatus = (spent: number, budget: number) => {
     if (budget === 0) {
       return { 
@@ -232,95 +235,42 @@ export default function ProjectBudget() {
       };
     }
     
-    const percentUsed = (spent / budget) * 100;
-    const remaining = budget - spent;
     const overAmount = spent - budget;
+    const overPercent = budget > 0 ? (overAmount / budget) * 100 : 0;
     
-    if (remaining >= 0) {
-      // Under budget - green scale
-      if (percentUsed <= 50) {
-        // Very under budget (0-50%) - strong green
-        return {
-          status: 'excellent',
-          intensity: 1,
-          borderClass: 'border-success/60',
-          bgClass: 'bg-success/10',
-          progressClass: '[&>div]:bg-success',
-          textClass: 'text-success',
-          badge: null
-        };
-      } else if (percentUsed <= 75) {
-        // Moderately under (50-75%) - light green
-        return {
-          status: 'good',
-          intensity: 0.6,
-          borderClass: 'border-success/30',
-          bgClass: 'bg-success/5',
-          progressClass: '[&>div]:bg-success/80',
-          textClass: 'text-success/80',
-          badge: null
-        };
-      } else if (percentUsed <= 90) {
-        // Getting close (75-90%) - yellow/warning
-        return {
-          status: 'caution',
-          intensity: 0.5,
-          borderClass: 'border-warning/40',
-          bgClass: 'bg-warning/5',
-          progressClass: '[&>div]:bg-warning',
-          textClass: 'text-warning',
-          badge: { label: 'At Risk', variant: 'outline' as const, className: 'text-warning border-warning' }
-        };
-      } else {
-        // Very close to budget (90-100%) - orange
-        return {
-          status: 'critical',
-          intensity: 0.8,
-          borderClass: 'border-orange-500/50',
-          bgClass: 'bg-orange-500/10',
-          progressClass: '[&>div]:bg-orange-500',
-          textClass: 'text-orange-500',
-          badge: { label: 'Near Limit', variant: 'outline' as const, className: 'text-orange-500 border-orange-500' }
-        };
-      }
+    if (overPercent <= 0) {
+      // At or under budget - GREEN
+      return {
+        status: 'good',
+        intensity: 1,
+        borderClass: 'border-success/60',
+        bgClass: 'bg-success/10',
+        progressClass: '[&>div]:bg-success',
+        textClass: 'text-success',
+        badge: null
+      };
+    } else if (overPercent <= 10) {
+      // 0-10% over budget - YELLOW
+      return {
+        status: 'warning',
+        intensity: 0.7,
+        borderClass: 'border-warning/50',
+        bgClass: 'bg-warning/10',
+        progressClass: '[&>div]:bg-warning',
+        textClass: 'text-warning',
+        badge: { label: `+${formatCurrency(overAmount)}`, variant: 'outline' as const, className: 'text-warning border-warning' }
+      };
     } else {
-      // Over budget - red scale based on how much over
-      const overPercent = (overAmount / budget) * 100;
-      
-      if (overPercent <= 10) {
-        // Slightly over (0-10% over) - light red
-        return {
-          status: 'over-light',
-          intensity: 0.4,
-          borderClass: 'border-destructive/40',
-          bgClass: 'bg-destructive/5',
-          progressClass: '[&>div]:bg-destructive/70',
-          textClass: 'text-destructive/80',
-          badge: { label: `+${formatCurrency(overAmount)}`, variant: 'destructive' as const, className: 'bg-destructive/20 text-destructive border-destructive/30' }
-        };
-      } else if (overPercent <= 25) {
-        // Moderately over (10-25% over) - medium red
-        return {
-          status: 'over-medium',
-          intensity: 0.7,
-          borderClass: 'border-destructive/60',
-          bgClass: 'bg-destructive/10',
-          progressClass: '[&>div]:bg-destructive',
-          textClass: 'text-destructive',
-          badge: { label: `+${formatCurrency(overAmount)}`, variant: 'destructive' as const, className: '' }
-        };
-      } else {
-        // Severely over (25%+ over) - strong red
-        return {
-          status: 'over-severe',
-          intensity: 1,
-          borderClass: 'border-destructive',
-          bgClass: 'bg-destructive/15',
-          progressClass: '[&>div]:bg-destructive',
-          textClass: 'text-destructive font-semibold',
-          badge: { label: `+${formatCurrency(overAmount)} Over!`, variant: 'destructive' as const, className: '' }
-        };
-      }
+      // Over 10% over budget - RED
+      return {
+        status: 'over',
+        intensity: 1,
+        borderClass: 'border-destructive/60',
+        bgClass: 'bg-destructive/10',
+        progressClass: '[&>div]:bg-destructive',
+        textClass: 'text-destructive',
+        badge: { label: `+${formatCurrency(overAmount)}`, variant: 'destructive' as const, className: '' }
+      };
     }
   };
 
