@@ -224,7 +224,7 @@ export function CreateBudgetModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
@@ -279,28 +279,26 @@ export function CreateBudgetModal({
             </Button>
           </div>
 
-          {/* Category Budgets */}
-          <ScrollArea className="h-[300px] pr-4">
-            <div className="space-y-3 pb-2">
-              {BUDGET_CATEGORIES.map(category => (
-                <div key={category.value} className="flex items-center gap-3">
-                  <Label className="w-32 text-sm truncate" title={category.label}>
-                    {category.label}
-                  </Label>
-                  <div className="relative flex-1">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={categoryBudgets[category.value]}
-                      onChange={(e) => handleCategoryChange(category.value, e.target.value)}
-                      className="pl-9 font-mono"
-                    />
-                  </div>
+          {/* Category Budgets - Grid Layout */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {BUDGET_CATEGORIES.map(category => (
+              <div key={category.value} className="flex items-center gap-2">
+                <Label className="w-28 text-sm truncate flex-shrink-0" title={category.label}>
+                  {category.label}
+                </Label>
+                <div className="relative flex-1">
+                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={categoryBudgets[category.value]}
+                    onChange={(e) => handleCategoryChange(category.value, e.target.value)}
+                    className="pl-7 font-mono h-9"
+                  />
                 </div>
-              ))}
-            </div>
-          </ScrollArea>
+              </div>
+            ))}
+          </div>
 
           {/* Actions */}
           <div className="flex gap-2 pt-2 border-t">
