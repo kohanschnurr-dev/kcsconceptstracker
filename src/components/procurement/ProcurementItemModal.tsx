@@ -11,7 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { 
   DollarSign, 
   ArrowLeft, 
-  ArrowRight,
+  Link as LinkIcon,
+  Loader2,
   DoorOpen,
   Droplets,
   Zap,
@@ -23,13 +24,14 @@ import {
   Fence,
   Home,
   Layers,
-  Wrench
+  Wrench,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { BUDGET_CATEGORIES } from '@/types';
 
 // Types
 type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'delivered' | 'installed';
@@ -290,7 +292,6 @@ interface FormData {
   finish: string;
   notes: string;
   bulk_discount_eligible: boolean;
-  // Category-specific fields stored as JSON
   specs: Record<string, string>;
 }
 
@@ -302,10 +303,28 @@ interface Props {
   onSave: () => void;
 }
 
+type Step = 'url' | 'category' | 'details';
+
+interface ScrapedData {
+  name: string;
+  price: number | null;
+  model_number: string | null;
+  finish: string | null;
+  lead_time_days: number | null;
+  dimensions: string | null;
+  brand: string | null;
+  source_store: string;
+  specs: Record<string, string>;
+}
+
 export function ProcurementItemModal({ open, onOpenChange, item, projects, onSave }: Props) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'category' | 'details'>('category');
+  const [scraping, setScraping] = useState(false);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [scrapeSuccess, setScrapeSuccess] = useState(false);
+  const [step, setStep] = useState<Step>('url');
+  const [urlInput, setUrlInput] = useState('');
   
   const [formData, setFormData] = useState<FormData>({
     category: '',
@@ -395,7 +414,10 @@ export function ProcurementItemModal({ open, onOpenChange, item, projects, onSav
           bulk_discount_eligible: item.bulk_discount_eligible ?? false,
           specs,
         });
-        setStep('details'); // Skip category selection when editing
+        setStep('details'); // Skip to details when editing
+        setUrlInput('');
+        setScrapeError(null);
+        setScrapeSuccess(false);
       } else {
         setFormData({
           category: '',
@@ -415,13 +437,70 @@ export function ProcurementItemModal({ open, onOpenChange, item, projects, onSav
           bulk_discount_eligible: false,
           specs: {},
         });
-        setStep('category');
+        setStep('url'); // Start with URL step for new items
+        setUrlInput('');
+        setScrapeError(null);
+        setScrapeSuccess(false);
       }
     }
   }, [item, open]);
 
+  const handleScrapeUrl = async () => {
+    if (!urlInput.trim()) {
+      setStep('category');
+      return;
+    }
+
+    setScraping(true);
+    setScrapeError(null);
+    setScrapeSuccess(false);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('scrape-product-url', {
+        body: { url: urlInput.trim() },
+      });
+
+      if (error) throw error;
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to scrape URL');
+      }
+
+      const scraped: ScrapedData = data.data;
+      const detectedCategory = detectCategory(scraped.name);
+      const storeValue = STORES.find(s => s.value === scraped.source_store)?.value || 'other';
+
+      // Update form with scraped data
+      setFormData(prev => ({
+        ...prev,
+        name: scraped.name || prev.name,
+        source_url: urlInput.trim(),
+        source_store: storeValue as SourceStore,
+        model_number: scraped.model_number || prev.model_number,
+        unit_price: scraped.price?.toString() || prev.unit_price,
+        finish: scraped.finish || prev.finish,
+        lead_time_days: scraped.lead_time_days?.toString() || prev.lead_time_days,
+        category: detectedCategory,
+        specs: { ...prev.specs, ...scraped.specs },
+      }));
+
+      setScrapeSuccess(true);
+      toast.success('Product data extracted!');
+      
+      // Move to category step to confirm/change category
+      setTimeout(() => setStep('category'), 500);
+    } catch (err) {
+      console.error('Scrape error:', err);
+      const message = err instanceof Error ? err.message : 'Failed to scrape URL';
+      setScrapeError(message);
+      toast.error(message);
+    } finally {
+      setScraping(false);
+    }
+  };
+
   const handleCategorySelect = (category: ProcurementCategory) => {
-    setFormData(prev => ({ ...prev, category, specs: {} }));
+    setFormData(prev => ({ ...prev, category }));
     setStep('details');
   };
 
@@ -486,12 +565,87 @@ export function ProcurementItemModal({ open, onOpenChange, item, projects, onSav
   const tax = formData.includes_tax ? 0 : subtotal * TEXAS_TAX_RATE;
   const total = subtotal + tax;
 
+  const renderUrlStep = () => (
+    <div className="space-y-6 py-4">
+      <div className="text-center space-y-2">
+        <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <LinkIcon className="h-6 w-6 text-primary" />
+        </div>
+        <h3 className="font-semibold">Paste Product URL</h3>
+        <p className="text-sm text-muted-foreground">
+          Paste a link from Amazon, Home Depot, Lowe's, or other retailers.<br />
+          We'll extract the product details automatically for Dallas/DFW.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <Input
+          value={urlInput}
+          onChange={(e) => setUrlInput(e.target.value)}
+          placeholder="https://www.homedepot.com/p/..."
+          className="text-center"
+          disabled={scraping}
+        />
+        
+        {scrapeError && (
+          <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-2 rounded">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{scrapeError}</span>
+          </div>
+        )}
+
+        {scrapeSuccess && (
+          <div className="flex items-center gap-2 text-green-600 text-sm bg-green-500/10 p-2 rounded">
+            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+            <span>Product data extracted successfully!</span>
+          </div>
+        )}
+
+        <Button 
+          onClick={handleScrapeUrl} 
+          className="w-full" 
+          disabled={scraping}
+        >
+          {scraping ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Extracting product data...
+            </>
+          ) : (
+            <>
+              <LinkIcon className="h-4 w-4 mr-2" />
+              {urlInput.trim() ? 'Extract Product Data' : 'Skip & Enter Manually'}
+            </>
+          )}
+        </Button>
+      </div>
+
+      <div className="text-center">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setStep('category')}
+          disabled={scraping}
+        >
+          Or enter details manually →
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderCategoryStep = () => (
     <div className="space-y-4 py-4">
-      <p className="text-sm text-muted-foreground">Select a category to see relevant specification fields:</p>
+      <p className="text-sm text-muted-foreground">
+        {formData.name ? (
+          <>Confirm category for: <strong className="text-foreground">{formData.name}</strong></>
+        ) : (
+          'Select a category to see relevant specification fields:'
+        )}
+      </p>
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {PROCUREMENT_CATEGORIES.map((cat) => {
           const Icon = cat.icon;
+          const isSelected = formData.category === cat.value;
           return (
             <button
               key={cat.value}
@@ -499,6 +653,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, projects, onSav
               className={cn(
                 "flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all hover:scale-105",
                 "hover:border-primary/50 hover:bg-primary/5",
+                isSelected ? "border-primary bg-primary/10" : "border-transparent",
                 cat.color
               )}
             >
@@ -755,18 +910,33 @@ export function ProcurementItemModal({ open, onOpenChange, item, projects, onSav
     </div>
   );
 
+  const getDialogTitle = () => {
+    if (item) return 'Edit Item';
+    switch (step) {
+      case 'url': return 'Add from URL';
+      case 'category': return 'Select Category';
+      case 'details': return 'Add Procurement Item';
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {item ? 'Edit Item' : step === 'category' ? 'Select Category' : 'Add Procurement Item'}
-          </DialogTitle>
+          <DialogTitle>{getDialogTitle()}</DialogTitle>
         </DialogHeader>
 
-        {step === 'category' ? renderCategoryStep() : renderDetailsStep()}
+        {step === 'url' && renderUrlStep()}
+        {step === 'category' && renderCategoryStep()}
+        {step === 'details' && renderDetailsStep()}
 
         <DialogFooter>
+          {step === 'category' && !item && (
+            <Button variant="outline" onClick={() => setStep('url')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          )}
           {step === 'details' && !item && (
             <Button variant="outline" onClick={() => setStep('category')}>
               <ArrowLeft className="h-4 w-4 mr-2" />
