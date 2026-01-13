@@ -224,7 +224,7 @@ export function CreateBudgetModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-6xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
@@ -282,10 +282,10 @@ export function CreateBudgetModal({
           {/* Category Budgets - Grid Layout */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             {BUDGET_CATEGORIES.map(category => (
-              <div key={category.value} className="flex items-center gap-2">
-                <Label className="w-28 text-sm truncate flex-shrink-0" title={category.label}>
-                  {category.label}
-                </Label>
+            <div key={category.value} className="flex items-center gap-2">
+              <Label className="w-36 text-xs flex-shrink-0" title={category.label}>
+                {category.label}
+              </Label>
                 <div className="relative flex-1">
                   <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
