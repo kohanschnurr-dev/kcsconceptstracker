@@ -25,6 +25,7 @@ interface Bundle {
   name: string;
   description: string | null;
   project_id: string | null;
+  cover_image_url: string | null;
 }
 
 interface Project {
@@ -102,7 +103,8 @@ export default function Bundles() {
       }, 0);
 
       const project = projectsData.find(p => p.id === bundle.project_id);
-      const coverPhoto = bundle.project_id ? projectPhotoMap[bundle.project_id] || null : null;
+      // Prefer bundle's own cover image, fall back to project photo
+      const coverPhoto = bundle.cover_image_url || (bundle.project_id ? projectPhotoMap[bundle.project_id] || null : null);
 
       return {
         ...bundle,
@@ -222,7 +224,7 @@ export default function Bundles() {
                 {bundle.coverPhoto ? (
                   <div className="h-32 w-full overflow-hidden">
                     <img
-                      src={getPhotoUrl(bundle.coverPhoto)}
+                      src={bundle.coverPhoto.startsWith('http') ? bundle.coverPhoto : getPhotoUrl(bundle.coverPhoto)}
                       alt={bundle.name}
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
