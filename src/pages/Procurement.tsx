@@ -393,18 +393,7 @@ export default function Procurement() {
                     {filteredItems.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>
-                          {item.source_url ? (
-                            <a 
-                              href={item.source_url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="font-medium text-primary hover:underline"
-                            >
-                              {item.name}
-                            </a>
-                          ) : (
-                            <p className="font-medium">{item.name}</p>
-                          )}
+                          <p className="font-medium">{item.name}</p>
                         </TableCell>
                         <TableCell>
                           <div>
@@ -420,9 +409,21 @@ export default function Procurement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm">
-                            {STORES.find(s => s.value === item.source_store)?.label || '-'}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm">
+                              {STORES.find(s => s.value === item.source_store)?.label || '-'}
+                            </span>
+                            {item.source_url && (
+                              <a 
+                                href={item.source_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-primary hover:text-primary/80"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <span className="text-sm">
