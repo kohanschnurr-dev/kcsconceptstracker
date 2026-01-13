@@ -13,6 +13,7 @@ import Expenses from "./pages/Expenses";
 import BusinessExpenses from "./pages/BusinessExpenses";
 import Vendors from "./pages/Vendors";
 import DailyLogs from "./pages/DailyLogs";
+import BudgetCalculator from "./pages/BudgetCalculator";
 import Auth from "./pages/Auth";
 import QuickBooksCallback from "./pages/QuickBooksCallback";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/business-expenses" element={<ProtectedRoute><BusinessExpenses /></ProtectedRoute>} />
             <Route path="/vendors" element={<ProtectedRoute><Vendors /></ProtectedRoute>} />
             <Route path="/logs" element={<ProtectedRoute><DailyLogs /></ProtectedRoute>} />
+            <Route path="/calculator" element={<ProtectedRoute><BudgetCalculator /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
