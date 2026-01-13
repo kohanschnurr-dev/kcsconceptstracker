@@ -279,8 +279,8 @@ export function CreateBudgetModal({
             </Button>
           </div>
 
-          {/* Category Budgets - Grid Layout (A-Z down columns) */}
-          <div className="grid grid-rows-[repeat(16,minmax(0,1fr))] grid-flow-col gap-2">
+          {/* Category Budgets - Grid Layout (A-Z down columns, 4 columns) */}
+          <div className="grid grid-cols-4 gap-x-4 gap-y-1" style={{ gridAutoFlow: 'column', gridTemplateRows: 'repeat(16, auto)' }}>
             {[...BUDGET_CATEGORIES]
               .sort((a, b) => a.label.localeCompare(b.label))
               .map(category => (
