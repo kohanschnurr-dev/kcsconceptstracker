@@ -175,9 +175,48 @@ export type Database = {
           },
         ]
       }
+      procurement_bundles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          project_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          project_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          project_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_bundles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       procurement_items: {
         Row: {
           bulk_discount_eligible: boolean | null
+          bundle_id: string | null
           category_id: string | null
           created_at: string
           finish: string | null
@@ -200,6 +239,7 @@ export type Database = {
         }
         Insert: {
           bulk_discount_eligible?: boolean | null
+          bundle_id?: string | null
           category_id?: string | null
           created_at?: string
           finish?: string | null
@@ -222,6 +262,7 @@ export type Database = {
         }
         Update: {
           bulk_discount_eligible?: boolean | null
+          bundle_id?: string | null
           category_id?: string | null
           created_at?: string
           finish?: string | null
@@ -243,6 +284,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "procurement_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_bundles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "procurement_items_category_id_fkey"
             columns: ["category_id"]

@@ -40,7 +40,7 @@ type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' |
 
 interface ProcurementItem {
   id: string;
-  project_id: string | null;
+  bundle_id: string | null;
   category_id: string | null;
   name: string;
   source_url: string | null;
@@ -58,10 +58,11 @@ interface ProcurementItem {
   bulk_discount_eligible: boolean | null;
 }
 
-interface Project {
+interface Bundle {
   id: string;
   name: string;
-  address: string;
+  description: string | null;
+  project_id: string | null;
 }
 
 // Procurement categories with icons and specific fields
@@ -279,7 +280,7 @@ const TEXAS_TAX_RATE = 0.0825;
 interface FormData {
   category: ProcurementCategory | '';
   name: string;
-  project_id: string;
+  bundle_id: string;
   source_url: string;
   source_store: SourceStore;
   model_number: string;
@@ -299,7 +300,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: ProcurementItem | null;
-  projects: Project[];
+  bundles: Bundle[];
   onSave: () => void;
 }
 
@@ -317,7 +318,7 @@ interface ScrapedData {
   specs: Record<string, string>;
 }
 
-export function ProcurementItemModal({ open, onOpenChange, item, projects, onSave }: Props) {
+export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave }: Props) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [scraping, setScraping] = useState(false);
@@ -329,7 +330,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, projects, onSav
   const [formData, setFormData] = useState<FormData>({
     category: '',
     name: '',
-    project_id: '',
+    bundle_id: '',
     source_url: '',
     source_store: 'home_depot',
     model_number: '',
@@ -399,7 +400,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, projects, onSav
         setFormData({
           category: detectedCategory,
           name: item.name,
-          project_id: item.project_id || '',
+          bundle_id: item.bundle_id || '',
           source_url: item.source_url || '',
           source_store: item.source_store || 'home_depot',
           model_number: item.model_number || '',
@@ -422,7 +423,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, projects, onSav
         setFormData({
           category: '',
           name: '',
-          project_id: '',
+          bundle_id: '',
           source_url: '',
           source_store: 'home_depot',
           model_number: '',
@@ -517,7 +518,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, projects, onSav
     
     const payload = {
       name: formData.name,
-      project_id: formData.project_id || null,
+      bundle_id: formData.bundle_id || null,
       source_url: formData.source_url || null,
       source_store: formData.source_store,
       model_number: formData.model_number || null,
@@ -727,20 +728,20 @@ export function ProcurementItemModal({ open, onOpenChange, item, projects, onSav
           </div>
         )}
 
-        {/* Project Assignment */}
+        {/* Bundle Assignment */}
         <div className="col-span-2">
-          <Label>Assign to Project</Label>
+          <Label>Assign to Bundle</Label>
           <Select 
-            value={formData.project_id || '__unassigned__'} 
-            onValueChange={(v) => setFormData(prev => ({ ...prev, project_id: v === '__unassigned__' ? '' : v }))}
+            value={formData.bundle_id || '__unassigned__'} 
+            onValueChange={(v) => setFormData(prev => ({ ...prev, bundle_id: v === '__unassigned__' ? '' : v }))}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select project (optional)" />
+              <SelectValue placeholder="Select bundle (optional)" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__unassigned__">Unassigned</SelectItem>
-              {projects.map(p => (
-                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              {bundles.map(b => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
