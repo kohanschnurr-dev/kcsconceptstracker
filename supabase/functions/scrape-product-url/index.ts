@@ -125,17 +125,18 @@ function extractProductData(markdown: string, url: string): ProductData {
     }
   }
   
-  // Extract finish/color
-  const finishPatterns = [
-    /(?:color|finish)[:\s]+([^\n,]+)/gi,
-    /(?:matte|satin|polished|brushed|chrome|nickel|bronze|brass|black|white|stainless)\s*(?:steel|finish)?/gi,
+  // Extract finish/color - clean extraction
+  const colorPatterns = [
+    /\b(white|black|gray|grey|beige|cream|ivory|tan|brown|espresso|charcoal|silver|gold|bronze|brass|nickel|chrome|copper|navy|blue|green|red|pink|yellow|orange|purple|taupe|sand|almond|bone|biscuit)\b/gi,
   ];
   
-  for (const pattern of finishPatterns) {
+  for (const pattern of colorPatterns) {
     const match = markdown.match(pattern);
     if (match) {
-      finish = match[1]?.trim() || match[0].trim();
-      if (finish) break;
+      finish = match[0].trim();
+      // Capitalize first letter
+      finish = finish.charAt(0).toUpperCase() + finish.slice(1).toLowerCase();
+      break;
     }
   }
   
@@ -153,50 +154,46 @@ function extractProductData(markdown: string, url: string): ProductData {
     }
   }
   
-  // Extract dimensions
+  // Extract dimensions - just numbers
   const dimPatterns = [
-    /(?:dimensions?|size)[:\s]+([^\n]+)/gi,
     /(\d+(?:\.\d+)?)\s*(?:"|in|inch(?:es)?)\s*(?:x|by)\s*(\d+(?:\.\d+)?)\s*(?:"|in|inch(?:es)?)/gi,
   ];
   
   for (const pattern of dimPatterns) {
     const match = markdown.match(pattern);
     if (match) {
-      dimensions = match[1]?.trim() || match[0].trim();
-      if (dimensions) break;
+      dimensions = match[0].trim();
+      break;
     }
   }
 
-  // Extract tile size (e.g., 12x24, 4x12, 3x6)
+  // Extract tile size - just the numbers (e.g., "12x24")
   const tileSizePatterns = [
-    /(?:tile\s*size|size)[:\s]*(\d+\s*(?:x|by)\s*\d+)/gi,
-    /(\d{1,2})\s*(?:"|in\.?|inch(?:es)?)\s*(?:x|by)\s*(\d{1,2})\s*(?:"|in\.?|inch(?:es)?)/gi,
-    /(\d{1,2}x\d{1,2})/gi,
+    /(\d{1,2})\s*x\s*(\d{1,2})/gi,
+    /(\d{1,2})\s*(?:"|in\.?)\s*(?:x|by)\s*(\d{1,2})\s*(?:"|in\.?)/gi,
   ];
   
   for (const pattern of tileSizePatterns) {
     const match = markdown.match(pattern);
     if (match) {
-      tile_size = match[1]?.trim() || match[0].trim();
-      // Clean up format
-      tile_size = tile_size.replace(/\s+/g, '').replace(/by/gi, 'x');
-      if (tile_size) break;
+      // Extract just the numbers
+      const sizeMatch = match[0].match(/(\d{1,2})\s*(?:x|by|"|\s)+\s*(\d{1,2})/i);
+      if (sizeMatch) {
+        tile_size = `${sizeMatch[1]}x${sizeMatch[2]}`;
+        break;
+      }
     }
   }
 
-  // Extract material (ceramic, porcelain, natural stone, etc.)
-  const materialPatterns = [
-    /(?:material|type)[:\s]+([^\n,]+)/gi,
-    /\b(porcelain|ceramic|natural\s*stone|marble|travertine|slate|granite|quartzite|limestone|glass|mosaic)\b/gi,
-  ];
+  // Extract material - just the material type word
+  const materialKeywords = ['porcelain', 'ceramic', 'marble', 'travertine', 'slate', 'granite', 'quartzite', 'limestone', 'glass', 'mosaic', 'natural stone', 'vinyl', 'laminate', 'hardwood', 'engineered'];
   
-  for (const pattern of materialPatterns) {
-    const match = markdown.match(pattern);
-    if (match) {
-      material = match[1]?.trim() || match[0].trim();
-      // Capitalize first letter
-      material = material.charAt(0).toUpperCase() + material.slice(1).toLowerCase();
-      if (material) break;
+  const lowerMarkdown = markdown.toLowerCase();
+  for (const mat of materialKeywords) {
+    if (lowerMarkdown.includes(mat)) {
+      // Capitalize properly
+      material = mat.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      break;
     }
   }
 
