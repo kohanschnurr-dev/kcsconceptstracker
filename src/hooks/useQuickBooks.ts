@@ -365,7 +365,8 @@ export function useQuickBooks() {
   const categorizeExpense = useCallback(async (
     expenseId: string, 
     projectId: string, 
-    categoryValue: string // Now accepts category value like "plumbing" instead of UUID
+    categoryValue: string, // Now accepts category value like "plumbing" instead of UUID
+    expenseType: 'product' | 'labor' = 'product'
   ) => {
     // First, find or create the project_category
     let categoryId: string;
@@ -440,6 +441,7 @@ export function useQuickBooks() {
           payment_method: expense.payment_method as 'cash' | 'check' | 'card' | 'transfer' || 'card',
           status: 'actual',
           includes_tax: false,
+          expense_type: expenseType,
         });
 
       if (error) {
@@ -467,7 +469,8 @@ export function useQuickBooks() {
         .update({ 
           project_id: projectId, 
           category_id: categoryId,
-          is_imported: true 
+          is_imported: true,
+          expense_type: expenseType
         })
         .eq('id', expenseId);
 

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
-import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon } from 'lucide-react';
+import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Package, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
@@ -21,6 +21,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { useQuickBooks } from '@/hooks/useQuickBooks';
 import { ALL_CATEGORIES, BUDGET_CATEGORIES, type BudgetCategory } from '@/types';
@@ -41,6 +45,45 @@ const getCategoriesForProject = (projectName: string) => {
     return ALL_CATEGORIES;
   }
   return BUDGET_CATEGORIES;
+};
+
+// Auto-detect if expense is labor based on vendor name/description
+const detectExpenseType = (vendorName: string | null, description: string | null): 'product' | 'labor' => {
+  const text = `${vendorName || ''} ${description || ''}`.toLowerCase();
+  
+  // Labor indicators - contractors, services, installation, repairs
+  const laborKeywords = [
+    'contractor', 'construction', 'services', 'service', 'repair', 'repairs',
+    'install', 'installation', 'labor', 'plumber', 'plumbing', 'electrician',
+    'electrical', 'hvac', 'roofing', 'roofer', 'painter', 'painting',
+    'carpenter', 'carpentry', 'handyman', 'landscaping', 'landscaper',
+    'cleaning', 'hauling', 'demo', 'demolition', 'inspection', 'inspector',
+    'consultant', 'consulting', 'professional', 'technician', 'crew',
+    'flooring install', 'tile install', 'cabinet install', 'drywall'
+  ];
+  
+  // Product vendors/stores
+  const productKeywords = [
+    'home depot', 'lowes', 'lowe\'s', 'menards', 'ace hardware', 'harbor freight',
+    'floor & decor', 'floor and decor', 'ferguson', 'supply', 'supplies',
+    'depot', 'warehouse', 'wholesale', 'amazon', 'walmart', 'target',
+    'lumber', 'materials', 'cabinet', 'appliance', 'flooring', 'tile',
+    'windows', 'doors', 'fixtures', 'hardware', 'equipment'
+  ];
+  
+  // Check labor first (more specific usually)
+  for (const keyword of laborKeywords) {
+    if (text.includes(keyword)) {
+      // Double-check it's not a supply store with labor word
+      const isSupplyStore = productKeywords.some(pk => text.includes(pk));
+      if (!isSupplyStore) {
+        return 'labor';
+      }
+    }
+  }
+  
+  // Default to product
+  return 'product';
 };
 
 interface QuickBooksIntegrationProps {
@@ -66,8 +109,23 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Record<string, string>>({});
   const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
+  const [selectedExpenseType, setSelectedExpenseType] = useState<Record<string, 'product' | 'labor'>>({});
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(new Date());
+
+  // Auto-detect expense types when pending expenses change
+  useEffect(() => {
+    const newTypes: Record<string, 'product' | 'labor'> = {};
+    pendingExpenses.forEach(expense => {
+      if (!selectedExpenseType[expense.id]) {
+        newTypes[expense.id] = detectExpenseType(expense.vendor_name, expense.description);
+      }
+    });
+    if (Object.keys(newTypes).length > 0) {
+      setSelectedExpenseType(prev => ({ ...prev, ...newTypes }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingExpenses]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -88,10 +146,11 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
   const handleCategorize = async (expenseId: string) => {
     const projectId = selectedProject[expenseId];
     const categoryId = selectedCategory[expenseId];
+    const expenseType = selectedExpenseType[expenseId] || 'product';
 
     if (!projectId || !categoryId) return;
 
-    const success = await categorizeExpense(expenseId, projectId, categoryId);
+    const success = await categorizeExpense(expenseId, projectId, categoryId, expenseType);
     if (success && onExpenseImported) {
       onExpenseImported();
     }
@@ -290,54 +349,92 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-col sm:flex-row gap-2 mt-3">
-                            <Select
-                              value={selectedProject[expense.id] || ''}
-                              onValueChange={(value) =>
-                                setSelectedProject((prev) => ({ ...prev, [expense.id]: value }))
-                              }
-                            >
-                              <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Select Project" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {projects.map((project) => (
-                                  <SelectItem key={project.id} value={project.id}>
-                                    {project.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Select
-                              value={selectedCategory[expense.id] || ''}
-                              onValueChange={(value) =>
-                                setSelectedCategory((prev) => ({ ...prev, [expense.id]: value }))
-                              }
-                              disabled={!selectedProject[expense.id]}
-                            >
-                              <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Select Category" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {selectedProject[expense.id] &&
-                                  getCategoriesForProject(
-                                    projects.find(p => p.id === selectedProject[expense.id])?.name || ''
-                                  ).map((cat) => (
-                                    <SelectItem key={cat.value} value={cat.value}>
-                                      {cat.label}
+                          <div className="flex flex-col gap-2 mt-3">
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <Select
+                                value={selectedProject[expense.id] || ''}
+                                onValueChange={(value) =>
+                                  setSelectedProject((prev) => ({ ...prev, [expense.id]: value }))
+                                }
+                              >
+                                <SelectTrigger className="flex-1">
+                                  <SelectValue placeholder="Select Project" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {projects.map((project) => (
+                                    <SelectItem key={project.id} value={project.id}>
+                                      {project.name}
                                     </SelectItem>
                                   ))}
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              size="sm"
-                              disabled={
-                                !selectedProject[expense.id] || !selectedCategory[expense.id]
-                              }
-                              onClick={() => handleCategorize(expense.id)}
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
+                                </SelectContent>
+                              </Select>
+                              <Select
+                                value={selectedCategory[expense.id] || ''}
+                                onValueChange={(value) =>
+                                  setSelectedCategory((prev) => ({ ...prev, [expense.id]: value }))
+                                }
+                                disabled={!selectedProject[expense.id]}
+                              >
+                                <SelectTrigger className="flex-1">
+                                  <SelectValue placeholder="Select Category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {selectedProject[expense.id] &&
+                                    getCategoriesForProject(
+                                      projects.find(p => p.id === selectedProject[expense.id])?.name || ''
+                                    ).map((cat) => (
+                                      <SelectItem key={cat.value} value={cat.value}>
+                                        {cat.label}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                              <ToggleGroup 
+                                type="single" 
+                                value={selectedExpenseType[expense.id] || 'product'}
+                                onValueChange={(value) => {
+                                  if (value) {
+                                    setSelectedExpenseType((prev) => ({ 
+                                      ...prev, 
+                                      [expense.id]: value as 'product' | 'labor' 
+                                    }));
+                                  }
+                                }}
+                                className="shrink-0"
+                              >
+                                <ToggleGroupItem 
+                                  value="product" 
+                                  aria-label="Product"
+                                  className={cn(
+                                    "gap-1 px-3",
+                                    selectedExpenseType[expense.id] === 'product' && "bg-blue-500/20 text-blue-400 border-blue-500/50"
+                                  )}
+                                >
+                                  <Package className="h-4 w-4" />
+                                  <span className="hidden sm:inline text-xs">Product</span>
+                                </ToggleGroupItem>
+                                <ToggleGroupItem 
+                                  value="labor" 
+                                  aria-label="Labor"
+                                  className={cn(
+                                    "gap-1 px-3",
+                                    selectedExpenseType[expense.id] === 'labor' && "bg-orange-500/20 text-orange-400 border-orange-500/50"
+                                  )}
+                                >
+                                  <Wrench className="h-4 w-4" />
+                                  <span className="hidden sm:inline text-xs">Labor</span>
+                                </ToggleGroupItem>
+                              </ToggleGroup>
+                              <Button
+                                size="sm"
+                                disabled={
+                                  !selectedProject[expense.id] || !selectedCategory[expense.id]
+                                }
+                                onClick={() => handleCategorize(expense.id)}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}
