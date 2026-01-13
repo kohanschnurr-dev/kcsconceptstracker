@@ -113,6 +113,7 @@ export type Database = {
           created_at: string
           date: string
           description: string | null
+          expense_type: string | null
           id: string
           includes_tax: boolean
           payment_method: Database["public"]["Enums"]["payment_method"] | null
@@ -129,6 +130,7 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string | null
+          expense_type?: string | null
           id?: string
           includes_tax?: boolean
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
@@ -145,6 +147,7 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string | null
+          expense_type?: string | null
           id?: string
           includes_tax?: boolean
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
@@ -416,6 +419,7 @@ export type Database = {
           created_at: string
           date: string
           description: string | null
+          expense_type: string | null
           id: string
           is_imported: boolean
           payment_method: string | null
@@ -432,6 +436,7 @@ export type Database = {
           created_at?: string
           date: string
           description?: string | null
+          expense_type?: string | null
           id?: string
           is_imported?: boolean
           payment_method?: string | null
@@ -448,6 +453,7 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string | null
+          expense_type?: string | null
           id?: string
           is_imported?: boolean
           payment_method?: string | null
