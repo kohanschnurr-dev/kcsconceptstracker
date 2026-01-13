@@ -741,10 +741,16 @@ export default function ProjectBudget() {
                           name
                         ]}
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
+                          backgroundColor: 'hsl(220, 18%, 13%)',
+                          border: '1px solid hsl(220, 15%, 22%)',
                           borderRadius: '8px',
-                          color: 'hsl(var(--foreground))',
+                          color: '#ffffff',
+                        }}
+                        itemStyle={{
+                          color: '#ffffff',
+                        }}
+                        labelStyle={{
+                          color: '#ffffff',
                         }}
                       />
                     </PieChart>
