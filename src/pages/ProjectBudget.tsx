@@ -796,175 +796,202 @@ export default function ProjectBudget() {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent className="space-y-2 pt-0">
-            {categories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Settings2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground mb-2">No budget categories set up yet</p>
-                <p className="text-sm text-muted-foreground mb-4">Add categories to track your project expenses by type</p>
-                <Button 
-                  onClick={() => {
-                    setEditingCategory(null);
-                    setCategoryModalOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add First Category
-                </Button>
-              </div>
-            ) : (
-              categories
-                .sort((a, b) => b.actualSpent - a.actualSpent)
-                .map((cat) => {
-                  const remaining = cat.estimated_budget - cat.actualSpent;
-                  const percentUsed = cat.estimated_budget > 0 ? (cat.actualSpent / cat.estimated_budget) * 100 : 0;
-                  const isExpanded = expandedCategories.has(cat.id);
-                  const categoryExpenses = expenses.filter(e => e.category_id === cat.id);
-                  const budgetStatus = getBudgetStatus(cat.actualSpent, cat.estimated_budget);
-                  
-                  return (
-                    <Collapsible key={cat.id} open={isExpanded} onOpenChange={() => toggleCategory(cat.id)}>
-                      <div 
-                        className={cn(
-                          "p-4 rounded-lg border transition-all hover:bg-muted/50 group/category",
-                          budgetStatus.borderClass,
-                          budgetStatus.bgClass
-                        )}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <CollapsibleTrigger asChild>
-                            <div className="flex items-center gap-2 cursor-pointer flex-1">
-                              {isExpanded ? (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                              )}
-                              <span className="font-medium">{getCategoryName(cat.category)}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {categoryExpenses.length} expenses
-                              </Badge>
-                              {budgetStatus.badge && (
-                                <Badge 
-                                  variant={budgetStatus.badge.variant} 
-                                  className={cn("text-xs", budgetStatus.badge.className)}
+              <CardContent className="pt-0">
+                {categories.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Settings2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground mb-2">No budget categories set up yet</p>
+                    <p className="text-sm text-muted-foreground mb-4">Add categories to track your project expenses by type</p>
+                    <Button 
+                      onClick={() => {
+                        setEditingCategory(null);
+                        setCategoryModalOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add First Category
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent border-border/50">
+                          <TableHead className="w-[200px]">Category</TableHead>
+                          <TableHead className="text-center w-[80px]">Expenses</TableHead>
+                          <TableHead className="text-right w-[120px]">Spent</TableHead>
+                          <TableHead className="text-right w-[120px]">Budget</TableHead>
+                          <TableHead className="w-[200px]">Progress</TableHead>
+                          <TableHead className="text-right w-[100px]">Remaining</TableHead>
+                          <TableHead className="w-[50px]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {categories
+                          .sort((a, b) => b.actualSpent - a.actualSpent)
+                          .map((cat) => {
+                            const remaining = cat.estimated_budget - cat.actualSpent;
+                            const percentUsed = cat.estimated_budget > 0 ? (cat.actualSpent / cat.estimated_budget) * 100 : 0;
+                            const isExpanded = expandedCategories.has(cat.id);
+                            const categoryExpenses = expenses.filter(e => e.category_id === cat.id);
+                            const budgetStatus = getBudgetStatus(cat.actualSpent, cat.estimated_budget);
+                            
+                            return (
+                              <>
+                                <TableRow 
+                                  key={cat.id} 
+                                  className={cn(
+                                    "group/category cursor-pointer transition-colors",
+                                    budgetStatus.bgClass,
+                                    isExpanded && "bg-muted/50"
+                                  )}
+                                  onClick={() => toggleCategory(cat.id)}
                                 >
-                                  {budgetStatus.badge.label}
-                                </Badge>
-                              )}
-                            </div>
-                          </CollapsibleTrigger>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <p className={cn("font-mono font-semibold", budgetStatus.textClass)}>
-                                {formatCurrency(cat.actualSpent)}
-                              </p>
-                              <p className="text-xs text-muted-foreground">of {formatCurrency(cat.estimated_budget)}</p>
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 opacity-0 group-hover/category:opacity-100 transition-opacity"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingCategory(cat);
-                                  setCategoryModalOpen(true);
-                                }}>
-                                  <Pencil className="h-4 w-4 mr-2" />
-                                  Edit Budget
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeletingCategory(cat);
-                                  }}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete Category
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Progress 
-                            value={Math.min(percentUsed, 100)} 
-                            className={cn(
-                              "h-2 flex-1",
-                              budgetStatus.progressClass
-                            )}
-                          />
-                          <span className="text-xs text-muted-foreground w-16 text-right">
-                            {remaining >= 0 ? formatCurrency(remaining) : `-${formatCurrency(Math.abs(remaining))}`} left
-                          </span>
-                        </div>
-                      </div>
-                      <CollapsibleContent>
-                        <div className="mt-2 ml-6 border-l-2 border-muted pl-4 space-y-2">
-                          {categoryExpenses.length === 0 ? (
-                            <p className="text-sm text-muted-foreground py-2">No expenses in this category</p>
-                          ) : (
-                            categoryExpenses
-                              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                              .map((exp) => (
-                                <div key={exp.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border group/expense">
-                                  <div className="flex items-center gap-3">
-                                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                                      {getPaymentIcon(exp.payment_method)}
+                                  <TableCell className="font-medium">
+                                    <div className="flex items-center gap-2">
+                                      {isExpanded ? (
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                      <span>{getCategoryName(cat.category)}</span>
+                                      {budgetStatus.badge && (
+                                        <Badge 
+                                          variant={budgetStatus.badge.variant} 
+                                          className={cn("text-xs", budgetStatus.badge.className)}
+                                        >
+                                          {budgetStatus.badge.label}
+                                        </Badge>
+                                      )}
                                     </div>
-                                    <div>
-                                      <p className="font-medium text-sm">{exp.vendor_name || 'Unknown Vendor'}</p>
-                                      <p className="text-xs text-muted-foreground">{exp.description || 'No description'}</p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <div className="text-right">
-                                      <p className="font-mono font-medium">{formatCurrency(Number(exp.amount))}</p>
-                                      <p className="text-xs text-muted-foreground">{formatDate(exp.date)}</p>
-                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="outline" className="text-xs font-normal">
+                                      {categoryExpenses.length}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className={cn("text-right font-mono", budgetStatus.textClass)}>
+                                    {formatCurrency(cat.actualSpent)}
+                                  </TableCell>
+                                  <TableCell className="text-right font-mono text-muted-foreground">
+                                    {formatCurrency(cat.estimated_budget)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Progress 
+                                      value={Math.min(percentUsed, 100)} 
+                                      className={cn("h-2", budgetStatus.progressClass)}
+                                    />
+                                  </TableCell>
+                                  <TableCell className={cn(
+                                    "text-right font-mono text-sm",
+                                    remaining >= 0 ? "text-muted-foreground" : "text-destructive"
+                                  )}>
+                                    {remaining >= 0 ? formatCurrency(remaining) : `-${formatCurrency(Math.abs(remaining))}`}
+                                  </TableCell>
+                                  <TableCell>
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
                                         <Button 
                                           variant="ghost" 
                                           size="icon" 
-                                          className="h-7 w-7 opacity-0 group-hover/expense:opacity-100 transition-opacity"
+                                          className="h-7 w-7 opacity-0 group-hover/category:opacity-100 transition-opacity"
+                                          onClick={(e) => e.stopPropagation()}
                                         >
                                           <MoreHorizontal className="h-4 w-4" />
                                         </Button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => setEditingExpense(exp)}>
+                                        <DropdownMenuItem onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingCategory(cat);
+                                          setCategoryModalOpen(true);
+                                        }}>
                                           <Pencil className="h-4 w-4 mr-2" />
-                                          Edit
+                                          Edit Budget
                                         </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
                                         <DropdownMenuItem 
-                                          onClick={() => setDeletingExpense(exp)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDeletingCategory(cat);
+                                          }}
                                           className="text-destructive focus:text-destructive"
                                         >
                                           <Trash2 className="h-4 w-4 mr-2" />
-                                          Delete
+                                          Delete Category
                                         </DropdownMenuItem>
                                       </DropdownMenuContent>
                                     </DropdownMenu>
-                                  </div>
-                                </div>
-                              ))
-                          )}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  );
-                })
-            )}
+                                  </TableCell>
+                                </TableRow>
+                                {isExpanded && categoryExpenses.length > 0 && (
+                                  <TableRow className="hover:bg-transparent">
+                                    <TableCell colSpan={7} className="p-0">
+                                      <div className="bg-muted/30 border-t border-b border-border/50 py-2 px-4">
+                                        <div className="grid gap-2">
+                                          {categoryExpenses
+                                            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                            .map((exp) => (
+                                              <div key={exp.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-background/50 border border-border/30 group/expense">
+                                                <div className="flex items-center gap-3">
+                                                  <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
+                                                    {getPaymentIcon(exp.payment_method)}
+                                                  </div>
+                                                  <div>
+                                                    <p className="font-medium text-sm">{exp.vendor_name || 'Unknown Vendor'}</p>
+                                                    <p className="text-xs text-muted-foreground">{exp.description || 'No description'} • {formatDate(exp.date)}</p>
+                                                  </div>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                  <p className="font-mono font-medium text-sm">{formatCurrency(Number(exp.amount))}</p>
+                                                  <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                      <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-6 w-6 opacity-0 group-hover/expense:opacity-100 transition-opacity"
+                                                      >
+                                                        <MoreHorizontal className="h-3 w-3" />
+                                                      </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                      <DropdownMenuItem onClick={() => setEditingExpense(exp)}>
+                                                        <Pencil className="h-4 w-4 mr-2" />
+                                                        Edit
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuItem 
+                                                        onClick={() => setDeletingExpense(exp)}
+                                                        className="text-destructive focus:text-destructive"
+                                                      >
+                                                        <Trash2 className="h-4 w-4 mr-2" />
+                                                        Delete
+                                                      </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                  </DropdownMenu>
+                                                </div>
+                                              </div>
+                                            ))}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                                {isExpanded && categoryExpenses.length === 0 && (
+                                  <TableRow className="hover:bg-transparent">
+                                    <TableCell colSpan={7} className="p-0">
+                                      <div className="bg-muted/30 border-t border-b border-border/50 py-4 px-4 text-center text-sm text-muted-foreground">
+                                        No expenses in this category
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </>
+                            );
+                          })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </CollapsibleContent>
           </Card>
