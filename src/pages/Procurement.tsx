@@ -19,13 +19,15 @@ import {
   AlertTriangle,
   Pencil,
   Trash2,
-  Building2
+  FolderOpen,
+  Layers
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ProcurementItemModal } from '@/components/procurement/ProcurementItemModal';
+import { BundleModal } from '@/components/procurement/BundleModal';
 
 type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'delivered' | 'installed';
 type Phase = 'rough_in' | 'trim_out' | 'finish' | 'punch';
@@ -33,7 +35,7 @@ type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' |
 
 interface ProcurementItem {
   id: string;
-  project_id: string | null;
+  bundle_id: string | null;
   category_id: string | null;
   name: string;
   source_url: string | null;
@@ -49,6 +51,13 @@ interface ProcurementItem {
   finish: string | null;
   notes: string | null;
   bulk_discount_eligible: boolean | null;
+}
+
+interface Bundle {
+  id: string;
+  name: string;
+  description: string | null;
+  project_id: string | null;
 }
 
 interface Project {
@@ -87,23 +96,30 @@ const TEXAS_TAX_RATE = 0.0825;
 export default function Procurement() {
   const { user } = useAuth();
   const [items, setItems] = useState<ProcurementItem[]>([]);
+  const [bundles, setBundles] = useState<Bundle[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPhase, setFilterPhase] = useState<string>('all');
-  const [filterProject, setFilterProject] = useState<string>('all');
+  const [filterBundle, setFilterBundle] = useState<string>('all');
   const [modalOpen, setModalOpen] = useState(false);
+  const [bundleModalOpen, setBundleModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ProcurementItem | null>(null);
+  const [editingBundle, setEditingBundle] = useState<Bundle | null>(null);
 
   const fetchData = async () => {
     if (!user) return;
     
-    const [itemsResult, projectsResult] = await Promise.all([
+    const [itemsResult, bundlesResult, projectsResult] = await Promise.all([
       supabase
         .from('procurement_items')
         .select('*')
         .order('created_at', { ascending: false }),
+      supabase
+        .from('procurement_bundles')
+        .select('*')
+        .order('name'),
       supabase
         .from('projects')
         .select('id, name, address')
@@ -112,6 +128,9 @@ export default function Procurement() {
 
     if (itemsResult.data) {
       setItems(itemsResult.data as ProcurementItem[]);
+    }
+    if (bundlesResult.data) {
+      setBundles(bundlesResult.data as Bundle[]);
     }
     if (projectsResult.data) {
       setProjects(projectsResult.data);
@@ -143,9 +162,9 @@ export default function Procurement() {
       item.notes?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'all' || (item.status || 'researching') === filterStatus;
     const matchesPhase = filterPhase === 'all' || item.phase === filterPhase;
-    const matchesProject = filterProject === 'all' || 
-      (filterProject === 'unassigned' ? !item.project_id : item.project_id === filterProject);
-    return matchesSearch && matchesStatus && matchesPhase && matchesProject;
+    const matchesBundle = filterBundle === 'all' || 
+      (filterBundle === 'unassigned' ? !item.bundle_id : item.bundle_id === filterBundle);
+    return matchesSearch && matchesStatus && matchesPhase && matchesBundle;
   });
 
   // Summary stats
@@ -158,7 +177,7 @@ export default function Procurement() {
     .reduce((sum, i) => sum + calculateItemTotal(i), 0);
 
   const totalItems = filteredItems.length;
-  const unassignedCount = filteredItems.filter(i => !i.project_id).length;
+  const unassignedCount = filteredItems.filter(i => !i.bundle_id).length;
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase
@@ -187,10 +206,32 @@ export default function Procurement() {
     );
   };
 
-  const getProjectName = (projectId: string | null) => {
-    if (!projectId) return 'Unassigned';
-    const project = projects.find(p => p.id === projectId);
-    return project?.name || 'Unknown';
+  const getBundleName = (bundleId: string | null) => {
+    if (!bundleId) return 'Unassigned';
+    const bundle = bundles.find(b => b.id === bundleId);
+    return bundle?.name || 'Unknown';
+  };
+
+  const getBundleProjectName = (bundleId: string | null) => {
+    if (!bundleId) return null;
+    const bundle = bundles.find(b => b.id === bundleId);
+    if (!bundle?.project_id) return null;
+    const project = projects.find(p => p.id === bundle.project_id);
+    return project?.name;
+  };
+
+  const handleDeleteBundle = async (id: string) => {
+    const { error } = await supabase
+      .from('procurement_bundles')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Failed to delete bundle');
+    } else {
+      toast.success('Bundle deleted');
+      fetchData();
+    }
   };
 
   return (
@@ -205,10 +246,16 @@ export default function Procurement() {
             </h1>
             <p className="text-muted-foreground">Manage materials and product specifications across all projects</p>
           </div>
-          <Button onClick={() => { setEditingItem(null); setModalOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Item
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { setEditingBundle(null); setBundleModalOpen(true); }}>
+              <FolderOpen className="h-4 w-4 mr-2" />
+              New Bundle
+            </Button>
+            <Button onClick={() => { setEditingItem(null); setModalOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Item
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -267,16 +314,16 @@ export default function Procurement() {
                   className="pl-10"
                 />
               </div>
-              <Select value={filterProject} onValueChange={setFilterProject}>
+              <Select value={filterBundle} onValueChange={setFilterBundle}>
                 <SelectTrigger className="w-full md:w-48">
-                  <Building2 className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="All Projects" />
+                  <Layers className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="All Bundles" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
+                  <SelectItem value="all">All Bundles</SelectItem>
                   <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {projects.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  {bundles.map(b => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -332,7 +379,7 @@ export default function Procurement() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
-                      <TableHead>Project</TableHead>
+                      <TableHead>Bundle</TableHead>
                       <TableHead>Source</TableHead>
                       <TableHead>Phase</TableHead>
                       <TableHead>Status</TableHead>
@@ -357,12 +404,17 @@ export default function Procurement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className={cn(
-                            "text-sm",
-                            !item.project_id && "text-muted-foreground italic"
-                          )}>
-                            {getProjectName(item.project_id)}
-                          </span>
+                          <div>
+                            <span className={cn(
+                              "text-sm",
+                              !item.bundle_id && "text-muted-foreground italic"
+                            )}>
+                              {getBundleName(item.bundle_id)}
+                            </span>
+                            {getBundleProjectName(item.bundle_id) && (
+                              <p className="text-xs text-muted-foreground">→ {getBundleProjectName(item.bundle_id)}</p>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
@@ -424,11 +476,20 @@ export default function Procurement() {
         </Card>
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Add/Edit Item Modal */}
       <ProcurementItemModal
         open={modalOpen}
         onOpenChange={setModalOpen}
         item={editingItem}
+        bundles={bundles}
+        onSave={fetchData}
+      />
+
+      {/* Bundle Modal */}
+      <BundleModal
+        open={bundleModalOpen}
+        onOpenChange={setBundleModalOpen}
+        bundle={editingBundle}
         projects={projects}
         onSave={fetchData}
       />
