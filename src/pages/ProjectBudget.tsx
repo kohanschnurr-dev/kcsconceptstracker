@@ -851,7 +851,7 @@ export default function ProjectBudget() {
                       </TableHeader>
                       <TableBody>
                         {categories
-                          .sort((a, b) => b.actualSpent - a.actualSpent)
+                          .sort((a, b) => Number(b.estimated_budget) - Number(a.estimated_budget))
                           .map((cat) => {
                             const remaining = cat.estimated_budget - cat.actualSpent;
                             const percentUsed = cat.estimated_budget > 0 ? (cat.actualSpent / cat.estimated_budget) * 100 : 0;
