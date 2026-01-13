@@ -6,10 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { 
   ShoppingCart, 
   Plus, 
@@ -21,7 +17,6 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
-  DollarSign,
   Pencil,
   Trash2,
   Building2
@@ -30,10 +25,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ProcurementItemModal } from '@/components/procurement/ProcurementItemModal';
 
 type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'delivered' | 'installed';
 type Phase = 'rough_in' | 'trim_out' | 'finish' | 'punch';
-type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'other';
+type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'other';
 
 interface ProcurementItem {
   id: string;
@@ -82,6 +78,7 @@ const STORES: { value: SourceStore; label: string }[] = [
   { value: 'lowes', label: "Lowe's" },
   { value: 'floor_decor', label: 'Floor & Decor' },
   { value: 'build', label: 'Build.com' },
+  { value: 'ferguson', label: 'Ferguson' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -436,340 +433,5 @@ export default function Procurement() {
         onSave={fetchData}
       />
     </MainLayout>
-  );
-}
-
-// Modal Component
-function ProcurementItemModal({
-  open,
-  onOpenChange,
-  item,
-  projects,
-  onSave,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  item: ProcurementItem | null;
-  projects: Project[];
-  onSave: () => void;
-}) {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    project_id: '',
-    source_url: '',
-    source_store: 'home_depot' as SourceStore,
-    model_number: '',
-    unit_price: '',
-    quantity: '1',
-    includes_tax: false,
-    lead_time_days: '',
-    phase: 'rough_in' as Phase,
-    status: 'researching' as ItemStatus,
-    finish: '',
-    notes: '',
-    bulk_discount_eligible: false,
-  });
-
-  useEffect(() => {
-    if (item) {
-      setFormData({
-        name: item.name,
-        project_id: item.project_id || '',
-        source_url: item.source_url || '',
-        source_store: item.source_store || 'home_depot',
-        model_number: item.model_number || '',
-        unit_price: item.unit_price.toString(),
-        quantity: item.quantity.toString(),
-        includes_tax: item.includes_tax ?? false,
-        lead_time_days: item.lead_time_days?.toString() || '',
-        phase: item.phase || 'rough_in',
-        status: item.status || 'researching',
-        finish: item.finish || '',
-        notes: item.notes || '',
-        bulk_discount_eligible: item.bulk_discount_eligible ?? false,
-      });
-    } else {
-      setFormData({
-        name: '',
-        project_id: '',
-        source_url: '',
-        source_store: 'home_depot',
-        model_number: '',
-        unit_price: '',
-        quantity: '1',
-        includes_tax: false,
-        lead_time_days: '',
-        phase: 'rough_in',
-        status: 'researching',
-        finish: '',
-        notes: '',
-        bulk_discount_eligible: false,
-      });
-    }
-  }, [item, open]);
-
-  const handleSubmit = async () => {
-    if (!formData.name || !formData.unit_price) {
-      toast.error('Name and price are required');
-      return;
-    }
-
-    setLoading(true);
-    const payload = {
-      name: formData.name,
-      project_id: formData.project_id || null,
-      source_url: formData.source_url || null,
-      source_store: formData.source_store,
-      model_number: formData.model_number || null,
-      unit_price: parseFloat(formData.unit_price),
-      quantity: parseInt(formData.quantity) || 1,
-      includes_tax: formData.includes_tax,
-      tax_rate: TEXAS_TAX_RATE,
-      lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
-      phase: formData.phase,
-      status: formData.status,
-      finish: formData.finish || null,
-      notes: formData.notes || null,
-      bulk_discount_eligible: formData.bulk_discount_eligible,
-      user_id: user?.id,
-    };
-
-    let error;
-    if (item) {
-      const result = await supabase
-        .from('procurement_items')
-        .update(payload)
-        .eq('id', item.id);
-      error = result.error;
-    } else {
-      const result = await supabase
-        .from('procurement_items')
-        .insert(payload);
-      error = result.error;
-    }
-
-    setLoading(false);
-
-    if (error) {
-      toast.error('Failed to save item');
-      console.error(error);
-    } else {
-      toast.success(item ? 'Item updated' : 'Item added');
-      onOpenChange(false);
-      onSave();
-    }
-  };
-
-  const subtotal = (parseFloat(formData.unit_price) || 0) * (parseInt(formData.quantity) || 1);
-  const tax = formData.includes_tax ? 0 : subtotal * TEXAS_TAX_RATE;
-  const total = subtotal + tax;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{item ? 'Edit Item' : 'Add Procurement Item'}</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <Label>Item Name *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Delta Faucet Matte Black"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <Label>Assign to Project</Label>
-              <Select 
-                value={formData.project_id || '__unassigned__'} 
-                onValueChange={(v) => setFormData({ ...formData, project_id: v === '__unassigned__' ? '' : v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select project (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__unassigned__">Unassigned</SelectItem>
-                  {projects.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Source Store</Label>
-              <Select 
-                value={formData.source_store} 
-                onValueChange={(v) => setFormData({ ...formData, source_store: v as SourceStore })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STORES.map(s => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Source URL</Label>
-              <Input
-                value={formData.source_url}
-                onChange={(e) => setFormData({ ...formData, source_url: e.target.value })}
-                placeholder="https://..."
-              />
-            </div>
-
-            <div>
-              <Label>Model Number</Label>
-              <Input
-                value={formData.model_number}
-                onChange={(e) => setFormData({ ...formData, model_number: e.target.value })}
-                placeholder="SKU or model #"
-              />
-            </div>
-
-            <div>
-              <Label>Finish / Color</Label>
-              <Input
-                value={formData.finish}
-                onChange={(e) => setFormData({ ...formData, finish: e.target.value })}
-                placeholder="e.g., Matte Black"
-              />
-            </div>
-
-            <div>
-              <Label>Unit Price *</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.unit_price}
-                  onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
-                  className="pl-10"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Quantity</Label>
-              <Input
-                type="number"
-                value={formData.quantity}
-                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                min="1"
-              />
-            </div>
-
-            <div>
-              <Label>Phase</Label>
-              <Select 
-                value={formData.phase} 
-                onValueChange={(v) => setFormData({ ...formData, phase: v as Phase })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PHASES.map(p => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Status</Label>
-              <Select 
-                value={formData.status} 
-                onValueChange={(v) => setFormData({ ...formData, status: v as ItemStatus })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUSES.map(s => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Lead Time (days)</Label>
-              <Input
-                type="number"
-                value={formData.lead_time_days}
-                onChange={(e) => setFormData({ ...formData, lead_time_days: e.target.value })}
-                placeholder="Optional"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <Label>Notes</Label>
-              <Textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Additional notes..."
-                rows={2}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={formData.includes_tax}
-                onCheckedChange={(v) => setFormData({ ...formData, includes_tax: v })}
-              />
-              <Label>Price includes tax</Label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={formData.bulk_discount_eligible}
-                onCheckedChange={(v) => setFormData({ ...formData, bulk_discount_eligible: v })}
-              />
-              <Label>HD Pro Desk eligible</Label>
-            </div>
-          </div>
-
-          {/* Price Summary */}
-          <Card className="bg-muted/50">
-            <CardContent className="pt-4">
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span className="font-mono">${subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Tax (8.25%):</span>
-                  <span className="font-mono">${tax.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-bold border-t pt-1">
-                  <span>Total:</span>
-                  <span className="font-mono">${total.toFixed(2)}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Saving...' : item ? 'Update Item' : 'Add Item'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
