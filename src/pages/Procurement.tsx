@@ -382,7 +382,7 @@ export default function Procurement() {
                       <TableHead>Bundle</TableHead>
                       <TableHead>Source</TableHead>
                       <TableHead>Phase</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Color</TableHead>
                       <TableHead className="text-right">Price</TableHead>
                       <TableHead className="text-right">Qty</TableHead>
                       <TableHead className="text-right">Total</TableHead>
@@ -393,15 +393,18 @@ export default function Procurement() {
                     {filteredItems.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>
-                          <div>
+                          {item.source_url ? (
+                            <a 
+                              href={item.source_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="font-medium text-primary hover:underline"
+                            >
+                              {item.name}
+                            </a>
+                          ) : (
                             <p className="font-medium">{item.name}</p>
-                            {item.model_number && (
-                              <p className="text-xs text-muted-foreground">#{item.model_number}</p>
-                            )}
-                            {item.finish && (
-                              <Badge variant="secondary" className="text-xs mt-1">{item.finish}</Badge>
-                            )}
-                          </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div>
@@ -417,28 +420,22 @@ export default function Procurement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm">
-                              {STORES.find(s => s.value === item.source_store)?.label || '-'}
-                            </span>
-                            {item.source_url && (
-                              <a 
-                                href={item.source_url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-primary hover:text-primary/80"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            )}
-                          </div>
+                          <span className="text-sm">
+                            {STORES.find(s => s.value === item.source_store)?.label || '-'}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <span className="text-sm">
                             {PHASES.find(p => p.value === item.phase)?.label || '-'}
                           </span>
                         </TableCell>
-                        <TableCell>{getStatusBadge(item.status)}</TableCell>
+                        <TableCell>
+                          {item.finish ? (
+                            <Badge variant="secondary" className="text-xs">{item.finish}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right font-mono">
                           {formatCurrency(item.unit_price)}
                         </TableCell>
