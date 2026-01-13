@@ -36,7 +36,7 @@ import { MilestonesTimeline } from '@/components/project/MilestonesTimeline';
 import { ProjectNotes } from '@/components/project/ProjectNotes';
 import { SpendingChart } from '@/components/project/SpendingChart';
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
-import { BudgetAlerts } from '@/components/project/BudgetAlerts';
+
 import { ProjectVendors } from '@/components/project/ProjectVendors';
 import { ExportReports } from '@/components/project/ExportReports';
 import { useToast } from '@/hooks/use-toast';
@@ -462,8 +462,6 @@ export default function ProjectDetail() {
           </CardContent>
         </Card>
 
-        {/* Budget Alerts */}
-        <BudgetAlerts categories={categories} totalBudget={project.total_budget} totalSpent={totalSpent} />
 
         {/* Tabs for detailed views */}
         <Tabs defaultValue="overview" className="space-y-4">
