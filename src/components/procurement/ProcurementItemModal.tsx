@@ -1,0 +1,786 @@
+import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { 
+  DollarSign, 
+  ArrowLeft, 
+  ArrowRight,
+  DoorOpen,
+  Droplets,
+  Zap,
+  Wind,
+  Paintbrush,
+  Hammer,
+  Grid3X3,
+  Lightbulb,
+  Fence,
+  Home,
+  Layers,
+  Wrench
+} from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { BUDGET_CATEGORIES } from '@/types';
+
+// Types
+type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'delivered' | 'installed';
+type Phase = 'rough_in' | 'trim_out' | 'finish' | 'punch';
+type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'other';
+
+interface ProcurementItem {
+  id: string;
+  project_id: string | null;
+  category_id: string | null;
+  name: string;
+  source_url: string | null;
+  source_store: SourceStore | null;
+  model_number: string | null;
+  unit_price: number;
+  quantity: number;
+  includes_tax: boolean;
+  tax_rate: number;
+  lead_time_days: number | null;
+  phase: Phase | null;
+  status: ItemStatus | null;
+  finish: string | null;
+  notes: string | null;
+  bulk_discount_eligible: boolean | null;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  address: string;
+}
+
+// Procurement categories with icons and specific fields
+export type ProcurementCategory = 
+  | 'doors'
+  | 'flooring'
+  | 'plumbing'
+  | 'electrical'
+  | 'hvac'
+  | 'paint'
+  | 'cabinets'
+  | 'countertops'
+  | 'tile'
+  | 'lighting'
+  | 'hardware'
+  | 'appliances'
+  | 'windows'
+  | 'fencing'
+  | 'roofing'
+  | 'framing'
+  | 'insulation'
+  | 'drywall'
+  | 'other';
+
+interface CategoryConfig {
+  value: ProcurementCategory;
+  label: string;
+  icon: typeof DoorOpen;
+  color: string;
+  fields: string[];
+  placeholders?: Record<string, string>;
+}
+
+const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
+  { 
+    value: 'doors', 
+    label: 'Doors', 
+    icon: DoorOpen, 
+    color: 'bg-amber-500/10 text-amber-600 border-amber-500/30',
+    fields: ['size', 'style', 'material', 'swing', 'prehung'],
+    placeholders: { size: '36" x 80"', style: 'Shaker, Panel, Flush', material: 'Solid wood, Hollow core, Fiberglass' }
+  },
+  { 
+    value: 'flooring', 
+    label: 'Flooring', 
+    icon: Layers, 
+    color: 'bg-orange-500/10 text-orange-600 border-orange-500/30',
+    fields: ['material', 'sqft', 'thickness', 'finish', 'underlayment'],
+    placeholders: { material: 'LVP, Hardwood, Tile', sqft: 'Total sq ft needed', thickness: '6mm, 12mm, 3/4"' }
+  },
+  { 
+    value: 'plumbing', 
+    label: 'Plumbing', 
+    icon: Droplets, 
+    color: 'bg-blue-500/10 text-blue-600 border-blue-500/30',
+    fields: ['fixture_type', 'connection_size', 'finish', 'gpm'],
+    placeholders: { fixture_type: 'Faucet, Toilet, Shower valve', connection_size: '1/2", 3/4"', gpm: 'Gallons per minute' }
+  },
+  { 
+    value: 'electrical', 
+    label: 'Electrical', 
+    icon: Zap, 
+    color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30',
+    fields: ['voltage', 'amperage', 'wire_gauge', 'circuit_type'],
+    placeholders: { voltage: '120V, 240V', amperage: '15A, 20A, 30A', wire_gauge: '12 AWG, 10 AWG' }
+  },
+  { 
+    value: 'hvac', 
+    label: 'HVAC', 
+    icon: Wind, 
+    color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30',
+    fields: ['btu', 'tonnage', 'seer_rating', 'duct_size'],
+    placeholders: { btu: 'BTU rating', tonnage: '2 ton, 3 ton', seer_rating: 'SEER efficiency' }
+  },
+  { 
+    value: 'paint', 
+    label: 'Paint', 
+    icon: Paintbrush, 
+    color: 'bg-pink-500/10 text-pink-600 border-pink-500/30',
+    fields: ['color_code', 'sheen', 'coverage_sqft', 'brand'],
+    placeholders: { color_code: 'SW 7015, BM OC-17', sheen: 'Flat, Eggshell, Satin, Semi-gloss', coverage_sqft: 'Sq ft per gallon' }
+  },
+  { 
+    value: 'cabinets', 
+    label: 'Cabinets', 
+    icon: Home, 
+    color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30',
+    fields: ['cabinet_type', 'dimensions', 'door_style', 'wood_species'],
+    placeholders: { cabinet_type: 'Base, Wall, Tall', dimensions: '36"W x 24"D x 34.5"H', door_style: 'Shaker, Raised panel' }
+  },
+  { 
+    value: 'countertops', 
+    label: 'Countertops', 
+    icon: Grid3X3, 
+    color: 'bg-stone-500/10 text-stone-600 border-stone-500/30',
+    fields: ['material', 'edge_profile', 'thickness', 'sqft'],
+    placeholders: { material: 'Quartz, Granite, Marble', edge_profile: 'Eased, Bullnose, Ogee', thickness: '2cm, 3cm' }
+  },
+  { 
+    value: 'tile', 
+    label: 'Tile', 
+    icon: Grid3X3, 
+    color: 'bg-teal-500/10 text-teal-600 border-teal-500/30',
+    fields: ['tile_size', 'material', 'sqft', 'grout_color'],
+    placeholders: { tile_size: '12x24, 4x12, 3x6', material: 'Ceramic, Porcelain, Natural stone', grout_color: 'White, Gray, Charcoal' }
+  },
+  { 
+    value: 'lighting', 
+    label: 'Lighting', 
+    icon: Lightbulb, 
+    color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
+    fields: ['fixture_type', 'wattage', 'lumens', 'color_temp'],
+    placeholders: { fixture_type: 'Recessed, Pendant, Sconce', wattage: 'Max wattage', lumens: 'Brightness level', color_temp: '2700K, 3000K, 4000K' }
+  },
+  { 
+    value: 'hardware', 
+    label: 'Hardware', 
+    icon: Wrench, 
+    color: 'bg-slate-500/10 text-slate-600 border-slate-500/30',
+    fields: ['hardware_type', 'size', 'finish'],
+    placeholders: { hardware_type: 'Knobs, Pulls, Hinges', size: 'Center-to-center measurement' }
+  },
+  { 
+    value: 'appliances', 
+    label: 'Appliances', 
+    icon: Home, 
+    color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30',
+    fields: ['appliance_type', 'dimensions', 'energy_rating', 'fuel_type'],
+    placeholders: { appliance_type: 'Range, Refrigerator, Dishwasher', dimensions: 'W x D x H', fuel_type: 'Gas, Electric' }
+  },
+  { 
+    value: 'windows', 
+    label: 'Windows', 
+    icon: Home, 
+    color: 'bg-sky-500/10 text-sky-600 border-sky-500/30',
+    fields: ['window_type', 'dimensions', 'glass_type', 'frame_material'],
+    placeholders: { window_type: 'Single-hung, Double-hung, Casement', dimensions: 'Width x Height', glass_type: 'Double-pane, Low-E' }
+  },
+  { 
+    value: 'fencing', 
+    label: 'Fencing', 
+    icon: Fence, 
+    color: 'bg-green-500/10 text-green-600 border-green-500/30',
+    fields: ['material', 'height', 'linear_feet', 'style'],
+    placeholders: { material: 'Cedar, Vinyl, Metal', height: '4ft, 6ft, 8ft', linear_feet: 'Total length' }
+  },
+  { 
+    value: 'roofing', 
+    label: 'Roofing', 
+    icon: Home, 
+    color: 'bg-red-500/10 text-red-600 border-red-500/30',
+    fields: ['material', 'squares', 'warranty_years'],
+    placeholders: { material: 'Shingles, Metal, Tile', squares: 'Roofing squares (100 sq ft each)' }
+  },
+  { 
+    value: 'framing', 
+    label: 'Framing', 
+    icon: Hammer, 
+    color: 'bg-amber-600/10 text-amber-700 border-amber-600/30',
+    fields: ['lumber_size', 'length', 'grade', 'treatment'],
+    placeholders: { lumber_size: '2x4, 2x6, 2x8', length: '8ft, 10ft, 12ft', grade: '#2, Stud grade' }
+  },
+  { 
+    value: 'insulation', 
+    label: 'Insulation', 
+    icon: Layers, 
+    color: 'bg-purple-500/10 text-purple-600 border-purple-500/30',
+    fields: ['r_value', 'type', 'coverage_sqft'],
+    placeholders: { r_value: 'R-13, R-19, R-30', type: 'Batt, Blown-in, Spray foam' }
+  },
+  { 
+    value: 'drywall', 
+    label: 'Drywall', 
+    icon: Grid3X3, 
+    color: 'bg-gray-500/10 text-gray-600 border-gray-500/30',
+    fields: ['thickness', 'sheet_size', 'type'],
+    placeholders: { thickness: '1/2", 5/8"', sheet_size: '4x8, 4x12', type: 'Regular, Moisture-resistant, Fire-rated' }
+  },
+  { 
+    value: 'other', 
+    label: 'Other', 
+    icon: Wrench, 
+    color: 'bg-zinc-500/10 text-zinc-600 border-zinc-500/30',
+    fields: [],
+  },
+];
+
+const PHASES: { value: Phase; label: string }[] = [
+  { value: 'rough_in', label: 'Rough-In' },
+  { value: 'trim_out', label: 'Trim Out' },
+  { value: 'finish', label: 'Finish' },
+  { value: 'punch', label: 'Punch List' },
+];
+
+const STATUSES: { value: ItemStatus; label: string }[] = [
+  { value: 'researching', label: 'Researching' },
+  { value: 'in_cart', label: 'In Cart' },
+  { value: 'ordered', label: 'Ordered' },
+  { value: 'delivered', label: 'Delivered' },
+  { value: 'installed', label: 'Installed' },
+];
+
+const STORES: { value: SourceStore; label: string }[] = [
+  { value: 'amazon', label: 'Amazon' },
+  { value: 'home_depot', label: 'Home Depot' },
+  { value: 'lowes', label: "Lowe's" },
+  { value: 'floor_decor', label: 'Floor & Decor' },
+  { value: 'build', label: 'Build.com' },
+  { value: 'ferguson', label: 'Ferguson' },
+  { value: 'other', label: 'Other' },
+];
+
+const TEXAS_TAX_RATE = 0.0825;
+
+interface FormData {
+  category: ProcurementCategory | '';
+  name: string;
+  project_id: string;
+  source_url: string;
+  source_store: SourceStore;
+  model_number: string;
+  unit_price: string;
+  quantity: string;
+  includes_tax: boolean;
+  lead_time_days: string;
+  phase: Phase;
+  status: ItemStatus;
+  finish: string;
+  notes: string;
+  bulk_discount_eligible: boolean;
+  // Category-specific fields stored as JSON
+  specs: Record<string, string>;
+}
+
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  item: ProcurementItem | null;
+  projects: Project[];
+  onSave: () => void;
+}
+
+export function ProcurementItemModal({ open, onOpenChange, item, projects, onSave }: Props) {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<'category' | 'details'>('category');
+  
+  const [formData, setFormData] = useState<FormData>({
+    category: '',
+    name: '',
+    project_id: '',
+    source_url: '',
+    source_store: 'home_depot',
+    model_number: '',
+    unit_price: '',
+    quantity: '1',
+    includes_tax: false,
+    lead_time_days: '',
+    phase: 'rough_in',
+    status: 'researching',
+    finish: '',
+    notes: '',
+    bulk_discount_eligible: false,
+    specs: {},
+  });
+
+  // Parse specs from notes field (stored as JSON)
+  const parseSpecsFromNotes = (notes: string | null): { specs: Record<string, string>; cleanNotes: string } => {
+    if (!notes) return { specs: {}, cleanNotes: '' };
+    try {
+      const match = notes.match(/\[SPECS:(.*?)\]/);
+      if (match) {
+        const specs = JSON.parse(match[1]);
+        const cleanNotes = notes.replace(/\[SPECS:.*?\]/, '').trim();
+        return { specs, cleanNotes };
+      }
+    } catch {}
+    return { specs: {}, cleanNotes: notes };
+  };
+
+  // Serialize specs into notes
+  const serializeSpecsToNotes = (specs: Record<string, string>, notes: string): string => {
+    const hasSpecs = Object.values(specs).some(v => v.trim());
+    if (!hasSpecs) return notes;
+    return `${notes}${notes ? '\n' : ''}[SPECS:${JSON.stringify(specs)}]`;
+  };
+
+  // Detect category from item name or existing specs
+  const detectCategory = (itemName: string): ProcurementCategory => {
+    const name = itemName.toLowerCase();
+    if (name.includes('door')) return 'doors';
+    if (name.includes('floor') || name.includes('lvp') || name.includes('hardwood')) return 'flooring';
+    if (name.includes('faucet') || name.includes('toilet') || name.includes('sink') || name.includes('shower')) return 'plumbing';
+    if (name.includes('switch') || name.includes('outlet') || name.includes('breaker') || name.includes('wire')) return 'electrical';
+    if (name.includes('hvac') || name.includes('furnace') || name.includes('ac') || name.includes('mini split')) return 'hvac';
+    if (name.includes('paint') || name.includes('primer')) return 'paint';
+    if (name.includes('cabinet')) return 'cabinets';
+    if (name.includes('counter') || name.includes('quartz') || name.includes('granite')) return 'countertops';
+    if (name.includes('tile') || name.includes('grout')) return 'tile';
+    if (name.includes('light') || name.includes('fixture') || name.includes('chandelier') || name.includes('sconce')) return 'lighting';
+    if (name.includes('knob') || name.includes('pull') || name.includes('hinge')) return 'hardware';
+    if (name.includes('refrigerator') || name.includes('range') || name.includes('dishwasher') || name.includes('microwave')) return 'appliances';
+    if (name.includes('window')) return 'windows';
+    if (name.includes('fence')) return 'fencing';
+    if (name.includes('shingle') || name.includes('roof')) return 'roofing';
+    if (name.includes('lumber') || name.includes('2x4') || name.includes('2x6') || name.includes('stud')) return 'framing';
+    if (name.includes('insulation') || name.includes('r-')) return 'insulation';
+    if (name.includes('drywall') || name.includes('sheetrock')) return 'drywall';
+    return 'other';
+  };
+
+  useEffect(() => {
+    if (open) {
+      if (item) {
+        const { specs, cleanNotes } = parseSpecsFromNotes(item.notes);
+        const detectedCategory = detectCategory(item.name);
+        
+        setFormData({
+          category: detectedCategory,
+          name: item.name,
+          project_id: item.project_id || '',
+          source_url: item.source_url || '',
+          source_store: item.source_store || 'home_depot',
+          model_number: item.model_number || '',
+          unit_price: item.unit_price.toString(),
+          quantity: item.quantity.toString(),
+          includes_tax: item.includes_tax ?? false,
+          lead_time_days: item.lead_time_days?.toString() || '',
+          phase: item.phase || 'rough_in',
+          status: item.status || 'researching',
+          finish: item.finish || '',
+          notes: cleanNotes,
+          bulk_discount_eligible: item.bulk_discount_eligible ?? false,
+          specs,
+        });
+        setStep('details'); // Skip category selection when editing
+      } else {
+        setFormData({
+          category: '',
+          name: '',
+          project_id: '',
+          source_url: '',
+          source_store: 'home_depot',
+          model_number: '',
+          unit_price: '',
+          quantity: '1',
+          includes_tax: false,
+          lead_time_days: '',
+          phase: 'rough_in',
+          status: 'researching',
+          finish: '',
+          notes: '',
+          bulk_discount_eligible: false,
+          specs: {},
+        });
+        setStep('category');
+      }
+    }
+  }, [item, open]);
+
+  const handleCategorySelect = (category: ProcurementCategory) => {
+    setFormData(prev => ({ ...prev, category, specs: {} }));
+    setStep('details');
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.unit_price) {
+      toast.error('Name and price are required');
+      return;
+    }
+
+    setLoading(true);
+    
+    // Combine notes with specs
+    const finalNotes = serializeSpecsToNotes(formData.specs, formData.notes);
+    
+    const payload = {
+      name: formData.name,
+      project_id: formData.project_id || null,
+      source_url: formData.source_url || null,
+      source_store: formData.source_store,
+      model_number: formData.model_number || null,
+      unit_price: parseFloat(formData.unit_price),
+      quantity: parseInt(formData.quantity) || 1,
+      includes_tax: formData.includes_tax,
+      tax_rate: TEXAS_TAX_RATE,
+      lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
+      phase: formData.phase,
+      status: formData.status,
+      finish: formData.finish || null,
+      notes: finalNotes || null,
+      bulk_discount_eligible: formData.bulk_discount_eligible,
+      user_id: user?.id,
+    };
+
+    let error;
+    if (item) {
+      const result = await supabase
+        .from('procurement_items')
+        .update(payload)
+        .eq('id', item.id);
+      error = result.error;
+    } else {
+      const result = await supabase
+        .from('procurement_items')
+        .insert(payload);
+      error = result.error;
+    }
+
+    setLoading(false);
+
+    if (error) {
+      toast.error('Failed to save item');
+      console.error(error);
+    } else {
+      toast.success(item ? 'Item updated' : 'Item added');
+      onOpenChange(false);
+      onSave();
+    }
+  };
+
+  const selectedCategory = PROCUREMENT_CATEGORIES.find(c => c.value === formData.category);
+  const subtotal = (parseFloat(formData.unit_price) || 0) * (parseInt(formData.quantity) || 1);
+  const tax = formData.includes_tax ? 0 : subtotal * TEXAS_TAX_RATE;
+  const total = subtotal + tax;
+
+  const renderCategoryStep = () => (
+    <div className="space-y-4 py-4">
+      <p className="text-sm text-muted-foreground">Select a category to see relevant specification fields:</p>
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+        {PROCUREMENT_CATEGORIES.map((cat) => {
+          const Icon = cat.icon;
+          return (
+            <button
+              key={cat.value}
+              onClick={() => handleCategorySelect(cat.value)}
+              className={cn(
+                "flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all hover:scale-105",
+                "hover:border-primary/50 hover:bg-primary/5",
+                cat.color
+              )}
+            >
+              <Icon className="h-6 w-6" />
+              <span className="text-xs font-medium">{cat.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderSpecField = (field: string, placeholder?: string) => {
+    const fieldLabel = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return (
+      <div key={field}>
+        <Label className="text-xs">{fieldLabel}</Label>
+        <Input
+          value={formData.specs[field] || ''}
+          onChange={(e) => setFormData(prev => ({
+            ...prev,
+            specs: { ...prev.specs, [field]: e.target.value }
+          }))}
+          placeholder={placeholder || fieldLabel}
+          className="h-9"
+        />
+      </div>
+    );
+  };
+
+  const renderDetailsStep = () => (
+    <div className="space-y-4 py-4">
+      {/* Category Badge */}
+      {selectedCategory && (
+        <div className="flex items-center gap-2">
+          <Badge className={cn('gap-1', selectedCategory.color)}>
+            <selectedCategory.icon className="h-3 w-3" />
+            {selectedCategory.label}
+          </Badge>
+          {!item && (
+            <Button variant="ghost" size="sm" onClick={() => setStep('category')} className="h-6 text-xs">
+              <ArrowLeft className="h-3 w-3 mr-1" />
+              Change
+            </Button>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        {/* Item Name */}
+        <div className="col-span-2">
+          <Label>Item Name *</Label>
+          <Input
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder={selectedCategory?.value === 'doors' ? 'e.g., 36" Shaker Interior Door' : 'Item description'}
+          />
+        </div>
+
+        {/* Category-specific fields */}
+        {selectedCategory && selectedCategory.fields.length > 0 && (
+          <div className="col-span-2 p-3 bg-muted/50 rounded-lg space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {selectedCategory.label} Specifications
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {selectedCategory.fields.map(field => 
+                renderSpecField(field, selectedCategory.placeholders?.[field])
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Project Assignment */}
+        <div className="col-span-2">
+          <Label>Assign to Project</Label>
+          <Select 
+            value={formData.project_id || '__unassigned__'} 
+            onValueChange={(v) => setFormData(prev => ({ ...prev, project_id: v === '__unassigned__' ? '' : v }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select project (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__unassigned__">Unassigned</SelectItem>
+              {projects.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Source */}
+        <div>
+          <Label>Source Store</Label>
+          <Select 
+            value={formData.source_store} 
+            onValueChange={(v) => setFormData(prev => ({ ...prev, source_store: v as SourceStore }))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STORES.map(s => (
+                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label>Source URL</Label>
+          <Input
+            value={formData.source_url}
+            onChange={(e) => setFormData(prev => ({ ...prev, source_url: e.target.value }))}
+            placeholder="https://..."
+          />
+        </div>
+
+        <div>
+          <Label>Model Number</Label>
+          <Input
+            value={formData.model_number}
+            onChange={(e) => setFormData(prev => ({ ...prev, model_number: e.target.value }))}
+            placeholder="SKU or model #"
+          />
+        </div>
+
+        <div>
+          <Label>Finish / Color</Label>
+          <Input
+            value={formData.finish}
+            onChange={(e) => setFormData(prev => ({ ...prev, finish: e.target.value }))}
+            placeholder="e.g., Matte Black"
+          />
+        </div>
+
+        {/* Pricing */}
+        <div>
+          <Label>Unit Price *</Label>
+          <div className="relative">
+            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="number"
+              step="0.01"
+              value={formData.unit_price}
+              onChange={(e) => setFormData(prev => ({ ...prev, unit_price: e.target.value }))}
+              className="pl-10"
+              placeholder="0.00"
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label>Quantity</Label>
+          <Input
+            type="number"
+            value={formData.quantity}
+            onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
+            min="1"
+          />
+        </div>
+
+        <div>
+          <Label>Phase</Label>
+          <Select 
+            value={formData.phase} 
+            onValueChange={(v) => setFormData(prev => ({ ...prev, phase: v as Phase }))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PHASES.map(p => (
+                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label>Status</Label>
+          <Select 
+            value={formData.status} 
+            onValueChange={(v) => setFormData(prev => ({ ...prev, status: v as ItemStatus }))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUSES.map(s => (
+                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label>Lead Time (days)</Label>
+          <Input
+            type="number"
+            value={formData.lead_time_days}
+            onChange={(e) => setFormData(prev => ({ ...prev, lead_time_days: e.target.value }))}
+            placeholder="Optional"
+          />
+        </div>
+
+        <div className="col-span-2">
+          <Label>Notes</Label>
+          <Textarea
+            value={formData.notes}
+            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            placeholder="Additional notes..."
+            rows={2}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.includes_tax}
+            onCheckedChange={(v) => setFormData(prev => ({ ...prev, includes_tax: v }))}
+          />
+          <Label>Price includes tax</Label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.bulk_discount_eligible}
+            onCheckedChange={(v) => setFormData(prev => ({ ...prev, bulk_discount_eligible: v }))}
+          />
+          <Label>HD Pro Desk eligible</Label>
+        </div>
+      </div>
+
+      {/* Price Summary */}
+      <Card className="bg-muted/50">
+        <CardContent className="pt-4">
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <span className="font-mono">${subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Tax (8.25%):</span>
+              <span className="font-mono">${tax.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-bold border-t pt-1">
+              <span>Total:</span>
+              <span className="font-mono">${total.toFixed(2)}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {item ? 'Edit Item' : step === 'category' ? 'Select Category' : 'Add Procurement Item'}
+          </DialogTitle>
+        </DialogHeader>
+
+        {step === 'category' ? renderCategoryStep() : renderDetailsStep()}
+
+        <DialogFooter>
+          {step === 'details' && !item && (
+            <Button variant="outline" onClick={() => setStep('category')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          {step === 'details' && (
+            <Button onClick={handleSubmit} disabled={loading}>
+              {loading ? 'Saving...' : item ? 'Update Item' : 'Add Item'}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
