@@ -29,6 +29,19 @@ export function Sidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
 
+  const isActiveLink = (itemPath: string) => {
+    const [pathname, search] = itemPath.split('?');
+    if (search) {
+      // For links with query params, match both pathname and query
+      return location.pathname === pathname && location.search === `?${search}`;
+    }
+    // For regular links, just match pathname (but not if we're on a tab variant)
+    if (pathname === '/calculator' && location.search.includes('tab=')) {
+      return false;
+    }
+    return location.pathname === pathname;
+  };
+
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-sidebar">
       <div className="flex h-full flex-col">
@@ -46,7 +59,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = isActiveLink(item.path);
             return (
               <NavLink
                 key={item.path}

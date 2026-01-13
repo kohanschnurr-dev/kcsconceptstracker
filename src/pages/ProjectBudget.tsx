@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowLeft, 
@@ -97,7 +97,18 @@ type SortOrder = 'asc' | 'desc';
 export default function ProjectBudget() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
+  // Read tab from URL, default to 'budget'
+  const currentTab = searchParams.get('tab') || 'budget';
+  const setCurrentTab = (tab: string) => {
+    if (tab === 'budget') {
+      searchParams.delete('tab');
+    } else {
+      searchParams.set('tab', tab);
+    }
+    setSearchParams(searchParams);
+  };
   const [project, setProject] = useState<DBProject | null>(null);
   const [categories, setCategories] = useState<(DBCategory & { actualSpent: number })[]>([]);
   const [expenses, setExpenses] = useState<DBExpense[]>([]);
@@ -527,7 +538,7 @@ export default function ProjectBudget() {
         </div>
 
         {/* Tabs for Budget vs Procurement */}
-        <Tabs defaultValue="budget" className="space-y-6">
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="budget" className="gap-2">
               <DollarSign className="h-4 w-4" />
