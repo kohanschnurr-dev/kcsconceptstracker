@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Plus, AlertTriangle } from 'lucide-react';
+import { Plus, AlertTriangle, Zap } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,7 @@ import {
   CATEGORY_GROUPS, 
   getGroupedCategories,
   getCategoryStyles,
+  getCategoryLabel,
 } from '@/lib/calendarCategories';
 
 interface Project {
@@ -173,12 +174,34 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
           {/* Event Title */}
           <div className="space-y-2">
             <Label className="text-slate-300">Event Title *</Label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Foundation Inspection"
-              className="bg-slate-800 border-slate-700 text-white"
-            />
+            <div className="flex gap-2">
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Foundation Inspection"
+                className="bg-slate-800 border-slate-700 text-white flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (category) {
+                    setTitle(getCategoryLabel(category));
+                  }
+                }}
+                disabled={!category}
+                className={cn(
+                  "border-slate-700 shrink-0",
+                  category 
+                    ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/30" 
+                    : "text-slate-500"
+                )}
+                title={category ? `Fill with "${getCategoryLabel(category)}"` : "Select a category first"}
+              >
+                <Zap className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Category (was Trade) */}
