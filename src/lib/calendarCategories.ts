@@ -69,10 +69,13 @@ export const CALENDAR_CATEGORIES: CalendarCategory[] = [
   { value: 'permitting', label: 'Permitting', group: 'acquisition_admin', groupLabel: 'Acquisition/Admin' },
   
   // Structural/Exterior (Red)
+  { value: 'demo', label: 'Demo', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   { value: 'foundation_piers', label: 'Foundation/Piers', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   { value: 'roofing', label: 'Roofing', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   { value: 'grading', label: 'Grading', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   { value: 'siding', label: 'Siding', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
+  { value: 'windows', label: 'Windows', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
+  { value: 'exterior_paint', label: 'Exterior Paint', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   
   // Rough-ins (Orange)
   { value: 'plumbing_rough', label: 'Plumbing (Cast Iron/PVC)', group: 'rough_ins', groupLabel: 'Rough-ins' },
@@ -88,6 +91,7 @@ export const CALENDAR_CATEGORIES: CalendarCategory[] = [
   
   // Interior Finishes (Green)
   { value: 'drywall', label: 'Drywall', group: 'interior_finishes', groupLabel: 'Interior Finishes' },
+  { value: 'painting', label: 'Painting', group: 'interior_finishes', groupLabel: 'Interior Finishes' },
   { value: 'tile', label: 'Tile', group: 'interior_finishes', groupLabel: 'Interior Finishes' },
   { value: 'flooring', label: 'LVP/Hardwoods', group: 'interior_finishes', groupLabel: 'Interior Finishes' },
   { value: 'cabinetry', label: 'Cabinetry', group: 'interior_finishes', groupLabel: 'Interior Finishes' },
