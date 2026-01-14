@@ -279,6 +279,10 @@ export default function Calendar() {
         open={panelOpen}
         onOpenChange={setPanelOpen}
         onTaskUpdate={handleTaskUpdate}
+        onTaskDelete={(taskId) => {
+          setTasks(prev => prev.filter(t => t.id !== taskId));
+          setSelectedTask(null);
+        }}
         allTasks={tasks}
       />
     </MainLayout>
