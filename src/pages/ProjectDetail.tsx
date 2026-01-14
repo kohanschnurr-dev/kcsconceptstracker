@@ -100,6 +100,7 @@ export default function ProjectDetail() {
   const [dailyLogs, setDailyLogs] = useState<DBDailyLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -353,7 +354,7 @@ export default function ProjectDetail() {
                   <MapPin className="h-4 w-4" />
                   {project.address}
                 </span>
-                <Popover>
+                <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <button className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer">
                       <Calendar className="h-4 w-4" />
@@ -385,6 +386,7 @@ export default function ProjectDetail() {
                             description: `Start date changed to ${format(date, 'MMM d, yyyy')}`,
                           });
                         }
+                        setDatePopoverOpen(false);
                       }}
                       className={cn("p-3 pointer-events-auto")}
                     />
