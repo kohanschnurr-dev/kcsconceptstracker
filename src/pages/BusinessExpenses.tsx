@@ -34,6 +34,7 @@ import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { BusinessQuickBooksIntegration } from '@/components/BusinessQuickBooksIntegration';
 import { BusinessExpenseTrendChart } from '@/components/dashboard/BusinessExpenseTrendChart';
+import { BusinessExpenseDetailModal } from '@/components/BusinessExpenseDetailModal';
 
 interface DBBusinessExpense {
   id: string;
@@ -57,6 +58,8 @@ export default function BusinessExpenses() {
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [expenses, setExpenses] = useState<DBBusinessExpense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedExpense, setSelectedExpense] = useState<DBBusinessExpense | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const { toast } = useToast();
 
   // Form state for new expense
@@ -457,7 +460,14 @@ export default function BusinessExpenses() {
                   </tr>
                 ) : (
                   filteredExpenses.map((expense) => (
-                    <tr key={expense.id} className="hover:bg-muted/20 transition-colors">
+                    <tr 
+                      key={expense.id} 
+                      className="hover:bg-muted/20 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setSelectedExpense(expense);
+                        setDetailModalOpen(true);
+                      }}
+                    >
                       <td className="whitespace-nowrap">{formatDate(expense.date)}</td>
                       <td>
                         <div>
@@ -481,15 +491,7 @@ export default function BusinessExpenses() {
                       <td className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           {expense.receipt_url && (
-                            <a
-                              href={expense.receipt_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:text-primary/80"
-                              title="View receipt"
-                            >
-                              <Paperclip className="h-4 w-4" />
-                            </a>
+                            <Paperclip className="h-4 w-4 text-primary" />
                           )}
                           <span className="font-mono">
                             {formatCurrency(expense.amount)}
@@ -671,6 +673,13 @@ export default function BusinessExpenses() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <BusinessExpenseDetailModal
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        expense={selectedExpense}
+        onExpenseUpdated={fetchData}
+      />
     </MainLayout>
   );
 }
