@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { parseISO } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarLegend } from '@/components/calendar/CalendarLegend';
@@ -40,13 +41,38 @@ interface Project {
 }
 
 export default function Calendar() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState<CalendarView>('monthly');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [tasks, setTasks] = useState<CalendarTask[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const { toast } = useToast();
+
+  // Get project filter from URL
+  const selectedProjectId = searchParams.get('project');
+
+  // Handle project filter change with URL sync
+  const handleProjectFilterChange = (projectId: string | null) => {
+    if (projectId) {
+      setSearchParams({ project: projectId });
+    } else {
+      setSearchParams({});
+    }
+    // Close the side panel if a different project is selected
+    if (selectedTask && projectId && selectedTask.projectId !== projectId) {
+      setPanelOpen(false);
+      setSelectedTask(null);
+    }
+  };
+
+  // Filter tasks based on selected project
+  const filteredTasks = useMemo(() => {
+    if (!selectedProjectId) return tasks;
+    return tasks.filter(task => task.projectId === selectedProjectId);
+  }, [tasks, selectedProjectId]);
 
   useEffect(() => {
     fetchData();
@@ -67,6 +93,7 @@ export default function Calendar() {
 
     if (projectsData) {
       setProjects(projectsData);
+      setAllProjects(projectsData);
     }
 
     // Fetch all projects for task names
@@ -228,17 +255,24 @@ export default function Calendar() {
   return (
     <MainLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
             <CalendarHeader
               view={view}
               onViewChange={setView}
               currentDate={currentDate}
               onDateChange={setCurrentDate}
+              projects={allProjects}
+              selectedProjectId={selectedProjectId}
+              onProjectFilterChange={handleProjectFilterChange}
             />
           </div>
-          <div className="ml-4">
-            <NewEventModal projects={projects} onEventCreated={fetchData} />
+          <div className="shrink-0">
+            <NewEventModal 
+              projects={projects} 
+              onEventCreated={fetchData}
+              defaultProjectId={selectedProjectId || undefined}
+            />
           </div>
         </div>
 
@@ -251,30 +285,32 @@ export default function Calendar() {
           {view === 'monthly' && (
             <MonthlyView
               currentDate={currentDate}
-              tasks={tasks}
+              tasks={filteredTasks}
               onTaskClick={handleTaskClick}
             />
           )}
           {view === 'weekly' && (
             <WeeklyView
               currentDate={currentDate}
-              tasks={tasks}
+              tasks={filteredTasks}
               onTaskClick={handleTaskClick}
             />
           )}
           {view === 'gantt' && (
             <GanttView
               currentDate={currentDate}
-              tasks={tasks}
+              tasks={filteredTasks}
               onTaskClick={handleTaskClick}
               onTaskMove={handleTaskMove}
             />
           )}
         </div>
 
-        {tasks.length === 0 && (
+        {filteredTasks.length === 0 && (
           <div className="text-center py-12 bg-slate-900/50 rounded-xl border border-slate-800">
-            <p className="text-slate-400 mb-2">No events scheduled</p>
+            <p className="text-slate-400 mb-2">
+              {selectedProjectId ? 'No events for this project' : 'No events scheduled'}
+            </p>
             <p className="text-sm text-slate-500">
               Click "Add Project Event" to create your first calendar entry
             </p>
@@ -291,7 +327,7 @@ export default function Calendar() {
           setTasks(prev => prev.filter(t => t.id !== taskId));
           setSelectedTask(null);
         }}
-        allTasks={tasks}
+        allTasks={filteredTasks}
       />
     </MainLayout>
   );
