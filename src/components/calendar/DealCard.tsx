@@ -6,7 +6,8 @@ import {
   Fan, 
   Square, 
   PaintBucket,
-  Wrench
+  Wrench,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarTask } from '@/pages/Calendar';
@@ -69,10 +70,13 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
         className={cn(
           'w-full text-left px-2 py-1 rounded text-xs truncate transition-all',
           'hover:ring-1 hover:ring-emerald-500/50 cursor-pointer',
-          getStatusColor(task.status)
+          task.isCriticalPath 
+            ? 'bg-red-500/30 text-red-300 border border-red-500/50' 
+            : getStatusColor(task.status)
         )}
       >
         <div className="flex items-center gap-1">
+          {task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-red-400 shrink-0" />}
           {getTradeIcon(task.trade)}
           <span className="truncate">{task.title}</span>
           <span className={cn('w-2 h-2 rounded-full ml-auto shrink-0', getBudgetIndicator(task.budgetHealth))} />
@@ -87,13 +91,15 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
       className={cn(
         'w-full text-left p-3 rounded-lg border transition-all',
         'hover:ring-2 hover:ring-emerald-500/50 cursor-pointer',
-        'bg-slate-800/50 border-slate-700'
+        task.isCriticalPath
+          ? 'bg-red-500/10 border-red-500/50'
+          : 'bg-slate-800/50 border-slate-700'
       )}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
-          <span className={cn('p-1.5 rounded', getStatusColor(task.status))}>
-            {getTradeIcon(task.trade)}
+          <span className={cn('p-1.5 rounded', task.isCriticalPath ? 'bg-red-500/20 text-red-400' : getStatusColor(task.status))}>
+            {task.isCriticalPath ? <AlertTriangle className="h-3 w-3" /> : getTradeIcon(task.trade)}
           </span>
           <div>
             <h4 className="text-sm font-medium text-white truncate">{task.title}</h4>
@@ -106,9 +112,9 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
       <div className="flex items-center justify-between">
         <span className={cn(
           'text-[10px] px-2 py-0.5 rounded-full border',
-          getStatusColor(task.status)
+          task.isCriticalPath ? 'bg-red-500/20 text-red-400 border-red-500/30' : getStatusColor(task.status)
         )}>
-          {getStatusLabel(task.status)}
+          {task.isCriticalPath ? 'Critical Path' : getStatusLabel(task.status)}
         </span>
         <span className="text-[10px] text-slate-500">
           {task.checklist.filter(c => c.completed).length}/{task.checklist.length} tasks
