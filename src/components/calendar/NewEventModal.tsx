@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Plus, AlertTriangle, Zap } from 'lucide-react';
+import { Plus, AlertTriangle, Zap, CalendarRange } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -60,6 +60,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
   const [category, setCategory] = useState('');
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [isMultiDay, setIsMultiDay] = useState(false);
   const [isCriticalPath, setIsCriticalPath] = useState(false);
   const [leadTimeDays, setLeadTimeDays] = useState('0');
   const [expectedDate, setExpectedDate] = useState<Date | undefined>();
@@ -73,10 +74,19 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
     setCategory('');
     setStartDate(new Date());
     setEndDate(new Date());
+    setIsMultiDay(false);
     setIsCriticalPath(false);
     setLeadTimeDays('0');
     setExpectedDate(undefined);
     setNotes('');
+  };
+
+  const handleStartDateChange = (date: Date | undefined) => {
+    setStartDate(date);
+    // Auto-sync end date when not in multi-day mode
+    if (!isMultiDay && date) {
+      setEndDate(date);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -253,9 +263,87 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-slate-300">Start Date *</Label>
+          <div className="space-y-3">
+            {/* Multi-day toggle */}
+            <div className="flex items-center justify-between">
+              <Label className="text-slate-300">Date *</Label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="multiDay"
+                  checked={isMultiDay}
+                  onCheckedChange={(checked) => {
+                    setIsMultiDay(checked === true);
+                    // Sync end date to start date when disabling multi-day
+                    if (!checked && startDate) {
+                      setEndDate(startDate);
+                    }
+                  }}
+                  className="border-slate-500 data-[state=checked]:bg-slate-600"
+                />
+                <label
+                  htmlFor="multiDay"
+                  className="text-xs text-slate-400 cursor-pointer flex items-center gap-1"
+                >
+                  <CalendarRange className="h-3 w-3" />
+                  Multi-day event
+                </label>
+              </div>
+            </div>
+
+            {isMultiDay ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-slate-400 text-xs">Start Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start text-left font-normal bg-slate-800 border-slate-700',
+                          !startDate && 'text-muted-foreground'
+                        )}
+                      >
+                        {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick a date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={handleStartDateChange}
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-slate-400 text-xs">End Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start text-left font-normal bg-slate-800 border-slate-700',
+                          !endDate && 'text-muted-foreground'
+                        )}
+                      >
+                        {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick a date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        disabled={(date) => startDate ? date < startDate : false}
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            ) : (
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -272,37 +360,12 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                   <Calendar
                     mode="single"
                     selected={startDate}
-                    onSelect={setStartDate}
+                    onSelect={handleStartDateChange}
                     className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-slate-300">End Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal bg-slate-800 border-slate-700',
-                      !endDate && 'text-muted-foreground'
-                    )}
-                  >
-                    {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick a date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+            )}
           </div>
 
           {/* Lead Time (for tracking delays) */}
