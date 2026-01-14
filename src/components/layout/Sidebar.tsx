@@ -18,9 +18,9 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
   { icon: Receipt, label: 'Expenses', path: '/expenses' },
-  { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
   { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
   { icon: Users, label: 'Vendors', path: '/vendors' },
+  { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
   { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
   { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
 ];
