@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { parseISO } from 'date-fns';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarLegend } from '@/components/calendar/CalendarLegend';
@@ -52,11 +53,16 @@ export default function Calendar() {
   }, []);
 
   const fetchData = async () => {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     // Fetch active projects for the dropdown
     const { data: projectsData } = await supabase
       .from('projects')
       .select('id, name, address')
       .eq('status', 'active')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (projectsData) {
@@ -66,12 +72,14 @@ export default function Calendar() {
     // Fetch all projects for task names
     const { data: allProjectsData } = await supabase
       .from('projects')
-      .select('id, name, total_budget');
+      .select('id, name, total_budget')
+      .eq('user_id', user.id);
 
-    // Fetch calendar events from the database
+    // Fetch calendar events from the database for current user
     const { data: eventsData, error } = await supabase
       .from('calendar_events')
       .select('*')
+      .eq('user_id', user.id)
       .order('start_date', { ascending: true });
 
     if (error) {
@@ -115,8 +123,8 @@ export default function Calendar() {
         projectId: event.project_id,
         projectName: project?.name || 'Unknown Project',
         title: event.title,
-        startDate: new Date(event.start_date),
-        endDate: new Date(event.end_date),
+        startDate: parseISO(event.start_date),
+        endDate: parseISO(event.end_date),
         status: getStatusFromCategory(event.event_category),
         budgetHealth: projectBudgetHealth[event.project_id] || 'green',
         category: event.event_category || 'due_diligence',
@@ -125,7 +133,7 @@ export default function Calendar() {
         isCriticalPath: event.is_critical_path,
         eventCategory: event.event_category,
         leadTimeDays: event.lead_time_days,
-        expectedDate: event.expected_date ? new Date(event.expected_date) : undefined,
+        expectedDate: event.expected_date ? parseISO(event.expected_date) : undefined,
       };
     });
 

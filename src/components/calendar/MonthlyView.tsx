@@ -6,9 +6,10 @@ import {
   endOfWeek, 
   eachDayOfInterval,
   isSameMonth,
-  isSameDay,
   isToday,
-  format
+  format,
+  startOfDay,
+  isWithinInterval
 } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DealCard } from './DealCard';
@@ -31,10 +32,11 @@ export function MonthlyView({ currentDate, tasks, onTaskClick }: MonthlyViewProp
   }, [currentDate]);
 
   const getTasksForDay = (date: Date) => {
+    const dayStart = startOfDay(date);
     return tasks.filter(task => {
-      const taskStart = new Date(task.startDate);
-      const taskEnd = new Date(task.endDate);
-      return date >= taskStart && date <= taskEnd;
+      const taskStart = startOfDay(task.startDate);
+      const taskEnd = startOfDay(task.endDate);
+      return isWithinInterval(dayStart, { start: taskStart, end: taskEnd });
     });
   };
 

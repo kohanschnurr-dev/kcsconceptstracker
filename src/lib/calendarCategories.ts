@@ -95,7 +95,7 @@ export const CALENDAR_CATEGORIES: CalendarCategory[] = [
   
   // Milestones (Gold)
   { value: 'purchase', label: 'Purchase', group: 'milestones', groupLabel: 'Milestones' },
-  { value: 'closing', label: 'Closing', group: 'milestones', groupLabel: 'Milestones' },
+  { value: 'sale_closing', label: 'Sale Closing', group: 'milestones', groupLabel: 'Milestones' },
   { value: 'listing_date', label: 'Listing Date', group: 'milestones', groupLabel: 'Milestones' },
   { value: 'open_house', label: 'Open House', group: 'milestones', groupLabel: 'Milestones' },
   { value: 'stage_clean', label: 'Stage/Clean', group: 'milestones', groupLabel: 'Milestones' },
