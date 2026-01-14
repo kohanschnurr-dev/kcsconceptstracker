@@ -98,18 +98,13 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
   };
 
   const handleTaskUpdate = async (updatedTask: CalendarTask) => {
-    const { error } = await supabase
-      .from('calendar_events')
-      .update({
-        notes: updatedTask.notes,
-        checklist: updatedTask.checklist,
-      })
-      .eq('id', updatedTask.id);
+    setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    setSelectedTask(updatedTask);
+  };
 
-    if (!error) {
-      setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
-      setSelectedTask(updatedTask);
-    }
+  const handleTaskDelete = (taskId: string) => {
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+    setSelectedTask(null);
   };
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -224,6 +219,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
         open={panelOpen}
         onOpenChange={setPanelOpen}
         onTaskUpdate={handleTaskUpdate}
+        onTaskDelete={handleTaskDelete}
         allTasks={tasks}
       />
     </Card>
