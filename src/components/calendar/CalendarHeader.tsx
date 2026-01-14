@@ -130,18 +130,6 @@ export function CalendarHeader({
                 ))}
               </SelectContent>
             </Select>
-            
-            {selectedProjectId && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onProjectFilterChange(null)}
-                className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700"
-                title="Clear filter"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
           </div>
         )}
       </div>
