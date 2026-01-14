@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Camera, DollarSign, X, Upload, Loader2 } from 'lucide-react';
+import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles } from 'lucide-react';
 import {
   Drawer,
   DrawerContent,
@@ -58,6 +58,11 @@ function ExpenseForm({
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Text parsing state
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [receiptText, setReceiptText] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
 
   const calculateTax = () => {
     const baseAmount = parseFloat(amount) || 0;
@@ -67,6 +72,54 @@ function ExpenseForm({
   const calculateTotal = () => {
     const baseAmount = parseFloat(amount) || 0;
     return includeTax ? baseAmount + calculateTax() : baseAmount;
+  };
+
+  const handleParseReceiptText = async () => {
+    if (!receiptText.trim()) {
+      toast({
+        title: 'No text provided',
+        description: 'Please paste receipt text to parse.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsParsing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-receipt-text', {
+        body: { receiptText: receiptText.trim() }
+      });
+
+      if (error) throw error;
+
+      if (data?.data) {
+        const parsed = data.data;
+        
+        if (parsed.vendor) setVendor(parsed.vendor);
+        if (parsed.date) setDate(parsed.date);
+        if (parsed.amount) setAmount(parsed.amount.toString());
+        if (parsed.description) setDescription(parsed.description);
+        if (parsed.paymentMethod) setPaymentMethod(parsed.paymentMethod as PaymentMethod);
+        if (parsed.includesTax !== undefined) setIncludeTax(parsed.includesTax);
+
+        toast({
+          title: 'Receipt parsed',
+          description: 'Expense details extracted successfully.',
+        });
+        
+        setShowTextInput(false);
+        setReceiptText('');
+      }
+    } catch (error: any) {
+      console.error('Error parsing receipt:', error);
+      toast({
+        title: 'Parse failed',
+        description: error.message || 'Could not parse receipt text.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsParsing(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,6 +251,67 @@ function ExpenseForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
+      {/* Text-to-Info Feature */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Quick Import</Label>
+          <Button
+            type="button"
+            variant={showTextInput ? "secondary" : "outline"}
+            size="sm"
+            className="gap-1.5 h-7 text-xs"
+            onClick={() => setShowTextInput(!showTextInput)}
+          >
+            <FileText className="h-3 w-3" />
+            Paste Receipt Text
+          </Button>
+        </div>
+        
+        {showTextInput && (
+          <div className="space-y-2 p-3 rounded-lg bg-muted/50 border border-border">
+            <Textarea
+              placeholder="Paste receipt text here (from email, screenshot OCR, etc.)..."
+              value={receiptText}
+              onChange={(e) => setReceiptText(e.target.value)}
+              rows={6}
+              className="text-xs font-mono"
+            />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1.5 flex-1"
+                onClick={handleParseReceiptText}
+                disabled={isParsing || !receiptText.trim()}
+              >
+                {isParsing ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Parsing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3 w-3" />
+                    Extract Details
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowTextInput(false);
+                  setReceiptText('');
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Project</Label>
