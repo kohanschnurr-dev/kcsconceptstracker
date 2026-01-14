@@ -16,7 +16,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -29,6 +31,11 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  CATEGORY_GROUPS, 
+  getGroupedCategories,
+  getCategoryStyles,
+} from '@/lib/calendarCategories';
 
 interface Project {
   id: string;
@@ -42,25 +49,6 @@ interface NewEventModalProps {
   defaultProjectId?: string;
 }
 
-const EVENT_CATEGORIES = [
-  { value: 'inspection', label: 'Inspection' },
-  { value: 'quote', label: 'Quote' },
-  { value: 'trade_start', label: 'Trade Start (Demo/Plumb/Elec)' },
-  { value: 'material_delivery', label: 'Material Delivery' },
-  { value: 'city_inspection', label: 'City Inspection' },
-];
-
-const TRADES = [
-  { value: 'demo', label: 'Demolition' },
-  { value: 'plumbing', label: 'Plumbing' },
-  { value: 'electrical', label: 'Electrical' },
-  { value: 'structural', label: 'Structural/Foundation' },
-  { value: 'hvac', label: 'HVAC' },
-  { value: 'drywall', label: 'Drywall' },
-  { value: 'finish', label: 'Finish Work' },
-  { value: 'general', label: 'General' },
-];
-
 export function NewEventModal({ projects, onEventCreated, defaultProjectId }: NewEventModalProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,8 +56,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
 
   const [title, setTitle] = useState('');
   const [projectId, setProjectId] = useState(defaultProjectId || '');
-  const [eventCategory, setEventCategory] = useState('');
-  const [trade, setTrade] = useState('general');
+  const [category, setCategory] = useState('');
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [isCriticalPath, setIsCriticalPath] = useState(false);
@@ -77,11 +64,12 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
   const [expectedDate, setExpectedDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
 
+  const groupedCategories = getGroupedCategories();
+
   const resetForm = () => {
     setTitle('');
     setProjectId(defaultProjectId || '');
-    setEventCategory('');
-    setTrade('general');
+    setCategory('');
     setStartDate(new Date());
     setEndDate(new Date());
     setIsCriticalPath(false);
@@ -93,7 +81,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!projectId || !title || !eventCategory || !startDate || !endDate) {
+    if (!projectId || !title || !category || !startDate || !endDate) {
       toast({
         title: 'Missing fields',
         description: 'Please fill in all required fields',
@@ -119,8 +107,8 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
       user_id: userData.user.id,
       project_id: projectId,
       title,
-      event_category: eventCategory,
-      trade,
+      event_category: category,
+      trade: null, // No longer using trade field
       start_date: format(startDate, 'yyyy-MM-dd'),
       end_date: format(endDate, 'yyyy-MM-dd'),
       is_critical_path: isCriticalPath,
@@ -149,7 +137,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
     }
   };
 
-  const showTradeSelector = eventCategory === 'trade_start' || eventCategory === 'inspection';
+  const selectedCategoryStyles = category ? getCategoryStyles(category) : null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -193,41 +181,53 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
             />
           </div>
 
-          {/* Event Category */}
+          {/* Category (was Trade) */}
           <div className="space-y-2">
-            <Label className="text-slate-300">Event Category *</Label>
-            <Select value={eventCategory} onValueChange={setEventCategory}>
-              <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+            <Label className="text-slate-300">Category *</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className={cn(
+                "bg-slate-800 border-slate-700 text-white",
+                selectedCategoryStyles && `${selectedCategoryStyles.borderClass} border-2`
+              )}>
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                {EVENT_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value} className="text-white">
-                    {cat.label}
-                  </SelectItem>
+              <SelectContent className="bg-slate-800 border-slate-700 max-h-[300px]">
+                {(Object.entries(groupedCategories) as [keyof typeof CATEGORY_GROUPS, typeof groupedCategories[keyof typeof groupedCategories]][]).map(([groupKey, categories]) => (
+                  <SelectGroup key={groupKey}>
+                    <SelectLabel className={cn(
+                      "text-xs font-semibold py-2",
+                      CATEGORY_GROUPS[groupKey].textClass
+                    )}>
+                      {CATEGORY_GROUPS[groupKey].label}
+                    </SelectLabel>
+                    {categories.map((cat) => (
+                      <SelectItem 
+                        key={cat.value} 
+                        value={cat.value} 
+                        className={cn(
+                          "text-white cursor-pointer",
+                          "focus:bg-slate-700"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "w-2 h-2 rounded-full",
+                            CATEGORY_GROUPS[groupKey].bgClass.replace('/20', ''),
+                          )} style={{ backgroundColor: `var(--${CATEGORY_GROUPS[groupKey].color}-500, ${CATEGORY_GROUPS[groupKey].color})` }} />
+                          {cat.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 ))}
               </SelectContent>
             </Select>
+            {selectedCategoryStyles && (
+              <p className={cn("text-xs", selectedCategoryStyles.textClass)}>
+                {CATEGORY_GROUPS[getCategoryStyles(category) ? Object.entries(CATEGORY_GROUPS).find(([_, v]) => v === selectedCategoryStyles)?.[0] as keyof typeof CATEGORY_GROUPS : 'acquisition_admin']?.label || 'Category'}
+              </p>
+            )}
           </div>
-
-          {/* Trade (conditional) */}
-          {showTradeSelector && (
-            <div className="space-y-2">
-              <Label className="text-slate-300">Trade</Label>
-              <Select value={trade} onValueChange={setTrade}>
-                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                  <SelectValue placeholder="Select trade" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  {TRADES.map((t) => (
-                    <SelectItem key={t.value} value={t.value} className="text-white">
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
 
           {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
@@ -351,7 +351,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Additional details..."
+              placeholder="DFW-specific details: HVAC serial numbers, foundation depth, contractor names..."
               className="bg-slate-800 border-slate-700 text-white min-h-[80px]"
             />
           </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
+import { CalendarLegend } from '@/components/calendar/CalendarLegend';
 import { MonthlyView } from '@/components/calendar/MonthlyView';
 import { WeeklyView } from '@/components/calendar/WeeklyView';
 import { GanttView } from '@/components/calendar/GanttView';
@@ -8,6 +9,7 @@ import { TaskDetailPanel } from '@/components/calendar/TaskDetailPanel';
 import { NewEventModal } from '@/components/calendar/NewEventModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getCategoryGroup } from '@/lib/calendarCategories';
 
 export type CalendarView = 'monthly' | 'weekly' | 'gantt';
 
@@ -20,7 +22,7 @@ export interface CalendarTask {
   endDate: Date;
   status: 'permitting' | 'demo' | 'rough-in' | 'finish' | 'complete';
   budgetHealth: 'green' | 'yellow' | 'red';
-  trade: 'demo' | 'plumbing' | 'electrical' | 'structural' | 'hvac' | 'drywall' | 'finish' | 'general';
+  category: string; // Now using category instead of trade
   dependsOn?: string[];
   checklist: { id: string; label: string; completed: boolean }[];
   notes: string;
@@ -117,7 +119,7 @@ export default function Calendar() {
         endDate: new Date(event.end_date),
         status: getStatusFromCategory(event.event_category),
         budgetHealth: projectBudgetHealth[event.project_id] || 'green',
-        trade: event.trade || 'general',
+        category: event.event_category || 'due_diligence',
         checklist: Array.isArray(event.checklist) ? event.checklist : [],
         notes: event.notes || '',
         isCriticalPath: event.is_critical_path,
@@ -131,16 +133,20 @@ export default function Calendar() {
   };
 
   const getStatusFromCategory = (category: string): CalendarTask['status'] => {
-    switch (category) {
-      case 'inspection':
-      case 'city_inspection':
+    const group = getCategoryGroup(category);
+    switch (group) {
+      case 'acquisition_admin':
         return 'permitting';
-      case 'trade_start':
-        return 'rough-in';
-      case 'material_delivery':
+      case 'structural_exterior':
         return 'demo';
-      case 'quote':
+      case 'rough_ins':
+        return 'rough-in';
+      case 'inspections':
         return 'permitting';
+      case 'interior_finishes':
+        return 'finish';
+      case 'milestones':
+        return 'complete';
       default:
         return 'rough-in';
     }
@@ -226,6 +232,11 @@ export default function Calendar() {
           <div className="ml-4">
             <NewEventModal projects={projects} onEventCreated={fetchData} />
           </div>
+        </div>
+
+        {/* Category Legend */}
+        <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
+          <CalendarLegend />
         </div>
 
         <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
