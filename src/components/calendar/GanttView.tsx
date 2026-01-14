@@ -13,14 +13,19 @@ import {
   Zap, 
   Landmark, 
   Fan, 
-  Square, 
   PaintBucket,
   Wrench,
-  AlertTriangle
+  AlertTriangle,
+  FileText,
+  ClipboardCheck,
+  Calendar,
+  Home,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { CalendarTask } from '@/pages/Calendar';
+import { getCategoryGroup, getCategoryStyles } from '@/lib/calendarCategories';
 
 interface GanttViewProps {
   currentDate: Date;
@@ -39,17 +44,36 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
     return Array.from({ length: 28 }, (_, i) => addDays(startDate, i));
   }, [startDate]);
 
-  const getTradeIcon = (trade: CalendarTask['trade']) => {
+  const getCategoryIcon = (category: string) => {
     const iconClass = 'h-3 w-3';
-    switch (trade) {
-      case 'demo': return <Hammer className={iconClass} />;
-      case 'plumbing': return <Pipette className={iconClass} />;
-      case 'electrical': return <Zap className={iconClass} />;
-      case 'structural': return <Landmark className={iconClass} />;
-      case 'hvac': return <Fan className={iconClass} />;
-      case 'drywall': return <Square className={iconClass} />;
-      case 'finish': return <PaintBucket className={iconClass} />;
-      default: return <Wrench className={iconClass} />;
+    const group = getCategoryGroup(category);
+    
+    switch (group) {
+      case 'acquisition_admin':
+        return <FileText className={iconClass} />;
+      case 'structural_exterior':
+        return <Landmark className={iconClass} />;
+      case 'rough_ins':
+        switch (category) {
+          case 'plumbing_rough': return <Pipette className={iconClass} />;
+          case 'electrical_rough': return <Zap className={iconClass} />;
+          case 'hvac_rough': return <Fan className={iconClass} />;
+          case 'framing': return <Hammer className={iconClass} />;
+          default: return <Wrench className={iconClass} />;
+        }
+      case 'inspections':
+        return <ClipboardCheck className={iconClass} />;
+      case 'interior_finishes':
+        return <PaintBucket className={iconClass} />;
+      case 'milestones':
+        switch (category) {
+          case 'listing_date': return <Calendar className={iconClass} />;
+          case 'open_house': return <Home className={iconClass} />;
+          case 'stage_clean': return <Sparkles className={iconClass} />;
+          default: return <Calendar className={iconClass} />;
+        }
+      default:
+        return <Wrench className={iconClass} />;
     }
   };
 
@@ -181,7 +205,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                       onClick={() => onTaskClick(task)}
                       className="flex items-center gap-2 text-xs text-slate-300 hover:text-white transition-colors"
                     >
-                      {getTradeIcon(task.trade)}
+                      {getCategoryIcon(task.eventCategory || 'due_diligence')}
                       <span className="truncate">{task.title}</span>
                       {hasDependencyWarning(task) && (
                         <Tooltip>
@@ -230,8 +254,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                           )}
                           style={position}
                         >
-                          <div className="flex items-center h-full px-2 gap-1">
-                            {getTradeIcon(task.trade)}
+                        <div className="flex items-center h-full px-2 gap-1">
+                            {getCategoryIcon(task.eventCategory || 'due_diligence')}
                             <span className="text-[10px] text-white font-medium truncate">
                               {task.title}
                             </span>

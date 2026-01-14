@@ -4,13 +4,18 @@ import {
   Zap, 
   Landmark, 
   Fan, 
-  Square, 
   PaintBucket,
   Wrench,
-  AlertTriangle
+  AlertTriangle,
+  FileText,
+  Home,
+  ClipboardCheck,
+  Calendar,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarTask } from '@/pages/Calendar';
+import { getCategoryStyles, getCategoryGroup, getCategoryLabel } from '@/lib/calendarCategories';
 
 interface DealCardProps {
   task: CalendarTask;
@@ -19,29 +24,43 @@ interface DealCardProps {
 }
 
 export function DealCard({ task, compact = false, onClick }: DealCardProps) {
-  const getTradeIcon = (trade: CalendarTask['trade']) => {
+  const getCategoryIcon = (category: string) => {
     const iconClass = 'h-3 w-3';
-    switch (trade) {
-      case 'demo': return <Hammer className={iconClass} />;
-      case 'plumbing': return <Pipette className={iconClass} />;
-      case 'electrical': return <Zap className={iconClass} />;
-      case 'structural': return <Landmark className={iconClass} />;
-      case 'hvac': return <Fan className={iconClass} />;
-      case 'drywall': return <Square className={iconClass} />;
-      case 'finish': return <PaintBucket className={iconClass} />;
-      default: return <Wrench className={iconClass} />;
+    const group = getCategoryGroup(category);
+    
+    // Icons based on category group
+    switch (group) {
+      case 'acquisition_admin':
+        return <FileText className={iconClass} />;
+      case 'structural_exterior':
+        return <Landmark className={iconClass} />;
+      case 'rough_ins':
+        switch (category) {
+          case 'plumbing_rough': return <Pipette className={iconClass} />;
+          case 'electrical_rough': return <Zap className={iconClass} />;
+          case 'hvac_rough': return <Fan className={iconClass} />;
+          case 'framing': return <Hammer className={iconClass} />;
+          default: return <Wrench className={iconClass} />;
+        }
+      case 'inspections':
+        return <ClipboardCheck className={iconClass} />;
+      case 'interior_finishes':
+        return <PaintBucket className={iconClass} />;
+      case 'milestones':
+        switch (category) {
+          case 'listing_date': return <Calendar className={iconClass} />;
+          case 'open_house': return <Home className={iconClass} />;
+          case 'stage_clean': return <Sparkles className={iconClass} />;
+          default: return <Calendar className={iconClass} />;
+        }
+      default:
+        return <Wrench className={iconClass} />;
     }
   };
 
-  const getStatusColor = (status: CalendarTask['status']) => {
-    switch (status) {
-      case 'permitting': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-      case 'demo': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      case 'rough-in': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'finish': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
-      case 'complete': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
-    }
+  const getCategoryColor = (category: string) => {
+    const styles = getCategoryStyles(category);
+    return `${styles.bgClass} ${styles.textClass} ${styles.borderClass}`;
   };
 
   const getBudgetIndicator = (health: CalendarTask['budgetHealth']) => {
@@ -52,32 +71,24 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
     }
   };
 
-  const getStatusLabel = (status: CalendarTask['status']) => {
-    switch (status) {
-      case 'permitting': return 'Permitting';
-      case 'demo': return 'Demo';
-      case 'rough-in': return 'Rough-in';
-      case 'finish': return 'Finish';
-      case 'complete': return 'Complete';
-      default: return status;
-    }
-  };
+  const categoryStyles = getCategoryStyles(task.eventCategory || 'due_diligence');
+  const categoryLabel = getCategoryLabel(task.eventCategory || 'due_diligence');
 
   if (compact) {
     return (
       <button
         onClick={onClick}
         className={cn(
-          'w-full text-left px-2 py-1 rounded text-xs truncate transition-all',
+          'w-full text-left px-2 py-1 rounded text-xs truncate transition-all border',
           'hover:ring-1 hover:ring-emerald-500/50 cursor-pointer',
           task.isCriticalPath 
-            ? 'bg-red-500/30 text-red-300 border border-red-500/50' 
-            : getStatusColor(task.status)
+            ? 'bg-red-500/30 text-red-300 border-red-500/50' 
+            : getCategoryColor(task.eventCategory || 'due_diligence')
         )}
       >
         <div className="flex items-center gap-1">
           {task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-red-400 shrink-0" />}
-          {getTradeIcon(task.trade)}
+          {getCategoryIcon(task.eventCategory || 'due_diligence')}
           <span className="truncate">{task.title}</span>
           <span className={cn('w-2 h-2 rounded-full ml-auto shrink-0', getBudgetIndicator(task.budgetHealth))} />
         </div>
@@ -98,8 +109,13 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
-          <span className={cn('p-1.5 rounded', task.isCriticalPath ? 'bg-red-500/20 text-red-400' : getStatusColor(task.status))}>
-            {task.isCriticalPath ? <AlertTriangle className="h-3 w-3" /> : getTradeIcon(task.trade)}
+          <span className={cn(
+            'p-1.5 rounded border',
+            task.isCriticalPath 
+              ? 'bg-red-500/20 text-red-400 border-red-500/30' 
+              : `${categoryStyles.bgClass} ${categoryStyles.textClass} ${categoryStyles.borderClass}`
+          )}>
+            {task.isCriticalPath ? <AlertTriangle className="h-3 w-3" /> : getCategoryIcon(task.eventCategory || 'due_diligence')}
           </span>
           <div>
             <h4 className="text-sm font-medium text-white truncate">{task.title}</h4>
@@ -112,9 +128,11 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
       <div className="flex items-center justify-between">
         <span className={cn(
           'text-[10px] px-2 py-0.5 rounded-full border',
-          task.isCriticalPath ? 'bg-red-500/20 text-red-400 border-red-500/30' : getStatusColor(task.status)
+          task.isCriticalPath 
+            ? 'bg-red-500/20 text-red-400 border-red-500/30' 
+            : `${categoryStyles.bgClass} ${categoryStyles.textClass} ${categoryStyles.borderClass}`
         )}>
-          {task.isCriticalPath ? 'Critical Path' : getStatusLabel(task.status)}
+          {task.isCriticalPath ? 'Critical Path' : categoryLabel}
         </span>
         <span className="text-[10px] text-slate-500">
           {task.checklist.filter(c => c.completed).length}/{task.checklist.length} tasks

@@ -8,7 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { NewEventModal } from '@/components/calendar/NewEventModal';
 import { DealCard } from '@/components/calendar/DealCard';
 import { TaskDetailPanel } from '@/components/calendar/TaskDetailPanel';
+import { CalendarLegend } from '@/components/calendar/CalendarLegend';
 import type { CalendarTask } from '@/pages/Calendar';
+import { getCategoryGroup } from '@/lib/calendarCategories';
 
 interface ProjectCalendarProps {
   projectId: string;
@@ -43,7 +45,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
       endDate: new Date(event.end_date),
       status: getStatusFromCategory(event.event_category),
       budgetHealth: 'green' as const,
-      trade: event.trade || 'general',
+      category: event.event_category || 'due_diligence',
       checklist: Array.isArray(event.checklist) ? event.checklist : [],
       notes: event.notes || '',
       isCriticalPath: event.is_critical_path,
@@ -60,16 +62,20 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
   }, [projectId]);
 
   const getStatusFromCategory = (category: string): CalendarTask['status'] => {
-    switch (category) {
-      case 'inspection':
-      case 'city_inspection':
+    const group = getCategoryGroup(category);
+    switch (group) {
+      case 'acquisition_admin':
         return 'permitting';
-      case 'trade_start':
-        return 'rough-in';
-      case 'material_delivery':
+      case 'structural_exterior':
         return 'demo';
-      case 'quote':
+      case 'rough_ins':
+        return 'rough-in';
+      case 'inspections':
         return 'permitting';
+      case 'interior_finishes':
+        return 'finish';
+      case 'milestones':
+        return 'complete';
       default:
         return 'rough-in';
     }
@@ -143,6 +149,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+        <CalendarLegend />
       </CardHeader>
       <CardContent>
         {/* Week day headers */}
