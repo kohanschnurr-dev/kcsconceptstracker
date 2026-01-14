@@ -23,6 +23,7 @@ export type Database = {
           description: string | null
           id: string
           includes_tax: boolean
+          notes: string | null
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           receipt_url: string | null
           tax_amount: number | null
@@ -38,6 +39,7 @@ export type Database = {
           description?: string | null
           id?: string
           includes_tax?: boolean
+          notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           receipt_url?: string | null
           tax_amount?: number | null
@@ -53,6 +55,7 @@ export type Database = {
           description?: string | null
           id?: string
           includes_tax?: boolean
+          notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           receipt_url?: string | null
           tax_amount?: number | null
@@ -116,6 +119,7 @@ export type Database = {
           expense_type: string | null
           id: string
           includes_tax: boolean
+          notes: string | null
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           project_id: string
           receipt_url: string | null
@@ -133,6 +137,7 @@ export type Database = {
           expense_type?: string | null
           id?: string
           includes_tax?: boolean
+          notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           project_id: string
           receipt_url?: string | null
@@ -150,6 +155,7 @@ export type Database = {
           expense_type?: string | null
           id?: string
           includes_tax?: boolean
+          notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           project_id?: string
           receipt_url?: string | null
