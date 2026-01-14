@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Download, Receipt, Calendar } from 'lucide-react';
+import { Plus, Search, Download, Receipt, Calendar, Paperclip } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { BUDGET_CATEGORIES, ALL_CATEGORIES, type Project, type CategoryBudget } from '@/types';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { QuickBooksIntegration } from '@/components/QuickBooksIntegration';
+import { ExpenseDetailModal } from '@/components/ExpenseDetailModal';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -54,6 +55,8 @@ interface DBExpense {
   description: string | null;
   includes_tax: boolean;
   tax_amount: number | null;
+  notes?: string | null;
+  receipt_url?: string | null;
   source?: 'manual' | 'quickbooks';
 }
 
@@ -67,6 +70,8 @@ interface DBQuickBooksExpense {
   payment_method: string | null;
   description: string | null;
   is_imported: boolean;
+  notes?: string | null;
+  receipt_url?: string | null;
 }
 
 export default function Expenses() {
@@ -78,6 +83,8 @@ export default function Expenses() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [expenses, setExpenses] = useState<DBExpense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedExpense, setSelectedExpense] = useState<DBExpense | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -159,6 +166,8 @@ export default function Expenses() {
           description: e.description,
           includes_tax: false,
           tax_amount: null,
+          notes: e.notes || null,
+          receipt_url: e.receipt_url || null,
           source: 'quickbooks' as const,
         }));
 
@@ -411,7 +420,14 @@ export default function Expenses() {
               </thead>
               <tbody>
                 {filteredExpenses.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-muted/20 transition-colors cursor-pointer">
+                  <tr 
+                    key={expense.id} 
+                    className="hover:bg-muted/20 transition-colors cursor-pointer"
+                    onClick={() => {
+                      setSelectedExpense(expense);
+                      setDetailModalOpen(true);
+                    }}
+                  >
                     <td className="whitespace-nowrap">{formatDate(expense.date)}</td>
                     <td>
                       <div className="flex items-center gap-2">
@@ -420,6 +436,11 @@ export default function Expenses() {
                           <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                             {expense.description}
                           </p>
+                          {expense.notes && (
+                            <p className="text-xs text-muted-foreground/70 italic truncate max-w-[200px]">
+                              Note: {expense.notes}
+                            </p>
+                          )}
                         </div>
                         {expense.source === 'quickbooks' && (
                           <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">
@@ -435,11 +456,18 @@ export default function Expenses() {
                       </Badge>
                     </td>
                     <td className="capitalize">{expense.payment_method}</td>
-                    <td className="text-right font-mono">
-                      {formatCurrency(expense.amount)}
-                      {expense.includes_tax && (
-                        <span className="text-xs text-muted-foreground ml-1">+tax</span>
-                      )}
+                    <td className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {expense.receipt_url && (
+                          <Paperclip className="h-4 w-4 text-primary" />
+                        )}
+                        <span className="font-mono">
+                          {formatCurrency(expense.amount)}
+                          {expense.includes_tax && (
+                            <span className="text-xs text-muted-foreground ml-1">+tax</span>
+                          )}
+                        </span>
+                      </div>
                     </td>
                     <td>
                       <Badge
@@ -472,6 +500,16 @@ export default function Expenses() {
         open={expenseModalOpen}
         onOpenChange={setExpenseModalOpen}
         projects={projects}
+        onExpenseCreated={fetchData}
+      />
+
+      <ExpenseDetailModal
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        expense={selectedExpense}
+        projectName={selectedExpense ? getProjectName(selectedExpense.project_id) : ''}
+        categoryLabel={selectedExpense ? getCategoryLabel(selectedExpense.category_id, selectedExpense.project_id) : ''}
+        onExpenseUpdated={fetchData}
       />
     </MainLayout>
   );
