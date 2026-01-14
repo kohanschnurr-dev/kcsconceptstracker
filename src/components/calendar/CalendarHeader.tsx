@@ -111,10 +111,12 @@ export function CalendarHeader({
               value={selectedProjectId || 'all'}
               onValueChange={(value) => onProjectFilterChange(value === 'all' ? null : value)}
             >
-              <SelectTrigger className="h-9 w-[200px] bg-slate-800 border-slate-700 text-white">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-slate-400" />
-                  <SelectValue placeholder="All Projects" />
+              <SelectTrigger className="h-9 w-[200px] bg-slate-800 border-slate-700 text-white flex-shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Building2 className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                  <span className="truncate">
+                    <SelectValue placeholder="All Projects" />
+                  </span>
                 </div>
               </SelectTrigger>
               <SelectContent className="bg-slate-800 border-slate-700 z-50">
