@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Download, Receipt, Calendar, Briefcase } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Plus, Search, Download, Receipt, Calendar, Briefcase, Upload, FileText, X, Paperclip } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +46,8 @@ interface DBBusinessExpense {
   payment_method: 'cash' | 'check' | 'card' | 'transfer' | null;
   includes_tax: boolean;
   tax_amount: number | null;
+  notes: string | null;
+  receipt_url: string | null;
 }
 
 export default function BusinessExpenses() {
@@ -65,8 +68,13 @@ export default function BusinessExpenses() {
     paymentMethod: 'card' as 'cash' | 'check' | 'card' | 'transfer',
     date: new Date().toISOString().split('T')[0],
     includesTax: false,
+    notes: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -94,6 +102,57 @@ export default function BusinessExpenses() {
     }
   };
 
+  const uploadReceipt = async (file: File, userId: string): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('expense-receipts')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return null;
+    }
+
+    const { data } = supabase.storage.from('expense-receipts').getPublicUrl(fileName);
+    return data.publicUrl;
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload a JPG, PNG, WebP, or PDF file',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setReceiptFile(file);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setReceiptFile(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -115,6 +174,20 @@ export default function BusinessExpenses() {
       const amount = parseFloat(formData.amount);
       const taxAmount = formData.includesTax ? amount * TEXAS_SALES_TAX : null;
 
+      let receiptUrl: string | null = null;
+      if (receiptFile) {
+        setIsUploading(true);
+        receiptUrl = await uploadReceipt(receiptFile, user.id);
+        setIsUploading(false);
+        if (!receiptUrl) {
+          toast({
+            title: 'Upload failed',
+            description: 'Could not upload receipt, but expense will still be saved',
+            variant: 'destructive',
+          });
+        }
+      }
+
       const { error } = await supabase
         .from('business_expenses')
         .insert({
@@ -127,6 +200,8 @@ export default function BusinessExpenses() {
           date: formData.date,
           includes_tax: formData.includesTax,
           tax_amount: taxAmount,
+          notes: formData.notes || null,
+          receipt_url: receiptUrl,
         });
 
       if (error) throw error;
@@ -144,7 +219,9 @@ export default function BusinessExpenses() {
         paymentMethod: 'card',
         date: new Date().toISOString().split('T')[0],
         includesTax: false,
+        notes: '',
       });
+      setReceiptFile(null);
       setExpenseModalOpen(false);
       fetchData();
     } catch (error: any) {
@@ -156,6 +233,7 @@ export default function BusinessExpenses() {
       });
     } finally {
       setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
@@ -387,6 +465,11 @@ export default function BusinessExpenses() {
                           <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                             {expense.description}
                           </p>
+                          {expense.notes && (
+                            <p className="text-xs text-muted-foreground/70 italic truncate max-w-[200px] mt-0.5">
+                              Note: {expense.notes}
+                            </p>
+                          )}
                         </div>
                       </td>
                       <td>
@@ -395,11 +478,26 @@ export default function BusinessExpenses() {
                         </Badge>
                       </td>
                       <td className="capitalize">{expense.payment_method}</td>
-                      <td className="text-right font-mono">
-                        {formatCurrency(expense.amount)}
-                        {expense.includes_tax && (
-                          <span className="text-xs text-muted-foreground ml-1">+tax</span>
-                        )}
+                      <td className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {expense.receipt_url && (
+                            <a
+                              href={expense.receipt_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:text-primary/80"
+                              title="View receipt"
+                            >
+                              <Paperclip className="h-4 w-4" />
+                            </a>
+                          )}
+                          <span className="font-mono">
+                            {formatCurrency(expense.amount)}
+                            {expense.includes_tax && (
+                              <span className="text-xs text-muted-foreground ml-1">+tax</span>
+                            )}
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -477,6 +575,16 @@ export default function BusinessExpenses() {
             </div>
 
             <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea
+                placeholder="Additional notes or details about this expense..."
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>Payment Method</Label>
               <Select 
                 value={formData.paymentMethod} 
@@ -494,6 +602,53 @@ export default function BusinessExpenses() {
               </Select>
             </div>
 
+            {/* Receipt Upload */}
+            <div className="space-y-2">
+              <Label>Receipt</Label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/*,.pdf"
+                className="hidden"
+              />
+              {receiptFile ? (
+                <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <span className="text-sm flex-1 truncate">{receiptFile.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setReceiptFile(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+                    isDragging 
+                      ? "border-primary bg-primary/10" 
+                      : "border-muted-foreground/25 hover:border-primary/50"
+                  )}
+                >
+                  <Upload className="h-6 w-6 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground text-center">
+                    Drag & drop or click to upload receipt
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    JPG, PNG, WebP, or PDF
+                  </span>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="includesTax"
@@ -509,8 +664,8 @@ export default function BusinessExpenses() {
               <Button type="button" variant="outline" className="flex-1" onClick={() => setExpenseModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                {isSubmitting ? 'Adding...' : 'Add Expense'}
+              <Button type="submit" className="flex-1" disabled={isSubmitting || isUploading}>
+                {isUploading ? 'Uploading...' : isSubmitting ? 'Adding...' : 'Add Expense'}
               </Button>
             </div>
           </form>
