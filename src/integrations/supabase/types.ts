@@ -65,6 +65,68 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_events: {
+        Row: {
+          checklist: Json | null
+          created_at: string
+          end_date: string
+          event_category: string
+          expected_date: string | null
+          id: string
+          is_critical_path: boolean
+          lead_time_days: number | null
+          notes: string | null
+          project_id: string
+          start_date: string
+          title: string
+          trade: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          checklist?: Json | null
+          created_at?: string
+          end_date: string
+          event_category: string
+          expected_date?: string | null
+          id?: string
+          is_critical_path?: boolean
+          lead_time_days?: number | null
+          notes?: string | null
+          project_id: string
+          start_date: string
+          title: string
+          trade?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          checklist?: Json | null
+          created_at?: string
+          end_date?: string
+          event_category?: string
+          expected_date?: string | null
+          id?: string
+          is_critical_path?: boolean
+          lead_time_days?: number | null
+          notes?: string | null
+          project_id?: string
+          start_date?: string
+          title?: string
+          trade?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_logs: {
         Row: {
           contractors_on_site: string[] | null

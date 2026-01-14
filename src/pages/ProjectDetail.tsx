@@ -43,6 +43,7 @@ import { MilestonesTimeline } from '@/components/project/MilestonesTimeline';
 import { ProjectNotes } from '@/components/project/ProjectNotes';
 import { SpendingChart } from '@/components/project/SpendingChart';
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
+import { ProjectCalendar } from '@/components/project/ProjectCalendar';
 
 import { ProjectVendors } from '@/components/project/ProjectVendors';
 import { ExportReports } from '@/components/project/ExportReports';
@@ -509,6 +510,7 @@ export default function ProjectDetail() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
             <TabsTrigger value="financials">Financials</TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
             <TabsTrigger value="photos">Photos</TabsTrigger>
@@ -520,6 +522,14 @@ export default function ProjectDetail() {
               <MilestonesTimeline projectId={id!} />
               <ProjectNotes projectId={id!} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="schedule">
+            <ProjectCalendar 
+              projectId={id!} 
+              projectName={project.name}
+              projectAddress={project.address}
+            />
           </TabsContent>
 
           <TabsContent value="financials" className="space-y-6">
