@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Projects from "./pages/Projects";
+import Calendar from "./pages/Calendar";
 import ProjectDetail from "./pages/ProjectDetail";
 import ProjectBudget from "./pages/ProjectBudget";
 import Expenses from "./pages/Expenses";
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/procurement" element={<ProtectedRoute><Procurement /></ProtectedRoute>} />
             <Route path="/bundles" element={<ProtectedRoute><Bundles /></ProtectedRoute>} />
             <Route path="/bundles/:id" element={<ProtectedRoute><BundleDetail /></ProtectedRoute>} />
+            <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

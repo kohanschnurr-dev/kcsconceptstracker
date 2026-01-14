@@ -7,7 +7,8 @@ import {
   Briefcase,
   LogOut,
   Calculator,
-  ShoppingCart
+  ShoppingCart,
+  CalendarDays
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,7 @@ import { Button } from '@/components/ui/button';
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
+  { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
   { icon: Receipt, label: 'Expenses', path: '/expenses' },
   { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
   { icon: Users, label: 'Vendors', path: '/vendors' },
