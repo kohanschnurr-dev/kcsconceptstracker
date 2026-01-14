@@ -1,5 +1,6 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -28,6 +29,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -346,10 +353,43 @@ export default function ProjectDetail() {
                   <MapPin className="h-4 w-4" />
                   {project.address}
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4" />
-                  Started {formatDate(project.start_date)}
-                </span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer">
+                      <Calendar className="h-4 w-4" />
+                      Started {formatDate(project.start_date)}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={new Date(project.start_date)}
+                      onSelect={async (date) => {
+                        if (!date) return;
+                        const newDate = format(date, 'yyyy-MM-dd');
+                        const { error } = await supabase
+                          .from('projects')
+                          .update({ start_date: newDate })
+                          .eq('id', project.id);
+                        
+                        if (error) {
+                          toast({
+                            title: 'Error',
+                            description: 'Failed to update start date',
+                            variant: 'destructive',
+                          });
+                        } else {
+                          setProject({ ...project, start_date: newDate });
+                          toast({
+                            title: 'Date updated',
+                            description: `Start date changed to ${format(date, 'MMM d, yyyy')}`,
+                          });
+                        }
+                      }}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </div>
