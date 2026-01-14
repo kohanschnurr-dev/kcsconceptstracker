@@ -563,9 +563,11 @@ export type Database = {
           expense_type: string | null
           id: string
           is_imported: boolean
+          notes: string | null
           payment_method: string | null
           project_id: string | null
           qb_id: string
+          receipt_url: string | null
           updated_at: string
           user_id: string
           vendor_name: string | null
@@ -580,9 +582,11 @@ export type Database = {
           expense_type?: string | null
           id?: string
           is_imported?: boolean
+          notes?: string | null
           payment_method?: string | null
           project_id?: string | null
           qb_id: string
+          receipt_url?: string | null
           updated_at?: string
           user_id: string
           vendor_name?: string | null
@@ -597,9 +601,11 @@ export type Database = {
           expense_type?: string | null
           id?: string
           is_imported?: boolean
+          notes?: string | null
           payment_method?: string | null
           project_id?: string | null
           qb_id?: string
+          receipt_url?: string | null
           updated_at?: string
           user_id?: string
           vendor_name?: string | null
