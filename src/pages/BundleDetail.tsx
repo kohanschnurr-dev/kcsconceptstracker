@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ProcurementItemModal } from '@/components/procurement/ProcurementItemModal';
+import { ProcurementItemDetailModal } from '@/components/procurement/ProcurementItemDetailModal';
 import { BundleModal } from '@/components/procurement/BundleModal';
 
 type Phase = 'rough_in' | 'trim_out' | 'finish' | 'punch';
@@ -99,6 +100,8 @@ export default function BundleDetail() {
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [bundleModalOpen, setBundleModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ProcurementItem | null>(null);
+  const [detailItem, setDetailItem] = useState<ProcurementItem | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   const fetchData = async () => {
     if (!user || !id) return;
@@ -408,7 +411,14 @@ export default function BundleDetail() {
                   </TableHeader>
                   <TableBody>
                     {items.map((item) => (
-                      <TableRow key={item.id}>
+                      <TableRow 
+                        key={item.id} 
+                        className="cursor-pointer hover:bg-muted/30"
+                        onClick={() => {
+                          setDetailItem(item);
+                          setDetailModalOpen(true);
+                        }}
+                      >
                         <TableCell>
                           <p className="font-medium">{item.name}</p>
                           {item.model_number && (
@@ -426,6 +436,7 @@ export default function BundleDetail() {
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="text-primary hover:text-primary/80"
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 <ExternalLink className="h-3 w-3" />
                               </a>
@@ -457,7 +468,11 @@ export default function BundleDetail() {
                               variant="ghost" 
                               size="icon" 
                               className="h-8 w-8"
-                              onClick={() => { setEditingItem(item); setItemModalOpen(true); }}
+                              onClick={(e) => { 
+                                e.stopPropagation();
+                                setEditingItem(item); 
+                                setItemModalOpen(true); 
+                              }}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -465,7 +480,10 @@ export default function BundleDetail() {
                               variant="ghost" 
                               size="icon" 
                               className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteItem(item.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteItem(item.id);
+                              }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -495,6 +513,16 @@ export default function BundleDetail() {
         bundle={bundle}
         projects={allProjects}
         onSave={fetchData}
+      />
+
+      <ProcurementItemDetailModal
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        item={detailItem}
+        onEdit={() => {
+          setEditingItem(detailItem);
+          setItemModalOpen(true);
+        }}
       />
     </MainLayout>
   );
