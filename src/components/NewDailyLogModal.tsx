@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { DailyLogTasksSection, TaskItem } from '@/components/dailylogs/DailyLogTasksSection';
 
 interface Project {
   id: string;
@@ -37,6 +38,7 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [workPerformed, setWorkPerformed] = useState('');
   const [issues, setIssues] = useState('');
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -70,16 +72,37 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
+      // Create the daily log
+      const { data: logData, error: logError } = await supabase
         .from('daily_logs')
         .insert({
           project_id: selectedProject,
           date,
           work_performed: workPerformed,
           issues: issues || null,
-        });
+        })
+        .select('id')
+        .single();
 
-      if (error) throw error;
+      if (logError) throw logError;
+
+      // Create tasks if any
+      if (tasks.length > 0 && logData?.id) {
+        const tasksToInsert = tasks.map((task) => ({
+          daily_log_id: logData.id,
+          description: task.description,
+          is_complete: task.is_complete,
+        }));
+
+        const { error: tasksError } = await supabase
+          .from('daily_log_tasks')
+          .insert(tasksToInsert);
+
+        if (tasksError) {
+          console.error('Error creating tasks:', tasksError);
+          // Don't throw - log was created successfully
+        }
+      }
 
       toast({
         title: 'Log created!',
@@ -91,6 +114,7 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
       setDate(new Date().toISOString().split('T')[0]);
       setWorkPerformed('');
       setIssues('');
+      setTasks([]);
       onOpenChange(false);
       onLogCreated?.();
     } catch (error: any) {
@@ -107,7 +131,7 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
+      <DialogContent className="sm:max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
@@ -174,6 +198,13 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
               rows={2}
             />
           </div>
+
+          {/* Tasks Section */}
+          <DailyLogTasksSection
+            tasks={tasks}
+            onTasksChange={setTasks}
+            disabled={isSubmitting}
+          />
 
           <div className="flex gap-2 pt-2">
             <Button 
