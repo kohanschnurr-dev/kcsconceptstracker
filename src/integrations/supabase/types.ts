@@ -127,6 +127,41 @@ export type Database = {
           },
         ]
       }
+      daily_log_tasks: {
+        Row: {
+          created_at: string
+          daily_log_id: string
+          description: string
+          id: string
+          is_complete: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          daily_log_id: string
+          description: string
+          id?: string
+          is_complete?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          daily_log_id?: string
+          description?: string
+          id?: string
+          is_complete?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_log_tasks_daily_log_id_fkey"
+            columns: ["daily_log_id"]
+            isOneToOne: false
+            referencedRelation: "daily_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_logs: {
         Row: {
           contractors_on_site: string[] | null
