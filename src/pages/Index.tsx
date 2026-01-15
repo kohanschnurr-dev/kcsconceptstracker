@@ -16,6 +16,8 @@ import { RecentExpenses } from '@/components/dashboard/RecentExpenses';
 import { VendorComplianceTable } from '@/components/dashboard/VendorComplianceTable';
 import { SpendingDonutChart } from '@/components/dashboard/SpendingDonutChart';
 import { SpendingTrendChart } from '@/components/dashboard/SpendingTrendChart';
+import { QuickTaskInput } from '@/components/dashboard/QuickTaskInput';
+import { UrgentTasksWidget } from '@/components/dashboard/UrgentTasksWidget';
 import { QuickActionButton } from '@/components/QuickActionButton';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { NewProjectModal } from '@/components/NewProjectModal';
@@ -67,6 +69,7 @@ export default function Index() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [taskRefreshKey, setTaskRefreshKey] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -252,6 +255,11 @@ export default function Index() {
           <p className="text-muted-foreground mt-1">DFW Fix & Flip Budget Tracker</p>
         </div>
 
+        {/* Quick Task Input */}
+        <div className="glass-card p-4">
+          <QuickTaskInput onTaskCreated={() => setTaskRefreshKey(k => k + 1)} />
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -284,16 +292,19 @@ export default function Index() {
           />
         </div>
 
-        {/* Charts Section */}
-        {expenses.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SpendingDonutChart 
-              expenses={chartExpenses} 
-              categories={allCategories.map(c => ({ id: c.id, category: c.category }))}
-            />
-            <SpendingTrendChart expenses={chartExpenses} days={7} />
-          </div>
-        )}
+        {/* Charts and Urgent Tasks Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {expenses.length > 0 && (
+            <>
+              <SpendingDonutChart 
+                expenses={chartExpenses} 
+                categories={allCategories.map(c => ({ id: c.id, category: c.category }))}
+              />
+              <SpendingTrendChart expenses={chartExpenses} days={7} />
+            </>
+          )}
+          <UrgentTasksWidget refreshKey={taskRefreshKey} />
+        </div>
 
         {/* Projects Section */}
         <div>
