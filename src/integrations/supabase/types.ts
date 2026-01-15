@@ -781,6 +781,53 @@ export type Database = {
         }
         Relationships: []
       }
+      tasks: {
+        Row: {
+          created_at: string
+          daily_log_id: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          priority_level: Database["public"]["Enums"]["task_priority"]
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_log_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority_level?: Database["public"]["Enums"]["task_priority"]
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_log_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority_level?: Database["public"]["Enums"]["task_priority"]
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_daily_log_id_fkey"
+            columns: ["daily_log_id"]
+            isOneToOne: false
+            referencedRelation: "daily_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           created_at: string
@@ -900,6 +947,8 @@ export type Database = {
       pricing_model: "flat" | "hourly"
       project_status: "active" | "complete" | "on_hold"
       project_type: "fix_flip" | "rental"
+      task_priority: "low" | "medium" | "high" | "urgent"
+      task_status: "pending" | "in_progress" | "completed"
       vendor_trade:
         | "plumbing"
         | "roofing"
@@ -1138,6 +1187,8 @@ export const Constants = {
       pricing_model: ["flat", "hourly"],
       project_status: ["active", "complete", "on_hold"],
       project_type: ["fix_flip", "rental"],
+      task_priority: ["low", "medium", "high", "urgent"],
+      task_status: ["pending", "in_progress", "completed"],
       vendor_trade: [
         "plumbing",
         "roofing",

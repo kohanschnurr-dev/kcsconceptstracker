@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Projects from "./pages/Projects";
 import Calendar from "./pages/Calendar";
+import Checklist from "./pages/Checklist";
 import ProjectDetail from "./pages/ProjectDetail";
 import ProjectBudget from "./pages/ProjectBudget";
 import Expenses from "./pages/Expenses";
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/bundles" element={<ProtectedRoute><Bundles /></ProtectedRoute>} />
             <Route path="/bundles/:id" element={<ProtectedRoute><BundleDetail /></ProtectedRoute>} />
             <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+            <Route path="/checklist" element={<ProtectedRoute><Checklist /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
