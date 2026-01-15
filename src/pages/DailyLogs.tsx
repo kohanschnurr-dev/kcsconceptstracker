@@ -317,12 +317,12 @@ export default function DailyLogs() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="logs" className="gap-2">
+          <TabsList className="grid w-full md:max-w-md grid-cols-2">
+            <TabsTrigger value="logs" className="gap-2 py-3 md:py-2">
               <Calendar className="h-4 w-4" />
               Daily Logs
             </TabsTrigger>
-            <TabsTrigger value="checklist" className="gap-2">
+            <TabsTrigger value="checklist" className="gap-2 py-3 md:py-2">
               <Check className="h-4 w-4" />
               Checklist
             </TabsTrigger>
@@ -330,17 +330,17 @@ export default function DailyLogs() {
 
           {/* Daily Logs Tab */}
           <TabsContent value="logs" className="mt-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="relative flex-1 max-w-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <div className="relative flex-1 sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search logs..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 h-11 sm:h-10"
                 />
               </div>
-              <Button className="gap-2" onClick={() => setModalOpen(true)}>
+              <Button className="gap-2 w-full sm:w-auto h-11 sm:h-10" onClick={() => setModalOpen(true)}>
                 <Plus className="h-4 w-4" />
                 New Log Entry
               </Button>
@@ -431,8 +431,8 @@ export default function DailyLogs() {
 
           {/* Checklist Tab */}
           <TabsContent value="checklist" className="mt-6 space-y-6">
-            {/* Quick Add */}
-            <form onSubmit={handleCreateTask} className="flex gap-2">
+            {/* Quick Add - Stacked on mobile */}
+            <form onSubmit={handleCreateTask} className="flex flex-col sm:flex-row gap-3 sm:gap-2">
               <div className="relative flex-1">
                 <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -440,20 +440,24 @@ export default function DailyLogs() {
                   placeholder="Add a new task... (press Enter)"
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 h-11 sm:h-10"
                   disabled={isCreating}
                 />
               </div>
-              <Button type="submit" disabled={!newTaskTitle.trim() || isCreating}>
+              <Button 
+                type="submit" 
+                disabled={!newTaskTitle.trim() || isCreating}
+                className="w-full sm:w-auto h-11 sm:h-10"
+              >
                 Add Task
               </Button>
             </form>
 
-            {/* Filter */}
-            <div className="flex items-center gap-2">
+            {/* Filter - Wrap on mobile */}
+            <div className="flex flex-wrap items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={taskFilter} onValueChange={(v) => setTaskFilter(v as typeof taskFilter)}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-36 sm:w-40 h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -462,13 +466,74 @@ export default function DailyLogs() {
                   <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="text-sm text-muted-foreground ml-2">
+              <span className="text-sm text-muted-foreground ml-auto sm:ml-2">
                 {tasks.length} task{tasks.length !== 1 ? 's' : ''}
               </span>
             </div>
 
-            {/* Table */}
-            <div className="glass-card overflow-hidden">
+            {/* Mobile Card View - Hidden on md+ */}
+            <div className="block md:hidden space-y-3">
+              {tasksLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="glass-card p-4 animate-pulse">
+                    <div className="h-5 bg-muted rounded w-3/4 mb-3" />
+                    <div className="h-4 bg-muted rounded w-1/2" />
+                  </div>
+                ))
+              ) : tasks.length === 0 ? (
+                <div className="glass-card p-8 text-center text-muted-foreground">
+                  {taskFilter === 'pending' ? 'No pending tasks. Great job!' : 'No tasks found.'}
+                </div>
+              ) : (
+                tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className={`glass-card p-4 ${task.status === 'completed' ? 'opacity-60' : ''}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={task.status === 'completed'}
+                        onCheckedChange={() => handleToggleStatus(task)}
+                        className="mt-0.5 h-5 w-5"
+                      />
+                      <div className="flex-1 min-w-0" onClick={() => openDetailModal(task)}>
+                        <p className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                          {task.title}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <Badge
+                            variant="secondary"
+                            className={`text-xs ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}
+                          >
+                            {TASK_PRIORITY_LABELS[task.priorityLevel]}
+                          </Badge>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            {getStatusIcon(task.status)}
+                            <span>{TASK_STATUS_LABELS[task.status]}</span>
+                          </div>
+                        </div>
+                        {task.dueDate && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Due: {format(new Date(task.dueDate), 'MMM d, yyyy')}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0"
+                        onClick={() => handleDeleteTask(task.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Desktop Table View - Hidden below md */}
+            <div className="hidden md:block glass-card overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
