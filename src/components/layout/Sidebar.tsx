@@ -8,8 +8,7 @@ import {
   LogOut,
   Calculator,
   ShoppingCart,
-  CalendarDays,
-  CheckSquare
+  CalendarDays
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -20,7 +19,6 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
   { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
-  { icon: CheckSquare, label: 'Checklist', path: '/checklist' },
   { icon: Receipt, label: 'Expenses', path: '/expenses' },
   { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
   { icon: Users, label: 'Vendors', path: '/vendors' },

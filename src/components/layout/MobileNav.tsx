@@ -10,8 +10,7 @@ import {
   LogOut,
   ShoppingCart,
   Briefcase,
-  Calculator,
-  CheckSquare
+  Calculator
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -22,7 +21,6 @@ import { useAuth } from '@/contexts/AuthContext';
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
-  { icon: CheckSquare, label: 'Checklist', path: '/checklist' },
   { icon: Receipt, label: 'Expenses', path: '/expenses' },
   { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
   { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
