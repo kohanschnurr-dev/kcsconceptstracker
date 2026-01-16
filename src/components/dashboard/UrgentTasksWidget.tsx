@@ -49,6 +49,9 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
         dailyLogId: t.daily_log_id,
         isDaily: t.is_daily,
         scheduledDate: t.scheduled_date,
+        isScheduled: t.is_scheduled,
+        startTime: t.start_time,
+        endTime: t.end_time,
         createdAt: t.created_at,
         updatedAt: t.updated_at,
       }));

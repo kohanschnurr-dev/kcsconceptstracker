@@ -787,10 +787,13 @@ export type Database = {
           daily_log_id: string | null
           description: string | null
           due_date: string | null
+          end_time: string | null
           id: string
           is_daily: boolean
+          is_scheduled: boolean
           priority_level: Database["public"]["Enums"]["task_priority"]
           scheduled_date: string | null
+          start_time: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
@@ -801,10 +804,13 @@ export type Database = {
           daily_log_id?: string | null
           description?: string | null
           due_date?: string | null
+          end_time?: string | null
           id?: string
           is_daily?: boolean
+          is_scheduled?: boolean
           priority_level?: Database["public"]["Enums"]["task_priority"]
           scheduled_date?: string | null
+          start_time?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
@@ -815,10 +821,13 @@ export type Database = {
           daily_log_id?: string | null
           description?: string | null
           due_date?: string | null
+          end_time?: string | null
           id?: string
           is_daily?: boolean
+          is_scheduled?: boolean
           priority_level?: Database["public"]["Enums"]["task_priority"]
           scheduled_date?: string | null
+          start_time?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string

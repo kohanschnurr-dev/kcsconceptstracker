@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, ArrowRight, ListTodo, Target } from 'lucide-react';
+import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, ArrowRight, ListTodo, Target, LayoutDashboard } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CommandCenter } from '@/components/command-center/CommandCenter';
 import {
   Select,
   SelectContent,
@@ -50,7 +51,7 @@ interface DailyLog {
 
 export default function DailyLogs() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('logs');
+  const [activeTab, setActiveTab] = useState('command');
   const [checklistTab, setChecklistTab] = useState('daily');
   
   // Daily Logs state
@@ -101,6 +102,9 @@ export default function DailyLogs() {
         dailyLogId: t.daily_log_id,
         isDaily: t.is_daily,
         scheduledDate: t.scheduled_date,
+        isScheduled: t.is_scheduled,
+        startTime: t.start_time,
+        endTime: t.end_time,
         createdAt: t.created_at,
         updatedAt: t.updated_at,
       }));
@@ -376,16 +380,27 @@ export default function DailyLogs() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full md:max-w-md grid-cols-2">
+          <TabsList className="grid w-full md:max-w-lg grid-cols-3">
+            <TabsTrigger value="command" className="gap-2 py-3 md:py-2">
+              <LayoutDashboard className="h-4 w-4" />
+              <span className="hidden sm:inline">Command Center</span>
+              <span className="sm:hidden">Center</span>
+            </TabsTrigger>
             <TabsTrigger value="logs" className="gap-2 py-3 md:py-2">
               <Calendar className="h-4 w-4" />
-              Daily Logs
+              <span className="hidden sm:inline">Daily Logs</span>
+              <span className="sm:hidden">Logs</span>
             </TabsTrigger>
             <TabsTrigger value="checklist" className="gap-2 py-3 md:py-2">
               <Check className="h-4 w-4" />
               Checklist
             </TabsTrigger>
           </TabsList>
+
+          {/* Command Center Tab */}
+          <TabsContent value="command" className="mt-6">
+            <CommandCenter />
+          </TabsContent>
 
           {/* Daily Logs Tab */}
           <TabsContent value="logs" className="mt-6 space-y-6">
