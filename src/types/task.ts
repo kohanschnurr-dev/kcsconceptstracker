@@ -12,6 +12,9 @@ export interface Task {
   dailyLogId: string | null;
   isDaily: boolean;
   scheduledDate: string | null;
+  isScheduled: boolean;
+  startTime: string | null;
+  endTime: string | null;
   createdAt: string;
   updatedAt: string;
 }
