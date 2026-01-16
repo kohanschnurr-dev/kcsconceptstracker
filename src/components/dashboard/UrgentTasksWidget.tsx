@@ -47,6 +47,8 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
         status: t.status as Task['status'],
         priorityLevel: t.priority_level as Task['priorityLevel'],
         dailyLogId: t.daily_log_id,
+        isDaily: t.is_daily,
+        scheduledDate: t.scheduled_date,
         createdAt: t.created_at,
         updatedAt: t.updated_at,
       }));
