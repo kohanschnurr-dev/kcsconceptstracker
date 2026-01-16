@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, ArrowRight, ListTodo, Target } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Task, TaskStatus, TaskPriority } from '@/types/task';
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/types/task';
-import { format } from 'date-fns';
+import { format, isToday, startOfDay } from 'date-fns';
 
 interface DailyLog {
   id: string;
@@ -51,6 +51,7 @@ interface DailyLog {
 export default function DailyLogs() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('logs');
+  const [checklistTab, setChecklistTab] = useState('daily');
   
   // Daily Logs state
   const [search, setSearch] = useState('');
@@ -59,7 +60,7 @@ export default function DailyLogs() {
   const [modalOpen, setModalOpen] = useState(false);
 
   // Tasks/Checklist state
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'completed'>('pending');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -82,18 +83,10 @@ export default function DailyLogs() {
 
   const fetchTasks = useCallback(async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .order('created_at', { ascending: false });
-
-      if (taskFilter === 'pending') {
-        query = query.in('status', ['pending', 'in_progress']);
-      } else if (taskFilter === 'completed') {
-        query = query.eq('status', 'completed');
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -106,11 +99,13 @@ export default function DailyLogs() {
         status: t.status as TaskStatus,
         priorityLevel: t.priority_level as TaskPriority,
         dailyLogId: t.daily_log_id,
+        isDaily: t.is_daily,
+        scheduledDate: t.scheduled_date,
         createdAt: t.created_at,
         updatedAt: t.updated_at,
       }));
 
-      setTasks(transformed);
+      setAllTasks(transformed);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       toast({
@@ -121,7 +116,7 @@ export default function DailyLogs() {
     } finally {
       setTasksLoading(false);
     }
-  }, [taskFilter, toast]);
+  }, [toast]);
 
   useEffect(() => {
     if (activeTab === 'checklist') {
@@ -168,6 +163,38 @@ export default function DailyLogs() {
     (log.projects?.name?.toLowerCase() || '').includes(search.toLowerCase())
   );
 
+  // Filter tasks based on daily/master and status
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  
+  // Daily Sprint: tasks where is_daily = true AND scheduled_date = today AND not completed
+  // (or show completed ones too if filter is 'completed' or 'all')
+  const dailyTasks = allTasks.filter((task) => {
+    const isScheduledToday = task.scheduledDate === todayStr;
+    const isDailyTask = task.isDaily && isScheduledToday;
+    
+    if (taskFilter === 'pending') {
+      return isDailyTask && task.status !== 'completed';
+    } else if (taskFilter === 'completed') {
+      return isDailyTask && task.status === 'completed';
+    }
+    return isDailyTask;
+  });
+
+  // Master Pipeline: tasks where is_daily = false
+  const masterTasks = allTasks.filter((task) => {
+    if (!task.isDaily) {
+      if (taskFilter === 'pending') {
+        return task.status !== 'completed';
+      } else if (taskFilter === 'completed') {
+        return task.status === 'completed';
+      }
+      return true;
+    }
+    return false;
+  });
+
+  const tasks = checklistTab === 'daily' ? dailyTasks : masterTasks;
+
   // Task functions
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,6 +205,9 @@ export default function DailyLogs() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // If on Daily Sprint tab, create as a daily task for today
+      const isDaily = checklistTab === 'daily';
+      
       const { error } = await supabase
         .from('tasks')
         .insert({
@@ -185,18 +215,43 @@ export default function DailyLogs() {
           title: newTaskTitle.trim(),
           status: 'pending',
           priority_level: 'medium',
+          is_daily: isDaily,
+          scheduled_date: isDaily ? todayStr : null,
         });
 
       if (error) throw error;
 
       setNewTaskTitle('');
-      toast({ title: 'Task created', description: 'Your task has been added.' });
+      toast({ 
+        title: 'Task created', 
+        description: isDaily ? 'Added to today\'s sprint' : 'Added to master pipeline' 
+      });
       fetchTasks();
     } catch (error) {
       console.error('Error creating task:', error);
       toast({ title: 'Error', description: 'Failed to create task', variant: 'destructive' });
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleMoveToToday = async (task: Task) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          is_daily: true, 
+          scheduled_date: todayStr 
+        })
+        .eq('id', task.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Moved to Today', description: `"${task.title}" added to today's sprint` });
+      fetchTasks();
+    } catch (error) {
+      console.error('Error moving task:', error);
+      toast({ title: 'Error', description: 'Failed to move task', variant: 'destructive' });
     }
   };
 
@@ -304,6 +359,10 @@ export default function DailyLogs() {
         return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
     }
   };
+
+  // Counts for badges
+  const pendingDailyCount = allTasks.filter(t => t.isDaily && t.scheduledDate === todayStr && t.status !== 'completed').length;
+  const pendingMasterCount = allTasks.filter(t => !t.isDaily && t.status !== 'completed').length;
 
   return (
     <MainLayout>
@@ -431,13 +490,42 @@ export default function DailyLogs() {
 
           {/* Checklist Tab */}
           <TabsContent value="checklist" className="mt-6 space-y-6">
-            {/* Quick Add - Stacked on mobile */}
+            {/* Sub-tabs for Daily Sprint vs Master Pipeline */}
+            <Tabs value={checklistTab} onValueChange={setChecklistTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="daily" className="gap-2">
+                  <Target className="h-4 w-4" />
+                  <span className="hidden sm:inline">Daily Sprint</span>
+                  <span className="sm:hidden">Today</span>
+                  {pendingDailyCount > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      {pendingDailyCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="master" className="gap-2">
+                  <ListTodo className="h-4 w-4" />
+                  <span className="hidden sm:inline">Master Pipeline</span>
+                  <span className="sm:hidden">Master</span>
+                  {pendingMasterCount > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      {pendingMasterCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {/* Quick Add - contextual to the current tab */}
             <form onSubmit={handleCreateTask} className="flex flex-col sm:flex-row gap-3 sm:gap-2">
               <div className="relative flex-1">
                 <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Add a new task... (press Enter)"
+                  placeholder={checklistTab === 'daily' 
+                    ? "Add task to today's list... (press Enter)" 
+                    : "Add to master pipeline... (press Enter)"
+                  }
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   className="pl-9 h-11 sm:h-10"
@@ -449,7 +537,7 @@ export default function DailyLogs() {
                 disabled={!newTaskTitle.trim() || isCreating}
                 className="w-full sm:w-auto h-11 sm:h-10"
               >
-                Add Task
+                {checklistTab === 'daily' ? 'Add to Today' : 'Add to Pipeline'}
               </Button>
             </form>
 
@@ -482,7 +570,18 @@ export default function DailyLogs() {
                 ))
               ) : tasks.length === 0 ? (
                 <div className="glass-card p-8 text-center text-muted-foreground">
-                  {taskFilter === 'pending' ? 'No pending tasks. Great job!' : 'No tasks found.'}
+                  {checklistTab === 'daily' ? (
+                    <>
+                      <Target className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p className="mb-2">No tasks for today</p>
+                      <p className="text-xs">Add tasks above or move items from the Master Pipeline</p>
+                    </>
+                  ) : (
+                    <>
+                      <ListTodo className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>{taskFilter === 'pending' ? 'No pending tasks in pipeline' : 'No tasks found'}</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 tasks.map((task) => (
@@ -518,14 +617,27 @@ export default function DailyLogs() {
                           </p>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0"
-                        onClick={() => handleDeleteTask(task.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex flex-col gap-1 shrink-0">
+                        {checklistTab === 'master' && task.status !== 'completed' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-primary hover:text-primary/80"
+                            onClick={() => handleMoveToToday(task)}
+                            title="Move to Today"
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteTask(task.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -542,7 +654,7 @@ export default function DailyLogs() {
                     <TableHead className="w-28">Priority</TableHead>
                     <TableHead className="w-28">Status</TableHead>
                     <TableHead className="w-28">Due Date</TableHead>
-                    <TableHead className="w-12"></TableHead>
+                    <TableHead className="w-24"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -557,7 +669,12 @@ export default function DailyLogs() {
                   ) : tasks.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        {taskFilter === 'pending' ? 'No pending tasks. Great job!' : 'No tasks found.'}
+                        {checklistTab === 'daily' 
+                          ? "No tasks scheduled for today. Add tasks above or move items from Master Pipeline."
+                          : taskFilter === 'pending' 
+                            ? 'No pending tasks in pipeline.' 
+                            : 'No tasks found.'
+                        }
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -620,14 +737,27 @@ export default function DailyLogs() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => handleDeleteTask(task.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            {checklistTab === 'master' && task.status !== 'completed' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-primary hover:text-primary/80"
+                                onClick={() => handleMoveToToday(task)}
+                                title="Move to Today"
+                              >
+                                <ArrowRight className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDeleteTask(task.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

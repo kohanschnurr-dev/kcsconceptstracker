@@ -788,7 +788,9 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          is_daily: boolean
           priority_level: Database["public"]["Enums"]["task_priority"]
+          scheduled_date: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
@@ -800,7 +802,9 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_daily?: boolean
           priority_level?: Database["public"]["Enums"]["task_priority"]
+          scheduled_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
@@ -812,7 +816,9 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_daily?: boolean
           priority_level?: Database["public"]["Enums"]["task_priority"]
+          scheduled_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string

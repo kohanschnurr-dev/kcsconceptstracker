@@ -10,6 +10,8 @@ export interface Task {
   status: TaskStatus;
   priorityLevel: TaskPriority;
   dailyLogId: string | null;
+  isDaily: boolean;
+  scheduledDate: string | null;
   createdAt: string;
   updatedAt: string;
 }
