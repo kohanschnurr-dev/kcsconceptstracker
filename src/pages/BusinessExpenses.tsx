@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Search, Download, Receipt, Calendar, Briefcase, Upload, FileText, X, Paperclip } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Plus, Search, Download, Receipt, Calendar, Briefcase, Upload, FileText, X, Paperclip, Save, RotateCcw, ChevronDown } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,23 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import {
   Dialog,
@@ -35,6 +52,8 @@ import { DateRange } from 'react-day-picker';
 import { BusinessQuickBooksIntegration } from '@/components/BusinessQuickBooksIntegration';
 import { BusinessExpenseTrendChart } from '@/components/dashboard/BusinessExpenseTrendChart';
 import { BusinessExpenseDetailModal } from '@/components/BusinessExpenseDetailModal';
+
+const BACKUP_KEY = 'dfw_project_expenses_backup';
 
 interface DBBusinessExpense {
   id: string;
@@ -60,6 +79,8 @@ export default function BusinessExpenses() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedExpense, setSelectedExpense] = useState<DBBusinessExpense | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [backupData, setBackupData] = useState<DBBusinessExpense[] | null>(null);
   const { toast } = useToast();
 
   // Form state for new expense
@@ -78,6 +99,39 @@ export default function BusinessExpenses() {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasCheckedBackup = useRef(false);
+
+  // Check for backup on mount
+  useEffect(() => {
+    if (hasCheckedBackup.current) return;
+    hasCheckedBackup.current = true;
+    
+    const stored = localStorage.getItem(BACKUP_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setBackupData(parsed);
+        }
+      } catch (e) {
+        console.error('Error parsing backup:', e);
+      }
+    }
+  }, []);
+
+  // Show restore dialog after loading if we have backup but empty expenses
+  useEffect(() => {
+    if (!isLoading && expenses.length === 0 && backupData && backupData.length > 0) {
+      setShowRestoreDialog(true);
+    }
+  }, [isLoading, expenses.length, backupData]);
+
+  // Autosave to localStorage when expenses change
+  useEffect(() => {
+    if (expenses.length > 0) {
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(expenses));
+    }
+  }, [expenses]);
 
   useEffect(() => {
     fetchData();
@@ -287,16 +341,24 @@ export default function BusinessExpenses() {
 
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
+  // Sanitize string for CSV (remove commas, quotes, newlines)
+  const sanitizeForCSV = (str: string | null | undefined): string => {
+    if (!str) return '';
+    return str
+      .replace(/"/g, '""') // Escape quotes by doubling them
+      .replace(/[\r\n]+/g, ' ') // Replace newlines with spaces
+      .replace(/,/g, ';'); // Replace commas with semicolons
+  };
+
   const exportToCSV = () => {
-    const headers = ['Date', 'Vendor', 'Category', 'Payment Method', 'Amount', 'Tax', 'Description'];
+    const headers = ['Date', 'Category', 'Vendor', 'Amount', 'Tax', 'Notes'];
     const rows = filteredExpenses.map(e => [
       e.date,
-      e.vendor_name || '',
-      getCategoryLabel(e.category),
-      e.payment_method || '',
-      e.amount.toString(),
-      e.tax_amount?.toString() || '0',
-      e.description || ''
+      sanitizeForCSV(getCategoryLabel(e.category)),
+      sanitizeForCSV(e.vendor_name),
+      e.amount.toFixed(2), // Plain number for Excel compatibility
+      (e.tax_amount || 0).toFixed(2),
+      sanitizeForCSV(e.notes || e.description)
     ]);
 
     const csvContent = [headers, ...rows]
@@ -315,6 +377,52 @@ export default function BusinessExpenses() {
     });
   };
 
+  const exportToJSON = () => {
+    const blob = new Blob([JSON.stringify(expenses, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `business-expenses-backup-${format(new Date(), 'yyyy-MM-dd-HHmm')}.json`;
+    link.click();
+    
+    toast({
+      title: 'Backup created',
+      description: `${expenses.length} expenses saved to JSON file`,
+    });
+  };
+
+  const handleRestoreBackup = async () => {
+    if (!backupData) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Insert backup data into database
+      for (const expense of backupData) {
+        await supabase.from('business_expenses').upsert({
+          ...expense,
+          user_id: user.id,
+        }, { onConflict: 'id' });
+      }
+
+      toast({
+        title: 'Backup restored',
+        description: `${backupData.length} expenses restored from backup`,
+      });
+      
+      fetchData();
+    } catch (error: any) {
+      toast({
+        title: 'Restore failed',
+        description: error.message || 'Could not restore backup',
+        variant: 'destructive',
+      });
+    } finally {
+      setShowRestoreDialog(false);
+      setBackupData(null);
+    }
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -325,10 +433,26 @@ export default function BusinessExpenses() {
             <p className="text-muted-foreground mt-1">Track business expenses</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="gap-2" onClick={exportToCSV}>
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Export
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportToCSV}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export to CSV
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={exportToJSON}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Manual Backup (JSON)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button className="gap-2" onClick={() => setExpenseModalOpen(true)}>
               <Plus className="h-4 w-4" />
               Add Expense
@@ -680,6 +804,33 @@ export default function BusinessExpenses() {
         expense={selectedExpense}
         onExpenseUpdated={fetchData}
       />
+
+      {/* Restore Backup Dialog */}
+      <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-primary" />
+              Restore Data from Backup?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              We found {backupData?.length || 0} expenses saved from a previous session. 
+              Would you like to restore them to prevent data loss?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowRestoreDialog(false);
+              setBackupData(null);
+            }}>
+              No, start fresh
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestoreBackup}>
+              Restore backup
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
