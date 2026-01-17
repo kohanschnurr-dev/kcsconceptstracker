@@ -297,6 +297,7 @@ interface FormData {
   notes: string;
   bulk_discount_eligible: boolean;
   specs: Record<string, string>;
+  image_url: string;
 }
 
 interface Props {
@@ -319,6 +320,7 @@ interface ScrapedData {
   brand: string | null;
   source_store: string;
   specs: Record<string, string>;
+  image_url: string | null;
 }
 
 export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave }: Props) {
@@ -348,6 +350,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     notes: '',
     bulk_discount_eligible: false,
     specs: {},
+    image_url: '',
   });
 
   // Parse specs from notes field (stored as JSON)
@@ -427,6 +430,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           notes: cleanNotes,
           bulk_discount_eligible: item.bulk_discount_eligible ?? false,
           specs,
+          image_url: (item as any).image_url || '',
         });
         setStep('details');
         setUrlInput('');
@@ -451,6 +455,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           notes: '',
           bulk_discount_eligible: false,
           specs: {},
+          image_url: '',
         });
         setStep('url');
         setUrlInput('');
@@ -499,6 +504,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         lead_time_days: scraped.lead_time_days?.toString() || prev.lead_time_days,
         category: detectedCategory,
         specs: { ...prev.specs, ...scraped.specs },
+        image_url: scraped.image_url || prev.image_url,
       }));
 
       setScrapeSuccess(true);
@@ -549,6 +555,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
       finish: formData.finish || null,
       notes: finalNotes || null,
       bulk_discount_eligible: formData.bulk_discount_eligible,
+      image_url: formData.image_url || null,
       user_id: user?.id,
     };
 

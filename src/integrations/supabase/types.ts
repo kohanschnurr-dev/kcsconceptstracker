@@ -363,6 +363,7 @@ export type Database = {
           created_at: string
           finish: string | null
           id: string
+          image_url: string | null
           includes_tax: boolean
           is_pack_price: boolean
           lead_time_days: number | null
@@ -387,6 +388,7 @@ export type Database = {
           created_at?: string
           finish?: string | null
           id?: string
+          image_url?: string | null
           includes_tax?: boolean
           is_pack_price?: boolean
           lead_time_days?: number | null
@@ -411,6 +413,7 @@ export type Database = {
           created_at?: string
           finish?: string | null
           id?: string
+          image_url?: string | null
           includes_tax?: boolean
           is_pack_price?: boolean
           lead_time_days?: number | null

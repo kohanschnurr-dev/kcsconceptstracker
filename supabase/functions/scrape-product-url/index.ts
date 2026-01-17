@@ -292,7 +292,7 @@ Deno.serve(async (req) => {
 
     console.log('Scraping product URL:', formattedUrl);
 
-    // Use Firecrawl to scrape the page
+    // Use Firecrawl to scrape the page with screenshot
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
@@ -301,7 +301,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url: formattedUrl,
-        formats: ['markdown'],
+        formats: ['markdown', 'screenshot'],
         onlyMainContent: true,
         waitFor: 3000, // Wait for dynamic content
         location: {
@@ -321,8 +321,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Extract markdown content
+    // Extract markdown content and screenshot
     const markdown = data.data?.markdown || data.markdown || '';
+    const screenshot = data.data?.screenshot || data.screenshot || null;
     
     if (!markdown) {
       return new Response(
@@ -333,6 +334,11 @@ Deno.serve(async (req) => {
 
     // Parse product data from markdown
     const productData = extractProductData(markdown, formattedUrl);
+    
+    // Add screenshot as image_url if available
+    if (screenshot) {
+      productData.image_url = screenshot;
+    }
 
     console.log('Extracted product data:', productData);
 
