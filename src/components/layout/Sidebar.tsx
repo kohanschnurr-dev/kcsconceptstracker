@@ -16,16 +16,26 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/', exact: true },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
   { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
   { icon: Receipt, label: 'Expenses', path: '/expenses' },
   { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
   { icon: Users, label: 'Vendors', path: '/vendors' },
-  { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
+  { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
   { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
   { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
 ];
+
+const isActiveLink = (item: typeof navItems[0], pathname: string) => {
+  if (item.exact) {
+    return pathname === item.path;
+  }
+  if (item.matchPaths) {
+    return item.matchPaths.some(p => pathname === p || pathname.startsWith(p + '/'));
+  }
+  return pathname === item.path || pathname.startsWith(item.path + '/');
+};
 
 export function Sidebar() {
   const location = useLocation();
@@ -48,7 +58,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = isActiveLink(item, location.pathname);
             return (
               <NavLink
                 key={item.path}
