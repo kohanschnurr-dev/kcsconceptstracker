@@ -62,7 +62,92 @@ function parseLeadTime(text: string): number | null {
   return null;
 }
 
-function extractProductData(markdown: string, url: string): ProductData {
+function extractProductImage(html: string, url: string): string | null {
+  const store = detectStore(url);
+  
+  // Amazon-specific image extraction
+  if (store === 'amazon') {
+    // Look for main product image patterns
+    const amazonPatterns = [
+      // Main product image
+      /data-old-hires="([^"]+)"/i,
+      /data-a-dynamic-image="\{&quot;([^&]+)&quot;/i,
+      /"hiRes":"([^"]+)"/i,
+      /"large":"([^"]+)"/i,
+      /id="landingImage"[^>]+src="([^"]+)"/i,
+      /id="imgBlkFront"[^>]+src="([^"]+)"/i,
+      /class="a-dynamic-image[^"]*"[^>]+src="([^"]+)"/i,
+    ];
+    
+    for (const pattern of amazonPatterns) {
+      const match = html.match(pattern);
+      if (match && match[1]) {
+        let imgUrl = match[1].replace(/\\u002F/g, '/').replace(/\\/g, '');
+        // Clean up Amazon image URL - get highest resolution
+        imgUrl = imgUrl.replace(/\._[A-Z]{2}\d+_\./, '.');
+        if (imgUrl.startsWith('http')) {
+          return imgUrl;
+        }
+      }
+    }
+  }
+  
+  // Home Depot specific patterns
+  if (store === 'home_depot') {
+    const hdPatterns = [
+      /data-src="(https:\/\/images\.homedepot[^"]+)"/i,
+      /src="(https:\/\/images\.homedepot[^"]+)"/i,
+      /"src":"(https:\/\/images\.homedepot[^"]+)"/i,
+    ];
+    
+    for (const pattern of hdPatterns) {
+      const match = html.match(pattern);
+      if (match && match[1]) {
+        return match[1].replace(/\\/g, '');
+      }
+    }
+  }
+  
+  // Lowes specific patterns
+  if (store === 'lowes') {
+    const lowesPatterns = [
+      /src="(https:\/\/mobileimages\.lowes[^"]+)"/i,
+      /src="(https:\/\/images\.lowes[^"]+)"/i,
+    ];
+    
+    for (const pattern of lowesPatterns) {
+      const match = html.match(pattern);
+      if (match && match[1]) {
+        return match[1].replace(/\\/g, '');
+      }
+    }
+  }
+  
+  // Generic og:image fallback
+  const ogImageMatch = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i) ||
+                       html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i);
+  if (ogImageMatch && ogImageMatch[1]) {
+    return ogImageMatch[1];
+  }
+  
+  // Generic product image patterns
+  const genericPatterns = [
+    /class="[^"]*product[^"]*image[^"]*"[^>]+src="([^"]+)"/i,
+    /id="[^"]*product[^"]*image[^"]*"[^>]+src="([^"]+)"/i,
+    /<img[^>]+alt="[^"]*product[^"]*"[^>]+src="([^"]+)"/i,
+  ];
+  
+  for (const pattern of genericPatterns) {
+    const match = html.match(pattern);
+    if (match && match[1] && match[1].startsWith('http')) {
+      return match[1];
+    }
+  }
+  
+  return null;
+}
+
+function extractProductData(markdown: string, html: string, url: string): ProductData {
   const store = detectStore(url);
   const lines = markdown.split('\n');
   
@@ -77,6 +162,9 @@ function extractProductData(markdown: string, url: string): ProductData {
   let material: string | null = null;
   let image_url: string | null = null;
   const specs: Record<string, string> = {};
+  
+  // Extract product image from HTML
+  image_url = extractProductImage(html, url);
   
   // Extract name from first H1 or prominent text
   for (const line of lines) {
@@ -301,8 +389,8 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url: formattedUrl,
-        formats: ['markdown', 'screenshot'],
-        onlyMainContent: true,
+        formats: ['markdown', 'html'],
+        onlyMainContent: false, // Need full HTML to extract product images
         waitFor: 3000, // Wait for dynamic content
         location: {
           country: 'US',
@@ -321,24 +409,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Extract markdown content and screenshot
+    // Extract markdown and HTML content
     const markdown = data.data?.markdown || data.markdown || '';
-    const screenshot = data.data?.screenshot || data.screenshot || null;
+    const html = data.data?.html || data.html || '';
     
-    if (!markdown) {
+    if (!markdown && !html) {
       return new Response(
         JSON.stringify({ success: false, error: 'Could not extract content from page' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Parse product data from markdown
-    const productData = extractProductData(markdown, formattedUrl);
-    
-    // Add screenshot as image_url if available
-    if (screenshot) {
-      productData.image_url = screenshot;
-    }
+    // Parse product data from markdown and HTML
+    const productData = extractProductData(markdown, html, formattedUrl);
 
     console.log('Extracted product data:', productData);
 
