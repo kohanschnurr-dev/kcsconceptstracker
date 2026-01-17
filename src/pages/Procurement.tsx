@@ -53,6 +53,7 @@ interface ProcurementItem {
   finish: string | null;
   notes: string | null;
   bulk_discount_eligible: boolean | null;
+  image_url: string | null;
 }
 
 interface ItemBundleAssignment {
@@ -415,6 +416,7 @@ export default function Procurement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-16"></TableHead>
                       <TableHead>Item</TableHead>
                       <TableHead>Bundle</TableHead>
                       <TableHead>Source</TableHead>
@@ -429,6 +431,19 @@ export default function Procurement() {
                   <TableBody>
                     {filteredItems.map((item) => (
                       <TableRow key={item.id}>
+                        <TableCell>
+                          <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                            {item.image_url ? (
+                              <img 
+                                src={item.image_url} 
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Package className="h-5 w-5 text-muted-foreground" />
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <p className="font-medium">{item.name}</p>
                         </TableCell>
