@@ -21,7 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ProcurementItemModal } from '@/components/procurement/ProcurementItemModal';
-import { ProcurementItemDetailModal } from '@/components/procurement/ProcurementItemDetailModal';
+
 import { BundleModal } from '@/components/procurement/BundleModal';
 
 type Phase = 'rough_in' | 'trim_out' | 'finish' | 'punch';
@@ -102,8 +102,6 @@ export default function BundleDetail() {
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [bundleModalOpen, setBundleModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ProcurementItem | null>(null);
-  const [detailItem, setDetailItem] = useState<ProcurementItem | null>(null);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   const fetchData = async () => {
     if (!user || !id) return;
@@ -427,11 +425,7 @@ export default function BundleDetail() {
                     {items.map((item) => (
                       <TableRow 
                         key={item.id} 
-                        className="cursor-pointer hover:bg-muted/30"
-                        onClick={() => {
-                          setDetailItem(item);
-                          setDetailModalOpen(true);
-                        }}
+                        className="hover:bg-muted/30"
                       >
                         <TableCell>
                           <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center">
@@ -542,15 +536,6 @@ export default function BundleDetail() {
         onSave={fetchData}
       />
 
-      <ProcurementItemDetailModal
-        open={detailModalOpen}
-        onOpenChange={setDetailModalOpen}
-        item={detailItem}
-        onEdit={() => {
-          setEditingItem(detailItem);
-          setItemModalOpen(true);
-        }}
-      />
     </MainLayout>
   );
 }
