@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import { 
   ArrowLeft, 
   FolderOpen, 
@@ -61,6 +62,7 @@ interface ProcurementItem {
   notes: string | null;
   bulk_discount_eligible: boolean | null;
   image_url: string | null;
+  bundle_quantity?: number; // Quantity specific to this bundle
 }
 
 interface ProjectPhoto {
@@ -141,10 +143,10 @@ export default function BundleDetail() {
       }
     }
 
-    // Fetch items in this bundle using junction table
+    // Fetch items in this bundle using junction table with quantity
     const { data: bundleAssignments } = await supabase
       .from('procurement_item_bundles')
-      .select('item_id')
+      .select('item_id, quantity')
       .eq('bundle_id', id);
 
     if (bundleAssignments && bundleAssignments.length > 0) {
@@ -156,7 +158,15 @@ export default function BundleDetail() {
         .order('created_at', { ascending: false });
 
       if (itemsData) {
-        setItems(itemsData as ProcurementItem[]);
+        // Merge bundle-specific quantity into items
+        const itemsWithBundleQty = itemsData.map(item => {
+          const assignment = bundleAssignments.find(a => a.item_id === item.id);
+          return {
+            ...item,
+            bundle_quantity: assignment?.quantity || 1,
+          } as ProcurementItem;
+        });
+        setItems(itemsWithBundleQty);
       }
     } else {
       setItems([]);
@@ -198,13 +208,33 @@ export default function BundleDetail() {
   };
 
   const calculateItemTotal = (item: ProcurementItem) => {
+    const qty = item.bundle_quantity || item.quantity || 1;
     // If pack price, don't multiply by quantity
-    const subtotal = item.is_pack_price ? item.unit_price : item.unit_price * item.quantity;
+    const subtotal = item.is_pack_price ? item.unit_price : item.unit_price * qty;
     const tax = item.includes_tax ? 0 : subtotal * item.tax_rate;
     return subtotal + tax;
   };
 
   const totalValue = items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
+
+  const handleUpdateBundleQuantity = async (itemId: string, newQuantity: number) => {
+    if (!id) return;
+    
+    const { error } = await supabase
+      .from('procurement_item_bundles')
+      .update({ quantity: newQuantity })
+      .eq('bundle_id', id)
+      .eq('item_id', itemId);
+
+    if (error) {
+      toast.error('Failed to update quantity');
+    } else {
+      // Update local state
+      setItems(prev => prev.map(item => 
+        item.id === itemId ? { ...item, bundle_quantity: newQuantity } : item
+      ));
+    }
+  };
 
   const handleDeleteItem = async (itemId: string) => {
     const { error } = await supabase
@@ -484,7 +514,19 @@ export default function BundleDetail() {
                         <TableCell className="text-right font-mono">
                           {formatCurrency(item.unit_price)}
                         </TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.bundle_quantity || 1}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 1;
+                              handleUpdateBundleQuantity(item.id, val);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-16 h-8 text-right text-sm"
+                          />
+                        </TableCell>
                         <TableCell className="text-right font-mono font-medium">
                           {formatCurrency(calculateItemTotal(item))}
                         </TableCell>
