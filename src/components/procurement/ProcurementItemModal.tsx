@@ -289,6 +289,7 @@ interface FormData {
   unit_price: string;
   quantity: string;
   includes_tax: boolean;
+  is_pack_price: boolean;
   lead_time_days: string;
   phase: Phase;
   status: ItemStatus;
@@ -339,6 +340,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     unit_price: '',
     quantity: '1',
     includes_tax: false,
+    is_pack_price: false,
     lead_time_days: '',
     phase: 'rough_in',
     status: 'researching',
@@ -417,6 +419,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           unit_price: item.unit_price.toString(),
           quantity: item.quantity.toString(),
           includes_tax: item.includes_tax ?? false,
+          is_pack_price: (item as any).is_pack_price ?? false,
           lead_time_days: item.lead_time_days?.toString() || '',
           phase: item.phase || 'rough_in',
           status: item.status || 'researching',
@@ -440,6 +443,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           unit_price: '',
           quantity: '1',
           includes_tax: false,
+          is_pack_price: false,
           lead_time_days: '',
           phase: 'rough_in',
           status: 'researching',
@@ -537,6 +541,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
       unit_price: parseFloat(formData.unit_price),
       quantity: parseInt(formData.quantity) || 1,
       includes_tax: formData.includes_tax,
+      is_pack_price: formData.is_pack_price,
       tax_rate: TEXAS_TAX_RATE,
       lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
       phase: formData.phase,
@@ -603,7 +608,10 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   };
 
   const selectedCategory = PROCUREMENT_CATEGORIES.find(c => c.value === formData.category);
-  const subtotal = (parseFloat(formData.unit_price) || 0) * (parseInt(formData.quantity) || 1);
+  // If pack price, don't multiply by quantity - the price is for the whole pack
+  const basePrice = parseFloat(formData.unit_price) || 0;
+  const quantity = parseInt(formData.quantity) || 1;
+  const subtotal = formData.is_pack_price ? basePrice : basePrice * quantity;
   const tax = formData.includes_tax ? 0 : subtotal * TEXAS_TAX_RATE;
   const total = subtotal + tax;
 
@@ -861,7 +869,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
 
         {/* Pricing */}
         <div>
-          <Label>Unit Price *</Label>
+          <Label>{formData.is_pack_price ? 'Pack Price *' : 'Unit Price *'}</Label>
           <div className="relative">
             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -876,13 +884,18 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         </div>
 
         <div>
-          <Label>Quantity</Label>
+          <Label>{formData.is_pack_price ? 'Units in Pack' : 'Quantity'}</Label>
           <Input
             type="number"
             value={formData.quantity}
             onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
             min="1"
           />
+          {formData.is_pack_price && (
+            <p className="text-xs text-muted-foreground mt-1">
+              For reference only - price won't be multiplied
+            </p>
+          )}
         </div>
 
         <div>
@@ -937,6 +950,17 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
             placeholder="Additional notes..."
             rows={2}
           />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.is_pack_price}
+            onCheckedChange={(v) => setFormData(prev => ({ ...prev, is_pack_price: v }))}
+          />
+          <Label className="flex flex-col">
+            <span>Pack price</span>
+            <span className="text-xs text-muted-foreground font-normal">Price is for the whole pack, not per unit</span>
+          </Label>
         </div>
 
         <div className="flex items-center gap-2">
