@@ -319,6 +319,42 @@ export type Database = {
           },
         ]
       }
+      procurement_item_bundles: {
+        Row: {
+          bundle_id: string
+          created_at: string
+          id: string
+          item_id: string
+        }
+        Insert: {
+          bundle_id: string
+          created_at?: string
+          id?: string
+          item_id: string
+        }
+        Update: {
+          bundle_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_item_bundles_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_item_bundles_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       procurement_items: {
         Row: {
           bulk_discount_eligible: boolean | null
