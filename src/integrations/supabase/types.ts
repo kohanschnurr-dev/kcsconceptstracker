@@ -325,18 +325,21 @@ export type Database = {
           created_at: string
           id: string
           item_id: string
+          quantity: number
         }
         Insert: {
           bundle_id: string
           created_at?: string
           id?: string
           item_id: string
+          quantity?: number
         }
         Update: {
           bundle_id?: string
           created_at?: string
           id?: string
           item_id?: string
+          quantity?: number
         }
         Relationships: [
           {
