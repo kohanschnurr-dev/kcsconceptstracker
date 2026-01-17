@@ -45,6 +45,7 @@ interface ProcurementItem {
   unit_price: number;
   quantity: number;
   includes_tax: boolean;
+  is_pack_price: boolean;
   tax_rate: number;
   lead_time_days: number | null;
   phase: Phase | null;
@@ -175,7 +176,8 @@ export default function Procurement() {
   };
 
   const calculateItemTotal = (item: ProcurementItem) => {
-    const subtotal = item.unit_price * item.quantity;
+    // If pack price, don't multiply by quantity
+    const subtotal = item.is_pack_price ? item.unit_price : item.unit_price * item.quantity;
     const tax = item.includes_tax ? 0 : subtotal * item.tax_rate;
     return subtotal + tax;
   };

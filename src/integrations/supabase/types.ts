@@ -364,6 +364,7 @@ export type Database = {
           finish: string | null
           id: string
           includes_tax: boolean
+          is_pack_price: boolean
           lead_time_days: number | null
           model_number: string | null
           name: string
@@ -387,6 +388,7 @@ export type Database = {
           finish?: string | null
           id?: string
           includes_tax?: boolean
+          is_pack_price?: boolean
           lead_time_days?: number | null
           model_number?: string | null
           name: string
@@ -410,6 +412,7 @@ export type Database = {
           finish?: string | null
           id?: string
           includes_tax?: boolean
+          is_pack_price?: boolean
           lead_time_days?: number | null
           model_number?: string | null
           name?: string
