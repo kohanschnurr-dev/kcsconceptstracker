@@ -67,6 +67,7 @@ export const CALENDAR_CATEGORIES: CalendarCategory[] = [
   { value: 'underwriting', label: 'Underwriting', group: 'acquisition_admin', groupLabel: 'Acquisition/Admin' },
   { value: 'closing', label: 'Closing', group: 'acquisition_admin', groupLabel: 'Acquisition/Admin' },
   { value: 'permitting', label: 'Permitting', group: 'acquisition_admin', groupLabel: 'Acquisition/Admin' },
+  { value: 'order', label: 'Order', group: 'acquisition_admin', groupLabel: 'Acquisition/Admin' },
   
   // Structural/Exterior (Red)
   { value: 'demo', label: 'Demo', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
