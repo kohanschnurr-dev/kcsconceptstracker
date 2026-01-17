@@ -141,15 +141,25 @@ export default function BundleDetail() {
       }
     }
 
-    // Fetch items in this bundle
-    const { data: itemsData } = await supabase
-      .from('procurement_items')
-      .select('*')
-      .eq('bundle_id', id)
-      .order('created_at', { ascending: false });
+    // Fetch items in this bundle using junction table
+    const { data: bundleAssignments } = await supabase
+      .from('procurement_item_bundles')
+      .select('item_id')
+      .eq('bundle_id', id);
 
-    if (itemsData) {
-      setItems(itemsData as ProcurementItem[]);
+    if (bundleAssignments && bundleAssignments.length > 0) {
+      const itemIds = bundleAssignments.map(a => a.item_id);
+      const { data: itemsData } = await supabase
+        .from('procurement_items')
+        .select('*')
+        .in('id', itemIds)
+        .order('created_at', { ascending: false });
+
+      if (itemsData) {
+        setItems(itemsData as ProcurementItem[]);
+      }
+    } else {
+      setItems([]);
     }
 
     // Fetch all projects for the modal

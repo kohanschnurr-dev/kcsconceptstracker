@@ -36,6 +36,7 @@ type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' |
 interface ProcurementItem {
   id: string;
   bundle_id: string | null;
+  bundle_ids?: string[];
   category_id: string | null;
   name: string;
   source_url: string | null;
@@ -51,6 +52,11 @@ interface ProcurementItem {
   finish: string | null;
   notes: string | null;
   bulk_discount_eligible: boolean | null;
+}
+
+interface ItemBundleAssignment {
+  item_id: string;
+  bundle_id: string;
 }
 
 interface Bundle {
@@ -112,7 +118,7 @@ export default function Procurement() {
   const fetchData = async () => {
     if (!user) return;
     
-    const [itemsResult, bundlesResult, projectsResult] = await Promise.all([
+    const [itemsResult, bundlesResult, projectsResult, assignmentsResult] = await Promise.all([
       supabase
         .from('procurement_items')
         .select('*')
@@ -124,11 +130,28 @@ export default function Procurement() {
       supabase
         .from('projects')
         .select('id, name, address')
-        .order('name')
+        .order('name'),
+      supabase
+        .from('procurement_item_bundles')
+        .select('item_id, bundle_id')
     ]);
 
+    // Create a map of item_id to bundle_ids
+    const bundleMap: Record<string, string[]> = {};
+    if (assignmentsResult.data) {
+      assignmentsResult.data.forEach((a: ItemBundleAssignment) => {
+        if (!bundleMap[a.item_id]) bundleMap[a.item_id] = [];
+        bundleMap[a.item_id].push(a.bundle_id);
+      });
+    }
+
     if (itemsResult.data) {
-      setItems(itemsResult.data as ProcurementItem[]);
+      // Enrich items with their bundle_ids array
+      const enrichedItems = itemsResult.data.map(item => ({
+        ...item,
+        bundle_ids: bundleMap[item.id] || []
+      })) as ProcurementItem[];
+      setItems(enrichedItems);
     }
     if (bundlesResult.data) {
       setBundles(bundlesResult.data as Bundle[]);
@@ -163,8 +186,9 @@ export default function Procurement() {
       item.notes?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'all' || (item.status || 'researching') === filterStatus;
     const matchesPhase = filterPhase === 'all' || item.phase === filterPhase;
+    const bundleIds = item.bundle_ids || [];
     const matchesBundle = filterBundle === 'all' || 
-      (filterBundle === 'unassigned' ? !item.bundle_id : item.bundle_id === filterBundle);
+      (filterBundle === 'unassigned' ? bundleIds.length === 0 : bundleIds.includes(filterBundle));
     return matchesSearch && matchesStatus && matchesPhase && matchesBundle;
   });
 
@@ -178,7 +202,7 @@ export default function Procurement() {
     .reduce((sum, i) => sum + calculateItemTotal(i), 0);
 
   const totalItems = filteredItems.length;
-  const unassignedCount = filteredItems.filter(i => !i.bundle_id).length;
+  const unassignedCount = filteredItems.filter(i => !i.bundle_ids || i.bundle_ids.length === 0).length;
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase
@@ -207,18 +231,25 @@ export default function Procurement() {
     );
   };
 
-  const getBundleName = (bundleId: string | null) => {
-    if (!bundleId) return 'Unassigned';
-    const bundle = bundles.find(b => b.id === bundleId);
-    return bundle?.name || 'Unknown';
+  const getBundleNames = (bundleIds: string[] | undefined) => {
+    if (!bundleIds || bundleIds.length === 0) return ['Unassigned'];
+    return bundleIds.map(id => {
+      const bundle = bundles.find(b => b.id === id);
+      return bundle?.name || 'Unknown';
+    });
   };
 
-  const getBundleProjectName = (bundleId: string | null) => {
-    if (!bundleId) return null;
-    const bundle = bundles.find(b => b.id === bundleId);
-    if (!bundle?.project_id) return null;
-    const project = projects.find(p => p.id === bundle.project_id);
-    return project?.name;
+  const getBundleProjectNames = (bundleIds: string[] | undefined) => {
+    if (!bundleIds || bundleIds.length === 0) return [];
+    const projectNames = bundleIds
+      .map(id => {
+        const bundle = bundles.find(b => b.id === id);
+        if (!bundle?.project_id) return null;
+        const project = projects.find(p => p.id === bundle.project_id);
+        return project?.name;
+      })
+      .filter((name): name is string => name !== null);
+    return [...new Set(projectNames)]; // Remove duplicates
   };
 
   const handleDeleteBundle = async (id: string) => {
@@ -401,14 +432,21 @@ export default function Procurement() {
                         </TableCell>
                         <TableCell>
                           <div>
-                            <span className={cn(
-                              "text-sm",
-                              !item.bundle_id && "text-muted-foreground italic"
-                            )}>
-                              {getBundleName(item.bundle_id)}
-                            </span>
-                            {getBundleProjectName(item.bundle_id) && (
-                              <p className="text-xs text-muted-foreground">→ {getBundleProjectName(item.bundle_id)}</p>
+                            {getBundleNames(item.bundle_ids).map((name, idx) => (
+                              <span 
+                                key={idx} 
+                                className={cn(
+                                  "text-sm block",
+                                  (!item.bundle_ids || item.bundle_ids.length === 0) && "text-muted-foreground italic"
+                                )}
+                              >
+                                {name}
+                              </span>
+                            ))}
+                            {getBundleProjectNames(item.bundle_ids).length > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                → {getBundleProjectNames(item.bundle_ids).join(', ')}
+                              </p>
                             )}
                           </div>
                         </TableCell>

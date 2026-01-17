@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -26,7 +27,8 @@ import {
   Layers,
   Wrench,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  FolderOpen
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -280,7 +282,7 @@ const TEXAS_TAX_RATE = 0.0825;
 interface FormData {
   category: ProcurementCategory | '';
   name: string;
-  bundle_id: string;
+  bundle_ids: string[];
   source_url: string;
   source_store: SourceStore;
   model_number: string;
@@ -330,7 +332,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   const [formData, setFormData] = useState<FormData>({
     category: '',
     name: '',
-    bundle_id: '',
+    bundle_ids: [],
     source_url: '',
     source_store: 'home_depot',
     model_number: '',
@@ -392,15 +394,23 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   };
 
   useEffect(() => {
-    if (open) {
-      if (item) {
+    const loadItemBundles = async () => {
+      if (open && item) {
+        // Fetch bundle assignments for this item from junction table
+        const { data: bundleAssignments } = await supabase
+          .from('procurement_item_bundles')
+          .select('bundle_id')
+          .eq('item_id', item.id);
+        
+        const bundleIds = bundleAssignments?.map(b => b.bundle_id) || [];
+        
         const { specs, cleanNotes } = parseSpecsFromNotes(item.notes);
         const detectedCategory = detectCategory(item.name);
         
         setFormData({
           category: detectedCategory,
           name: item.name,
-          bundle_id: item.bundle_id || '',
+          bundle_ids: bundleIds,
           source_url: item.source_url || '',
           source_store: item.source_store || 'home_depot',
           model_number: item.model_number || '',
@@ -415,15 +425,15 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           bulk_discount_eligible: item.bulk_discount_eligible ?? false,
           specs,
         });
-        setStep('details'); // Skip to details when editing
+        setStep('details');
         setUrlInput('');
         setScrapeError(null);
         setScrapeSuccess(false);
-      } else {
+      } else if (open) {
         setFormData({
           category: '',
           name: '',
-          bundle_id: '',
+          bundle_ids: [],
           source_url: '',
           source_store: 'home_depot',
           model_number: '',
@@ -438,12 +448,14 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           bulk_discount_eligible: false,
           specs: {},
         });
-        setStep('url'); // Start with URL step for new items
+        setStep('url');
         setUrlInput('');
         setScrapeError(null);
         setScrapeSuccess(false);
       }
-    }
+    };
+    
+    loadItemBundles();
   }, [item, open]);
 
   const handleScrapeUrl = async () => {
@@ -518,7 +530,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     
     const payload = {
       name: formData.name,
-      bundle_id: formData.bundle_id || null,
+      bundle_id: formData.bundle_ids.length > 0 ? formData.bundle_ids[0] : null, // Keep for backwards compat
       source_url: formData.source_url || null,
       source_store: formData.source_store,
       model_number: formData.model_number || null,
@@ -536,6 +548,8 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     };
 
     let error;
+    let itemId = item?.id;
+    
     if (item) {
       const result = await supabase
         .from('procurement_items')
@@ -545,20 +559,47 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     } else {
       const result = await supabase
         .from('procurement_items')
-        .insert(payload);
+        .insert(payload)
+        .select('id')
+        .single();
       error = result.error;
+      itemId = result.data?.id;
+    }
+
+    if (error) {
+      setLoading(false);
+      toast.error('Failed to save item');
+      console.error(error);
+      return;
+    }
+
+    // Update bundle assignments in junction table
+    if (itemId) {
+      // Delete existing assignments
+      await supabase
+        .from('procurement_item_bundles')
+        .delete()
+        .eq('item_id', itemId);
+      
+      // Insert new assignments
+      if (formData.bundle_ids.length > 0) {
+        const { error: bundleError } = await supabase
+          .from('procurement_item_bundles')
+          .insert(formData.bundle_ids.map(bundleId => ({
+            item_id: itemId,
+            bundle_id: bundleId,
+          })));
+        
+        if (bundleError) {
+          console.error('Failed to save bundle assignments:', bundleError);
+        }
+      }
     }
 
     setLoading(false);
-
-    if (error) {
-      toast.error('Failed to save item');
-      console.error(error);
-    } else {
-      toast.success(item ? 'Item updated' : 'Item added');
-      onOpenChange(false);
-      onSave();
-    }
+    toast.success(item ? 'Item updated' : 'Item added');
+    onOpenChange(false);
+    onSave();
   };
 
   const selectedCategory = PROCUREMENT_CATEGORIES.find(c => c.value === formData.category);
@@ -728,23 +769,49 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           </div>
         )}
 
-        {/* Bundle Assignment */}
+        {/* Bundle Assignment - Multi-select */}
         <div className="col-span-2">
-          <Label>Assign to Bundle</Label>
-          <Select 
-            value={formData.bundle_id || '__unassigned__'} 
-            onValueChange={(v) => setFormData(prev => ({ ...prev, bundle_id: v === '__unassigned__' ? '' : v }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select bundle (optional)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__unassigned__">Unassigned</SelectItem>
+          <Label className="flex items-center gap-2 mb-2">
+            <FolderOpen className="h-4 w-4" />
+            Assign to Bundles
+          </Label>
+          {bundles.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No bundles available</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border rounded-md bg-muted/30">
               {bundles.map(b => (
-                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                <label 
+                  key={b.id} 
+                  className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                >
+                  <Checkbox
+                    checked={formData.bundle_ids.includes(b.id)}
+                    onCheckedChange={(checked) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        bundle_ids: checked 
+                          ? [...prev.bundle_ids, b.id]
+                          : prev.bundle_ids.filter(id => id !== b.id)
+                      }));
+                    }}
+                  />
+                  <span className="text-sm truncate">{b.name}</span>
+                </label>
               ))}
-            </SelectContent>
-          </Select>
+            </div>
+          )}
+          {formData.bundle_ids.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {formData.bundle_ids.map(id => {
+                const bundle = bundles.find(b => b.id === id);
+                return bundle ? (
+                  <Badge key={id} variant="secondary" className="text-xs">
+                    {bundle.name}
+                  </Badge>
+                ) : null;
+              })}
+            </div>
+          )}
         </div>
 
         {/* Source */}
