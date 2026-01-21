@@ -338,8 +338,8 @@ export function CreateBudgetModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[95vw] lg:max-w-7xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[95vw] lg:max-w-7xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
             {editingTemplate ? 'Edit Budget' : 'Create Budget'}
@@ -349,161 +349,160 @@ export function CreateBudgetModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-          {/* Total Budget Display */}
-          <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Total Budget</span>
-              <span className="text-xl font-bold text-primary">
-                {formatCurrency(totalBudget)}
-              </span>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Sidebar - Global Settings */}
+          <div className="w-72 border-r bg-muted/30 p-4 flex flex-col gap-4">
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Total Budget</span>
+                <span className="text-lg font-bold text-primary">
+                  {formatCurrency(totalBudget)}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="templateName" className="text-xs">Budget Name *</Label>
+                <Input
+                  id="templateName"
+                  placeholder="e.g., Standard 3BR Flip"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="templateDescription" className="text-xs">Description</Label>
+                <Textarea
+                  id="templateDescription"
+                  placeholder="Optional notes..."
+                  value={templateDescription}
+                  onChange={(e) => setTemplateDescription(e.target.value)}
+                  className="h-16 resize-none"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="purchasePrice" className="text-xs">Purchase Price</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    id="purchasePrice"
+                    type="number"
+                    placeholder="0"
+                    className="pl-7 h-9"
+                    value={purchasePrice}
+                    onChange={(e) => setPurchasePrice(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="arv" className="text-xs">ARV</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    id="arv"
+                    type="number"
+                    placeholder="0"
+                    className="pl-7 h-9"
+                    value={arv}
+                    onChange={(e) => setArv(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 mt-auto">
+              <Button variant="outline" size="sm" onClick={handleDistributeEvenly}>
+                Distribute Evenly
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleClearAll}>
+                Clear All
+              </Button>
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleDistributeEvenly} className="flex-1">
-              Distribute Evenly
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleClearAll} className="flex-1">
-              Clear All
-            </Button>
+          {/* Main Content - Category Grid */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 p-4 overflow-y-auto">
+              <div className="grid grid-cols-4 gap-x-4 gap-y-1">
+                {[...BUDGET_CATEGORIES]
+                  .sort((a, b) => a.label.localeCompare(b.label))
+                  .map(category => (
+                    <div key={category.value} className="flex items-center gap-2">
+                      <Label className="w-36 text-xs truncate flex-shrink-0" title={category.label}>
+                        {category.label}
+                      </Label>
+                      <div className="relative flex-1">
+                        <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={categoryBudgets[category.value]}
+                          onChange={(e) => handleCategoryChange(category.value, e.target.value)}
+                          className="pl-6 font-mono h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="border-t p-4 bg-muted/20">
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="save">
+                    <Save className="h-4 w-4 mr-2" />
+                    Save to Folder
+                  </TabsTrigger>
+                  <TabsTrigger value="apply">
+                    <FolderOpen className="h-4 w-4 mr-2" />
+                    Apply to Project
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="save" className="mt-0">
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+                      Cancel
+                    </Button>
+                    <Button className="flex-1" onClick={handleSaveToFolder} disabled={isSaving}>
+                      {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      {editingTemplate ? 'Update Budget' : 'Save to Folder'}
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="apply" className="mt-0 space-y-3">
+                  <Select value={selectedProject} onValueChange={setSelectedProject}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={isLoading ? "Loading projects..." : "Select a project"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map(project => (
+                        <SelectItem key={project.id} value={project.id}>
+                          <div className="flex flex-col">
+                            <span>{project.name}</span>
+                            <span className="text-xs text-muted-foreground">{project.address}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+                      Cancel
+                    </Button>
+                    <Button className="flex-1" onClick={handleApplyToProject} disabled={isSaving || !selectedProject}>
+                      {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Apply Budget
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
-
-          {/* Category Budgets Grid */}
-          <div className="grid gap-x-6 gap-y-1 overflow-y-auto flex-1" style={{ gridAutoFlow: 'column', gridTemplateRows: 'repeat(16, auto)', gridTemplateColumns: 'repeat(4, 1fr)' }}>
-            {[...BUDGET_CATEGORIES]
-              .sort((a, b) => a.label.localeCompare(b.label))
-              .map(category => (
-                <div key={category.value} className="flex items-center gap-3">
-                  <Label className="w-44 text-sm flex-shrink-0" title={category.label}>
-                    {category.label}
-                  </Label>
-                  <div className="relative flex-1">
-                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={categoryBudgets[category.value]}
-                      onChange={(e) => handleCategoryChange(category.value, e.target.value)}
-                      className="pl-7 font-mono h-9"
-                    />
-                  </div>
-                </div>
-              ))}
-          </div>
-
-          {/* Save/Apply Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="border-t pt-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="save">
-                <Save className="h-4 w-4 mr-2" />
-                Save to Folder
-              </TabsTrigger>
-              <TabsTrigger value="apply">
-                <FolderOpen className="h-4 w-4 mr-2" />
-                Apply to Project
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="save" className="space-y-4 mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="templateName">Budget Name *</Label>
-                  <Input
-                    id="templateName"
-                    placeholder="e.g., Standard 3BR Flip"
-                    value={templateName}
-                    onChange={(e) => setTemplateName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="templateDescription">Description</Label>
-                  <Input
-                    id="templateDescription"
-                    placeholder="Optional notes about this budget"
-                    value={templateDescription}
-                    onChange={(e) => setTemplateDescription(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="purchasePrice">Purchase Price (Optional)</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="purchasePrice"
-                      type="number"
-                      placeholder="0"
-                      className="pl-9"
-                      value={purchasePrice}
-                      onChange={(e) => setPurchasePrice(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="arv">ARV (Optional)</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="arv"
-                      type="number"
-                      placeholder="0"
-                      className="pl-9"
-                      value={arv}
-                      onChange={(e) => setArv(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
-                  Cancel
-                </Button>
-                <Button className="flex-1" onClick={handleSaveToFolder} disabled={isSaving}>
-                  {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {editingTemplate ? 'Update Budget' : 'Save to Folder'}
-                </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="apply" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <FolderOpen className="h-4 w-4" />
-                  Select Project
-                </Label>
-                <Select value={selectedProject} onValueChange={setSelectedProject}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={isLoading ? "Loading projects..." : "Select a project"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map(project => (
-                      <SelectItem key={project.id} value={project.id}>
-                        <div className="flex flex-col">
-                          <span>{project.name}</span>
-                          <span className="text-xs text-muted-foreground">{project.address}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
-                  Cancel
-                </Button>
-                <Button className="flex-1" onClick={handleApplyToProject} disabled={isSaving || !selectedProject}>
-                  {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Apply Budget
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
         </div>
       </DialogContent>
     </Dialog>
