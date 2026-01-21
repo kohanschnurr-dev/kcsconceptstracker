@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Folder, Trash2, Edit2, Copy, ArrowRight, MoreHorizontal } from 'lucide-react';
+import { Folder, Trash2, Edit2, Copy, ArrowRight, MoreHorizontal, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -19,6 +19,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { BUDGET_CATEGORIES } from '@/types';
@@ -50,6 +55,7 @@ export function SavedBudgetsPanel({
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<BudgetTemplate | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchTemplates = async () => {
     setIsLoading(true);
@@ -130,8 +136,18 @@ export function SavedBudgetsPanel({
     }).format(value);
   };
 
+  // Calculate total from category_budgets (not stored total_budget which may be stale)
+  const calculateTotal = (budgets: Record<string, number>) => {
+    return Object.values(budgets).reduce((sum, val) => sum + (val || 0), 0);
+  };
+
   const getCategoryCount = (budgets: Record<string, number>) => {
     return Object.values(budgets).filter(v => v > 0).length;
+  };
+
+  const getCategoryLabel = (categoryValue: string) => {
+    const cat = BUDGET_CATEGORIES.find(c => c.value === categoryValue);
+    return cat?.label || categoryValue.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   if (isLoading) {
@@ -171,63 +187,118 @@ export function SavedBudgetsPanel({
           ) : (
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-3">
-                {templates.map((template) => (
-                  <div
-                    key={template.id}
-                    className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium truncate">{template.name}</h4>
-                        {template.description && (
-                          <p className="text-sm text-muted-foreground truncate mt-0.5">
-                            {template.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 mt-2 text-sm">
-                          <span className="font-mono text-primary font-medium">
-                            {formatCurrency(template.total_budget)}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {getCategoryCount(template.category_budgets)} categories
-                          </span>
+                {templates.map((template) => {
+                  const isExpanded = expandedId === template.id;
+                  const calculatedTotal = calculateTotal(template.category_budgets);
+                  const sortedCategories = Object.entries(template.category_budgets)
+                    .filter(([_, value]) => value > 0)
+                    .sort((a, b) => getCategoryLabel(a[0]).localeCompare(getCategoryLabel(b[0])));
+
+                  return (
+                    <Collapsible
+                      key={template.id}
+                      open={isExpanded}
+                      onOpenChange={() => setExpandedId(isExpanded ? null : template.id)}
+                    >
+                      <div className="rounded-lg border bg-card overflow-hidden">
+                        <div className="p-4 hover:bg-accent/50 transition-colors">
+                          <div className="flex items-start justify-between gap-3">
+                            <CollapsibleTrigger asChild>
+                              <button className="flex-1 min-w-0 text-left cursor-pointer">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium truncate">{template.name}</h4>
+                                  {isExpanded ? (
+                                    <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  )}
+                                </div>
+                                {template.description && (
+                                  <p className="text-sm text-muted-foreground truncate mt-0.5">
+                                    {template.description}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-4 mt-2 text-sm">
+                                  <span className="font-mono text-primary font-medium">
+                                    {formatCurrency(calculatedTotal)}
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    {getCategoryCount(template.category_budgets)} categories
+                                  </span>
+                                </div>
+                              </button>
+                            </CollapsibleTrigger>
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => onEditBudget(template)}>
+                                  <Edit2 className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => onApplyToProject(template)}>
+                                  <ArrowRight className="h-4 w-4 mr-2" />
+                                  Apply to Project
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicate(template)}>
+                                  <Copy className="h-4 w-4 mr-2" />
+                                  Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => {
+                                    setTemplateToDelete(template);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
+
+                        <CollapsibleContent>
+                          <div className="border-t bg-muted/30 p-3">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                              {sortedCategories.map(([category, value]) => (
+                                <div key={category} className="flex items-center justify-between text-sm py-1">
+                                  <span className="text-muted-foreground truncate">
+                                    {getCategoryLabel(category)}
+                                  </span>
+                                  <span className="font-mono text-xs ml-2 flex-shrink-0">
+                                    {formatCurrency(value)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                            {(template.purchase_price > 0 || template.arv > 0) && (
+                              <div className="border-t mt-3 pt-3 flex gap-4 text-sm">
+                                {template.purchase_price > 0 && (
+                                  <div>
+                                    <span className="text-muted-foreground">Purchase: </span>
+                                    <span className="font-mono">{formatCurrency(template.purchase_price)}</span>
+                                  </div>
+                                )}
+                                {template.arv > 0 && (
+                                  <div>
+                                    <span className="text-muted-foreground">ARV: </span>
+                                    <span className="font-mono">{formatCurrency(template.arv)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </CollapsibleContent>
                       </div>
-                      
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onEditBudget(template)}>
-                            <Edit2 className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onApplyToProject(template)}>
-                            <ArrowRight className="h-4 w-4 mr-2" />
-                            Apply to Project
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicate(template)}>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              setTemplateToDelete(template);
-                              setDeleteDialogOpen(true);
-                            }}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                ))}
+                    </Collapsible>
+                  );
+                })}
               </div>
             </ScrollArea>
           )}
