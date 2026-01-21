@@ -366,7 +366,8 @@ export function useQuickBooks() {
     expenseId: string, 
     projectId: string, 
     categoryValue: string, // Now accepts category value like "plumbing" instead of UUID
-    expenseType: 'product' | 'labor' = 'product'
+    expenseType: 'product' | 'labor' = 'product',
+    notes?: string
   ) => {
     // First, find or create the project_category
     let categoryId: string;
@@ -442,6 +443,7 @@ export function useQuickBooks() {
           status: 'actual',
           includes_tax: false,
           expense_type: expenseType,
+          notes: notes || null,
         });
 
       if (error) {
@@ -470,7 +472,8 @@ export function useQuickBooks() {
           project_id: projectId, 
           category_id: categoryId,
           is_imported: true,
-          expense_type: expenseType
+          expense_type: expenseType,
+          notes: notes || null
         })
         .eq('id', expenseId);
 

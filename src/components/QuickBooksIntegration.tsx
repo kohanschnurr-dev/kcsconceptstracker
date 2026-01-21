@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
-import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Package, Wrench } from 'lucide-react';
+import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Package, Wrench, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
@@ -110,6 +111,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
   const [selectedProject, setSelectedProject] = useState<Record<string, string>>({});
   const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
   const [selectedExpenseType, setSelectedExpenseType] = useState<Record<string, 'product' | 'labor'>>({});
+  const [expenseNotes, setExpenseNotes] = useState<Record<string, string>>({});
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(new Date());
 
@@ -147,10 +149,11 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     const projectId = selectedProject[expenseId];
     const categoryId = selectedCategory[expenseId];
     const expenseType = selectedExpenseType[expenseId] || 'product';
+    const notes = expenseNotes[expenseId];
 
     if (!projectId || !categoryId) return;
 
-    const success = await categorizeExpense(expenseId, projectId, categoryId, expenseType);
+    const success = await categorizeExpense(expenseId, projectId, categoryId, expenseType, notes);
     if (success && onExpenseImported) {
       onExpenseImported();
     }
@@ -389,6 +392,19 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                                     ))}
                                 </SelectContent>
                               </Select>
+                              <div className="flex items-center gap-1 flex-1 min-w-0 sm:max-w-[180px]">
+                                <StickyNote className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <Input
+                                  placeholder="Note (e.g., mailbox)"
+                                  value={expenseNotes[expense.id] || ''}
+                                  onChange={(e) =>
+                                    setExpenseNotes((prev) => ({ ...prev, [expense.id]: e.target.value }))
+                                  }
+                                  className="h-9 text-sm"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 justify-end">
                               <ToggleGroup 
                                 type="single" 
                                 value={selectedExpenseType[expense.id] || 'product'}
