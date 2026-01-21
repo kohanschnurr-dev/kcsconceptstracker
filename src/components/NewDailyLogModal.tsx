@@ -15,10 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { PasteableTextarea } from '@/components/PasteableTextarea';
 
 interface Project {
   id: string;
@@ -37,6 +37,7 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [workPerformed, setWorkPerformed] = useState('');
   const [issues, setIssues] = useState('');
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -77,6 +78,7 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
           date,
           work_performed: workPerformed,
           issues: issues || null,
+          photo_urls: photoUrls,
         });
 
       if (error) throw error;
@@ -91,6 +93,7 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
       setDate(new Date().toISOString().split('T')[0]);
       setWorkPerformed('');
       setIssues('');
+      setPhotoUrls([]);
       onOpenChange(false);
       onLogCreated?.();
     } catch (error: any) {
@@ -154,11 +157,15 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
               <FileText className="h-4 w-4" />
               Work Performed *
             </Label>
-            <Textarea
-              placeholder="Describe the work completed today..."
+            <PasteableTextarea
               value={workPerformed}
-              onChange={(e) => setWorkPerformed(e.target.value)}
+              onChange={setWorkPerformed}
+              placeholder="Describe the work completed today..."
               rows={3}
+              bucketName="project-photos"
+              folderPath="daily-logs"
+              uploadedImages={photoUrls}
+              onImagesChange={setPhotoUrls}
             />
           </div>
 
@@ -167,11 +174,15 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
               <AlertTriangle className="h-4 w-4 text-warning" />
               Issues Encountered
             </Label>
-            <Textarea
-              placeholder="Any problems or concerns? (optional)"
+            <PasteableTextarea
               value={issues}
-              onChange={(e) => setIssues(e.target.value)}
+              onChange={setIssues}
+              placeholder="Any problems or concerns? (optional)"
               rows={2}
+              bucketName="project-photos"
+              folderPath="daily-logs"
+              uploadedImages={[]}
+              onImagesChange={() => {}}
             />
           </div>
 
