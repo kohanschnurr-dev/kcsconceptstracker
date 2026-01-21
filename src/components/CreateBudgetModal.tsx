@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ClipboardList, DollarSign, FolderOpen } from 'lucide-react';
+import { ClipboardList, DollarSign, FolderOpen, Save, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -19,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { BUDGET_CATEGORIES } from '@/types';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CreateBudgetModalProps {
@@ -27,6 +28,8 @@ interface CreateBudgetModalProps {
   onOpenChange: (open: boolean) => void;
   initialTotalBudget?: number;
   onBudgetCreated?: () => void;
+  editingTemplate?: BudgetTemplate | null;
+  defaultTab?: 'save' | 'apply';
 }
 
 interface Project {
@@ -35,18 +38,39 @@ interface Project {
   address: string;
 }
 
+export interface BudgetTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  purchase_price: number;
+  arv: number;
+  category_budgets: Record<string, number>;
+  total_budget: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export function CreateBudgetModal({ 
   open, 
   onOpenChange, 
   initialTotalBudget = 0,
-  onBudgetCreated 
+  onBudgetCreated,
+  editingTemplate,
+  defaultTab = 'save'
 }: CreateBudgetModalProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
   
-  // Category budgets - initialize with empty values
+  // Template fields
+  const [templateName, setTemplateName] = useState('');
+  const [templateDescription, setTemplateDescription] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [arv, setArv] = useState('');
+  
+  // Category budgets
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     BUDGET_CATEGORIES.forEach(cat => {
@@ -54,6 +78,47 @@ export function CreateBudgetModal({
     });
     return initial;
   });
+
+  // Reset form when modal opens/closes or when editing template changes
+  useEffect(() => {
+    if (open) {
+      if (editingTemplate) {
+        setTemplateName(editingTemplate.name);
+        setTemplateDescription(editingTemplate.description || '');
+        setPurchasePrice(editingTemplate.purchase_price?.toString() || '');
+        setArv(editingTemplate.arv?.toString() || '');
+        
+        const budgets: Record<string, string> = {};
+        BUDGET_CATEGORIES.forEach(cat => {
+          budgets[cat.value] = editingTemplate.category_budgets[cat.value]?.toString() || '';
+        });
+        setCategoryBudgets(budgets);
+        setActiveTab(defaultTab);
+      } else {
+        // Reset form for new budget
+        setTemplateName('');
+        setTemplateDescription('');
+        setPurchasePrice('');
+        setArv('');
+        
+        if (initialTotalBudget > 0) {
+          const perCategory = Math.round(initialTotalBudget / BUDGET_CATEGORIES.length);
+          const newBudgets: Record<string, string> = {};
+          BUDGET_CATEGORIES.forEach(cat => {
+            newBudgets[cat.value] = perCategory.toString();
+          });
+          setCategoryBudgets(newBudgets);
+        } else {
+          const cleared: Record<string, string> = {};
+          BUDGET_CATEGORIES.forEach(cat => {
+            cleared[cat.value] = '';
+          });
+          setCategoryBudgets(cleared);
+        }
+        setActiveTab(defaultTab);
+      }
+    }
+  }, [open, editingTemplate, initialTotalBudget, defaultTab]);
 
   // Fetch projects on mount
   useEffect(() => {
@@ -70,11 +135,7 @@ export function CreateBudgetModal({
         setProjects(data || []);
       } catch (error: any) {
         console.error('Error fetching projects:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load projects.',
-          variant: 'destructive',
-        });
+        toast.error('Failed to load projects');
       } finally {
         setIsLoading(false);
       }
@@ -84,18 +145,6 @@ export function CreateBudgetModal({
       fetchProjects();
     }
   }, [open]);
-
-  // Pre-fill if initial budget provided
-  useEffect(() => {
-    if (initialTotalBudget > 0) {
-      const perCategory = Math.round(initialTotalBudget / BUDGET_CATEGORIES.length);
-      const newBudgets: Record<string, string> = {};
-      BUDGET_CATEGORIES.forEach(cat => {
-        newBudgets[cat.value] = perCategory.toString();
-      });
-      setCategoryBudgets(newBudgets);
-    }
-  }, [initialTotalBudget]);
 
   const handleCategoryChange = (category: string, value: string) => {
     setCategoryBudgets(prev => ({
@@ -127,23 +176,80 @@ export function CreateBudgetModal({
     setCategoryBudgets(cleared);
   };
 
-  const handleApplyToProject = async () => {
-    if (!selectedProject) {
-      toast({
-        title: 'Select a project',
-        description: 'Please select a project to apply the budget to.',
-        variant: 'destructive',
-      });
+  const getCategoryBudgetsObject = () => {
+    const budgets: Record<string, number> = {};
+    BUDGET_CATEGORIES.forEach(cat => {
+      const val = parseFloat(categoryBudgets[cat.value]) || 0;
+      if (val > 0) {
+        budgets[cat.value] = val;
+      }
+    });
+    return budgets;
+  };
+
+  const handleSaveToFolder = async () => {
+    if (!templateName.trim()) {
+      toast.error('Please enter a name for this budget');
       return;
     }
 
     const hasAnyBudget = Object.values(categoryBudgets).some(val => parseFloat(val) > 0);
     if (!hasAnyBudget) {
-      toast({
-        title: 'No budget entered',
-        description: 'Please enter at least one category budget.',
-        variant: 'destructive',
-      });
+      toast.error('Please enter at least one category budget');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const templateData = {
+        user_id: user.id,
+        name: templateName.trim(),
+        description: templateDescription.trim() || null,
+        purchase_price: parseFloat(purchasePrice) || 0,
+        arv: parseFloat(arv) || 0,
+        category_budgets: getCategoryBudgetsObject(),
+      };
+
+      if (editingTemplate) {
+        const { error } = await supabase
+          .from('budget_templates')
+          .update(templateData)
+          .eq('id', editingTemplate.id);
+        
+        if (error) throw error;
+        toast.success('Budget updated');
+      } else {
+        const { error } = await supabase
+          .from('budget_templates')
+          .insert(templateData);
+        
+        if (error) throw error;
+        toast.success('Budget saved to folder');
+      }
+
+      onBudgetCreated?.();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Error saving budget:', error);
+      toast.error(error.message || 'Failed to save budget');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleApplyToProject = async () => {
+    if (!selectedProject) {
+      toast.error('Please select a project');
+      return;
+    }
+
+    const hasAnyBudget = Object.values(categoryBudgets).some(val => parseFloat(val) > 0);
+    if (!hasAnyBudget) {
+      toast.error('Please enter at least one category budget');
       return;
     }
 
@@ -162,7 +268,7 @@ export function CreateBudgetModal({
         existingCategories?.map(c => [c.category, c.id]) || []
       );
 
-      // Prepare category data - update existing or insert new
+      // Prepare category data
       const categoriesToUpdate = [];
       const categoriesToInsert = [];
 
@@ -210,24 +316,12 @@ export function CreateBudgetModal({
 
       if (updateError) throw updateError;
 
-      toast({
-        title: 'Budget applied!',
-        description: `Budget of $${totalBudget.toLocaleString()} has been applied to the project.`,
-      });
-
+      toast.success(`Budget of $${totalBudget.toLocaleString()} applied to project`);
       onBudgetCreated?.();
       onOpenChange(false);
-      
-      // Reset form
-      handleClearAll();
-      setSelectedProject('');
     } catch (error: any) {
       console.error('Error applying budget:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to apply budget.',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Failed to apply budget');
     } finally {
       setIsSaving(false);
     }
@@ -248,37 +342,14 @@ export function CreateBudgetModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
-            Create Budget
+            {editingTemplate ? 'Edit Budget' : 'Create Budget'}
           </DialogTitle>
           <DialogDescription>
-            Fill in budget amounts for each category, then apply to a project.
+            Fill in budget amounts for each category, then save to your folder or apply to a project.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-          {/* Project Selection */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4" />
-              Apply to Project
-            </Label>
-            <Select value={selectedProject} onValueChange={setSelectedProject}>
-              <SelectTrigger>
-                <SelectValue placeholder={isLoading ? "Loading projects..." : "Select a project"} />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map(project => (
-                  <SelectItem key={project.id} value={project.id}>
-                    <div className="flex flex-col">
-                      <span>{project.name}</span>
-                      <span className="text-xs text-muted-foreground">{project.address}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Total Budget Display */}
           <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
             <div className="flex items-center justify-between">
@@ -299,8 +370,8 @@ export function CreateBudgetModal({
             </Button>
           </div>
 
-          {/* Category Budgets - Grid Layout (A-Z down columns, 4 columns) */}
-          <div className="grid gap-x-6 gap-y-1" style={{ gridAutoFlow: 'column', gridTemplateRows: 'repeat(16, auto)', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {/* Category Budgets Grid */}
+          <div className="grid gap-x-6 gap-y-1 overflow-y-auto flex-1" style={{ gridAutoFlow: 'column', gridTemplateRows: 'repeat(16, auto)', gridTemplateColumns: 'repeat(4, 1fr)' }}>
             {[...BUDGET_CATEGORIES]
               .sort((a, b) => a.label.localeCompare(b.label))
               .map(category => (
@@ -322,24 +393,117 @@ export function CreateBudgetModal({
               ))}
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-2 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={handleApplyToProject}
-              disabled={isSaving || !selectedProject}
-            >
-              {isSaving ? 'Applying...' : 'Apply Budget'}
-            </Button>
-          </div>
+          {/* Save/Apply Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="border-t pt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="save">
+                <Save className="h-4 w-4 mr-2" />
+                Save to Folder
+              </TabsTrigger>
+              <TabsTrigger value="apply">
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Apply to Project
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="save" className="space-y-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="templateName">Budget Name *</Label>
+                  <Input
+                    id="templateName"
+                    placeholder="e.g., Standard 3BR Flip"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="templateDescription">Description</Label>
+                  <Input
+                    id="templateDescription"
+                    placeholder="Optional notes about this budget"
+                    value={templateDescription}
+                    onChange={(e) => setTemplateDescription(e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="purchasePrice">Purchase Price (Optional)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="purchasePrice"
+                      type="number"
+                      placeholder="0"
+                      className="pl-9"
+                      value={purchasePrice}
+                      onChange={(e) => setPurchasePrice(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="arv">ARV (Optional)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="arv"
+                      type="number"
+                      placeholder="0"
+                      className="pl-9"
+                      value={arv}
+                      onChange={(e) => setArv(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button className="flex-1" onClick={handleSaveToFolder} disabled={isSaving}>
+                  {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {editingTemplate ? 'Update Budget' : 'Save to Folder'}
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="apply" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <FolderOpen className="h-4 w-4" />
+                  Select Project
+                </Label>
+                <Select value={selectedProject} onValueChange={setSelectedProject}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={isLoading ? "Loading projects..." : "Select a project"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map(project => (
+                      <SelectItem key={project.id} value={project.id}>
+                        <div className="flex flex-col">
+                          <span>{project.name}</span>
+                          <span className="text-xs text-muted-foreground">{project.address}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button className="flex-1" onClick={handleApplyToProject} disabled={isSaving || !selectedProject}>
+                  {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Apply Budget
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </DialogContent>
     </Dialog>

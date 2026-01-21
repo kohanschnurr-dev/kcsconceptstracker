@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      budget_templates: {
+        Row: {
+          arv: number | null
+          category_budgets: Json
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          purchase_price: number | null
+          total_budget: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          arv?: number | null
+          category_budgets?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          purchase_price?: number | null
+          total_budget?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          arv?: number | null
+          category_budgets?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          purchase_price?: number | null
+          total_budget?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       business_expenses: {
         Row: {
           amount: number
