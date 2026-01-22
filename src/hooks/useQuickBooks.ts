@@ -501,6 +501,113 @@ export function useQuickBooks() {
     }
   }, [toast, fetchPendingExpenses, isDemoMode, pendingExpenses]);
 
+  const splitExpense = useCallback(async (
+    expenseId: string,
+    splits: Array<{
+      amount: number;
+      projectId: string;
+      categoryValue: string;
+      expenseType: 'product' | 'labor';
+      notes: string;
+    }>
+  ) => {
+    const expense = pendingExpenses.find(e => e.id === expenseId);
+    if (!expense) {
+      toast({
+        title: 'Error',
+        description: 'Expense not found',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    try {
+      // Process each split
+      for (const split of splits) {
+        // Find or create the project_category
+        let categoryId: string;
+        
+        const { data: existingCategory, error: findError } = await supabase
+          .from('project_categories')
+          .select('id')
+          .eq('project_id', split.projectId)
+          .eq('category', split.categoryValue as BudgetCategory)
+          .maybeSingle();
+        
+        if (findError) {
+          console.error('Error finding category:', findError);
+          continue;
+        }
+        
+        if (existingCategory) {
+          categoryId = existingCategory.id;
+        } else {
+          const { data: newCategory, error: createError } = await supabase
+            .from('project_categories')
+            .insert({
+              project_id: split.projectId,
+              category: split.categoryValue as BudgetCategory,
+              estimated_budget: 0,
+            })
+            .select('id')
+            .single();
+          
+          if (createError || !newCategory) {
+            console.error('Error creating category:', createError);
+            continue;
+          }
+          categoryId = newCategory.id;
+        }
+
+        // Insert split expense
+        const { error: insertError } = await supabase
+          .from('expenses')
+          .insert({
+            project_id: split.projectId,
+            category_id: categoryId,
+            amount: split.amount,
+            date: expense.date,
+            vendor_name: expense.vendor_name,
+            description: split.notes ? `${expense.description || ''} - ${split.notes}`.trim() : expense.description,
+            payment_method: expense.payment_method as 'cash' | 'check' | 'card' | 'transfer' || 'card',
+            status: 'actual',
+            includes_tax: false,
+            expense_type: split.expenseType,
+            notes: split.notes || null,
+          });
+
+        if (insertError) {
+          console.error('Error inserting split expense:', insertError);
+        }
+      }
+
+      // Mark original as imported or remove from pending
+      if (isDemoMode) {
+        setPendingExpenses(prev => prev.filter(e => e.id !== expenseId));
+      } else {
+        await supabase
+          .from('quickbooks_expenses')
+          .update({ is_imported: true })
+          .eq('id', expenseId);
+        await fetchPendingExpenses();
+      }
+
+      toast({
+        title: 'Split Complete!',
+        description: `Expense split into ${splits.length} items`,
+      });
+      return true;
+    } catch (error) {
+      console.error('Error splitting expense:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to split expense',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [toast, fetchPendingExpenses, isDemoMode, pendingExpenses]);
+
   useEffect(() => {
     checkConnection();
   }, [checkConnection]);
@@ -521,6 +628,7 @@ export function useQuickBooks() {
     disconnect,
     syncExpenses,
     categorizeExpense,
+    splitExpense,
     deleteExpense,
     fetchPendingExpenses,
     enableDemoMode,

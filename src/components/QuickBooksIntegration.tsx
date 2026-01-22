@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
-import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Package, Wrench, StickyNote } from 'lucide-react';
+import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Package, Wrench, StickyNote, Split } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { useQuickBooks } from '@/hooks/useQuickBooks';
 import { ALL_CATEGORIES, BUDGET_CATEGORIES, type BudgetCategory } from '@/types';
 import type { Project } from '@/types';
+import { SplitExpenseModal } from './SplitExpenseModal';
 
 // Helper to format category values: "tech_equipment" -> "Tech Equipment"
 const formatCategoryValue = (value: string) => {
@@ -103,6 +104,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     disconnect,
     syncExpenses,
     categorizeExpense,
+    splitExpense,
     deleteExpense,
     enableDemoMode,
   } = useQuickBooks();
@@ -114,6 +116,14 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
   const [expenseNotes, setExpenseNotes] = useState<Record<string, string>>({});
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(new Date());
+  const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [expenseToSplit, setExpenseToSplit] = useState<{
+    id: string;
+    vendor_name: string | null;
+    amount: number;
+    date: string;
+    description: string | null;
+  } | null>(null);
 
   // Auto-detect expense types when pending expenses change
   useEffect(() => {
@@ -172,6 +182,34 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
 
   const handleDelete = async (expenseId: string) => {
     await deleteExpense(expenseId);
+  };
+
+  const handleOpenSplitModal = (expense: typeof pendingExpenses[0]) => {
+    setExpenseToSplit({
+      id: expense.id,
+      vendor_name: expense.vendor_name,
+      amount: expense.amount,
+      date: expense.date,
+      description: expense.description,
+    });
+    setSplitModalOpen(true);
+  };
+
+  const handleSplit = async (
+    expenseId: string,
+    splits: Array<{
+      amount: number;
+      projectId: string;
+      categoryValue: string;
+      expenseType: 'product' | 'labor';
+      notes: string;
+    }>
+  ) => {
+    const success = await splitExpense(expenseId, splits);
+    if (success && onExpenseImported) {
+      onExpenseImported();
+    }
+    return success;
   };
 
   if (isLoading) {
@@ -324,10 +362,19 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
                                 <p className="font-medium">{expense.vendor_name || 'Unknown Vendor'}</p>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
                                   <p className="font-mono font-semibold">
                                     {formatCurrency(expense.amount)}
                                   </p>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                    onClick={() => handleOpenSplitModal(expense)}
+                                    title="Split this expense into multiple categories"
+                                  >
+                                    <Split className="h-4 w-4" />
+                                  </Button>
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -474,6 +521,14 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
           </div>
         </CollapsibleContent>
       </div>
+
+      <SplitExpenseModal
+        open={splitModalOpen}
+        onOpenChange={setSplitModalOpen}
+        expense={expenseToSplit}
+        projects={projects}
+        onSplit={handleSplit}
+      />
     </Collapsible>
   );
 }
