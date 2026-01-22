@@ -32,9 +32,9 @@ export default function BudgetCalculator() {
   const grossProfit = arvNum - totalCosts;
   const roi = totalInvestment > 0 ? (grossProfit / totalInvestment) * 100 : 0;
   
-  // 70% Rule
-  const maxOffer = (arvNum * 0.7) - rehabBudgetNum;
-  const meets70Rule = purchasePriceNum <= maxOffer && purchasePriceNum > 0;
+  // 78% Rule
+  const maxOffer = (arvNum * 0.78) - rehabBudgetNum;
+  const meets78Rule = purchasePriceNum <= maxOffer && purchasePriceNum > 0;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -84,7 +84,7 @@ export default function BudgetCalculator() {
             Budget Calculator
           </h1>
           <p className="text-muted-foreground mt-1">
-            Analyze potential deals with profit projections and the 70% rule
+            Analyze potential deals with profit projections and the 78% rule
           </p>
         </div>
 
@@ -166,11 +166,11 @@ export default function BudgetCalculator() {
               </Card>
 
               {/* 70% Rule Card */}
-              <Card className={purchasePriceNum > 0 ? (meets70Rule ? 'border-green-500/50' : 'border-destructive/50') : ''}>
+              <Card className={purchasePriceNum > 0 ? (meets78Rule ? 'border-green-500/50' : 'border-destructive/50') : ''}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     {purchasePriceNum > 0 ? (
-                      meets70Rule ? (
+                      meets78Rule ? (
                         <CheckCircle2 className="h-5 w-5 text-green-500" />
                       ) : (
                         <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -178,10 +178,10 @@ export default function BudgetCalculator() {
                     ) : (
                       <TrendingUp className="h-5 w-5" />
                     )}
-                    70% Rule Analysis
+                    78% Rule Analysis
                   </CardTitle>
                   <CardDescription>
-                    Max Offer = (ARV × 70%) - Rehab Costs
+                    Max Offer = (ARV × 78%) - Rehab Costs
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -193,9 +193,9 @@ export default function BudgetCalculator() {
                   </div>
 
                   {purchasePriceNum > 0 && (
-                    <div className={`p-4 rounded-lg ${meets70Rule ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-destructive/10 text-destructive'}`}>
+                    <div className={`p-4 rounded-lg ${meets78Rule ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-destructive/10 text-destructive'}`}>
                       <p className="text-sm font-medium">
-                        {meets70Rule
+                        {meets78Rule
                           ? `✓ Your offer of ${formatCurrency(purchasePriceNum)} is ${formatCurrency(maxOffer - purchasePriceNum)} under the max!`
                           : `✗ Your offer of ${formatCurrency(purchasePriceNum)} is ${formatCurrency(purchasePriceNum - maxOffer)} over the max!`}
                       </p>
@@ -206,8 +206,8 @@ export default function BudgetCalculator() {
 
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">ARV × 70%</span>
-                      <span>{formatCurrency(arvNum * 0.7)}</span>
+                      <span className="text-muted-foreground">ARV × 78%</span>
+                      <span>{formatCurrency(arvNum * 0.78)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Less: Rehab Budget</span>

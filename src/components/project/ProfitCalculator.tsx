@@ -65,8 +65,8 @@ export function ProfitCalculator({
   const grossProfit = arv - totalCosts;
   const roi = totalInvestment > 0 ? (grossProfit / totalInvestment) * 100 : 0;
   
-  // 70% rule check (max offer = ARV * 0.7 - repairs)
-  const maxOffer = (arv * 0.7) - rehabCost;
+  // 78% rule check (max offer = ARV * 0.78 - repairs)
+  const maxOffer = (arv * 0.78) - rehabCost;
   const meetsRule = purchasePrice <= maxOffer;
 
   const formatCurrency = (amount: number) => {
@@ -131,7 +131,7 @@ export function ProfitCalculator({
           )}>
             <div className="flex items-center gap-2 mb-1">
               <Percent className="h-4 w-4" />
-              <span className="font-medium">70% Rule</span>
+              <span className="font-medium">78% Rule</span>
             </div>
             <p className="text-sm text-muted-foreground">
               Max offer: <span className="font-mono font-medium">{formatCurrency(maxOffer)}</span>
