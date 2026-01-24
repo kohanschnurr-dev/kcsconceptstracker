@@ -123,6 +123,10 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   const handleStartDateChange = (date: Date | undefined) => {
     if (date) {
       setEditedStartDate(date);
+      // Auto-update end date if start date is after end date
+      if (editedEndDate && date > editedEndDate) {
+        setEditedEndDate(date);
+      }
       markAsChanged();
     }
   };
@@ -130,6 +134,10 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   const handleEndDateChange = (date: Date | undefined) => {
     if (date) {
       setEditedEndDate(date);
+      // Auto-update start date if end date is before start date
+      if (editedStartDate && date < editedStartDate) {
+        setEditedStartDate(date);
+      }
       markAsChanged();
     }
   };
