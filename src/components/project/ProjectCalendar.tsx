@@ -23,6 +23,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
   const [tasks, setTasks] = useState<CalendarTask[]>([]);
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
   const fetchEvents = async () => {
     const { data: eventsData, error } = await supabase
@@ -162,31 +163,46 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
           {days.map(day => {
             const dayTasks = getTasksForDay(day);
             const isCurrentMonth = isSameMonth(day, currentDate);
+            const dayKey = day.toISOString();
+            const isExpanded = expandedDay === dayKey;
+            const visibleTasks = isExpanded ? dayTasks : dayTasks.slice(0, 2);
+            const hasMore = dayTasks.length > 2;
             
             return (
               <div
-                key={day.toISOString()}
+                key={dayKey}
                 className={cn(
                   'min-h-[60px] p-1 rounded border transition-colors',
                   isCurrentMonth 
                     ? 'bg-slate-800/50 border-slate-700' 
                     : 'bg-slate-900/50 border-slate-800',
-                  isToday(day) && 'ring-1 ring-emerald-500/50'
+                  isToday(day) && 'ring-1 ring-emerald-500/50',
+                  isExpanded && 'ring-1 ring-primary/50'
                 )}
               >
-                <div className={cn(
-                  'text-xs font-medium mb-1',
-                  isToday(day) 
-                    ? 'text-emerald-400' 
-                    : isCurrentMonth 
-                      ? 'text-white' 
-                      : 'text-slate-600'
-                )}>
+                <button
+                  onClick={() => {
+                    if (hasMore) {
+                      setExpandedDay(isExpanded ? null : dayKey);
+                    }
+                  }}
+                  className={cn(
+                    'text-xs font-medium mb-1 w-6 h-6 rounded-full flex items-center justify-center transition-colors',
+                    isToday(day) 
+                      ? 'text-emerald-400' 
+                      : isCurrentMonth 
+                        ? 'text-white' 
+                        : 'text-slate-600',
+                    hasMore && 'hover:bg-slate-700 cursor-pointer',
+                    isExpanded && 'bg-primary/20 text-primary'
+                  )}
+                  title={hasMore ? (isExpanded ? 'Click to collapse' : `Click to see all ${dayTasks.length} events`) : undefined}
+                >
                   {format(day, 'd')}
-                </div>
+                </button>
                 
                 <div className="space-y-0.5">
-                  {dayTasks.slice(0, 2).map(task => (
+                  {visibleTasks.map(task => (
                     <DealCard
                       key={task.id}
                       task={task}
@@ -197,10 +213,13 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                       }}
                     />
                   ))}
-                  {dayTasks.length > 2 && (
-                    <p className="text-[10px] text-slate-500 text-center">
+                  {hasMore && !isExpanded && (
+                    <button 
+                      onClick={() => setExpandedDay(dayKey)}
+                      className="text-[10px] text-slate-500 text-center w-full hover:text-slate-300 transition-colors"
+                    >
                       +{dayTasks.length - 2} more
-                    </p>
+                    </button>
                   )}
                 </div>
               </div>
