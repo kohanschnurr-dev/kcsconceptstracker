@@ -183,40 +183,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
             </Select>
           </div>
 
-          {/* Event Title */}
-          <div className="space-y-2">
-            <Label className="text-slate-300">Event Title *</Label>
-            <div className="flex gap-2">
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Foundation Inspection"
-                className="bg-slate-800 border-slate-700 text-white flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  if (category) {
-                    setTitle(getCategoryLabel(category));
-                  }
-                }}
-                disabled={!category}
-                className={cn(
-                  "border-slate-700 shrink-0",
-                  category 
-                    ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/30" 
-                    : "text-slate-500"
-                )}
-                title={category ? `Fill with "${getCategoryLabel(category)}"` : "Select a category first"}
-              >
-                <Zap className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Category (was Trade) */}
+          {/* Category - Select first for natural flow */}
           <div className="space-y-2">
             <Label className="text-slate-300">Category *</Label>
             <Select value={category} onValueChange={setCategory}>
@@ -262,6 +229,39 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                 {CATEGORY_GROUPS[getCategoryStyles(category) ? Object.entries(CATEGORY_GROUPS).find(([_, v]) => v === selectedCategoryStyles)?.[0] as keyof typeof CATEGORY_GROUPS : 'acquisition_admin']?.label || 'Category'}
               </p>
             )}
+          </div>
+
+          {/* Event Title */}
+          <div className="space-y-2">
+            <Label className="text-slate-300">Event Title *</Label>
+            <div className="flex gap-2">
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Foundation Inspection"
+                className="bg-slate-800 border-slate-700 text-white flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (category) {
+                    setTitle(getCategoryLabel(category));
+                  }
+                }}
+                disabled={!category}
+                className={cn(
+                  "border-slate-700 shrink-0",
+                  category 
+                    ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/30" 
+                    : "text-slate-500"
+                )}
+                title={category ? `Fill with "${getCategoryLabel(category)}"` : "Select a category first"}
+              >
+                <Zap className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Dates */}
