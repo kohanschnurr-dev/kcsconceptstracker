@@ -144,7 +144,14 @@ export default function Index() {
   };
 
   // Calculate stats
-  const activeProjects = projects.filter(p => p.status === 'active');
+  // Sort fix & flips before rentals (more active management needed)
+  const activeProjects = projects
+    .filter(p => p.status === 'active')
+    .sort((a, b) => {
+      if (a.projectType === 'fix_flip' && b.projectType !== 'fix_flip') return -1;
+      if (a.projectType !== 'fix_flip' && b.projectType === 'fix_flip') return 1;
+      return 0;
+    });
   const totalBudget = projects.reduce((sum, p) => sum + p.totalBudget, 0);
   const totalSpent = projects.reduce((sum, p) => 
     sum + p.categories.reduce((catSum, cat) => catSum + cat.actualSpent, 0), 0
