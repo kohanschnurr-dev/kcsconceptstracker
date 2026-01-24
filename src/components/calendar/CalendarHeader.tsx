@@ -76,7 +76,7 @@ export function CalendarHeader({
           <h1 className="text-lg font-bold text-white whitespace-nowrap">Project Calendar</h1>
         </div>
         
-        <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
@@ -85,14 +85,9 @@ export function CalendarHeader({
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleToday}
-            className="h-8 px-3 text-sm text-slate-300 hover:text-white hover:bg-slate-700"
-          >
-            Today
-          </Button>
+          <span className="text-base font-semibold text-white min-w-[140px] text-center">
+            {getDateLabel()}
+          </span>
           <Button
             variant="ghost"
             size="sm"
@@ -102,10 +97,6 @@ export function CalendarHeader({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-
-        <span className="text-base font-semibold text-white">
-          {getDateLabel()}
-        </span>
       </div>
 
       {/* Right section: Filters + Views + Add Button */}
