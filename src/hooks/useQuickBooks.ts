@@ -120,12 +120,16 @@ const MOCK_QB_EXPENSES: QuickBooksExpense[] = [
   },
 ];
 
+const LAST_SYNC_KEY = 'quickbooks_last_sync';
+const AUTO_SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+
 export function useQuickBooks() {
   const [isConnected, setIsConnected] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingExpenses, setPendingExpenses] = useState<QuickBooksExpense[]>([]);
+  const [hasAutoSynced, setHasAutoSynced] = useState(false);
   const { toast } = useToast();
 
   const checkConnection = useCallback(async () => {
@@ -255,53 +259,6 @@ export function useQuickBooks() {
     }
   }, [toast, isDemoMode]);
 
-  const syncExpenses = useCallback(async (startDate?: string, endDate?: string) => {
-    if (isDemoMode) {
-      setIsSyncing(true);
-      // Simulate sync delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast({
-        title: 'Demo Sync Complete',
-        description: `${MOCK_QB_EXPENSES.length} sample expenses available`,
-      });
-      setIsSyncing(false);
-      return;
-    }
-
-    setIsSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('quickbooks-sync', {
-        body: { startDate, endDate },
-      });
-
-      if (error) {
-        toast({
-          title: 'Sync Failed',
-          description: 'Failed to sync expenses from QuickBooks',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: 'Sync Complete',
-        description: data?.message || 'Expenses synced successfully',
-      });
-
-      // Fetch pending expenses
-      await fetchPendingExpenses();
-    } catch (error) {
-      console.error('Error syncing expenses:', error);
-      toast({
-        title: 'Sync Failed',
-        description: 'Failed to sync expenses from QuickBooks',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [toast, isDemoMode]);
-
   const fetchPendingExpenses = useCallback(async () => {
     if (isDemoMode) {
       return; // Mock data already set
@@ -324,6 +281,66 @@ export function useQuickBooks() {
       console.error('Error fetching pending expenses:', error);
     }
   }, [isDemoMode]);
+
+  const syncExpenses = useCallback(async (startDate?: string, endDate?: string, isAutoSync = false) => {
+    if (isDemoMode) {
+      setIsSyncing(true);
+      // Simulate sync delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!isAutoSync) {
+        toast({
+          title: 'Demo Sync Complete',
+          description: `${MOCK_QB_EXPENSES.length} sample expenses available`,
+        });
+      }
+      // Update last sync time
+      localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+      setIsSyncing(false);
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('quickbooks-sync', {
+        body: { startDate, endDate },
+      });
+
+      if (error) {
+        if (!isAutoSync) {
+          toast({
+            title: 'Sync Failed',
+            description: 'Failed to sync expenses from QuickBooks',
+            variant: 'destructive',
+          });
+        }
+        return;
+      }
+
+      // Update last sync time on success
+      localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+
+      if (!isAutoSync) {
+        toast({
+          title: 'Sync Complete',
+          description: data?.message || 'Expenses synced successfully',
+        });
+      }
+
+      // Fetch pending expenses
+      await fetchPendingExpenses();
+    } catch (error) {
+      console.error('Error syncing expenses:', error);
+      if (!isAutoSync) {
+        toast({
+          title: 'Sync Failed',
+          description: 'Failed to sync expenses from QuickBooks',
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [toast, isDemoMode, fetchPendingExpenses]);
 
   const deleteExpense = useCallback(async (expenseId: string) => {
     if (isDemoMode) {
@@ -617,6 +634,28 @@ export function useQuickBooks() {
       fetchPendingExpenses();
     }
   }, [isConnected, fetchPendingExpenses, isDemoMode]);
+
+  // Auto-sync on load if it's been a while since last sync
+  useEffect(() => {
+    if (!isConnected || isLoading || hasAutoSynced || isSyncing) return;
+
+    const lastSyncStr = localStorage.getItem(LAST_SYNC_KEY);
+    const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
+    const timeSinceLastSync = Date.now() - lastSync;
+
+    if (timeSinceLastSync > AUTO_SYNC_INTERVAL_MS) {
+      console.log('Auto-syncing QuickBooks (last sync was', Math.round(timeSinceLastSync / 1000 / 60), 'minutes ago)');
+      setHasAutoSynced(true);
+      
+      // Calculate 30-day lookback dates
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      syncExpenses(startDate, endDate, true);
+    } else {
+      setHasAutoSynced(true); // Prevent future auto-syncs this session
+    }
+  }, [isConnected, isLoading, hasAutoSynced, isSyncing, syncExpenses]);
 
   return {
     isConnected,
