@@ -38,6 +38,7 @@ interface Project {
   id: string;
   name: string;
   address: string;
+  projectType?: 'fix_flip' | 'rental';
 }
 
 export default function Calendar() {
@@ -86,14 +87,22 @@ export default function Calendar() {
     // Fetch active projects for the dropdown
     const { data: projectsData } = await supabase
       .from('projects')
-      .select('id, name, address')
+      .select('id, name, address, project_type')
       .eq('status', 'active')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (projectsData) {
-      setProjects(projectsData);
-      setAllProjects(projectsData);
+      // Sort: Fix & Flip first, then Rentals (fix_flip projects need more active management)
+      const sortedProjects = projectsData
+        .map(p => ({ ...p, projectType: p.project_type as 'fix_flip' | 'rental' }))
+        .sort((a, b) => {
+          if (a.projectType === 'fix_flip' && b.projectType !== 'fix_flip') return -1;
+          if (a.projectType !== 'fix_flip' && b.projectType === 'fix_flip') return 1;
+          return 0;
+        });
+      setProjects(sortedProjects);
+      setAllProjects(sortedProjects);
     }
 
     // Fetch all projects for task names
