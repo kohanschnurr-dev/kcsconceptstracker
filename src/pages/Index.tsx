@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, FolderKanban, AlertTriangle, Plus, TrendingUp } from 'lucide-react';
+import { DollarSign, FolderKanban, Plus, TrendingUp } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
@@ -149,9 +149,6 @@ export default function Index() {
   const totalSpent = projects.reduce((sum, p) => 
     sum + p.categories.reduce((catSum, cat) => catSum + cat.actualSpent, 0), 0
   );
-  const overbudgetCount = projects.reduce((count, p) => 
-    count + p.categories.filter(cat => cat.actualSpent > cat.estimatedBudget * 1.05).length, 0
-  );
 
   // This month stats
   const monthStart = startOfMonth(new Date());
@@ -194,89 +191,87 @@ export default function Index() {
 
   return (
     <MainLayout>
-      <div className="space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">DFW Fix & Flip Budget Tracker</p>
-        </div>
+      <div className="flex gap-6">
+        {/* Main Content */}
+        <div className="flex-1 space-y-6">
+          {/* Header */}
+          <div>
+            <h1 className="text-2xl font-semibold">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">DFW Fix & Flip Budget Tracker</p>
+          </div>
 
-        {/* Quick Task Input */}
-        <div className="glass-card p-4">
-          <QuickTaskInput onTaskCreated={() => setTaskRefreshKey(k => k + 1)} />
-        </div>
+          {/* Quick Task Input */}
+          <div className="glass-card p-4">
+            <QuickTaskInput onTaskCreated={() => setTaskRefreshKey(k => k + 1)} />
+          </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard
-            title="This Month"
-            value={formatCurrency(thisMonthTotal)}
-            subtitle={`${thisMonthExpenses.length} transactions`}
-            icon={TrendingUp}
-            variant="default"
-          />
-          <StatCard
-            title="Total Budget"
-            value={formatCurrency(totalBudget)}
-            subtitle={`${formatCurrency(totalSpent)} spent`}
-            icon={DollarSign}
-            variant="success"
-          />
-          <StatCard
-            title="Over Budget"
-            value={overbudgetCount.toString()}
-            subtitle="Categories flagged"
-            icon={AlertTriangle}
-            variant={overbudgetCount > 0 ? 'danger' : 'success'}
-          />
-        </div>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <StatCard
+              title="This Month"
+              value={formatCurrency(thisMonthTotal)}
+              subtitle={`${thisMonthExpenses.length} transactions`}
+              icon={TrendingUp}
+              variant="default"
+            />
+            <StatCard
+              title="Total Budget"
+              value={formatCurrency(totalBudget)}
+              subtitle={`${formatCurrency(totalSpent)} spent`}
+              icon={DollarSign}
+              variant="success"
+            />
+          </div>
 
-        {/* Charts and Urgent Tasks Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Projects Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Active Projects</h2>
+              {projects.length === 0 && (
+                <Button size="sm" onClick={() => setProjectModalOpen(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  New Project
+                </Button>
+              )}
+            </div>
+            
+            {activeProjects.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {activeProjects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="glass-card p-8 text-center">
+                <FolderKanban className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground mb-4">No active projects yet</p>
+                <Button onClick={() => setProjectModalOpen(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create Your First Project
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Charts Section */}
           {expenses.length > 0 && (
-            <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <SpendingDonutChart 
                 expenses={chartExpenses} 
                 categories={allCategories.map(c => ({ id: c.id, category: c.category }))}
               />
               <SpendingTrendChart expenses={chartExpenses} days={7} />
-            </>
+            </div>
           )}
-          <UrgentTasksWidget refreshKey={taskRefreshKey} />
         </div>
 
-        {/* Projects Section */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Active Projects</h2>
-            {projects.length === 0 && (
-              <Button size="sm" onClick={() => setProjectModalOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Project
-              </Button>
-            )}
-          </div>
-          
-          {activeProjects.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {activeProjects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="glass-card p-8 text-center">
-              <FolderKanban className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground mb-4">No active projects yet</p>
-              <Button onClick={() => setProjectModalOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create Your First Project
-              </Button>
-            </div>
-          )}
+        {/* Right Sidebar - Urgent Tasks */}
+        <div className="hidden lg:block w-80 flex-shrink-0">
+          <UrgentTasksWidget refreshKey={taskRefreshKey} />
         </div>
       </div>
 
