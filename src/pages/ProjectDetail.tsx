@@ -506,11 +506,11 @@ export default function ProjectDetail() {
         </Card>
 
 
-        {/* Tabs for detailed views */}
-        <Tabs defaultValue="overview" className="space-y-4">
+        {/* Tabs for detailed views - Schedule first (most used for active projects) */}
+        <Tabs defaultValue="schedule" className="space-y-4">
           <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="financials">Financials</TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
             <TabsTrigger value="photos">Photos</TabsTrigger>
