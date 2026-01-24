@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, startOfDay, isWithinInterval, parseISO } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,8 +41,8 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
       projectId: event.project_id,
       projectName: projectName,
       title: event.title,
-      startDate: new Date(event.start_date),
-      endDate: new Date(event.end_date),
+      startDate: parseISO(event.start_date),
+      endDate: parseISO(event.end_date),
       status: getStatusFromCategory(event.event_category),
       budgetHealth: 'green' as const,
       category: event.event_category || 'due_diligence',
@@ -51,7 +51,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
       isCriticalPath: event.is_critical_path,
       eventCategory: event.event_category,
       leadTimeDays: event.lead_time_days,
-      expectedDate: event.expected_date ? new Date(event.expected_date) : undefined,
+      expectedDate: event.expected_date ? parseISO(event.expected_date) : undefined,
     }));
 
     setTasks(calendarTasks);
@@ -90,10 +90,11 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
   })();
 
   const getTasksForDay = (date: Date) => {
+    const dayStart = startOfDay(date);
     return tasks.filter(task => {
-      const taskStart = new Date(task.startDate);
-      const taskEnd = new Date(task.endDate);
-      return date >= taskStart && date <= taskEnd;
+      const taskStart = startOfDay(task.startDate);
+      const taskEnd = startOfDay(task.endDate);
+      return isWithinInterval(dayStart, { start: taskStart, end: taskEnd });
     });
   };
 
