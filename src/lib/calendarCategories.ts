@@ -74,6 +74,7 @@ export const CALENDAR_CATEGORIES: CalendarCategory[] = [
   { value: 'demo', label: 'Demo', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   { value: 'foundation_piers', label: 'Foundation/Piers', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   { value: 'roofing', label: 'Roofing', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
+  { value: 'garage', label: 'Garage', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   { value: 'grading', label: 'Grading', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   { value: 'siding', label: 'Siding', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   { value: 'windows', label: 'Windows', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
