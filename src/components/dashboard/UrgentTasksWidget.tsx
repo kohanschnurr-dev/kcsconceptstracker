@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle2, Clock, ArrowRight } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Task, TaskPriority } from '@/types/task';
 import { TASK_PRIORITY_COLORS, TASK_PRIORITY_LABELS } from '@/types/task';
-import { format, isPast, isToday } from 'date-fns';
+import { isPast, isToday } from 'date-fns';
 
 interface UrgentTasksWidgetProps {
   refreshKey?: number;
@@ -130,16 +130,16 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
 
   return (
     <Card className="glass-card">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base font-medium">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <AlertCircle className="h-4 w-4 text-orange-500" />
             Top Urgent Tasks
           </CardTitle>
           <Button
             variant="ghost"
             size="sm"
-            className="text-xs gap-1"
+            className="text-xs gap-1 h-7 px-2"
             onClick={() => navigate('/checklist')}
           >
             View All
@@ -147,14 +147,14 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pb-4 pt-0">
         {sortedTasks.length === 0 ? (
-          <div className="text-center py-6">
-            <CheckCircle2 className="h-8 w-8 mx-auto text-green-500 mb-2" />
-            <p className="text-sm text-muted-foreground">All caught up!</p>
+          <div className="text-center py-4">
+            <CheckCircle2 className="h-6 w-6 mx-auto text-green-500 mb-2" />
+            <p className="text-xs text-muted-foreground">All caught up!</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {sortedTasks.map((task) => {
               const isOverdue = task.dueDate && isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate));
               const isDueToday = task.dueDate && isToday(new Date(task.dueDate));
@@ -162,26 +162,15 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
               return (
                 <div
                   key={task.id}
-                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
+                  className="flex items-center gap-2 py-2 px-2 rounded-md hover:bg-muted/50 transition-colors"
                 >
                   <Checkbox
                     checked={false}
                     onCheckedChange={() => handleToggleComplete(task)}
-                    className="shrink-0"
+                    className="shrink-0 h-4 w-4"
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{task.title}</p>
-                    {task.dueDate && (
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <Clock className={`h-3 w-3 ${isOverdue ? 'text-red-500' : isDueToday ? 'text-orange-500' : 'text-muted-foreground'}`} />
-                        <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : isDueToday ? 'text-orange-500' : 'text-muted-foreground'}`}>
-                          {isOverdue ? 'Overdue: ' : isDueToday ? 'Due today' : ''} 
-                          {!isDueToday && format(new Date(task.dueDate), 'MMM d')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <Badge variant="secondary" className={`shrink-0 text-xs ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}>
+                  <p className="flex-1 text-sm truncate min-w-0">{task.title}</p>
+                  <Badge variant="secondary" className={`shrink-0 text-[10px] px-1.5 py-0 h-5 ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}>
                     {TASK_PRIORITY_LABELS[task.priorityLevel]}
                   </Badge>
                 </div>

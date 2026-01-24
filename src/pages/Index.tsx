@@ -191,7 +191,7 @@ export default function Index() {
 
   return (
     <MainLayout>
-      <div className="flex gap-6">
+      <div className="flex gap-6 items-start">
         {/* Main Content */}
         <div className="flex-1 space-y-6">
           {/* Header */}
@@ -270,8 +270,10 @@ export default function Index() {
         </div>
 
         {/* Right Sidebar - Urgent Tasks */}
-        <div className="hidden lg:block w-80 flex-shrink-0">
-          <UrgentTasksWidget refreshKey={taskRefreshKey} />
+        <div className="hidden lg:block w-72 flex-shrink-0">
+          <div className="sticky top-6">
+            <UrgentTasksWidget refreshKey={taskRefreshKey} />
+          </div>
         </div>
       </div>
 
