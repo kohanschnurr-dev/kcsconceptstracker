@@ -25,6 +25,7 @@ interface CalendarHeaderProps {
   projects?: Project[];
   selectedProjectId?: string | null;
   onProjectFilterChange?: (projectId: string | null) => void;
+  onAddEvent?: React.ReactNode;
 }
 
 export function CalendarHeader({ 
@@ -35,6 +36,7 @@ export function CalendarHeader({
   projects = [],
   selectedProjectId,
   onProjectFilterChange,
+  onAddEvent,
 }: CalendarHeaderProps) {
   const handlePrev = () => {
     if (view === 'monthly') {
@@ -66,11 +68,12 @@ export function CalendarHeader({
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 rounded-xl p-4 border border-slate-800">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-slate-900 rounded-xl p-4 border border-slate-800">
+      {/* Left section: Title + Navigation */}
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <Calendar className="h-6 w-6 text-emerald-500" />
-          <h1 className="text-xl font-bold text-white">Project Calendar</h1>
+          <Calendar className="h-5 w-5 text-emerald-500" />
+          <h1 className="text-lg font-bold text-white whitespace-nowrap">Project Calendar</h1>
         </div>
         
         <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
@@ -100,19 +103,20 @@ export function CalendarHeader({
           </Button>
         </div>
 
-        <span className="text-lg font-semibold text-white hidden sm:block">
+        <span className="text-base font-semibold text-white">
           {getDateLabel()}
         </span>
       </div>
 
-      <div className="flex items-center gap-4">
+      {/* Right section: Filters + Views + Add Button */}
+      <div className="flex flex-wrap items-center gap-3">
         {/* Project Filter */}
         {onProjectFilterChange && projects.length > 0 && (
           <Select
             value={selectedProjectId || 'all'}
             onValueChange={(value) => onProjectFilterChange(value === 'all' ? null : value)}
           >
-            <SelectTrigger className="h-9 w-[180px] bg-slate-800 border-slate-700 text-white">
+            <SelectTrigger className="h-9 w-[160px] bg-slate-800 border-slate-700 text-white">
               <div className="flex items-center gap-2 min-w-0">
                 <Building2 className="h-4 w-4 text-slate-400 flex-shrink-0" />
                 <span className="truncate">
@@ -170,6 +174,8 @@ export function CalendarHeader({
             Gantt
           </Button>
         </div>
+
+        {onAddEvent && onAddEvent}
       </div>
     </div>
   );
