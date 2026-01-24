@@ -83,9 +83,11 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
 
   const handleStartDateChange = (date: Date | undefined) => {
     setStartDate(date);
-    // Auto-sync end date when not in multi-day mode
-    if (!isMultiDay && date) {
-      setEndDate(date);
+    // Auto-sync end date when not in multi-day mode OR when start date is after end date
+    if (date) {
+      if (!isMultiDay || (endDate && date > endDate)) {
+        setEndDate(date);
+      }
     }
   };
 
