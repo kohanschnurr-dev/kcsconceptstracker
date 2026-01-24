@@ -4,14 +4,14 @@ import {
   DollarSign, 
   FolderKanban, 
   AlertTriangle,
-  Users,
+  
   Plus,
   TrendingUp
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
-import { VendorComplianceTable } from '@/components/dashboard/VendorComplianceTable';
+
 import { SpendingDonutChart } from '@/components/dashboard/SpendingDonutChart';
 import { SpendingTrendChart } from '@/components/dashboard/SpendingTrendChart';
 import { QuickTaskInput } from '@/components/dashboard/QuickTaskInput';
@@ -22,7 +22,7 @@ import { NewProjectModal } from '@/components/NewProjectModal';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { Project, CategoryBudget, Vendor, Expense } from '@/types';
+import type { Project, CategoryBudget, Expense } from '@/types';
 import { startOfMonth, isAfter } from 'date-fns';
 
 interface DBCategory {
@@ -32,16 +32,6 @@ interface DBCategory {
   estimated_budget: number;
 }
 
-interface DBVendor {
-  id: string;
-  name: string;
-  trades: string[];
-  phone: string | null;
-  email: string | null;
-  has_w9: boolean;
-  reliability_rating: number | null;
-  pricing_model: 'flat' | 'hourly' | null;
-}
 
 interface DBExpense {
   id: string;
@@ -63,7 +53,7 @@ export default function Index() {
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+  
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -104,13 +94,6 @@ export default function Index() {
         .select('*')
         .eq('is_imported', true);
 
-      // Fetch vendors
-      const { data: vendorsData, error: vendorsError } = await supabase
-        .from('vendors')
-        .select('*')
-        .order('name');
-
-      if (vendorsError) throw vendorsError;
 
       // Calculate actual spent per category (include both regular and QB expenses)
       const expensesByCategory: Record<string, number> = {};
@@ -144,18 +127,6 @@ export default function Index() {
           })),
       }));
 
-      // Transform vendors
-      const transformedVendors: Vendor[] = (vendorsData || []).map((v: DBVendor) => ({
-        id: v.id,
-        name: v.name,
-        trades: v.trades as Vendor['trades'],
-        phone: v.phone || '',
-        email: v.email || '',
-        hasW9: v.has_w9,
-        reliabilityRating: v.reliability_rating || 0,
-        pricingModel: v.pricing_model || 'flat',
-      }));
-
       // Transform expenses
       const transformedExpenses: Expense[] = (expensesData || []).map((e: DBExpense) => ({
         id: e.id,
@@ -172,7 +143,7 @@ export default function Index() {
       }));
 
       setProjects(transformedProjects);
-      setVendors(transformedVendors);
+      setProjects(transformedProjects);
       setExpenses(transformedExpenses);
       
       // Set default selected project
@@ -200,7 +171,7 @@ export default function Index() {
   const overbudgetCount = projects.reduce((count, p) => 
     count + p.categories.filter(cat => cat.actualSpent > cat.estimatedBudget * 1.05).length, 0
   );
-  const vendorsNeedingAttention = vendors.filter(v => !v.hasW9).length;
+  
 
   // This month stats
   const monthStart = startOfMonth(new Date());
@@ -278,13 +249,6 @@ export default function Index() {
             icon={AlertTriangle}
             variant={overbudgetCount > 0 ? 'danger' : 'success'}
           />
-          <StatCard
-            title="Vendor Alerts"
-            value={vendorsNeedingAttention.toString()}
-            subtitle="Need attention"
-            icon={Users}
-            variant={vendorsNeedingAttention > 0 ? 'warning' : 'success'}
-          />
         </div>
 
         {/* Charts and Urgent Tasks Section */}
@@ -334,10 +298,6 @@ export default function Index() {
             </div>
           )}
         </div>
-
-
-        {/* Vendor Compliance */}
-        {vendors.length > 0 && <VendorComplianceTable vendors={vendors} />}
       </div>
 
       {/* Quick Action FAB */}
