@@ -255,26 +255,22 @@ export default function Calendar() {
   return (
     <MainLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <CalendarHeader
-              view={view}
-              onViewChange={setView}
-              currentDate={currentDate}
-              onDateChange={setCurrentDate}
-              projects={allProjects}
-              selectedProjectId={selectedProjectId}
-              onProjectFilterChange={handleProjectFilterChange}
-            />
-          </div>
-          <div className="shrink-0">
+        <CalendarHeader
+          view={view}
+          onViewChange={setView}
+          currentDate={currentDate}
+          onDateChange={setCurrentDate}
+          projects={allProjects}
+          selectedProjectId={selectedProjectId}
+          onProjectFilterChange={handleProjectFilterChange}
+          onAddEvent={
             <NewEventModal 
               projects={projects} 
               onEventCreated={fetchData}
               defaultProjectId={selectedProjectId || undefined}
             />
-          </div>
-        </div>
+          }
+        />
 
         {/* Category Legend */}
         <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
