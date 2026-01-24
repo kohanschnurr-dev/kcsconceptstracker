@@ -1,17 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  DollarSign, 
-  FolderKanban, 
-  AlertTriangle,
-  
-  Plus,
-  TrendingUp
-} from 'lucide-react';
+import { DollarSign, FolderKanban, AlertTriangle, Plus, TrendingUp } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
-
 import { SpendingDonutChart } from '@/components/dashboard/SpendingDonutChart';
 import { SpendingTrendChart } from '@/components/dashboard/SpendingTrendChart';
 import { QuickTaskInput } from '@/components/dashboard/QuickTaskInput';
@@ -31,7 +23,6 @@ interface DBCategory {
   category: string;
   estimated_budget: number;
 }
-
 
 interface DBExpense {
   id: string;
@@ -53,10 +44,8 @@ export default function Index() {
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
-  
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -93,8 +82,6 @@ export default function Index() {
         .from('quickbooks_expenses')
         .select('*')
         .eq('is_imported', true);
-
-
       // Calculate actual spent per category (include both regular and QB expenses)
       const expensesByCategory: Record<string, number> = {};
       (expensesData || []).forEach((e: DBExpense) => {
@@ -143,13 +130,7 @@ export default function Index() {
       }));
 
       setProjects(transformedProjects);
-      setProjects(transformedProjects);
       setExpenses(transformedExpenses);
-      
-      // Set default selected project
-      if (transformedProjects.length > 0 && !selectedProjectId) {
-        setSelectedProjectId(transformedProjects[0].id);
-      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -171,7 +152,6 @@ export default function Index() {
   const overbudgetCount = projects.reduce((count, p) => 
     count + p.categories.filter(cat => cat.actualSpent > cat.estimatedBudget * 1.05).length, 0
   );
-  
 
   // This month stats
   const monthStart = startOfMonth(new Date());
@@ -227,7 +207,7 @@ export default function Index() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
             title="This Month"
             value={formatCurrency(thisMonthTotal)}
