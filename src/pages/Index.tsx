@@ -11,8 +11,6 @@ import {
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
-import { BudgetBreakdown } from '@/components/dashboard/BudgetBreakdown';
-import { RecentExpenses } from '@/components/dashboard/RecentExpenses';
 import { VendorComplianceTable } from '@/components/dashboard/VendorComplianceTable';
 import { SpendingDonutChart } from '@/components/dashboard/SpendingDonutChart';
 import { SpendingTrendChart } from '@/components/dashboard/SpendingTrendChart';
@@ -228,9 +226,6 @@ export default function Index() {
     }).format(amount);
   };
 
-  const selectedProject = projects.find(p => p.id === selectedProjectId);
-  const projectExpenses = expenses.filter(e => e.projectId === selectedProjectId);
-
   if (isLoading) {
     return (
       <MainLayout>
@@ -340,16 +335,6 @@ export default function Index() {
           )}
         </div>
 
-        {/* Detail Section */}
-        {selectedProject && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <BudgetBreakdown project={selectedProject} />
-            <RecentExpenses 
-              expenses={projectExpenses} 
-              projectCategories={selectedProject.categories}
-            />
-          </div>
-        )}
 
         {/* Vendor Compliance */}
         {vendors.length > 0 && <VendorComplianceTable vendors={vendors} />}
