@@ -191,15 +191,15 @@ export default function Index() {
 
   return (
     <MainLayout>
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <p className="text-muted-foreground mt-1">DFW Fix & Flip Budget Tracker</p>
+      </div>
+
       <div className="flex gap-6 items-start">
         {/* Main Content */}
         <div className="flex-1 space-y-6">
-          {/* Header */}
-          <div>
-            <h1 className="text-2xl font-semibold">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">DFW Fix & Flip Budget Tracker</p>
-          </div>
-
           {/* Quick Task Input */}
           <div className="glass-card p-4">
             <QuickTaskInput onTaskCreated={() => setTaskRefreshKey(k => k + 1)} />
