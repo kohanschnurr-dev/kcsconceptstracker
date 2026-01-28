@@ -43,6 +43,7 @@ export function BusinessQuickBooksIntegration({ onExpenseImported }: BusinessQui
     syncExpenses,
     deleteExpense,
     enableDemoMode,
+    fetchPendingExpenses,
   } = useQuickBooks();
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -105,6 +106,16 @@ export function BusinessQuickBooksIntegration({ onExpenseImported }: BusinessQui
         description: `Added ${expense.vendor_name || 'expense'} to business expenses`,
       });
 
+      // Clear the selected category for this expense
+      setSelectedCategory(prev => {
+        const updated = { ...prev };
+        delete updated[expenseId];
+        return updated;
+      });
+
+      // Refresh the pending expenses list to remove the imported item
+      await fetchPendingExpenses();
+      
       onExpenseImported?.();
     } catch (error: any) {
       console.error('Error importing expense:', error);
