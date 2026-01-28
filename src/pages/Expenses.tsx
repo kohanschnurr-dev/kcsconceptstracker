@@ -330,7 +330,7 @@ export default function Expenses() {
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-[300px] overflow-y-auto">
               <SelectItem value="all">All Categories</SelectItem>
               {BUDGET_CATEGORIES.map((cat) => (
                 <SelectItem key={cat.value} value={cat.value}>
