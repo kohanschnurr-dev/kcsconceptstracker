@@ -114,8 +114,8 @@ export default function Index() {
           })),
       }));
 
-      // Transform expenses
-      const transformedExpenses: Expense[] = (expensesData || []).map((e: DBExpense) => ({
+      // Transform expenses - combine regular expenses and QuickBooks imported expenses
+      const regularExpenses: Expense[] = (expensesData || []).map((e: DBExpense) => ({
         id: e.id,
         projectId: e.project_id,
         categoryId: e.category_id,
@@ -128,6 +128,25 @@ export default function Index() {
         includesTax: e.includes_tax,
         taxAmount: e.tax_amount ? Number(e.tax_amount) : undefined,
       }));
+
+      // Include QuickBooks imported expenses for dashboard stats
+      const qbImportedExpenses: Expense[] = (qbExpensesData || [])
+        .filter((e: any) => e.project_id && e.category_id) // Only count project-assigned expenses
+        .map((e: any) => ({
+          id: e.id,
+          projectId: e.project_id,
+          categoryId: e.category_id,
+          amount: Number(e.amount),
+          date: e.date,
+          vendorName: e.vendor_name || 'Unknown',
+          paymentMethod: 'card' as const,
+          status: 'actual' as const,
+          description: e.description || '',
+          includesTax: false,
+          taxAmount: undefined,
+        }));
+
+      const transformedExpenses: Expense[] = [...regularExpenses, ...qbImportedExpenses];
 
       setProjects(transformedProjects);
       setExpenses(transformedExpenses);
@@ -157,9 +176,12 @@ export default function Index() {
     sum + p.categories.reduce((catSum, cat) => catSum + cat.actualSpent, 0), 0
   );
 
-  // This month stats
+  // This month stats - include both regular expenses and QuickBooks imported expenses
   const monthStart = startOfMonth(new Date());
-  const thisMonthExpenses = expenses.filter(e => isAfter(new Date(e.date), monthStart));
+  const thisMonthExpenses = expenses.filter(e => {
+    const expenseDate = new Date(e.date);
+    return expenseDate >= monthStart;
+  });
   const thisMonthTotal = thisMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   // Get all categories from all projects for chart
