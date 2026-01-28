@@ -165,9 +165,12 @@ export default function ProjectDetail() {
     fetchProjectData();
   }, [id]);
 
+  // Calculate total budget from sum of category budgets (not project.total_budget)
+  // This keeps it in sync with the Budget & Expenses page
+  const totalBudget = categories.reduce((sum, cat) => sum + Number(cat.estimated_budget), 0);
   const totalSpent = categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
-  const percentSpent = project ? (totalSpent / project.total_budget) * 100 : 0;
-  const remaining = project ? project.total_budget - totalSpent : 0;
+  const percentSpent = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+  const remaining = totalBudget - totalSpent;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -411,7 +414,7 @@ export default function ProjectDetail() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Budget</p>
-                  <p className="text-xl font-semibold font-mono">{formatCurrency(project.total_budget)}</p>
+                  <p className="text-xl font-semibold font-mono">{formatCurrency(totalBudget)}</p>
                 </div>
               </div>
             </CardContent>
