@@ -8,6 +8,7 @@ import { SpendingDonutChart } from '@/components/dashboard/SpendingDonutChart';
 import { SpendingTrendChart } from '@/components/dashboard/SpendingTrendChart';
 import { QuickTaskInput } from '@/components/dashboard/QuickTaskInput';
 import { UrgentTasksWidget } from '@/components/dashboard/UrgentTasksWidget';
+import { TasksDueTodayBanner } from '@/components/dashboard/TasksDueTodayBanner';
 import { QuickActionButton } from '@/components/QuickActionButton';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { NewProjectModal } from '@/components/NewProjectModal';
@@ -235,6 +236,11 @@ export default function Index() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-muted-foreground mt-1">DFW Fix & Flip Budget Tracker</p>
+      </div>
+
+      {/* Tasks Due Today Banner - High Visibility Alert */}
+      <div className="mb-6">
+        <TasksDueTodayBanner refreshKey={taskRefreshKey} />
       </div>
 
       <div className="flex gap-6 items-start">
