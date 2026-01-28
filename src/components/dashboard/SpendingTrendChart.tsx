@@ -16,15 +16,21 @@ export function SpendingTrendChart({ expenses, days = 7 }: SpendingTrendChartPro
     const today = startOfDay(new Date());
     const data = [];
 
+    // Go from (days-1) days ago up to today (not into future)
+    // This ensures we show the PAST 7 days ending at today
     for (let i = days - 1; i >= 0; i--) {
       const date = subDays(today, i);
-      const dayExpenses = expenses.filter(e => isSameDay(new Date(e.date), date));
+      const dayExpenses = expenses.filter(e => {
+        const expenseDate = startOfDay(new Date(e.date));
+        return isSameDay(expenseDate, date);
+      });
       const total = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
       
       data.push({
         date: format(date, 'MMM d'),
         fullDate: format(date, 'MMMM d, yyyy'),
         amount: total,
+        isToday: i === 0,
       });
     }
 
