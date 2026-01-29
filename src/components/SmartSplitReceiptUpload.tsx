@@ -62,6 +62,7 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const uploadZoneRef = useRef<HTMLDivElement>(null);
+  const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
 
   // Handle paste events (Ctrl+V)
   const handlePaste = useCallback((e: ClipboardEvent) => {
@@ -104,6 +105,20 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
       year: 'numeric',
     });
   };
+
+  // Capitalize first letter helper
+  const capitalize = (str: string) => {
+    if (!str) return str;
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
+
+  // Category options for the dropdown
+  const categoryOptions = [
+    'hardware', 'electrical', 'plumbing', 'flooring', 'painting', 
+    'appliances', 'cabinets', 'countertops', 'doors', 'windows',
+    'hvac', 'roofing', 'drywall', 'carpentry', 'landscaping',
+    'demolition', 'misc', 'kitchen', 'bathroom', 'lighting'
+  ];
 
   // Fetch pending receipts on mount
   const fetchPendingReceipts = useCallback(async () => {
@@ -341,6 +356,12 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
   // Accept match and open split modal
   const acceptMatch = (match: MatchedExpense) => {
     setSelectedMatch(match);
+    // Initialize editable categories from suggested categories
+    const initialCategories: Record<number, string> = {};
+    match.receipt.line_items?.forEach((item, idx) => {
+      initialCategories[idx] = item.suggested_category || 'misc';
+    });
+    setEditableCategories(initialCategories);
     setShowMatchModal(true);
   };
 
@@ -645,9 +666,21 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
                             {item.quantity} × {formatCurrency(item.unit_price)}
                           </p>
                         </div>
-                        <Badge variant="secondary" className="text-xs">
-                          {item.suggested_category}
-                        </Badge>
+                        <Select
+                          value={editableCategories[idx] || item.suggested_category || 'misc'}
+                          onValueChange={(value) => setEditableCategories(prev => ({ ...prev, [idx]: value }))}
+                        >
+                          <SelectTrigger className="w-[130px] h-7 text-xs">
+                            <SelectValue>{capitalize(editableCategories[idx] || item.suggested_category || 'misc')}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categoryOptions.map((cat) => (
+                              <SelectItem key={cat} value={cat} className="text-xs">
+                                {capitalize(cat)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <span className="font-mono">{formatCurrency(item.total_price)}</span>
                       </div>
                     ))}
@@ -662,7 +695,7 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
                           </p>
                         </div>
                         <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-400 border-amber-500/30">
-                          tax
+                          Tax
                         </Badge>
                         <span className="font-mono">{formatCurrency(selectedMatch.receipt.tax_amount)}</span>
                       </div>
