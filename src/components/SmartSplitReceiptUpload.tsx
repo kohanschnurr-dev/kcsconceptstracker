@@ -426,25 +426,7 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
         categoryId = newCategory.id;
       }
 
-      // 3. Insert expense record
-      const { error: expenseError } = await supabase
-        .from('expenses')
-        .insert({
-          project_id: selectedProject,
-          category_id: categoryId,
-          amount: selectedMatch.qbExpense.amount,
-          date: selectedMatch.qbExpense.date,
-          vendor_name: selectedMatch.qbExpense.vendor_name || selectedMatch.receipt.vendor_name,
-          description: selectedMatch.qbExpense.description,
-          notes: lineItemNotes,
-          receipt_url: selectedMatch.receipt.receipt_image_url || null,
-          expense_type: expenseType,
-          status: 'actual',
-        });
-
-      if (expenseError) throw expenseError;
-
-      // 4. Mark QB expense as imported (removes from pending list)
+      // 3. Mark QB expense as imported with project/category (removes from pending list)
       const { error: qbError } = await supabase
         .from('quickbooks_expenses')
         .update({ 
