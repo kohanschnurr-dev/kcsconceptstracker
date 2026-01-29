@@ -317,6 +317,60 @@ export type Database = {
           },
         ]
       }
+      pending_receipts: {
+        Row: {
+          created_at: string
+          id: string
+          match_confidence: number | null
+          matched_at: string | null
+          matched_qb_id: string | null
+          purchase_date: string
+          raw_text: string | null
+          receipt_image_url: string | null
+          status: string
+          subtotal: number | null
+          tax_amount: number | null
+          total_amount: number
+          updated_at: string
+          user_id: string
+          vendor_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_confidence?: number | null
+          matched_at?: string | null
+          matched_qb_id?: string | null
+          purchase_date: string
+          raw_text?: string | null
+          receipt_image_url?: string | null
+          status?: string
+          subtotal?: number | null
+          tax_amount?: number | null
+          total_amount: number
+          updated_at?: string
+          user_id: string
+          vendor_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_confidence?: number | null
+          matched_at?: string | null
+          matched_qb_id?: string | null
+          purchase_date?: string
+          raw_text?: string | null
+          receipt_image_url?: string | null
+          status?: string
+          subtotal?: number | null
+          tax_amount?: number | null
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+          vendor_name?: string
+        }
+        Relationships: []
+      }
       procurement_bundles: {
         Row: {
           cover_image_url: string | null
@@ -864,6 +918,70 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      receipt_line_items: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          id: string
+          item_name: string
+          notes: string | null
+          project_id: string | null
+          quantity: number | null
+          receipt_id: string
+          suggested_category: string | null
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          item_name: string
+          notes?: string | null
+          project_id?: string | null
+          quantity?: number | null
+          receipt_id: string
+          suggested_category?: string | null
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          item_name?: string
+          notes?: string | null
+          project_id?: string | null
+          quantity?: number | null
+          receipt_id?: string
+          suggested_category?: string | null
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_line_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "project_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_line_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_line_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "pending_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {

@@ -31,6 +31,7 @@ import { useQuickBooks } from '@/hooks/useQuickBooks';
 import { ALL_CATEGORIES, BUDGET_CATEGORIES, type BudgetCategory } from '@/types';
 import type { Project } from '@/types';
 import { SplitExpenseModal } from './SplitExpenseModal';
+import { SmartSplitReceiptUpload } from './SmartSplitReceiptUpload';
 
 // Helper to format category values: "tech_equipment" -> "Tech Equipment"
 const formatCategoryValue = (value: string) => {
@@ -224,7 +225,11 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
   }
 
   return (
-    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+    <div className="space-y-4">
+      {/* SmartSplit Receipt Upload */}
+      <SmartSplitReceiptUpload onReceiptProcessed={onExpenseImported} />
+      
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <div className="glass-card overflow-hidden">
         <CollapsibleTrigger asChild>
           <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/20 transition-colors">
@@ -530,5 +535,6 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
         onSplit={handleSplit}
       />
     </Collapsible>
+    </div>
   );
 }

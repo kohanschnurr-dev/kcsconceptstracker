@@ -26,6 +26,7 @@ import { useQuickBooks } from '@/hooks/useQuickBooks';
 import { BUSINESS_EXPENSE_CATEGORIES } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { SmartSplitReceiptUpload } from './SmartSplitReceiptUpload';
 
 interface BusinessQuickBooksIntegrationProps {
   onExpenseImported?: () => void;
@@ -151,7 +152,12 @@ export function BusinessQuickBooksIntegration({ onExpenseImported }: BusinessQui
   }
 
   return (
-    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+    <div className="space-y-4">
+      {/* SmartSplit Receipt Upload - Always visible */}
+      <SmartSplitReceiptUpload onReceiptProcessed={onExpenseImported} />
+      
+      {/* QuickBooks Integration Panel */}
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <div className="glass-card overflow-hidden">
         <CollapsibleTrigger asChild>
           <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/20 transition-colors">
@@ -370,5 +376,6 @@ export function BusinessQuickBooksIntegration({ onExpenseImported }: BusinessQui
         </CollapsibleContent>
       </div>
     </Collapsible>
+    </div>
   );
 }
