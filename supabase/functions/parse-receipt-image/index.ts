@@ -88,6 +88,14 @@ serve(async (req) => {
           {
             role: "system",
             content: `You are a receipt parsing expert. Extract detailed information from receipts.
+
+CRITICAL FOR VENDOR/STORE NAME:
+- The vendor_name MUST be the actual RETAIL STORE where the purchase was made (e.g., "Home Depot", "Lowe's", "Menards", "Ace Hardware", "Amazon", "Walmart", etc.)
+- Look for the store name/logo at the TOP of the receipt - this is usually the largest text or logo
+- Common store indicators: store address, store number, phone number right below the store name
+- DO NOT use the customer's name, company name, or any other entity that is NOT the store
+- If you see "THE HOME DEPOT" or similar branding, use that as the vendor name
+- Ignore any buyer/customer information that might appear on the receipt
             
 For construction/renovation context, categorize items into these categories:
 - plumbing, electrical, hvac, flooring, paint, cabinets, countertops, tile, lighting, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, trim, fencing, landscaping, misc
@@ -100,7 +108,7 @@ Be precise with numbers. Parse all line items you can identify.`
               {
                 type: "text",
                 text: `Parse this receipt and extract:
-1. Store/Vendor name
+1. Store/Vendor name - THIS IS THE RETAIL STORE NAME (like "Home Depot", "Lowe's", etc.) - look at the top/header of the receipt for the store branding/logo. Do NOT use the buyer's name or company.
 2. Total amount (final price paid)
 3. Tax amount (if shown)
 4. Subtotal (before tax)
