@@ -14,6 +14,7 @@ import {
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
 import kcsLogo from '@/assets/kcs-logo.png';
 
@@ -42,6 +43,7 @@ const isActiveLink = (item: typeof navItems[0], pathname: string) => {
 export function Sidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { displayName } = useProfile();
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-sidebar">
@@ -78,7 +80,7 @@ export function Sidebar() {
         <div className="border-t border-border p-4 space-y-2">
           {user && (
             <div className="flex items-center justify-between px-3 py-2">
-              <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+              <span className="text-xs text-muted-foreground truncate">{displayName || user.email}</span>
               <NavLink
                 to="/settings"
                 className={cn(
