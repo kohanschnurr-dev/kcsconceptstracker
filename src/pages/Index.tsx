@@ -9,6 +9,7 @@ import { SpendingTrendChart } from '@/components/dashboard/SpendingTrendChart';
 import { QuickTaskInput } from '@/components/dashboard/QuickTaskInput';
 import { UrgentTasksWidget } from '@/components/dashboard/UrgentTasksWidget';
 import { TasksDueTodayBanner } from '@/components/dashboard/TasksDueTodayBanner';
+import { CalendarGlanceWidget } from '@/components/dashboard/CalendarGlanceWidget';
 import { QuickActionButton } from '@/components/QuickActionButton';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { NewProjectModal } from '@/components/NewProjectModal';
@@ -315,9 +316,10 @@ export default function Index() {
           )}
         </div>
 
-        {/* Right Sidebar - Urgent Tasks */}
+        {/* Right Sidebar - Urgent Tasks & Calendar */}
         <div className="hidden lg:block w-72 flex-shrink-0">
-          <div className="sticky top-6">
+          <div className="sticky top-6 space-y-4">
+            <CalendarGlanceWidget refreshKey={taskRefreshKey} />
             <UrgentTasksWidget refreshKey={taskRefreshKey} />
           </div>
         </div>
