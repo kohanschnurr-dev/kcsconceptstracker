@@ -145,6 +145,13 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
     });
   };
 
+  const formatTrade = (trade: string) => {
+    return trade
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   const getTradeBadgeColor = (trade: string) => {
     const colors: Record<string, string> = {
       foundation: 'bg-stone-500/20 text-stone-600',
@@ -240,7 +247,7 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                       <span className="font-medium">{pv.vendor?.name || 'Unknown'}</span>
                       <Badge className={cn("text-xs", getTradeBadgeColor(pv.vendor?.trades?.[0] || 'general'))}>
                         <Wrench className="h-3 w-3 mr-1" />
-                        {pv.vendor?.trades?.join(', ') || 'No trades'}
+                        {pv.vendor?.trades?.map(formatTrade).join(', ') || 'No trades'}
                       </Badge>
                     </div>
                     
