@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, ArrowRight, ListTodo, Target, LayoutDashboard } from 'lucide-react';
+import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, ArrowRight, ListTodo, Target } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CommandCenter } from '@/components/command-center/CommandCenter';
+
 import {
   Select,
   SelectContent,
@@ -51,8 +51,8 @@ interface DailyLog {
 
 export default function DailyLogs() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('command');
-  const [checklistTab, setChecklistTab] = useState('daily');
+  const [activeTab, setActiveTab] = useState('checklist');
+  const [checklistTab, setChecklistTab] = useState('master');
   
   // Daily Logs state
   const [search, setSearch] = useState('');
@@ -380,27 +380,17 @@ export default function DailyLogs() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full md:max-w-lg grid-cols-3">
-            <TabsTrigger value="command" className="gap-2 py-3 md:py-2">
-              <LayoutDashboard className="h-4 w-4" />
-              <span className="hidden sm:inline">Command Center</span>
-              <span className="sm:hidden">Center</span>
+          <TabsList className="grid w-full md:max-w-md grid-cols-2">
+            <TabsTrigger value="checklist" className="gap-2 py-3 md:py-2">
+              <Check className="h-4 w-4" />
+              Checklist
             </TabsTrigger>
             <TabsTrigger value="logs" className="gap-2 py-3 md:py-2">
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">Daily Logs</span>
               <span className="sm:hidden">Logs</span>
             </TabsTrigger>
-            <TabsTrigger value="checklist" className="gap-2 py-3 md:py-2">
-              <Check className="h-4 w-4" />
-              Checklist
-            </TabsTrigger>
           </TabsList>
-
-          {/* Command Center Tab */}
-          <TabsContent value="command" className="mt-6">
-            <CommandCenter />
-          </TabsContent>
 
           {/* Daily Logs Tab */}
           <TabsContent value="logs" className="mt-6 space-y-6">
@@ -508,16 +498,6 @@ export default function DailyLogs() {
             {/* Sub-tabs for Daily Sprint vs Master Pipeline */}
             <Tabs value={checklistTab} onValueChange={setChecklistTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="daily" className="gap-2">
-                  <Target className="h-4 w-4" />
-                  <span className="hidden sm:inline">Daily Sprint</span>
-                  <span className="sm:hidden">Today</span>
-                  {pendingDailyCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                      {pendingDailyCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
                 <TabsTrigger value="master" className="gap-2">
                   <ListTodo className="h-4 w-4" />
                   <span className="hidden sm:inline">Master Pipeline</span>
@@ -525,6 +505,16 @@ export default function DailyLogs() {
                   {pendingMasterCount > 0 && (
                     <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                       {pendingMasterCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="daily" className="gap-2">
+                  <Target className="h-4 w-4" />
+                  <span className="hidden sm:inline">Daily Sprint</span>
+                  <span className="sm:hidden">Today</span>
+                  {pendingDailyCount > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      {pendingDailyCount}
                     </Badge>
                   )}
                 </TabsTrigger>
