@@ -25,7 +25,25 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
     fetchUrgentTasks();
   }, [refreshKey]);
 
-  // Refetch when tab becomes visible (cross-tab sync)
+  // Realtime subscription for instant updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('urgent-tasks-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks' },
+        () => {
+          fetchUrgentTasks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Refetch when tab becomes visible (cross-tab sync fallback)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {

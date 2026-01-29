@@ -30,7 +30,25 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
     fetchData();
   }, [refreshKey]);
 
-  // Refetch when tab becomes visible (cross-tab sync)
+  // Realtime subscription for instant updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('tasks-due-today-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks' },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Refetch when tab becomes visible (cross-tab sync fallback)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
