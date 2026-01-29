@@ -31,6 +31,201 @@ function detectStore(url: string): string {
   return 'other';
 }
 
+// Detect product category from URL and content
+function detectCategory(url: string, markdown: string): string {
+  const lowerUrl = url.toLowerCase();
+  const lowerContent = markdown.toLowerCase();
+  
+  // URL-based detection
+  if (lowerUrl.includes('/bath') || lowerUrl.includes('bathroom')) return 'bathroom';
+  if (lowerUrl.includes('/kitchen')) return 'kitchen';
+  if (lowerUrl.includes('/lighting') || lowerUrl.includes('/light')) return 'lighting';
+  if (lowerUrl.includes('/flooring') || lowerUrl.includes('/tile')) return 'tile';
+  if (lowerUrl.includes('/plumbing')) return 'plumbing';
+  if (lowerUrl.includes('/cabinet')) return 'cabinets';
+  if (lowerUrl.includes('/door')) return 'doors';
+  if (lowerUrl.includes('/window')) return 'windows';
+  if (lowerUrl.includes('/hardware')) return 'hardware';
+  if (lowerUrl.includes('/appliance')) return 'appliances';
+  
+  // Content-based detection
+  if (lowerContent.includes('faucet') || lowerContent.includes('shower') || lowerContent.includes('toilet')) return 'bathroom';
+  if (lowerContent.includes('tile') || lowerContent.includes('flooring')) return 'tile';
+  if (lowerContent.includes('light') || lowerContent.includes('chandelier') || lowerContent.includes('pendant')) return 'lighting';
+  if (lowerContent.includes('cabinet') || lowerContent.includes('vanity')) return 'cabinets';
+  if (lowerContent.includes('mirror')) return 'bathroom';
+  
+  return 'general';
+}
+
+// Detect product type from content
+function detectProductType(markdown: string, category: string): string | null {
+  const lowerContent = markdown.toLowerCase();
+  
+  // Product type keywords by priority
+  const productTypes: Record<string, string[]> = {
+    bathroom: ['faucet', 'vanity', 'mirror', 'toilet', 'shower head', 'shower', 'sink', 'tub', 'bathtub'],
+    kitchen: ['faucet', 'sink', 'range hood', 'garbage disposal'],
+    plumbing: ['faucet', 'valve', 'drain', 'pipe', 'fixture', 'water heater'],
+    tile: ['tile', 'flooring', 'backsplash'],
+    lighting: ['chandelier', 'pendant', 'sconce', 'ceiling light', 'light fixture', 'lamp', 'light'],
+    cabinets: ['cabinet', 'vanity', 'drawer', 'pantry'],
+    doors: ['door', 'entry door', 'interior door', 'patio door'],
+    windows: ['window', 'skylight'],
+    hardware: ['handle', 'knob', 'lock', 'hinge', 'pull'],
+    appliances: ['refrigerator', 'dishwasher', 'oven', 'range', 'microwave', 'washer', 'dryer'],
+    general: ['faucet', 'light', 'tile', 'cabinet', 'mirror', 'fixture'],
+  };
+  
+  const typesToCheck = productTypes[category] || productTypes.general;
+  
+  for (const type of typesToCheck) {
+    if (lowerContent.includes(type)) {
+      // Capitalize first letter
+      return type.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+  }
+  
+  return null;
+}
+
+// Check if extracted name is garbage/unusable
+function isGarbageName(name: string): boolean {
+  if (!name || name.length < 5) return true;
+  
+  const lowerName = name.toLowerCase();
+  
+  // Common garbage phrases
+  const garbagePhrases = [
+    'product summary',
+    'key product information',
+    'keyboard shortcut',
+    'skip to',
+    'main content',
+    'navigation',
+    'search results',
+    'add to cart',
+    'buy now',
+    'sign in',
+    'customer review',
+    'similar item',
+    'frequently bought',
+    'sponsored',
+    'advertisement',
+    'unknown product',
+  ];
+  
+  for (const phrase of garbagePhrases) {
+    if (lowerName.includes(phrase)) return true;
+  }
+  
+  // Check if mostly navigation/accessibility text
+  if (lowerName.includes('shift+') || lowerName.includes('alt+') || lowerName.includes('opt+')) {
+    return true;
+  }
+  
+  // Check if it's just a price or number
+  if (/^\$?\d+\.?\d*$/.test(name.trim())) return true;
+  
+  // Check if too generic
+  if (['item', 'product', 'home', 'page'].includes(lowerName.trim())) return true;
+  
+  return false;
+}
+
+// Extract product name from Amazon HTML
+function extractAmazonProductName(html: string): string | null {
+  // Primary: productTitle span
+  const productTitleMatch = html.match(/<span[^>]+id="productTitle"[^>]*>([^<]+)<\/span>/i);
+  if (productTitleMatch && productTitleMatch[1]) {
+    const title = productTitleMatch[1].trim();
+    if (!isGarbageName(title)) return title;
+  }
+  
+  // Fallback: og:title meta tag
+  const ogTitleMatch = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i) ||
+                       html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:title"/i);
+  if (ogTitleMatch && ogTitleMatch[1]) {
+    const title = ogTitleMatch[1].trim();
+    // Remove " - Amazon.com" suffix if present
+    const cleanTitle = title.replace(/\s*[-–—]\s*Amazon\.com.*$/i, '').trim();
+    if (!isGarbageName(cleanTitle)) return cleanTitle;
+  }
+  
+  // Fallback: title tag
+  const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  if (titleTagMatch && titleTagMatch[1]) {
+    const title = titleTagMatch[1].trim();
+    const cleanTitle = title.replace(/\s*[-–—]\s*Amazon\.com.*$/i, '').replace(/Amazon\.com:\s*/i, '').trim();
+    if (!isGarbageName(cleanTitle) && cleanTitle.length > 10) return cleanTitle;
+  }
+  
+  return null;
+}
+
+// Generate a clean product name from attributes
+function generateCleanName(
+  category: string,
+  brand: string | null,
+  finish: string | null,
+  material: string | null,
+  productType: string | null,
+  tileSize: string | null
+): string {
+  const parts: string[] = [];
+  
+  // Add brand if available and clean
+  if (brand && brand.length < 30 && !brand.includes('&')) {
+    parts.push(brand);
+  }
+  
+  // Add finish/color
+  if (finish) {
+    parts.push(finish);
+  }
+  
+  // Add material for tile products
+  if (material && category === 'tile') {
+    parts.push(material);
+  }
+  
+  // Add tile size
+  if (tileSize && category === 'tile') {
+    parts.push(tileSize);
+  }
+  
+  // Add product type or category-based fallback
+  if (productType) {
+    parts.push(productType);
+  } else {
+    // Category-based product type fallback
+    const categoryDefaults: Record<string, string> = {
+      bathroom: 'Bathroom Fixture',
+      kitchen: 'Kitchen Fixture',
+      plumbing: 'Plumbing Fixture',
+      tile: 'Tile',
+      lighting: 'Light Fixture',
+      cabinets: 'Cabinet',
+      doors: 'Door',
+      windows: 'Window',
+      hardware: 'Hardware',
+      appliances: 'Appliance',
+      general: 'Item',
+    };
+    parts.push(categoryDefaults[category] || 'Item');
+  }
+  
+  // Build final name
+  const name = parts.join(' ');
+  
+  // Ensure minimum quality
+  if (name.length < 5 || name === 'Item') {
+    return 'Product';
+  }
+  
+  return name;
+}
+
 function parsePrice(text: string | undefined | null): number | null {
   if (!text) return null;
   const match = text.match(/\$?([\d,]+\.?\d*)/);
@@ -253,6 +448,7 @@ function extractProductImage(html: string, url: string): string | null {
 
 function extractProductData(markdown: string, html: string, url: string): ProductData {
   const store = detectStore(url);
+  const category = detectCategory(url, markdown);
   const lines = markdown.split('\n');
   
   let name = '';
@@ -270,11 +466,21 @@ function extractProductData(markdown: string, html: string, url: string): Produc
   // Extract product image from HTML
   image_url = extractProductImage(html, url);
   
-  // Extract name from first H1 or prominent text
-  for (const line of lines) {
-    if (line.startsWith('# ')) {
-      name = line.replace('# ', '').trim();
-      break;
+  // Extract name - try HTML first for Amazon
+  if (store === 'amazon') {
+    const htmlName = extractAmazonProductName(html);
+    if (htmlName) {
+      name = htmlName;
+    }
+  }
+  
+  // Fall back to markdown H1/H2 extraction
+  if (!name) {
+    for (const line of lines) {
+      if (line.startsWith('# ')) {
+        name = line.replace('# ', '').trim();
+        break;
+      }
     }
   }
   
@@ -430,13 +636,19 @@ function extractProductData(markdown: string, html: string, url: string): Produc
   if (tile_size) specs['tile_size'] = tile_size;
   if (material) specs['material'] = material;
   
-  // Clean up name
+  // Check if name is garbage and generate clean name if needed
+  if (isGarbageName(name)) {
+    const productType = detectProductType(markdown, category);
+    name = generateCleanName(category, brand, finish, material, productType, tile_size);
+  }
+  
+  // Clean up name - truncate if too long
   if (name.length > 200) {
     name = name.substring(0, 200);
   }
   
   return {
-    name: name || 'Unknown Product',
+    name: name || 'Product',
     price,
     model_number,
     finish,
