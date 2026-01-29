@@ -344,26 +344,39 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
     setShowMatchModal(true);
   };
 
-  // Finalize the import
+  // Finalize the import - pre-populate QB expense with receipt data, don't fully import yet
   const finalizeImport = async () => {
     if (!selectedMatch) return;
 
     try {
-      // Mark receipt as imported
+      // Build notes from line items for the QB expense
+      const lineItemNotes = selectedMatch.receipt.line_items
+        ?.map(item => `${item.item_name} (${item.quantity}x)`)
+        .join(', ') || '';
+      
+      // Get the primary suggested category from line items (most common or first)
+      const suggestedCategory = selectedMatch.receipt.line_items?.[0]?.suggested_category || null;
+
+      // Mark receipt as imported (removes from SmartSplit list)
       await supabase
         .from('pending_receipts')
         .update({ status: 'imported' })
         .eq('id', selectedMatch.receipt.id);
 
-      // Mark QB expense as imported
+      // Pre-populate QB expense with receipt data but keep is_imported = false
+      // so it stays in the pending QB list for final project/category selection
       await supabase
         .from('quickbooks_expenses')
-        .update({ is_imported: true })
+        .update({ 
+          notes: lineItemNotes,
+          // Store receipt image URL for reference
+          receipt_url: selectedMatch.receipt.receipt_image_url || null,
+        })
         .eq('id', selectedMatch.qbExpense.id);
 
       toast({
-        title: 'Import complete!',
-        description: 'Receipt matched and imported successfully',
+        title: 'Receipt matched!',
+        description: 'Now assign a project and category in the QuickBooks section below',
       });
 
       setShowMatchModal(false);
@@ -673,11 +686,11 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowMatchModal(false)}>
-              Adjust
+              Cancel
             </Button>
             <Button onClick={finalizeImport} className="gap-2">
               <Check className="h-4 w-4" />
-              Accept & Import
+              Match & Continue
             </Button>
           </DialogFooter>
         </DialogContent>
