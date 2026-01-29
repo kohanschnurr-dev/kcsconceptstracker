@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { BUSINESS_EXPENSE_CATEGORIES } from '@/types';
 interface LineItem {
   id?: string;
   item_name: string;
@@ -64,6 +65,7 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
   const [dragActive, setDragActive] = useState(false);
   const uploadZoneRef = useRef<HTMLDivElement>(null);
   const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
+  const [selectedBusinessCategory, setSelectedBusinessCategory] = useState<string>('');
 
   // Handle paste events (Ctrl+V)
   const handlePaste = useCallback((e: ClipboardEvent) => {
@@ -363,21 +365,58 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
       initialCategories[idx] = item.suggested_category || 'misc';
     });
     setEditableCategories(initialCategories);
+    setSelectedBusinessCategory(''); // Reset category selection
     setShowMatchModal(true);
   };
 
-  // Finalize the import - pre-populate QB expense with receipt data, don't fully import yet
+  // Finalize the import - fully import to business_expenses and mark QB expense as imported
   const finalizeImport = async () => {
-    if (!selectedMatch) return;
+    if (!selectedMatch || !selectedBusinessCategory) {
+      toast({
+        title: 'Select a category',
+        description: 'Please select a business expense category before importing',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
-      // Build notes from line items for the QB expense
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Build notes from line items for the expense
       const lineItemNotes = selectedMatch.receipt.line_items
         ?.map(item => `${item.item_name} (${item.quantity}x)`)
         .join(', ') || '';
-      
-      // Get the primary suggested category from line items (most common or first)
-      const suggestedCategory = selectedMatch.receipt.line_items?.[0]?.suggested_category || null;
+
+      // Insert into business_expenses table (fully import)
+      const { error: insertError } = await supabase
+        .from('business_expenses')
+        .insert({
+          user_id: user.id,
+          amount: selectedMatch.qbExpense.amount,
+          date: selectedMatch.qbExpense.date,
+          category: selectedBusinessCategory,
+          vendor_name: selectedMatch.qbExpense.vendor_name,
+          description: lineItemNotes || selectedMatch.qbExpense.description,
+          payment_method: null,
+          includes_tax: selectedMatch.receipt.tax_amount > 0,
+          tax_amount: selectedMatch.receipt.tax_amount || null,
+          receipt_url: selectedMatch.receipt.receipt_image_url || null,
+          notes: lineItemNotes,
+        });
+
+      if (insertError) throw insertError;
+
+      // Mark QB expense as imported (removes from QB pending list)
+      await supabase
+        .from('quickbooks_expenses')
+        .update({ 
+          is_imported: true,
+          notes: lineItemNotes,
+          receipt_url: selectedMatch.receipt.receipt_image_url || null,
+        })
+        .eq('id', selectedMatch.qbExpense.id);
 
       // Mark receipt as imported (removes from SmartSplit list)
       await supabase
@@ -385,29 +424,20 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
         .update({ status: 'imported' })
         .eq('id', selectedMatch.receipt.id);
 
-      // Pre-populate QB expense with receipt data but keep is_imported = false
-      // so it stays in the pending QB list for final project/category selection
-      await supabase
-        .from('quickbooks_expenses')
-        .update({ 
-          notes: lineItemNotes,
-          // Store receipt image URL for reference
-          receipt_url: selectedMatch.receipt.receipt_image_url || null,
-        })
-        .eq('id', selectedMatch.qbExpense.id);
-
       toast({
-        title: 'Receipt matched!',
-        description: 'Now assign a project and category in the QuickBooks section below',
+        title: 'Expense imported!',
+        description: `Added ${selectedMatch.qbExpense.vendor_name || 'expense'} to business expenses`,
       });
 
       setShowMatchModal(false);
       setSelectedMatch(null);
+      setSelectedBusinessCategory('');
       await fetchPendingReceipts();
-      // Refresh the QB pending expenses list to show updated notes/receipt
+      // Refresh the QB pending expenses list to remove the imported item
       onRefreshQBExpenses?.();
       onReceiptProcessed?.();
     } catch (error: any) {
+      console.error('Error importing expense:', error);
       toast({
         title: 'Import failed',
         description: error.message,
@@ -717,6 +747,31 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
                   </div>
                 </div>
               )}
+
+              {/* Business Expense Category Selector */}
+              <div className="p-4 rounded-lg border-2 border-primary/30 bg-primary/5">
+                <Label className="text-sm font-medium mb-2 block">
+                  Business Expense Category <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={selectedBusinessCategory}
+                  onValueChange={setSelectedBusinessCategory}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a category to import..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_EXPENSE_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-2">
+                  This will import the expense directly to your business expenses
+                </p>
+              </div>
             </div>
           )}
 
@@ -724,9 +779,13 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
             <Button variant="outline" onClick={() => setShowMatchModal(false)}>
               Cancel
             </Button>
-            <Button onClick={finalizeImport} className="gap-2">
+            <Button 
+              onClick={finalizeImport} 
+              className="gap-2"
+              disabled={!selectedBusinessCategory}
+            >
               <Check className="h-4 w-4" />
-              Match & Continue
+              Import Expense
             </Button>
           </DialogFooter>
         </DialogContent>
