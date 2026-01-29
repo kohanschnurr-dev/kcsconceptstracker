@@ -9,7 +9,8 @@ import {
   LogOut,
   ShoppingCart,
   Briefcase,
-  Calculator
+  Calculator,
+  CalendarDays
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -20,13 +21,14 @@ import kcsLogo from '@/assets/kcs-logo.png';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: FolderKanban, label: 'Projects', path: '/projects' },
-  { icon: Receipt, label: 'Expenses', path: '/expenses' },
-  { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
-  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
-  { icon: Users, label: 'Vendors', path: '/vendors' },
   { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
+  { icon: FolderKanban, label: 'Projects', path: '/projects' },
+  { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
+  { icon: Receipt, label: 'Expenses', path: '/expenses' },
   { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
+  { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
+  { icon: Users, label: 'Vendors', path: '/vendors' },
+  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
 ];
 
 export function MobileNav() {
