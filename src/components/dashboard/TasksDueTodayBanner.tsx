@@ -30,6 +30,17 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
     fetchData();
   }, [refreshKey]);
 
+  // Refetch when tab becomes visible (cross-tab sync)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   const fetchData = async () => {
     try {
       // Fetch tasks
