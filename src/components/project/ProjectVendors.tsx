@@ -282,11 +282,6 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                         onChange={(e) => updateSchedule(pv.id, e.target.value)}
                         className="w-auto h-8 text-sm"
                       />
-                      {pv.scheduled_date && (
-                        <span className="text-sm text-muted-foreground">
-                          {formatDate(pv.scheduled_date)}
-                        </span>
-                      )}
                     </div>
                   </div>
                   <Button
