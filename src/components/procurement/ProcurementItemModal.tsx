@@ -28,7 +28,11 @@ import {
   Wrench,
   CheckCircle2,
   AlertCircle,
-  FolderOpen
+  FolderOpen,
+  Bath,
+  Scissors,
+  Waves,
+  Archive
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -87,6 +91,9 @@ export type ProcurementCategory =
   | 'framing'
   | 'insulation'
   | 'drywall'
+  | 'bathroom'
+  | 'trim'
+  | 'pool'
   | 'other';
 
 interface CategoryConfig {
@@ -150,7 +157,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   { 
     value: 'cabinets', 
     label: 'Cabinets', 
-    icon: Home, 
+    icon: Archive, 
     color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30',
     fields: ['cabinet_type', 'dimensions', 'door_style', 'wood_species'],
     placeholders: { cabinet_type: 'Base, Wall, Tall', dimensions: '36"W x 24"D x 34.5"H', door_style: 'Shaker, Raised panel' }
@@ -242,6 +249,30 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
     color: 'bg-gray-500/10 text-gray-600 border-gray-500/30',
     fields: ['thickness', 'sheet_size', 'type'],
     placeholders: { thickness: '1/2", 5/8"', sheet_size: '4x8, 4x12', type: 'Regular, Moisture-resistant, Fire-rated' }
+  },
+  { 
+    value: 'bathroom', 
+    label: 'Bathroom', 
+    icon: Bath, 
+    color: 'bg-cyan-600/10 text-cyan-500 border-cyan-500/30',
+    fields: ['fixture_type', 'dimensions', 'finish', 'material'],
+    placeholders: { fixture_type: 'Vanity, Mirror, Accessories', dimensions: 'W x D x H', finish: 'Chrome, Brushed Nickel, Matte Black' }
+  },
+  { 
+    value: 'trim', 
+    label: 'Trim', 
+    icon: Scissors, 
+    color: 'bg-rose-500/10 text-rose-500 border-rose-500/30',
+    fields: ['trim_type', 'dimensions', 'material', 'profile'],
+    placeholders: { trim_type: 'Baseboards, Crown, Casing', dimensions: '3.25", 5.25"', profile: 'Colonial, Craftsman, Modern' }
+  },
+  { 
+    value: 'pool', 
+    label: 'Pool', 
+    icon: Waves, 
+    color: 'bg-blue-600/10 text-blue-500 border-blue-600/30',
+    fields: ['equipment_type', 'dimensions', 'capacity', 'brand'],
+    placeholders: { equipment_type: 'Pump, Filter, Heater', dimensions: 'Pool size', capacity: 'Gallons' }
   },
   { 
     value: 'other', 
@@ -395,6 +426,9 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     if (name.includes('lumber') || name.includes('2x4') || name.includes('2x6') || name.includes('stud')) return 'framing';
     if (name.includes('insulation') || name.includes('r-')) return 'insulation';
     if (name.includes('drywall') || name.includes('sheetrock')) return 'drywall';
+    if (name.includes('bathroom') || name.includes('vanity') || name.includes('mirror') || name.includes('towel')) return 'bathroom';
+    if (name.includes('trim') || name.includes('baseboard') || name.includes('crown') || name.includes('casing') || name.includes('molding')) return 'trim';
+    if (name.includes('pool') || name.includes('pump') || name.includes('filter') || name.includes('chlorine')) return 'pool';
     return 'other';
   };
 
