@@ -1,25 +1,16 @@
 
-## Fix Amazon Price Extraction
+## Generate Clean Product Names from Scraped Data
 
-The scraper is incorrectly extracting `$10` from Amazon product pages instead of the actual product price. This happens because:
-
-1. The current price extraction uses a simple regex that grabs the **first dollar amount** found in the markdown
-2. Amazon pages contain many prices (coupons, delivery fees, other products) before the actual product price
-3. The `$10` is likely from a delivery fee or coupon that appears early in the page content
+The current scraper is extracting garbage text like "Product summary presents key product information" instead of the actual product name. This happens because Amazon pages often have accessibility/navigation text before the actual product title in the markdown.
 
 ---
 
 ## Solution
 
-Improve the Amazon-specific price extraction in the edge function by:
-
-1. **Add Amazon-specific price patterns** that target known price element structures
-2. **Look for product price context** (e.g., "Price:", main price container patterns)
-3. **Filter out common false positives** like delivery fees, coupon amounts
-4. **Use multiple price candidates** and select the most likely product price based on:
-   - Position in the page (main content area)
-   - Context keywords
-   - Reasonable price range for the product category
+Add smart name generation that:
+1. Detects when the extracted name is garbage (too short, generic phrases, accessibility text)
+2. Generates a clean, descriptive product name using category + brand + key attributes
+3. Extracts the actual product title from HTML using Amazon-specific patterns
 
 ---
 
@@ -27,45 +18,87 @@ Improve the Amazon-specific price extraction in the edge function by:
 
 **File: `supabase/functions/scrape-product-url/index.ts`**
 
-### 1. Add Amazon-specific HTML price extraction (new function)
+### 1. Add Amazon-specific name extraction from HTML
 
-Add a function to extract prices from HTML specifically for Amazon:
-- Target Amazon's known price element patterns (e.g., `apexPriceToPay`, `corePrice_feature_div`)
-- Look for `data-a-color="price"` attributes
-- Parse the price span structures Amazon uses
+Create a new function `extractAmazonProductName(html: string)` that targets:
+- `<span id="productTitle">...</span>` (primary Amazon pattern)
+- `<h1 class="a-size-large...">...</h1>`
+- `<meta property="og:title" content="..."/>`
 
-### 2. Update extractProductData function
+### 2. Add garbage name detection
 
-For Amazon products:
-- First try HTML-based price extraction (more reliable)
-- Fall back to markdown extraction with better filtering
-- Skip prices under $5 as likely delivery/add-on prices
-- Look for prices near keywords like "current price", "with coupon", "list price"
+Create `isGarbageName(name: string)` to detect invalid names:
+- Too short (less than 5 characters)
+- Generic phrases like "Product summary", "Skip to", "Main content", "Navigation"
+- Contains "keyboard shortcut" or accessibility text
+- Too long and repetitive
 
-### 3. Add price sanity checks
+### 3. Add clean name generation
 
-- If multiple prices found, prefer ones in reasonable range for product type
-- Ignore prices that are suspiciously low (under $5 for most products)
-- Use the crossed-out "list price" as a validation check
+Create `generateCleanName(category, brand, finish, material, specs)` to build descriptive names:
 
----
+| Category | Example Output |
+|----------|----------------|
+| bathroom | "Delta Chrome Bathroom Faucet" |
+| plumbing | "Moen Brushed Nickel Kitchen Faucet" |
+| tile | "Porcelain 12x24 Floor Tile" |
+| lighting | "Brushed Nickel Pendant Light" |
+| cabinets | "Shaker White Base Cabinet" |
 
-## Code Changes Summary
+### 4. Update extractProductData flow
 
 ```text
-Lines 185-198: Replace simple price extraction with:
-├── Amazon-specific HTML price extraction function
-├── Context-aware markdown price parsing
-├── Filter for delivery fees ($5.99, $10.00 common values)
-└── Price validation against scraped specs
+1. Try HTML extraction for Amazon (new)
+2. Fall back to markdown H1/H2 extraction (existing)
+3. Check if name is garbage
+4. If garbage, generate clean name from:
+   - Category (detected from URL/content)
+   - Brand (if extracted)
+   - Finish/color (if extracted)
+   - Material (if extracted)
+   - Key specs
 ```
-
-The specs object already contains price hints like `"$179.99$179.99": "$149.99$149.99"` which can be used as validation.
 
 ---
 
-## Expected Outcome
+## Example Transformation
 
-- Amazon products will show correct product prices (e.g., $179.99) instead of $10.00
-- No changes to Home Depot, Lowe's, or other store price extraction
-- Backwards compatible - won't break existing items
+**Before:**
+```
+Name: "Product summary presents key product information"
+```
+
+**After:**
+```
+Name: "Delta Chrome Bathroom Faucet"
+(generated from: brand=Delta, finish=Chrome, category=bathroom, specs include faucet)
+```
+
+---
+
+## Implementation Details
+
+### Category-to-product-type mapping
+
+```typescript
+const categoryProductTypes: Record<string, string[]> = {
+  bathroom: ['Faucet', 'Vanity', 'Mirror', 'Toilet', 'Shower', 'Fixture'],
+  plumbing: ['Faucet', 'Valve', 'Drain', 'Pipe', 'Fixture'],
+  tile: ['Tile', 'Flooring'],
+  lighting: ['Light', 'Fixture', 'Chandelier', 'Pendant', 'Sconce'],
+  // ... etc
+};
+```
+
+### Name generation priority
+
+1. Brand + Finish + Product Type (e.g., "Delta Chrome Faucet")
+2. Brand + Product Type (e.g., "Delta Faucet")
+3. Finish + Product Type (e.g., "Chrome Bathroom Faucet")
+4. Category + "Item" fallback (e.g., "Bathroom Item")
+
+---
+
+## Summary
+
+This enhancement ensures users always get a readable, useful product name instead of garbage accessibility text, while still using the actual product title when it's properly extracted.
