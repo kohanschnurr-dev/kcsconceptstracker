@@ -144,34 +144,6 @@ export function ProfitCalculator({
           </div>
         )}
 
-        {/* Breakdown */}
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between py-2 border-b">
-            <span className="text-muted-foreground">Purchase Price</span>
-            <span className="font-mono">{formatCurrency(purchasePrice)}</span>
-          </div>
-          <div className="flex justify-between py-2 border-b">
-            <span className="text-muted-foreground">Rehab Cost {totalSpent > 0 ? '(Actual)' : '(Budget)'}</span>
-            <span className="font-mono">{formatCurrency(rehabCost)}</span>
-          </div>
-          <div className="flex justify-between py-2 border-b">
-            <span className="text-muted-foreground">Est. Closing Costs (6%)</span>
-            <span className="font-mono">{formatCurrency(closingCosts)}</span>
-          </div>
-          <div className="flex justify-between py-2 border-b">
-            <span className="text-muted-foreground">Est. Holding Costs (3 mo)</span>
-            <span className="font-mono">{formatCurrency(holdingCosts)}</span>
-          </div>
-          <div className="flex justify-between py-2 border-b font-medium">
-            <span>Total Investment</span>
-            <span className="font-mono">{formatCurrency(totalCosts)}</span>
-          </div>
-          <div className="flex justify-between py-2 border-b">
-            <span className="text-muted-foreground">ARV (Sale Price)</span>
-            <span className="font-mono">{formatCurrency(arv)}</span>
-          </div>
-        </div>
-
         {/* Results */}
         <div className="grid grid-cols-2 gap-4">
           <div className={cn(
