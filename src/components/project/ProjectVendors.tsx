@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2, Users, Phone, Mail, Calendar, Wrench } from 'lucide-react';
+import { Plus, Trash2, Loader2, Users, Phone, Mail, Calendar, Wrench, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -134,6 +135,17 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
       toast.error('Failed to update schedule');
     } else {
       fetchData();
+    }
+  };
+
+  const updateNotes = async (id: string, notes: string) => {
+    const { error } = await supabase
+      .from('project_vendors')
+      .update({ notes: notes || null })
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Failed to update notes');
     }
   };
 
@@ -281,6 +293,20 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                         value={pv.scheduled_date || ''}
                         onChange={(e) => updateSchedule(pv.id, e.target.value)}
                         className="w-auto h-8 text-sm"
+                      />
+                    </div>
+
+                    {/* Notes */}
+                    <div className="mt-3">
+                      <div className="flex items-center gap-1 mb-1">
+                        <FileText className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Notes</span>
+                      </div>
+                      <Textarea
+                        placeholder="What did they do on this project?"
+                        defaultValue={pv.notes || ''}
+                        onBlur={(e) => updateNotes(pv.id, e.target.value)}
+                        className="text-sm min-h-[60px] resize-none"
                       />
                     </div>
                   </div>
