@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-
 interface LineItem {
   id?: string;
   item_name: string;
@@ -62,6 +61,34 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
   const [selectedMatch, setSelectedMatch] = useState<MatchedExpense | null>(null);
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const uploadZoneRef = useRef<HTMLDivElement>(null);
+
+  // Handle paste events (Ctrl+V)
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    if (isUploading) return;
+    
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          handleFileUpload(file);
+        }
+        break;
+      }
+    }
+  }, [isUploading]);
+
+  // Add global paste listener when expanded
+  useEffect(() => {
+    if (isExpanded) {
+      document.addEventListener('paste', handlePaste);
+      return () => document.removeEventListener('paste', handlePaste);
+    }
+  }, [isExpanded, handlePaste]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -431,7 +458,10 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
                         <Upload className="h-6 w-6 text-muted-foreground" />
                       </div>
                       <p className="text-sm font-medium">Drop receipt here or click to upload</p>
-                      <p className="text-xs text-muted-foreground">Supports images and PDFs</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clipboard className="h-3 w-3" />
+                        Tip: Paste with Ctrl+V • Supports images and PDFs
+                      </p>
                     </div>
                   )}
                 </label>
