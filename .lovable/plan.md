@@ -1,43 +1,79 @@
 
+## Reorder Sidebar Navigation
 
-## Fix Budget Progress to Use Calculated Total Budget
+Reordering the navigation items in both the desktop sidebar and mobile navigation to match the requested order.
 
-The Budget Progress bar is showing **$38,581 / $52,100** instead of **$38,581 / $60,575** because it references `project.total_budget` (the outdated database field) rather than the dynamically calculated `totalBudget` (sum of all category budgets).
+### Requested Order
+1. Dashboard
+2. Daily Logs
+3. Projects
+4. Calendar
+5. Expenses
+6. Budget Calculator
+7. Procurement
+8. Vendors
+9. KCS Concepts
+
+### Current Order (Sidebar.tsx)
+1. Dashboard
+2. Projects
+3. Calendar
+4. Expenses
+5. KCS Concepts
+6. Vendors
+7. Procurement
+8. Daily Logs
+9. Budget Calculator
 
 ---
 
-## Root Cause
+## Files to Update
 
-Line 496 in `ProjectDetail.tsx`:
+### 1. Desktop Sidebar
+**File: `src/components/layout/Sidebar.tsx`** (lines 19-29)
+
+Reorder the `navItems` array:
 ```tsx
-<span className="font-mono">{formatCurrency(totalSpent)} / {formatCurrency(project.total_budget)}</span>
+const navItems = [
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/', exact: true },
+  { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
+  { icon: FolderKanban, label: 'Projects', path: '/projects' },
+  { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
+  { icon: Receipt, label: 'Expenses', path: '/expenses' },
+  { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
+  { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
+  { icon: Users, label: 'Vendors', path: '/vendors' },
+  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
+];
 ```
 
-This should use the `totalBudget` variable defined on line 170, which correctly sums all category budgets and is already used for the stat cards.
+### 2. Mobile Navigation
+**File: `src/components/layout/MobileNav.tsx`** (lines 21-30)
 
----
+Update to match and add the missing Calendar item:
+```tsx
+const navItems = [
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
+  { icon: FolderKanban, label: 'Projects', path: '/projects' },
+  { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
+  { icon: Receipt, label: 'Expenses', path: '/expenses' },
+  { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
+  { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
+  { icon: Users, label: 'Vendors', path: '/vendors' },
+  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
+];
+```
 
-## Changes Required
-
-**File: `src/pages/ProjectDetail.tsx`**
-
-| Line | Current | Change To |
-|------|---------|-----------|
-| 496 | `project.total_budget` | `totalBudget` |
-| 542 | `totalBudget={project.total_budget}` | `totalBudget={totalBudget}` |
-| 547 | `totalBudget={project.total_budget}` | `totalBudget={totalBudget}` |
-| 556 | `total_budget: project.total_budget` | `total_budget: totalBudget` |
-
-This ensures consistency across:
-- Stat cards (already correct)
-- Budget Progress bar (fix)
-- ProfitCalculator component (fix)
-- SpendingChart component (fix)
-- ExportReports component (fix)
+Also need to add the `CalendarDays` import to MobileNav.tsx.
 
 ---
 
 ## Summary
 
-A single-file change to replace 4 occurrences of `project.total_budget` with the calculated `totalBudget` variable, ensuring mathematical consistency throughout the Project Detail page.
+| File | Change |
+|------|--------|
+| `Sidebar.tsx` | Reorder navItems array to new order |
+| `MobileNav.tsx` | Add CalendarDays import, reorder navItems to match |
 
+Both navigation menus will be consistent with the new order.
