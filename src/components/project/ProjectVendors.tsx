@@ -196,7 +196,7 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                   <SelectContent>
                     {availableVendors.map(vendor => (
                       <SelectItem key={vendor.id} value={vendor.id}>
-                        {vendor.name} ({vendor.trades.join(', ') || 'No trades'})
+                        {vendor.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
