@@ -1,104 +1,93 @@
 
-## Generate Clean Product Names from Scraped Data
 
-The current scraper is extracting garbage text like "Product summary presents key product information" instead of the actual product name. This happens because Amazon pages often have accessibility/navigation text before the actual product title in the markdown.
+## Add Settings Icon and Page
 
----
-
-## Solution
-
-Add smart name generation that:
-1. Detects when the extracted name is garbage (too short, generic phrases, accessibility text)
-2. Generates a clean, descriptive product name using category + brand + key attributes
-3. Extracts the actual product title from HTML using Amazon-specific patterns
+Adding a Settings option to the sidebar footer area (next to Sign Out) with a new Settings page.
 
 ---
 
-## Technical Changes
+## Changes Overview
 
-**File: `supabase/functions/scrape-product-url/index.ts`**
+### 1. Create Settings Page
+**New File: `src/pages/Settings.tsx`**
 
-### 1. Add Amazon-specific name extraction from HTML
+Create a new Settings page using the same layout pattern as other pages:
+- Uses `MainLayout` wrapper
+- Header with title "Settings"
+- Initial sections for:
+  - Account (email display, password change option)
+  - App Preferences (placeholder for future settings)
+  - Integrations (QuickBooks connection status)
+  - Legal (links to Privacy Policy and EULA)
 
-Create a new function `extractAmazonProductName(html: string)` that targets:
-- `<span id="productTitle">...</span>` (primary Amazon pattern)
-- `<h1 class="a-size-large...">...</h1>`
-- `<meta property="og:title" content="..."/>`
+### 2. Add Settings Route
+**File: `src/App.tsx`**
 
-### 2. Add garbage name detection
+- Import the new Settings page
+- Add protected route: `/settings`
 
-Create `isGarbageName(name: string)` to detect invalid names:
-- Too short (less than 5 characters)
-- Generic phrases like "Product summary", "Skip to", "Main content", "Navigation"
-- Contains "keyboard shortcut" or accessibility text
-- Too long and repetitive
+### 3. Update Sidebar Footer
+**File: `src/components/layout/Sidebar.tsx`**
 
-### 3. Add clean name generation
+- Import `Settings` icon from lucide-react
+- Add Settings button/link above Sign Out in the footer section
+- Style to match the Sign Out button
 
-Create `generateCleanName(category, brand, finish, material, specs)` to build descriptive names:
+### 4. Update Mobile Navigation Footer
+**File: `src/components/layout/MobileNav.tsx`**
 
-| Category | Example Output |
-|----------|----------------|
-| bathroom | "Delta Chrome Bathroom Faucet" |
-| plumbing | "Moen Brushed Nickel Kitchen Faucet" |
-| tile | "Porcelain 12x24 Floor Tile" |
-| lighting | "Brushed Nickel Pendant Light" |
-| cabinets | "Shaker White Base Cabinet" |
+- Import `Settings` icon from lucide-react
+- Add Settings link above Sign Out in the mobile menu footer
+- Close sheet when navigating
 
-### 4. Update extractProductData flow
+---
+
+## Visual Layout (Footer Section)
 
 ```text
-1. Try HTML extraction for Amazon (new)
-2. Fall back to markdown H1/H2 extraction (existing)
-3. Check if name is garbage
-4. If garbage, generate clean name from:
-   - Category (detected from URL/content)
-   - Brand (if extracted)
-   - Finish/color (if extracted)
-   - Material (if extracted)
-   - Key specs
+┌────────────────────────────┐
+│ kohanschnurr@gmail.com     │
+├────────────────────────────┤
+│ ⚙️  Settings               │  ← NEW
+│ ↪️  Sign Out                │
+└────────────────────────────┘
 ```
 
 ---
 
-## Example Transformation
+## Technical Details
 
-**Before:**
-```
-Name: "Product summary presents key product information"
+### Sidebar.tsx Changes (lines 83-90)
+```tsx
+// Add before Sign Out button
+<NavLink
+  to="/settings"
+  className={cn(
+    'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+    location.pathname === '/settings'
+      ? 'bg-primary/10 text-primary'
+      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+  )}
+>
+  <Settings className="h-5 w-5" />
+  Settings
+</NavLink>
 ```
 
-**After:**
-```
-Name: "Delta Chrome Bathroom Faucet"
-(generated from: brand=Delta, finish=Chrome, category=bathroom, specs include faucet)
-```
+### Settings Page Structure
+- Account section with user email and change password option
+- App Preferences section (placeholder for dark mode, notifications, etc.)
+- Integrations section showing QuickBooks connection status
+- Legal section with links to Privacy Policy and EULA
 
 ---
 
-## Implementation Details
+## Files Summary
 
-### Category-to-product-type mapping
+| File | Action | Description |
+|------|--------|-------------|
+| `src/pages/Settings.tsx` | Create | New Settings page with account, preferences, integrations sections |
+| `src/App.tsx` | Edit | Add Settings route and import |
+| `src/components/layout/Sidebar.tsx` | Edit | Add Settings icon and link in footer |
+| `src/components/layout/MobileNav.tsx` | Edit | Add Settings link in mobile menu footer |
 
-```typescript
-const categoryProductTypes: Record<string, string[]> = {
-  bathroom: ['Faucet', 'Vanity', 'Mirror', 'Toilet', 'Shower', 'Fixture'],
-  plumbing: ['Faucet', 'Valve', 'Drain', 'Pipe', 'Fixture'],
-  tile: ['Tile', 'Flooring'],
-  lighting: ['Light', 'Fixture', 'Chandelier', 'Pendant', 'Sconce'],
-  // ... etc
-};
-```
-
-### Name generation priority
-
-1. Brand + Finish + Product Type (e.g., "Delta Chrome Faucet")
-2. Brand + Product Type (e.g., "Delta Faucet")
-3. Finish + Product Type (e.g., "Chrome Bathroom Faucet")
-4. Category + "Item" fallback (e.g., "Bathroom Item")
-
----
-
-## Summary
-
-This enhancement ensures users always get a readable, useful product name instead of garbage accessibility text, while still using the actual product title when it's properly extracted.
