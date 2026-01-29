@@ -366,7 +366,7 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
     setShowMatchModal(true);
   };
 
-  // Finalize the import - pre-populate QB expense with receipt data, don't fully import yet
+  // Finalize the import - attach receipt data to QB expense and keep it in pending list for project/category assignment
   const finalizeImport = async () => {
     if (!selectedMatch) return;
 
@@ -375,39 +375,41 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
       const lineItemNotes = selectedMatch.receipt.line_items
         ?.map(item => `${item.item_name} (${item.quantity}x)`)
         .join(', ') || '';
-      
-      // Get the primary suggested category from line items (most common or first)
-      const suggestedCategory = selectedMatch.receipt.line_items?.[0]?.suggested_category || null;
 
       // Mark receipt as imported (removes from SmartSplit list)
-      await supabase
+      const { error: receiptError } = await supabase
         .from('pending_receipts')
         .update({ status: 'imported' })
         .eq('id', selectedMatch.receipt.id);
 
-      // Pre-populate QB expense with receipt data but keep is_imported = false
-      // so it stays in the pending QB list for final project/category selection
-      await supabase
+      if (receiptError) throw receiptError;
+
+      // Attach receipt data to QB expense (notes + receipt URL)
+      // Keep is_imported = false so it stays in pending list for project/category selection
+      const { error: qbError } = await supabase
         .from('quickbooks_expenses')
         .update({ 
           notes: lineItemNotes,
-          // Store receipt image URL for reference
           receipt_url: selectedMatch.receipt.receipt_image_url || null,
         })
         .eq('id', selectedMatch.qbExpense.id);
 
+      if (qbError) throw qbError;
+
       toast({
         title: 'Receipt matched!',
-        description: 'Now assign a project and category in the QuickBooks section below',
+        description: 'Notes and receipt attached. Now assign a project and category below.',
       });
 
       setShowMatchModal(false);
       setSelectedMatch(null);
+      
+      // Refresh both lists
       await fetchPendingReceipts();
-      // Refresh the QB pending expenses list to show updated notes/receipt
       onRefreshQBExpenses?.();
       onReceiptProcessed?.();
     } catch (error: any) {
+      console.error('Import failed:', error);
       toast({
         title: 'Import failed',
         description: error.message,
