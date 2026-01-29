@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard } from 'lucide-react';
+import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,9 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { BUDGET_CATEGORIES, type BudgetCategory } from '@/types';
+import type { Project } from '@/types';
 interface LineItem {
   id?: string;
   item_name: string;
@@ -48,11 +51,12 @@ interface MatchedExpense {
 }
 
 interface SmartSplitReceiptUploadProps {
+  projects?: Project[];
   onReceiptProcessed?: () => void;
   onRefreshQBExpenses?: () => void;
 }
 
-export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpenses }: SmartSplitReceiptUploadProps) {
+export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onRefreshQBExpenses }: SmartSplitReceiptUploadProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
@@ -64,6 +68,9 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
   const [dragActive, setDragActive] = useState(false);
   const uploadZoneRef = useRef<HTMLDivElement>(null);
   const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
+  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
+  const [isImporting, setIsImporting] = useState(false);
 
   // Handle paste events (Ctrl+V)
   const handlePaste = useCallback((e: ClipboardEvent) => {
@@ -366,17 +373,24 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
     setShowMatchModal(true);
   };
 
-  // Finalize the import - attach receipt data to QB expense and keep it in pending list for project/category assignment
+  // Finalize the import - create expense record and mark QB as imported
   const finalizeImport = async () => {
-    if (!selectedMatch) return;
+    if (!selectedMatch || !selectedProject) return;
 
+    setIsImporting(true);
+    
     try {
-      // Build notes from line items for the QB expense
+      // Build notes from line items for the expense
       const lineItemNotes = selectedMatch.receipt.line_items
         ?.map(item => `${item.item_name} (${item.quantity}x)`)
         .join(', ') || '';
 
-      // Mark receipt as imported (removes from SmartSplit list)
+      // Get the first line item's category (or use 'misc')
+      const primaryCategory = (editableCategories[0] || 
+        selectedMatch.receipt.line_items?.[0]?.suggested_category || 
+        'misc') as BudgetCategory;
+
+      // 1. Mark receipt as imported (removes from SmartSplit list)
       const { error: receiptError } = await supabase
         .from('pending_receipts')
         .update({ status: 'imported' })
@@ -384,25 +398,76 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
 
       if (receiptError) throw receiptError;
 
-      // Attach receipt data to QB expense (notes + receipt URL)
-      // Keep is_imported = false so it stays in pending list for project/category selection
+      // 2. Find or create project_category
+      const { data: existingCategory } = await supabase
+        .from('project_categories')
+        .select('id')
+        .eq('project_id', selectedProject)
+        .eq('category', primaryCategory)
+        .maybeSingle();
+
+      let categoryId: string;
+      
+      if (existingCategory) {
+        categoryId = existingCategory.id;
+      } else {
+        // Create new category for project
+        const { data: newCategory, error: categoryError } = await supabase
+          .from('project_categories')
+          .insert({
+            project_id: selectedProject,
+            category: primaryCategory,
+            estimated_budget: 0,
+          })
+          .select('id')
+          .single();
+
+        if (categoryError) throw categoryError;
+        categoryId = newCategory.id;
+      }
+
+      // 3. Insert expense record
+      const { error: expenseError } = await supabase
+        .from('expenses')
+        .insert({
+          project_id: selectedProject,
+          category_id: categoryId,
+          amount: selectedMatch.qbExpense.amount,
+          date: selectedMatch.qbExpense.date,
+          vendor_name: selectedMatch.qbExpense.vendor_name || selectedMatch.receipt.vendor_name,
+          description: selectedMatch.qbExpense.description,
+          notes: lineItemNotes,
+          receipt_url: selectedMatch.receipt.receipt_image_url || null,
+          expense_type: expenseType,
+          status: 'actual',
+        });
+
+      if (expenseError) throw expenseError;
+
+      // 4. Mark QB expense as imported (removes from pending list)
       const { error: qbError } = await supabase
         .from('quickbooks_expenses')
         .update({ 
+          is_imported: true,
           notes: lineItemNotes,
           receipt_url: selectedMatch.receipt.receipt_image_url || null,
+          project_id: selectedProject,
+          category_id: categoryId,
+          expense_type: expenseType,
         })
         .eq('id', selectedMatch.qbExpense.id);
 
       if (qbError) throw qbError;
 
       toast({
-        title: 'Receipt matched!',
-        description: 'Notes and receipt attached. Now assign a project and category below.',
+        title: 'Expense imported!',
+        description: `${selectedMatch.receipt.vendor_name} expense added to project.`,
       });
 
       setShowMatchModal(false);
       setSelectedMatch(null);
+      setSelectedProject('');
+      setExpenseType('product');
       
       // Refresh both lists
       await fetchPendingReceipts();
@@ -415,6 +480,8 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -719,6 +786,45 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
                   </div>
                 </div>
               )}
+
+              {/* Project Selection & Type Toggle */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <h4 className="text-sm font-medium">Import to Project</h4>
+                
+                <div className="space-y-3">
+                  <Select value={selectedProject} onValueChange={setSelectedProject}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a project..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex items-center gap-3">
+                    <Label className="text-sm text-muted-foreground">Type:</Label>
+                    <ToggleGroup
+                      type="single"
+                      value={expenseType}
+                      onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')}
+                      className="justify-start"
+                    >
+                      <ToggleGroupItem value="product" size="sm" className="gap-1">
+                        <Package className="h-3 w-3" />
+                        Product
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="labor" size="sm" className="gap-1">
+                        <Wrench className="h-3 w-3" />
+                        Labor
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -726,9 +832,17 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpense
             <Button variant="outline" onClick={() => setShowMatchModal(false)}>
               Cancel
             </Button>
-            <Button onClick={finalizeImport} className="gap-2">
-              <Check className="h-4 w-4" />
-              Match & Continue
+            <Button 
+              onClick={finalizeImport} 
+              disabled={!selectedProject || isImporting}
+              className="gap-2"
+            >
+              {isImporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              Match & Import
             </Button>
           </DialogFooter>
         </DialogContent>
