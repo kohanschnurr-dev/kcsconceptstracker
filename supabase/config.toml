@@ -1,1 +1,19 @@
 project_id = "skbkqngjvbvaswijavor"
+
+[functions.parse-receipt-text]
+verify_jwt = false
+
+[functions.quickbooks-auth]
+verify_jwt = false
+
+[functions.quickbooks-sync]
+verify_jwt = false
+
+[functions.scrape-product-url]
+verify_jwt = false
+
+[functions.parse-receipt-image]
+verify_jwt = false
+
+[functions.match-receipts]
+verify_jwt = false
