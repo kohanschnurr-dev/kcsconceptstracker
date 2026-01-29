@@ -163,7 +163,7 @@ function extractAmazonProductName(html: string): string | null {
   return null;
 }
 
-// Generate a clean product name from attributes
+// Generate a concise 3-4 word product name from attributes
 function generateCleanName(
   category: string,
   brand: string | null,
@@ -172,58 +172,51 @@ function generateCleanName(
   productType: string | null,
   tileSize: string | null
 ): string {
-  const parts: string[] = [];
+  // Category-based product type fallback
+  const categoryDefaults: Record<string, string> = {
+    bathroom: 'Fixture',
+    kitchen: 'Fixture',
+    plumbing: 'Fixture',
+    tile: 'Tile',
+    lighting: 'Light',
+    cabinets: 'Cabinet',
+    doors: 'Door',
+    windows: 'Window',
+    hardware: 'Hardware',
+    appliances: 'Appliance',
+    general: 'Item',
+  };
   
-  // Add brand if available and clean
-  if (brand && brand.length < 30 && !brand.includes('&')) {
-    parts.push(brand);
+  // Capitalize category for display
+  const categoryDisplay = category.charAt(0).toUpperCase() + category.slice(1);
+  
+  // Product type is the main identifier
+  const type = productType || categoryDefaults[category] || 'Item';
+  
+  // For tile: include size if available (e.g., "12x24 Porcelain Tile")
+  if (category === 'tile') {
+    if (tileSize && material) {
+      return `${tileSize} ${material} Tile`;
+    }
+    if (material) {
+      return `${material} Tile`;
+    }
+    if (tileSize) {
+      return `${tileSize} Tile`;
+    }
+    return 'Floor Tile';
   }
   
-  // Add finish/color
+  // For other products: [Finish] [Category] [Type]
+  // Keep to 3-4 words max
   if (finish) {
-    parts.push(finish);
+    // Clean finish to single word if possible
+    const cleanFinish = finish.split(/[\s,]/)[0];
+    return `${cleanFinish} ${categoryDisplay} ${type}`;
   }
   
-  // Add material for tile products
-  if (material && category === 'tile') {
-    parts.push(material);
-  }
-  
-  // Add tile size
-  if (tileSize && category === 'tile') {
-    parts.push(tileSize);
-  }
-  
-  // Add product type or category-based fallback
-  if (productType) {
-    parts.push(productType);
-  } else {
-    // Category-based product type fallback
-    const categoryDefaults: Record<string, string> = {
-      bathroom: 'Bathroom Fixture',
-      kitchen: 'Kitchen Fixture',
-      plumbing: 'Plumbing Fixture',
-      tile: 'Tile',
-      lighting: 'Light Fixture',
-      cabinets: 'Cabinet',
-      doors: 'Door',
-      windows: 'Window',
-      hardware: 'Hardware',
-      appliances: 'Appliance',
-      general: 'Item',
-    };
-    parts.push(categoryDefaults[category] || 'Item');
-  }
-  
-  // Build final name
-  const name = parts.join(' ');
-  
-  // Ensure minimum quality
-  if (name.length < 5 || name === 'Item') {
-    return 'Product';
-  }
-  
-  return name;
+  // Fallback: just [Category] [Type]
+  return `${categoryDisplay} ${type}`;
 }
 
 function parsePrice(text: string | undefined | null): number | null {
