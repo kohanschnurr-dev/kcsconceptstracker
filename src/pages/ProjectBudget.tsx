@@ -25,7 +25,8 @@ import {
   Trash2,
   MoreHorizontal,
   Settings2,
-  ShoppingCart
+  ShoppingCart,
+  Paperclip
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { EditExpenseModal, DeleteExpenseDialog } from '@/components/project/ExpenseActions';
 import { CategoryBudgetModal, DeleteCategoryDialog } from '@/components/project/CategoryBudgetModal';
+import { ExpenseDetailModal } from '@/components/ExpenseDetailModal';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
@@ -89,6 +91,8 @@ interface DBExpense {
   tax_amount: number | null;
   status: string;
   isQuickBooks?: boolean;
+  notes?: string | null;
+  receipt_url?: string | null;
 }
 
 type SortField = 'date' | 'amount' | 'vendor' | 'category';
@@ -134,6 +138,10 @@ export default function ProjectBudget() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<(DBCategory & { actualSpent: number }) | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<(DBCategory & { actualSpent: number }) | null>(null);
+  
+  // Detail modal state
+  const [selectedExpense, setSelectedExpense] = useState<DBExpense | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   
   // All Expenses collapsed state - show only 7 by default
   const [showAllExpenses, setShowAllExpenses] = useState(false);
@@ -189,7 +197,9 @@ export default function ProjectBudget() {
       includes_tax: false,
       tax_amount: null,
       status: 'actual',
-      isQuickBooks: true
+      isQuickBooks: true,
+      notes: qb.notes,
+      receipt_url: qb.receipt_url,
     }));
     
     const allExpenses = [...expensesData, ...qbAsExpenses].sort((a, b) => 
@@ -213,8 +223,7 @@ export default function ProjectBudget() {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(amount);
   };
 
@@ -1161,7 +1170,14 @@ export default function ProjectBudget() {
                     </TableRow>
                   ) : (
                     (showAllExpenses ? filteredExpenses : filteredExpenses.slice(0, VISIBLE_EXPENSE_COUNT)).map((exp) => (
-                      <TableRow key={exp.id} className="hover:bg-muted/50 group">
+                      <TableRow 
+                        key={exp.id} 
+                        className="hover:bg-muted/50 group cursor-pointer"
+                        onClick={() => {
+                          setSelectedExpense(exp);
+                          setDetailModalOpen(true);
+                        }}
+                      >
                         <TableCell className="text-sm">{formatDate(exp.date)}</TableCell>
                         <TableCell>
                           <div className="font-medium text-sm truncate max-w-[150px]">
@@ -1179,7 +1195,12 @@ export default function ProjectBudget() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <span className="font-mono font-medium">{formatCurrency(Number(exp.amount))}</span>
+                          <div className="flex items-center justify-end gap-2">
+                            {exp.receipt_url && (
+                              <Paperclip className="h-4 w-4 text-primary" />
+                            )}
+                            <span className="font-mono font-medium">{formatCurrency(Number(exp.amount))}</span>
+                          </div>
                           {exp.tax_amount && Number(exp.tax_amount) > 0 && (
                             <span className="block text-xs text-muted-foreground">
                               +{formatCurrency(Number(exp.tax_amount))} tax
@@ -1296,6 +1317,21 @@ export default function ProjectBudget() {
         open={deletingCategory !== null}
         onOpenChange={(open) => !open && setDeletingCategory(null)}
         onCategoryDeleted={refreshData}
+      />
+
+      {/* Expense Detail Modal */}
+      <ExpenseDetailModal
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        expense={selectedExpense ? {
+          ...selectedExpense,
+          receipt_url: selectedExpense.receipt_url || null,
+          notes: selectedExpense.notes || null,
+          source: selectedExpense.isQuickBooks ? 'quickbooks' : 'manual',
+        } : null}
+        projectName={project?.name || ''}
+        categoryLabel={selectedExpense ? getCategoryLabel(selectedExpense.category_id) : ''}
+        onExpenseUpdated={refreshData}
       />
     </MainLayout>
   );
