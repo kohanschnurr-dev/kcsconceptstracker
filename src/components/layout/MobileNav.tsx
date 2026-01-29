@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import kcsLogo from '@/assets/kcs-logo.png';
 
 const navItems = [
@@ -36,6 +37,7 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { displayName } = useProfile();
 
   const handleSignOut = () => {
     setOpen(false);
@@ -84,7 +86,7 @@ export function MobileNav() {
           <div className="border-t border-border p-4 space-y-2">
             {user && (
               <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                <span className="text-xs text-muted-foreground truncate">{displayName || user.email}</span>
                 <NavLink
                   to="/settings"
                   onClick={() => setOpen(false)}
