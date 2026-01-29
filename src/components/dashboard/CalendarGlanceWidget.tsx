@@ -38,6 +38,17 @@ export function CalendarGlanceWidget({ refreshKey }: CalendarGlanceWidgetProps) 
     fetchCalendarEvents();
   }, [refreshKey]);
 
+  // Refetch when tab becomes visible (cross-tab sync)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchCalendarEvents();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   const fetchCalendarEvents = async () => {
     try {
       const { data, error } = await supabase

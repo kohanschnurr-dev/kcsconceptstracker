@@ -25,6 +25,17 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
     fetchUrgentTasks();
   }, [refreshKey]);
 
+  // Refetch when tab becomes visible (cross-tab sync)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchUrgentTasks();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   const fetchUrgentTasks = async () => {
     try {
       // Fetch pending and in_progress tasks, ordered by priority and due date
