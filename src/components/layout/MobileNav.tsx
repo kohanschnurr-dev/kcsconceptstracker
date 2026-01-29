@@ -10,7 +10,8 @@ import {
   ShoppingCart,
   Briefcase,
   Calculator,
-  CalendarDays
+  CalendarDays,
+  Settings
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -86,6 +87,19 @@ export function MobileNav() {
                 {user.email}
               </div>
             )}
+            <NavLink
+              to="/settings"
+              onClick={() => setOpen(false)}
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                location.pathname === '/settings'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Settings className="h-5 w-5" />
+              Settings
+            </NavLink>
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"

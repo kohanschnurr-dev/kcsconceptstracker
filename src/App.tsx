@@ -23,6 +23,7 @@ import Auth from "./pages/Auth";
 import QuickBooksCallback from "./pages/QuickBooksCallback";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import EULA from "./pages/EULA";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/bundles" element={<ProtectedRoute><Bundles /></ProtectedRoute>} />
             <Route path="/bundles/:id" element={<ProtectedRoute><BundleDetail /></ProtectedRoute>} />
             <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
