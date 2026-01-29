@@ -68,15 +68,8 @@ export default function Projects() {
         }
       });
 
-      const transformedProjects: Project[] = (projectsData || []).map((p) => ({
-        id: p.id,
-        name: p.name,
-        address: p.address,
-        totalBudget: p.total_budget,
-        startDate: p.start_date,
-        status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
-        projectType: (p.project_type || 'fix_flip') as 'fix_flip' | 'rental',
-        categories: (categoriesData || [])
+      const transformedProjects: Project[] = (projectsData || []).map((p) => {
+        const projectCategories = (categoriesData || [])
           .filter((c: DBCategory) => c.project_id === p.id)
           .map((c: DBCategory) => ({
             id: c.id,
@@ -84,8 +77,25 @@ export default function Projects() {
             category: c.category as CategoryBudget['category'],
             estimatedBudget: c.estimated_budget,
             actualSpent: expensesByCategory[c.id] || 0,
-          })),
-      }));
+          }));
+
+        // Calculate total budget from sum of category estimated budgets
+        const calculatedTotalBudget = projectCategories.reduce(
+          (sum, cat) => sum + cat.estimatedBudget,
+          0
+        );
+
+        return {
+          id: p.id,
+          name: p.name,
+          address: p.address,
+          totalBudget: calculatedTotalBudget,
+          startDate: p.start_date,
+          status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
+          projectType: (p.project_type || 'fix_flip') as 'fix_flip' | 'rental',
+          categories: projectCategories,
+        };
+      });
 
       setProjects(transformedProjects);
     } catch (error) {
