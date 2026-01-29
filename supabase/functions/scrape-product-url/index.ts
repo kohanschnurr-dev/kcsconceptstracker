@@ -40,6 +40,110 @@ function parsePrice(text: string | undefined | null): number | null {
   return null;
 }
 
+// Amazon-specific price extraction from HTML
+function extractAmazonPrice(html: string): number | null {
+  // Common Amazon price patterns in HTML - ordered by reliability
+  const pricePatterns = [
+    // Main product price containers
+    /"priceAmount":\s*(\d+\.?\d*)/i,
+    /"price":\s*"?\$?(\d+\.?\d*)"?/i,
+    // Apex price (primary display price)
+    /class="a-price-whole">(\d+)<.*?class="a-price-fraction">(\d+)/is,
+    /apexPriceToPay[^>]*>.*?\$(\d+\.?\d*)/is,
+    /priceToPay[^>]*>.*?\$(\d+\.?\d*)/is,
+    // Core price div
+    /corePrice_feature_div[^>]*>.*?\$(\d+\.?\d*)/is,
+    // Price with data attribute
+    /data-a-color="price"[^>]*>.*?\$(\d+\.?\d*)/is,
+    // Buy box price
+    /buybox[^>]*price[^>]*>.*?\$(\d+\.?\d*)/is,
+    // Offer price
+    /offer-price[^>]*>.*?\$(\d+\.?\d*)/is,
+  ];
+
+  const candidates: number[] = [];
+
+  for (const pattern of pricePatterns) {
+    const match = html.match(pattern);
+    if (match) {
+      let price: number;
+      if (match[2]) {
+        // Handle split whole/fraction format
+        price = parseFloat(`${match[1]}.${match[2]}`);
+      } else {
+        price = parseFloat(match[1]);
+      }
+      if (price && price > 0) {
+        candidates.push(price);
+      }
+    }
+  }
+
+  // Filter and select best price
+  const validPrices = candidates.filter(p => p >= 5 && p < 50000);
+  
+  if (validPrices.length === 0) return null;
+  
+  // Return the most common price, or the first valid one
+  const priceCount = new Map<number, number>();
+  for (const p of validPrices) {
+    priceCount.set(p, (priceCount.get(p) || 0) + 1);
+  }
+  
+  let bestPrice = validPrices[0];
+  let maxCount = 0;
+  for (const [price, count] of priceCount) {
+    if (count > maxCount) {
+      maxCount = count;
+      bestPrice = price;
+    }
+  }
+  
+  return bestPrice;
+}
+
+// Extract price from markdown with context awareness
+function extractPriceFromMarkdown(markdown: string, store: string): number | null {
+  // Skip common false positive amounts (delivery fees, coupons)
+  const falsePositives = new Set([5.99, 6.99, 7.99, 9.99, 10.00, 10.99]);
+  
+  const candidates: { price: number; score: number }[] = [];
+  
+  // Look for price with context keywords (higher confidence)
+  const contextPatterns = [
+    { pattern: /(?:price|cost|buy now)[:\s]*\$?([\d,]+\.?\d*)/gi, score: 10 },
+    { pattern: /\$(\d{2,4}\.?\d{0,2})\s*(?:with coupon|\d+%\s*off)/gi, score: 8 },
+    { pattern: /(?:now|sale|deal)[:\s]*\$?([\d,]+\.?\d*)/gi, score: 7 },
+    { pattern: /\$(\d{2,4}\.\d{2})/g, score: 5 }, // Standard price format
+  ];
+  
+  for (const { pattern, score } of contextPatterns) {
+    const matches = [...markdown.matchAll(pattern)];
+    for (const match of matches) {
+      const price = parseFloat(match[1].replace(/,/g, ''));
+      if (price && price >= 5 && price < 50000 && !falsePositives.has(price)) {
+        candidates.push({ price, score });
+      }
+    }
+  }
+  
+  // Sort by score and return best candidate
+  candidates.sort((a, b) => b.score - a.score);
+  
+  // For non-Amazon stores, also try the first reasonable price
+  if (store !== 'amazon' && candidates.length === 0) {
+    const basicMatch = markdown.match(/\$(\d{2,4}\.?\d{0,2})/);
+    if (basicMatch) {
+      const price = parseFloat(basicMatch[1]);
+      if (price >= 10 && price < 50000) {
+        return price;
+      }
+    }
+  }
+  
+  return candidates.length > 0 ? candidates[0].price : null;
+}
+
 function parseLeadTime(text: string): number | null {
   const lowerText = text.toLowerCase();
   
@@ -182,19 +286,18 @@ function extractProductData(markdown: string, html: string, url: string): Produc
     }
   }
   
-  // Extract price
-  const pricePatterns = [
-    /\$\s*([\d,]+\.?\d*)/g,
-    /price[:\s]+\$?([\d,]+\.?\d*)/gi,
-    /(?:now|was|sale)[:\s]+\$?([\d,]+\.?\d*)/gi,
-  ];
-  
-  for (const pattern of pricePatterns) {
-    const matches = [...markdown.matchAll(pattern)];
-    if (matches.length > 0) {
-      price = parsePrice(matches[0][0]);
-      if (price && price > 0.5 && price < 100000) break; // Sanity check
+  // Extract price - use store-specific logic
+  if (store === 'amazon') {
+    // Try HTML extraction first for Amazon (more reliable)
+    price = extractAmazonPrice(html);
+    
+    // Fall back to markdown extraction
+    if (!price) {
+      price = extractPriceFromMarkdown(markdown, store);
     }
+  } else {
+    // For other stores, use markdown extraction
+    price = extractPriceFromMarkdown(markdown, store);
   }
   
   // Extract model number
