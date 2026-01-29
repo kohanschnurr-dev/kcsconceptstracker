@@ -18,14 +18,14 @@ import kcsLogo from '@/assets/kcs-logo.png';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/', exact: true },
+  { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
   { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
   { icon: Receipt, label: 'Expenses', path: '/expenses' },
-  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
-  { icon: Users, label: 'Vendors', path: '/vendors' },
-  { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
-  { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
   { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
+  { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
+  { icon: Users, label: 'Vendors', path: '/vendors' },
+  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
 ];
 
 const isActiveLink = (item: typeof navItems[0], pathname: string) => {
