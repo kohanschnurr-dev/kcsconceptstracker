@@ -493,7 +493,7 @@ export default function ProjectDetail() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{percentSpent.toFixed(1)}% of budget used</span>
-                <span className="font-mono">{formatCurrency(totalSpent)} / {formatCurrency(project.total_budget)}</span>
+                <span className="font-mono">{formatCurrency(totalSpent)} / {formatCurrency(totalBudget)}</span>
               </div>
               <div className="progress-bar h-3">
                 <div
@@ -539,12 +539,12 @@ export default function ProjectDetail() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ProfitCalculator 
                 projectId={id!}
-                totalBudget={project.total_budget}
+                totalBudget={totalBudget}
                 totalSpent={totalSpent}
                 initialPurchasePrice={project.purchase_price || 0}
                 initialArv={project.arv || 0}
               />
-              <SpendingChart categories={categories} totalBudget={project.total_budget} />
+              <SpendingChart categories={categories} totalBudget={totalBudget} />
             </div>
             
             {/* Export Reports */}
@@ -553,7 +553,7 @@ export default function ProjectDetail() {
                 id: project.id,
                 name: project.name,
                 address: project.address,
-                total_budget: project.total_budget,
+                total_budget: totalBudget,
                 start_date: project.start_date,
                 status: project.status,
                 purchase_price: project.purchase_price,
