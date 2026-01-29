@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { formatDisplayDateShort, parseDateString } from '@/lib/dateUtils';
 
 interface Milestone {
   id: string;
@@ -111,15 +112,15 @@ export function MilestonesTimeline({ projectId }: MilestonesTimelineProps) {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatDisplayDateShort(date);
   };
 
   const isOverdue = (dueDate: string | null, completedAt: string | null) => {
     if (!dueDate || completedAt) return false;
-    return new Date(dueDate) < new Date();
+    const dueDateParsed = parseDateString(dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return dueDateParsed < today;
   };
 
   const completedCount = milestones.filter(m => m.completed_at).length;

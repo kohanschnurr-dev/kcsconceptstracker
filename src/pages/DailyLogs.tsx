@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Task, TaskStatus, TaskPriority } from '@/types/task';
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/types/task';
 import { format, isToday, startOfDay } from 'date-fns';
+import { formatDisplayDate } from '@/lib/dateUtils';
 
 interface DailyLog {
   id: string;
@@ -153,7 +154,7 @@ export default function DailyLogs() {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    return formatDisplayDate(date, {
       weekday: 'short',
       month: 'short',
       day: 'numeric',

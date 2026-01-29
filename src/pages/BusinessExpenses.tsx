@@ -52,6 +52,7 @@ import { DateRange } from 'react-day-picker';
 import { BusinessQuickBooksIntegration } from '@/components/BusinessQuickBooksIntegration';
 import { BusinessExpenseTrendChart } from '@/components/dashboard/BusinessExpenseTrendChart';
 import { BusinessExpenseDetailModal } from '@/components/BusinessExpenseDetailModal';
+import { formatDisplayDate, formatDateString } from '@/lib/dateUtils';
 
 const BACKUP_KEY = 'dfw_project_expenses_backup';
 
@@ -90,7 +91,7 @@ export default function BusinessExpenses() {
     vendorName: '',
     description: '',
     paymentMethod: 'card' as 'cash' | 'check' | 'card' | 'transfer',
-    date: new Date().toISOString().split('T')[0],
+    date: formatDateString(new Date()),
     includesTax: false,
     notes: '',
   });
@@ -274,7 +275,7 @@ export default function BusinessExpenses() {
         vendorName: '',
         description: '',
         paymentMethod: 'card',
-        date: new Date().toISOString().split('T')[0],
+        date: formatDateString(new Date()),
         includesTax: false,
         notes: '',
       });
@@ -303,11 +304,7 @@ export default function BusinessExpenses() {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return formatDisplayDate(date);
   };
 
   const getCategoryLabel = (category: string) => {

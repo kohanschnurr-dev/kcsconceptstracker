@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, startOfDay, isWithinInterval, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, startOfDay, isWithinInterval } from 'date-fns';
+import { parseDateString } from '@/lib/dateUtils';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,8 +43,8 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
       projectId: event.project_id,
       projectName: projectName,
       title: event.title,
-      startDate: parseISO(event.start_date),
-      endDate: parseISO(event.end_date),
+      startDate: parseDateString(event.start_date),
+      endDate: parseDateString(event.end_date),
       status: getStatusFromCategory(event.event_category),
       budgetHealth: 'green' as const,
       category: event.event_category || 'due_diligence',
@@ -52,7 +53,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
       isCriticalPath: event.is_critical_path,
       eventCategory: event.event_category,
       leadTimeDays: event.lead_time_days,
-      expectedDate: event.expected_date ? parseISO(event.expected_date) : undefined,
+      expectedDate: event.expected_date ? parseDateString(event.expected_date) : undefined,
     }));
 
     setTasks(calendarTasks);

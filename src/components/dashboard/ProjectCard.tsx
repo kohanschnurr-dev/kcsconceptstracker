@@ -2,6 +2,7 @@ import { MapPin, Calendar, TrendingUp, Home, Hammer } from 'lucide-react';
 import { Project, BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { formatDisplayDate } from '@/lib/dateUtils';
 
 interface ProjectCardProps {
   project: Project;
@@ -37,11 +38,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return formatDisplayDate(date);
   };
 
   return (

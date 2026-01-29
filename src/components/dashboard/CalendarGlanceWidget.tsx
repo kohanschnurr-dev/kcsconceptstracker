@@ -4,7 +4,8 @@ import { Calendar, ArrowRight, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { isToday, isThisWeek, format, parseISO, startOfDay, isSameDay } from 'date-fns';
+import { isToday, isThisWeek, format, startOfDay } from 'date-fns';
+import { parseDateString } from '@/lib/dateUtils';
 
 interface CalendarEvent {
   id: string;
@@ -71,15 +72,15 @@ export function CalendarGlanceWidget({ refreshKey }: CalendarGlanceWidgetProps) 
 
       // Filter events that include today (event spans today)
       const todaysEvents = transformed.filter((e) => {
-        const start = startOfDay(parseISO(e.startDate));
-        const end = startOfDay(parseISO(e.endDate));
+        const start = startOfDay(parseDateString(e.startDate));
+        const end = startOfDay(parseDateString(e.endDate));
         return today >= start && today <= end;
       });
 
       // Filter events this week (excluding today's)
       const thisWeekEvents = transformed.filter((e) => {
-        const start = startOfDay(parseISO(e.startDate));
-        const end = startOfDay(parseISO(e.endDate));
+        const start = startOfDay(parseDateString(e.startDate));
+        const end = startOfDay(parseDateString(e.endDate));
         const isEventToday = today >= start && today <= end;
         return !isEventToday && (isThisWeek(start, { weekStartsOn: 0 }) || isThisWeek(end, { weekStartsOn: 0 }));
       });
@@ -165,7 +166,7 @@ export function CalendarGlanceWidget({ refreshKey }: CalendarGlanceWidgetProps) 
               >
                 <span className="truncate text-muted-foreground">{event.title}</span>
                 <span className="text-muted-foreground/70 flex-shrink-0">
-                  {format(parseISO(event.startDate), 'EEE')}
+                  {format(parseDateString(event.startDate), 'EEE')}
                 </span>
               </div>
             ))}

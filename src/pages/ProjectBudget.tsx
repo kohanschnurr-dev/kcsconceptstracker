@@ -48,6 +48,7 @@ import { CategoryBudgetModal, DeleteCategoryDialog } from '@/components/project/
 import { ExpenseDetailModal } from '@/components/ExpenseDetailModal';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { formatDisplayDate } from '@/lib/dateUtils';
 
 const CHART_COLORS = [
   'hsl(32, 95%, 55%)',   // primary orange
@@ -228,11 +229,7 @@ export default function ProjectBudget() {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return formatDisplayDate(date);
   };
 
   const getCategoryLabel = (categoryId: string) => {

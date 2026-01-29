@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { parseISO } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
+import { parseDateString } from '@/lib/dateUtils';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarLegend } from '@/components/calendar/CalendarLegend';
@@ -159,8 +159,8 @@ export default function Calendar() {
         projectId: event.project_id,
         projectName: project?.name || 'Unknown Project',
         title: event.title,
-        startDate: parseISO(event.start_date),
-        endDate: parseISO(event.end_date),
+        startDate: parseDateString(event.start_date),
+        endDate: parseDateString(event.end_date),
         status: getStatusFromCategory(event.event_category),
         budgetHealth: projectBudgetHealth[event.project_id] || 'green',
         category: event.event_category || 'due_diligence',
@@ -169,7 +169,7 @@ export default function Calendar() {
         isCriticalPath: event.is_critical_path,
         eventCategory: event.event_category,
         leadTimeDays: event.lead_time_days,
-        expectedDate: event.expected_date ? parseISO(event.expected_date) : undefined,
+        expectedDate: event.expected_date ? parseDateString(event.expected_date) : undefined,
       };
     });
 

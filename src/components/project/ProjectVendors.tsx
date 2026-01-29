@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { formatDisplayDate } from '@/lib/dateUtils';
 
 interface Vendor {
   id: string;
@@ -150,7 +151,7 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    return formatDisplayDate(date, {
       weekday: 'short',
       month: 'short',
       day: 'numeric',

@@ -1,6 +1,7 @@
 import { CreditCard, DollarSign, Check, FileText } from 'lucide-react';
 import { Expense, BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
+import { formatDisplayDateShort } from '@/lib/dateUtils';
 
 interface RecentExpensesProps {
   expenses: Expense[];
@@ -18,10 +19,7 @@ export function RecentExpenses({ expenses, projectCategories }: RecentExpensesPr
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatDisplayDateShort(date);
   };
 
   const getPaymentIcon = (method: string) => {
