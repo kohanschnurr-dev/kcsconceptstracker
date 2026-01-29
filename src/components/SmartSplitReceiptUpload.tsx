@@ -620,7 +620,9 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
               {/* Line Items */}
               {selectedMatch.receipt.line_items && selectedMatch.receipt.line_items.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Suggested Split ({selectedMatch.receipt.line_items.length} items)</h4>
+                  <h4 className="text-sm font-medium mb-2">
+                    Suggested Split ({selectedMatch.receipt.line_items.length + (selectedMatch.receipt.tax_amount > 0 ? 1 : 0)} items)
+                  </h4>
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {selectedMatch.receipt.line_items.map((item, idx) => (
                       <div key={idx} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
@@ -636,6 +638,33 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
                         <span className="font-mono">{formatCurrency(item.total_price)}</span>
                       </div>
                     ))}
+                    
+                    {/* Tax Line Item */}
+                    {selectedMatch.receipt.tax_amount > 0 && (
+                      <div className="flex items-center gap-3 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-sm">
+                        <div className="flex-1">
+                          <p className="font-medium">Sales Tax</p>
+                          <p className="text-xs text-muted-foreground">
+                            Applied to purchase
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-400 border-amber-500/30">
+                          tax
+                        </Badge>
+                        <span className="font-mono">{formatCurrency(selectedMatch.receipt.tax_amount)}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Split Total */}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+                    <span className="text-sm text-muted-foreground">Split Total</span>
+                    <span className="font-mono font-semibold">
+                      {formatCurrency(
+                        selectedMatch.receipt.line_items.reduce((sum, item) => sum + item.total_price, 0) + 
+                        (selectedMatch.receipt.tax_amount || 0)
+                      )}
+                    </span>
                   </div>
                 </div>
               )}
