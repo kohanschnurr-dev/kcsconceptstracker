@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ArrowRight, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Task, TaskPriority } from '@/types/task';
 import { TASK_PRIORITY_COLORS, TASK_PRIORITY_LABELS } from '@/types/task';
 import { isPast, isToday } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface UrgentTasksWidgetProps {
   refreshKey?: number;
@@ -20,6 +20,7 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
   const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchUrgentTasks();
@@ -94,6 +95,12 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
   };
 
   const handleToggleComplete = async (task: Task) => {
+    // Prevent double-clicks
+    if (completingIds.has(task.id)) return;
+    
+    // Show checkmark animation
+    setCompletingIds(prev => new Set(prev).add(task.id));
+    
     try {
       const { error } = await supabase
         .from('tasks')
@@ -107,9 +114,21 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
         description: `"${task.title}" marked as complete.`,
       });
 
-      fetchUrgentTasks();
+      // Wait for animation, then remove from completing set
+      setTimeout(() => {
+        setCompletingIds(prev => {
+          const next = new Set(prev);
+          next.delete(task.id);
+          return next;
+        });
+      }, 600);
     } catch (error) {
       console.error('Error updating task:', error);
+      setCompletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(task.id);
+        return next;
+      });
       toast({
         title: 'Error',
         description: 'Failed to update task',
@@ -185,20 +204,30 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
         ) : (
           <div className="space-y-1">
             {sortedTasks.map((task) => {
-              const isOverdue = task.dueDate && isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate));
-              const isDueToday = task.dueDate && isToday(new Date(task.dueDate));
+              const isCompleting = completingIds.has(task.id);
 
               return (
                 <div
                   key={task.id}
-                  className="flex items-center gap-2 py-2 px-2 rounded-md hover:bg-muted/50 transition-colors"
+                  onClick={() => handleToggleComplete(task)}
+                  className={cn(
+                    "flex items-center gap-2 py-2 px-2 rounded-md hover:bg-muted/50 transition-all cursor-pointer group",
+                    isCompleting && "bg-green-500/20 scale-[0.98]"
+                  )}
                 >
-                  <Checkbox
-                    checked={false}
-                    onCheckedChange={() => handleToggleComplete(task)}
-                    className="shrink-0 h-4 w-4"
-                  />
-                  <p className="flex-1 text-sm truncate min-w-0">{task.title}</p>
+                  <div className={cn(
+                    "shrink-0 h-4 w-4 rounded border border-muted-foreground/50 flex items-center justify-center transition-all duration-200",
+                    isCompleting && "bg-green-500 border-green-500 scale-110"
+                  )}>
+                    <Check className={cn(
+                      "h-3 w-3 text-white transition-all duration-200",
+                      isCompleting ? "opacity-100 scale-100" : "opacity-0 scale-0"
+                    )} />
+                  </div>
+                  <p className={cn(
+                    "flex-1 text-sm truncate min-w-0 transition-all duration-200",
+                    isCompleting && "line-through text-muted-foreground"
+                  )}>{task.title}</p>
                   <Badge variant="secondary" className={`shrink-0 text-[10px] px-1.5 py-0 h-5 ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}>
                     {TASK_PRIORITY_LABELS[task.priorityLevel]}
                   </Badge>
