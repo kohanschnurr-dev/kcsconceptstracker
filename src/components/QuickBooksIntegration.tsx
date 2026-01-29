@@ -107,6 +107,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     categorizeExpense,
     splitExpense,
     deleteExpense,
+    fetchPendingExpenses,
     enableDemoMode,
   } = useQuickBooks();
 
@@ -238,7 +239,10 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
   return (
     <div className="space-y-4">
       {/* SmartSplit Receipt Upload */}
-      <SmartSplitReceiptUpload onReceiptProcessed={onExpenseImported} />
+      <SmartSplitReceiptUpload 
+        onReceiptProcessed={onExpenseImported} 
+        onRefreshQBExpenses={fetchPendingExpenses}
+      />
       
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <div className="glass-card overflow-hidden">

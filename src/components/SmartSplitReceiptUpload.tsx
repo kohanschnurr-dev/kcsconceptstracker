@@ -49,9 +49,10 @@ interface MatchedExpense {
 
 interface SmartSplitReceiptUploadProps {
   onReceiptProcessed?: () => void;
+  onRefreshQBExpenses?: () => void;
 }
 
-export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceiptUploadProps) {
+export function SmartSplitReceiptUpload({ onReceiptProcessed, onRefreshQBExpenses }: SmartSplitReceiptUploadProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
@@ -403,6 +404,8 @@ export function SmartSplitReceiptUpload({ onReceiptProcessed }: SmartSplitReceip
       setShowMatchModal(false);
       setSelectedMatch(null);
       await fetchPendingReceipts();
+      // Refresh the QB pending expenses list to show updated notes/receipt
+      onRefreshQBExpenses?.();
       onReceiptProcessed?.();
     } catch (error: any) {
       toast({
