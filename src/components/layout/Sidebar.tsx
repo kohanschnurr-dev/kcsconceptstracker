@@ -77,22 +77,21 @@ export function Sidebar() {
         {/* Footer */}
         <div className="border-t border-border p-4 space-y-2">
           {user && (
-            <div className="px-3 py-2 text-xs text-muted-foreground truncate">
-              {user.email}
+            <div className="flex items-center justify-between px-3 py-2">
+              <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+              <NavLink
+                to="/settings"
+                className={cn(
+                  'p-1.5 rounded-md transition-colors',
+                  location.pathname === '/settings'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <Settings className="h-4 w-4" />
+              </NavLink>
             </div>
           )}
-          <NavLink
-            to="/settings"
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-              location.pathname === '/settings'
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            )}
-          >
-            <Settings className="h-5 w-5" />
-            Settings
-          </NavLink>
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
