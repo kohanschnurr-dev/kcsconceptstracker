@@ -1,93 +1,107 @@
 
 
-## Add Settings Icon and Page
+## Simplify Financials Tab Layout
 
-Adding a Settings option to the sidebar footer area (next to Sign Out) with a new Settings page.
-
----
-
-## Changes Overview
-
-### 1. Create Settings Page
-**New File: `src/pages/Settings.tsx`**
-
-Create a new Settings page using the same layout pattern as other pages:
-- Uses `MainLayout` wrapper
-- Header with title "Settings"
-- Initial sections for:
-  - Account (email display, password change option)
-  - App Preferences (placeholder for future settings)
-  - Integrations (QuickBooks connection status)
-  - Legal (links to Privacy Policy and EULA)
-
-### 2. Add Settings Route
-**File: `src/App.tsx`**
-
-- Import the new Settings page
-- Add protected route: `/settings`
-
-### 3. Update Sidebar Footer
-**File: `src/components/layout/Sidebar.tsx`**
-
-- Import `Settings` icon from lucide-react
-- Add Settings button/link above Sign Out in the footer section
-- Style to match the Sign Out button
-
-### 4. Update Mobile Navigation Footer
-**File: `src/components/layout/MobileNav.tsx`**
-
-- Import `Settings` icon from lucide-react
-- Add Settings link above Sign Out in the mobile menu footer
-- Close sheet when navigating
+The current Financials tab has too much visual clutter. The bar chart labels overlap, and the donut chart is overwhelmed with labels. Here's a cleaner approach.
 
 ---
 
-## Visual Layout (Footer Section)
+## Current Problems
+
+| Issue | Component |
+|-------|-----------|
+| Overlapping category labels | Budget vs Actual bar chart |
+| Too many labels around donut | Spending Distribution pie chart |
+| Dense breakdown table | Profit Calculator |
+| Visual overload | Both cards side-by-side |
+
+---
+
+## Solution: Simplify Both Components
+
+### 1. Profit Calculator - Streamline the breakdown
+
+**Remove the detailed line-item breakdown table** (Purchase Price, Rehab Cost, Closing Costs, etc.). Keep only:
+- Input fields (Purchase Price, ARV)
+- 78% Rule indicator
+- Profit and ROI result boxes
+
+The breakdown details can be viewed by hovering or expanding if needed later.
+
+### 2. Spending Chart - Remove the donut, improve the bar chart
+
+**Remove the Spending Distribution donut chart entirely** - it duplicates information from the bar chart and creates label chaos.
+
+**Improve the bar chart:**
+- Only show top 5-6 categories with spending (most significant)
+- Increase Y-axis width to prevent label truncation
+- Remove the "estimated" bar - just show actual spending for simplicity
+- Add a "View All" link to the Budget page for full breakdown
+
+---
+
+## Visual Layout After Changes
 
 ```text
-┌────────────────────────────┐
-│ kohanschnurr@gmail.com     │
-├────────────────────────────┤
-│ ⚙️  Settings               │  ← NEW
-│ ↪️  Sign Out                │
-└────────────────────────────┘
+┌─────────────────────────────────┐  ┌─────────────────────────────────┐
+│ 🧮 Profit Calculator     [Save] │  │ 📈 Spending by Category         │
+├─────────────────────────────────┤  ├─────────────────────────────────┤
+│ Purchase Price    │    ARV      │  │                                 │
+│ [$ 154000]        │ [$ 260000]  │  │  Flooring         ████████ $6.5k│
+├─────────────────────────────────┤  │  Roofing          ██████  $5.4k │
+│ ✓ 78% Rule: Max offer $164,219  │  │  Drain Line       ████████ $12k │
+├─────────────────────────────────┤  │  Painting         ███     $2.5k │
+│ ┌─────────────┐ ┌─────────────┐ │  │  Electrical       ██      $1.1k │
+│ │ Est. Profit │ │     ROI     │ │  │                                 │
+│ │   $47,199   │ │    24.5%    │ │  │ Total: $38,581                  │
+│ └─────────────┘ └─────────────┘ │  │                                 │
+└─────────────────────────────────┘  └─────────────────────────────────┘
 ```
 
 ---
 
-## Technical Details
+## Technical Changes
 
-### Sidebar.tsx Changes (lines 83-90)
-```tsx
-// Add before Sign Out button
-<NavLink
-  to="/settings"
-  className={cn(
-    'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-    location.pathname === '/settings'
-      ? 'bg-primary/10 text-primary'
-      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-  )}
->
-  <Settings className="h-5 w-5" />
-  Settings
-</NavLink>
-```
+### File: `src/components/project/ProfitCalculator.tsx`
 
-### Settings Page Structure
-- Account section with user email and change password option
-- App Preferences section (placeholder for dark mode, notifications, etc.)
-- Integrations section showing QuickBooks connection status
-- Legal section with links to Privacy Policy and EULA
+**Remove lines 147-173** (the breakdown section with all the line items)
+
+This removes:
+- Purchase Price row
+- Rehab Cost row
+- Est. Closing Costs row
+- Est. Holding Costs row
+- Total Investment row
+- ARV (Sale Price) row
+
+Keep the inputs, 78% rule, and profit/ROI boxes.
+
+### File: `src/components/project/SpendingChart.tsx`
+
+1. **Remove the entire Pie Chart section** (lines 123-160)
+2. **Update the bar chart**:
+   - Filter to show only top 6 categories by actual spending
+   - Remove the "estimated" bar - only show actual spending
+   - Increase Y-axis width from 80 to 120 for better label visibility
+   - Sort bars by spending amount (descending)
+   - Update title from "Budget vs Actual by Category" to "Spending by Category"
+3. **Add total spent display** at the bottom
 
 ---
 
-## Files Summary
+## Files to Edit
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/pages/Settings.tsx` | Create | New Settings page with account, preferences, integrations sections |
-| `src/App.tsx` | Edit | Add Settings route and import |
-| `src/components/layout/Sidebar.tsx` | Edit | Add Settings icon and link in footer |
-| `src/components/layout/MobileNav.tsx` | Edit | Add Settings link in mobile menu footer |
+| File | Changes |
+|------|---------|
+| `src/components/project/ProfitCalculator.tsx` | Remove detailed breakdown table (lines 147-173) |
+| `src/components/project/SpendingChart.tsx` | Remove pie chart, simplify bar chart to top 6 actual spending |
+
+---
+
+## Result
+
+A cleaner, more scannable Financials view that shows:
+- Key profit metrics without overwhelming detail
+- Top spending categories at a glance
+- Clear visual hierarchy with less noise
 
