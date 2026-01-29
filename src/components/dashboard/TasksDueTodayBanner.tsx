@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { isToday, isPast } from 'date-fns';
+import { isToday, isPast, startOfDay, parseISO } from 'date-fns';
 import type { Task } from '@/types/task';
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+}
 
 interface TasksDueTodayBannerProps {
   refreshKey?: number;
@@ -16,23 +23,25 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
   const navigate = useNavigate();
   const [tasksDueToday, setTasksDueToday] = useState<Task[]>([]);
   const [overdueCount, setOverdueCount] = useState(0);
+  const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchTasksDueToday();
+    fetchData();
   }, [refreshKey]);
 
-  const fetchTasksDueToday = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch tasks
+      const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select('*')
         .in('status', ['pending', 'in_progress'])
         .not('due_date', 'is', null);
 
-      if (error) throw error;
+      if (tasksError) throw tasksError;
 
-      const transformed: Task[] = (data || []).map((t) => ({
+      const transformed: Task[] = (tasksData || []).map((t) => ({
         id: t.id,
         userId: t.user_id,
         title: t.title,
@@ -62,9 +71,32 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
 
       setTasksDueToday(dueToday);
       setOverdueCount(overdue.length);
-      onTasksLoaded?.(dueToday.length + overdue.length);
+
+      // Fetch calendar events for today
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('calendar_events')
+        .select('*');
+
+      if (eventsError) throw eventsError;
+
+      const today = startOfDay(new Date());
+      const todaysCalendarEvents: CalendarEvent[] = (eventsData || [])
+        .filter((e) => {
+          const start = startOfDay(parseISO(e.start_date));
+          const end = startOfDay(parseISO(e.end_date));
+          return today >= start && today <= end;
+        })
+        .map((e) => ({
+          id: e.id,
+          title: e.title,
+          startDate: e.start_date,
+          endDate: e.end_date,
+        }));
+
+      setTodayEvents(todaysCalendarEvents);
+      onTasksLoaded?.(dueToday.length + overdue.length + todaysCalendarEvents.length);
     } catch (error) {
-      console.error('Error fetching tasks due today:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +104,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
 
   if (isLoading) return null;
 
-  const totalActionable = tasksDueToday.length + overdueCount;
+  const totalActionable = tasksDueToday.length + overdueCount + todayEvents.length;
 
   if (totalActionable === 0) return null;
 
@@ -90,16 +122,21 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
                 variant="secondary" 
                 className="bg-warning/20 text-warning border-warning/30 text-xs"
               >
-                {totalActionable} {totalActionable === 1 ? 'Task' : 'Tasks'}
+                {totalActionable} {totalActionable === 1 ? 'Item' : 'Items'}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {tasksDueToday.length > 0 && (
-                <span className="text-warning font-medium">
-                  {tasksDueToday.length} due today
+            <p className="text-sm text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
+              {todayEvents.length > 0 && (
+                <span className="text-primary font-medium flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {todayEvents.length} event{todayEvents.length !== 1 ? 's' : ''} today
                 </span>
               )}
-              {tasksDueToday.length > 0 && overdueCount > 0 && ' · '}
+              {tasksDueToday.length > 0 && (
+                <span className="text-warning font-medium">
+                  {tasksDueToday.length} task{tasksDueToday.length !== 1 ? 's' : ''} due
+                </span>
+              )}
               {overdueCount > 0 && (
                 <span className="text-destructive font-medium">
                   {overdueCount} overdue
@@ -110,26 +147,38 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
         </div>
         
         <div className="flex items-center gap-2">
-          {tasksDueToday.length > 0 && tasksDueToday.length <= 3 && (
+          {/* Show today's calendar events as preview badges */}
+          {todayEvents.length > 0 && todayEvents.length <= 3 && (
             <div className="hidden sm:flex items-center gap-2 mr-2">
-              {tasksDueToday.slice(0, 3).map((task) => (
+              {todayEvents.slice(0, 3).map((event) => (
                 <Badge 
-                  key={task.id} 
+                  key={event.id} 
                   variant="outline" 
-                  className="text-xs max-w-[150px] truncate"
+                  className="text-xs max-w-[150px] truncate border-primary/30 text-primary"
                 >
-                  {task.title}
+                  {event.title}
                 </Badge>
               ))}
             </div>
           )}
           <Button
-            onClick={() => navigate('/checklist')}
-            className="gap-2 bg-warning hover:bg-warning/90 text-warning-foreground"
+            onClick={() => navigate('/calendar')}
+            variant="outline"
+            size="sm"
+            className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
           >
-            View Tasks
-            <ArrowRight className="h-4 w-4" />
+            <Calendar className="h-4 w-4" />
+            Calendar
           </Button>
+          {(tasksDueToday.length > 0 || overdueCount > 0) && (
+            <Button
+              onClick={() => navigate('/checklist')}
+              className="gap-2 bg-warning hover:bg-warning/90 text-warning-foreground"
+            >
+              View Tasks
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
