@@ -1,107 +1,96 @@
 
 
-## Simplify Financials Tab Layout
+## Make Expense Rows Clickable and Show Cents
 
-The current Financials tab has too much visual clutter. The bar chart labels overlap, and the donut chart is overwhelmed with labels. Here's a cleaner approach.
+Two issues to fix on the Budget page expenses table:
 
----
-
-## Current Problems
-
-| Issue | Component |
-|-------|-----------|
-| Overlapping category labels | Budget vs Actual bar chart |
-| Too many labels around donut | Spending Distribution pie chart |
-| Dense breakdown table | Profit Calculator |
-| Visual overload | Both cards side-by-side |
-
----
-
-## Solution: Simplify Both Components
-
-### 1. Profit Calculator - Streamline the breakdown
-
-**Remove the detailed line-item breakdown table** (Purchase Price, Rehab Cost, Closing Costs, etc.). Keep only:
-- Input fields (Purchase Price, ARV)
-- 78% Rule indicator
-- Profit and ROI result boxes
-
-The breakdown details can be viewed by hovering or expanding if needed later.
-
-### 2. Spending Chart - Remove the donut, improve the bar chart
-
-**Remove the Spending Distribution donut chart entirely** - it duplicates information from the bar chart and creates label chaos.
-
-**Improve the bar chart:**
-- Only show top 5-6 categories with spending (most significant)
-- Increase Y-axis width to prevent label truncation
-- Remove the "estimated" bar - just show actual spending for simplicity
-- Add a "View All" link to the Budget page for full breakdown
-
----
-
-## Visual Layout After Changes
-
-```text
-┌─────────────────────────────────┐  ┌─────────────────────────────────┐
-│ 🧮 Profit Calculator     [Save] │  │ 📈 Spending by Category         │
-├─────────────────────────────────┤  ├─────────────────────────────────┤
-│ Purchase Price    │    ARV      │  │                                 │
-│ [$ 154000]        │ [$ 260000]  │  │  Flooring         ████████ $6.5k│
-├─────────────────────────────────┤  │  Roofing          ██████  $5.4k │
-│ ✓ 78% Rule: Max offer $164,219  │  │  Drain Line       ████████ $12k │
-├─────────────────────────────────┤  │  Painting         ███     $2.5k │
-│ ┌─────────────┐ ┌─────────────┐ │  │  Electrical       ██      $1.1k │
-│ │ Est. Profit │ │     ROI     │ │  │                                 │
-│ │   $47,199   │ │    24.5%    │ │  │ Total: $38,581                  │
-│ └─────────────┘ └─────────────┘ │  │                                 │
-└─────────────────────────────────┘  └─────────────────────────────────┘
-```
+| Issue | Fix |
+|-------|-----|
+| Clicking expense rows doesn't open details/receipt | Add click-to-open modal like Expenses page |
+| Amounts show $82 instead of $82.45 | Change formatCurrency to include cents |
 
 ---
 
 ## Technical Changes
 
-### File: `src/components/project/ProfitCalculator.tsx`
+### File: `src/pages/ProjectBudget.tsx`
 
-**Remove lines 147-173** (the breakdown section with all the line items)
+**1. Add receipt_url to DBExpense interface (around line 79-92)**
 
-This removes:
-- Purchase Price row
-- Rehab Cost row
-- Est. Closing Costs row
-- Est. Holding Costs row
-- Total Investment row
-- ARV (Sale Price) row
+Add these optional fields to the interface:
+- `notes?: string | null`
+- `receipt_url?: string | null`
 
-Keep the inputs, 78% rule, and profit/ROI boxes.
+**2. Add missing imports**
 
-### File: `src/components/project/SpendingChart.tsx`
+Import the `ExpenseDetailModal` component and `Paperclip` icon.
 
-1. **Remove the entire Pie Chart section** (lines 123-160)
-2. **Update the bar chart**:
-   - Filter to show only top 6 categories by actual spending
-   - Remove the "estimated" bar - only show actual spending
-   - Increase Y-axis width from 80 to 120 for better label visibility
-   - Sort bars by spending amount (descending)
-   - Update title from "Budget vs Actual by Category" to "Spending by Category"
-3. **Add total spent display** at the bottom
+**3. Add state for detail modal**
 
----
+Add state variables:
+- `selectedExpense` - the expense to show details for
+- `detailModalOpen` - controls the modal visibility
 
-## Files to Edit
+**4. Update formatCurrency function (around line 212-219)**
 
-| File | Changes |
-|------|---------|
-| `src/components/project/ProfitCalculator.tsx` | Remove detailed breakdown table (lines 147-173) |
-| `src/components/project/SpendingChart.tsx` | Remove pie chart, simplify bar chart to top 6 actual spending |
+Change:
+```typescript
+minimumFractionDigits: 0,
+maximumFractionDigits: 0,
+```
+
+To:
+```typescript
+minimumFractionDigits: 2,
+```
+
+This will display $82.45 instead of $82.
+
+**5. Make expense table rows clickable (around line 1164)**
+
+Add `onClick` handler to open the detail modal when clicking a row:
+```typescript
+onClick={() => {
+  setSelectedExpense(exp);
+  setDetailModalOpen(true);
+}}
+```
+
+Add `cursor-pointer` to the row class.
+
+**6. Show receipt indicator icon (around line 1181)**
+
+Add a Paperclip icon next to the amount when `receipt_url` exists:
+```tsx
+{exp.receipt_url && (
+  <Paperclip className="h-4 w-4 text-primary" />
+)}
+```
+
+**7. Add ExpenseDetailModal to the JSX (after line 1299)**
+
+Add the modal component to view expense details and attached receipts:
+```tsx
+<ExpenseDetailModal
+  open={detailModalOpen}
+  onOpenChange={setDetailModalOpen}
+  expense={selectedExpense ? {
+    ...selectedExpense,
+    receipt_url: selectedExpense.receipt_url || null,
+    notes: selectedExpense.notes || null,
+    source: selectedExpense.isQuickBooks ? 'quickbooks' : 'manual',
+  } : null}
+  projectName={project?.name || ''}
+  categoryLabel={selectedExpense ? getCategoryLabel(selectedExpense.category_id) : ''}
+  onExpenseUpdated={refreshData}
+/>
+```
 
 ---
 
 ## Result
 
-A cleaner, more scannable Financials view that shows:
-- Key profit metrics without overwhelming detail
-- Top spending categories at a glance
-- Clear visual hierarchy with less noise
+- Clicking any expense row opens the detail modal showing notes, receipt, and full details
+- Receipt attachments are indicated with a paperclip icon
+- Amounts display with cents (e.g., $82.45 instead of $82)
 
