@@ -154,10 +154,7 @@ export function BusinessQuickBooksIntegration({ onExpenseImported }: BusinessQui
   return (
     <div className="space-y-4">
       {/* SmartSplit Receipt Upload - Always visible */}
-      <SmartSplitReceiptUpload 
-        onReceiptProcessed={onExpenseImported} 
-        onRefreshQBExpenses={fetchPendingExpenses}
-      />
+      <SmartSplitReceiptUpload onReceiptProcessed={onExpenseImported} />
       
       {/* QuickBooks Integration Panel */}
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
