@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { formatDisplayDateLong } from '@/lib/dateUtils';
 
 interface ExpenseDetailModalProps {
   open: boolean;
@@ -77,12 +78,7 @@ export function ExpenseDetailModal({
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return formatDisplayDateLong(date);
   };
 
   const uploadReceipt = async (file: File): Promise<string | null> => {

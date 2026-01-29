@@ -4,7 +4,8 @@ import { AlertTriangle, ArrowRight, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { isToday, isPast, startOfDay, parseISO } from 'date-fns';
+import { isToday, isPast, startOfDay } from 'date-fns';
+import { parseDateString } from '@/lib/dateUtils';
 import type { Task } from '@/types/task';
 
 interface CalendarEvent {
@@ -111,8 +112,8 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
       const today = startOfDay(new Date());
       const todaysCalendarEvents: CalendarEvent[] = (eventsData || [])
         .filter((e) => {
-          const start = startOfDay(parseISO(e.start_date));
-          const end = startOfDay(parseISO(e.end_date));
+          const start = startOfDay(parseDateString(e.start_date));
+          const end = startOfDay(parseDateString(e.end_date));
           return today >= start && today <= end;
         })
         .map((e) => ({

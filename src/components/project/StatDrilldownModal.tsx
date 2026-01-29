@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { DollarSign, TrendingUp, TrendingDown, Receipt, Calendar, CreditCard, FileText, Banknote } from 'lucide-react';
+import { formatDisplayDate } from '@/lib/dateUtils';
 
 interface Category {
   id: string;
@@ -56,11 +57,7 @@ export function StatDrilldownModal({
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return formatDisplayDate(date);
   };
 
   const getCategoryLabel = (categoryId: string) => {

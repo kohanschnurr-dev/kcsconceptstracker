@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BUDGET_CATEGORIES, type ProjectType } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDateString } from '@/lib/dateUtils';
 
 interface NewProjectModalProps {
   open: boolean;
@@ -25,7 +26,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [totalBudget, setTotalBudget] = useState('');
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(formatDateString(new Date()));
   const [projectType, setProjectType] = useState<ProjectType>(defaultProjectType);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -99,7 +100,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
       setName('');
       setAddress('');
       setTotalBudget('');
-      setStartDate(new Date().toISOString().split('T')[0]);
+      setStartDate(formatDateString(new Date()));
       setProjectType(defaultProjectType);
       onOpenChange(false);
       onProjectCreated?.();

@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Download, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
 import { BUDGET_CATEGORIES } from '@/types';
 import { toast } from 'sonner';
+import { formatDisplayDateNumeric } from '@/lib/dateUtils';
 
 interface Expense {
   id: string;
@@ -65,11 +66,7 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+    return formatDisplayDateNumeric(date);
   };
 
   const calculateCategorySpending = () => {

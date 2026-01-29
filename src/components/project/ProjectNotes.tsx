@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { formatDisplayDate, parseDateString } from '@/lib/dateUtils';
 
 interface Note {
   id: string;
@@ -94,17 +95,14 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return formatDisplayDate(date);
   };
 
   const isUpcoming = (reminderDate: string | null) => {
     if (!reminderDate) return false;
-    const reminder = new Date(reminderDate);
+    const reminder = parseDateString(reminderDate);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const diff = (reminder.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
     return diff >= 0 && diff <= 3;
   };

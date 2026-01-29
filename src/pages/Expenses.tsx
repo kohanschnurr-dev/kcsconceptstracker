@@ -26,6 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
+import { formatDisplayDate } from '@/lib/dateUtils';
 
 interface DBProject {
   id: string;
@@ -198,11 +199,7 @@ export default function Expenses() {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return formatDisplayDate(date);
   };
 
   const getProjectName = (projectId: string) => {

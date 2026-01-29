@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BUSINESS_EXPENSE_CATEGORIES } from '@/types';
+import { formatDisplayDateLong } from '@/lib/dateUtils';
 
 interface BusinessExpenseDetailModalProps {
   open: boolean;
@@ -68,12 +69,7 @@ export function BusinessExpenseDetailModal({
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return formatDisplayDateLong(date);
   };
 
   const getCategoryLabel = (category: string) => {

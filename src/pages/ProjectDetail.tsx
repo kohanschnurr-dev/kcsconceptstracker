@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import { parseDateString, formatDisplayDate } from '@/lib/dateUtils';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -182,11 +183,7 @@ export default function ProjectDetail() {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return formatDisplayDate(date);
   };
 
   const getStatusIcon = (status: string) => {
@@ -368,7 +365,7 @@ export default function ProjectDetail() {
                   <PopoverContent className="w-auto p-0" align="start">
                     <CalendarComponent
                       mode="single"
-                      selected={new Date(project.start_date)}
+                      selected={parseDateString(project.start_date)}
                       onSelect={async (date) => {
                         if (!date) return;
                         const newDate = format(date, 'yyyy-MM-dd');
