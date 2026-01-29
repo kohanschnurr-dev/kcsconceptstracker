@@ -1,79 +1,71 @@
 
-## Reorder Sidebar Navigation
+## Fix Amazon Price Extraction
 
-Reordering the navigation items in both the desktop sidebar and mobile navigation to match the requested order.
+The scraper is incorrectly extracting `$10` from Amazon product pages instead of the actual product price. This happens because:
 
-### Requested Order
-1. Dashboard
-2. Daily Logs
-3. Projects
-4. Calendar
-5. Expenses
-6. Budget Calculator
-7. Procurement
-8. Vendors
-9. KCS Concepts
-
-### Current Order (Sidebar.tsx)
-1. Dashboard
-2. Projects
-3. Calendar
-4. Expenses
-5. KCS Concepts
-6. Vendors
-7. Procurement
-8. Daily Logs
-9. Budget Calculator
+1. The current price extraction uses a simple regex that grabs the **first dollar amount** found in the markdown
+2. Amazon pages contain many prices (coupons, delivery fees, other products) before the actual product price
+3. The `$10` is likely from a delivery fee or coupon that appears early in the page content
 
 ---
 
-## Files to Update
+## Solution
 
-### 1. Desktop Sidebar
-**File: `src/components/layout/Sidebar.tsx`** (lines 19-29)
+Improve the Amazon-specific price extraction in the edge function by:
 
-Reorder the `navItems` array:
-```tsx
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/', exact: true },
-  { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
-  { icon: FolderKanban, label: 'Projects', path: '/projects' },
-  { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
-  { icon: Receipt, label: 'Expenses', path: '/expenses' },
-  { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
-  { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
-  { icon: Users, label: 'Vendors', path: '/vendors' },
-  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
-];
-```
-
-### 2. Mobile Navigation
-**File: `src/components/layout/MobileNav.tsx`** (lines 21-30)
-
-Update to match and add the missing Calendar item:
-```tsx
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
-  { icon: FolderKanban, label: 'Projects', path: '/projects' },
-  { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
-  { icon: Receipt, label: 'Expenses', path: '/expenses' },
-  { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
-  { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
-  { icon: Users, label: 'Vendors', path: '/vendors' },
-  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
-];
-```
-
-Also need to add the `CalendarDays` import to MobileNav.tsx.
+1. **Add Amazon-specific price patterns** that target known price element structures
+2. **Look for product price context** (e.g., "Price:", main price container patterns)
+3. **Filter out common false positives** like delivery fees, coupon amounts
+4. **Use multiple price candidates** and select the most likely product price based on:
+   - Position in the page (main content area)
+   - Context keywords
+   - Reasonable price range for the product category
 
 ---
 
-## Summary
+## Technical Changes
 
-| File | Change |
-|------|--------|
-| `Sidebar.tsx` | Reorder navItems array to new order |
-| `MobileNav.tsx` | Add CalendarDays import, reorder navItems to match |
+**File: `supabase/functions/scrape-product-url/index.ts`**
 
-Both navigation menus will be consistent with the new order.
+### 1. Add Amazon-specific HTML price extraction (new function)
+
+Add a function to extract prices from HTML specifically for Amazon:
+- Target Amazon's known price element patterns (e.g., `apexPriceToPay`, `corePrice_feature_div`)
+- Look for `data-a-color="price"` attributes
+- Parse the price span structures Amazon uses
+
+### 2. Update extractProductData function
+
+For Amazon products:
+- First try HTML-based price extraction (more reliable)
+- Fall back to markdown extraction with better filtering
+- Skip prices under $5 as likely delivery/add-on prices
+- Look for prices near keywords like "current price", "with coupon", "list price"
+
+### 3. Add price sanity checks
+
+- If multiple prices found, prefer ones in reasonable range for product type
+- Ignore prices that are suspiciously low (under $5 for most products)
+- Use the crossed-out "list price" as a validation check
+
+---
+
+## Code Changes Summary
+
+```text
+Lines 185-198: Replace simple price extraction with:
+├── Amazon-specific HTML price extraction function
+├── Context-aware markdown price parsing
+├── Filter for delivery fees ($5.99, $10.00 common values)
+└── Price validation against scraped specs
+```
+
+The specs object already contains price hints like `"$179.99$179.99": "$149.99$149.99"` which can be used as validation.
+
+---
+
+## Expected Outcome
+
+- Amazon products will show correct product prices (e.g., $179.99) instead of $10.00
+- No changes to Home Depot, Lowe's, or other store price extraction
+- Backwards compatible - won't break existing items
