@@ -1,69 +1,141 @@
 
 
-## Fix Total Budget Calculation on Projects Page
+## Fix Site-Wide Date Timezone Offset Issue
 
-The project cards are showing a static `total_budget` from the database instead of dynamically calculating it from category budgets. This causes the budget progress to be inaccurate when category budgets change.
-
----
-
-## Current Problem
-
-| Component | Issue |
-|-----------|-------|
-| Projects.tsx line 75 | Uses `p.total_budget` (static database field) |
-| ProjectCard.tsx line 16 | Calculates percentage using `project.totalBudget` |
-
-The Wales Rental shows $52,100 total, but this value doesn't update when you modify category budgets.
+When you select January 16th as a start date, it shows as January 15th. This is happening because JavaScript's `new Date()` and date-fns' `parseISO()` interpret `YYYY-MM-DD` strings as UTC midnight, which shifts to the previous day in US timezones.
 
 ---
 
-## Technical Fix
+## Root Cause
 
-### File: `src/pages/Projects.tsx`
+| What Happens | Why It's Wrong |
+|--------------|----------------|
+| `"2026-01-16"` stored in database | Correct value |
+| `new Date("2026-01-16")` → UTC midnight | Interpreted as Jan 16 00:00:00 UTC |
+| Display in CST (UTC-6) | Shows as Jan 15 18:00:00 CST = **wrong day** |
 
-**Change the totalBudget calculation (line 71-88)**
+The same issue occurs with `parseISO("2026-01-16")` from date-fns.
 
-Instead of:
+---
+
+## Solution
+
+Create centralized date utility functions in `src/lib/dateUtils.ts` that parse date strings using local components instead of UTC, and update all components to use them.
+
+### New File: `src/lib/dateUtils.ts`
+
 ```typescript
-totalBudget: p.total_budget,
+/**
+ * Parse a YYYY-MM-DD date string as local date (not UTC)
+ * Avoids the timezone offset issue where "2026-01-16" becomes Jan 15 in CST
+ */
+export function parseDateString(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * Format a Date to YYYY-MM-DD string using local components
+ * Use this instead of toISOString().split('T')[0]
+ */
+export function formatDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Format a date string for display (e.g., "Jan 16, 2026")
+ */
+export function formatDisplayDate(dateStr: string, options?: Intl.DateTimeFormatOptions): string {
+  const date = parseDateString(dateStr);
+  return date.toLocaleDateString('en-US', options || {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
 ```
 
-Calculate from category budgets:
-```typescript
-const projectCategories = (categoriesData || [])
-  .filter((c: DBCategory) => c.project_id === p.id)
-  .map((c: DBCategory) => ({
-    id: c.id,
-    projectId: c.project_id,
-    category: c.category as CategoryBudget['category'],
-    estimatedBudget: c.estimated_budget,
-    actualSpent: expensesByCategory[c.id] || 0,
-  }));
+---
 
-// Calculate total budget from sum of category estimated budgets
-const calculatedTotalBudget = projectCategories.reduce(
-  (sum, cat) => sum + cat.estimatedBudget, 
-  0
-);
+## Files to Update
 
-return {
-  id: p.id,
-  name: p.name,
-  address: p.address,
-  totalBudget: calculatedTotalBudget,  // Dynamic calculation
-  startDate: p.start_date,
-  status: p.status === 'on_hold' ? 'on-hold' : p.status,
-  projectType: p.project_type || 'fix_flip',
-  categories: projectCategories,
-};
-```
+### High Priority (Displaying incorrectly)
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `src/pages/ProjectDetail.tsx` | `formatDate()` uses `new Date(date)` | Use `parseDateString()` |
+| `src/pages/ProjectDetail.tsx` | Calendar `selected={new Date(project.start_date)}` | Use `parseDateString()` |
+| `src/components/dashboard/ProjectCard.tsx` | `formatDate()` uses `new Date(date)` | Use `parseDateString()` |
+| `src/pages/Calendar.tsx` | Uses `parseISO()` for dates | Use `parseDateString()` |
+| `src/components/project/ProjectCalendar.tsx` | Uses `parseISO()` for dates | Use `parseDateString()` |
+| `src/components/dashboard/CalendarGlanceWidget.tsx` | Uses `parseISO()` for dates | Use `parseDateString()` |
+| `src/components/dashboard/TasksDueTodayBanner.tsx` | Uses `parseISO()` for dates | Use `parseDateString()` |
+
+### Medium Priority (Other date displays)
+
+| File | Issue |
+|------|-------|
+| `src/pages/Expenses.tsx` | `formatDate()` |
+| `src/pages/BusinessExpenses.tsx` | `formatDate()` |
+| `src/pages/ProjectBudget.tsx` | `formatDate()` |
+| `src/pages/DailyLogs.tsx` | `formatDate()` |
+| `src/components/ExpenseDetailModal.tsx` | `formatDate()` |
+| `src/components/BusinessExpenseDetailModal.tsx` | `formatDate()` |
+| `src/components/SmartSplitReceiptUpload.tsx` | `formatDate()` |
+| `src/components/project/ProjectNotes.tsx` | `formatDate()` |
+| `src/components/project/ProjectVendors.tsx` | `formatDate()` |
+| `src/components/project/MilestonesTimeline.tsx` | `formatDate()` |
+| `src/components/project/StatDrilldownModal.tsx` | `formatDate()` |
+| `src/components/project/ExportReports.tsx` | `formatDate()` |
+| `src/components/dashboard/RecentExpenses.tsx` | `formatDate()` |
+
+### Also Fix: New date initialization
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `src/components/NewProjectModal.tsx` | Uses `new Date().toISOString().split('T')[0]` | Use `formatDateString(new Date())` |
+
+---
+
+## Implementation Steps
+
+1. Create `src/lib/dateUtils.ts` with the helper functions
+
+2. Update `src/pages/ProjectDetail.tsx`:
+   - Import `parseDateString` and `formatDisplayDate`
+   - Replace `formatDate()` function body
+   - Change `selected={new Date(project.start_date)}` to `selected={parseDateString(project.start_date)}`
+
+3. Update `src/components/dashboard/ProjectCard.tsx`:
+   - Import and use `formatDisplayDate()`
+
+4. Update `src/pages/Calendar.tsx`:
+   - Replace `parseISO(event.start_date)` with `parseDateString(event.start_date)`
+   - Same for `end_date` and `expected_date`
+
+5. Update `src/components/project/ProjectCalendar.tsx`:
+   - Same parseISO replacements
+
+6. Update `src/components/dashboard/CalendarGlanceWidget.tsx`:
+   - Replace parseISO with parseDateString
+
+7. Update `src/components/dashboard/TasksDueTodayBanner.tsx`:
+   - Replace parseISO with parseDateString
+
+8. Update remaining 13 files with `formatDate()` functions to use centralized utilities
+
+9. Update `src/components/NewProjectModal.tsx`:
+   - Use `formatDateString(new Date())` for initialization
 
 ---
 
 ## Result
 
-- Total budget updates automatically when category budgets change
-- Budget progress percentage reflects current category totals
-- Remaining amount calculates correctly
-- Consistent with how ProjectBudget.tsx already handles this
+- All dates display correctly in the user's local timezone
+- January 16th stays January 16th regardless of timezone
+- Centralized utilities prevent future timezone bugs
+- Consistent date handling across the entire application
 
