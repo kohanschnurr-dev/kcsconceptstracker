@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
-import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Package, Wrench, StickyNote, Split } from 'lucide-react';
+import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Package, Wrench, StickyNote, Split, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -126,16 +126,27 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     description: string | null;
   } | null>(null);
 
-  // Auto-detect expense types when pending expenses change
+  // Auto-detect expense types and pre-fill notes when pending expenses change
   useEffect(() => {
     const newTypes: Record<string, 'product' | 'labor'> = {};
+    const newNotes: Record<string, string> = {};
+    
     pendingExpenses.forEach(expense => {
+      // Auto-detect expense type if not already set
       if (!selectedExpenseType[expense.id]) {
         newTypes[expense.id] = detectExpenseType(expense.vendor_name, expense.description);
       }
+      // Pre-fill notes from SmartSplit matched receipts
+      if (!expenseNotes[expense.id] && (expense as any).notes) {
+        newNotes[expense.id] = (expense as any).notes;
+      }
     });
+    
     if (Object.keys(newTypes).length > 0) {
       setSelectedExpenseType(prev => ({ ...prev, ...newTypes }));
+    }
+    if (Object.keys(newNotes).length > 0) {
+      setExpenseNotes(prev => ({ ...prev, ...newNotes }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingExpenses]);
@@ -366,7 +377,15 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                           <div className="flex items-start gap-3">
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
-                                <p className="font-medium">{expense.vendor_name || 'Unknown Vendor'}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{expense.vendor_name || 'Unknown Vendor'}</p>
+                                  {expense.receipt_url && (
+                                    <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30 gap-1">
+                                      <Receipt className="h-3 w-3" />
+                                      Receipt
+                                    </Badge>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-1">
                                   <p className="font-mono font-semibold">
                                     {formatCurrency(expense.amount)}

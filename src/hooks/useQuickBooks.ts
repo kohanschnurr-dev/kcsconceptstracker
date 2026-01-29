@@ -14,6 +14,8 @@ interface QuickBooksExpense {
   is_imported: boolean;
   project_id: string | null;
   category_id: string | null;
+  notes: string | null;
+  receipt_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +33,8 @@ const MOCK_QB_EXPENSES: QuickBooksExpense[] = [
     is_imported: false,
     project_id: null,
     category_id: null,
+    notes: null,
+    receipt_url: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
@@ -45,6 +49,8 @@ const MOCK_QB_EXPENSES: QuickBooksExpense[] = [
     is_imported: false,
     project_id: null,
     category_id: null,
+    notes: null,
+    receipt_url: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
@@ -59,6 +65,8 @@ const MOCK_QB_EXPENSES: QuickBooksExpense[] = [
     is_imported: false,
     project_id: null,
     category_id: null,
+    notes: null,
+    receipt_url: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
@@ -73,6 +81,8 @@ const MOCK_QB_EXPENSES: QuickBooksExpense[] = [
     is_imported: false,
     project_id: null,
     category_id: null,
+    notes: null,
+    receipt_url: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
@@ -87,6 +97,8 @@ const MOCK_QB_EXPENSES: QuickBooksExpense[] = [
     is_imported: false,
     project_id: null,
     category_id: null,
+    notes: null,
+    receipt_url: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
@@ -101,6 +113,8 @@ const MOCK_QB_EXPENSES: QuickBooksExpense[] = [
     is_imported: false,
     project_id: null,
     category_id: null,
+    notes: null,
+    receipt_url: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
@@ -115,6 +129,8 @@ const MOCK_QB_EXPENSES: QuickBooksExpense[] = [
     is_imported: false,
     project_id: null,
     category_id: null,
+    notes: null,
+    receipt_url: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
