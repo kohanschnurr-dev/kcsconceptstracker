@@ -240,6 +240,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     <div className="space-y-4">
       {/* SmartSplit Receipt Upload */}
       <SmartSplitReceiptUpload 
+        projects={projects}
         onReceiptProcessed={onExpenseImported} 
         onRefreshQBExpenses={fetchPendingExpenses}
       />
