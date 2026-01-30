@@ -759,15 +759,40 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
                   </div>
                   
                   {/* Split Total */}
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-                    <span className="text-sm text-muted-foreground">Split Total</span>
-                    <span className="font-mono font-semibold">
-                      {formatCurrency(
-                        selectedMatch.receipt.line_items.reduce((sum, item) => sum + item.total_price, 0) + 
-                        (selectedMatch.receipt.tax_amount || 0)
-                      )}
-                    </span>
-                  </div>
+                  {(() => {
+                    const lineItemsTotal = selectedMatch.receipt.line_items.reduce((sum, item) => sum + item.total_price, 0);
+                    const splitTotal = lineItemsTotal + (selectedMatch.receipt.tax_amount || 0);
+                    const transactionAmount = selectedMatch.qbExpense.amount;
+                    const difference = Math.abs(splitTotal - transactionAmount);
+                    const hasMismatch = difference > 0.01;
+                    
+                    return (
+                      <div className="space-y-2 mt-3 pt-3 border-t border-border">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Split Total</span>
+                          <span className={cn(
+                            "font-mono font-semibold",
+                            hasMismatch && "text-warning"
+                          )}>
+                            {formatCurrency(splitTotal)}
+                          </span>
+                        </div>
+                        
+                        {hasMismatch && (
+                          <div className="flex items-start gap-2 p-2 rounded bg-warning/10 border border-warning/30">
+                            <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                            <div className="text-xs text-warning">
+                              <p className="font-medium">Total mismatch detected</p>
+                              <p className="text-warning/80">
+                                Split total ({formatCurrency(splitTotal)}) differs from transaction ({formatCurrency(transactionAmount)}) by {formatCurrency(difference)}. 
+                                Some items may not have been parsed correctly.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
