@@ -1,130 +1,240 @@
 
 
-## Fix: Amazon Receipt Price Calculation Logic
+## Fix: Split Receipt Import by Category
 
 ### Problem
-The AI prompt has conflicting instructions causing incorrect price calculations:
-- **Current (Wrong)**: Treats "$30.00" as line total, divides by quantity → unit_price = $15.00
-- **Correct**: "$30.00" IS the unit price, multiply by quantity → total_price = $60.00
-
-The format "2 x $30.00" clearly means: **2 units × $30 each = $60 total**
+The SmartSplit system shows individual line items with their categories, but when you click "Match & Import", it creates **one expense record** using only the first category. All items get lumped together under "Bathroom" instead of being split into separate expenses per category.
 
 ---
 
 ### Root Cause
 
-The Amazon-specific rules (lines 96-118) contradict the general rules:
+In `SmartSplitReceiptUpload.tsx`, the `finalizeImport` function (lines 404-495) does this:
 
-| Section | What It Says | Result |
-|---------|--------------|--------|
-| Amazon Rules | Price is LINE TOTAL, divide to get unit | WRONG |
-| General Rules | "2 x $14.99" → total=29.98 (multiply) | CORRECT |
+```typescript
+// Line 416-418: Only uses the FIRST category
+const primaryCategory = (editableCategories[0] || 
+  selectedMatch.receipt.line_items?.[0]?.suggested_category || 
+  'misc') as BudgetCategory;
 
-The AI follows the Amazon rules which appear first and are emphasized.
+// Line 456-468: Creates ONE expense record with that category
+await supabase.from('quickbooks_expenses').update({
+  is_imported: true,
+  category_id: categoryId,  // Single category for entire $671.60
+  ...
+})
+```
 
 ---
 
 ### Solution
 
-Update the Amazon section to match reality:
+**Group line items by category**, then create **multiple expense records** - one for each category with its proportional share of the total amount.
 
-**Format "X x $Y.YY":**
-- X = quantity  
-- $Y.YY = UNIT PRICE  
-- total_price = X × $Y.YY  
+Example for your $671.60 Amazon receipt:
+| Category | Items | Amount |
+|----------|-------|--------|
+| Bathroom | Accessories Set, Towel Bars | $120.00 |
+| Electrical | Light Switch, Outlet Covers | $89.97 |
+| Hardware | Door Hinges, Screws | $45.00 |
+| Lighting | LED Bulbs | $55.99 |
+| ... | ... | ... |
+
+Each category becomes a **separate row** in `quickbooks_expenses`.
 
 ---
 
 ### Implementation
 
-**File:** `supabase/functions/parse-receipt-image/index.ts`
+**File:** `src/components/SmartSplitReceiptUpload.tsx`
 
-**Replace lines 90-138** with corrected prompt:
+#### Step 1: Add helper to group items by category
 
-```text
-You are a precise receipt parsing expert. Extract EVERY line item with ACCURATE quantities.
-
-═══════════════════════════════════════════════════════
-AMAZON RECEIPTS - SPECIAL HANDLING (READ CAREFULLY!)
-═══════════════════════════════════════════════════════
-
-Amazon shows: "X x $Y.YY" where X is quantity and $Y.YY is the UNIT PRICE!
-
-EXAMPLE 1:
-  "Bathroom Accessories Set"
-  "2 x $30.00"
+```typescript
+// Group line items by their assigned category
+const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>) => {
+  const groups: Record<string, { items: LineItem[], total: number }> = {};
   
-  → item_name: "Bathroom Accessories Set"
-  → quantity: 2
-  → unit_price: 30.00  (this is what's shown!)
-  → total_price: 60.00  (calculated: 2 × 30.00)
-
-EXAMPLE 2:
-  "LED Light Bulb 4-pack"
-  "1 x $55.99"
+  lineItems.forEach((item, idx) => {
+    const category = categories[idx] || item.suggested_category || 'misc';
+    if (!groups[category]) {
+      groups[category] = { items: [], total: 0 };
+    }
+    groups[category].items.push(item);
+    groups[category].total += item.total_price;
+  });
   
-  → quantity: 1
-  → unit_price: 55.99
-  → total_price: 55.99
-
-KEY RULES FOR AMAZON:
-1. Look for "X x $Y.YY" pattern - X is quantity
-2. The dollar amount is the UNIT PRICE (per item)
-3. Calculate: total_price = quantity × unit_price
-4. Don't skip items - every product line needs extraction
-5. Ignore "Sold by:" and "Gift options:" lines
-
-═══════════════════════════════════════════════════════
-GENERAL RULES (ALL RECEIPTS)
-═══════════════════════════════════════════════════════
-
-VENDOR NAME: Extract STORE name (Amazon, Home Depot, Lowe's) NOT buyer name
-
-QUANTITY PATTERNS:
-- "2 x $14.99" → qty=2, unit_price=14.99, total=29.98
-- "Qty: 3  $45.00" → qty=3, unit=15.00, total=45.00
-- No quantity shown → qty=1
-
-MATH VALIDATION:
-- Each item: total_price = quantity × unit_price
-- All items: sum(total_price) ≈ subtotal
-- Final: subtotal + tax ≈ total_amount
-
-CATEGORIES:
-plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, lighting, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, misc
+  return groups;
+};
 ```
 
-**Also update the user prompt (lines 145-150)** to match:
+#### Step 2: Modify `finalizeImport` to create multiple expense records
+
+Replace the single-category logic with:
+
+```typescript
+const finalizeImport = async () => {
+  if (!selectedMatch || !selectedProject) return;
+  setIsImporting(true);
+
+  try {
+    // Group line items by category
+    const categoryGroups = groupByCategory(
+      selectedMatch.receipt.line_items || [],
+      editableCategories
+    );
+
+    // Calculate tax per category (proportional)
+    const subtotal = selectedMatch.receipt.subtotal || 
+      selectedMatch.receipt.line_items?.reduce((sum, i) => sum + i.total_price, 0) || 0;
+    const taxAmount = selectedMatch.receipt.tax_amount || 0;
+
+    // Track the original QB expense ID
+    const originalQbExpenseId = selectedMatch.qbExpense.id;
+    const originalQbId = selectedMatch.qbExpense.qb_id;
+
+    // Create expense record for each category
+    for (const [category, group] of Object.entries(categoryGroups)) {
+      // Calculate proportional tax
+      const proportion = subtotal > 0 ? group.total / subtotal : 0;
+      const categoryTax = Math.round(taxAmount * proportion * 100) / 100;
+      const categoryAmount = group.total + categoryTax;
+
+      // Build notes from items in this category
+      const itemNotes = group.items
+        .map(item => `${item.item_name} (${item.quantity}x)`)
+        .join(', ');
+
+      // Find or create project_category
+      const { data: existingCategory } = await supabase
+        .from('project_categories')
+        .select('id')
+        .eq('project_id', selectedProject)
+        .eq('category', category)
+        .maybeSingle();
+
+      let categoryId: string;
+      if (existingCategory) {
+        categoryId = existingCategory.id;
+      } else {
+        const { data: newCategory, error } = await supabase
+          .from('project_categories')
+          .insert({ project_id: selectedProject, category, estimated_budget: 0 })
+          .select('id')
+          .single();
+        if (error) throw error;
+        categoryId = newCategory.id;
+      }
+
+      // Create a new expense record for this category
+      // First one updates the original, rest are inserts
+      if (Object.keys(categoryGroups).indexOf(category) === 0) {
+        // Update original QB expense
+        await supabase
+          .from('quickbooks_expenses')
+          .update({
+            is_imported: true,
+            amount: categoryAmount,
+            category_id: categoryId,
+            project_id: selectedProject,
+            expense_type: expenseType,
+            notes: itemNotes,
+            receipt_url: selectedMatch.receipt.receipt_image_url,
+          })
+          .eq('id', originalQbExpenseId);
+      } else {
+        // Insert additional expense records
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase
+          .from('quickbooks_expenses')
+          .insert({
+            user_id: user!.id,
+            qb_id: `${originalQbId}_split_${category}`,
+            vendor_name: selectedMatch.qbExpense.vendor_name,
+            amount: categoryAmount,
+            date: selectedMatch.qbExpense.date,
+            description: selectedMatch.qbExpense.description,
+            is_imported: true,
+            project_id: selectedProject,
+            category_id: categoryId,
+            expense_type: expenseType,
+            notes: itemNotes,
+            receipt_url: selectedMatch.receipt.receipt_image_url,
+          });
+      }
+    }
+
+    // Mark receipt as imported
+    await supabase
+      .from('pending_receipts')
+      .update({ status: 'imported' })
+      .eq('id', selectedMatch.receipt.id);
+
+    toast({
+      title: 'Expenses imported!',
+      description: `Split ${Object.keys(categoryGroups).length} categories across project.`,
+    });
+
+    // Cleanup and refresh...
+  } catch (error) { ... }
+};
+```
+
+---
+
+### Visual Flow
 
 ```text
-Parse this receipt. Extract EVERY item with CORRECT quantities.
+Before Import:
+┌─────────────────────────────────────────┐
+│ QuickBooks: Amazon $671.60              │
+└─────────────────────────────────────────┘
 
-AMAZON RECEIPT CHECKLIST:
-□ Found "X x $Y.YY" for each item?
-□ X is the quantity, $Y.YY is the UNIT PRICE
-□ Calculated total_price = quantity × unit_price
-□ Sum of all total_prices matches subtotal?
-□ Subtotal + tax matches order total?
+After Import (Current - WRONG):
+┌─────────────────────────────────────────┐
+│ Expense: Amazon | Bathroom | $671.60    │
+└─────────────────────────────────────────┘
+
+After Import (Fixed - CORRECT):
+┌─────────────────────────────────────────┐
+│ Expense: Amazon | Bathroom  | $120.00   │
+├─────────────────────────────────────────┤
+│ Expense: Amazon | Electrical| $89.97    │
+├─────────────────────────────────────────┤
+│ Expense: Amazon | Hardware  | $45.00    │
+├─────────────────────────────────────────┤
+│ Expense: Amazon | Lighting  | $55.99    │
+├─────────────────────────────────────────┤
+│ ... (more categories)                   │
+└─────────────────────────────────────────┘
 ```
+
+---
+
+### Edge Cases Handled
+
+1. **Tax Distribution**: Tax is split proportionally across categories
+2. **Single Category**: If all items have same category, creates one expense (no change)
+3. **Missing Categories**: Falls back to 'misc'
+4. **QB ID Uniqueness**: Split records get `{original_id}_split_{category}` to avoid conflicts
 
 ---
 
 ### Summary of Changes
 
-| Location | Before | After |
-|----------|--------|-------|
-| Line 96 | "price is LINE TOTAL" | "price is UNIT PRICE" |
-| Line 104-105 | divide to get unit | multiply to get total |
-| Line 116-117 | total_price ÷ quantity | quantity × unit_price |
-| Lines 148-150 | divide logic | multiply logic |
+| Location | Change |
+|----------|--------|
+| Lines 403-406 | Add `groupByCategory` helper function |
+| Lines 404-495 | Rewrite `finalizeImport` to loop through category groups |
+| New logic | Calculate proportional tax per category |
+| New logic | Create multiple QB expense records (update first, insert rest) |
 
 ---
 
 ### Expected Results
 
-For "2 x $30.00":
-- **Before**: unit_price=$15.00, total_price=$30.00 (WRONG)
-- **After**: unit_price=$30.00, total_price=$60.00 (CORRECT)
-
-Receipt totals will now match QuickBooks transactions.
+- Each category from the receipt becomes a separate expense row
+- Budget breakdown shows accurate spending per category
+- Tax is distributed proportionally
+- All expenses link back to the same receipt image
 
