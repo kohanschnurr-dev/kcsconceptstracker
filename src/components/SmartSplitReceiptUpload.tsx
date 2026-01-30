@@ -176,6 +176,9 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
           }));
 
           setMatchedReceipts(matches);
+        } else {
+          // Clear matched receipts when none exist (fixes stale UI after deletion)
+          setMatchedReceipts([]);
         }
       } else {
         setPendingReceipts([]);
