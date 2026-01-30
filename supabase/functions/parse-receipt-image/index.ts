@@ -87,53 +87,69 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a receipt parsing expert. Extract detailed information from receipts.
+            content: `You are a precise receipt parsing expert specializing in retail and construction supply receipts.
 
-CRITICAL FOR VENDOR/STORE NAME:
-- The vendor_name MUST be the actual RETAIL STORE where the purchase was made (e.g., "Home Depot", "Lowe's", "Menards", "Ace Hardware", "Amazon", "Walmart", etc.)
-- Look for the store name/logo at the TOP of the receipt - this is usually the largest text or logo
-- Common store indicators: store address, store number, phone number right below the store name
-- DO NOT use the customer's name, company name, or any other entity that is NOT the store
-- If you see "THE HOME DEPOT" or similar branding, use that as the vendor name
-- Ignore any buyer/customer information that might appear on the receipt
-            
-For construction/renovation context, categorize items into these categories:
-- plumbing, electrical, hvac, flooring, paint, cabinets, countertops, tile, lighting, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, trim, fencing, landscaping, misc
+CRITICAL RULES:
 
-Be precise with numbers. Parse all line items you can identify.`
+1. VENDOR NAME:
+   - Extract the RETAIL STORE name from the header/logo (e.g., "Home Depot", "Lowe's", "Amazon", "Menards", "Walmart")
+   - NEVER use buyer/customer names like "KCS Concepts" - these are NOT the vendor
+   - Look for: store branding, address, store number at the top
+
+2. LINE ITEMS - EXTRACT EVERY SINGLE ITEM:
+   - You MUST extract ALL line items from the receipt - do not skip any
+   - For each item: carefully read the quantity and price columns
+   - unit_price = price per single unit
+   - total_price = quantity × unit_price (the extended/line total)
+   - If only one price is shown, it's usually the total_price; calculate unit_price by dividing by quantity
+   - Watch for multi-pack items where quantity > 1
+
+3. PRICE ACCURACY IS CRITICAL:
+   - The sum of all line_items total_price values MUST equal the subtotal
+   - subtotal + tax_amount MUST equal total_amount
+   - Double-check your math before returning
+   - If prices don't add up, re-read the receipt more carefully
+
+4. COMMON RECEIPT FORMATS:
+   - Amazon: Look for "Items Ordered" section, each item has quantity and price
+   - Home Depot/Lowe's: Items listed with SKU, description, qty, and price columns
+   - General format: Description | Qty | Unit Price | Total
+
+5. CATEGORIES (for construction/renovation):
+   plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, lighting, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, misc`
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: `Parse this receipt and extract:
-1. Store/Vendor name - THIS IS THE RETAIL STORE NAME (like "Home Depot", "Lowe's", etc.) - look at the top/header of the receipt for the store branding/logo. Do NOT use the buyer's name or company.
-2. Total amount (final price paid)
-3. Tax amount (if shown)
-4. Subtotal (before tax)
-5. Purchase date
-6. All individual line items with: item name, quantity, unit price, total price, and suggested category for construction/renovation
+                text: `Parse this receipt completely and extract EVERY line item.
 
-Return ONLY valid JSON in this exact format:
+REQUIRED OUTPUT (JSON only, no markdown):
 {
-  "vendor_name": "Store Name",
+  "vendor_name": "Store Name (NOT the buyer)",
   "total_amount": 123.45,
   "tax_amount": 10.20,
   "subtotal": 113.25,
-  "purchase_date": "2025-01-15",
+  "purchase_date": "YYYY-MM-DD",
   "line_items": [
     {
-      "item_name": "Item description",
+      "item_name": "Full item description",
       "quantity": 1,
       "unit_price": 50.00,
       "total_price": 50.00,
-      "suggested_category": "electrical"
+      "suggested_category": "category"
     }
   ]
 }
 
-If you cannot determine a value, use null. For dates, use YYYY-MM-DD format. If the date is unclear, use today's date.`
+VALIDATION CHECKLIST:
+✓ Every item on the receipt is in line_items
+✓ sum(line_items.total_price) ≈ subtotal
+✓ subtotal + tax_amount ≈ total_amount
+✓ vendor_name is the STORE, not the customer
+
+Extract ALL items - missing items will cause reconciliation failures.`
               },
               imageContent
             ]
