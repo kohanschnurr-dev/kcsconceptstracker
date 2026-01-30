@@ -93,28 +93,29 @@ serve(async (req) => {
 AMAZON RECEIPTS - SPECIAL HANDLING (READ CAREFULLY!)
 ═══════════════════════════════════════════════════════
 
-Amazon has a UNIQUE format. The price shown is the LINE TOTAL, not unit price!
+Amazon shows: "X x $Y.YY" where X is quantity and $Y.YY is the UNIT PRICE!
 
 EXAMPLE 1:
-  "Southwire 14/2 NM-B Wire 50ft"
-  "  Qty: 3                    $89.97"
+  "Bathroom Accessories Set"
+  "2 x $30.00"
   
-  → item_name: "Southwire 14/2 NM-B Wire 50ft"
-  → quantity: 3
-  → total_price: 89.97  (this is what's shown!)
-  → unit_price: 29.99   (calculated: 89.97 ÷ 3)
+  → item_name: "Bathroom Accessories Set"
+  → quantity: 2
+  → unit_price: 30.00  (this is what's shown!)
+  → total_price: 60.00  (calculated: 2 × 30.00)
 
 EXAMPLE 2:
-  "LED Light Bulb 4-pack  Qty: 2  $19.98"
+  "LED Light Bulb 4-pack"
+  "1 x $55.99"
   
-  → quantity: 2
-  → total_price: 19.98
-  → unit_price: 9.99
+  → quantity: 1
+  → unit_price: 55.99
+  → total_price: 55.99
 
 KEY RULES FOR AMAZON:
-1. Look for "Qty: X" - this is your quantity
-2. The dollar amount near Qty is the LINE TOTAL
-3. Calculate: unit_price = total_price ÷ quantity
+1. Look for "X x $Y.YY" pattern - X is quantity
+2. The dollar amount is the UNIT PRICE (per item)
+3. Calculate: total_price = quantity × unit_price
 4. Don't skip items - every product line needs extraction
 5. Ignore "Sold by:" and "Gift options:" lines
 
@@ -126,7 +127,7 @@ VENDOR NAME: Extract STORE name (Amazon, Home Depot, Lowe's) NOT buyer name
 
 QUANTITY PATTERNS:
 - "2 x $14.99" → qty=2, unit_price=14.99, total=29.98
-- "Qty: 3  $45.00" → qty=3, total=45.00, unit=15.00
+- "Qty: 3  $45.00" → qty=3, unit=15.00, total=45.00
 - No quantity shown → qty=1
 
 MATH VALIDATION:
@@ -145,10 +146,10 @@ plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, lig
                 text: `Parse this receipt. Extract EVERY item with CORRECT quantities.
 
 AMAZON RECEIPT CHECKLIST:
-□ Found "Qty:" for each item? (Amazon always shows this)
-□ Price next to Qty is the LINE TOTAL, not unit price
-□ Calculated unit_price = line_total / quantity
-□ Sum of all line totals matches subtotal?
+□ Found "X x $Y.YY" for each item?
+□ X is the quantity, $Y.YY is the UNIT PRICE
+□ Calculated total_price = quantity × unit_price
+□ Sum of all total_prices matches subtotal?
 □ Subtotal + tax matches order total?
 
 IF MISMATCH: Re-scan the receipt for missed items or quantities!
