@@ -83,38 +83,59 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           {
             role: "system",
-            content: `You are a precise receipt parsing expert. Your job is to extract EVERY line item with ACCURATE quantities.
+            content: `You are a precise receipt parsing expert. Extract EVERY line item with ACCURATE quantities.
 
-CRITICAL RULES:
+═══════════════════════════════════════════════════════
+AMAZON RECEIPTS - SPECIAL HANDLING (READ CAREFULLY!)
+═══════════════════════════════════════════════════════
 
-1. VENDOR NAME:
-   - Extract the RETAIL STORE name from the header/logo (e.g., "Home Depot", "Lowe's", "Amazon", "Menards")
-   - NEVER use buyer names like "KCS Concepts"
+Amazon has a UNIQUE format. The price shown is the LINE TOTAL, not unit price!
 
-2. QUANTITY IS CRITICAL - PAY CLOSE ATTENTION:
-   - Many items have quantity > 1 (e.g., "2 x $14.99" or "Qty: 3")
-   - Look for: "Qty", "x", quantity column, or numbers before the item name
-   - Amazon format: Often shows "1 x $X.XX" or "2 x $X.XX" - extract that number!
-   - Home Depot format: May show qty in a separate column
-   - If you see "2 x $10.00", quantity=2, unit_price=10.00, total_price=20.00
+EXAMPLE 1:
+  "Southwire 14/2 NM-B Wire 50ft"
+  "  Qty: 3                    $89.97"
+  
+  → item_name: "Southwire 14/2 NM-B Wire 50ft"
+  → quantity: 3
+  → total_price: 89.97  (this is what's shown!)
+  → unit_price: 29.99   (calculated: 89.97 ÷ 3)
 
-3. PRICE MATH:
-   - unit_price = price for ONE item
-   - total_price = quantity × unit_price (the line total shown on receipt)
-   - VERIFY: sum of all total_price values should equal subtotal
-   - VERIFY: subtotal + tax = total_amount
+EXAMPLE 2:
+  "LED Light Bulb 4-pack  Qty: 2  $19.98"
+  
+  → quantity: 2
+  → total_price: 19.98
+  → unit_price: 9.99
 
-4. COMMON PATTERNS TO WATCH:
-   - "Item Name  2 x $14.99" → quantity=2, unit_price=14.99, total_price=29.98
-   - "Item Name  Qty:3  $45.00" → quantity=3, unit_price=15.00, total_price=45.00
-   - "Item Name  $25.00" with no qty shown → quantity=1, unit_price=25.00, total_price=25.00
+KEY RULES FOR AMAZON:
+1. Look for "Qty: X" - this is your quantity
+2. The dollar amount near Qty is the LINE TOTAL
+3. Calculate: unit_price = total_price ÷ quantity
+4. Don't skip items - every product line needs extraction
+5. Ignore "Sold by:" and "Gift options:" lines
 
-5. CATEGORIES:
-   plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, lighting, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, misc`
+═══════════════════════════════════════════════════════
+GENERAL RULES (ALL RECEIPTS)
+═══════════════════════════════════════════════════════
+
+VENDOR NAME: Extract STORE name (Amazon, Home Depot, Lowe's) NOT buyer name
+
+QUANTITY PATTERNS:
+- "2 x $14.99" → qty=2, unit_price=14.99, total=29.98
+- "Qty: 3  $45.00" → qty=3, total=45.00, unit=15.00
+- No quantity shown → qty=1
+
+MATH VALIDATION:
+- Each item: total_price = quantity × unit_price
+- All items: sum(total_price) ≈ subtotal
+- Final: subtotal + tax ≈ total_amount
+
+CATEGORIES:
+plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, lighting, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, misc`
           },
           {
             role: "user",
@@ -123,7 +144,14 @@ CRITICAL RULES:
                 type: "text",
                 text: `Parse this receipt. Extract EVERY item with CORRECT quantities.
 
-IMPORTANT: Look carefully for quantity indicators like "2 x", "Qty: 3", or quantity columns.
+AMAZON RECEIPT CHECKLIST:
+□ Found "Qty:" for each item? (Amazon always shows this)
+□ Price next to Qty is the LINE TOTAL, not unit price
+□ Calculated unit_price = line_total / quantity
+□ Sum of all line totals matches subtotal?
+□ Subtotal + tax matches order total?
+
+IF MISMATCH: Re-scan the receipt for missed items or quantities!
 
 Return JSON only (no markdown):
 {
@@ -220,7 +248,16 @@ VALIDATION:
       cleanedData.subtotal = cleanedData.total_amount - cleanedData.tax_amount;
     }
 
-    console.log(`Parsed receipt: ${cleanedData.vendor_name}, $${cleanedData.total_amount}, ${cleanedData.line_items.length} items`);
+    // Validation logging for debugging quantity parsing issues
+    const lineItemsTotal = cleanedData.line_items.reduce((sum, item) => sum + item.total_price, 0);
+    const expectedSubtotal = cleanedData.subtotal;
+    const difference = Math.abs(lineItemsTotal - expectedSubtotal);
+
+    if (difference > 0.10) {
+      console.warn(`VALIDATION WARNING: Line items total ($${lineItemsTotal.toFixed(2)}) differs from subtotal ($${expectedSubtotal.toFixed(2)}) by $${difference.toFixed(2)}`);
+    }
+
+    console.log(`Parsed receipt: ${cleanedData.vendor_name}, $${cleanedData.total_amount}, ${cleanedData.line_items.length} items (line items sum: $${lineItemsTotal.toFixed(2)})`);
 
     return new Response(JSON.stringify({ 
       success: true, 
