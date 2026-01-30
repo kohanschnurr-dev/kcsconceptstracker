@@ -352,14 +352,36 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
     }
   };
 
-  // Delete pending receipt
+  // Delete pending receipt (must delete line items first due to foreign key)
   const deleteReceipt = async (receiptId: string) => {
     try {
-      await supabase.from('pending_receipts').delete().eq('id', receiptId);
+      // First delete associated line items
+      const { error: lineItemsError } = await supabase
+        .from('receipt_line_items')
+        .delete()
+        .eq('receipt_id', receiptId);
+      
+      if (lineItemsError) {
+        console.error('Error deleting line items:', lineItemsError);
+      }
+      
+      // Then delete the receipt
+      const { error: receiptError } = await supabase
+        .from('pending_receipts')
+        .delete()
+        .eq('id', receiptId);
+      
+      if (receiptError) throw receiptError;
+      
       await fetchPendingReceipts();
       toast({ title: 'Receipt deleted' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting receipt:', error);
+      toast({ 
+        title: 'Failed to delete receipt', 
+        description: error.message,
+        variant: 'destructive' 
+      });
     }
   };
 
