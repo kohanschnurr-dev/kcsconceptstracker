@@ -122,12 +122,12 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
 
-  // Category options for the dropdown
+  // Category options for the dropdown (sorted A-Z)
   const categoryOptions = [
-    'hardware', 'electrical', 'plumbing', 'flooring', 'painting', 
-    'appliances', 'cabinets', 'countertops', 'doors', 'windows',
-    'hvac', 'roofing', 'drywall', 'carpentry', 'landscaping',
-    'demolition', 'misc', 'kitchen', 'bathroom', 'lighting'
+    'appliances', 'bathroom', 'cabinets', 'carpentry', 'countertops',
+    'demolition', 'doors', 'drywall', 'electrical', 'flooring',
+    'hardware', 'hvac', 'kitchen', 'landscaping', 'lighting',
+    'misc', 'painting', 'plumbing', 'roofing', 'windows'
   ];
 
   // Fetch pending receipts on mount
