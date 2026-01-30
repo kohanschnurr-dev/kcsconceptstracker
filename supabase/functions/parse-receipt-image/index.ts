@@ -145,7 +145,7 @@ VALIDATION BEFORE RETURNING
 If math doesn't work, re-scan the receipt for missed quantities!
 
 CATEGORIES:
-plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, lighting, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, misc`
+plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, light_fixtures, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, misc`
           },
           {
             role: "user",

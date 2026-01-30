@@ -116,17 +116,17 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
     });
   };
 
-  // Capitalize first letter helper
-  const capitalize = (str: string) => {
-    if (!str) return str;
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  // Get category label from BUDGET_CATEGORIES
+  const getCategoryLabel = (category: string) => {
+    const found = BUDGET_CATEGORIES.find(c => c.value === category);
+    return found?.label || category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ');
   };
 
-  // Category options for the dropdown (sorted A-Z)
+  // Category options for the dropdown (sorted A-Z) - using BUDGET_CATEGORIES values
   const categoryOptions = [
     'appliances', 'bathroom', 'cabinets', 'carpentry', 'countertops',
     'demolition', 'doors', 'drywall', 'electrical', 'flooring',
-    'hardware', 'hvac', 'kitchen', 'landscaping', 'lighting',
+    'hardware', 'hvac', 'kitchen', 'landscaping', 'light_fixtures',
     'misc', 'painting', 'plumbing', 'roofing', 'windows'
   ];
 
@@ -816,12 +816,12 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
                           onValueChange={(value) => setEditableCategories(prev => ({ ...prev, [idx]: value }))}
                         >
                           <SelectTrigger className="w-[130px] h-7 text-xs">
-                            <SelectValue>{capitalize(editableCategories[idx] || item.suggested_category || 'misc')}</SelectValue>
+                            <SelectValue>{getCategoryLabel(editableCategories[idx] || item.suggested_category || 'misc')}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {categoryOptions.map((cat) => (
                               <SelectItem key={cat} value={cat} className="text-xs">
-                                {capitalize(cat)}
+                                {getCategoryLabel(cat)}
                               </SelectItem>
                             ))}
                           </SelectContent>
