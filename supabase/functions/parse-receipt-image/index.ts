@@ -87,35 +87,33 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a precise receipt parsing expert specializing in retail and construction supply receipts.
+            content: `You are a precise receipt parsing expert. Your job is to extract EVERY line item with ACCURATE quantities.
 
 CRITICAL RULES:
 
 1. VENDOR NAME:
-   - Extract the RETAIL STORE name from the header/logo (e.g., "Home Depot", "Lowe's", "Amazon", "Menards", "Walmart")
-   - NEVER use buyer/customer names like "KCS Concepts" - these are NOT the vendor
-   - Look for: store branding, address, store number at the top
+   - Extract the RETAIL STORE name from the header/logo (e.g., "Home Depot", "Lowe's", "Amazon", "Menards")
+   - NEVER use buyer names like "KCS Concepts"
 
-2. LINE ITEMS - EXTRACT EVERY SINGLE ITEM:
-   - You MUST extract ALL line items from the receipt - do not skip any
-   - For each item: carefully read the quantity and price columns
-   - unit_price = price per single unit
-   - total_price = quantity × unit_price (the extended/line total)
-   - If only one price is shown, it's usually the total_price; calculate unit_price by dividing by quantity
-   - Watch for multi-pack items where quantity > 1
+2. QUANTITY IS CRITICAL - PAY CLOSE ATTENTION:
+   - Many items have quantity > 1 (e.g., "2 x $14.99" or "Qty: 3")
+   - Look for: "Qty", "x", quantity column, or numbers before the item name
+   - Amazon format: Often shows "1 x $X.XX" or "2 x $X.XX" - extract that number!
+   - Home Depot format: May show qty in a separate column
+   - If you see "2 x $10.00", quantity=2, unit_price=10.00, total_price=20.00
 
-3. PRICE ACCURACY IS CRITICAL:
-   - The sum of all line_items total_price values MUST equal the subtotal
-   - subtotal + tax_amount MUST equal total_amount
-   - Double-check your math before returning
-   - If prices don't add up, re-read the receipt more carefully
+3. PRICE MATH:
+   - unit_price = price for ONE item
+   - total_price = quantity × unit_price (the line total shown on receipt)
+   - VERIFY: sum of all total_price values should equal subtotal
+   - VERIFY: subtotal + tax = total_amount
 
-4. COMMON RECEIPT FORMATS:
-   - Amazon: Look for "Items Ordered" section, each item has quantity and price
-   - Home Depot/Lowe's: Items listed with SKU, description, qty, and price columns
-   - General format: Description | Qty | Unit Price | Total
+4. COMMON PATTERNS TO WATCH:
+   - "Item Name  2 x $14.99" → quantity=2, unit_price=14.99, total_price=29.98
+   - "Item Name  Qty:3  $45.00" → quantity=3, unit_price=15.00, total_price=45.00
+   - "Item Name  $25.00" with no qty shown → quantity=1, unit_price=25.00, total_price=25.00
 
-5. CATEGORIES (for construction/renovation):
+5. CATEGORIES:
    plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, lighting, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, misc`
           },
           {
@@ -123,33 +121,32 @@ CRITICAL RULES:
             content: [
               {
                 type: "text",
-                text: `Parse this receipt completely and extract EVERY line item.
+                text: `Parse this receipt. Extract EVERY item with CORRECT quantities.
 
-REQUIRED OUTPUT (JSON only, no markdown):
+IMPORTANT: Look carefully for quantity indicators like "2 x", "Qty: 3", or quantity columns.
+
+Return JSON only (no markdown):
 {
-  "vendor_name": "Store Name (NOT the buyer)",
-  "total_amount": 123.45,
-  "tax_amount": 10.20,
-  "subtotal": 113.25,
+  "vendor_name": "Store Name",
+  "total_amount": 671.60,
+  "tax_amount": 51.17,
+  "subtotal": 620.43,
   "purchase_date": "YYYY-MM-DD",
   "line_items": [
     {
-      "item_name": "Full item description",
-      "quantity": 1,
-      "unit_price": 50.00,
-      "total_price": 50.00,
-      "suggested_category": "category"
+      "item_name": "Item description",
+      "quantity": 2,
+      "unit_price": 14.99,
+      "total_price": 29.98,
+      "suggested_category": "hardware"
     }
   ]
 }
 
-VALIDATION CHECKLIST:
-✓ Every item on the receipt is in line_items
-✓ sum(line_items.total_price) ≈ subtotal
-✓ subtotal + tax_amount ≈ total_amount
-✓ vendor_name is the STORE, not the customer
-
-Extract ALL items - missing items will cause reconciliation failures.`
+VALIDATION:
+- Did you check quantity for each item? Many are > 1!
+- Does sum(total_price) = subtotal?
+- Does subtotal + tax = total_amount?`
               },
               imageContent
             ]
