@@ -90,50 +90,59 @@ serve(async (req) => {
             content: `You are a precise receipt parsing expert. Extract EVERY line item with ACCURATE quantities.
 
 ═══════════════════════════════════════════════════════
-AMAZON RECEIPTS - SPECIAL HANDLING (READ CAREFULLY!)
+STEP-BY-STEP EXTRACTION PROCESS (FOLLOW EXACTLY!)
 ═══════════════════════════════════════════════════════
 
-Amazon shows: "X x $Y.YY" where X is quantity and $Y.YY is the UNIT PRICE!
+For EACH item on the receipt, do these steps IN ORDER:
+
+STEP 1: Find the item name line
+STEP 2: Look at the NEXT line for "X x $Y.YY" pattern
+STEP 3: If found:
+   - X = quantity (the number BEFORE "x")
+   - $Y.YY = unit_price (the price AFTER "x")
+   - Calculate: total_price = X × Y.YY
+STEP 4: If NO "X x" pattern, set quantity = 1
+
+═══════════════════════════════════════════════════════
+AMAZON RECEIPT EXAMPLES
+═══════════════════════════════════════════════════════
 
 EXAMPLE 1:
   "Bathroom Accessories Set"
   "2 x $30.00"
   
-  → item_name: "Bathroom Accessories Set"
-  → quantity: 2
-  → unit_price: 30.00  (this is what's shown!)
-  → total_price: 60.00  (calculated: 2 × 30.00)
+  → STEP 2: Found "2 x $30.00"
+  → STEP 3: quantity=2, unit_price=30.00, total_price=60.00
 
 EXAMPLE 2:
-  "LED Light Bulb 4-pack"
-  "1 x $55.99"
+  "Zarbitta 3-Light Bathroom Fixture"
+  "2 x $29.75"
   
-  → quantity: 1
-  → unit_price: 55.99
-  → total_price: 55.99
+  → quantity: 2
+  → unit_price: 29.75
+  → total_price: 59.50 (2 × 29.75)
 
-KEY RULES FOR AMAZON:
-1. Look for "X x $Y.YY" pattern - X is quantity
-2. The dollar amount is the UNIT PRICE (per item)
-3. Calculate: total_price = quantity × unit_price
-4. Don't skip items - every product line needs extraction
-5. Ignore "Sold by:" and "Gift options:" lines
+EXAMPLE 3:
+  "Ceiling Fan with Light 42 inch"
+  "2 x $56.99"
+  
+  → quantity: 2
+  → unit_price: 56.99  
+  → total_price: 113.98 (2 × 56.99)
+
+CRITICAL MATH CHECK:
+total_price MUST equal quantity × unit_price
+If unit_price equals total_price and quantity > 1, you made an error!
 
 ═══════════════════════════════════════════════════════
-GENERAL RULES (ALL RECEIPTS)
+VALIDATION BEFORE RETURNING
 ═══════════════════════════════════════════════════════
 
-VENDOR NAME: Extract STORE name (Amazon, Home Depot, Lowe's) NOT buyer name
+1. For each item: total_price = quantity × unit_price
+2. Sum of all total_price values should ≈ subtotal
+3. subtotal + tax_amount should ≈ total_amount
 
-QUANTITY PATTERNS:
-- "2 x $14.99" → qty=2, unit_price=14.99, total=29.98
-- "Qty: 3  $45.00" → qty=3, unit=15.00, total=45.00
-- No quantity shown → qty=1
-
-MATH VALIDATION:
-- Each item: total_price = quantity × unit_price
-- All items: sum(total_price) ≈ subtotal
-- Final: subtotal + tax ≈ total_amount
+If math doesn't work, re-scan the receipt for missed quantities!
 
 CATEGORIES:
 plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, lighting, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, misc`
@@ -243,6 +252,34 @@ VALIDATION:
           }))
         : [],
     };
+
+    // Post-processing: Validate quantity calculations
+    const validatedLineItems = cleanedData.line_items.map(item => {
+      // If total_price equals unit_price but quantity > 1 was expected
+      // This catches cases where AI mistakenly set qty=1
+      const expectedTotal = item.quantity * item.unit_price;
+      const tolerance = 0.01;
+      
+      // If the math doesn't add up, assume unit_price IS the total
+      // and calculate the real unit price
+      if (Math.abs(expectedTotal - item.total_price) > tolerance) {
+        // total_price is correct, recalculate unit_price
+        const correctedUnitPrice = item.quantity > 0 
+          ? Math.round((item.total_price / item.quantity) * 100) / 100
+          : item.total_price;
+        
+        return {
+          ...item,
+          unit_price: correctedUnitPrice,
+        };
+      }
+      
+      // If unit_price === total_price AND quantity === 1
+      // This is probably correct (single item), leave as-is
+      return item;
+    });
+
+    cleanedData.line_items = validatedLineItems;
 
     // If subtotal is 0 but we have a total and tax, calculate it
     if (cleanedData.subtotal === 0 && cleanedData.total_amount > 0) {
