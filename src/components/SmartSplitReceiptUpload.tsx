@@ -400,24 +400,131 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
     setShowMatchModal(true);
   };
 
-  // Finalize the import - create expense record and mark QB as imported
+  // Helper to group line items by category
+  const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>) => {
+    const groups: Record<string, { items: LineItem[], total: number }> = {};
+    
+    lineItems.forEach((item, idx) => {
+      const category = categories[idx] || item.suggested_category || 'misc';
+      if (!groups[category]) {
+        groups[category] = { items: [], total: 0 };
+      }
+      groups[category].items.push(item);
+      groups[category].total += item.total_price;
+    });
+    
+    return groups;
+  };
+
+  // Finalize the import - create expense records split by category
   const finalizeImport = async () => {
     if (!selectedMatch || !selectedProject) return;
 
     setIsImporting(true);
     
     try {
-      // Build notes from line items for the expense
-      const lineItemNotes = selectedMatch.receipt.line_items
-        ?.map(item => `${item.item_name} (${item.quantity}x)`)
-        .join(', ') || '';
+      // Group line items by category
+      const categoryGroups = groupByCategory(
+        selectedMatch.receipt.line_items || [],
+        editableCategories
+      );
 
-      // Get the first line item's category (or use 'misc')
-      const primaryCategory = (editableCategories[0] || 
-        selectedMatch.receipt.line_items?.[0]?.suggested_category || 
-        'misc') as BudgetCategory;
+      // Calculate proportional tax per category
+      const subtotal = selectedMatch.receipt.subtotal || 
+        selectedMatch.receipt.line_items?.reduce((sum, i) => sum + i.total_price, 0) || 0;
+      const taxAmount = selectedMatch.receipt.tax_amount || 0;
 
-      // 1. Mark receipt as imported (removes from SmartSplit list)
+      // Track original QB expense info
+      const originalQbExpenseId = selectedMatch.qbExpense.id;
+      const originalQbId = (selectedMatch.qbExpense as any).qb_id || selectedMatch.qbExpense.id;
+
+      const categoryKeys = Object.keys(categoryGroups);
+      
+      // Create expense record for each category
+      for (let i = 0; i < categoryKeys.length; i++) {
+        const category = categoryKeys[i];
+        const group = categoryGroups[category];
+
+        // Calculate proportional tax
+        const proportion = subtotal > 0 ? group.total / subtotal : 0;
+        const categoryTax = Math.round(taxAmount * proportion * 100) / 100;
+        const categoryAmount = Math.round((group.total + categoryTax) * 100) / 100;
+
+        // Build notes from items in this category
+        const itemNotes = group.items
+          .map(item => `${item.item_name} (${item.quantity}x)`)
+          .join(', ');
+
+        // Find or create project_category
+        const { data: existingCategory } = await supabase
+          .from('project_categories')
+          .select('id')
+          .eq('project_id', selectedProject)
+          .eq('category', category as any)
+          .maybeSingle();
+
+        let categoryId: string;
+        
+        if (existingCategory) {
+          categoryId = existingCategory.id;
+        } else {
+          const { data: newCategory, error: categoryError } = await supabase
+            .from('project_categories')
+            .insert({
+              project_id: selectedProject,
+              category: category as any, // Cast to any since we're using dynamic category strings
+              estimated_budget: 0,
+            })
+            .select('id')
+            .single();
+
+          if (categoryError) throw categoryError;
+          categoryId = newCategory.id;
+        }
+
+        // First category updates original QB expense, rest are inserts
+        if (i === 0) {
+          const { error: qbError } = await supabase
+            .from('quickbooks_expenses')
+            .update({ 
+              is_imported: true,
+              amount: categoryAmount,
+              notes: itemNotes,
+              receipt_url: selectedMatch.receipt.receipt_image_url || null,
+              project_id: selectedProject,
+              category_id: categoryId,
+              expense_type: expenseType,
+            })
+            .eq('id', originalQbExpenseId);
+
+          if (qbError) throw qbError;
+        } else {
+          // Insert additional expense records for other categories
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('Not authenticated');
+
+          const { error: insertError } = await supabase
+            .from('quickbooks_expenses')
+            .insert({
+              user_id: user.id,
+              qb_id: `${originalQbId}_split_${category}`,
+              vendor_name: selectedMatch.qbExpense.vendor_name,
+              amount: categoryAmount,
+              date: selectedMatch.qbExpense.date,
+              description: selectedMatch.qbExpense.description,
+              is_imported: true,
+              project_id: selectedProject,
+              category_id: categoryId,
+              expense_type: expenseType,
+              notes: itemNotes,
+              receipt_url: selectedMatch.receipt.receipt_image_url || null,
+            });
+
+          if (insertError) throw insertError;
+        }
+      }
+
+      // Mark receipt as imported
       const { error: receiptError } = await supabase
         .from('pending_receipts')
         .update({ status: 'imported' })
@@ -425,52 +532,9 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
 
       if (receiptError) throw receiptError;
 
-      // 2. Find or create project_category
-      const { data: existingCategory } = await supabase
-        .from('project_categories')
-        .select('id')
-        .eq('project_id', selectedProject)
-        .eq('category', primaryCategory)
-        .maybeSingle();
-
-      let categoryId: string;
-      
-      if (existingCategory) {
-        categoryId = existingCategory.id;
-      } else {
-        // Create new category for project
-        const { data: newCategory, error: categoryError } = await supabase
-          .from('project_categories')
-          .insert({
-            project_id: selectedProject,
-            category: primaryCategory,
-            estimated_budget: 0,
-          })
-          .select('id')
-          .single();
-
-        if (categoryError) throw categoryError;
-        categoryId = newCategory.id;
-      }
-
-      // 3. Mark QB expense as imported with project/category (removes from pending list)
-      const { error: qbError } = await supabase
-        .from('quickbooks_expenses')
-        .update({ 
-          is_imported: true,
-          notes: lineItemNotes,
-          receipt_url: selectedMatch.receipt.receipt_image_url || null,
-          project_id: selectedProject,
-          category_id: categoryId,
-          expense_type: expenseType,
-        })
-        .eq('id', selectedMatch.qbExpense.id);
-
-      if (qbError) throw qbError;
-
       toast({
-        title: 'Expense imported!',
-        description: `${selectedMatch.receipt.vendor_name} expense added to project.`,
+        title: 'Expenses imported!',
+        description: `Split into ${categoryKeys.length} ${categoryKeys.length === 1 ? 'category' : 'categories'} for ${selectedMatch.receipt.vendor_name}.`,
       });
 
       setShowMatchModal(false);
