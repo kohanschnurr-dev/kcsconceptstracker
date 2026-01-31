@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Image, Loader2, Trash2 } from 'lucide-react';
+import { Plus, Image, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { PhotoUploadModal } from './PhotoUploadModal';
+import { PhotoPreviewModal } from './PhotoPreviewModal';
 
 interface Photo {
   id: string;
@@ -16,6 +14,7 @@ interface Photo {
   caption: string | null;
   category: string;
   created_at: string;
+  photo_date: string | null;
 }
 
 interface PhotoGalleryProps {
@@ -29,22 +28,27 @@ const PHOTO_CATEGORIES = [
   { value: 'general', label: 'General' },
 ];
 
+const DATE_FILTERS = [
+  { value: 'all', label: 'All Dates' },
+  { value: '7days', label: 'Last 7 Days' },
+  { value: '30days', label: 'Last 30 Days' },
+  { value: '90days', label: 'Last 90 Days' },
+];
+
 export function PhotoGallery({ projectId }: PhotoGalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('general');
-  const [caption, setCaption] = useState('');
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterDate, setFilterDate] = useState<string>('all');
 
   const fetchPhotos = async () => {
     const { data, error } = await supabase
       .from('project_photos')
       .select('*')
       .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
+      .order('photo_date', { ascending: false, nullsFirst: false });
 
     if (error) {
       console.error('Error fetching photos:', error);
@@ -58,70 +62,6 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
     fetchPhotos();
   }, [projectId]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${projectId}/${Date.now()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('project-photos')
-      .upload(fileName, file);
-
-    if (uploadError) {
-      toast.error('Failed to upload photo');
-      console.error(uploadError);
-      setUploading(false);
-      return;
-    }
-
-    const { error: insertError } = await supabase
-      .from('project_photos')
-      .insert({
-        project_id: projectId,
-        file_path: fileName,
-        caption: caption || null,
-        category: selectedCategory,
-      });
-
-    if (insertError) {
-      toast.error('Failed to save photo');
-      console.error(insertError);
-    } else {
-      toast.success('Photo uploaded');
-      setCaption('');
-      setSelectedCategory('general');
-      setIsOpen(false);
-      fetchPhotos();
-    }
-    setUploading(false);
-  };
-
-  const handleDelete = async (photo: Photo) => {
-    const { error: storageError } = await supabase.storage
-      .from('project-photos')
-      .remove([photo.file_path]);
-
-    if (storageError) {
-      console.error('Storage delete error:', storageError);
-    }
-
-    const { error } = await supabase
-      .from('project_photos')
-      .delete()
-      .eq('id', photo.id);
-
-    if (error) {
-      toast.error('Failed to delete photo');
-    } else {
-      toast.success('Photo deleted');
-      setSelectedPhoto(null);
-      fetchPhotos();
-    }
-  };
-
   const getPhotoUrl = (filePath: string) => {
     const { data } = supabase.storage
       .from('project-photos')
@@ -129,20 +69,60 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
     return data.publicUrl;
   };
 
-  const filteredPhotos = filterCategory === 'all' 
-    ? photos 
-    : photos.filter(p => p.category === filterCategory);
+  const getFilteredPhotos = () => {
+    let filtered = photos;
+
+    // Category filter
+    if (filterCategory !== 'all') {
+      filtered = filtered.filter(p => p.category === filterCategory);
+    }
+
+    // Date filter
+    if (filterDate !== 'all') {
+      const now = new Date();
+      let daysAgo = 7;
+      if (filterDate === '30days') daysAgo = 30;
+      if (filterDate === '90days') daysAgo = 90;
+      
+      const cutoffDate = new Date(now.setDate(now.getDate() - daysAgo));
+      filtered = filtered.filter(p => {
+        const photoDate = p.photo_date ? new Date(p.photo_date) : new Date(p.created_at);
+        return photoDate >= cutoffDate;
+      });
+    }
+
+    return filtered;
+  };
+
+  const filteredPhotos = getFilteredPhotos();
+
+  const handlePhotoUpdate = () => {
+    fetchPhotos();
+    setSelectedPhoto(null);
+  };
+
+  const navigatePhoto = (direction: 'prev' | 'next') => {
+    if (!selectedPhoto) return;
+    const currentIndex = filteredPhotos.findIndex(p => p.id === selectedPhoto.id);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'prev' 
+      ? (currentIndex - 1 + filteredPhotos.length) % filteredPhotos.length
+      : (currentIndex + 1) % filteredPhotos.length;
+    
+    setSelectedPhoto(filteredPhotos[newIndex]);
+  };
 
   return (
     <Card className="glass-card">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
         <CardTitle className="text-lg flex items-center gap-2">
           <Image className="h-5 w-5" />
           Photo Gallery ({photos.length})
         </CardTitle>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-[110px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -152,57 +132,20 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
               ))}
             </SelectContent>
           </Select>
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-1" />
-                Add Photo
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Upload Photo</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Category</Label>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PHOTO_CATEGORIES.map(cat => (
-                        <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Caption (optional)</Label>
-                  <Input 
-                    value={caption} 
-                    onChange={(e) => setCaption(e.target.value)}
-                    placeholder="Add a caption..."
-                  />
-                </div>
-                <div>
-                  <Label>Photo</Label>
-                  <Input 
-                    type="file" 
-                    accept="image/*"
-                    onChange={handleUpload}
-                    disabled={uploading}
-                  />
-                </div>
-                {uploading && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Uploading...
-                  </div>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Select value={filterDate} onValueChange={setFilterDate}>
+            <SelectTrigger className="w-[130px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DATE_FILTERS.map(df => (
+                <SelectItem key={df.value} value={df.value}>{df.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button size="sm" onClick={() => setIsUploadOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Photos
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -212,7 +155,10 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
           </div>
         ) : filteredPhotos.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
-            No photos yet. Add some to document your project!
+            {photos.length === 0 
+              ? "No photos yet. Add some to document your project!"
+              : "No photos match the current filters."
+            }
           </p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -227,47 +173,42 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
                   alt={photo.caption || 'Project photo'}
                   className="w-full h-full object-cover transition-transform group-hover:scale-105"
                 />
-                <div className="absolute top-2 left-2">
-                  <span className="text-xs px-2 py-1 rounded bg-background/80 text-foreground capitalize">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute top-2 left-2 flex gap-1 flex-wrap">
+                  <span className="text-xs px-2 py-0.5 rounded bg-background/80 text-foreground capitalize">
                     {photo.category}
                   </span>
+                  {photo.photo_date && (
+                    <span className="text-xs px-2 py-0.5 rounded bg-primary/80 text-primary-foreground">
+                      {new Date(photo.photo_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  )}
                 </div>
+                {photo.caption && (
+                  <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <p className="text-xs text-white truncate">{photo.caption}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
-
-        {/* Photo Preview Modal */}
-        <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
-          <DialogContent className="max-w-3xl">
-            {selectedPhoto && (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center justify-between">
-                    <span className="capitalize">{selectedPhoto.category} Photo</span>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => handleDelete(selectedPhoto)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
-                  </DialogTitle>
-                </DialogHeader>
-                <img 
-                  src={getPhotoUrl(selectedPhoto.file_path)} 
-                  alt={selectedPhoto.caption || 'Project photo'}
-                  className="w-full rounded-lg"
-                />
-                {selectedPhoto.caption && (
-                  <p className="text-muted-foreground">{selectedPhoto.caption}</p>
-                )}
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
       </CardContent>
+
+      <PhotoUploadModal
+        projectId={projectId}
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        onUploadComplete={fetchPhotos}
+      />
+
+      <PhotoPreviewModal
+        photo={selectedPhoto}
+        onClose={() => setSelectedPhoto(null)}
+        onUpdate={handlePhotoUpdate}
+        onNavigate={navigatePhoto}
+        getPhotoUrl={getPhotoUrl}
+      />
     </Card>
   );
 }

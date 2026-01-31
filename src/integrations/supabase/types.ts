@@ -699,6 +699,7 @@ export type Database = {
           created_at: string
           file_path: string
           id: string
+          photo_date: string | null
           project_id: string
         }
         Insert: {
@@ -707,6 +708,7 @@ export type Database = {
           created_at?: string
           file_path: string
           id?: string
+          photo_date?: string | null
           project_id: string
         }
         Update: {
@@ -715,6 +717,7 @@ export type Database = {
           created_at?: string
           file_path?: string
           id?: string
+          photo_date?: string | null
           project_id?: string
         }
         Relationships: [
