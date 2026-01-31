@@ -1,118 +1,99 @@
 
-## Fix Export Reports - Complete Data & CSV Formatting
+## Fix: Pass Projects to SmartSplit on Business Expenses Page
 
-### Problems Identified
+### The Problem
+The `SmartSplitReceiptUpload` component on the Business Expenses page shows "No projects found" because no projects are being passed to it. Currently:
+- `BusinessExpenses.tsx` renders `<BusinessQuickBooksIntegration />` 
+- `BusinessQuickBooksIntegration` renders `<SmartSplitReceiptUpload />` **without** the `projects` prop
+- The component defaults to an empty array
 
-| Issue | Description |
-|-------|-------------|
-| **Split columns in Excel** | Currency values like `$60,575.00` contain commas, breaking CSV into separate columns (shows "$60" then "575") |
-| **Missing expense details** | Only manual expenses are passed to report; QuickBooks expenses are excluded even though they exist |
-| **Actual spent shows $0** | The categories have `actualSpent` correctly calculated, but the exported CSV shows all zeros (likely old cache OR formatting issue) |
-
----
-
-### Root Cause Analysis
-
-**1. CSV Comma Issue**
-```tsx
-// Current (BROKEN):
-`Total Budget,${formatCurrency(project.total_budget)}`
-// Output: Total Budget,$60,575.00  <-- comma in $60,575.00 breaks CSV
-```
-
-**2. Missing QuickBooks Expenses**
-In `ProjectDetail.tsx`, only manual expenses are passed:
-```tsx
-const expensesData = expensesRes.data || [];  // Manual only
-<ExportReports expenses={expenses} />  // Missing QB data
-```
-
-QuickBooks expenses are fetched separately (`qbExpensesData`) but not included.
+### Solution
+Fetch projects in `BusinessExpenses.tsx` and pass them through to the SmartSplit component.
 
 ---
 
 ### Technical Changes
 
-**File: `src/components/project/ExportReports.tsx`**
+**File: `src/pages/BusinessExpenses.tsx`**
 
-| Change | Location | Description |
-|--------|----------|-------------|
-| Fix CSV formatting | Throughout | Replace `formatCurrency()` in CSV cells with raw numbers (no commas) |
-| Quote all values | All CSV rows | Ensure every cell is properly quoted to handle edge cases |
+| Change | Description |
+|--------|-------------|
+| Add projects state | `const [projects, setProjects] = useState([])` |
+| Fetch projects in `fetchData` | Query `projects` table |
+| Pass to BusinessQuickBooksIntegration | `<BusinessQuickBooksIntegration projects={projects} />` |
 
-**File: `src/pages/ProjectDetail.tsx`**
+**File: `src/components/BusinessQuickBooksIntegration.tsx`**
 
-| Change | Location | Description |
-|--------|----------|-------------|
-| Combine expenses | Lines 161-163 | Pass both manual + QB expenses to ExportReports |
-| Add QB expense state | Line 102-103 | Store QB expenses in state |
+| Change | Description |
+|--------|-------------|
+| Accept projects prop | Add `projects` to interface |
+| Pass to SmartSplitReceiptUpload | `<SmartSplitReceiptUpload projects={projects} />` |
 
 ---
 
 ### Specific Code Changes
 
-**1. ExportReports.tsx - Fix CSV Currency Formatting**
+**1. BusinessExpenses.tsx - Add Projects State & Fetch**
 
-Create a new helper for CSV-safe currency (no dollar sign, no commas):
 ```tsx
-const formatCurrencyForCSV = (amount: number) => {
-  return amount.toFixed(2);
-};
+// Add state near other state declarations
+const [projects, setProjects] = useState<{id: string; name: string; address?: string}[]>([]);
+
+// In fetchData function, add projects query:
+const { data: projectsData } = await supabase
+  .from('projects')
+  .select('id, name, address')
+  .order('name');
+
+setProjects(projectsData || []);
 ```
 
-Update all CSV lines to use proper formatting:
-```tsx
-// Before (breaks CSV):
-`Total Budget,${formatCurrency(project.total_budget)}`
-
-// After (works correctly):
-`"Total Budget","${formatCurrency(project.total_budget)}"`
-// OR for data cells:
-`"Total Budget","$${amount.toFixed(2)}"`
-```
-
-**2. ProjectDetail.tsx - Include QuickBooks Expenses**
+**2. BusinessExpenses.tsx - Pass to Component**
 
 ```tsx
-// Add state for QB expenses
-const [qbExpenses, setQbExpenses] = useState<DBQBExpense[]>([]);
-
-// In fetchProjectData, store QB expenses
-setQbExpenses(qbExpensesData);
-
-// Pass combined expenses to ExportReports
-<ExportReports 
-  expenses={[...expenses, ...qbExpenses.map(qb => ({
-    id: qb.id,
-    amount: qb.amount,
-    date: qb.date,
-    vendor_name: qb.vendor_name,
-    description: qb.memo,
-    payment_method: qb.payment_type,
-    category_id: qb.category_id,
-    includes_tax: false,
-    tax_amount: null,
-    status: 'completed'
-  }))]}
+<BusinessQuickBooksIntegration 
+  onExpenseImported={fetchData}
+  projects={projects}  // Add this
 />
+```
+
+**3. BusinessQuickBooksIntegration.tsx - Accept & Forward Prop**
+
+```tsx
+interface BusinessQuickBooksIntegrationProps {
+  onExpenseImported?: () => void;
+  projects?: { id: string; name: string; address?: string }[];  // Add this
+}
+
+export function BusinessQuickBooksIntegration({ 
+  onExpenseImported,
+  projects = []  // Add this
+}: BusinessQuickBooksIntegrationProps) {
+  // ...
+  
+  // Pass to SmartSplit
+  <SmartSplitReceiptUpload 
+    onReceiptProcessed={onExpenseImported}
+    projects={projects}  // Add this
+  />
+}
 ```
 
 ---
 
-### Before vs After
+### Data Flow After Fix
 
-**CSV Output Example:**
-
-| Before | After |
-|--------|-------|
-| `Total Budget,$60,575.00` (splits) | `"Total Budget","$60575.00"` (correct) |
-| `Roofing,6000.00,0,6000.00,100.0%` | `"Roofing","6000.00","5500.00","500.00","8.3%"` |
-| Expense details: empty | Expense details: all QB + manual |
+```text
+BusinessExpenses.tsx
+  └── fetches projects from database
+  └── passes projects to BusinessQuickBooksIntegration
+        └── passes projects to SmartSplitReceiptUpload
+              └── ProjectAutocomplete shows real projects
+```
 
 ---
 
 ### Summary
-
-1. **Fix CSV commas** - Remove commas from currency OR properly quote all cells
-2. **Include QuickBooks expenses** - Combine manual + QB expenses for complete export
-3. **Verify actualSpent flows correctly** - Already fixed, just needs the combined data
+- Fetch projects from database in BusinessExpenses page
+- Thread the `projects` prop through BusinessQuickBooksIntegration to SmartSplitReceiptUpload
+- This matches how it already works on ProjectDetail page (which does pass projects)
