@@ -1,167 +1,105 @@
 
+## Plan: Enable "Re-Queue" Delete for QuickBooks Expenses
 
-## Fix: Duplicate Key Error on Split Import
+### Current Situation
+Found these records for the $671.60 Amazon transaction:
+
+| qb_id | Amount | Status | Category |
+|-------|--------|--------|----------|
+| `purchase_769` | $671.60 | imported | Bathroom |
+| `purchase_769_split_hardware` | $188.38 | imported | Hardware |
 
 ### Problem
-When clicking "Match & Import", you get: `"duplicate key value violates unique constraint 'quickbooks_expenses_user_id_qb_id_key'"`
+Currently, deleting a QuickBooks expense completely removes it from the database. The user wants to:
+1. Delete specific transactions (like `purchase_769`)
+2. Have them reappear in the QuickBooks pending list for re-categorization
 
-### Root Cause Analysis
-
-From the database investigation:
-
-| Record | Status | Notes |
-|--------|--------|-------|
-| Pending Receipt #1 (`fc7a1fc1...`) | `imported` | Already processed successfully |
-| Pending Receipt #2 (`ba605af0...`) | `matched` | Trying to import again - FAILING |
-
-Both receipts point to the same QuickBooks expense `purchase_769`. When the second one tries to create `purchase_769_split_hardware`, it fails because that record already exists from the first import.
-
-**Existing split records:**
-- `purchase_769` - Bathroom ($206.71)
-- `purchase_769_split_hardware` - Hardware ($188.38)
-
----
-
-### Solution: Multi-Part Fix
-
-**Part 1: Use UPSERT instead of INSERT for split records**
-
-Change the insert logic to use `upsert` with `onConflict`, so if a split already exists, it gets updated instead of causing an error.
-
-**Part 2: Add timestamp suffix to make split IDs unique**
-
-Change the qb_id pattern from:
-```
-${originalQbId}_split_${category}
-```
-To:
-```
-${originalQbId}_split_${category}_${Date.now()}
-```
-
-This ensures each import attempt creates unique records.
-
-**Part 3: Skip already-imported receipts**
-
-Add a check in the import flow to detect if the matched QB expense has already been processed (has split records), and warn the user.
-
----
+### Solution
+Modify the delete behavior for QuickBooks expenses:
+- Instead of deleting the record, set `is_imported = false` and clear project/category assignment
+- This makes the expense reappear in the pending QuickBooks list immediately (no sync needed)
+- Also delete any associated split records (`_split_` suffix) so the user can re-split cleanly
 
 ### Implementation
 
-**File:** `src/components/SmartSplitReceiptUpload.tsx`
+**File: `src/components/project/ExpenseActions.tsx`**
 
-#### Change 1: Add uniqueness to split qb_id (line 510)
+Update the `DeleteExpenseDialog` component:
 
+1. **Add `qb_id` to the Expense interface** (needed to find related splits)
+   ```typescript
+   interface Expense {
+     // ... existing fields
+     qb_id?: string; // Add this field
+   }
+   ```
+
+2. **Change delete logic for QuickBooks expenses:**
+   ```typescript
+   if (expense.isQuickBooks) {
+     // First, delete any split records for this expense
+     if (expense.qb_id) {
+       await supabase
+         .from('quickbooks_expenses')
+         .delete()
+         .like('qb_id', `${expense.qb_id}_split_%`);
+     }
+     
+     // Reset the main expense to pending (instead of deleting)
+     await supabase
+       .from('quickbooks_expenses')
+       .update({
+         is_imported: false,
+         project_id: null,
+         category_id: null,
+         expense_type: null,
+         notes: null,
+         receipt_url: null,
+       })
+       .eq('id', expense.id);
+   }
+   ```
+
+3. **Update dialog message** to explain the re-queue behavior:
+   ```
+   "This expense will be moved back to the QuickBooks pending queue for re-categorization."
+   ```
+
+**File: `src/pages/ProjectBudget.tsx`**
+
+Pass `qb_id` when mapping QuickBooks expenses:
 ```typescript
-// Add timestamp for uniqueness
-const uniqueSuffix = Date.now();
-
-// In the insert block:
-qb_id: `${originalQbId}_split_${category}_${uniqueSuffix}`,
+const qbAsExpenses: DBExpense[] = qbExpenses.map((qb: any) => ({
+  // ... existing fields
+  qb_id: qb.qb_id, // Add this
+}));
 ```
 
-#### Change 2: Use upsert instead of insert (lines 506-521)
-
+Update the `DBExpense` interface to include `qb_id`:
 ```typescript
-// Check if this split already exists
-const splitQbId = `${originalQbId}_split_${category}`;
-const { data: existingSplit } = await supabase
-  .from('quickbooks_expenses')
-  .select('id')
-  .eq('qb_id', splitQbId)
-  .maybeSingle();
-
-if (existingSplit) {
-  // Update existing split record
-  await supabase
-    .from('quickbooks_expenses')
-    .update({
-      amount: categoryAmount,
-      category_id: categoryId,
-      project_id: selectedProject,
-      expense_type: expenseType,
-      notes: itemNotes,
-      receipt_url: selectedMatch.receipt.receipt_image_url || null,
-    })
-    .eq('id', existingSplit.id);
-} else {
-  // Insert new split record
-  await supabase
-    .from('quickbooks_expenses')
-    .insert({
-      user_id: user.id,
-      qb_id: splitQbId,
-      vendor_name: selectedMatch.qbExpense.vendor_name,
-      amount: categoryAmount,
-      date: selectedMatch.qbExpense.date,
-      description: selectedMatch.qbExpense.description,
-      is_imported: true,
-      project_id: selectedProject,
-      category_id: categoryId,
-      expense_type: expenseType,
-      notes: itemNotes,
-      receipt_url: selectedMatch.receipt.receipt_image_url || null,
-    });
+interface DBExpense {
+  // ... existing fields
+  qb_id?: string;
 }
 ```
 
-#### Change 3: Add pre-import validation to detect duplicates (before line 415)
+### Immediate Data Cleanup
 
-```typescript
-// Check if this QB expense was already split-imported
-const { data: existingSplits } = await supabase
-  .from('quickbooks_expenses')
-  .select('id, qb_id')
-  .like('qb_id', `${selectedMatch.qbExpense.qb_id}_split_%`);
-
-if (existingSplits && existingSplits.length > 0) {
-  // Warn user that this receipt may have been imported before
-  const confirmed = window.confirm(
-    `This QuickBooks transaction appears to have been split-imported before (${existingSplits.length} existing splits found). Continuing will update those records. Proceed?`
-  );
-  if (!confirmed) {
-    setIsImporting(false);
-    return;
-  }
-}
-```
-
----
-
-### Data Cleanup
-
-Clean up the duplicate pending receipt that's already been imported:
-
-```sql
--- Delete the duplicate pending receipt that was already processed
-DELETE FROM pending_receipts 
-WHERE id = 'ba605af0-40e6-45b8-90cb-d22bcc76502e' 
-AND status = 'matched';
-```
-
-Or update it to `imported` status to clear it from the queue:
-
-```sql
-UPDATE pending_receipts 
-SET status = 'imported' 
-WHERE id = 'ba605af0-40e6-45b8-90cb-d22bcc76502e';
-```
-
----
+For the specific $671.60 transaction, both records need to be reset:
+- `purchase_769` → reset to pending
+- `purchase_769_split_hardware` → delete (it was a split)
 
 ### Files to Modify
 
 | File | Changes |
-|------|--------|
-| `src/components/SmartSplitReceiptUpload.tsx` | Add duplicate detection, use check-then-upsert pattern for splits |
+|------|---------|
+| `src/components/project/ExpenseActions.tsx` | Update delete logic to re-queue QB expenses, add `qb_id` to interface |
+| `src/pages/ProjectBudget.tsx` | Pass `qb_id` when mapping QB expenses, add to interface |
 
----
+### Expected Behavior After Fix
 
-### Expected Results
-
-1. Re-importing a receipt updates existing splits instead of failing
-2. User gets a confirmation dialog if splits already exist
-3. No more unique constraint violations
-4. Duplicate receipts can be safely handled
-
+1. User clicks "Delete" on a QuickBooks expense
+2. Dialog shows: "This expense will be moved back to the QuickBooks pending queue"
+3. Expense reappears in pending list immediately (no sync needed)
+4. Any splits are removed so user can re-categorize from scratch
+5. Regular (non-QB) expenses are still permanently deleted
