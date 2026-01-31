@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { Plus, AlertTriangle, Zap, CalendarRange } from 'lucide-react';
+import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Dialog,
   DialogContent,
@@ -169,18 +170,13 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
           {/* Project Selector */}
           <div className="space-y-2">
             <Label className="text-slate-300">Project *</Label>
-            <Select value={projectId} onValueChange={setProjectId}>
-              <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                <SelectValue placeholder="Select a project" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id} className="text-white">
-                    {project.name} - {project.address}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ProjectAutocomplete
+              projects={projects}
+              value={projectId}
+              onSelect={setProjectId}
+              placeholder="Search projects..."
+              triggerClassName="bg-slate-800 border-slate-700 text-white hover:bg-slate-700"
+            />
           </div>
 
           {/* Category - Select first for natural flow */}
