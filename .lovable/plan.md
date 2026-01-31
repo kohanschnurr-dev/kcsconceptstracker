@@ -1,69 +1,160 @@
 
 
-## Add Project Column to Tasks Table
+## Enhance Item Picker with Bundle Filtering & Select All
 
 ### What This Does
-Adds a new "Project" column to the Master Pipeline tasks table, showing which project each task is assigned to (or "Other" if none). This column appears between the Task and Priority columns.
+Adds bundle-based filtering and bulk selection to the "Add Items from Library" modal, making it easy to import all items from a bundle (like "Rental Items") at once while still allowing individual item selection/deselection.
 
 ---
 
-### Current Columns
-| Checkbox | Task | Priority | Status | Due Date | Actions |
+### Current Flow
+1. Search items by name/model/finish
+2. Individually select items one by one
+3. Add selected items
 
-### New Columns  
-| Checkbox | Task | **Project** | Priority | Status | Due Date | Actions |
+### Enhanced Flow
+1. **Filter by bundle** dropdown to show only items in a specific bundle
+2. **"Select All in Bundle"** button to quickly select all visible items
+3. **Deselect All** button to clear selections
+4. Individual toggle still works to fine-tune selection before importing
+
+---
+
+### UI Changes
+
+**New Filter Bar Layout:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ [🔍 Search by name, model number, or finish...]                     │
+├────────────────────────────────┬────────────────────────────────────┤
+│ [📁 Filter by Bundle ▼]        │ [✓ Select All]  [✗ Deselect All]  │
+└────────────────────────────────┴────────────────────────────────────┘
+```
+
+**Bundle Filter Dropdown:**
+- "All Items" (default - shows everything)
+- "Rental Items" 
+- "Oasis Bathroom"
+- (any other bundles)
 
 ---
 
 ### Technical Changes
 
-**File: `src/pages/DailyLogs.tsx`**
+**File: `src/components/project/ProcurementTab.tsx`**
 
-1. **Update the fetch query** to join with projects table and get project names:
-   - Change from: `select('*')`
-   - Change to: `select('*, projects(name)')`
-
-2. **Update the Task transformation** to include projectName from the joined data
-
-3. **Add Project column header** after Task column (line ~752):
+1. **Add new state in ItemPickerModal:**
    ```tsx
-   <TableHead className="w-32">Project</TableHead>
+   const [bundles, setBundles] = useState<Bundle[]>([]);
+   const [filterBundleId, setFilterBundleId] = useState<string>('all');
+   const [itemBundleMap, setItemBundleMap] = useState<Map<string, string[]>>(new Map());
    ```
 
-4. **Add Project cell** in each table row after Task cell (line ~823):
+2. **Fetch bundles and item-bundle assignments:**
    ```tsx
-   <TableCell>
-     <span className="text-sm text-muted-foreground">
-       {task.projectName || 'Other'}
-     </span>
-   </TableCell>
+   // In fetchAllItems or new function:
+   const { data: bundlesData } = await supabase
+     .from('procurement_bundles')
+     .select('*')
+     .order('name');
+   
+   const { data: bundleAssignments } = await supabase
+     .from('procurement_item_bundles')
+     .select('item_id, bundle_id');
+   
+   // Create map: item_id -> [bundle_ids]
    ```
 
-5. **Update colspan** in loading and empty states from 6 to 7
+3. **Update availableItems filter logic:**
+   ```tsx
+   const availableItems = useMemo(() => {
+     return allItems.filter(item => {
+       if (existingItemIds.includes(item.id)) return false;
+       
+       // Bundle filter
+       if (filterBundleId !== 'all') {
+         const itemBundles = itemBundleMap.get(item.id) || [];
+         if (!itemBundles.includes(filterBundleId)) return false;
+       }
+       
+       // Search filter
+       if (searchQuery) { /* existing logic */ }
+       return true;
+     });
+   }, [allItems, existingItemIds, searchQuery, filterBundleId, itemBundleMap]);
+   ```
 
-6. **Update mobile card view** to also show project name as a subtle label
+4. **Add Select All / Deselect All functions:**
+   ```tsx
+   const handleSelectAll = () => {
+     const availableIds = availableItems.map(item => item.id);
+     setSelectedIds(new Set(availableIds));
+   };
+   
+   const handleDeselectAll = () => {
+     setSelectedIds(new Set());
+   };
+   ```
 
----
-
-### Visual Result
-
-**Desktop Table:**
-```
-┌──┬─────────────────────────────┬──────────┬──────────┬──────────┬──────────┬────────┐
-│  │ Task                        │ Project  │ Priority │ Status   │ Due Date │        │
-├──┼─────────────────────────────┼──────────┼──────────┼──────────┼──────────┼────────┤
-│☐ │ hi                          │ Other    │ Medium   │ Pending  │ —        │ 🗓️ 🗑️  │
-│☐ │ Pool scenario at Farmers... │ Farmers  │ Medium   │ Pending  │ —        │ 🗓️ 🗑️  │
-└──┴─────────────────────────────┴──────────┴──────────┴──────────┴──────────┴────────┘
-```
+5. **Update UI with bundle filter dropdown and bulk action buttons:**
+   - Add Select dropdown for bundles after search input
+   - Add "Select All" and "Deselect All" buttons
+   - Update button states based on selection
 
 ---
 
 ### Data Flow
 
-1. Fetch tasks with project join: `tasks` + `projects(name)`
-2. Transform response to include `projectName` field
-3. Display in table with truncation for long project names
+```text
+User opens picker
+       │
+       ▼
+Fetch: items + bundles + item_bundle_assignments
+       │
+       ▼
+Build itemBundleMap (item_id → bundle_ids[])
+       │
+       ▼
+User selects bundle filter → filters availableItems
+       │
+       ▼
+User clicks "Select All" → selects all visible items
+       │
+       ▼
+User can still toggle individual items
+       │
+       ▼
+User clicks "Add X Items" → imports to project
+```
+
+---
+
+### UI Mockup
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│ 📚 Add Items from Library                                        [X] │
+├───────────────────────────────────────────────────────────────────────┤
+│ 🔍 Search by name, model number, or finish...                         │
+│                                                                       │
+│ ┌──────────────────────────┐  [✓ Select All]  [✗ Clear Selection]    │
+│ │ 📁 Filter by Bundle  ▼   │                                         │
+│ │   All Items              │                                         │
+│ │   ──────────────────     │                                         │
+│ │   🏷️ Rental Items        │                                         │
+│ │   🏷️ Oasis Bathroom      │                                         │
+│ └──────────────────────────┘                                         │
+│                                                                       │
+│ ┌─────────────────────────────────────────────────────────────────┐  │
+│ │ [✓] 📦 Front Door Handle Rental  | Grey | Amazon     | $79.99  │  │
+│ │ [✓] 📦 Black Mailbox             | Black | Amazon    | $14.97  │  │
+│ │ [ ] 📦 Cabinet Knobs Black       | Black | Amazon    | $23.99  │  │
+│ │ ...                                                             │  │
+│ └─────────────────────────────────────────────────────────────────┘  │
+│                                                                       │
+│                        2 items selected      [Cancel] [Add 2 Items]  │
+└───────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -71,15 +162,15 @@ Adds a new "Project" column to the Master Pipeline tasks table, showing which pr
 
 | File | Change |
 |------|--------|
-| `src/pages/DailyLogs.tsx` | Add project column to table header, cells, and fetch query |
+| `src/components/project/ProcurementTab.tsx` | Update `ItemPickerModal` with bundle filter, select all/deselect buttons |
 
 ---
 
 ### Summary
 
-- Join tasks with projects table to get project names
-- Add "Project" column between Task and Priority
-- Show project name or "Other" for unassigned tasks
-- Update mobile card view to include project badge
-- Update colspan for loading/empty states
+- Add bundle filter dropdown to show only items belonging to a specific bundle
+- Add "Select All" button to select all currently visible/filtered items  
+- Add "Deselect All" / "Clear Selection" button to clear selections
+- User can still individually toggle items after bulk selection
+- Useful for quickly adding all "Rental Items" to a project with one click
 
