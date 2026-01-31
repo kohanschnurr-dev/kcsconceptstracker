@@ -90,12 +90,12 @@ export default function DailyLogs() {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .select('*')
+        .select('*, projects(name)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const transformed: Task[] = (data || []).map((t) => ({
+      const transformed: Task[] = (data || []).map((t: any) => ({
         id: t.id,
         userId: t.user_id,
         title: t.title,
@@ -110,6 +110,7 @@ export default function DailyLogs() {
         startTime: t.start_time,
         endTime: t.end_time,
         projectId: t.project_id,
+        projectName: t.projects?.name || null,
         createdAt: t.created_at,
         updatedAt: t.updated_at,
       }));
@@ -676,6 +677,7 @@ export default function DailyLogs() {
                             </Badge>
                           )}
                         </div>
+                        <p className="text-xs text-muted-foreground mt-1">{task.projectName || 'Other'}</p>
                         <div className="flex flex-wrap items-center gap-2 mt-2">
                           <Select
                             value={task.priorityLevel}
@@ -750,6 +752,7 @@ export default function DailyLogs() {
                   <TableRow>
                     <TableHead className="w-12"></TableHead>
                     <TableHead>Task</TableHead>
+                    <TableHead className="w-32">Project</TableHead>
                     <TableHead className="w-28">Priority</TableHead>
                     <TableHead className="w-28">Status</TableHead>
                     <TableHead className="w-28">Due Date</TableHead>
@@ -760,14 +763,14 @@ export default function DailyLogs() {
                   {tasksLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i}>
-                        <TableCell colSpan={6}>
+                        <TableCell colSpan={7}>
                           <div className="h-8 bg-muted animate-pulse rounded" />
                         </TableCell>
                       </TableRow>
                     ))
                   ) : tasks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         {checklistTab === 'daily' 
                           ? "No tasks scheduled for today. Add tasks above or move items from Master Pipeline."
                           : taskFilter === 'pending' 
@@ -820,6 +823,11 @@ export default function DailyLogs() {
                               )}
                             </div>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground truncate max-w-[120px] block">
+                            {task.projectName || 'Other'}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <Select
