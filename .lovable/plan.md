@@ -1,166 +1,207 @@
 
 
-## Change "Move to Today" to "Assign to Day" Behavior
+## Address Autocomplete Feature - Google Maps Style
 
 ### What This Does
-When you assign a task from the Master Pipeline to today's Daily Sprint, the task will now appear in **both** lists instead of disappearing from the Master Pipeline. This allows you to track progress on priority items while keeping them visible in your long-term pipeline.
+Adds a modern autocomplete experience for address fields throughout the app. When you start typing an address (or use "@" to trigger it), the system suggests verified addresses via a geocoding API and automatically extracts latitude/longitude coordinates for instant map pin population.
 
 ---
 
-### Current Behavior (Problem)
-- Task in Master Pipeline → Click "Move to Today" 
-- Task sets `is_daily = true`
-- Task **disappears** from Master Pipeline
-- Task only shows in Daily Sprint
+### Current Behavior
+- Address fields are plain text inputs
+- No validation or suggestions
+- No geocoding (lat/long not stored)
+- Manual typing prone to typos
 
-### New Behavior (Solution)
-- Task in Master Pipeline → Click "Assign to Day" 
-- Task sets `scheduled_date = today` (but keeps `is_daily = false`)
-- Task **stays** in Master Pipeline (with a visual indicator it's assigned today)
-- Task **also appears** in Daily Sprint
+### New Behavior
+- Type a few letters and see address suggestions in a dropdown
+- Select from dropdown to auto-fill the complete address
+- Latitude and longitude are automatically extracted and saved
+- Optional "@" trigger for quick lookup (Notion/Slack-style)
+
+---
+
+### API Choice: Google Places vs Alternatives
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **Google Places API** | Best accuracy, familiar UX | Requires API key, has usage costs |
+| **Mapbox Search** | Good accuracy, free tier | Requires API key |
+| **Nominatim (OpenStreetMap)** | Free, no key needed | Less accurate, rate limited |
+
+**Recommendation**: Use **Google Places API** for best accuracy since this is a real estate app where address precision matters. You'll need to add a Google Maps API key.
 
 ---
 
 ### Technical Implementation
 
-**File: `src/pages/DailyLogs.tsx`**
+#### 1. Database Migration - Add Lat/Long Columns
 
-#### 1. Update the `handleMoveToToday` function
+Add `latitude` and `longitude` columns to the `projects` table:
 
-Change from setting `is_daily = true` to just setting `scheduled_date`:
+```sql
+ALTER TABLE projects 
+ADD COLUMN latitude DECIMAL(10, 8),
+ADD COLUMN longitude DECIMAL(11, 8);
+```
+
+#### 2. Create Reusable AddressAutocomplete Component
+
+**New File: `src/components/AddressAutocomplete.tsx`**
+
+This component will:
+- Display an input field with a MapPin icon
+- Debounce user input (300ms)
+- Call Google Places Autocomplete API via edge function
+- Show dropdown of suggestions
+- On selection, geocode the address to get lat/long
+- Return full address + coordinates to parent component
 
 ```typescript
-const handleAssignToToday = async (task: Task) => {
-  try {
-    const { error } = await supabase
-      .from('tasks')
-      .update({ 
-        scheduled_date: todayStr  // Only set date, keep is_daily unchanged
-      })
-      .eq('id', task.id);
-
-    if (error) throw error;
-
-    toast({ title: 'Assigned to Today', description: `"${task.title}" added to today's sprint` });
-    fetchTasks();
-  } catch (error) {
-    console.error('Error assigning task:', error);
-    toast({ title: 'Error', description: 'Failed to assign task', variant: 'destructive' });
-  }
-};
+interface AddressAutocompleteProps {
+  value: string;
+  onChange: (address: string, lat?: number, lng?: number) => void;
+  placeholder?: string;
+  className?: string;
+}
 ```
 
-#### 2. Update the Daily Sprint filter
+Key features:
+- Uses Command component for the dropdown (already in project)
+- Supports "@" trigger: if user types "@123" it triggers search for "123"
+- Shows "Searching..." loading state
+- Displays structured results: **Main text** (street) + secondary text (city, state)
 
-Show tasks where `scheduled_date = today` (regardless of `is_daily` flag):
+#### 3. Create Edge Function for Google Places API
+
+**New File: `supabase/functions/geocode-address/index.ts`**
+
+This edge function:
+- Receives search query from frontend
+- Calls Google Places Autocomplete API
+- Returns predictions with place_id
+- Can also geocode a selected place_id to get lat/long
 
 ```typescript
-// Daily Sprint: tasks scheduled for today (regardless of is_daily flag)
-const dailyTasks = allTasks.filter((task) => {
-  const isScheduledToday = task.scheduledDate === todayStr;
-  
-  if (taskFilter === 'pending') {
-    return isScheduledToday && task.status !== 'completed';
-  } else if (taskFilter === 'completed') {
-    return isScheduledToday && task.status === 'completed';
-  }
-  return isScheduledToday;
-});
+// Endpoint 1: Get autocomplete suggestions
+POST /geocode-address
+{ "action": "autocomplete", "query": "1234 Main" }
+-> Returns: [{ place_id, description, main_text, secondary_text }]
+
+// Endpoint 2: Get coordinates for selected place
+POST /geocode-address  
+{ "action": "geocode", "place_id": "ChIJ..." }
+-> Returns: { lat: 32.7767, lng: -96.7970 }
 ```
 
-#### 3. Update the Master Pipeline filter
+#### 4. Update NewProjectModal
 
-Show ALL non-daily tasks (no longer exclude based on `is_daily`):
+**File: `src/components/NewProjectModal.tsx`**
+
+Replace the plain address input with the new autocomplete component:
+
+```tsx
+// Before
+<Input
+  placeholder="1234 Main St, Dallas, TX 75208"
+  value={address}
+  onChange={(e) => setAddress(e.target.value)}
+/>
+
+// After
+<AddressAutocomplete
+  value={address}
+  onChange={(addr, lat, lng) => {
+    setAddress(addr);
+    setLatitude(lat);
+    setLongitude(lng);
+  }}
+  placeholder="Start typing an address..."
+/>
+```
+
+Update the database insert to include lat/long:
 
 ```typescript
-// Master Pipeline: All tasks (is_daily = false), regardless of scheduled_date
-const masterTasks = allTasks.filter((task) => {
-  if (!task.isDaily) {
-    if (taskFilter === 'pending') {
-      return task.status !== 'completed';
-    } else if (taskFilter === 'completed') {
-      return task.status === 'completed';
-    }
-    return true;
-  }
-  return false;
-});
+const { data: project } = await supabase
+  .from('projects')
+  .insert({
+    name,
+    address,
+    latitude,      // New
+    longitude,     // New
+    total_budget: parseFloat(totalBudget),
+    // ...
+  })
 ```
 
-#### 4. Add visual indicator in Master Pipeline
+#### 5. Add Google Maps API Key
 
-Show a badge when a task is scheduled for today:
+You'll need to add a `GOOGLE_MAPS_API_KEY` secret. The edge function will use this to call Google's APIs.
 
-```tsx
-{task.scheduledDate === todayStr && (
-  <Badge variant="outline" className="text-xs text-primary border-primary/50">
-    Today
-  </Badge>
-)}
-```
+Required APIs to enable in Google Cloud Console:
+- Places API
+- Geocoding API
 
-#### 5. Rename button from "Move to Today" to "Assign to Day"
+---
 
-Update button tooltip and icon to be clearer:
+### Component Architecture
 
-```tsx
-<Button
-  variant="ghost"
-  size="icon"
-  className="h-9 w-9 text-primary hover:text-primary/80"
-  onClick={() => handleAssignToToday(task)}
-  title="Assign to Today"
->
-  <Calendar className="h-4 w-4" />  {/* Changed from ArrowRight */}
-</Button>
-```
-
-#### 6. Add "Unassign from Day" option in Daily Sprint
-
-Allow removing the scheduled date to send it back:
-
-```tsx
-{checklistTab === 'daily' && !task.isDaily && (
-  <Button
-    variant="ghost"
-    size="icon"
-    onClick={() => handleUnassignFromDay(task)}
-    title="Remove from Today"
-  >
-    <X className="h-4 w-4" />
-  </Button>
-)}
+```text
+┌─────────────────────────────────────────┐
+│  AddressAutocomplete Component          │
+│  ┌─────────────────────────────────┐    │
+│  │ 📍 1234 Main St, Dallas...      │    │
+│  └─────────────────────────────────┘    │
+│  ┌─────────────────────────────────┐    │
+│  │ 1234 Main Street                │◄───┤ Dropdown
+│  │   Dallas, TX 75208              │    │ (Command)
+│  ├─────────────────────────────────┤    │
+│  │ 1234 Main Avenue                │    │
+│  │   Plano, TX 75093               │    │
+│  └─────────────────────────────────┘    │
+└─────────────────────────────────────────┘
+         │
+         ▼
+  ┌──────────────────┐
+  │ Edge Function    │
+  │ geocode-address  │
+  └────────┬─────────┘
+           │
+           ▼
+  ┌──────────────────┐
+  │ Google Places    │
+  │ API              │
+  └──────────────────┘
 ```
 
 ---
 
-### Visual Result
+### Files to Create/Modify
 
-**Master Pipeline View:**
-| ☐ | Fix plumbing issue | High | Pending | Today | 📅 |
-
-**Daily Sprint View:**
-| ☐ | Fix plumbing issue | High | Pending | - | ✕ |
-
-- Same task appears in both lists
-- Master Pipeline shows "Today" badge
-- Daily Sprint shows option to unassign
+| File | Action | Description |
+|------|--------|-------------|
+| `supabase/functions/geocode-address/index.ts` | Create | Edge function for Places API calls |
+| `src/components/AddressAutocomplete.tsx` | Create | Reusable autocomplete input component |
+| `src/components/NewProjectModal.tsx` | Modify | Use AddressAutocomplete, save lat/long |
+| Database | Migrate | Add latitude, longitude columns to projects |
 
 ---
 
-### Files to Modify
+### Optional Enhancements (Future)
 
-| File | Changes |
-|------|---------|
-| `src/pages/DailyLogs.tsx` | Update filters, rename handler, add visual indicators |
+1. **Map Preview**: Show a small map preview when address is selected
+2. **Vendor Addresses**: Apply autocomplete to vendor forms
+3. **Calendar Events**: Add location field with autocomplete to calendar events
+4. **Offline Fallback**: Save recently used addresses for quick re-selection
 
 ---
 
-### Summary of Changes
+### Setup Required
 
-1. **Filter logic**: Daily Sprint shows tasks by `scheduled_date`, not `is_daily`
-2. **Handler rename**: `handleMoveToToday` → `handleAssignToToday` (only sets date)
-3. **Master Pipeline**: Keeps showing tasks even when assigned to a day
-4. **Visual indicator**: "Today" badge in Master Pipeline for assigned tasks
-5. **Unassign option**: Remove scheduled date to take task off Daily Sprint
+Before implementing, you'll need to:
+1. **Create a Google Cloud Project** (if not already)
+2. **Enable Places API and Geocoding API**
+3. **Create an API key** with these APIs enabled
+4. **Add the key** as a Supabase secret: `GOOGLE_MAPS_API_KEY`
 
