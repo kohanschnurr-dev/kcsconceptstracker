@@ -958,7 +958,7 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
 
               {/* Project Selection & Type Toggle */}
               <div className="space-y-4 pt-4 border-t border-border">
-                <h4 className="text-sm font-medium">Import to Project</h4>
+                <h4 className="text-sm font-medium">Assign to Project</h4>
                 
                 <div className="space-y-3">
                   <ProjectAutocomplete
