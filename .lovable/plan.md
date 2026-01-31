@@ -1,60 +1,69 @@
 
 
-## Soften the Tasks Due Today Banner
+## Add Project Column to Tasks Table
 
 ### What This Does
-Tones down the "Tasks Due Today" banner from an alarming urgent style to a calm, informative "today's agenda" style that feels like a helpful reminder rather than a warning.
+Adds a new "Project" column to the Master Pipeline tasks table, showing which project each task is assigned to (or "Other" if none). This column appears between the Task and Priority columns.
 
 ---
 
-### Current Look (Too Urgent)
-- Warning amber/orange border and background
-- AlertTriangle (⚠️) icon
-- "Action Required" heading
-- Bright warning-colored badge
-- Warning-colored "View Tasks" button
+### Current Columns
+| Checkbox | Task | Priority | Status | Due Date | Actions |
 
-### New Look (Calm & Informative)
-- Subtle muted border
-- ClipboardList or ListChecks icon (neutral, task-oriented)
-- "Today's Agenda" or "Today" heading
-- Neutral secondary badge
-- Soft primary-colored button
+### New Columns  
+| Checkbox | Task | **Project** | Priority | Status | Due Date | Actions |
 
 ---
 
-### Design Changes
+### Technical Changes
 
-| Element | Current | New |
-|---------|---------|-----|
-| Border/Background | `border-warning/50 bg-warning/5` | `border-border bg-muted/30` |
-| Icon | `AlertTriangle` (warning) | `ListChecks` (neutral) |
-| Icon container | `bg-warning/20` | `bg-primary/10` |
-| Heading | "Action Required" (text-warning) | "Today" (text-foreground) |
-| Badge | Warning colors | Secondary/muted |
-| Main button | `bg-warning` | `bg-primary` or outline variant |
+**File: `src/pages/DailyLogs.tsx`**
+
+1. **Update the fetch query** to join with projects table and get project names:
+   - Change from: `select('*')`
+   - Change to: `select('*, projects(name)')`
+
+2. **Update the Task transformation** to include projectName from the joined data
+
+3. **Add Project column header** after Task column (line ~752):
+   ```tsx
+   <TableHead className="w-32">Project</TableHead>
+   ```
+
+4. **Add Project cell** in each table row after Task cell (line ~823):
+   ```tsx
+   <TableCell>
+     <span className="text-sm text-muted-foreground">
+       {task.projectName || 'Other'}
+     </span>
+   </TableCell>
+   ```
+
+5. **Update colspan** in loading and empty states from 6 to 7
+
+6. **Update mobile card view** to also show project name as a subtle label
 
 ---
 
-### Visual Comparison
+### Visual Result
 
-**Before:**
+**Desktop Table:**
 ```
-┌─────────────────────────────────────────────────────────┐
-│ ⚠️ Action Required  [1 Item]         [Roofing] [Calendar]│
-│    1 event today                                         │
-└─────────────────────────────────────────────────────────┘
-  ^ Orange/amber warning styling throughout
+┌──┬─────────────────────────────┬──────────┬──────────┬──────────┬──────────┬────────┐
+│  │ Task                        │ Project  │ Priority │ Status   │ Due Date │        │
+├──┼─────────────────────────────┼──────────┼──────────┼──────────┼──────────┼────────┤
+│☐ │ hi                          │ Other    │ Medium   │ Pending  │ —        │ 🗓️ 🗑️  │
+│☐ │ Pool scenario at Farmers... │ Farmers  │ Medium   │ Pending  │ —        │ 🗓️ 🗑️  │
+└──┴─────────────────────────────┴──────────┴──────────┴──────────┴──────────┴────────┘
 ```
 
-**After:**
-```
-┌─────────────────────────────────────────────────────────┐
-│ ✓ Today  [1 Item]                    [Roofing] [Calendar]│
-│   1 event today                                          │
-└─────────────────────────────────────────────────────────┘
-  ^ Neutral muted styling, calm reminder feel
-```
+---
+
+### Data Flow
+
+1. Fetch tasks with project join: `tasks` + `projects(name)`
+2. Transform response to include `projectName` field
+3. Display in table with truncation for long project names
 
 ---
 
@@ -62,33 +71,15 @@ Tones down the "Tasks Due Today" banner from an alarming urgent style to a calm,
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/TasksDueTodayBanner.tsx` | Update icon, colors, and copy to be less urgent |
-
----
-
-### Technical Changes
-
-1. **Import different icon**: Replace `AlertTriangle` with `ListChecks` or `ClipboardList`
-2. **Update container styling**: 
-   - From: `border-warning/50 bg-warning/5`
-   - To: `border-border bg-muted/30`
-3. **Update icon container**: 
-   - From: `bg-warning/20` with warning icon color
-   - To: `bg-primary/10` with primary icon color
-4. **Update heading**: 
-   - From: "Action Required" with `text-warning`
-   - To: "Today" with `text-foreground`
-5. **Update badge styling**: Use neutral secondary colors instead of warning
-6. **Update View Tasks button**: 
-   - From: `bg-warning hover:bg-warning/90`
-   - To: Primary variant or outline style
+| `src/pages/DailyLogs.tsx` | Add project column to table header, cells, and fetch query |
 
 ---
 
 ### Summary
 
-- Replace warning icon with neutral task icon
-- Change "Action Required" to "Today" 
-- Use muted/neutral colors instead of amber/orange warning tones
-- Keep functionality the same, just softer visual presentation
+- Join tasks with projects table to get project names
+- Add "Project" column between Task and Priority
+- Show project name or "Other" for unassigned tasks
+- Update mobile card view to include project badge
+- Update colspan for loading/empty states
 
