@@ -1,64 +1,57 @@
 
-## Fix: Receipt Viewing & Payment Method Inheritance for Split Expenses
+## Fix: Receipt Blocked by Browser Ad-Blocker
 
-### Issues Identified
+### Problem
+When clicking the paperclip icon to view a receipt, Chrome shows `ERR_BLOCKED_BY_CLIENT`. This happens because:
+- Ad blockers (like uBlock Origin, AdBlock Plus) often block requests to cloud storage domains
+- The direct URL `skbkqngjvbvaswijavor.supabase.co` gets flagged and blocked
 
-| Issue | Current State | Expected Behavior |
-|-------|---------------|-------------------|
-| **Chrome blocks receipt** | Receipt URL opens in new tab via `ExternalLink` in modal, but row click goes to modal first | Need direct clickable paperclip |
-| **Payment method missing on splits** | Split expenses have `payment_method: null` | Should inherit from parent QB transaction (e.g., "card") |
-| **Paperclip not clickable** | Paperclip icon is just visual indicator in expenses table | Should open receipt directly when clicked |
+### Solution
+Instead of opening the storage URL directly, we'll:
+1. Fetch the file through JavaScript (using `fetch()`)
+2. Convert it to a Blob URL
+3. Open the blob URL in a new tab
 
-### Root Cause Analysis
-
-**Database query confirms the issue:**
-- Main transaction (`purchase_769`) has `payment_method: card`
-- All split records (`purchase_769_split_*`) have `payment_method: null`
-
-The `SmartSplitReceiptUpload.tsx` import logic does NOT copy `payment_method` from the original QuickBooks expense when creating splits.
+This bypasses ad blockers because the request comes from your app's code, not from a navigation event.
 
 ---
 
-### Solution
+### Implementation
 
-**Part 1: Add payment_method to split imports**
+**File: `src/pages/Expenses.tsx`**
 
-Update the `MatchedExpense` interface to include `payment_method`:
+Add a helper function to handle receipt viewing:
+
 ```typescript
-interface MatchedExpense {
-  receipt: PendingReceipt;
-  qbExpense: {
-    id: string;
-    vendor_name: string;
-    amount: number;
-    date: string;
-    description?: string;
-    payment_method?: string;  // Add this
-  };
-}
+const handleViewReceipt = async (receiptUrl: string, e: React.MouseEvent) => {
+  e.stopPropagation();
+  
+  try {
+    // Fetch the file through JavaScript to bypass ad blockers
+    const response = await fetch(receiptUrl);
+    const blob = await response.blob();
+    
+    // Create a blob URL and open it
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank');
+    
+    // Clean up the blob URL after a delay
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  } catch (error) {
+    console.error('Failed to open receipt:', error);
+    // Fallback to direct URL if fetch fails
+    window.open(receiptUrl, '_blank');
+  }
+};
 ```
 
-Update the insert/update logic for split records to include `payment_method`:
-```typescript
-// When inserting new split
-payment_method: selectedMatch.qbExpense.payment_method || null,
-
-// When updating existing split
-payment_method: selectedMatch.qbExpense.payment_method || null,
-```
-
-**Part 2: Make paperclip clickable in expenses table**
-
-In `src/pages/Expenses.tsx`, change the Paperclip from a visual icon to a clickable button that opens the receipt:
+Update the paperclip click handler:
 
 ```tsx
 {expense.receipt_url && (
   <button
-    onClick={(e) => {
-      e.stopPropagation(); // Prevent row click (opening modal)
-      window.open(expense.receipt_url, '_blank');
-    }}
-    className="text-primary hover:text-primary/80"
+    onClick={(e) => handleViewReceipt(expense.receipt_url!, e)}
+    className="text-primary hover:text-primary/80 transition-colors"
     title="View receipt"
   >
     <Paperclip className="h-4 w-4" />
@@ -72,31 +65,19 @@ In `src/pages/Expenses.tsx`, change the Paperclip from a visual icon to a clicka
 
 | File | Changes |
 |------|---------|
-| `src/components/SmartSplitReceiptUpload.tsx` | Add `payment_method` to interface and include in insert/update logic for splits |
-| `src/pages/Expenses.tsx` | Make Paperclip icon clickable to open receipt URL |
+| `src/pages/Expenses.tsx` | Add `handleViewReceipt` helper function and update paperclip click handler |
 
 ---
 
-### Technical Details
+### How It Works
 
-**SmartSplitReceiptUpload.tsx changes:**
+1. User clicks the orange paperclip icon
+2. JavaScript fetches the receipt file in the background
+3. The file is converted to a local blob URL (`blob:https://...`)
+4. The blob URL opens in a new tab
+5. Ad blockers don't block blob URLs since they're local
 
-1. **Line ~42-51**: Update `MatchedExpense.qbExpense` interface to include `payment_method?: string;`
-
-2. **Line ~169-177**: When mapping qbExpenses to matches, the full object is already passed, so `payment_method` will be available
-
-3. **Line ~514-525**: First category update - add `payment_method`
-4. **Line ~537-549**: Update existing split - add `payment_method`
-5. **Line ~553-569**: Insert new split - add `payment_method`
-
-**Expenses.tsx changes:**
-
-1. **Line ~456-467**: Wrap Paperclip in clickable button with `onClick` that opens receipt URL, using `e.stopPropagation()` to prevent triggering the row click
-
----
-
-### Expected Results
-
-1. Clicking the orange paperclip icon opens the receipt in a new tab
-2. All split expenses inherit the payment method (cash/card) from the parent transaction
-3. Chrome won't block since we're using `window.open` with user interaction
+### Expected Result
+- Receipts will open successfully even with ad blockers enabled
+- PDFs and images will display in a new browser tab
+- Falls back to direct URL if fetching fails (for users without ad blockers)
