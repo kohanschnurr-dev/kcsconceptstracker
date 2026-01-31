@@ -77,6 +77,7 @@ export default function BusinessExpenses() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [expenses, setExpenses] = useState<DBBusinessExpense[]>([]);
+  const [projects, setProjects] = useState<{id: string; name: string; address?: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedExpense, setSelectedExpense] = useState<DBBusinessExpense | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -140,14 +141,21 @@ export default function BusinessExpenses() {
 
   const fetchData = async () => {
     try {
-      const { data: expensesData, error: expensesError } = await supabase
-        .from('business_expenses')
-        .select('*')
-        .order('date', { ascending: false });
+      const [expensesRes, projectsRes] = await Promise.all([
+        supabase
+          .from('business_expenses')
+          .select('*')
+          .order('date', { ascending: false }),
+        supabase
+          .from('projects')
+          .select('id, name, address')
+          .order('name')
+      ]);
 
-      if (expensesError) throw expensesError;
+      if (expensesRes.error) throw expensesRes.error;
 
-      setExpenses(expensesData || []);
+      setExpenses(expensesRes.data || []);
+      setProjects(projectsRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -458,7 +466,7 @@ export default function BusinessExpenses() {
         </div>
 
         {/* QuickBooks Integration */}
-        <BusinessQuickBooksIntegration onExpenseImported={fetchData} />
+        <BusinessQuickBooksIntegration onExpenseImported={fetchData} projects={projects} />
 
         {/* Expense Trend Chart */}
         {expenses.length > 0 && (
