@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDisplayDate } from '@/lib/dateUtils';
 import { format, subDays } from 'date-fns';
 import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Package, Wrench, StickyNote, Split, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -288,13 +289,6 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     }).format(amount);
   };
 
-  const formatDateDisplay = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
 
   const handleCategorize = async (expenseId: string) => {
     const projectId = selectedProject[expenseId];
@@ -544,7 +538,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                <span>{formatDateDisplay(expense.date)}</span>
+                                <span>{formatDisplayDate(expense.date)}</span>
                                 {expense.description && (
                                   <>
                                     <span>•</span>
