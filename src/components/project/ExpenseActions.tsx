@@ -31,6 +31,7 @@ interface Expense {
   tax_amount: number | null;
   status: string;
   isQuickBooks?: boolean; // Flag to identify QB expenses
+  qb_id?: string; // QuickBooks ID for finding related splits
 }
 
 interface EditExpenseModalProps {
@@ -270,10 +271,32 @@ export function DeleteExpenseDialog({ expense, open, onOpenChange, onExpenseDele
     let error;
     
     if (expense.isQuickBooks) {
-      // Delete from QuickBooks expenses table
+      // For QuickBooks expenses, reset to pending instead of deleting
+      // This allows them to reappear in the QuickBooks pending queue
+      
+      // First, delete any split records for this expense
+      if (expense.qb_id) {
+        const { error: splitError } = await supabase
+          .from('quickbooks_expenses')
+          .delete()
+          .like('qb_id', `${expense.qb_id}_split_%`);
+        
+        if (splitError) {
+          console.error('Error deleting split records:', splitError);
+        }
+      }
+      
+      // Reset the main expense to pending (instead of deleting)
       const result = await supabase
         .from('quickbooks_expenses')
-        .delete()
+        .update({
+          is_imported: false,
+          project_id: null,
+          category_id: null,
+          expense_type: null,
+          notes: null,
+          receipt_url: null,
+        })
         .eq('id', expense.id);
       error = result.error;
     } else {
@@ -288,12 +311,15 @@ export function DeleteExpenseDialog({ expense, open, onOpenChange, onExpenseDele
     setLoading(false);
 
     if (error) {
-      toast.error('Failed to delete expense');
+      toast.error('Failed to process expense');
       console.error(error);
       return;
     }
 
-    toast.success('Expense deleted successfully');
+    toast.success(expense.isQuickBooks 
+      ? 'Expense moved back to QuickBooks pending queue' 
+      : 'Expense deleted successfully'
+    );
     onExpenseDeleted();
     onOpenChange(false);
   };
@@ -310,15 +336,31 @@ export function DeleteExpenseDialog({ expense, open, onOpenChange, onExpenseDele
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Expense</AlertDialogTitle>
+          <AlertDialogTitle>
+            {expense?.isQuickBooks ? 'Remove from Project' : 'Delete Expense'}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete this expense?
-            {expense && (
-              <span className="block mt-2 font-medium text-foreground">
-                {expense.vendor_name || 'Unknown vendor'} - {formatCurrency(Number(expense.amount))}
-              </span>
+            {expense?.isQuickBooks ? (
+              <>
+                This expense will be moved back to the QuickBooks pending queue for re-categorization.
+                {expense && (
+                  <span className="block mt-2 font-medium text-foreground">
+                    {expense.vendor_name || 'Unknown vendor'} - {formatCurrency(Number(expense.amount))}
+                  </span>
+                )}
+                Any associated split records will be removed.
+              </>
+            ) : (
+              <>
+                Are you sure you want to delete this expense?
+                {expense && (
+                  <span className="block mt-2 font-medium text-foreground">
+                    {expense.vendor_name || 'Unknown vendor'} - {formatCurrency(Number(expense.amount))}
+                  </span>
+                )}
+                This action cannot be undone.
+              </>
             )}
-            This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -326,10 +368,13 @@ export function DeleteExpenseDialog({ expense, open, onOpenChange, onExpenseDele
           <AlertDialogAction
             onClick={handleDelete}
             disabled={loading}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className={expense?.isQuickBooks 
+              ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+              : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            }
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Delete
+            {expense?.isQuickBooks ? 'Move to Pending' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

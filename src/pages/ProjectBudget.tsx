@@ -94,6 +94,7 @@ interface DBExpense {
   isQuickBooks?: boolean;
   notes?: string | null;
   receipt_url?: string | null;
+  qb_id?: string;
 }
 
 type SortField = 'date' | 'amount' | 'vendor' | 'category';
@@ -201,6 +202,7 @@ export default function ProjectBudget() {
       isQuickBooks: true,
       notes: qb.notes,
       receipt_url: qb.receipt_url,
+      qb_id: qb.qb_id,
     }));
     
     const allExpenses = [...expensesData, ...qbAsExpenses].sort((a, b) => 
