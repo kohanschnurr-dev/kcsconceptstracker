@@ -9,21 +9,16 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { MentionTextarea } from '@/components/MentionTextarea';
 import { PasteableTextarea } from '@/components/PasteableTextarea';
 
 interface Project {
   id: string;
   name: string;
+  address?: string;
 }
 
 interface NewDailyLogModalProps {
@@ -50,7 +45,7 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
   const fetchProjects = async () => {
     const { data } = await supabase
       .from('projects')
-      .select('id, name')
+      .select('id, name, address')
       .eq('status', 'active')
       .order('name');
     
@@ -152,15 +147,16 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
               <FileText className="h-4 w-4" />
               Work Performed *
             </Label>
-            <PasteableTextarea
+            <MentionTextarea
               value={workPerformed}
               onChange={setWorkPerformed}
-              placeholder="Describe the work completed today..."
+              placeholder="Describe the work completed today... (use @ to mention projects)"
               rows={3}
               bucketName="project-photos"
               folderPath="daily-logs"
               uploadedImages={photoUrls}
               onImagesChange={setPhotoUrls}
+              projects={projects}
             />
           </div>
 
@@ -169,15 +165,16 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
               <AlertTriangle className="h-4 w-4 text-warning" />
               Issues Encountered
             </Label>
-            <PasteableTextarea
+            <MentionTextarea
               value={issues}
               onChange={setIssues}
-              placeholder="Any problems or concerns? (optional)"
+              placeholder="Any problems or concerns? (use @ to mention projects)"
               rows={2}
               bucketName="project-photos"
               folderPath="daily-logs"
               uploadedImages={[]}
               onImagesChange={() => {}}
+              projects={projects}
             />
           </div>
 
