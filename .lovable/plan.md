@@ -1,93 +1,167 @@
 
 
-## Fix: Change "Lighting" to "Light Fixtures" for Category Consistency
+## Fix: Duplicate Key Error on Split Import
 
 ### Problem
-The SmartSplit category dropdown shows "Lighting" but the expense categories use "Light Fixtures" (`light_fixtures`). This mismatch means:
-- Items categorized as "lighting" by the parser won't match the actual budget category
-- Users see inconsistent naming between SmartSplit and the rest of the app
+When clicking "Match & Import", you get: `"duplicate key value violates unique constraint 'quickbooks_expenses_user_id_qb_id_key'"`
 
-### Root Cause
+### Root Cause Analysis
 
-Two places use the incorrect "lighting" instead of "light_fixtures":
+From the database investigation:
 
-| Location | Current | Should Be |
-|----------|---------|-----------|
-| `SmartSplitReceiptUpload.tsx` line 129 | `'lighting'` | `'light_fixtures'` |
-| `parse-receipt-image/index.ts` line 148 | `lighting` | `light_fixtures` |
+| Record | Status | Notes |
+|--------|--------|-------|
+| Pending Receipt #1 (`fc7a1fc1...`) | `imported` | Already processed successfully |
+| Pending Receipt #2 (`ba605af0...`) | `matched` | Trying to import again - FAILING |
 
-### Solution
+Both receipts point to the same QuickBooks expense `purchase_769`. When the second one tries to create `purchase_769_split_hardware`, it fails because that record already exists from the first import.
 
-Update both files to use `light_fixtures` to match `BUDGET_CATEGORIES`:
+**Existing split records:**
+- `purchase_769` - Bathroom ($206.71)
+- `purchase_769_split_hardware` - Hardware ($188.38)
+
+---
+
+### Solution: Multi-Part Fix
+
+**Part 1: Use UPSERT instead of INSERT for split records**
+
+Change the insert logic to use `upsert` with `onConflict`, so if a split already exists, it gets updated instead of causing an error.
+
+**Part 2: Add timestamp suffix to make split IDs unique**
+
+Change the qb_id pattern from:
+```
+${originalQbId}_split_${category}
+```
+To:
+```
+${originalQbId}_split_${category}_${Date.now()}
+```
+
+This ensures each import attempt creates unique records.
+
+**Part 3: Skip already-imported receipts**
+
+Add a check in the import flow to detect if the matched QB expense has already been processed (has split records), and warn the user.
 
 ---
 
 ### Implementation
 
-**File 1:** `src/components/SmartSplitReceiptUpload.tsx`
+**File:** `src/components/SmartSplitReceiptUpload.tsx`
 
-Replace the hardcoded `categoryOptions` array (lines 126-131) with one that uses `BUDGET_CATEGORIES` from types, ensuring consistency:
-
-```typescript
-// Category options for the dropdown (sorted A-Z) - using BUDGET_CATEGORIES values
-const categoryOptions = BUDGET_CATEGORIES
-  .map(c => c.value)
-  .filter(v => [
-    'appliances', 'bathroom', 'cabinets', 'carpentry', 'countertops',
-    'demolition', 'doors', 'drywall', 'electrical', 'flooring',
-    'hardware', 'hvac', 'kitchen', 'landscaping', 'light_fixtures',
-    'misc', 'painting', 'plumbing', 'roofing', 'windows'
-  ].includes(v))
-  .sort();
-```
-
-Also update the `capitalize` function to use the proper label from `BUDGET_CATEGORIES`:
+#### Change 1: Add uniqueness to split qb_id (line 510)
 
 ```typescript
-const getCategoryLabel = (category: string) => {
-  const found = BUDGET_CATEGORIES.find(c => c.value === category);
-  return found?.label || category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ');
-};
+// Add timestamp for uniqueness
+const uniqueSuffix = Date.now();
+
+// In the insert block:
+qb_id: `${originalQbId}_split_${category}_${uniqueSuffix}`,
 ```
 
-Update the SelectValue display (line 819) to use this helper for proper labeling.
+#### Change 2: Use upsert instead of insert (lines 506-521)
+
+```typescript
+// Check if this split already exists
+const splitQbId = `${originalQbId}_split_${category}`;
+const { data: existingSplit } = await supabase
+  .from('quickbooks_expenses')
+  .select('id')
+  .eq('qb_id', splitQbId)
+  .maybeSingle();
+
+if (existingSplit) {
+  // Update existing split record
+  await supabase
+    .from('quickbooks_expenses')
+    .update({
+      amount: categoryAmount,
+      category_id: categoryId,
+      project_id: selectedProject,
+      expense_type: expenseType,
+      notes: itemNotes,
+      receipt_url: selectedMatch.receipt.receipt_image_url || null,
+    })
+    .eq('id', existingSplit.id);
+} else {
+  // Insert new split record
+  await supabase
+    .from('quickbooks_expenses')
+    .insert({
+      user_id: user.id,
+      qb_id: splitQbId,
+      vendor_name: selectedMatch.qbExpense.vendor_name,
+      amount: categoryAmount,
+      date: selectedMatch.qbExpense.date,
+      description: selectedMatch.qbExpense.description,
+      is_imported: true,
+      project_id: selectedProject,
+      category_id: categoryId,
+      expense_type: expenseType,
+      notes: itemNotes,
+      receipt_url: selectedMatch.receipt.receipt_image_url || null,
+    });
+}
+```
+
+#### Change 3: Add pre-import validation to detect duplicates (before line 415)
+
+```typescript
+// Check if this QB expense was already split-imported
+const { data: existingSplits } = await supabase
+  .from('quickbooks_expenses')
+  .select('id, qb_id')
+  .like('qb_id', `${selectedMatch.qbExpense.qb_id}_split_%`);
+
+if (existingSplits && existingSplits.length > 0) {
+  // Warn user that this receipt may have been imported before
+  const confirmed = window.confirm(
+    `This QuickBooks transaction appears to have been split-imported before (${existingSplits.length} existing splits found). Continuing will update those records. Proceed?`
+  );
+  if (!confirmed) {
+    setIsImporting(false);
+    return;
+  }
+}
+```
 
 ---
 
-**File 2:** `supabase/functions/parse-receipt-image/index.ts`
+### Data Cleanup
 
-Update the CATEGORIES list in the system prompt (line 147-148) to use `light_fixtures`:
+Clean up the duplicate pending receipt that's already been imported:
 
-```text
-CATEGORIES:
-plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, light_fixtures, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, misc
+```sql
+-- Delete the duplicate pending receipt that was already processed
+DELETE FROM pending_receipts 
+WHERE id = 'ba605af0-40e6-45b8-90cb-d22bcc76502e' 
+AND status = 'matched';
 ```
 
----
+Or update it to `imported` status to clear it from the queue:
 
-### Visual Change
-
-| Before | After |
-|--------|-------|
-| Lighting | Light Fixtures |
-
-The dropdown will now show "Light Fixtures" matching the expense categories throughout the app.
+```sql
+UPDATE pending_receipts 
+SET status = 'imported' 
+WHERE id = 'ba605af0-40e6-45b8-90cb-d22bcc76502e';
+```
 
 ---
 
 ### Files to Modify
 
-| File | Change |
+| File | Changes |
 |------|--------|
-| `src/components/SmartSplitReceiptUpload.tsx` | Replace `'lighting'` with `'light_fixtures'` in categoryOptions, add label helper |
-| `supabase/functions/parse-receipt-image/index.ts` | Replace `lighting` with `light_fixtures` in CATEGORIES prompt |
+| `src/components/SmartSplitReceiptUpload.tsx` | Add duplicate detection, use check-then-upsert pattern for splits |
 
 ---
 
 ### Expected Results
 
-- SmartSplit dropdown shows "Light Fixtures" instead of "Lighting"
-- AI parser suggests `light_fixtures` category for lighting items
-- Categories match between SmartSplit, Project Budget, and Expenses pages
-- Split imports correctly assign items to the Light Fixtures budget category
+1. Re-importing a receipt updates existing splits instead of failing
+2. User gets a confirmation dialog if splits already exist
+3. No more unique constraint violations
+4. Duplicate receipts can be safely handled
 
