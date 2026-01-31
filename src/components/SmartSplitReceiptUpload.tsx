@@ -423,6 +423,29 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
     setIsImporting(true);
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Track original QB expense info
+      const originalQbId = (selectedMatch.qbExpense as any).qb_id || selectedMatch.qbExpense.id;
+
+      // Check if this QB expense was already split-imported (duplicate detection)
+      const { data: existingSplits } = await supabase
+        .from('quickbooks_expenses')
+        .select('id, qb_id')
+        .like('qb_id', `${originalQbId}_split_%`);
+
+      if (existingSplits && existingSplits.length > 0) {
+        // Warn user that this receipt may have been imported before
+        const confirmed = window.confirm(
+          `This QuickBooks transaction appears to have been split-imported before (${existingSplits.length} existing splits found). Continuing will update those records. Proceed?`
+        );
+        if (!confirmed) {
+          setIsImporting(false);
+          return;
+        }
+      }
+
       // Group line items by category
       const categoryGroups = groupByCategory(
         selectedMatch.receipt.line_items || [],
@@ -434,10 +457,7 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
         selectedMatch.receipt.line_items?.reduce((sum, i) => sum + i.total_price, 0) || 0;
       const taxAmount = selectedMatch.receipt.tax_amount || 0;
 
-      // Track original QB expense info
       const originalQbExpenseId = selectedMatch.qbExpense.id;
-      const originalQbId = (selectedMatch.qbExpense as any).qb_id || selectedMatch.qbExpense.id;
-
       const categoryKeys = Object.keys(categoryGroups);
       
       // Create expense record for each category
@@ -472,7 +492,7 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
             .from('project_categories')
             .insert({
               project_id: selectedProject,
-              category: category as any, // Cast to any since we're using dynamic category strings
+              category: category as any,
               estimated_budget: 0,
             })
             .select('id')
@@ -482,7 +502,7 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
           categoryId = newCategory.id;
         }
 
-        // First category updates original QB expense, rest are inserts
+        // First category updates original QB expense, rest use check-then-upsert
         if (i === 0) {
           const { error: qbError } = await supabase
             .from('quickbooks_expenses')
@@ -499,28 +519,50 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
 
           if (qbError) throw qbError;
         } else {
-          // Insert additional expense records for other categories
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error('Not authenticated');
-
-          const { error: insertError } = await supabase
+          // Check if this split already exists (prevents duplicate key error)
+          const splitQbId = `${originalQbId}_split_${category}`;
+          const { data: existingSplit } = await supabase
             .from('quickbooks_expenses')
-            .insert({
-              user_id: user.id,
-              qb_id: `${originalQbId}_split_${category}`,
-              vendor_name: selectedMatch.qbExpense.vendor_name,
-              amount: categoryAmount,
-              date: selectedMatch.qbExpense.date,
-              description: selectedMatch.qbExpense.description,
-              is_imported: true,
-              project_id: selectedProject,
-              category_id: categoryId,
-              expense_type: expenseType,
-              notes: itemNotes,
-              receipt_url: selectedMatch.receipt.receipt_image_url || null,
-            });
+            .select('id')
+            .eq('qb_id', splitQbId)
+            .maybeSingle();
 
-          if (insertError) throw insertError;
+          if (existingSplit) {
+            // Update existing split record
+            const { error: updateError } = await supabase
+              .from('quickbooks_expenses')
+              .update({
+                amount: categoryAmount,
+                category_id: categoryId,
+                project_id: selectedProject,
+                expense_type: expenseType,
+                notes: itemNotes,
+                receipt_url: selectedMatch.receipt.receipt_image_url || null,
+              })
+              .eq('id', existingSplit.id);
+
+            if (updateError) throw updateError;
+          } else {
+            // Insert new split record
+            const { error: insertError } = await supabase
+              .from('quickbooks_expenses')
+              .insert({
+                user_id: user.id,
+                qb_id: splitQbId,
+                vendor_name: selectedMatch.qbExpense.vendor_name,
+                amount: categoryAmount,
+                date: selectedMatch.qbExpense.date,
+                description: selectedMatch.qbExpense.description,
+                is_imported: true,
+                project_id: selectedProject,
+                category_id: categoryId,
+                expense_type: expenseType,
+                notes: itemNotes,
+                receipt_url: selectedMatch.receipt.receipt_image_url || null,
+              });
+
+            if (insertError) throw insertError;
+          }
         }
       }
 
