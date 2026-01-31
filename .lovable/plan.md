@@ -1,99 +1,104 @@
 
-## Predictive Category Auto-Selection for QuickBooks Expenses
+
+## Enable Inline Priority Editing on Tasks
 
 ### What This Does
-When a QuickBooks expense appears in the pending queue, the category dropdown will automatically pre-select based on the vendor name. For example:
-- "ALLSTATE INSURANCE" -> Insurance
-- "SHERWIN WILLIAMS" -> Painting
-- "HOME DEPOT" -> Hardware
-- "FERGUSON" -> Plumbing
+Allows changing task priority directly from the task list by clicking on the priority badge, without needing to open the full edit modal.
+
+---
+
+### Current Behavior
+- Priority badges are **display-only** in both the mobile card view and desktop table view
+- Users must click the task title to open the detail modal, then change priority there
+- This requires extra clicks and is not intuitive
+
+### New Behavior
+- Clicking the priority badge opens an inline dropdown to change priority
+- Selecting a new priority immediately saves it to the database
+- Works on both mobile cards and desktop table
 
 ---
 
 ### Technical Implementation
 
-**File: `src/components/QuickBooksIntegration.tsx`**
+**File: `src/pages/DailyLogs.tsx`**
 
-#### 1. Add a `detectCategory` function (similar to existing `detectExpenseType`)
-
-This function maps vendor names to budget categories using keyword matching:
-
-| Vendor Pattern | Category |
-|----------------|----------|
-| Allstate, State Farm, Farmers, Liberty Mutual, etc. | Insurance |
-| Sherwin Williams, Benjamin Moore, Behr, PPG | Painting |
-| Home Depot, Lowe's, Ace Hardware, Harbor Freight | Hardware |
-| Ferguson, Plumbing supply, etc. | Plumbing |
-| Floor & Decor, flooring supply | Flooring |
-| Carrier, Lennox, Trane (HVAC brands) | HVAC |
-| Amazon (general) | Misc |
-| Waste Management, dumpster | Dumpsters / Trash |
-| TXU, Oncor, Atmos, utility | Utilities |
-| Republic Services | Gas Mileage (business) |
-| And more... |
-
-#### 2. Update the `useEffect` that auto-detects expense types
-
-Extend it to also auto-detect and pre-select categories when pending expenses load.
-
-#### 3. Pre-fill `selectedCategory` state
-
-When expenses load, if a category can be detected from the vendor name, pre-populate `selectedCategory[expense.id]` with that value.
-
----
-
-### Code Example
+#### 1. Add inline priority change handler
 
 ```typescript
-// Auto-detect category based on vendor name
-const detectCategory = (vendorName: string | null, description: string | null): string | null => {
-  const text = `${vendorName || ''} ${description || ''}`.toLowerCase();
-  
-  // Insurance companies
-  if (text.includes('allstate') || text.includes('state farm') || text.includes('farmers') ||
-      text.includes('liberty mutual') || text.includes('progressive') || text.includes('geico') ||
-      text.includes('nationwide') || text.includes('insurance')) {
-    return 'insurance_project';
+const handleInlinePriorityChange = async (taskId: string, newPriority: TaskPriority) => {
+  try {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ priority_level: newPriority })
+      .eq('id', taskId);
+
+    if (error) throw error;
+    fetchTasks();
+  } catch (error) {
+    console.error('Error updating priority:', error);
+    toast({ title: 'Error', description: 'Failed to update priority', variant: 'destructive' });
   }
-  
-  // Paint stores
-  if (text.includes('sherwin') || text.includes('benjamin moore') || text.includes('behr') ||
-      text.includes('ppg') || text.includes('paint')) {
-    return 'painting';
-  }
-  
-  // Hardware/general supplies
-  if (text.includes('home depot') || text.includes('lowes') || text.includes('lowe\'s') ||
-      text.includes('ace hardware') || text.includes('harbor freight') || text.includes('menards')) {
-    return 'hardware';
-  }
-  
-  // Plumbing
-  if (text.includes('ferguson') || text.includes('plumbing supply')) {
-    return 'plumbing';
-  }
-  
-  // Flooring
-  if (text.includes('floor & decor') || text.includes('floor and decor') || 
-      text.includes('flooring') || text.includes('lumber liquidators')) {
-    return 'flooring';
-  }
-  
-  // More mappings...
-  
-  return null; // No match, user selects manually
 };
 ```
 
----
+#### 2. Replace static Badge with clickable Select in desktop table (around line 724)
 
-### How It Works
+Before:
+```tsx
+<TableCell>
+  <Badge variant="secondary" className={`text-xs ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}>
+    {TASK_PRIORITY_LABELS[task.priorityLevel]}
+  </Badge>
+</TableCell>
+```
 
-1. When pending expenses load from QuickBooks, the existing `useEffect` runs
-2. For each expense, we call `detectCategory(vendor_name, description)`
-3. If a category is detected, we pre-populate `selectedCategory[expense.id]`
-4. The dropdown shows the predicted category already selected
-5. User can still change it if the prediction is wrong
+After:
+```tsx
+<TableCell>
+  <Select
+    value={task.priorityLevel}
+    onValueChange={(v) => handleInlinePriorityChange(task.id, v as TaskPriority)}
+  >
+    <SelectTrigger className={`h-7 w-24 text-xs border-0 ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}>
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="low">Low</SelectItem>
+      <SelectItem value="medium">Medium</SelectItem>
+      <SelectItem value="high">High</SelectItem>
+      <SelectItem value="urgent">Urgent</SelectItem>
+    </SelectContent>
+  </Select>
+</TableCell>
+```
+
+#### 3. Replace static Badge with clickable Select in mobile card view (around line 608)
+
+Before:
+```tsx
+<Badge variant="secondary" className={`text-xs ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}>
+  {TASK_PRIORITY_LABELS[task.priorityLevel]}
+</Badge>
+```
+
+After:
+```tsx
+<Select
+  value={task.priorityLevel}
+  onValueChange={(v) => handleInlinePriorityChange(task.id, v as TaskPriority)}
+>
+  <SelectTrigger className={`h-6 px-2 text-xs border-0 w-auto ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}>
+    <SelectValue>{TASK_PRIORITY_LABELS[task.priorityLevel]}</SelectValue>
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="low">Low</SelectItem>
+    <SelectItem value="medium">Medium</SelectItem>
+    <SelectItem value="high">High</SelectItem>
+    <SelectItem value="urgent">Urgent</SelectItem>
+  </SelectContent>
+</Select>
+```
 
 ---
 
@@ -101,40 +106,13 @@ const detectCategory = (vendorName: string | null, description: string | null): 
 
 | File | Changes |
 |------|---------|
-| `src/components/QuickBooksIntegration.tsx` | Add `detectCategory` function and update useEffect to auto-fill category |
-
----
-
-### Vendor Mappings to Include
-
-**Insurance**: Allstate, State Farm, Farmers, Liberty Mutual, Progressive, Geico, Nationwide, USAA, Travelers, American Family
-
-**Painting**: Sherwin Williams, Benjamin Moore, Behr, PPG, Dunn Edwards, Kelly-Moore, Valspar
-
-**Hardware/Supplies**: Home Depot, Lowe's, Menards, Ace Hardware, Harbor Freight, True Value, Northern Tool
-
-**Plumbing**: Ferguson, Plumber supply, plumbing wholesale
-
-**Flooring**: Floor & Decor, Lumber Liquidators, flooring depot
-
-**Electrical**: Graybar, electrical supply, Wholesale Electric
-
-**HVAC**: Carrier, Lennox, Trane, HVAC supply, AC supply
-
-**Appliances**: Best Buy, Appliance Direct, appliance warehouse
-
-**Dumpsters**: Waste Management, Republic Services, dumpster
-
-**Utilities**: TXU, Oncor, Atmos, electric, water, gas utility
-
-**Landscaping**: SiteOne, nursery, landscaping, lawn
-
-**Roofing**: ABC Supply, roofing supply
+| `src/pages/DailyLogs.tsx` | Add `handleInlinePriorityChange` function, replace static Badge with clickable Select in both mobile and desktop views |
 
 ---
 
 ### Expected Result
-- Category dropdown auto-selects based on vendor name
-- User sees "Insurance" already selected when viewing an "ALLSTATE INSURANCE COMPAN" expense
-- Reduces manual selection clicks
-- Can still be changed if prediction is wrong
+- Priority badges become clickable dropdowns
+- Changing priority is instant (no modal needed)
+- Visual styling matches current priority badge colors
+- Works on both mobile and desktop
+
