@@ -1,89 +1,99 @@
 
-## Add "Send Back to Queue" Button for QuickBooks Expenses
+## Predictive Category Auto-Selection for QuickBooks Expenses
 
 ### What This Does
-Adds a button to the Expense Details modal (only visible for QuickBooks expenses) that resets the expense back to the pending queue for re-categorization.
-
----
-
-### UI Changes
-
-**Location**: Inside the ExpenseDetailModal, in the Actions section at the bottom
-
-**Button appearance**:
-- Only visible when viewing a QuickBooks expense (has QB badge)
-- Secondary/outline style with warning color
-- Icon: RotateCcw or Undo2
-- Text: "Send Back to Queue"
-- Positioned above the Cancel/Save buttons
+When a QuickBooks expense appears in the pending queue, the category dropdown will automatically pre-select based on the vendor name. For example:
+- "ALLSTATE INSURANCE" -> Insurance
+- "SHERWIN WILLIAMS" -> Painting
+- "HOME DEPOT" -> Hardware
+- "FERGUSON" -> Plumbing
 
 ---
 
 ### Technical Implementation
 
-**File: `src/components/ExpenseDetailModal.tsx`**
+**File: `src/components/QuickBooksIntegration.tsx`**
 
-1. **Add state and imports**:
-   - Import `RotateCcw` or `Undo2` icon from lucide-react
-   - Add `isResetting` state to track the operation
+#### 1. Add a `detectCategory` function (similar to existing `detectExpenseType`)
 
-2. **Add `handleSendBackToQueue` function**:
-   ```typescript
-   const handleSendBackToQueue = async () => {
-     setIsResetting(true);
-     try {
-       // Delete any split records first (if this is a parent of splits)
-       const { data: expenseData } = await supabase
-         .from('quickbooks_expenses')
-         .select('qb_id')
-         .eq('id', expense.id)
-         .single();
-       
-       if (expenseData?.qb_id) {
-         await supabase
-           .from('quickbooks_expenses')
-           .delete()
-           .like('qb_id', `${expenseData.qb_id}_split_%`);
-       }
-       
-       // Reset the expense to pending
-       await supabase
-         .from('quickbooks_expenses')
-         .update({
-           is_imported: false,
-           project_id: null,
-           category_id: null,
-           expense_type: null,
-           notes: null,
-           receipt_url: null,
-         })
-         .eq('id', expense.id);
-       
-       toast({ title: 'Expense sent back to queue' });
-       onExpenseUpdated();
-       onOpenChange(false);
-     } catch (error) {
-       toast({ title: 'Error', variant: 'destructive' });
-     }
-     setIsResetting(false);
-   };
-   ```
+This function maps vendor names to budget categories using keyword matching:
 
-3. **Add button to UI** (only for QB expenses):
-   ```tsx
-   {isQuickBooks && (
-     <Button
-       type="button"
-       variant="outline"
-       className="w-full text-warning border-warning/50 hover:bg-warning/10"
-       onClick={handleSendBackToQueue}
-       disabled={isResetting}
-     >
-       <RotateCcw className="h-4 w-4 mr-2" />
-       {isResetting ? 'Sending...' : 'Send Back to Queue'}
-     </Button>
-   )}
-   ```
+| Vendor Pattern | Category |
+|----------------|----------|
+| Allstate, State Farm, Farmers, Liberty Mutual, etc. | Insurance |
+| Sherwin Williams, Benjamin Moore, Behr, PPG | Painting |
+| Home Depot, Lowe's, Ace Hardware, Harbor Freight | Hardware |
+| Ferguson, Plumbing supply, etc. | Plumbing |
+| Floor & Decor, flooring supply | Flooring |
+| Carrier, Lennox, Trane (HVAC brands) | HVAC |
+| Amazon (general) | Misc |
+| Waste Management, dumpster | Dumpsters / Trash |
+| TXU, Oncor, Atmos, utility | Utilities |
+| Republic Services | Gas Mileage (business) |
+| And more... |
+
+#### 2. Update the `useEffect` that auto-detects expense types
+
+Extend it to also auto-detect and pre-select categories when pending expenses load.
+
+#### 3. Pre-fill `selectedCategory` state
+
+When expenses load, if a category can be detected from the vendor name, pre-populate `selectedCategory[expense.id]` with that value.
+
+---
+
+### Code Example
+
+```typescript
+// Auto-detect category based on vendor name
+const detectCategory = (vendorName: string | null, description: string | null): string | null => {
+  const text = `${vendorName || ''} ${description || ''}`.toLowerCase();
+  
+  // Insurance companies
+  if (text.includes('allstate') || text.includes('state farm') || text.includes('farmers') ||
+      text.includes('liberty mutual') || text.includes('progressive') || text.includes('geico') ||
+      text.includes('nationwide') || text.includes('insurance')) {
+    return 'insurance_project';
+  }
+  
+  // Paint stores
+  if (text.includes('sherwin') || text.includes('benjamin moore') || text.includes('behr') ||
+      text.includes('ppg') || text.includes('paint')) {
+    return 'painting';
+  }
+  
+  // Hardware/general supplies
+  if (text.includes('home depot') || text.includes('lowes') || text.includes('lowe\'s') ||
+      text.includes('ace hardware') || text.includes('harbor freight') || text.includes('menards')) {
+    return 'hardware';
+  }
+  
+  // Plumbing
+  if (text.includes('ferguson') || text.includes('plumbing supply')) {
+    return 'plumbing';
+  }
+  
+  // Flooring
+  if (text.includes('floor & decor') || text.includes('floor and decor') || 
+      text.includes('flooring') || text.includes('lumber liquidators')) {
+    return 'flooring';
+  }
+  
+  // More mappings...
+  
+  return null; // No match, user selects manually
+};
+```
+
+---
+
+### How It Works
+
+1. When pending expenses load from QuickBooks, the existing `useEffect` runs
+2. For each expense, we call `detectCategory(vendor_name, description)`
+3. If a category is detected, we pre-populate `selectedCategory[expense.id]`
+4. The dropdown shows the predicted category already selected
+5. User can still change it if the prediction is wrong
 
 ---
 
@@ -91,12 +101,40 @@ Adds a button to the Expense Details modal (only visible for QuickBooks expenses
 
 | File | Changes |
 |------|---------|
-| `src/components/ExpenseDetailModal.tsx` | Add `isResetting` state, `handleSendBackToQueue` function, and button UI |
+| `src/components/QuickBooksIntegration.tsx` | Add `detectCategory` function and update useEffect to auto-fill category |
+
+---
+
+### Vendor Mappings to Include
+
+**Insurance**: Allstate, State Farm, Farmers, Liberty Mutual, Progressive, Geico, Nationwide, USAA, Travelers, American Family
+
+**Painting**: Sherwin Williams, Benjamin Moore, Behr, PPG, Dunn Edwards, Kelly-Moore, Valspar
+
+**Hardware/Supplies**: Home Depot, Lowe's, Menards, Ace Hardware, Harbor Freight, True Value, Northern Tool
+
+**Plumbing**: Ferguson, Plumber supply, plumbing wholesale
+
+**Flooring**: Floor & Decor, Lumber Liquidators, flooring depot
+
+**Electrical**: Graybar, electrical supply, Wholesale Electric
+
+**HVAC**: Carrier, Lennox, Trane, HVAC supply, AC supply
+
+**Appliances**: Best Buy, Appliance Direct, appliance warehouse
+
+**Dumpsters**: Waste Management, Republic Services, dumpster
+
+**Utilities**: TXU, Oncor, Atmos, electric, water, gas utility
+
+**Landscaping**: SiteOne, nursery, landscaping, lawn
+
+**Roofing**: ABC Supply, roofing supply
 
 ---
 
 ### Expected Result
-- When viewing a QuickBooks expense (shows QB badge), a "Send Back to Queue" button appears
-- Clicking it resets the expense back to the pending QuickBooks queue
-- Any split records associated with the expense are also removed
-- The modal closes and the expenses list refreshes
+- Category dropdown auto-selects based on vendor name
+- User sees "Insurance" already selected when viewing an "ALLSTATE INSURANCE COMPAN" expense
+- Reduces manual selection clicks
+- Can still be changed if prediction is wrong
