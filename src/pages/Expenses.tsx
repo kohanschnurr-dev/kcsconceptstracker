@@ -217,19 +217,39 @@ export default function Expenses() {
     e.stopPropagation();
     
     try {
-      // Fetch the file through JavaScript to bypass ad blockers
-      const response = await fetch(receiptUrl);
-      const blob = await response.blob();
+      // Extract the file path from the full URL
+      // URL format: https://skbkqngjvbvaswijavor.supabase.co/storage/v1/object/public/expense-receipts/user-id/filename.ext
+      const urlParts = receiptUrl.split('/storage/v1/object/public/');
+      if (urlParts.length !== 2) {
+        // Fallback for unexpected URL format
+        window.open(receiptUrl, '_blank');
+        return;
+      }
+      
+      const [bucketName, ...pathParts] = urlParts[1].split('/');
+      const filePath = pathParts.join('/');
+      
+      // Use Supabase SDK to download the file (bypasses ad blockers)
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .download(filePath);
+      
+      if (error || !data) {
+        console.error('Failed to download receipt:', error);
+        // Fallback to direct URL
+        window.open(receiptUrl, '_blank');
+        return;
+      }
       
       // Create a blob URL and open it
-      const blobUrl = URL.createObjectURL(blob);
+      const blobUrl = URL.createObjectURL(data);
       window.open(blobUrl, '_blank');
       
       // Clean up the blob URL after a delay
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch (error) {
       console.error('Failed to open receipt:', error);
-      // Fallback to direct URL if fetch fails
+      // Fallback to direct URL if everything fails
       window.open(receiptUrl, '_blank');
     }
   };
