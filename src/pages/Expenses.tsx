@@ -456,7 +456,16 @@ export default function Expenses() {
                     <td className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         {expense.receipt_url && (
-                          <Paperclip className="h-4 w-4 text-primary" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(expense.receipt_url!, '_blank');
+                            }}
+                            className="text-primary hover:text-primary/80 transition-colors"
+                            title="View receipt"
+                          >
+                            <Paperclip className="h-4 w-4" />
+                          </button>
                         )}
                         <span className="font-mono">
                           {formatCurrency(expense.amount)}
