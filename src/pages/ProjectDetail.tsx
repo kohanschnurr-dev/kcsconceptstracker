@@ -45,6 +45,7 @@ import { ProjectNotes } from '@/components/project/ProjectNotes';
 import { SpendingChart } from '@/components/project/SpendingChart';
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { ProjectCalendar } from '@/components/project/ProjectCalendar';
+import { ProjectTasks } from '@/components/project/ProjectTasks';
 
 import { ProjectVendors } from '@/components/project/ProjectVendors';
 import { ExportReports } from '@/components/project/ExportReports';
@@ -522,6 +523,7 @@ export default function ProjectDetail() {
               <MilestonesTimeline projectId={id!} />
               <ProjectNotes projectId={id!} />
             </div>
+            <ProjectTasks projectId={id!} />
           </TabsContent>
 
           <TabsContent value="schedule">

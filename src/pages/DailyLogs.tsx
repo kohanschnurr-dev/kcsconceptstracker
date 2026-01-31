@@ -68,6 +68,7 @@ export default function DailyLogs() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskProjectId, setNewTaskProjectId] = useState<string>('none');
   const [isCreating, setIsCreating] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -78,9 +79,11 @@ export default function DailyLogs() {
     priorityLevel: 'medium' as TaskPriority,
     status: 'pending' as TaskStatus,
   });
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     fetchLogs();
+    fetchProjects();
   }, []);
 
   const fetchTasks = useCallback(async () => {
@@ -106,6 +109,7 @@ export default function DailyLogs() {
         isScheduled: t.is_scheduled,
         startTime: t.start_time,
         endTime: t.end_time,
+        projectId: t.project_id,
         createdAt: t.created_at,
         updatedAt: t.updated_at,
       }));
@@ -150,6 +154,20 @@ export default function DailyLogs() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('id, name')
+        .order('name');
+
+      if (error) throw error;
+      setProjects(data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
     }
   };
 
@@ -220,11 +238,13 @@ export default function DailyLogs() {
           priority_level: 'medium',
           is_daily: isDaily,
           scheduled_date: isDaily ? todayStr : null,
+          project_id: newTaskProjectId === 'none' ? null : newTaskProjectId,
         });
 
       if (error) throw error;
 
       setNewTaskTitle('');
+      setNewTaskProjectId('none');
       toast({ 
         title: 'Task created', 
         description: isDaily ? 'Added to today\'s sprint' : 'Added to master pipeline' 
@@ -569,6 +589,19 @@ export default function DailyLogs() {
                   disabled={isCreating}
                 />
               </div>
+              {checklistTab === 'master' && (
+                <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
+                  <SelectTrigger className="w-full sm:w-44 h-11 sm:h-10">
+                    <SelectValue placeholder="Project (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Other (No Project)</SelectItem>
+                    {projects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <Button 
                 type="submit" 
                 disabled={!newTaskTitle.trim() || isCreating}

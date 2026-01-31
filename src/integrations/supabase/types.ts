@@ -1024,6 +1024,7 @@ export type Database = {
           is_daily: boolean
           is_scheduled: boolean
           priority_level: Database["public"]["Enums"]["task_priority"]
+          project_id: string | null
           scheduled_date: string | null
           start_time: string | null
           status: Database["public"]["Enums"]["task_status"]
@@ -1041,6 +1042,7 @@ export type Database = {
           is_daily?: boolean
           is_scheduled?: boolean
           priority_level?: Database["public"]["Enums"]["task_priority"]
+          project_id?: string | null
           scheduled_date?: string | null
           start_time?: string | null
           status?: Database["public"]["Enums"]["task_status"]
@@ -1058,6 +1060,7 @@ export type Database = {
           is_daily?: boolean
           is_scheduled?: boolean
           priority_level?: Database["public"]["Enums"]["task_priority"]
+          project_id?: string | null
           scheduled_date?: string | null
           start_time?: string | null
           status?: Database["public"]["Enums"]["task_status"]
@@ -1071,6 +1074,13 @@ export type Database = {
             columns: ["daily_log_id"]
             isOneToOne: false
             referencedRelation: "daily_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]

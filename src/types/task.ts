@@ -15,6 +15,8 @@ export interface Task {
   isScheduled: boolean;
   startTime: string | null;
   endTime: string | null;
+  projectId: string | null;
+  projectName?: string | null;
   createdAt: string;
   updatedAt: string;
 }

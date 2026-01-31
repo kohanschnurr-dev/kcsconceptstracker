@@ -74,6 +74,7 @@ export function CommandCenter() {
         isScheduled: t.is_scheduled,
         startTime: t.start_time,
         endTime: t.end_time,
+        projectId: t.project_id,
         createdAt: t.created_at,
         updatedAt: t.updated_at,
       }));
