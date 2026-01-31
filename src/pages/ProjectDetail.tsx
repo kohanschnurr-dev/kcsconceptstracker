@@ -100,6 +100,7 @@ export default function ProjectDetail() {
   const [project, setProject] = useState<DBProject | null>(null);
   const [categories, setCategories] = useState<(DBCategory & { actualSpent: number })[]>([]);
   const [expenses, setExpenses] = useState<DBExpense[]>([]);
+  const [allExpensesForExport, setAllExpensesForExport] = useState<DBExpense[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DBDailyLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -158,8 +159,28 @@ export default function ProjectDetail() {
         return { ...cat, actualSpent };
       });
       
+      // Combine manual + QB expenses for export (convert QB expenses to match format)
+      const qbExpensesConverted: DBExpense[] = qbExpensesData
+        .filter(qb => qb.category_id) // Only include assigned QB expenses
+        .map(qb => ({
+          id: qb.id,
+          project_id: qb.project_id || id,
+          category_id: qb.category_id!,
+          vendor_name: qb.vendor_name,
+          description: qb.description,
+          amount: qb.amount,
+          date: qb.date,
+          payment_method: qb.payment_method,
+          includes_tax: false,
+          tax_amount: null,
+          status: 'actual',
+        }));
+      
+      const combinedExpenses = [...expensesData, ...qbExpensesConverted];
+      
       setCategories(categoriesWithSpent);
       setExpenses(expensesData);
+      setAllExpensesForExport(combinedExpenses);
       setDailyLogs(logsRes.data || []);
       setLoading(false);
     };
@@ -559,7 +580,7 @@ export default function ProjectDetail() {
                 arv: project.arv,
               }}
               categories={categories}
-              expenses={expenses}
+              expenses={allExpensesForExport}
             />
             
             {/* Budget Breakdown Table */}

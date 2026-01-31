@@ -66,6 +66,11 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
     }).format(amount);
   };
 
+  // CSV-safe currency: no commas, just $ and decimals
+  const formatCurrencyForCSV = (amount: number) => {
+    return `$${amount.toFixed(2)}`;
+  };
+
   const formatDate = (date: string) => {
     return formatDisplayDateNumeric(date);
   };
@@ -90,9 +95,9 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
         exp.vendor_name || '',
         getCategoryLabel(exp.category_id),
         exp.description || '',
-        Number(exp.amount).toFixed(2),
-        exp.tax_amount ? Number(exp.tax_amount).toFixed(2) : '0.00',
-        total.toFixed(2),
+        formatCurrencyForCSV(Number(exp.amount)),
+        formatCurrencyForCSV(exp.tax_amount ? Number(exp.tax_amount) : 0),
+        formatCurrencyForCSV(total),
         exp.payment_method || '',
         exp.status,
       ];
@@ -101,14 +106,14 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
     // Add totals row
     const totalAmount = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
     const totalTax = expenses.reduce((sum, exp) => sum + (Number(exp.tax_amount) || 0), 0);
-    rows.push(['', '', '', 'TOTALS', totalAmount.toFixed(2), totalTax.toFixed(2), (totalAmount + totalTax).toFixed(2), '', '']);
+    rows.push(['', '', '', 'TOTALS', formatCurrencyForCSV(totalAmount), formatCurrencyForCSV(totalTax), formatCurrencyForCSV(totalAmount + totalTax), '', '']);
 
     const csvContent = [
-      `Project: ${project.name}`,
-      `Address: ${project.address}`,
-      `Export Date: ${new Date().toLocaleDateString()}`,
+      `"Project:","${project.name}"`,
+      `"Address:","${project.address}"`,
+      `"Export Date:","${new Date().toLocaleDateString()}"`,
       '',
-      headers.join(','),
+      headers.map(h => `"${h}"`).join(','),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
     ].join('\n');
 
@@ -124,9 +129,9 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
       const percentLeft = cat.estimated_budget > 0 ? ((remaining / cat.estimated_budget) * 100) : 0;
       return [
         getCategoryName(cat.category),
-        cat.estimated_budget.toFixed(2),
-        spent.toFixed(2),
-        remaining.toFixed(2),
+        formatCurrencyForCSV(cat.estimated_budget),
+        formatCurrencyForCSV(spent),
+        formatCurrencyForCSV(remaining),
         percentLeft.toFixed(1) + '%',
       ];
     });
@@ -136,15 +141,15 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
     const totalSpent = categories.reduce((sum, cat) => sum + (cat.actualSpent || 0), 0);
     const totalRemaining = totalEstimated - totalSpent;
     const totalPercentLeft = totalEstimated > 0 ? ((totalRemaining / totalEstimated) * 100) : 0;
-    rows.push(['TOTALS', totalEstimated.toFixed(2), totalSpent.toFixed(2), totalRemaining.toFixed(2), totalPercentLeft.toFixed(1) + '%']);
+    rows.push(['TOTALS', formatCurrencyForCSV(totalEstimated), formatCurrencyForCSV(totalSpent), formatCurrencyForCSV(totalRemaining), totalPercentLeft.toFixed(1) + '%']);
 
     const csvContent = [
-      `Project: ${project.name}`,
-      `Address: ${project.address}`,
-      `Total Budget: ${formatCurrency(project.total_budget)}`,
-      `Export Date: ${new Date().toLocaleDateString()}`,
+      `"Project:","${project.name}"`,
+      `"Address:","${project.address}"`,
+      `"Total Budget:","${formatCurrencyForCSV(project.total_budget)}"`,
+      `"Export Date:","${new Date().toLocaleDateString()}"`,
       '',
-      headers.join(','),
+      headers.map(h => `"${h}"`).join(','),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
     ].join('\n');
 
@@ -153,24 +158,25 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
 
   const exportFullReportCSV = () => {
     const totalSpent = categories.reduce((sum, cat) => sum + (cat.actualSpent || 0), 0);
+    const budgetUsedPercent = project.total_budget > 0 ? ((totalSpent / project.total_budget) * 100).toFixed(1) : '0.0';
     
     const lines = [
-      '=== PROJECT FINANCIAL REPORT ===',
+      '"=== PROJECT FINANCIAL REPORT ==="',
       '',
-      'PROJECT DETAILS',
-      `Name,${project.name}`,
-      `Address,${project.address}`,
-      `Status,${project.status}`,
-      `Start Date,${formatDate(project.start_date)}`,
-      `Total Budget,${formatCurrency(project.total_budget)}`,
-      `Purchase Price,${project.purchase_price ? formatCurrency(project.purchase_price) : 'N/A'}`,
-      `ARV (After Repair Value),${project.arv ? formatCurrency(project.arv) : 'N/A'}`,
+      '"PROJECT DETAILS"',
+      `"Name","${project.name}"`,
+      `"Address","${project.address}"`,
+      `"Status","${project.status}"`,
+      `"Start Date","${formatDate(project.start_date)}"`,
+      `"Total Budget","${formatCurrencyForCSV(project.total_budget)}"`,
+      `"Purchase Price","${project.purchase_price ? formatCurrencyForCSV(project.purchase_price) : 'N/A'}"`,
+      `"ARV (After Repair Value)","${project.arv ? formatCurrencyForCSV(project.arv) : 'N/A'}"`,
       '',
-      'FINANCIAL SUMMARY',
-      `Total Budget,${formatCurrency(project.total_budget)}`,
-      `Total Spent,${formatCurrency(totalSpent)}`,
-      `Remaining Budget,${formatCurrency(project.total_budget - totalSpent)}`,
-      `Budget Used,${((totalSpent / project.total_budget) * 100).toFixed(1)}%`,
+      '"FINANCIAL SUMMARY"',
+      `"Total Budget","${formatCurrencyForCSV(project.total_budget)}"`,
+      `"Total Spent","${formatCurrencyForCSV(totalSpent)}"`,
+      `"Remaining Budget","${formatCurrencyForCSV(project.total_budget - totalSpent)}"`,
+      `"Budget Used","${budgetUsedPercent}%"`,
       '',
     ];
 
@@ -180,42 +186,46 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
       const projectedProfit = project.arv - totalInvestment;
       const roi = (projectedProfit / totalInvestment) * 100;
       lines.push(
-        'PROFIT ANALYSIS',
-        `Purchase Price,${formatCurrency(project.purchase_price)}`,
-        `Renovation Costs,${formatCurrency(totalSpent)}`,
-        `Total Investment,${formatCurrency(totalInvestment)}`,
-        `ARV,${formatCurrency(project.arv)}`,
-        `Projected Profit,${formatCurrency(projectedProfit)}`,
-        `ROI,${roi.toFixed(1)}%`,
+        '"PROFIT ANALYSIS"',
+        `"Purchase Price","${formatCurrencyForCSV(project.purchase_price)}"`,
+        `"Renovation Costs","${formatCurrencyForCSV(totalSpent)}"`,
+        `"Total Investment","${formatCurrencyForCSV(totalInvestment)}"`,
+        `"ARV","${formatCurrencyForCSV(project.arv)}"`,
+        `"Projected Profit","${formatCurrencyForCSV(projectedProfit)}"`,
+        `"ROI","${roi.toFixed(1)}%"`,
         ''
       );
     }
 
-    // Budget by category
-    lines.push('BUDGET BY CATEGORY', 'Category,Estimated,Actual,Remaining,% Left');
+    // Budget by category - with proper CSV quoting
+    lines.push('"BUDGET BY CATEGORY"');
+    lines.push('"Category","Estimated","Actual","Remaining","% Left"');
     categories.forEach(cat => {
       const spent = cat.actualSpent || 0;
       const remaining = cat.estimated_budget - spent;
       const percentLeft = cat.estimated_budget > 0 ? ((remaining / cat.estimated_budget) * 100) : 0;
-      lines.push(`${getCategoryName(cat.category)},${cat.estimated_budget.toFixed(2)},${spent.toFixed(2)},${remaining.toFixed(2)},${percentLeft.toFixed(1)}%`);
+      lines.push(`"${getCategoryName(cat.category)}","${formatCurrencyForCSV(cat.estimated_budget)}","${formatCurrencyForCSV(spent)}","${formatCurrencyForCSV(remaining)}","${percentLeft.toFixed(1)}%"`);
     });
 
-    lines.push('', 'EXPENSE DETAILS', 'Date,Vendor,Category,Description,Amount,Tax,Total,Payment Method');
+    lines.push('');
+    lines.push('"EXPENSE DETAILS"');
+    lines.push('"Date","Vendor","Category","Description","Amount","Tax","Total","Payment Method"');
     expenses.forEach(exp => {
       const total = exp.includes_tax ? Number(exp.amount) + (Number(exp.tax_amount) || 0) : Number(exp.amount);
       lines.push([
         formatDate(exp.date),
         exp.vendor_name || '',
         getCategoryLabel(exp.category_id),
-        exp.description || '',
-        Number(exp.amount).toFixed(2),
-        exp.tax_amount ? Number(exp.tax_amount).toFixed(2) : '0.00',
-        total.toFixed(2),
+        (exp.description || '').replace(/"/g, '""'), // Escape quotes in description
+        formatCurrencyForCSV(Number(exp.amount)),
+        formatCurrencyForCSV(exp.tax_amount ? Number(exp.tax_amount) : 0),
+        formatCurrencyForCSV(total),
         exp.payment_method || '',
       ].map(cell => `"${cell}"`).join(','));
     });
 
-    lines.push('', `Report Generated: ${new Date().toLocaleString()}`);
+    lines.push('');
+    lines.push(`"Report Generated:","${new Date().toLocaleString()}"`);
 
     downloadFile(lines.join('\n'), `${project.name.replace(/\s+/g, '_')}_full_report_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
   };
