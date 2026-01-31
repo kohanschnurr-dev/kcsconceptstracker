@@ -1,141 +1,118 @@
 
 
-## Internal Project Search & Autocomplete
+## Enhanced Photo Gallery - Multi-Upload & Better Organization
 
 ### What This Does
-Adds a smart search-as-you-type autocomplete for selecting projects throughout the app. When typing in a project selection field (or using "@" to trigger lookup), matching projects from your database appear instantly. No external APIs needed - this is purely internal search.
+Transforms the photo gallery upload experience from single-file to a modern, efficient multi-file system with better organization features including date tagging, drag & drop, paste support, and bulk editing.
 
 ---
 
 ### Current Behavior
-- Project dropdowns show all projects in a static list
-- Must scroll through all projects to find one
-- No search/filter capability in selection dropdowns
-- Forms like Quick Expense, Calendar Events, etc. use basic Select components
+- Upload one photo at a time through a file picker
+- Must set category and caption BEFORE selecting the file
+- No drag & drop support
+- No paste-to-upload support
+- No date tracking (only `created_at` timestamp)
+- No progress indicator for uploads
+- Cannot edit caption/category after upload
+- Basic file picker UI
 
-### New Behavior  
-- Type a few letters → instantly see matching projects
-- Optional "@" trigger: type "@Wales" to search for "Wales Rental"
-- Shows project name + address for easy identification
-- Keyboard navigation support (arrow keys, enter to select)
-- Works everywhere projects are selected
+### New Behavior
+- Select multiple files at once (hold Ctrl/Cmd)
+- Drag & drop multiple images directly onto the gallery
+- Paste images from clipboard (Ctrl+V)
+- Assign a specific photo date (when the photo was taken)
+- Add/edit captions after upload
+- See upload progress for each file
+- Bulk category assignment for multiple photos
+- Preview thumbnails before uploading
+- Filter by date range in addition to category
 
 ---
 
 ### Technical Implementation
 
-#### 1. Create Reusable ProjectAutocomplete Component
+#### 1. Database Schema Update
 
-**New File: `src/components/ProjectAutocomplete.tsx`**
+Add a `photo_date` column to track when photos were taken (separate from `created_at` which is when uploaded):
 
-This component will:
-- Use the existing `Command` + `Popover` components for the dropdown
-- Accept a list of projects and filter them as user types
-- Support "@" trigger: if input starts with "@", treat rest as search query
-- Show structured results: **Project Name** + address (secondary text)
-- Return selected project to parent component
-
-```typescript
-interface ProjectAutocompleteProps {
-  projects: Project[];
-  value: string;  // Selected project ID
-  onSelect: (projectId: string) => void;
-  placeholder?: string;
-  filterActive?: boolean;  // Only show active projects
-  className?: string;
-}
+```sql
+ALTER TABLE project_photos 
+ADD COLUMN photo_date DATE DEFAULT CURRENT_DATE;
 ```
 
-Key features:
-- Debounced search (100ms) for smooth typing
-- Fuzzy matching on name and address
-- "@" mention support for quick triggering
-- Empty state when no matches found
-- Proper z-index and solid background for dropdown
+#### 2. Enhanced Upload Modal
 
-#### 2. Component Architecture
+Redesign the upload dialog with a two-step process:
+
+**Step 1: File Selection**
+- Large drag & drop zone with visual feedback
+- Support `multiple` attribute on file input
+- Paste listener for clipboard images
+- Show thumbnail previews of selected files
+
+**Step 2: Metadata Assignment**
+- Grid of selected file thumbnails
+- Global category selector (applies to all)
+- Per-photo caption input
+- Photo date picker (defaults to today)
+- Option to apply same caption to all or individual
 
 ```text
-┌─────────────────────────────────────────┐
-│  ProjectAutocomplete Component          │
-│  ┌─────────────────────────────────┐    │
-│  │ 🔍 @Wales...                    │    │
-│  └─────────────────────────────────┘    │
-│  ┌─────────────────────────────────┐    │
-│  │ Wales Rental                    │◄───┤ Dropdown
-│  │   123 Wales St, Dallas, TX      │    │ (Command)
-│  ├─────────────────────────────────┤    │
-│  │ Wales Flip Project              │    │
-│  │   456 Wales Ave, Plano, TX      │    │
-│  └─────────────────────────────────┘    │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  Upload Photos                               X   │
+├──────────────────────────────────────────────────┤
+│  ┌────────────────────────────────────────────┐  │
+│  │                                            │  │
+│  │     📁 Drop photos here or click to        │  │
+│  │        browse (Ctrl+V to paste)            │  │
+│  │                                            │  │
+│  └────────────────────────────────────────────┘  │
+│                                                  │
+│  Selected (3 photos):                            │
+│  ┌─────┐ ┌─────┐ ┌─────┐                        │
+│  │ img │ │ img │ │ img │  ← Thumbnail previews  │
+│  │  1  │ │  2  │ │  3  │                        │
+│  └──X──┘ └──X──┘ └──X──┘  ← Remove individual   │
+│                                                  │
+│  Category: [Before ▼]    Date: [📅 Jan 31]      │
+│                                                  │
+│  Caption: [___________________________]          │
+│  ☑ Apply same caption to all photos             │
+│                                                  │
+│  [Cancel]                    [Upload 3 Photos]  │
+└──────────────────────────────────────────────────┘
 ```
 
-#### 3. Update Forms to Use ProjectAutocomplete
+#### 3. Upload Progress
 
-Replace the standard Select dropdowns in these files:
+Show real-time progress for multi-file uploads:
 
-| File | Usage |
-|------|-------|
-| `src/components/QuickExpenseModal.tsx` | Quick add expense - project selection |
-| `src/components/NewDailyLogModal.tsx` | Daily log - project selection |
-| `src/components/calendar/NewEventModal.tsx` | Calendar event - project selection |
-| `src/components/calendar/CalendarHeader.tsx` | Calendar filter - project selection |
-| `src/components/SmartSplitReceiptUpload.tsx` | Receipt split - project selection |
-| `src/components/CreateBudgetModal.tsx` | Budget creation - project selection |
-
-**Example Change (QuickExpenseModal.tsx):**
-
-```tsx
-// Before
-<Select value={selectedProject} onValueChange={setSelectedProject}>
-  <SelectTrigger>
-    <SelectValue placeholder="Select project" />
-  </SelectTrigger>
-  <SelectContent>
-    {projects.filter(p => p.status === 'active').map((project) => (
-      <SelectItem key={project.id} value={project.id}>
-        {project.name}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
-
-// After
-<ProjectAutocomplete
-  projects={projects}
-  value={selectedProject}
-  onSelect={setSelectedProject}
-  placeholder="Search projects or type @..."
-  filterActive={true}
-/>
+```text
+┌──────────────────────────────────────────────────┐
+│  Uploading 3 photos...                           │
+│  ━━━━━━━━━━━━━━━░░░░░░░░░░  2 of 3               │
+│                                                  │
+│  ✓ photo1.jpg                                    │
+│  ✓ photo2.jpg                                    │
+│  ⏳ photo3.jpg (uploading...)                    │
+└──────────────────────────────────────────────────┘
 ```
 
----
+#### 4. Enhanced Gallery Display
 
-### Component Implementation Details
+Update the photo cards to show more metadata:
 
-The `ProjectAutocomplete` component will:
+- Display photo date badge (in addition to category)
+- Show caption preview on hover
+- Add date filter option (e.g., "Last 7 days", "This month", or date range)
 
-1. **Input handling**
-   - Normal typing: filter projects by name/address
-   - "@" prefix: strip "@" and search (e.g., "@Wales" searches for "Wales")
-   - Show/hide dropdown based on input focus
+#### 5. Inline Caption Editing
 
-2. **Filtering logic**
-   - Case-insensitive matching
-   - Search both `name` and `address` fields
-   - Optional filter to only show active projects
-
-3. **Selection behavior**
-   - Click or Enter to select
-   - Escape to close dropdown
-   - Display selected project name in input after selection
-
-4. **Styling**
-   - Solid background (not transparent) for dropdown
-   - High z-index to appear above modals
-   - Match existing UI patterns (borders, colors, spacing)
+When viewing a photo in the preview modal:
+- Click caption to edit inline
+- Click category badge to change category
+- Add "Edit Date" option
 
 ---
 
@@ -143,32 +120,57 @@ The `ProjectAutocomplete` component will:
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/components/ProjectAutocomplete.tsx` | Create | Reusable autocomplete component |
-| `src/components/QuickExpenseModal.tsx` | Modify | Use ProjectAutocomplete for project selection |
-| `src/components/NewDailyLogModal.tsx` | Modify | Use ProjectAutocomplete |
-| `src/components/calendar/NewEventModal.tsx` | Modify | Use ProjectAutocomplete |
-| `src/components/calendar/CalendarHeader.tsx` | Modify | Use ProjectAutocomplete |
-| `src/components/SmartSplitReceiptUpload.tsx` | Modify | Use ProjectAutocomplete |
-| `src/components/CreateBudgetModal.tsx` | Modify | Use ProjectAutocomplete |
+| `supabase/migrations/XXX_add_photo_date.sql` | Create | Add `photo_date` column to project_photos |
+| `src/components/project/PhotoGallery.tsx` | Major Modify | Complete rewrite of upload flow |
+| `src/components/project/PhotoUploadModal.tsx` | Create | New dedicated upload modal component |
 
 ---
 
-### No External Dependencies
+### Detailed Component Changes
 
-This feature uses only existing project components:
-- `Command` (from cmdk library, already installed)
-- `Popover` (from radix-ui, already installed)
-- No API keys required
-- No database changes needed
-- Purely client-side filtering
+#### PhotoUploadModal.tsx (New)
+```typescript
+interface PhotoUploadModalProps {
+  projectId: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onUploadComplete: () => void;
+}
+
+// Features:
+// - pendingFiles: File[] state for selected files
+// - thumbnailPreviews: generated via URL.createObjectURL()
+// - globalCategory, globalCaption, photoDate states
+// - handleDrop, handlePaste, handleFileSelect handlers
+// - Sequential upload with progress tracking
+// - Cleanup object URLs on unmount
+```
+
+#### PhotoGallery.tsx Updates
+- Add date filter dropdown (All / Last 7 days / Last 30 days / Custom range)
+- Update photo card to show date badge
+- Add inline caption editing in preview modal
+- Add edit category functionality in preview modal
+- Update query to include photo_date and order options
+
+---
+
+### Recommended Additional Features
+
+1. **Bulk Delete**: Select multiple photos to delete at once
+2. **Photo Reordering**: Drag to reorder photos within a category
+3. **Download Original**: Button to download the original high-res image
+4. **Lightbox Navigation**: Arrow keys to navigate between photos in preview
+5. **Photo Notes**: Longer notes field separate from caption (for internal use)
 
 ---
 
 ### Summary
 
-- Create one reusable `ProjectAutocomplete` component
-- Replace 6 project selection dropdowns across the app
-- Support "@" mention trigger for quick lookups
-- Instant filtering as you type - no external APIs
-- Better UX for finding projects quickly
+- Database migration to add `photo_date` column
+- New `PhotoUploadModal` component with multi-file support
+- Enhanced `PhotoGallery` with drag & drop, paste, progress indicators
+- Date filtering and display
+- Inline editing of caption/category after upload
+- Better UX with thumbnail previews before upload
 
