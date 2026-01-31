@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, FileText, Paperclip, ExternalLink, Trash2, Save, RotateCcw } from 'lucide-react';
+import { X, Upload, FileText, Paperclip, ExternalLink, Trash2, Save, RotateCcw, AlertTriangle, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,7 @@ interface ExpenseDetailModalProps {
     notes?: string | null;
     receipt_url?: string | null;
     source?: 'manual' | 'quickbooks';
+    qb_id?: string;
   } | null;
   projectName: string;
   categoryLabel: string;
@@ -54,6 +55,8 @@ export function ExpenseDetailModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -62,6 +65,7 @@ export function ExpenseDetailModal({
       setNotes(expense.notes || '');
       setReceiptUrl(expense.receipt_url || null);
       setReceiptFile(null);
+      setShowDeleteConfirm(false);
     }
   }, [expense]);
 
@@ -246,174 +250,311 @@ export function ExpenseDetailModal({
     }
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+
+    try {
+      if (isQuickBooks) {
+        // For QuickBooks expenses, reset to pending instead of deleting
+        // First, delete any split records for this expense
+        if (expense.qb_id) {
+          await supabase
+            .from('quickbooks_expenses')
+            .delete()
+            .like('qb_id', `${expense.qb_id}_split_%`);
+        }
+        
+        // Reset the main expense to pending
+        const { error } = await supabase
+          .from('quickbooks_expenses')
+          .update({
+            is_imported: false,
+            project_id: null,
+            category_id: null,
+            expense_type: null,
+            notes: null,
+            receipt_url: null,
+          })
+          .eq('id', expense.id);
+
+        if (error) throw error;
+        
+        toast({ title: 'Expense sent back to QuickBooks queue' });
+      } else {
+        // Delete from regular expenses table
+        const { error } = await supabase
+          .from('expenses')
+          .delete()
+          .eq('id', expense.id);
+
+        if (error) throw error;
+        
+        toast({ title: 'Expense deleted successfully' });
+      }
+
+      onExpenseUpdated();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Error deleting expense:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete expense',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(open) => {
+      if (!open) {
+        setShowDeleteConfirm(false);
+      }
+      onOpenChange(open);
+    }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            Expense Details
-            {isQuickBooks && (
-              <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">
-                QB
-              </Badge>
+            {showDeleteConfirm ? (
+              <>
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                {isQuickBooks ? 'Remove from Project' : 'Delete Expense'}
+              </>
+            ) : (
+              <>
+                <FileText className="h-5 w-5 text-primary" />
+                Expense Details
+                {isQuickBooks && (
+                  <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">
+                    QB
+                  </Badge>
+                )}
+              </>
             )}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Expense Summary */}
-          <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="font-semibold text-lg">{expense.vendor_name || 'Unknown Vendor'}</p>
-                <p className="text-sm text-muted-foreground">{formatDate(expense.date)}</p>
+        {showDeleteConfirm ? (
+          /* Delete Confirmation View */
+          <div className="space-y-4">
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-foreground">
+                    {isQuickBooks 
+                      ? 'This expense will be moved back to the QuickBooks pending queue for re-categorization.'
+                      : 'Are you sure you want to delete this expense? This action cannot be undone.'
+                    }
+                  </p>
+                  {isQuickBooks && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Any associated split records will be removed.
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="text-right">
-                <p className="font-mono text-xl font-semibold">{formatCurrency(expense.amount)}</p>
-                {expense.includes_tax && expense.tax_amount && (
-                  <p className="text-xs text-muted-foreground">+{formatCurrency(expense.tax_amount)} tax</p>
-                )}
+              
+              {/* Expense Summary in Delete Confirmation */}
+              <div className="bg-background/50 rounded-md p-3 mt-3">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium">{expense.vendor_name || 'Unknown Vendor'}</p>
+                    <p className="text-sm text-muted-foreground">{formatDate(expense.date)}</p>
+                  </div>
+                  <p className="font-mono font-semibold text-lg">{formatCurrency(expense.amount)}</p>
+                </div>
               </div>
             </div>
-            
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Badge variant="secondary">{projectName}</Badge>
-              <Badge variant="outline">{categoryLabel}</Badge>
-              <Badge variant="outline" className="capitalize">{expense.payment_method}</Badge>
-              <Badge
-                variant="outline"
-                className={cn(
-                  expense.status === 'actual' 
-                    ? 'bg-success/10 text-success border-success/30'
-                    : 'bg-warning/10 text-warning border-warning/30'
-                )}
-              >
-                {expense.status}
-              </Badge>
-            </div>
 
-            {expense.description && (
-              <p className="text-sm text-muted-foreground pt-2 border-t border-border mt-2">
-                {expense.description}
-              </p>
-            )}
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label>Notes</Label>
-            <Textarea
-              placeholder="Add notes about this expense..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          {/* Receipt Upload */}
-          <div className="space-y-2">
-            <Label>Receipt</Label>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              accept="image/*,.pdf"
-              className="hidden"
-            />
-
-            {receiptUrl && !receiptFile ? (
-              <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
-                <Paperclip className="h-5 w-5 text-primary" />
-                <span className="text-sm flex-1">Receipt attached</span>
-                <a
-                  href={receiptUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:text-primary/80"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRemoveReceipt}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            ) : receiptFile ? (
-              <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
-                <FileText className="h-5 w-5 text-primary" />
-                <span className="text-sm flex-1 truncate">{receiptFile.name}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setReceiptFile(null)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-                  isDragging 
-                    ? "border-primary bg-primary/10" 
-                    : "border-muted-foreground/25 hover:border-primary/50"
-                )}
-              >
-                <Upload className="h-6 w-6 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground text-center">
-                  Drag & drop or click to upload receipt
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  JPG, PNG, WebP, or PDF
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="space-y-2 pt-2">
-            {isQuickBooks && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full text-warning border-warning/50 hover:bg-warning/10"
-                onClick={handleSendBackToQueue}
-                disabled={isResetting}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                {isResetting ? 'Sending...' : 'Send Back to Queue'}
-              </Button>
-            )}
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-2">
               <Button 
                 type="button" 
                 variant="outline" 
                 className="flex-1" 
-                onClick={() => onOpenChange(false)}
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
               >
                 Cancel
               </Button>
               <Button 
+                variant={isQuickBooks ? "default" : "destructive"}
                 className="flex-1 gap-2" 
-                onClick={handleSave}
-                disabled={isSaving || isUploading}
+                onClick={handleDelete}
+                disabled={isDeleting}
               >
-                <Save className="h-4 w-4" />
-                {isUploading ? 'Uploading...' : isSaving ? 'Saving...' : 'Save'}
+                {isDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                {isDeleting 
+                  ? 'Processing...' 
+                  : isQuickBooks 
+                    ? 'Move to Pending' 
+                    : 'Delete'
+                }
               </Button>
             </div>
           </div>
-        </div>
+        ) : (
+          /* Normal Details View */
+          <div className="space-y-4">
+            {/* Expense Summary */}
+            <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-semibold text-lg">{expense.vendor_name || 'Unknown Vendor'}</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(expense.date)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-mono text-xl font-semibold">{formatCurrency(expense.amount)}</p>
+                  {expense.includes_tax && expense.tax_amount && (
+                    <p className="text-xs text-muted-foreground">+{formatCurrency(expense.tax_amount)} tax</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Badge variant="secondary">{projectName}</Badge>
+                <Badge variant="outline">{categoryLabel}</Badge>
+                <Badge variant="outline" className="capitalize">{expense.payment_method}</Badge>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    expense.status === 'actual' 
+                      ? 'bg-success/10 text-success border-success/30'
+                      : 'bg-warning/10 text-warning border-warning/30'
+                  )}
+                >
+                  {expense.status}
+                </Badge>
+              </div>
+
+              {expense.description && (
+                <p className="text-sm text-muted-foreground pt-2 border-t border-border mt-2">
+                  {expense.description}
+                </p>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea
+                placeholder="Add notes about this expense..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            {/* Receipt Upload */}
+            <div className="space-y-2">
+              <Label>Receipt</Label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/*,.pdf"
+                className="hidden"
+              />
+
+              {receiptUrl && !receiptFile ? (
+                <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+                  <Paperclip className="h-5 w-5 text-primary" />
+                  <span className="text-sm flex-1">Receipt attached</span>
+                  <a
+                    href={receiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:text-primary/80"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveReceipt}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              ) : receiptFile ? (
+                <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <span className="text-sm flex-1 truncate">{receiptFile.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setReceiptFile(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+                    isDragging 
+                      ? "border-primary bg-primary/10" 
+                      : "border-muted-foreground/25 hover:border-primary/50"
+                  )}
+                >
+                  <Upload className="h-6 w-6 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground text-center">
+                    Drag & drop or click to upload receipt
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    JPG, PNG, WebP, or PDF
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2 pt-2">
+              {isQuickBooks && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full text-warning border-warning/50 hover:bg-warning/10"
+                  onClick={handleSendBackToQueue}
+                  disabled={isResetting}
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  {isResetting ? 'Sending...' : 'Send Back to Queue'}
+                </Button>
+              )}
+              <div className="flex gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="flex-1 text-destructive border-destructive/50 hover:bg-destructive/10" 
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+                <Button 
+                  className="flex-1 gap-2" 
+                  onClick={handleSave}
+                  disabled={isSaving || isUploading}
+                >
+                  <Save className="h-4 w-4" />
+                  {isUploading ? 'Uploading...' : isSaving ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

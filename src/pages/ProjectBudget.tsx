@@ -1327,6 +1327,7 @@ export default function ProjectBudget() {
           receipt_url: selectedExpense.receipt_url || null,
           notes: selectedExpense.notes || null,
           source: selectedExpense.isQuickBooks ? 'quickbooks' : 'manual',
+          qb_id: selectedExpense.qb_id,
         } : null}
         projectName={project?.name || ''}
         categoryLabel={selectedExpense ? getCategoryLabel(selectedExpense.category_id) : ''}
