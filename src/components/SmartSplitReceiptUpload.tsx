@@ -68,6 +68,7 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
   const [dragActive, setDragActive] = useState(false);
   const uploadZoneRef = useRef<HTMLDivElement>(null);
   const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
+  const [editableQuantities, setEditableQuantities] = useState<Record<number, number>>({});
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
   const [isImporting, setIsImporting] = useState(false);
@@ -391,26 +392,32 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
   // Accept match and open split modal
   const acceptMatch = (match: MatchedExpense) => {
     setSelectedMatch(match);
-    // Initialize editable categories from suggested categories
+    // Initialize editable categories and quantities from line items
     const initialCategories: Record<number, string> = {};
+    const initialQuantities: Record<number, number> = {};
     match.receipt.line_items?.forEach((item, idx) => {
       initialCategories[idx] = item.suggested_category || 'misc';
+      initialQuantities[idx] = item.quantity || 1;
     });
     setEditableCategories(initialCategories);
+    setEditableQuantities(initialQuantities);
     setShowMatchModal(true);
   };
 
-  // Helper to group line items by category
-  const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>) => {
-    const groups: Record<string, { items: LineItem[], total: number }> = {};
+  // Helper to group line items by category (with editable quantities)
+  const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>, quantities: Record<number, number>) => {
+    const groups: Record<string, { items: (LineItem & { editedQuantity: number; editedTotal: number })[], total: number }> = {};
     
     lineItems.forEach((item, idx) => {
       const category = categories[idx] || item.suggested_category || 'misc';
+      const editedQuantity = quantities[idx] ?? item.quantity ?? 1;
+      const editedTotal = editedQuantity * item.unit_price;
+      
       if (!groups[category]) {
         groups[category] = { items: [], total: 0 };
       }
-      groups[category].items.push(item);
-      groups[category].total += item.total_price;
+      groups[category].items.push({ ...item, editedQuantity, editedTotal });
+      groups[category].total += editedTotal;
     });
     
     return groups;
@@ -446,15 +453,15 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
         }
       }
 
-      // Group line items by category
+      // Group line items by category (with edited quantities)
       const categoryGroups = groupByCategory(
         selectedMatch.receipt.line_items || [],
-        editableCategories
+        editableCategories,
+        editableQuantities
       );
 
-      // Calculate proportional tax per category
-      const subtotal = selectedMatch.receipt.subtotal || 
-        selectedMatch.receipt.line_items?.reduce((sum, i) => sum + i.total_price, 0) || 0;
+      // Calculate proportional tax per category (using edited quantities)
+      const subtotal = Object.values(categoryGroups).reduce((sum, group) => sum + group.total, 0);
       const taxAmount = selectedMatch.receipt.tax_amount || 0;
 
       const originalQbExpenseId = selectedMatch.qbExpense.id;
@@ -470,9 +477,9 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
         const categoryTax = Math.round(taxAmount * proportion * 100) / 100;
         const categoryAmount = Math.round((group.total + categoryTax) * 100) / 100;
 
-        // Build notes from items in this category
+        // Build notes from items in this category (using edited quantities)
         const itemNotes = group.items
-          .map(item => `${item.item_name} (${item.quantity}x)`)
+          .map(item => `${item.item_name} (${item.editedQuantity}x)`)
           .join(', ');
 
         // Find or create project_category
@@ -845,32 +852,46 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
                     Suggested Split ({selectedMatch.receipt.line_items.length + (selectedMatch.receipt.tax_amount > 0 ? 1 : 0)} items)
                   </h4>
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                    {selectedMatch.receipt.line_items.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
-                        <div className="flex-1">
-                          <p className="font-medium">{item.item_name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {item.quantity} × {formatCurrency(item.unit_price)}
-                          </p>
+                    {selectedMatch.receipt.line_items.map((item, idx) => {
+                      const editedQty = editableQuantities[idx] ?? item.quantity ?? 1;
+                      const editedTotal = editedQty * item.unit_price;
+                      return (
+                        <div key={idx} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
+                          <div className="flex-1">
+                            <p className="font-medium">{item.item_name}</p>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Input
+                                type="number"
+                                min="1"
+                                value={editedQty}
+                                onChange={(e) => setEditableQuantities(prev => ({ 
+                                  ...prev, 
+                                  [idx]: Math.max(1, parseInt(e.target.value) || 1) 
+                                }))}
+                                className="w-12 h-5 px-1 text-xs text-center"
+                              />
+                              <span>× {formatCurrency(item.unit_price)}</span>
+                            </div>
+                          </div>
+                          <Select
+                            value={editableCategories[idx] || item.suggested_category || 'misc'}
+                            onValueChange={(value) => setEditableCategories(prev => ({ ...prev, [idx]: value }))}
+                          >
+                            <SelectTrigger className="w-[130px] h-7 text-xs">
+                              <SelectValue>{getCategoryLabel(editableCategories[idx] || item.suggested_category || 'misc')}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categoryOptions.map((cat) => (
+                                <SelectItem key={cat} value={cat} className="text-xs">
+                                  {getCategoryLabel(cat)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <span className="font-mono">{formatCurrency(editedTotal)}</span>
                         </div>
-                        <Select
-                          value={editableCategories[idx] || item.suggested_category || 'misc'}
-                          onValueChange={(value) => setEditableCategories(prev => ({ ...prev, [idx]: value }))}
-                        >
-                          <SelectTrigger className="w-[130px] h-7 text-xs">
-                            <SelectValue>{getCategoryLabel(editableCategories[idx] || item.suggested_category || 'misc')}</SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categoryOptions.map((cat) => (
-                              <SelectItem key={cat} value={cat} className="text-xs">
-                                {getCategoryLabel(cat)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <span className="font-mono">{formatCurrency(item.total_price)}</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                     
                     {/* Tax Line Item */}
                     {selectedMatch.receipt.tax_amount > 0 && (
@@ -891,7 +912,10 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
                   
                   {/* Split Total */}
                   {(() => {
-                    const lineItemsTotal = selectedMatch.receipt.line_items.reduce((sum, item) => sum + item.total_price, 0);
+                    const lineItemsTotal = selectedMatch.receipt.line_items.reduce((sum, item, idx) => {
+                      const qty = editableQuantities[idx] ?? item.quantity ?? 1;
+                      return sum + (qty * item.unit_price);
+                    }, 0);
                     const splitTotal = lineItemsTotal + (selectedMatch.receipt.tax_amount || 0);
                     const transactionAmount = selectedMatch.qbExpense.amount;
                     const difference = Math.abs(splitTotal - transactionAmount);
