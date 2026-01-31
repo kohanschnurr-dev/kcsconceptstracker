@@ -724,34 +724,66 @@ interface ItemPickerModalProps {
   onItemsAdded: () => void;
 }
 
+interface Bundle {
+  id: string;
+  name: string;
+}
+
 function ItemPickerModal({ open, onOpenChange, projectId, existingItemIds, onItemsAdded }: ItemPickerModalProps) {
   const [allItems, setAllItems] = useState<ProcurementItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  
+  // Bundle filtering state
+  const [bundles, setBundles] = useState<Bundle[]>([]);
+  const [filterBundleId, setFilterBundleId] = useState<string>('all');
+  const [itemBundleMap, setItemBundleMap] = useState<Map<string, string[]>>(new Map());
 
   useEffect(() => {
     if (open) {
       fetchAllItems();
       setSelectedIds(new Set());
       setSearchQuery('');
+      setFilterBundleId('all');
     }
   }, [open]);
 
   const fetchAllItems = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('procurement_items')
-      .select('*')
-      .order('name');
+    
+    // Fetch items, bundles, and bundle assignments in parallel
+    const [itemsRes, bundlesRes, assignmentsRes] = await Promise.all([
+      supabase.from('procurement_items').select('*').order('name'),
+      supabase.from('procurement_bundles').select('id, name').order('name'),
+      supabase.from('procurement_item_bundles').select('item_id, bundle_id'),
+    ]);
 
-    if (error) {
-      console.error('Error fetching items:', error);
+    if (itemsRes.error) {
+      console.error('Error fetching items:', itemsRes.error);
       toast.error('Failed to load items');
     } else {
-      setAllItems((data || []) as ProcurementItem[]);
+      setAllItems((itemsRes.data || []) as ProcurementItem[]);
     }
+
+    if (bundlesRes.error) {
+      console.error('Error fetching bundles:', bundlesRes.error);
+    } else {
+      setBundles((bundlesRes.data || []) as Bundle[]);
+    }
+
+    // Build item -> bundle_ids map
+    if (assignmentsRes.data) {
+      const map = new Map<string, string[]>();
+      assignmentsRes.data.forEach(({ item_id, bundle_id }) => {
+        const existing = map.get(item_id) || [];
+        existing.push(bundle_id);
+        map.set(item_id, existing);
+      });
+      setItemBundleMap(map);
+    }
+
     setLoading(false);
   };
 
@@ -759,6 +791,13 @@ function ItemPickerModal({ open, onOpenChange, projectId, existingItemIds, onIte
     return allItems.filter(item => {
       // Exclude items already in project
       if (existingItemIds.includes(item.id)) return false;
+      
+      // Filter by bundle
+      if (filterBundleId !== 'all') {
+        const itemBundles = itemBundleMap.get(item.id) || [];
+        if (!itemBundles.includes(filterBundleId)) return false;
+      }
+      
       // Filter by search
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -768,7 +807,7 @@ function ItemPickerModal({ open, onOpenChange, projectId, existingItemIds, onIte
       }
       return true;
     });
-  }, [allItems, existingItemIds, searchQuery]);
+  }, [allItems, existingItemIds, searchQuery, filterBundleId, itemBundleMap]);
 
   const toggleItem = (id: string) => {
     setSelectedIds(prev => {
@@ -777,6 +816,15 @@ function ItemPickerModal({ open, onOpenChange, projectId, existingItemIds, onIte
       else next.add(id);
       return next;
     });
+  };
+
+  const handleSelectAll = () => {
+    const availableIds = availableItems.map(item => item.id);
+    setSelectedIds(new Set(availableIds));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIds(new Set());
   };
 
   const handleAdd = async () => {
@@ -825,6 +873,7 @@ function ItemPickerModal({ open, onOpenChange, projectId, existingItemIds, onIte
           </DialogTitle>
         </DialogHeader>
 
+        {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -833,6 +882,43 @@ function ItemPickerModal({ open, onOpenChange, projectId, existingItemIds, onIte
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
+        </div>
+
+        {/* Bundle filter + Select All / Deselect All */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={filterBundleId} onValueChange={setFilterBundleId}>
+            <SelectTrigger className="w-[180px]">
+              <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Filter by Bundle" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Items</SelectItem>
+              {bundles.map(bundle => (
+                <SelectItem key={bundle.id} value={bundle.id}>{bundle.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <div className="flex-1" />
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleSelectAll}
+            disabled={availableItems.length === 0}
+          >
+            <Check className="h-4 w-4 mr-1" />
+            Select All
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleDeselectAll}
+            disabled={selectedIds.size === 0}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto min-h-[300px] border rounded-lg">
@@ -846,7 +932,7 @@ function ItemPickerModal({ open, onOpenChange, projectId, existingItemIds, onIte
               <p className="text-muted-foreground">
                 {allItems.length === 0 
                   ? "No items in library. Add items in the Procurement page first."
-                  : searchQuery 
+                  : searchQuery || filterBundleId !== 'all'
                     ? "No matching items found" 
                     : "All items already added to this project"}
               </p>
