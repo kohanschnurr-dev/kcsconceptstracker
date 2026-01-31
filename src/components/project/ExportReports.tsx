@@ -24,6 +24,7 @@ interface Category {
   id: string;
   category: string;
   estimated_budget: number;
+  actualSpent: number;
 }
 
 interface Project {
@@ -115,28 +116,27 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
   };
 
   const exportBudgetSummaryCSV = () => {
-    const spending = calculateCategorySpending();
-    const headers = ['Category', 'Estimated Budget', 'Actual Spent', 'Remaining', 'Variance %'];
+    const headers = ['Category', 'Estimated Budget', 'Actual Spent', 'Remaining', '% Left'];
     
     const rows = categories.map(cat => {
-      const spent = spending[cat.id] || 0;
+      const spent = cat.actualSpent || 0;
       const remaining = cat.estimated_budget - spent;
-      const variance = cat.estimated_budget > 0 ? ((spent - cat.estimated_budget) / cat.estimated_budget * 100) : 0;
+      const percentLeft = cat.estimated_budget > 0 ? ((remaining / cat.estimated_budget) * 100) : 0;
       return [
         getCategoryName(cat.category),
         cat.estimated_budget.toFixed(2),
         spent.toFixed(2),
         remaining.toFixed(2),
-        variance.toFixed(1) + '%',
+        percentLeft.toFixed(1) + '%',
       ];
     });
 
     // Add totals
     const totalEstimated = categories.reduce((sum, cat) => sum + cat.estimated_budget, 0);
-    const totalSpent = Object.values(spending).reduce((sum, val) => sum + val, 0);
+    const totalSpent = categories.reduce((sum, cat) => sum + (cat.actualSpent || 0), 0);
     const totalRemaining = totalEstimated - totalSpent;
-    const totalVariance = totalEstimated > 0 ? ((totalSpent - totalEstimated) / totalEstimated * 100) : 0;
-    rows.push(['TOTALS', totalEstimated.toFixed(2), totalSpent.toFixed(2), totalRemaining.toFixed(2), totalVariance.toFixed(1) + '%']);
+    const totalPercentLeft = totalEstimated > 0 ? ((totalRemaining / totalEstimated) * 100) : 0;
+    rows.push(['TOTALS', totalEstimated.toFixed(2), totalSpent.toFixed(2), totalRemaining.toFixed(2), totalPercentLeft.toFixed(1) + '%']);
 
     const csvContent = [
       `Project: ${project.name}`,
@@ -152,8 +152,7 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
   };
 
   const exportFullReportCSV = () => {
-    const spending = calculateCategorySpending();
-    const totalSpent = Object.values(spending).reduce((sum, val) => sum + val, 0);
+    const totalSpent = categories.reduce((sum, cat) => sum + (cat.actualSpent || 0), 0);
     
     const lines = [
       '=== PROJECT FINANCIAL REPORT ===',
@@ -193,12 +192,12 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
     }
 
     // Budget by category
-    lines.push('BUDGET BY CATEGORY', 'Category,Estimated,Actual,Remaining,Variance');
+    lines.push('BUDGET BY CATEGORY', 'Category,Estimated,Actual,Remaining,% Left');
     categories.forEach(cat => {
-      const spent = spending[cat.id] || 0;
+      const spent = cat.actualSpent || 0;
       const remaining = cat.estimated_budget - spent;
-      const variance = cat.estimated_budget > 0 ? ((spent - cat.estimated_budget) / cat.estimated_budget * 100) : 0;
-      lines.push(`${getCategoryName(cat.category)},${cat.estimated_budget.toFixed(2)},${spent.toFixed(2)},${remaining.toFixed(2)},${variance.toFixed(1)}%`);
+      const percentLeft = cat.estimated_budget > 0 ? ((remaining / cat.estimated_budget) * 100) : 0;
+      lines.push(`${getCategoryName(cat.category)},${cat.estimated_budget.toFixed(2)},${spent.toFixed(2)},${remaining.toFixed(2)},${percentLeft.toFixed(1)}%`);
     });
 
     lines.push('', 'EXPENSE DETAILS', 'Date,Vendor,Category,Description,Amount,Tax,Total,Payment Method');
@@ -302,7 +301,7 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
               <span className="font-medium">Budget Summary</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Budget vs actual by category with variance analysis
+              Budget vs actual by category with budget analysis
             </p>
           </div>
 
