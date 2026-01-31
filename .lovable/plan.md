@@ -1,105 +1,102 @@
 
-## Plan: Enable "Re-Queue" Delete for QuickBooks Expenses
+## Fix: Receipt Viewing & Payment Method Inheritance for Split Expenses
 
-### Current Situation
-Found these records for the $671.60 Amazon transaction:
+### Issues Identified
 
-| qb_id | Amount | Status | Category |
-|-------|--------|--------|----------|
-| `purchase_769` | $671.60 | imported | Bathroom |
-| `purchase_769_split_hardware` | $188.38 | imported | Hardware |
+| Issue | Current State | Expected Behavior |
+|-------|---------------|-------------------|
+| **Chrome blocks receipt** | Receipt URL opens in new tab via `ExternalLink` in modal, but row click goes to modal first | Need direct clickable paperclip |
+| **Payment method missing on splits** | Split expenses have `payment_method: null` | Should inherit from parent QB transaction (e.g., "card") |
+| **Paperclip not clickable** | Paperclip icon is just visual indicator in expenses table | Should open receipt directly when clicked |
 
-### Problem
-Currently, deleting a QuickBooks expense completely removes it from the database. The user wants to:
-1. Delete specific transactions (like `purchase_769`)
-2. Have them reappear in the QuickBooks pending list for re-categorization
+### Root Cause Analysis
+
+**Database query confirms the issue:**
+- Main transaction (`purchase_769`) has `payment_method: card`
+- All split records (`purchase_769_split_*`) have `payment_method: null`
+
+The `SmartSplitReceiptUpload.tsx` import logic does NOT copy `payment_method` from the original QuickBooks expense when creating splits.
+
+---
 
 ### Solution
-Modify the delete behavior for QuickBooks expenses:
-- Instead of deleting the record, set `is_imported = false` and clear project/category assignment
-- This makes the expense reappear in the pending QuickBooks list immediately (no sync needed)
-- Also delete any associated split records (`_split_` suffix) so the user can re-split cleanly
 
-### Implementation
+**Part 1: Add payment_method to split imports**
 
-**File: `src/components/project/ExpenseActions.tsx`**
-
-Update the `DeleteExpenseDialog` component:
-
-1. **Add `qb_id` to the Expense interface** (needed to find related splits)
-   ```typescript
-   interface Expense {
-     // ... existing fields
-     qb_id?: string; // Add this field
-   }
-   ```
-
-2. **Change delete logic for QuickBooks expenses:**
-   ```typescript
-   if (expense.isQuickBooks) {
-     // First, delete any split records for this expense
-     if (expense.qb_id) {
-       await supabase
-         .from('quickbooks_expenses')
-         .delete()
-         .like('qb_id', `${expense.qb_id}_split_%`);
-     }
-     
-     // Reset the main expense to pending (instead of deleting)
-     await supabase
-       .from('quickbooks_expenses')
-       .update({
-         is_imported: false,
-         project_id: null,
-         category_id: null,
-         expense_type: null,
-         notes: null,
-         receipt_url: null,
-       })
-       .eq('id', expense.id);
-   }
-   ```
-
-3. **Update dialog message** to explain the re-queue behavior:
-   ```
-   "This expense will be moved back to the QuickBooks pending queue for re-categorization."
-   ```
-
-**File: `src/pages/ProjectBudget.tsx`**
-
-Pass `qb_id` when mapping QuickBooks expenses:
+Update the `MatchedExpense` interface to include `payment_method`:
 ```typescript
-const qbAsExpenses: DBExpense[] = qbExpenses.map((qb: any) => ({
-  // ... existing fields
-  qb_id: qb.qb_id, // Add this
-}));
-```
-
-Update the `DBExpense` interface to include `qb_id`:
-```typescript
-interface DBExpense {
-  // ... existing fields
-  qb_id?: string;
+interface MatchedExpense {
+  receipt: PendingReceipt;
+  qbExpense: {
+    id: string;
+    vendor_name: string;
+    amount: number;
+    date: string;
+    description?: string;
+    payment_method?: string;  // Add this
+  };
 }
 ```
 
-### Immediate Data Cleanup
+Update the insert/update logic for split records to include `payment_method`:
+```typescript
+// When inserting new split
+payment_method: selectedMatch.qbExpense.payment_method || null,
 
-For the specific $671.60 transaction, both records need to be reset:
-- `purchase_769` → reset to pending
-- `purchase_769_split_hardware` → delete (it was a split)
+// When updating existing split
+payment_method: selectedMatch.qbExpense.payment_method || null,
+```
+
+**Part 2: Make paperclip clickable in expenses table**
+
+In `src/pages/Expenses.tsx`, change the Paperclip from a visual icon to a clickable button that opens the receipt:
+
+```tsx
+{expense.receipt_url && (
+  <button
+    onClick={(e) => {
+      e.stopPropagation(); // Prevent row click (opening modal)
+      window.open(expense.receipt_url, '_blank');
+    }}
+    className="text-primary hover:text-primary/80"
+    title="View receipt"
+  >
+    <Paperclip className="h-4 w-4" />
+  </button>
+)}
+```
+
+---
 
 ### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/project/ExpenseActions.tsx` | Update delete logic to re-queue QB expenses, add `qb_id` to interface |
-| `src/pages/ProjectBudget.tsx` | Pass `qb_id` when mapping QB expenses, add to interface |
+| `src/components/SmartSplitReceiptUpload.tsx` | Add `payment_method` to interface and include in insert/update logic for splits |
+| `src/pages/Expenses.tsx` | Make Paperclip icon clickable to open receipt URL |
 
-### Expected Behavior After Fix
+---
 
-1. User clicks "Delete" on a QuickBooks expense
-2. Dialog shows: "This expense will be moved back to the QuickBooks pending queue"
-3. Expense reappears in pending list immediately (no sync needed)
-4. Any splits are removed so user can re-categorize from scratch
-5. Regular (non-QB) expenses are still permanently deleted
+### Technical Details
+
+**SmartSplitReceiptUpload.tsx changes:**
+
+1. **Line ~42-51**: Update `MatchedExpense.qbExpense` interface to include `payment_method?: string;`
+
+2. **Line ~169-177**: When mapping qbExpenses to matches, the full object is already passed, so `payment_method` will be available
+
+3. **Line ~514-525**: First category update - add `payment_method`
+4. **Line ~537-549**: Update existing split - add `payment_method`
+5. **Line ~553-569**: Insert new split - add `payment_method`
+
+**Expenses.tsx changes:**
+
+1. **Line ~456-467**: Wrap Paperclip in clickable button with `onClick` that opens receipt URL, using `e.stopPropagation()` to prevent triggering the row click
+
+---
+
+### Expected Results
+
+1. Clicking the orange paperclip icon opens the receipt in a new tab
+2. All split expenses inherit the payment method (cash/card) from the parent transaction
+3. Chrome won't block since we're using `window.open` with user interaction
