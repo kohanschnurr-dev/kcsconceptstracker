@@ -1,176 +1,92 @@
 
 
-## Enhanced Photo Gallery - Multi-Upload & Better Organization
+## Two Profit Metrics: Estimated vs Current Profit
 
 ### What This Does
-Transforms the photo gallery upload experience from single-file to a modern, efficient multi-file system with better organization features including date tagging, drag & drop, paste support, and bulk editing.
+Updates the Profit Calculator to display two separate profit calculations:
+- **Estimated Profit**: Based on your allocated budget (what you planned to spend)
+- **Current Profit**: Based on actual expenses (what you've actually spent)
+
+This gives you visibility into both your projected returns and your real-time position.
 
 ---
 
 ### Current Behavior
-- Upload one photo at a time through a file picker
-- Must set category and caption BEFORE selecting the file
-- No drag & drop support
-- No paste-to-upload support
-- No date tracking (only `created_at` timestamp)
-- No progress indicator for uploads
-- Cannot edit caption/category after upload
-- Basic file picker UI
+- Shows a single "Est. Profit" value
+- Uses actual spending if available, otherwise falls back to budget
+- No distinction between planned vs actual profit
 
 ### New Behavior
-- Select multiple files at once (hold Ctrl/Cmd)
-- Drag & drop multiple images directly onto the gallery
-- Paste images from clipboard (Ctrl+V)
-- Assign a specific photo date (when the photo was taken)
-- Add/edit captions after upload
-- See upload progress for each file
-- Bulk category assignment for multiple photos
-- Preview thumbnails before uploading
-- Filter by date range in addition to category
+- **Estimated Profit** = ARV - Purchase Price - Total Budget - Closing Costs - Holding Costs
+- **Current Profit** = ARV - Purchase Price - Current Expenses - Closing Costs - Holding Costs
+- Both displayed side-by-side with clear labels
+- ROI remains based on current investment
 
 ---
 
-### Technical Implementation
+### Using Your Example
 
-#### 1. Database Schema Update
+| Metric | Value |
+|--------|-------|
+| Total Budget (allocated) | $60,575 |
+| Current Expenses (spent) | $39,717 |
+| Difference | $20,858 |
 
-Add a `photo_date` column to track when photos were taken (separate from `created_at` which is when uploaded):
-
-```sql
-ALTER TABLE project_photos 
-ADD COLUMN photo_date DATE DEFAULT CURRENT_DATE;
-```
-
-#### 2. Enhanced Upload Modal
-
-Redesign the upload dialog with a two-step process:
-
-**Step 1: File Selection**
-- Large drag & drop zone with visual feedback
-- Support `multiple` attribute on file input
-- Paste listener for clipboard images
-- Show thumbnail previews of selected files
-
-**Step 2: Metadata Assignment**
-- Grid of selected file thumbnails
-- Global category selector (applies to all)
-- Per-photo caption input
-- Photo date picker (defaults to today)
-- Option to apply same caption to all or individual
-
-```text
-┌──────────────────────────────────────────────────┐
-│  Upload Photos                               X   │
-├──────────────────────────────────────────────────┤
-│  ┌────────────────────────────────────────────┐  │
-│  │                                            │  │
-│  │     📁 Drop photos here or click to        │  │
-│  │        browse (Ctrl+V to paste)            │  │
-│  │                                            │  │
-│  └────────────────────────────────────────────┘  │
-│                                                  │
-│  Selected (3 photos):                            │
-│  ┌─────┐ ┌─────┐ ┌─────┐                        │
-│  │ img │ │ img │ │ img │  ← Thumbnail previews  │
-│  │  1  │ │  2  │ │  3  │                        │
-│  └──X──┘ └──X──┘ └──X──┘  ← Remove individual   │
-│                                                  │
-│  Category: [Before ▼]    Date: [📅 Jan 31]      │
-│                                                  │
-│  Caption: [___________________________]          │
-│  ☑ Apply same caption to all photos             │
-│                                                  │
-│  [Cancel]                    [Upload 3 Photos]  │
-└──────────────────────────────────────────────────┘
-```
-
-#### 3. Upload Progress
-
-Show real-time progress for multi-file uploads:
-
-```text
-┌──────────────────────────────────────────────────┐
-│  Uploading 3 photos...                           │
-│  ━━━━━━━━━━━━━━━░░░░░░░░░░  2 of 3               │
-│                                                  │
-│  ✓ photo1.jpg                                    │
-│  ✓ photo2.jpg                                    │
-│  ⏳ photo3.jpg (uploading...)                    │
-└──────────────────────────────────────────────────┘
-```
-
-#### 4. Enhanced Gallery Display
-
-Update the photo cards to show more metadata:
-
-- Display photo date badge (in addition to category)
-- Show caption preview on hover
-- Add date filter option (e.g., "Last 7 days", "This month", or date range)
-
-#### 5. Inline Caption Editing
-
-When viewing a photo in the preview modal:
-- Click caption to edit inline
-- Click category badge to change category
-- Add "Edit Date" option
+This means your **Current Profit** will be higher than **Estimated Profit** by approximately $20,858 (assuming you stay within budget).
 
 ---
 
-### Files to Create/Modify
+### Technical Changes
 
-| File | Action | Description |
-|------|--------|-------------|
-| `supabase/migrations/XXX_add_photo_date.sql` | Create | Add `photo_date` column to project_photos |
-| `src/components/project/PhotoGallery.tsx` | Major Modify | Complete rewrite of upload flow |
-| `src/components/project/PhotoUploadModal.tsx` | Create | New dedicated upload modal component |
+**File: `src/components/project/ProfitCalculator.tsx`**
 
----
-
-### Detailed Component Changes
-
-#### PhotoUploadModal.tsx (New)
+Update the calculations section:
 ```typescript
-interface PhotoUploadModalProps {
-  projectId: string;
-  isOpen: boolean;
-  onClose: () => void;
-  onUploadComplete: () => void;
-}
+// Estimated profit (based on allocated budget)
+const estimatedInvestment = purchasePrice + totalBudget;
+const estimatedTotalCosts = estimatedInvestment + closingCosts + holdingCosts;
+const estimatedProfit = arv - estimatedTotalCosts;
 
-// Features:
-// - pendingFiles: File[] state for selected files
-// - thumbnailPreviews: generated via URL.createObjectURL()
-// - globalCategory, globalCaption, photoDate states
-// - handleDrop, handlePaste, handleFileSelect handlers
-// - Sequential upload with progress tracking
-// - Cleanup object URLs on unmount
+// Current profit (based on actual spending)
+const currentInvestment = purchasePrice + totalSpent;
+const currentTotalCosts = currentInvestment + closingCosts + holdingCosts;
+const currentProfit = arv - currentTotalCosts;
 ```
 
-#### PhotoGallery.tsx Updates
-- Add date filter dropdown (All / Last 7 days / Last 30 days / Custom range)
-- Update photo card to show date badge
-- Add inline caption editing in preview modal
-- Add edit category functionality in preview modal
-- Update query to include photo_date and order options
+Update the results grid to show 3 cards:
+```text
+┌─────────────────┬─────────────────┬─────────────────┐
+│   Est. Profit   │  Current Profit │       ROI       │
+│    $46,063      │     $66,921     │     23.8%       │
+│  (using budget) │ (using spent)   │                 │
+└─────────────────┴─────────────────┴─────────────────┘
+```
 
 ---
 
-### Recommended Additional Features
+### Layout Update
 
-1. **Bulk Delete**: Select multiple photos to delete at once
-2. **Photo Reordering**: Drag to reorder photos within a category
-3. **Download Original**: Button to download the original high-res image
-4. **Lightbox Navigation**: Arrow keys to navigate between photos in preview
-5. **Photo Notes**: Longer notes field separate from caption (for internal use)
+Change from 2-column to 3-column grid for the profit display:
+- **Column 1**: Estimated Profit (based on $60,575 budget)
+- **Column 2**: Current Profit (based on $39,717 spent)
+- **Column 3**: ROI (based on current investment)
+
+Each card will include a subtle label indicating which cost basis it uses.
+
+---
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/components/project/ProfitCalculator.tsx` | Add dual profit calculations and update display grid |
 
 ---
 
 ### Summary
 
-- Database migration to add `photo_date` column
-- New `PhotoUploadModal` component with multi-file support
-- Enhanced `PhotoGallery` with drag & drop, paste, progress indicators
-- Date filtering and display
-- Inline editing of caption/category after upload
-- Better UX with thumbnail previews before upload
+- Add separate calculations for estimated vs current profit
+- Display both values in the results section
+- Clear labels so users understand the difference
+- Estimated uses allocated budget, Current uses actual expenses
 
