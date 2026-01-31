@@ -354,6 +354,21 @@ export default function DailyLogs() {
     }
   };
 
+  const handleInlinePriorityChange = async (taskId: string, newPriority: TaskPriority) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ priority_level: newPriority })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      fetchTasks();
+    } catch (error) {
+      console.error('Error updating priority:', error);
+      toast({ title: 'Error', description: 'Failed to update priority', variant: 'destructive' });
+    }
+  };
+
   const getStatusIcon = (status: TaskStatus) => {
     switch (status) {
       case 'completed':
@@ -606,12 +621,23 @@ export default function DailyLogs() {
                           {task.title}
                         </p>
                         <div className="flex flex-wrap items-center gap-2 mt-2">
-                          <Badge
-                            variant="secondary"
-                            className={`text-xs ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}
+                          <Select
+                            value={task.priorityLevel}
+                            onValueChange={(v) => handleInlinePriorityChange(task.id, v as TaskPriority)}
                           >
-                            {TASK_PRIORITY_LABELS[task.priorityLevel]}
-                          </Badge>
+                            <SelectTrigger 
+                              className={`h-6 px-2 text-xs border-0 w-auto rounded-full ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <SelectValue>{TASK_PRIORITY_LABELS[task.priorityLevel]}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="urgent">Urgent</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             {getStatusIcon(task.status)}
                             <span>{TASK_STATUS_LABELS[task.status]}</span>
@@ -722,12 +748,20 @@ export default function DailyLogs() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant="secondary"
-                            className={`text-xs ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}
+                          <Select
+                            value={task.priorityLevel}
+                            onValueChange={(v) => handleInlinePriorityChange(task.id, v as TaskPriority)}
                           >
-                            {TASK_PRIORITY_LABELS[task.priorityLevel]}
-                          </Badge>
+                            <SelectTrigger className={`h-7 w-24 text-xs border-0 rounded-full ${TASK_PRIORITY_COLORS[task.priorityLevel]}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="urgent">Urgent</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
