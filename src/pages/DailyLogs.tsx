@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, ArrowRight, ListTodo, Target } from 'lucide-react';
+import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, CalendarPlus, X, ListTodo, Target } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -171,21 +171,19 @@ export default function DailyLogs() {
   // Filter tasks based on daily/master and status
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   
-  // Daily Sprint: tasks where is_daily = true AND scheduled_date = today AND not completed
-  // (or show completed ones too if filter is 'completed' or 'all')
+  // Daily Sprint: tasks scheduled for today (regardless of is_daily flag)
   const dailyTasks = allTasks.filter((task) => {
     const isScheduledToday = task.scheduledDate === todayStr;
-    const isDailyTask = task.isDaily && isScheduledToday;
     
     if (taskFilter === 'pending') {
-      return isDailyTask && task.status !== 'completed';
+      return isScheduledToday && task.status !== 'completed';
     } else if (taskFilter === 'completed') {
-      return isDailyTask && task.status === 'completed';
+      return isScheduledToday && task.status === 'completed';
     }
-    return isDailyTask;
+    return isScheduledToday;
   });
 
-  // Master Pipeline: tasks where is_daily = false
+  // Master Pipeline: All tasks with is_daily = false (regardless of scheduled_date)
   const masterTasks = allTasks.filter((task) => {
     if (!task.isDaily) {
       if (taskFilter === 'pending') {
@@ -240,23 +238,41 @@ export default function DailyLogs() {
     }
   };
 
-  const handleMoveToToday = async (task: Task) => {
+  const handleAssignToToday = async (task: Task) => {
     try {
       const { error } = await supabase
         .from('tasks')
         .update({ 
-          is_daily: true, 
-          scheduled_date: todayStr 
+          scheduled_date: todayStr  // Only set date, keep is_daily unchanged
         })
         .eq('id', task.id);
 
       if (error) throw error;
 
-      toast({ title: 'Moved to Today', description: `"${task.title}" added to today's sprint` });
+      toast({ title: 'Assigned to Today', description: `"${task.title}" added to today's sprint` });
       fetchTasks();
     } catch (error) {
-      console.error('Error moving task:', error);
-      toast({ title: 'Error', description: 'Failed to move task', variant: 'destructive' });
+      console.error('Error assigning task:', error);
+      toast({ title: 'Error', description: 'Failed to assign task', variant: 'destructive' });
+    }
+  };
+
+  const handleUnassignFromDay = async (task: Task) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          scheduled_date: null  // Remove from today's sprint
+        })
+        .eq('id', task.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Removed from Today', description: `"${task.title}" removed from today's sprint` });
+      fetchTasks();
+    } catch (error) {
+      console.error('Error unassigning task:', error);
+      toast({ title: 'Error', description: 'Failed to remove task', variant: 'destructive' });
     }
   };
 
@@ -380,8 +396,8 @@ export default function DailyLogs() {
     }
   };
 
-  // Counts for badges
-  const pendingDailyCount = allTasks.filter(t => t.isDaily && t.scheduledDate === todayStr && t.status !== 'completed').length;
+  // Counts for badges (Daily Sprint = scheduled for today)
+  const pendingDailyCount = allTasks.filter(t => t.scheduledDate === todayStr && t.status !== 'completed').length;
   const pendingMasterCount = allTasks.filter(t => !t.isDaily && t.status !== 'completed').length;
 
   return (
@@ -617,9 +633,16 @@ export default function DailyLogs() {
                         className="mt-0.5 h-5 w-5"
                       />
                       <div className="flex-1 min-w-0" onClick={() => openDetailModal(task)}>
-                        <p className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
-                          {task.title}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                            {task.title}
+                          </p>
+                          {checklistTab === 'master' && task.scheduledDate === todayStr && (
+                            <Badge variant="outline" className="text-xs text-primary border-primary/50">
+                              Today
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex flex-wrap items-center gap-2 mt-2">
                           <Select
                             value={task.priorityLevel}
@@ -655,10 +678,21 @@ export default function DailyLogs() {
                             variant="ghost"
                             size="icon"
                             className="h-9 w-9 text-primary hover:text-primary/80"
-                            onClick={() => handleMoveToToday(task)}
-                            title="Move to Today"
+                            onClick={() => handleAssignToToday(task)}
+                            title="Assign to Today"
                           >
-                            <ArrowRight className="h-4 w-4" />
+                            <CalendarPlus className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {checklistTab === 'daily' && !task.isDaily && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-muted-foreground hover:text-warning"
+                            onClick={() => handleUnassignFromDay(task)}
+                            title="Remove from Today"
+                          >
+                            <X className="h-4 w-4" />
                           </Button>
                         )}
                         <Button
@@ -735,16 +769,23 @@ export default function DailyLogs() {
                               className="h-8"
                             />
                           ) : (
-                            <span
-                              className={`cursor-pointer hover:underline ${task.status === 'completed' ? 'line-through' : ''}`}
-                              onClick={() => openDetailModal(task)}
-                              onDoubleClick={() => {
-                                setEditingTaskId(task.id);
-                                setEditingTitle(task.title);
-                              }}
-                            >
-                              {task.title}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`cursor-pointer hover:underline ${task.status === 'completed' ? 'line-through' : ''}`}
+                                onClick={() => openDetailModal(task)}
+                                onDoubleClick={() => {
+                                  setEditingTaskId(task.id);
+                                  setEditingTitle(task.title);
+                                }}
+                              >
+                                {task.title}
+                              </span>
+                              {checklistTab === 'master' && task.scheduledDate === todayStr && (
+                                <Badge variant="outline" className="text-xs text-primary border-primary/50">
+                                  Today
+                                </Badge>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell>
@@ -783,10 +824,21 @@ export default function DailyLogs() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-primary hover:text-primary/80"
-                                onClick={() => handleMoveToToday(task)}
-                                title="Move to Today"
+                                onClick={() => handleAssignToToday(task)}
+                                title="Assign to Today"
                               >
-                                <ArrowRight className="h-4 w-4" />
+                                <CalendarPlus className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {checklistTab === 'daily' && !task.isDaily && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-warning"
+                                onClick={() => handleUnassignFromDay(task)}
+                                title="Remove from Today"
+                              >
+                                <X className="h-4 w-4" />
                               </Button>
                             )}
                             <Button
