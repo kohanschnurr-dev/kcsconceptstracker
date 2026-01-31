@@ -47,6 +47,7 @@ interface MatchedExpense {
     amount: number;
     date: string;
     description?: string;
+    payment_method?: string;
   };
 }
 
@@ -521,6 +522,7 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
               project_id: selectedProject,
               category_id: categoryId,
               expense_type: expenseType,
+              payment_method: selectedMatch.qbExpense.payment_method || null,
             })
             .eq('id', originalQbExpenseId);
 
@@ -545,6 +547,7 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
                 expense_type: expenseType,
                 notes: itemNotes,
                 receipt_url: selectedMatch.receipt.receipt_image_url || null,
+                payment_method: selectedMatch.qbExpense.payment_method || null,
               })
               .eq('id', existingSplit.id);
 
@@ -566,6 +569,7 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
                 expense_type: expenseType,
                 notes: itemNotes,
                 receipt_url: selectedMatch.receipt.receipt_image_url || null,
+                payment_method: selectedMatch.qbExpense.payment_method || null,
               });
 
             if (insertError) throw insertError;
