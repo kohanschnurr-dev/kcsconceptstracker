@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Calendar } from 'lucide-react';
+import { ListChecks, ArrowRight, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -140,18 +140,18 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
   if (totalActionable === 0) return null;
 
   return (
-    <div className="glass-card border-warning/50 bg-warning/5 p-4 animate-slide-up">
+    <div className="glass-card border-border bg-muted/30 p-4 animate-slide-up">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-warning/20">
-            <AlertTriangle className="h-5 w-5 text-warning" />
+          <div className="p-2 rounded-lg bg-primary/10">
+            <ListChecks className="h-5 w-5 text-primary" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-warning">Action Required</h3>
+              <h3 className="font-semibold text-foreground">Today</h3>
               <Badge 
                 variant="secondary" 
-                className="bg-warning/20 text-warning border-warning/30 text-xs"
+                className="text-xs"
               >
                 {totalActionable} {totalActionable === 1 ? 'Item' : 'Items'}
               </Badge>
@@ -204,7 +204,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
           {(tasksDueToday.length > 0 || overdueCount > 0) && (
             <Button
               onClick={() => navigate('/checklist')}
-              className="gap-2 bg-warning hover:bg-warning/90 text-warning-foreground"
+              className="gap-2"
             >
               View Tasks
               <ArrowRight className="h-4 w-4" />
