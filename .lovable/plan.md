@@ -1,179 +1,141 @@
 
 
-## Address Autocomplete Feature - Google Maps Style
+## Internal Project Search & Autocomplete
 
 ### What This Does
-Adds a modern autocomplete experience for address fields throughout the app. When you start typing an address (or use "@" to trigger it), the system suggests verified addresses via a geocoding API and automatically extracts latitude/longitude coordinates for instant map pin population.
+Adds a smart search-as-you-type autocomplete for selecting projects throughout the app. When typing in a project selection field (or using "@" to trigger lookup), matching projects from your database appear instantly. No external APIs needed - this is purely internal search.
 
 ---
 
 ### Current Behavior
-- Address fields are plain text inputs
-- No validation or suggestions
-- No geocoding (lat/long not stored)
-- Manual typing prone to typos
+- Project dropdowns show all projects in a static list
+- Must scroll through all projects to find one
+- No search/filter capability in selection dropdowns
+- Forms like Quick Expense, Calendar Events, etc. use basic Select components
 
-### New Behavior
-- Type a few letters and see address suggestions in a dropdown
-- Select from dropdown to auto-fill the complete address
-- Latitude and longitude are automatically extracted and saved
-- Optional "@" trigger for quick lookup (Notion/Slack-style)
-
----
-
-### API Choice: Google Places vs Alternatives
-
-| Option | Pros | Cons |
-|--------|------|------|
-| **Google Places API** | Best accuracy, familiar UX | Requires API key, has usage costs |
-| **Mapbox Search** | Good accuracy, free tier | Requires API key |
-| **Nominatim (OpenStreetMap)** | Free, no key needed | Less accurate, rate limited |
-
-**Recommendation**: Use **Google Places API** for best accuracy since this is a real estate app where address precision matters. You'll need to add a Google Maps API key.
+### New Behavior  
+- Type a few letters → instantly see matching projects
+- Optional "@" trigger: type "@Wales" to search for "Wales Rental"
+- Shows project name + address for easy identification
+- Keyboard navigation support (arrow keys, enter to select)
+- Works everywhere projects are selected
 
 ---
 
 ### Technical Implementation
 
-#### 1. Database Migration - Add Lat/Long Columns
+#### 1. Create Reusable ProjectAutocomplete Component
 
-Add `latitude` and `longitude` columns to the `projects` table:
-
-```sql
-ALTER TABLE projects 
-ADD COLUMN latitude DECIMAL(10, 8),
-ADD COLUMN longitude DECIMAL(11, 8);
-```
-
-#### 2. Create Reusable AddressAutocomplete Component
-
-**New File: `src/components/AddressAutocomplete.tsx`**
+**New File: `src/components/ProjectAutocomplete.tsx`**
 
 This component will:
-- Display an input field with a MapPin icon
-- Debounce user input (300ms)
-- Call Google Places Autocomplete API via edge function
-- Show dropdown of suggestions
-- On selection, geocode the address to get lat/long
-- Return full address + coordinates to parent component
+- Use the existing `Command` + `Popover` components for the dropdown
+- Accept a list of projects and filter them as user types
+- Support "@" trigger: if input starts with "@", treat rest as search query
+- Show structured results: **Project Name** + address (secondary text)
+- Return selected project to parent component
 
 ```typescript
-interface AddressAutocompleteProps {
-  value: string;
-  onChange: (address: string, lat?: number, lng?: number) => void;
+interface ProjectAutocompleteProps {
+  projects: Project[];
+  value: string;  // Selected project ID
+  onSelect: (projectId: string) => void;
   placeholder?: string;
+  filterActive?: boolean;  // Only show active projects
   className?: string;
 }
 ```
 
 Key features:
-- Uses Command component for the dropdown (already in project)
-- Supports "@" trigger: if user types "@123" it triggers search for "123"
-- Shows "Searching..." loading state
-- Displays structured results: **Main text** (street) + secondary text (city, state)
+- Debounced search (100ms) for smooth typing
+- Fuzzy matching on name and address
+- "@" mention support for quick triggering
+- Empty state when no matches found
+- Proper z-index and solid background for dropdown
 
-#### 3. Create Edge Function for Google Places API
-
-**New File: `supabase/functions/geocode-address/index.ts`**
-
-This edge function:
-- Receives search query from frontend
-- Calls Google Places Autocomplete API
-- Returns predictions with place_id
-- Can also geocode a selected place_id to get lat/long
-
-```typescript
-// Endpoint 1: Get autocomplete suggestions
-POST /geocode-address
-{ "action": "autocomplete", "query": "1234 Main" }
--> Returns: [{ place_id, description, main_text, secondary_text }]
-
-// Endpoint 2: Get coordinates for selected place
-POST /geocode-address  
-{ "action": "geocode", "place_id": "ChIJ..." }
--> Returns: { lat: 32.7767, lng: -96.7970 }
-```
-
-#### 4. Update NewProjectModal
-
-**File: `src/components/NewProjectModal.tsx`**
-
-Replace the plain address input with the new autocomplete component:
-
-```tsx
-// Before
-<Input
-  placeholder="1234 Main St, Dallas, TX 75208"
-  value={address}
-  onChange={(e) => setAddress(e.target.value)}
-/>
-
-// After
-<AddressAutocomplete
-  value={address}
-  onChange={(addr, lat, lng) => {
-    setAddress(addr);
-    setLatitude(lat);
-    setLongitude(lng);
-  }}
-  placeholder="Start typing an address..."
-/>
-```
-
-Update the database insert to include lat/long:
-
-```typescript
-const { data: project } = await supabase
-  .from('projects')
-  .insert({
-    name,
-    address,
-    latitude,      // New
-    longitude,     // New
-    total_budget: parseFloat(totalBudget),
-    // ...
-  })
-```
-
-#### 5. Add Google Maps API Key
-
-You'll need to add a `GOOGLE_MAPS_API_KEY` secret. The edge function will use this to call Google's APIs.
-
-Required APIs to enable in Google Cloud Console:
-- Places API
-- Geocoding API
-
----
-
-### Component Architecture
+#### 2. Component Architecture
 
 ```text
 ┌─────────────────────────────────────────┐
-│  AddressAutocomplete Component          │
+│  ProjectAutocomplete Component          │
 │  ┌─────────────────────────────────┐    │
-│  │ 📍 1234 Main St, Dallas...      │    │
+│  │ 🔍 @Wales...                    │    │
 │  └─────────────────────────────────┘    │
 │  ┌─────────────────────────────────┐    │
-│  │ 1234 Main Street                │◄───┤ Dropdown
-│  │   Dallas, TX 75208              │    │ (Command)
+│  │ Wales Rental                    │◄───┤ Dropdown
+│  │   123 Wales St, Dallas, TX      │    │ (Command)
 │  ├─────────────────────────────────┤    │
-│  │ 1234 Main Avenue                │    │
-│  │   Plano, TX 75093               │    │
+│  │ Wales Flip Project              │    │
+│  │   456 Wales Ave, Plano, TX      │    │
 │  └─────────────────────────────────┘    │
 └─────────────────────────────────────────┘
-         │
-         ▼
-  ┌──────────────────┐
-  │ Edge Function    │
-  │ geocode-address  │
-  └────────┬─────────┘
-           │
-           ▼
-  ┌──────────────────┐
-  │ Google Places    │
-  │ API              │
-  └──────────────────┘
 ```
+
+#### 3. Update Forms to Use ProjectAutocomplete
+
+Replace the standard Select dropdowns in these files:
+
+| File | Usage |
+|------|-------|
+| `src/components/QuickExpenseModal.tsx` | Quick add expense - project selection |
+| `src/components/NewDailyLogModal.tsx` | Daily log - project selection |
+| `src/components/calendar/NewEventModal.tsx` | Calendar event - project selection |
+| `src/components/calendar/CalendarHeader.tsx` | Calendar filter - project selection |
+| `src/components/SmartSplitReceiptUpload.tsx` | Receipt split - project selection |
+| `src/components/CreateBudgetModal.tsx` | Budget creation - project selection |
+
+**Example Change (QuickExpenseModal.tsx):**
+
+```tsx
+// Before
+<Select value={selectedProject} onValueChange={setSelectedProject}>
+  <SelectTrigger>
+    <SelectValue placeholder="Select project" />
+  </SelectTrigger>
+  <SelectContent>
+    {projects.filter(p => p.status === 'active').map((project) => (
+      <SelectItem key={project.id} value={project.id}>
+        {project.name}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
+// After
+<ProjectAutocomplete
+  projects={projects}
+  value={selectedProject}
+  onSelect={setSelectedProject}
+  placeholder="Search projects or type @..."
+  filterActive={true}
+/>
+```
+
+---
+
+### Component Implementation Details
+
+The `ProjectAutocomplete` component will:
+
+1. **Input handling**
+   - Normal typing: filter projects by name/address
+   - "@" prefix: strip "@" and search (e.g., "@Wales" searches for "Wales")
+   - Show/hide dropdown based on input focus
+
+2. **Filtering logic**
+   - Case-insensitive matching
+   - Search both `name` and `address` fields
+   - Optional filter to only show active projects
+
+3. **Selection behavior**
+   - Click or Enter to select
+   - Escape to close dropdown
+   - Display selected project name in input after selection
+
+4. **Styling**
+   - Solid background (not transparent) for dropdown
+   - High z-index to appear above modals
+   - Match existing UI patterns (borders, colors, spacing)
 
 ---
 
@@ -181,27 +143,32 @@ Required APIs to enable in Google Cloud Console:
 
 | File | Action | Description |
 |------|--------|-------------|
-| `supabase/functions/geocode-address/index.ts` | Create | Edge function for Places API calls |
-| `src/components/AddressAutocomplete.tsx` | Create | Reusable autocomplete input component |
-| `src/components/NewProjectModal.tsx` | Modify | Use AddressAutocomplete, save lat/long |
-| Database | Migrate | Add latitude, longitude columns to projects |
+| `src/components/ProjectAutocomplete.tsx` | Create | Reusable autocomplete component |
+| `src/components/QuickExpenseModal.tsx` | Modify | Use ProjectAutocomplete for project selection |
+| `src/components/NewDailyLogModal.tsx` | Modify | Use ProjectAutocomplete |
+| `src/components/calendar/NewEventModal.tsx` | Modify | Use ProjectAutocomplete |
+| `src/components/calendar/CalendarHeader.tsx` | Modify | Use ProjectAutocomplete |
+| `src/components/SmartSplitReceiptUpload.tsx` | Modify | Use ProjectAutocomplete |
+| `src/components/CreateBudgetModal.tsx` | Modify | Use ProjectAutocomplete |
 
 ---
 
-### Optional Enhancements (Future)
+### No External Dependencies
 
-1. **Map Preview**: Show a small map preview when address is selected
-2. **Vendor Addresses**: Apply autocomplete to vendor forms
-3. **Calendar Events**: Add location field with autocomplete to calendar events
-4. **Offline Fallback**: Save recently used addresses for quick re-selection
+This feature uses only existing project components:
+- `Command` (from cmdk library, already installed)
+- `Popover` (from radix-ui, already installed)
+- No API keys required
+- No database changes needed
+- Purely client-side filtering
 
 ---
 
-### Setup Required
+### Summary
 
-Before implementing, you'll need to:
-1. **Create a Google Cloud Project** (if not already)
-2. **Enable Places API and Geocoding API**
-3. **Create an API key** with these APIs enabled
-4. **Add the key** as a Supabase secret: `GOOGLE_MAPS_API_KEY`
+- Create one reusable `ProjectAutocomplete` component
+- Replace 6 project selection dropdowns across the app
+- Support "@" mention trigger for quick lookups
+- Instant filtering as you type - no external APIs
+- Better UX for finding projects quickly
 
