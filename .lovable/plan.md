@@ -1,80 +1,89 @@
 
-## Fix: Receipt Viewing Blocked by Ad-Blocker (Persistent Issue)
+## Add "Send Back to Queue" Button for QuickBooks Expenses
 
-### Root Cause
-The ad-blocker is blocking ALL requests to the Supabase storage domain (`skbkqngjvbvaswijavor.supabase.co`), including the JavaScript `fetch()` call we just added. The block happens at the network level before the response can be processed.
+### What This Does
+Adds a button to the Expense Details modal (only visible for QuickBooks expenses) that resets the expense back to the pending queue for re-categorization.
 
-### Solution: Use Supabase SDK Download Method
+---
 
-Instead of using a raw `fetch()` to the public URL, we'll use the Supabase Storage SDK's `download()` method. This has several advantages:
-1. Uses authenticated API endpoints that are less likely to be blocked
-2. Goes through the Supabase JS client which handles CORS properly
-3. The request goes to `/storage/v1/object/` endpoint instead of the public path
+### UI Changes
+
+**Location**: Inside the ExpenseDetailModal, in the Actions section at the bottom
+
+**Button appearance**:
+- Only visible when viewing a QuickBooks expense (has QB badge)
+- Secondary/outline style with warning color
+- Icon: RotateCcw or Undo2
+- Text: "Send Back to Queue"
+- Positioned above the Cancel/Save buttons
 
 ---
 
 ### Technical Implementation
 
-**File: `src/pages/Expenses.tsx`**
+**File: `src/components/ExpenseDetailModal.tsx`**
 
-Update the `handleViewReceipt` function to use the Supabase SDK:
+1. **Add state and imports**:
+   - Import `RotateCcw` or `Undo2` icon from lucide-react
+   - Add `isResetting` state to track the operation
 
-```typescript
-import { supabase } from '@/integrations/supabase/client';
+2. **Add `handleSendBackToQueue` function**:
+   ```typescript
+   const handleSendBackToQueue = async () => {
+     setIsResetting(true);
+     try {
+       // Delete any split records first (if this is a parent of splits)
+       const { data: expenseData } = await supabase
+         .from('quickbooks_expenses')
+         .select('qb_id')
+         .eq('id', expense.id)
+         .single();
+       
+       if (expenseData?.qb_id) {
+         await supabase
+           .from('quickbooks_expenses')
+           .delete()
+           .like('qb_id', `${expenseData.qb_id}_split_%`);
+       }
+       
+       // Reset the expense to pending
+       await supabase
+         .from('quickbooks_expenses')
+         .update({
+           is_imported: false,
+           project_id: null,
+           category_id: null,
+           expense_type: null,
+           notes: null,
+           receipt_url: null,
+         })
+         .eq('id', expense.id);
+       
+       toast({ title: 'Expense sent back to queue' });
+       onExpenseUpdated();
+       onOpenChange(false);
+     } catch (error) {
+       toast({ title: 'Error', variant: 'destructive' });
+     }
+     setIsResetting(false);
+   };
+   ```
 
-const handleViewReceipt = async (receiptUrl: string, e: React.MouseEvent) => {
-  e.stopPropagation();
-  
-  try {
-    // Extract the file path from the full URL
-    // URL format: https://skbkqngjvbvaswijavor.supabase.co/storage/v1/object/public/expense-receipts/user-id/filename.ext
-    const urlParts = receiptUrl.split('/storage/v1/object/public/');
-    if (urlParts.length !== 2) {
-      // Fallback for unexpected URL format
-      window.open(receiptUrl, '_blank');
-      return;
-    }
-    
-    const [bucketName, ...pathParts] = urlParts[1].split('/');
-    const filePath = pathParts.join('/');
-    
-    // Use Supabase SDK to download the file (bypasses ad blockers)
-    const { data, error } = await supabase.storage
-      .from(bucketName)
-      .download(filePath);
-    
-    if (error || !data) {
-      console.error('Failed to download receipt:', error);
-      // Fallback to direct URL
-      window.open(receiptUrl, '_blank');
-      return;
-    }
-    
-    // Create a blob URL and open it
-    const blobUrl = URL.createObjectURL(data);
-    window.open(blobUrl, '_blank');
-    
-    // Clean up the blob URL after a delay
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-  } catch (error) {
-    console.error('Failed to open receipt:', error);
-    // Fallback to direct URL if everything fails
-    window.open(receiptUrl, '_blank');
-  }
-};
-```
-
----
-
-### Why This Works
-
-| Approach | URL Pattern | Blocked? |
-|----------|-------------|----------|
-| Direct URL | `https://skbkqngjvbvaswijavor.supabase.co/storage/v1/object/public/...` | Yes |
-| Raw fetch() | Same URL | Yes |
-| Supabase SDK | `https://skbkqngjvbvaswijavor.supabase.co/storage/v1/object/expense-receipts/...` | Less likely |
-
-The SDK uses authenticated endpoints and standard API patterns that are less likely to trigger ad-blocker heuristics.
+3. **Add button to UI** (only for QB expenses):
+   ```tsx
+   {isQuickBooks && (
+     <Button
+       type="button"
+       variant="outline"
+       className="w-full text-warning border-warning/50 hover:bg-warning/10"
+       onClick={handleSendBackToQueue}
+       disabled={isResetting}
+     >
+       <RotateCcw className="h-4 w-4 mr-2" />
+       {isResetting ? 'Sending...' : 'Send Back to Queue'}
+     </Button>
+   )}
+   ```
 
 ---
 
@@ -82,14 +91,12 @@ The SDK uses authenticated endpoints and standard API patterns that are less lik
 
 | File | Changes |
 |------|---------|
-| `src/pages/Expenses.tsx` | Update `handleViewReceipt` to use Supabase SDK `storage.download()` |
+| `src/components/ExpenseDetailModal.tsx` | Add `isResetting` state, `handleSendBackToQueue` function, and button UI |
 
 ---
 
-### Fallback Behavior
-If the SDK download fails (e.g., bucket permissions), it falls back to opening the direct URL. This ensures users without ad-blockers can still view receipts normally.
-
 ### Expected Result
-- Clicking the orange paperclip successfully opens the receipt in a new tab
-- Works even with ad-blockers enabled
-- Falls back gracefully if there are permission issues
+- When viewing a QuickBooks expense (shows QB badge), a "Send Back to Queue" button appears
+- Clicking it resets the expense back to the pending QuickBooks queue
+- Any split records associated with the expense are also removed
+- The modal closes and the expenses list refreshes
