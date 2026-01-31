@@ -773,7 +773,7 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
 
       {/* Match Approval Modal */}
       <Dialog open={showMatchModal} onOpenChange={setShowMatchModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -816,35 +816,34 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
                   <h4 className="text-sm font-medium mb-2">
                     Suggested Split ({selectedMatch.receipt.line_items.length + (selectedMatch.receipt.tax_amount > 0 ? 1 : 0)} items)
                   </h4>
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {selectedMatch.receipt.line_items.map((item, idx) => {
                       const editedQty = editableQuantities[idx] ?? item.quantity;
                       const calculatedTotal = editedQty * item.unit_price;
                       
                       return (
-                        <div key={idx} className="flex items-center gap-2 p-2 rounded bg-muted/30 text-sm">
-                          <div className="flex-1 min-w-0 truncate" title={item.item_name}>
-                            {item.item_name}
-                          </div>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                            <Input
-                              type="number"
-                              min={1}
-                              value={editedQty}
-                              onChange={(e) => {
-                                const newQty = parseInt(e.target.value) || 1;
-                                setEditableQuantities(prev => ({ ...prev, [idx]: newQty }));
-                              }}
-                              className="w-10 h-6 px-1 text-xs text-center bg-background border-muted"
-                            />
-                            <span>×</span>
-                            <span>{formatCurrency(item.unit_price)}</span>
+                        <div key={idx} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{item.item_name}</p>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Input
+                                type="number"
+                                min={1}
+                                value={editedQty}
+                                onChange={(e) => {
+                                  const newQty = parseInt(e.target.value) || 1;
+                                  setEditableQuantities(prev => ({ ...prev, [idx]: newQty }));
+                                }}
+                                className="w-12 h-5 px-1 text-xs text-center bg-background"
+                              />
+                              <span>× {formatCurrency(item.unit_price)}</span>
+                            </div>
                           </div>
                           <Select
                             value={editableCategories[idx] || item.suggested_category || 'misc'}
                             onValueChange={(value) => setEditableCategories(prev => ({ ...prev, [idx]: value }))}
                           >
-                            <SelectTrigger className="w-[110px] h-6 text-xs shrink-0">
+                            <SelectTrigger className="w-[130px] h-7 text-xs">
                               <SelectValue>{getCategoryLabel(editableCategories[idx] || item.suggested_category || 'misc')}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
@@ -855,19 +854,24 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
                               ))}
                             </SelectContent>
                           </Select>
-                          <span className="font-mono text-xs w-14 text-right shrink-0">{formatCurrency(calculatedTotal)}</span>
+                          <span className="font-mono w-16 text-right">{formatCurrency(calculatedTotal)}</span>
                         </div>
                       );
                     })}
                     
                     {/* Tax Line Item */}
                     {selectedMatch.receipt.tax_amount > 0 && (
-                      <div className="flex items-center gap-2 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-sm">
-                        <div className="flex-1 truncate">Sales Tax</div>
-                        <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-400 border-amber-500/30 shrink-0">
+                      <div className="flex items-center gap-3 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-sm">
+                        <div className="flex-1">
+                          <p className="font-medium">Sales Tax</p>
+                          <p className="text-xs text-muted-foreground">
+                            Applied to purchase
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-400 border-amber-500/30">
                           Tax
                         </Badge>
-                        <span className="font-mono text-xs w-14 text-right shrink-0">{formatCurrency(selectedMatch.receipt.tax_amount)}</span>
+                        <span className="font-mono">{formatCurrency(selectedMatch.receipt.tax_amount)}</span>
                       </div>
                     )}
                   </div>

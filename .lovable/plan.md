@@ -1,113 +1,93 @@
 
 
-## Fix: Restore SmartSplit Layout - No Scroll, Inline Editable Quantity
+## Fix: Change "Lighting" to "Light Fixtures" for Category Consistency
 
 ### Problem
-The current SmartSplit Match modal has:
-1. A scrollable container (`max-h-[300px] overflow-y-auto`) forcing users to scroll through items
-2. Quantity input stacked below the item name, making the layout feel cramped
+The SmartSplit category dropdown shows "Lighting" but the expense categories use "Light Fixtures" (`light_fixtures`). This mismatch means:
+- Items categorized as "lighting" by the parser won't match the actual budget category
+- Users see inconsistent naming between SmartSplit and the rest of the app
+
+### Root Cause
+
+Two places use the incorrect "lighting" instead of "light_fixtures":
+
+| Location | Current | Should Be |
+|----------|---------|-----------|
+| `SmartSplitReceiptUpload.tsx` line 129 | `'lighting'` | `'light_fixtures'` |
+| `parse-receipt-image/index.ts` line 148 | `lighting` | `light_fixtures` |
 
 ### Solution
-Restore the previous compact, inline layout while keeping editable quantities:
+
+Update both files to use `light_fixtures` to match `BUDGET_CATEGORIES`:
 
 ---
 
-### Changes
+### Implementation
 
-**File:** `src/components/SmartSplitReceiptUpload.tsx`
+**File 1:** `src/components/SmartSplitReceiptUpload.tsx`
 
-#### Change 1: Remove scroll container (line 819)
+Replace the hardcoded `categoryOptions` array (lines 126-131) with one that uses `BUDGET_CATEGORIES` from types, ensuring consistency:
+
+```typescript
+// Category options for the dropdown (sorted A-Z) - using BUDGET_CATEGORIES values
+const categoryOptions = BUDGET_CATEGORIES
+  .map(c => c.value)
+  .filter(v => [
+    'appliances', 'bathroom', 'cabinets', 'carpentry', 'countertops',
+    'demolition', 'doors', 'drywall', 'electrical', 'flooring',
+    'hardware', 'hvac', 'kitchen', 'landscaping', 'light_fixtures',
+    'misc', 'painting', 'plumbing', 'roofing', 'windows'
+  ].includes(v))
+  .sort();
+```
+
+Also update the `capitalize` function to use the proper label from `BUDGET_CATEGORIES`:
+
+```typescript
+const getCategoryLabel = (category: string) => {
+  const found = BUDGET_CATEGORIES.find(c => c.value === category);
+  return found?.label || category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ');
+};
+```
+
+Update the SelectValue display (line 819) to use this helper for proper labeling.
+
+---
+
+**File 2:** `supabase/functions/parse-receipt-image/index.ts`
+
+Update the CATEGORIES list in the system prompt (line 147-148) to use `light_fixtures`:
 
 ```text
-Before:  <div className="space-y-2 max-h-[300px] overflow-y-auto">
-After:   <div className="space-y-2">
-```
-
-#### Change 2: Restore inline layout for line items (lines 825-858)
-
-Return to the original single-row layout with editable quantity inline:
-
-```jsx
-<div key={idx} className="flex items-center gap-2 p-2 rounded bg-muted/30 text-sm">
-  {/* Item name - truncated */}
-  <div className="flex-1 min-w-0 truncate text-sm" title={item.item_name}>
-    {item.item_name}
-  </div>
-  
-  {/* Editable Quantity × Unit Price */}
-  <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-    <Input
-      type="number"
-      min={1}
-      value={editedQty}
-      onChange={(e) => {
-        const newQty = parseInt(e.target.value) || 1;
-        setEditableQuantities(prev => ({ ...prev, [idx]: newQty }));
-      }}
-      className="w-10 h-6 px-1 text-xs text-center bg-background border-muted"
-    />
-    <span className="text-muted-foreground">×</span>
-    <span>{formatCurrency(item.unit_price)}</span>
-  </div>
-  
-  {/* Category Dropdown */}
-  <Select ...>
-    <SelectTrigger className="w-[110px] h-6 text-xs shrink-0">
-      ...
-    </SelectTrigger>
-  </Select>
-  
-  {/* Total */}
-  <span className="font-mono text-xs w-14 text-right shrink-0">
-    {formatCurrency(calculatedTotal)}
-  </span>
-</div>
+CATEGORIES:
+plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, light_fixtures, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, misc
 ```
 
 ---
 
-### Visual Comparison
+### Visual Change
 
-```text
-BEFORE (Current - Bad):
-┌─────────────────────────────────────────────────────────────┐
-│ BELZ Bathroom Faucet, Modern Single Handle...               │
-│ [1]  × $55.99                                               │
-│                                      [Bathroom ▾]  $55.99   │
-├─────────────────────────────────────────────────────────────┤
-│ 10-Pieces Matte Black Bathroom Accessories...               │
-│ [2]  × $59.99                                               │
-│                                      [Bathroom ▾] $119.98   │
-│ ... (scroll to see more)                                    │
-└─────────────────────────────────────────────────────────────┘
+| Before | After |
+|--------|-------|
+| Lighting | Light Fixtures |
 
-AFTER (Fixed - Compact inline):
-┌─────────────────────────────────────────────────────────────┐
-│ BELZ Bathroom Faucet...     [1] × $55.99  [Bathroom▾] $55.99│
-│ 10-Pieces Matte Black...    [2] × $59.99  [Bathroom▾]$119.98│
-│ Sopoby Black Door Knob...   [1] × $49.99  [Hardware▾] $49.99│
-│ Amico Ceiling Fans...       [1] × $56.99  [Light Fix▾]$56.99│
-│ Zarbitta 3-Light...         [2] × $29.75  [Light Fix▾]$59.50│
-│ ... (all items visible, no scroll)                          │
-└─────────────────────────────────────────────────────────────┘
-```
+The dropdown will now show "Light Fixtures" matching the expense categories throughout the app.
 
 ---
 
-### Technical Details
+### Files to Modify
 
-| Location | Change |
-|----------|--------|
-| Line 819 | Remove `max-h-[300px] overflow-y-auto` |
-| Lines 825-858 | Flatten layout: single row with item name, qty input, unit price, category, total all inline |
-| Input styling | Make quantity input more compact (`w-10 h-6`) to fit inline |
-| SelectTrigger | Slightly smaller (`w-[110px] h-6`) to fit in row |
+| File | Change |
+|------|--------|
+| `src/components/SmartSplitReceiptUpload.tsx` | Replace `'lighting'` with `'light_fixtures'` in categoryOptions, add label helper |
+| `supabase/functions/parse-receipt-image/index.ts` | Replace `lighting` with `light_fixtures` in CATEGORIES prompt |
 
 ---
 
-### Result
-- All items visible at once (no scrolling)
-- Quantity is editable inline next to "× $price"
-- Compact, clean layout matching the previous design
-- Dialog expands naturally to fit content
+### Expected Results
+
+- SmartSplit dropdown shows "Light Fixtures" instead of "Lighting"
+- AI parser suggests `light_fixtures` category for lighting items
+- Categories match between SmartSplit, Project Budget, and Expenses pages
+- Split imports correctly assign items to the Light Fixtures budget category
 
