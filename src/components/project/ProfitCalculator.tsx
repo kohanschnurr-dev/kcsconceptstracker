@@ -51,22 +51,27 @@ export function ProfitCalculator({
     setSaving(false);
   };
 
-  // Use actual spent if available, otherwise use budget
-  const rehabCost = totalSpent > 0 ? totalSpent : totalBudget;
-  const totalInvestment = purchasePrice + rehabCost;
-  
   // Estimated closing costs (6% of ARV for selling)
   const closingCosts = arv * 0.06;
   
   // Holding costs estimate (assume 3 months at 1% of purchase per month)
   const holdingCosts = purchasePrice * 0.03;
-  
-  const totalCosts = totalInvestment + closingCosts + holdingCosts;
-  const grossProfit = arv - totalCosts;
-  const roi = totalInvestment > 0 ? (grossProfit / totalInvestment) * 100 : 0;
+
+  // Estimated profit (based on allocated budget)
+  const estimatedInvestment = purchasePrice + totalBudget;
+  const estimatedTotalCosts = estimatedInvestment + closingCosts + holdingCosts;
+  const estimatedProfit = arv - estimatedTotalCosts;
+
+  // Current profit (based on actual spending)
+  const currentInvestment = purchasePrice + totalSpent;
+  const currentTotalCosts = currentInvestment + closingCosts + holdingCosts;
+  const currentProfit = arv - currentTotalCosts;
+
+  // ROI based on current investment
+  const roi = currentInvestment > 0 ? (currentProfit / currentInvestment) * 100 : 0;
   
   // 78% rule check (max offer = ARV * 0.78 - repairs)
-  const maxOffer = (arv * 0.78) - rehabCost;
+  const maxOffer = (arv * 0.78) - totalBudget;
   const meetsRule = purchasePrice <= maxOffer;
 
   const formatCurrency = (amount: number) => {
@@ -145,18 +150,32 @@ export function ProfitCalculator({
         )}
 
         {/* Results */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className={cn(
             "p-4 rounded-lg text-center",
-            grossProfit >= 0 ? "bg-success/10" : "bg-destructive/10"
+            estimatedProfit >= 0 ? "bg-success/10" : "bg-destructive/10"
           )}>
             <p className="text-sm text-muted-foreground mb-1">Est. Profit</p>
             <p className={cn(
               "text-2xl font-bold font-mono",
-              grossProfit >= 0 ? "text-success" : "text-destructive"
+              estimatedProfit >= 0 ? "text-success" : "text-destructive"
             )}>
-              {formatCurrency(grossProfit)}
+              {formatCurrency(estimatedProfit)}
             </p>
+            <p className="text-xs text-muted-foreground mt-1">using budget</p>
+          </div>
+          <div className={cn(
+            "p-4 rounded-lg text-center",
+            currentProfit >= 0 ? "bg-success/10" : "bg-destructive/10"
+          )}>
+            <p className="text-sm text-muted-foreground mb-1">Current Profit</p>
+            <p className={cn(
+              "text-2xl font-bold font-mono",
+              currentProfit >= 0 ? "text-success" : "text-destructive"
+            )}>
+              {formatCurrency(currentProfit)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">using spent</p>
           </div>
           <div className={cn(
             "p-4 rounded-lg text-center",
@@ -170,6 +189,7 @@ export function ProfitCalculator({
               <TrendingUp className="h-5 w-5" />
               {roi.toFixed(1)}%
             </p>
+            <p className="text-xs text-muted-foreground mt-1">on current</p>
           </div>
         </div>
       </CardContent>
