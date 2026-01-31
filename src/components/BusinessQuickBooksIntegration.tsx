@@ -31,9 +31,10 @@ import { SmartSplitReceiptUpload } from './SmartSplitReceiptUpload';
 
 interface BusinessQuickBooksIntegrationProps {
   onExpenseImported?: () => void;
+  projects?: { id: string; name: string; address?: string }[];
 }
 
-export function BusinessQuickBooksIntegration({ onExpenseImported }: BusinessQuickBooksIntegrationProps) {
+export function BusinessQuickBooksIntegration({ onExpenseImported, projects = [] }: BusinessQuickBooksIntegrationProps) {
   const {
     isConnected,
     isDemoMode,
@@ -148,7 +149,7 @@ export function BusinessQuickBooksIntegration({ onExpenseImported }: BusinessQui
   return (
     <div className="space-y-4">
       {/* SmartSplit Receipt Upload - Always visible */}
-      <SmartSplitReceiptUpload onReceiptProcessed={onExpenseImported} />
+      <SmartSplitReceiptUpload onReceiptProcessed={onExpenseImported} projects={projects} />
       
       {/* QuickBooks Integration Panel */}
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>

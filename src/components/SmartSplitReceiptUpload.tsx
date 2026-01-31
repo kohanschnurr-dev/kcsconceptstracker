@@ -14,7 +14,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BUDGET_CATEGORIES, type BudgetCategory } from '@/types';
-import type { Project } from '@/types';
+
+interface SimpleProject {
+  id: string;
+  name: string;
+  address?: string;
+  status?: string;
+}
 interface LineItem {
   id?: string;
   item_name: string;
@@ -53,7 +59,7 @@ interface MatchedExpense {
 }
 
 interface SmartSplitReceiptUploadProps {
-  projects?: Project[];
+  projects?: SimpleProject[];
   onReceiptProcessed?: () => void;
   onRefreshQBExpenses?: () => void;
 }
