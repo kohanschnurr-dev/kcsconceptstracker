@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles } from 'lucide-react';
+import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Drawer,
   DrawerContent,
@@ -315,18 +316,13 @@ function ExpenseForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Project</Label>
-          <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select project" />
-            </SelectTrigger>
-            <SelectContent>
-              {projects.filter(p => p.status === 'active').map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <ProjectAutocomplete
+            projects={projects}
+            value={selectedProject}
+            onSelect={setSelectedProject}
+            placeholder="Search projects..."
+            filterActive={true}
+          />
         </div>
 
         <div className="space-y-2">

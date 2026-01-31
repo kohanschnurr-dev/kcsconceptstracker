@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, FileText, AlertTriangle } from 'lucide-react';
+import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Dialog,
   DialogContent,
@@ -122,18 +123,12 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Project *</Label>
-              <Select value={selectedProject} onValueChange={setSelectedProject}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ProjectAutocomplete
+                projects={projects}
+                value={selectedProject}
+                onSelect={setSelectedProject}
+                placeholder="Search projects..."
+              />
             </div>
 
             <div className="space-y-2">

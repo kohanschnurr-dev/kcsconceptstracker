@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, Calendar, LayoutGrid, GanttChart, List, X, Building2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, LayoutGrid, GanttChart, List, X } from 'lucide-react';
+import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -103,29 +104,14 @@ export function CalendarHeader({
       <div className="flex flex-wrap items-center gap-3">
         {/* Project Filter */}
         {onProjectFilterChange && projects.length > 0 && (
-          <Select
+          <ProjectAutocomplete
+            projects={[{ id: 'all', name: 'All Projects', address: '' }, ...projects]}
             value={selectedProjectId || 'all'}
-            onValueChange={(value) => onProjectFilterChange(value === 'all' ? null : value)}
-          >
-            <SelectTrigger className="h-9 w-[160px] bg-slate-800 border-slate-700 text-white">
-              <div className="flex items-center gap-2 min-w-0">
-                <Building2 className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                <span className="truncate">
-                  <SelectValue placeholder="All Projects" />
-                </span>
-              </div>
-            </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700 z-50">
-              <SelectItem value="all" className="text-white">
-                All Projects
-              </SelectItem>
-              {projects.map((project) => (
-                <SelectItem key={project.id} value={project.id} className="text-white">
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onSelect={(value) => onProjectFilterChange(value === 'all' ? null : value)}
+            placeholder="All Projects"
+            triggerClassName="h-9 w-[180px] bg-slate-800 border-slate-700 text-white hover:bg-slate-700"
+            className="bg-slate-800 border-slate-700"
+          />
         )}
 
         <WeatherWidget />

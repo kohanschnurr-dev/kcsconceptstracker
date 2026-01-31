@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ClipboardList, DollarSign, FolderOpen, Save, Loader2 } from 'lucide-react';
+import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Dialog,
   DialogContent,
@@ -475,21 +476,12 @@ export function CreateBudgetModal({
                 </TabsContent>
 
                 <TabsContent value="apply" className="mt-0 space-y-3">
-                  <Select value={selectedProject} onValueChange={setSelectedProject}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={isLoading ? "Loading projects..." : "Select a project"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map(project => (
-                        <SelectItem key={project.id} value={project.id}>
-                          <div className="flex flex-col">
-                            <span>{project.name}</span>
-                            <span className="text-xs text-muted-foreground">{project.address}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ProjectAutocomplete
+                    projects={projects}
+                    value={selectedProject}
+                    onSelect={setSelectedProject}
+                    placeholder={isLoading ? "Loading projects..." : "Search projects..."}
+                  />
                   <div className="flex gap-2">
                     <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
                       Cancel

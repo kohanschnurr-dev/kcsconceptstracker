@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench } from 'lucide-react';
+import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -960,18 +961,12 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
                 <h4 className="text-sm font-medium">Import to Project</h4>
                 
                 <div className="space-y-3">
-                  <Select value={selectedProject} onValueChange={setSelectedProject}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a project..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ProjectAutocomplete
+                    projects={projects}
+                    value={selectedProject}
+                    onSelect={setSelectedProject}
+                    placeholder="Search projects..."
+                  />
 
                   <div className="flex items-center gap-3">
                     <Label className="text-sm text-muted-foreground">Type:</Label>
