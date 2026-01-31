@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, FileText, Paperclip, ExternalLink, Trash2, Save } from 'lucide-react';
+import { X, Upload, FileText, Paperclip, ExternalLink, Trash2, Save, RotateCcw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -53,6 +53,7 @@ export function ExpenseDetailModal({
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -142,6 +143,53 @@ export function ExpenseDetailModal({
   const handleRemoveReceipt = () => {
     setReceiptFile(null);
     setReceiptUrl(null);
+  };
+
+  const handleSendBackToQueue = async () => {
+    setIsResetting(true);
+    try {
+      // Delete any split records first (if this is a parent of splits)
+      const { data: expenseData } = await supabase
+        .from('quickbooks_expenses')
+        .select('qb_id')
+        .eq('id', expense.id)
+        .single();
+      
+      if (expenseData?.qb_id) {
+        await supabase
+          .from('quickbooks_expenses')
+          .delete()
+          .like('qb_id', `${expenseData.qb_id}_split_%`);
+      }
+      
+      // Reset the expense to pending
+      const { error } = await supabase
+        .from('quickbooks_expenses')
+        .update({
+          is_imported: false,
+          project_id: null,
+          category_id: null,
+          expense_type: null,
+          notes: null,
+          receipt_url: null,
+        })
+        .eq('id', expense.id);
+
+      if (error) throw error;
+      
+      toast({ title: 'Expense sent back to queue' });
+      onExpenseUpdated();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Error sending back to queue:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to send expense back to queue',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const handleSave = async () => {
@@ -333,23 +381,37 @@ export function ExpenseDetailModal({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 pt-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="flex-1" 
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              className="flex-1 gap-2" 
-              onClick={handleSave}
-              disabled={isSaving || isUploading}
-            >
-              <Save className="h-4 w-4" />
-              {isUploading ? 'Uploading...' : isSaving ? 'Saving...' : 'Save'}
-            </Button>
+          <div className="space-y-2 pt-2">
+            {isQuickBooks && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full text-warning border-warning/50 hover:bg-warning/10"
+                onClick={handleSendBackToQueue}
+                disabled={isResetting}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                {isResetting ? 'Sending...' : 'Send Back to Queue'}
+              </Button>
+            )}
+            <div className="flex gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1" 
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1 gap-2" 
+                onClick={handleSave}
+                disabled={isSaving || isUploading}
+              >
+                <Save className="h-4 w-4" />
+                {isUploading ? 'Uploading...' : isSaving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
