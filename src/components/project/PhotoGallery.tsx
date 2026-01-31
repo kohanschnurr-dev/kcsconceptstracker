@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Plus, Image, Loader2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Image, Loader2, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatDisplayDateLong, parseDateString } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotoUploadModal } from './PhotoUploadModal';
 import { PhotoPreviewModal } from './PhotoPreviewModal';
@@ -96,6 +97,34 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
 
   const filteredPhotos = getFilteredPhotos();
 
+  // Group photos by date for section headers
+  const photosByDate = useMemo(() => {
+    const groups: { date: string; displayDate: string; photos: Photo[] }[] = [];
+    const dateMap = new Map<string, Photo[]>();
+
+    filteredPhotos.forEach(photo => {
+      // Use photo_date if available, otherwise extract date from created_at
+      const dateKey = photo.photo_date || photo.created_at.split('T')[0];
+      if (!dateMap.has(dateKey)) {
+        dateMap.set(dateKey, []);
+      }
+      dateMap.get(dateKey)!.push(photo);
+    });
+
+    // Sort dates descending (newest first)
+    const sortedDates = Array.from(dateMap.keys()).sort((a, b) => b.localeCompare(a));
+
+    sortedDates.forEach(dateKey => {
+      groups.push({
+        date: dateKey,
+        displayDate: formatDisplayDateLong(dateKey),
+        photos: dateMap.get(dateKey)!,
+      });
+    });
+
+    return groups;
+  }, [filteredPhotos]);
+
   const handlePhotoUpdate = () => {
     fetchPhotos();
     setSelectedPhoto(null);
@@ -161,34 +190,43 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
             }
           </p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {filteredPhotos.map(photo => (
-              <div 
-                key={photo.id} 
-                className="relative group cursor-pointer aspect-square rounded-lg overflow-hidden bg-muted"
-                onClick={() => setSelectedPhoto(photo)}
-              >
-                <img 
-                  src={getPhotoUrl(photo.file_path)} 
-                  alt={photo.caption || 'Project photo'}
-                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="absolute top-2 left-2 flex gap-1 flex-wrap">
-                  <span className="text-xs px-2 py-0.5 rounded bg-background/80 text-foreground capitalize">
-                    {photo.category}
-                  </span>
-                  {photo.photo_date && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-primary/80 text-primary-foreground">
-                      {new Date(photo.photo_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
-                  )}
+          <div className="space-y-6">
+            {photosByDate.map(group => (
+              <div key={group.date}>
+                {/* Date Section Header */}
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold text-foreground">{group.displayDate}</h3>
+                  <span className="text-xs text-muted-foreground">({group.photos.length} photos)</span>
                 </div>
-                {photo.caption && (
-                  <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="text-xs text-white truncate">{photo.caption}</p>
-                  </div>
-                )}
+                
+                {/* Photos Grid for this date */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {group.photos.map(photo => (
+                    <div 
+                      key={photo.id} 
+                      className="relative group cursor-pointer aspect-square rounded-lg overflow-hidden bg-muted"
+                      onClick={() => setSelectedPhoto(photo)}
+                    >
+                      <img 
+                        src={getPhotoUrl(photo.file_path)} 
+                        alt={photo.caption || 'Project photo'}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute top-2 left-2">
+                        <span className="text-xs px-2 py-0.5 rounded bg-background/80 text-foreground capitalize">
+                          {photo.category}
+                        </span>
+                      </div>
+                      {photo.caption && (
+                        <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <p className="text-xs text-white truncate">{photo.caption}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
