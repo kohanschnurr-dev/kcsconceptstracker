@@ -89,6 +89,123 @@ const detectExpenseType = (vendorName: string | null, description: string | null
   return 'product';
 };
 
+// Auto-detect category based on vendor name and description
+const detectCategory = (vendorName: string | null, description: string | null): string | null => {
+  const text = `${vendorName || ''} ${description || ''}`.toLowerCase();
+  
+  // Insurance companies
+  if (text.includes('allstate') || text.includes('state farm') || text.includes('farmers') ||
+      text.includes('liberty mutual') || text.includes('progressive') || text.includes('geico') ||
+      text.includes('nationwide') || text.includes('usaa') || text.includes('travelers') ||
+      text.includes('american family') || text.match(/\binsurance\b/)) {
+    return 'insurance_project';
+  }
+  
+  // Paint stores
+  if (text.includes('sherwin') || text.includes('benjamin moore') || text.includes('behr') ||
+      text.includes('ppg') || text.includes('dunn edwards') || text.includes('kelly-moore') ||
+      text.includes('valspar') || text.match(/\bpaint\b/)) {
+    return 'painting';
+  }
+  
+  // Hardware/general supplies
+  if (text.includes('home depot') || text.includes('lowes') || text.includes('lowe\'s') ||
+      text.includes('ace hardware') || text.includes('harbor freight') || text.includes('menards') ||
+      text.includes('true value') || text.includes('northern tool')) {
+    return 'hardware';
+  }
+  
+  // Plumbing
+  if (text.includes('ferguson') || text.includes('plumbing supply') || text.includes('plumbing wholesale')) {
+    return 'plumbing';
+  }
+  
+  // Flooring
+  if (text.includes('floor & decor') || text.includes('floor and decor') || 
+      text.includes('lumber liquidators') || text.includes('flooring depot') ||
+      text.match(/\bflooring\b/)) {
+    return 'flooring';
+  }
+  
+  // Electrical
+  if (text.includes('graybar') || text.includes('electrical supply') || 
+      text.includes('wholesale electric') || text.includes('electric supply')) {
+    return 'electrical';
+  }
+  
+  // HVAC
+  if (text.includes('carrier') || text.includes('lennox') || text.includes('trane') ||
+      text.includes('hvac supply') || text.includes('ac supply') || text.includes('goodman')) {
+    return 'hvac';
+  }
+  
+  // Appliances
+  if (text.includes('best buy') || text.includes('appliance direct') || 
+      text.includes('appliance warehouse') || text.match(/\bappliance\b/)) {
+    return 'appliances';
+  }
+  
+  // Dumpsters / Trash
+  if (text.includes('waste management') || text.includes('republic services') || 
+      text.includes('dumpster') || text.includes('waste')) {
+    return 'dumpsters_trash';
+  }
+  
+  // Utilities
+  if (text.includes('txu') || text.includes('oncor') || text.includes('atmos') ||
+      text.includes('electric bill') || text.includes('water bill') || text.includes('gas bill') ||
+      text.match(/\butility\b/) || text.match(/\butilities\b/)) {
+    return 'utilities';
+  }
+  
+  // Landscaping
+  if (text.includes('siteone') || text.includes('nursery') || text.includes('landscaping') ||
+      text.includes('lawn') || text.includes('garden center')) {
+    return 'landscaping';
+  }
+  
+  // Roofing
+  if (text.includes('abc supply') || text.includes('roofing supply') || 
+      text.includes('beacon roofing')) {
+    return 'roofing';
+  }
+  
+  // Cabinets
+  if (text.includes('cabinet') || text.includes('kraftmaid') || text.includes('ikea kitchen')) {
+    return 'cabinets';
+  }
+  
+  // Countertops
+  if (text.includes('countertop') || text.includes('granite') || text.includes('quartz') ||
+      text.includes('marble')) {
+    return 'countertops';
+  }
+  
+  // Light Fixtures
+  if (text.includes('lighting') || text.includes('light fixture') || text.includes('lamp') ||
+      text.includes('chandelier')) {
+    return 'light_fixtures';
+  }
+  
+  // Windows
+  if (text.includes('window world') || text.includes('pella') || text.includes('andersen') ||
+      text.match(/\bwindow\b/) || text.match(/\bwindows\b/)) {
+    return 'windows';
+  }
+  
+  // Doors
+  if (text.includes('door') && !text.includes('floor')) {
+    return 'doors';
+  }
+  
+  // Misc - general retailers
+  if (text.includes('amazon') || text.includes('walmart') || text.includes('target')) {
+    return 'misc';
+  }
+  
+  return null; // No match, user selects manually
+};
+
 interface QuickBooksIntegrationProps {
   projects: Project[];
   onExpenseImported?: () => void;
@@ -127,15 +244,23 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     description: string | null;
   } | null>(null);
 
-  // Auto-detect expense types and pre-fill notes when pending expenses change
+  // Auto-detect expense types, categories, and pre-fill notes when pending expenses change
   useEffect(() => {
     const newTypes: Record<string, 'product' | 'labor'> = {};
     const newNotes: Record<string, string> = {};
+    const newCategories: Record<string, string> = {};
     
     pendingExpenses.forEach(expense => {
       // Auto-detect expense type if not already set
       if (!selectedExpenseType[expense.id]) {
         newTypes[expense.id] = detectExpenseType(expense.vendor_name, expense.description);
+      }
+      // Auto-detect category if not already set
+      if (!selectedCategory[expense.id]) {
+        const detectedCat = detectCategory(expense.vendor_name, expense.description);
+        if (detectedCat) {
+          newCategories[expense.id] = detectedCat;
+        }
       }
       // Pre-fill notes from SmartSplit matched receipts
       if (!expenseNotes[expense.id] && (expense as any).notes) {
@@ -145,6 +270,9 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     
     if (Object.keys(newTypes).length > 0) {
       setSelectedExpenseType(prev => ({ ...prev, ...newTypes }));
+    }
+    if (Object.keys(newCategories).length > 0) {
+      setSelectedCategory(prev => ({ ...prev, ...newCategories }));
     }
     if (Object.keys(newNotes).length > 0) {
       setExpenseNotes(prev => ({ ...prev, ...newNotes }));
