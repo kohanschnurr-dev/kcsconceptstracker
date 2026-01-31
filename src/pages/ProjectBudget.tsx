@@ -957,30 +957,17 @@ export default function ProjectBudget() {
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                   <p className="font-mono font-medium text-sm">{formatCurrency(Number(exp.amount))}</p>
-                                                  <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                      <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-6 w-6 opacity-0 group-hover/expense:opacity-100 transition-opacity"
-                                                      >
-                                                        <MoreHorizontal className="h-3 w-3" />
-                                                      </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                      <DropdownMenuItem onClick={() => setEditingExpense(exp)}>
-                                                        <Pencil className="h-4 w-4 mr-2" />
-                                                        Edit
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuItem 
-                                                        onClick={() => setDeletingExpense(exp)}
-                                                        className="text-destructive focus:text-destructive"
-                                                      >
-                                                        <Trash2 className="h-4 w-4 mr-2" />
-                                                        Delete
-                                                      </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                  </DropdownMenu>
+                                                  <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-6 w-6 opacity-0 group-hover/expense:opacity-100 transition-opacity"
+                                                    onClick={() => {
+                                                      setSelectedExpense(exp);
+                                                      setDetailModalOpen(true);
+                                                    }}
+                                                  >
+                                                    <MoreHorizontal className="h-3 w-3" />
+                                                  </Button>
                                                 </div>
                                               </div>
                                             ))}
@@ -1212,30 +1199,18 @@ export default function ProjectBudget() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setEditingExpense(exp)}>
-                                <Pencil className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => setDeletingExpense(exp)}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedExpense(exp);
+                              setDetailModalOpen(true);
+                            }}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
