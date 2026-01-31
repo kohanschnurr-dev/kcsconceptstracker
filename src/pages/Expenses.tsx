@@ -213,6 +213,27 @@ export default function Expenses() {
     return ALL_CATEGORIES.find(b => b.value === category.category)?.label || category.category;
   };
 
+  const handleViewReceipt = async (receiptUrl: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      // Fetch the file through JavaScript to bypass ad blockers
+      const response = await fetch(receiptUrl);
+      const blob = await response.blob();
+      
+      // Create a blob URL and open it
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      
+      // Clean up the blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) {
+      console.error('Failed to open receipt:', error);
+      // Fallback to direct URL if fetch fails
+      window.open(receiptUrl, '_blank');
+    }
+  };
+
   const filteredExpenses = useMemo(() => {
     return expenses.filter((expense) => {
       const matchesSearch = 
@@ -457,10 +478,7 @@ export default function Expenses() {
                       <div className="flex items-center justify-end gap-2">
                         {expense.receipt_url && (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(expense.receipt_url!, '_blank');
-                            }}
+                            onClick={(e) => handleViewReceipt(expense.receipt_url!, e)}
                             className="text-primary hover:text-primary/80 transition-colors"
                             title="View receipt"
                           >
