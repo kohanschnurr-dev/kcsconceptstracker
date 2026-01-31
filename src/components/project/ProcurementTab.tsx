@@ -18,6 +18,8 @@ import {
   ChevronDown,
   ChevronRight,
   X,
+  Library,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,22 +30,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { BUDGET_CATEGORIES } from '@/types';
 
 // Types
-type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'other';
+type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'other';
 type Phase = 'demo' | 'rough_in' | 'drywall' | 'trim_out' | 'final';
 type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'shipped' | 'on_site' | 'installed';
 
 interface ProcurementItem {
   id: string;
-  project_id: string;
+  project_id: string | null;
   category_id: string | null;
   name: string;
   source_url: string | null;
@@ -53,13 +55,25 @@ interface ProcurementItem {
   unit_price: number;
   quantity: number;
   includes_tax: boolean;
+  is_pack_price: boolean;
   tax_rate: number;
-  phase: Phase;
+  phase: Phase | null;
   lead_time_days: number | null;
-  status: ItemStatus;
+  status: ItemStatus | null;
   bulk_discount_eligible: boolean;
   notes: string | null;
+  image_url: string | null;
   created_at: string;
+  // For project-specific tracking
+  project_quantity?: number;
+}
+
+interface ProjectItemAssignment {
+  id: string;
+  project_id: string;
+  item_id: string;
+  quantity: number;
+  status: ItemStatus | null;
 }
 
 interface CategoryBudget {
@@ -96,16 +110,17 @@ const STORES = [
   { value: 'amazon', label: 'Amazon' },
   { value: 'home_depot', label: 'Home Depot' },
   { value: 'lowes', label: "Lowe's" },
+  { value: 'floor_decor', label: 'Floor & Decor' },
+  { value: 'build', label: 'Build.com' },
+  { value: 'ferguson', label: 'Ferguson' },
   { value: 'other', label: 'Other' },
 ];
 
-const TEXAS_TAX_RATE = 0.0825;
-
 export function ProcurementTab({ projectId, categories, currency = '$' }: ProcurementTabProps) {
   const [items, setItems] = useState<ProcurementItem[]>([]);
+  const [assignments, setAssignments] = useState<ProjectItemAssignment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<ProcurementItem | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,19 +134,51 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
 
   const fetchItems = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('procurement_items')
+    
+    // Fetch project item assignments
+    const { data: assignmentData, error: assignmentError } = await supabase
+      .from('project_procurement_items')
       .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
+      .eq('project_id', projectId);
 
-    if (error) {
-      console.error('Error fetching procurement items:', error);
-      toast.error('Failed to load procurement items');
-    } else {
-      // Cast the data to ProcurementItem[] to handle Supabase's string types
-      setItems((data || []) as unknown as ProcurementItem[]);
+    if (assignmentError) {
+      console.error('Error fetching project items:', assignmentError);
+      setAssignments([]);
+      setItems([]);
+      setLoading(false);
+      return;
     }
+
+    const assignments = (assignmentData || []) as unknown as ProjectItemAssignment[];
+    setAssignments(assignments);
+
+    if (assignments.length > 0) {
+      const itemIds = assignments.map(a => a.item_id);
+      
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('procurement_items')
+        .select('*')
+        .in('id', itemIds);
+
+      if (itemsError) {
+        console.error('Error fetching items:', itemsError);
+        setItems([]);
+      } else {
+        // Merge assignment data (quantity, status) into items
+        const enrichedItems = (itemsData || []).map(item => {
+          const assignment = assignments.find(a => a.item_id === item.id);
+          return {
+            ...item,
+            project_quantity: assignment?.quantity || 1,
+            status: (assignment?.status || item.status) as ItemStatus | null,
+          } as ProcurementItem;
+        });
+        setItems(enrichedItems);
+      }
+    } else {
+      setItems([]);
+    }
+    
     setLoading(false);
   };
 
@@ -175,8 +222,11 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
     const grouped: Record<string, ProcurementItem[]> = {};
     PHASES.forEach(p => grouped[p.value] = []);
     filteredItems.forEach(item => {
-      if (grouped[item.phase]) {
+      if (item.phase && grouped[item.phase]) {
         grouped[item.phase].push(item);
+      } else {
+        // Items without phase go to rough_in by default
+        grouped['rough_in'].push(item);
       }
     });
     return grouped;
@@ -185,13 +235,14 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
   // Calculate totals
   const totals = useMemo(() => {
     const calculateItemTotal = (item: ProcurementItem) => {
-      const subtotal = item.unit_price * item.quantity;
-      return item.includes_tax ? subtotal * (1 + item.tax_rate) : subtotal;
+      const qty = item.project_quantity || item.quantity || 1;
+      const subtotal = item.is_pack_price ? item.unit_price : item.unit_price * qty;
+      return item.includes_tax ? subtotal : subtotal * (1 + item.tax_rate);
     };
 
     const cartTotal = filteredItems.reduce((sum, item) => sum + calculateItemTotal(item), 0);
     const orderedTotal = filteredItems
-      .filter(i => ['ordered', 'shipped', 'on_site', 'installed'].includes(i.status))
+      .filter(i => ['ordered', 'shipped', 'on_site', 'installed'].includes(i.status || ''))
       .reduce((sum, item) => sum + calculateItemTotal(item), 0);
     
     // Cost-to-complete by category
@@ -216,17 +267,54 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
   const bulkEligibleItems = useMemo(() => {
     return filteredItems.filter(i => 
       i.source_store === 'home_depot' && 
-      (i.unit_price * i.quantity) >= 1500
+      (i.unit_price * (i.project_quantity || i.quantity)) >= 1500
     );
   }, [filteredItems]);
 
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('procurement_items').delete().eq('id', id);
+  const handleRemoveFromProject = async (itemId: string) => {
+    const { error } = await supabase
+      .from('project_procurement_items')
+      .delete()
+      .eq('project_id', projectId)
+      .eq('item_id', itemId);
+
     if (error) {
-      toast.error('Failed to delete item');
+      toast.error('Failed to remove item');
     } else {
-      toast.success('Item deleted');
+      toast.success('Item removed from project');
       fetchItems();
+    }
+  };
+
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+    const { error } = await supabase
+      .from('project_procurement_items')
+      .update({ quantity: newQuantity })
+      .eq('project_id', projectId)
+      .eq('item_id', itemId);
+
+    if (error) {
+      toast.error('Failed to update quantity');
+    } else {
+      setItems(prev => prev.map(item => 
+        item.id === itemId ? { ...item, project_quantity: newQuantity } : item
+      ));
+    }
+  };
+
+  const handleUpdateStatus = async (itemId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('project_procurement_items')
+      .update({ status: newStatus })
+      .eq('project_id', projectId)
+      .eq('item_id', itemId);
+
+    if (error) {
+      toast.error('Failed to update status');
+    } else {
+      setItems(prev => prev.map(item => 
+        item.id === itemId ? { ...item, status: newStatus as ItemStatus } : item
+      ));
     }
   };
 
@@ -239,8 +327,8 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
     });
   };
 
-  const getStatusBadge = (status: string) => {
-    const s = STATUSES.find(st => st.value === status);
+  const getStatusBadge = (status: string | null) => {
+    const s = STATUSES.find(st => st.value === (status || 'researching'));
     if (!s) return null;
     const Icon = s.icon;
     return (
@@ -252,9 +340,34 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
   };
 
   const renderItemRow = (item: ProcurementItem) => {
-    const itemTotal = item.unit_price * item.quantity * (item.includes_tax ? 1 + item.tax_rate : 1);
+    const qty = item.project_quantity || item.quantity || 1;
+    const itemTotal = item.is_pack_price 
+      ? item.unit_price * (item.includes_tax ? 1 : 1 + item.tax_rate)
+      : item.unit_price * qty * (item.includes_tax ? 1 : 1 + item.tax_rate);
+    
     return (
-      <TableRow key={item.id} className="group hover:bg-muted/50">
+      <TableRow 
+        key={item.id} 
+        className={cn("group hover:bg-muted/50", item.source_url && "cursor-pointer")}
+        onClick={() => {
+          if (item.source_url) {
+            window.open(item.source_url, '_blank', 'noopener,noreferrer');
+          }
+        }}
+      >
+        <TableCell>
+          <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+            {item.image_url ? (
+              <img 
+                src={item.image_url} 
+                alt={item.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Package className="h-5 w-5 text-muted-foreground" />
+            )}
+          </div>
+        </TableCell>
         <TableCell className="max-w-[200px]">
           <div className="space-y-1">
             <p className="font-medium truncate">{item.name}</p>
@@ -262,16 +375,10 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
               <p className="text-xs text-muted-foreground">#{item.model_number}</p>
             )}
             {item.source_url && (
-              <a 
-                href={item.source_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-                onClick={e => e.stopPropagation()}
-              >
+              <span className="text-xs text-primary inline-flex items-center gap-1">
                 <ExternalLink className="h-3 w-3" />
                 {STORES.find(s => s.value === item.source_store)?.label || 'Link'}
-              </a>
+              </span>
             )}
           </div>
         </TableCell>
@@ -287,44 +394,46 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
         </TableCell>
         <TableCell className="text-right font-mono">
           {formatCurrency(item.unit_price)}
-          {item.quantity > 1 && (
-            <span className="text-muted-foreground text-xs ml-1">×{item.quantity}</span>
-          )}
+        </TableCell>
+        <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+          <Input
+            type="number"
+            min="1"
+            value={qty}
+            onChange={(e) => handleUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
+            className="w-16 h-8 text-right text-sm"
+          />
         </TableCell>
         <TableCell className="text-right font-mono font-medium">
           {formatCurrency(itemTotal)}
-          {item.includes_tax && (
-            <span className="text-muted-foreground text-xs block">incl. tax</span>
-          )}
+        </TableCell>
+        <TableCell onClick={e => e.stopPropagation()}>
+          <Select 
+            value={item.status || 'researching'} 
+            onValueChange={(v) => handleUpdateStatus(item.id, v)}
+          >
+            <SelectTrigger className="w-32 h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUSES.map(s => (
+                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </TableCell>
         <TableCell>
-          {item.lead_time_days && (
-            <div className="flex items-center gap-1 text-sm">
-              <Clock className="h-3 w-3 text-muted-foreground" />
-              {item.lead_time_days}d
-            </div>
-          )}
-        </TableCell>
-        <TableCell>{getStatusBadge(item.status)}</TableCell>
-        <TableCell>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-7 w-7"
-              onClick={() => { setEditingItem(item); setModalOpen(true); }}
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-7 w-7 text-destructive"
-              onClick={() => handleDelete(item.id)}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRemoveFromProject(item.id);
+            }}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </TableCell>
       </TableRow>
     );
@@ -369,7 +478,7 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
                 <Layers className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Items Tracked</p>
+                <p className="text-sm text-muted-foreground">Items Assigned</p>
                 <p className="text-xl font-bold">{items.length}</p>
               </div>
             </div>
@@ -386,7 +495,7 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
               <div>
                 <p className="font-medium text-sm">Pro Desk Opportunity</p>
                 <p className="text-xs text-muted-foreground">
-                  {bulkEligibleItems.length} Home Depot item(s) over $1,500 may qualify for Bid Room or VPP pricing at Fort Worth Pro Desk.
+                  {bulkEligibleItems.length} Home Depot item(s) over $1,500 may qualify for Bid Room or VPP pricing.
                 </p>
               </div>
             </div>
@@ -395,7 +504,7 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
       )}
 
       {/* Cost-to-Complete by Category */}
-      {categories.length > 0 && (
+      {categories.length > 0 && items.length > 0 && (
         <Card className="glass-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Cost-to-Complete by Category</CardTitle>
@@ -479,9 +588,9 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
             </SelectContent>
           </Select>
         )}
-        <Button onClick={() => { setEditingItem(null); setModalOpen(true); }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Item
+        <Button onClick={() => setPickerOpen(true)}>
+          <Library className="h-4 w-4 mr-2" />
+          Add from Library
         </Button>
       </div>
 
@@ -506,13 +615,13 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
         <Card className="glass-card">
           <CardContent className="py-12 text-center">
             <ShoppingCart className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-            <p className="text-muted-foreground mb-2">No procurement items yet</p>
+            <p className="text-muted-foreground mb-2">No procurement items assigned</p>
             <p className="text-sm text-muted-foreground mb-4">
-              Start adding items from Amazon or Home Depot to track your materials
+              Add items from your procurement library to this project
             </p>
-            <Button onClick={() => { setEditingItem(null); setModalOpen(true); }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add First Item
+            <Button onClick={() => setPickerOpen(true)}>
+              <Library className="h-4 w-4 mr-2" />
+              Add from Library
             </Button>
           </CardContent>
         </Card>
@@ -522,9 +631,10 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
             const phaseItems = itemsByPhase[phase.value] || [];
             if (phaseItems.length === 0) return null;
             const isExpanded = expandedPhases.has(phase.value);
-            const phaseTotal = phaseItems.reduce((sum, item) => 
-              sum + item.unit_price * item.quantity * (item.includes_tax ? 1 + item.tax_rate : 1), 0
-            );
+            const phaseTotal = phaseItems.reduce((sum, item) => {
+              const qty = item.project_quantity || item.quantity || 1;
+              return sum + (item.is_pack_price ? item.unit_price : item.unit_price * qty) * (item.includes_tax ? 1 : 1 + item.tax_rate);
+            }, 0);
             
             return (
               <Collapsible key={phase.value} open={isExpanded} onOpenChange={() => togglePhase(phase.value)}>
@@ -546,12 +656,13 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
                       <Table>
                         <TableHeader>
                           <TableRow>
+                            <TableHead className="w-16"></TableHead>
                             <TableHead>Item</TableHead>
                             <TableHead>Category</TableHead>
                             <TableHead>Finish</TableHead>
                             <TableHead className="text-right">Price</TableHead>
+                            <TableHead className="text-right">Qty</TableHead>
                             <TableHead className="text-right">Total</TableHead>
-                            <TableHead>Lead Time</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead></TableHead>
                           </TableRow>
@@ -573,12 +684,13 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-16"></TableHead>
                   <TableHead>Item</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Finish</TableHead>
                   <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Lead Time</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -591,344 +703,212 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
         </Card>
       )}
 
-      {/* Add/Edit Modal */}
-      <ProcurementItemModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
+      {/* Item Picker Modal */}
+      <ItemPickerModal
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
         projectId={projectId}
-        categories={categories}
-        editingItem={editingItem}
-        onSaved={() => { fetchItems(); setModalOpen(false); setEditingItem(null); }}
+        existingItemIds={items.map(i => i.id)}
+        onItemsAdded={fetchItems}
       />
     </div>
   );
 }
 
-// Modal Component
-interface ProcurementItemModalProps {
+// Item Picker Modal - Select items from library
+interface ItemPickerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  categories: CategoryBudget[];
-  editingItem: ProcurementItem | null;
-  onSaved: () => void;
+  existingItemIds: string[];
+  onItemsAdded: () => void;
 }
 
-function ProcurementItemModal({ open, onOpenChange, projectId, categories, editingItem, onSaved }: ProcurementItemModalProps) {
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<{
-    name: string;
-    source_url: string;
-    source_store: SourceStore;
-    model_number: string;
-    finish: string;
-    unit_price: number;
-    quantity: number;
-    includes_tax: boolean;
-    tax_rate: number;
-    phase: Phase;
-    lead_time_days: number | null;
-    status: ItemStatus;
-    category_id: string;
-    bulk_discount_eligible: boolean;
-    notes: string;
-  }>({
-    name: '',
-    source_url: '',
-    source_store: 'home_depot',
-    model_number: '',
-    finish: '',
-    unit_price: 0,
-    quantity: 1,
-    includes_tax: true,
-    tax_rate: TEXAS_TAX_RATE,
-    phase: 'rough_in',
-    lead_time_days: null,
-    status: 'researching',
-    category_id: '',
-    bulk_discount_eligible: false,
-    notes: '',
-  });
+function ItemPickerModal({ open, onOpenChange, projectId, existingItemIds, onItemsAdded }: ItemPickerModalProps) {
+  const [allItems, setAllItems] = useState<ProcurementItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (editingItem) {
-      setForm({
-        name: editingItem.name,
-        source_url: editingItem.source_url || '',
-        source_store: editingItem.source_store || 'home_depot',
-        model_number: editingItem.model_number || '',
-        finish: editingItem.finish || '',
-        unit_price: editingItem.unit_price,
-        quantity: editingItem.quantity,
-        includes_tax: editingItem.includes_tax,
-        tax_rate: editingItem.tax_rate,
-        phase: editingItem.phase,
-        lead_time_days: editingItem.lead_time_days,
-        status: editingItem.status,
-        category_id: editingItem.category_id || '',
-        bulk_discount_eligible: editingItem.bulk_discount_eligible,
-        notes: editingItem.notes || '',
-      });
-    } else {
-      setForm({
-        name: '',
-        source_url: '',
-        source_store: 'home_depot',
-        model_number: '',
-        finish: '',
-        unit_price: 0,
-        quantity: 1,
-        includes_tax: true,
-        tax_rate: TEXAS_TAX_RATE,
-        phase: 'rough_in',
-        lead_time_days: null,
-        status: 'researching',
-        category_id: '',
-        bulk_discount_eligible: false,
-        notes: '',
-      });
+    if (open) {
+      fetchAllItems();
+      setSelectedIds(new Set());
+      setSearchQuery('');
     }
-  }, [editingItem, open]);
+  }, [open]);
 
-  const handleSubmit = async () => {
-    if (!form.name.trim()) {
-      toast.error('Item name is required');
-      return;
-    }
-
+  const fetchAllItems = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-
-    const payload = {
-      project_id: projectId,
-      user_id: user?.id,
-      name: form.name.trim(),
-      source_url: form.source_url || null,
-      source_store: form.source_store,
-      model_number: form.model_number || null,
-      finish: form.finish || null,
-      unit_price: form.unit_price,
-      quantity: form.quantity,
-      includes_tax: form.includes_tax,
-      tax_rate: form.tax_rate,
-      phase: form.phase,
-      lead_time_days: form.lead_time_days,
-      status: form.status,
-      category_id: form.category_id || null,
-      bulk_discount_eligible: form.bulk_discount_eligible,
-      notes: form.notes || null,
-    };
-
-    let error;
-    if (editingItem) {
-      ({ error } = await supabase.from('procurement_items').update(payload).eq('id', editingItem.id));
-    } else {
-      ({ error } = await supabase.from('procurement_items').insert(payload));
-    }
-
-    setLoading(false);
+    const { data, error } = await supabase
+      .from('procurement_items')
+      .select('*')
+      .order('name');
 
     if (error) {
-      console.error('Error saving item:', error);
-      toast.error('Failed to save item');
+      console.error('Error fetching items:', error);
+      toast.error('Failed to load items');
     } else {
-      toast.success(editingItem ? 'Item updated' : 'Item added');
-      onSaved();
+      setAllItems((data || []) as ProcurementItem[]);
+    }
+    setLoading(false);
+  };
+
+  const availableItems = useMemo(() => {
+    return allItems.filter(item => {
+      // Exclude items already in project
+      if (existingItemIds.includes(item.id)) return false;
+      // Filter by search
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return item.name.toLowerCase().includes(q) ||
+          item.model_number?.toLowerCase().includes(q) ||
+          item.finish?.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [allItems, existingItemIds, searchQuery]);
+
+  const toggleItem = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleAdd = async () => {
+    if (selectedIds.size === 0) return;
+
+    setSaving(true);
+    
+    const insertData = Array.from(selectedIds).map(itemId => ({
+      project_id: projectId,
+      item_id: itemId,
+      quantity: 1,
+      status: 'researching',
+    }));
+
+    const { error } = await supabase
+      .from('project_procurement_items')
+      .insert(insertData);
+
+    setSaving(false);
+
+    if (error) {
+      console.error('Error adding items:', error);
+      toast.error('Failed to add items');
+    } else {
+      toast.success(`Added ${selectedIds.size} item(s) to project`);
+      onItemsAdded();
+      onOpenChange(false);
     }
   };
 
-  const getCategoryName = (catId: string) => {
-    const cat = categories.find(c => c.id === catId);
-    if (!cat) return '';
-    const budgetCat = BUDGET_CATEGORIES.find(bc => bc.value === cat.category);
-    return budgetCat?.label || cat.category;
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(value);
   };
-
-  const subtotal = form.unit_price * form.quantity;
-  const taxAmount = form.includes_tax ? subtotal * form.tax_rate : 0;
-  const total = subtotal + taxAmount;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>{editingItem ? 'Edit Item' : 'Add Procurement Item'}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Library className="h-5 w-5 text-primary" />
+            Add Items from Library
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Item Name & Model */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Item Name *</Label>
-              <Input 
-                value={form.name} 
-                onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="LVP Flooring - Oak"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Model / SKU #</Label>
-              <Input 
-                value={form.model_number} 
-                onChange={(e) => setForm(f => ({ ...f, model_number: e.target.value }))}
-                placeholder="SKU-12345"
-              />
-            </div>
-          </div>
-
-          {/* URL & Store */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2 space-y-2">
-              <Label>Source URL</Label>
-              <div className="relative">
-                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  value={form.source_url} 
-                  onChange={(e) => setForm(f => ({ ...f, source_url: e.target.value }))}
-                  placeholder="https://homedepot.com/..."
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Store</Label>
-              <Select value={form.source_store} onValueChange={(v: any) => setForm(f => ({ ...f, source_store: v }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STORES.map(s => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Category & Finish */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Budget Category</Label>
-              <Select value={form.category_id} onValueChange={(v) => setForm(f => ({ ...f, category_id: v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>{getCategoryName(cat.id)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Finish / Color</Label>
-              <Input 
-                value={form.finish} 
-                onChange={(e) => setForm(f => ({ ...f, finish: e.target.value }))}
-                placeholder="Matte Black"
-              />
-            </div>
-          </div>
-
-          {/* Pricing */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Unit Price</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  type="number" 
-                  step="0.01"
-                  value={form.unit_price} 
-                  onChange={(e) => setForm(f => ({ ...f, unit_price: parseFloat(e.target.value) || 0 }))}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Quantity</Label>
-              <Input 
-                type="number" 
-                min="1"
-                value={form.quantity} 
-                onChange={(e) => setForm(f => ({ ...f, quantity: parseInt(e.target.value) || 1 }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Lead Time (days)</Label>
-              <Input 
-                type="number" 
-                min="0"
-                value={form.lead_time_days ?? ''} 
-                onChange={(e) => setForm(f => ({ ...f, lead_time_days: e.target.value ? parseInt(e.target.value) : null }))}
-                placeholder="7"
-              />
-            </div>
-          </div>
-
-          {/* Tax Toggle */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-            <div className="flex items-center gap-2">
-              <Switch 
-                checked={form.includes_tax} 
-                onCheckedChange={(v) => setForm(f => ({ ...f, includes_tax: v }))}
-              />
-              <Label className="cursor-pointer">Include TX Sales Tax (8.25%)</Label>
-            </div>
-            <div className="text-right text-sm">
-              <p className="text-muted-foreground">Subtotal: ${subtotal.toFixed(2)}</p>
-              {form.includes_tax && <p className="text-muted-foreground">Tax: ${taxAmount.toFixed(2)}</p>}
-              <p className="font-medium">Total: ${total.toFixed(2)}</p>
-            </div>
-          </div>
-
-          {/* Phase & Status */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Phase (When Needed)</Label>
-              <Select value={form.phase} onValueChange={(v: any) => setForm(f => ({ ...f, phase: v }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PHASES.map(p => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v: any) => setForm(f => ({ ...f, status: v }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUSES.map(s => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label>Notes</Label>
-            <Textarea 
-              value={form.notes} 
-              onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
-              placeholder="Any additional notes..."
-              rows={2}
-            />
-          </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, model number, or finish..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Saving...' : editingItem ? 'Update Item' : 'Add Item'}
-          </Button>
+        <div className="flex-1 overflow-y-auto min-h-[300px] border rounded-lg">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : availableItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-6">
+              <Package className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <p className="text-muted-foreground">
+                {allItems.length === 0 
+                  ? "No items in library. Add items in the Procurement page first."
+                  : searchQuery 
+                    ? "No matching items found" 
+                    : "All items already added to this project"}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {availableItems.map(item => (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "flex items-center gap-4 p-3 cursor-pointer hover:bg-muted/50 transition-colors",
+                    selectedIds.has(item.id) && "bg-primary/10"
+                  )}
+                  onClick={() => toggleItem(item.id)}
+                >
+                  <Checkbox 
+                    checked={selectedIds.has(item.id)} 
+                    onCheckedChange={() => toggleItem(item.id)}
+                  />
+                  <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+                    {item.image_url ? (
+                      <img 
+                        src={item.image_url} 
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{item.name}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {item.model_number && <span>#{item.model_number}</span>}
+                      {item.finish && <Badge variant="secondary" className="text-xs">{item.finish}</Badge>}
+                      {STORES.find(s => s.value === item.source_store) && (
+                        <span>{STORES.find(s => s.value === item.source_store)?.label}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-mono font-medium">{formatCurrency(item.unit_price)}</p>
+                    {item.quantity > 1 && (
+                      <p className="text-xs text-muted-foreground">×{item.quantity}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={handleAdd} disabled={selectedIds.size === 0 || saving}>
+              {saving ? 'Adding...' : `Add ${selectedIds.size} Item${selectedIds.size !== 1 ? 's' : ''}`}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

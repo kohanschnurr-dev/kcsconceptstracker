@@ -730,6 +730,51 @@ export type Database = {
           },
         ]
       }
+      project_procurement_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          project_id: string
+          quantity: number
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          project_id: string
+          quantity?: number
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          project_id?: string
+          quantity?: number
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_procurement_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_procurement_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_vendors: {
         Row: {
           created_at: string
