@@ -699,26 +699,27 @@ Deno.serve(async (req) => {
       formats: ['markdown', 'html'],
       onlyMainContent: false, // Need full HTML to extract product images
       waitFor: needsEnhancedMode ? 5000 : 3000,
-      timeout: needsEnhancedMode ? 90000 : 30000, // 90s for enhanced mode
+      timeout: needsEnhancedMode ? 120000 : 30000, // 2 minutes for stealth mode
       location: {
         country: 'US',
-        languages: ['en'],
+        languages: ['en-US'],
       },
+      blockAds: true, // Block ads and popups to reduce page complexity
     };
     
-    // Use enhanced proxy and actions for sites with anti-bot protection
+    // Use stealth proxy and actions for sites with aggressive anti-bot protection
     if (needsEnhancedMode) {
-      console.log('Using enhanced mode for:', store);
-      scrapeOptions.proxy = 'enhanced';
-      // Add actions to wait and scroll for JS content to load
+      console.log('Using stealth mode for:', store);
+      scrapeOptions.proxy = 'stealth'; // Stealth proxies bypass aggressive anti-bot
+      // Simpler scroll action with longer initial wait
       scrapeOptions.actions = [
-        { type: 'wait', milliseconds: 2000 },
+        { type: 'wait', milliseconds: 3000 },
         { type: 'scroll', direction: 'down' },
         { type: 'wait', milliseconds: 2000 },
       ];
     }
     
-    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    const response = await fetch('https://api.firecrawl.dev/v2/scrape', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
