@@ -850,6 +850,7 @@ export type Database = {
       projects: {
         Row: {
           address: string
+          annual_hoa: number | null
           annual_insurance: number | null
           annual_property_taxes: number | null
           arv: number | null
@@ -873,6 +874,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          annual_hoa?: number | null
           annual_insurance?: number | null
           annual_property_taxes?: number | null
           arv?: number | null
@@ -896,6 +898,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          annual_hoa?: number | null
           annual_insurance?: number | null
           annual_property_taxes?: number | null
           arv?: number | null
