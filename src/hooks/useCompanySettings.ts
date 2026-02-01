@@ -92,7 +92,7 @@ export function useCompanySettings() {
     isLoading,
     updateSettings,
     uploadLogo,
-    companyName: settings?.company_name || 'KCS Concepts',
+    companyName: settings?.company_name || 'Business Expenses',
     logoUrl: settings?.logo_url,
   };
 }
