@@ -67,6 +67,7 @@ interface DBProject {
   loan_term_years?: number;
   annual_property_taxes?: number;
   annual_insurance?: number;
+  annual_hoa?: number;
   vacancy_rate?: number;
   monthly_maintenance?: number;
   management_rate?: number;
@@ -574,6 +575,7 @@ export default function ProjectDetail() {
                 initialLoanTermYears={project.loan_term_years || 30}
                 initialAnnualPropertyTaxes={project.annual_property_taxes || 0}
                 initialAnnualInsurance={project.annual_insurance || 0}
+                initialAnnualHoa={project.annual_hoa || 0}
                 initialVacancyRate={project.vacancy_rate || 8}
                 initialMonthlyMaintenance={project.monthly_maintenance || 0}
                 initialManagementRate={project.management_rate || 10}

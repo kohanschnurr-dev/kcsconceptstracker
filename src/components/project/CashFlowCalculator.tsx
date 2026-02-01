@@ -20,6 +20,7 @@ interface CashFlowCalculatorProps {
   initialLoanTermYears?: number;
   initialAnnualPropertyTaxes?: number;
   initialAnnualInsurance?: number;
+  initialAnnualHoa?: number;
   initialVacancyRate?: number;
   initialMonthlyMaintenance?: number;
   initialManagementRate?: number;
@@ -37,6 +38,7 @@ export function CashFlowCalculator({
   initialLoanTermYears = 30,
   initialAnnualPropertyTaxes = 0,
   initialAnnualInsurance = 0,
+  initialAnnualHoa = 0,
   initialVacancyRate = 8,
   initialMonthlyMaintenance = 0,
   initialManagementRate = 10,
@@ -49,6 +51,7 @@ export function CashFlowCalculator({
   const [loanTermYears, setLoanTermYears] = useState(initialLoanTermYears);
   const [annualPropertyTaxes, setAnnualPropertyTaxes] = useState(initialAnnualPropertyTaxes);
   const [annualInsurance, setAnnualInsurance] = useState(initialAnnualInsurance);
+  const [annualHoa, setAnnualHoa] = useState(initialAnnualHoa);
   const [vacancyRate, setVacancyRate] = useState(initialVacancyRate);
   const [monthlyMaintenance, setMonthlyMaintenance] = useState(initialMonthlyMaintenance);
   const [managementRate, setManagementRate] = useState(initialManagementRate);
@@ -63,13 +66,14 @@ export function CashFlowCalculator({
     setLoanTermYears(initialLoanTermYears);
     setAnnualPropertyTaxes(initialAnnualPropertyTaxes);
     setAnnualInsurance(initialAnnualInsurance);
+    setAnnualHoa(initialAnnualHoa);
     setVacancyRate(initialVacancyRate);
     setMonthlyMaintenance(initialMonthlyMaintenance);
     setManagementRate(initialManagementRate);
   }, [
     initialPurchasePrice, initialArv, initialMonthlyRent, initialLoanAmount,
     initialInterestRate, initialLoanTermYears, initialAnnualPropertyTaxes,
-    initialAnnualInsurance, initialVacancyRate, initialMonthlyMaintenance,
+    initialAnnualInsurance, initialAnnualHoa, initialVacancyRate, initialMonthlyMaintenance,
     initialManagementRate
   ]);
 
@@ -86,6 +90,7 @@ export function CashFlowCalculator({
         loan_term_years: loanTermYears,
         annual_property_taxes: annualPropertyTaxes,
         annual_insurance: annualInsurance,
+        annual_hoa: annualHoa,
         vacancy_rate: vacancyRate,
         monthly_maintenance: monthlyMaintenance,
         management_rate: managementRate,
@@ -122,8 +127,9 @@ export function CashFlowCalculator({
   // Expense calculations
   const monthlyTaxes = annualPropertyTaxes / 12;
   const monthlyInsurance = annualInsurance / 12;
+  const monthlyHoa = annualHoa / 12;
   const managementFee = monthlyRent * (managementRate / 100);
-  const totalMonthlyExpenses = monthlyTaxes + monthlyInsurance + monthlyMaintenance + managementFee;
+  const totalMonthlyExpenses = monthlyTaxes + monthlyInsurance + monthlyHoa + monthlyMaintenance + managementFee;
 
   // Cash flow calculations
   const monthlyCashFlow = grossMonthlyIncome - monthlyMortgage - totalMonthlyExpenses;
@@ -261,7 +267,7 @@ export function CashFlowCalculator({
             <Calculator className="h-4 w-4" />
             EXPENSES
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <div>
               <Label htmlFor="annual-taxes">Property Taxes/yr</Label>
               <div className="relative">
@@ -285,6 +291,20 @@ export function CashFlowCalculator({
                   type="number"
                   value={annualInsurance || ''}
                   onChange={(e) => setAnnualInsurance(Number(e.target.value))}
+                  className="pl-9"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="annual-hoa">HOA/yr</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="annual-hoa"
+                  type="number"
+                  value={annualHoa || ''}
+                  onChange={(e) => setAnnualHoa(Number(e.target.value))}
                   className="pl-9"
                   placeholder="0"
                 />
