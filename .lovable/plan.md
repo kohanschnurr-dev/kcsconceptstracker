@@ -1,83 +1,155 @@
 
-## Fix: Bathroom Expense Not Appearing After SmartSplit
+## Fix: Receipt Parser to Handle Discounts
 
-### Root Cause
+### The Problem
+The Home Depot receipt has a **Discount** column that the AI parser ignores:
 
-The Expenses page has a filter to prevent double-counting split transactions:
+| Column | Example Value | What AI Extracts | What We Need |
+|--------|---------------|------------------|--------------|
+| Unit Price | $6.78 | $6.78 | - |
+| Discount | $5.29 | (ignored) | - |
+| Net Unit Price | $1.49 | (ignored) | $1.49 |
+| Pre Tax Amount | $1.49 | (ignored) | $1.49 |
 
-```tsx
-// Lines 133-144 in Expenses.tsx
-const splitQbIds = qbExpensesData
-  .filter(e => e.qb_id.includes('_split_'))
-  .map(e => e.qb_id.split('_split_')[0]);
-
-const filteredQbExpenses = qbExpensesData.filter(e => {
-  // If this expense's qb_id is a parent of any split records, exclude it
-  if (!e.qb_id.includes('_split_') && splitQbIds.includes(e.qb_id)) {
-    return false;  // ← BATHROOM IS INCORRECTLY EXCLUDED
-  }
-  return true;
-});
-```
-
-This logic was designed for an old flow where the parent record was untouched. But SmartSplit now **updates the original record** with the first category's data (Bathroom in this case), making it a valid expense that should be displayed.
-
-### The Split Pattern
-
-| Record | qb_id | Amount | Category | Should Show? |
-|--------|-------|--------|----------|--------------|
-| Original (updated) | `purchase_769` | $206.71 | Bathroom | **YES** ← Currently hidden |
-| Split 1 | `purchase_769_split_hardware` | $188.38 | Hardware | YES |
-| Split 2 | `purchase_769_split_light_fixtures` | $187.79 | Light Fixtures | YES |
-| Split 3 | `purchase_769_split_plumbing` | $79.01 | Plumbing | YES |
-| Split 4 | `purchase_769_split_misc` | $9.71 | Misc | YES |
-
-**All 5 records should be displayed** because the original is no longer a "parent" - it's a full expense with its own category and amount.
+**Result**: Split total shows $127.10 instead of the correct $102.98 subtotal (difference = $15.62 discount)
 
 ---
 
-### Technical Solution
+### Solution Overview
 
-**Remove the split-filtering logic entirely.** Since SmartSplit updates the original record with valid data (amount, category, notes), there's no risk of double-counting - each record represents a distinct expense.
+Update the receipt parsing AI prompt to:
+1. Detect receipts with discount columns (Home Depot, Lowe's, etc.)
+2. Use **Net Unit Price** or **Pre Tax Amount** instead of Unit Price
+3. Extract the total discount as a separate field
+4. Add validation: line items should sum to subtotal (after discounts)
 
-**File: `src/pages/Expenses.tsx`**
+---
 
-Remove lines 129-144 (the split filtering):
+### Technical Changes
 
-```tsx
-// BEFORE: Complex filtering that incorrectly excludes first category
-const splitQbIds = (qbExpensesData || [])
-  .filter(e => e.qb_id.includes('_split_'))
-  .map(e => e.qb_id.split('_split_')[0]);
+**File: `supabase/functions/parse-receipt-image/index.ts`**
 
-const filteredQbExpenses = (qbExpensesData || []).filter(e => {
-  if (!e.qb_id.includes('_split_') && splitQbIds.includes(e.qb_id)) {
-    return false;
-  }
-  return true;
-});
+**1. Update ReceiptData Interface**
 
-// AFTER: Use all imported QB expenses directly
-const filteredQbExpenses = qbExpensesData || [];
+Add a discount field to track total discounts:
+
+```typescript
+interface ReceiptData {
+  vendor_name: string;
+  total_amount: number;
+  tax_amount: number;
+  subtotal: number;
+  discount_amount: number;  // NEW: Total discount applied
+  purchase_date: string;
+  line_items: {
+    item_name: string;
+    quantity: number;
+    unit_price: number;      // Should be NET price (after discount)
+    total_price: number;     // Should be NET total
+    discount: number;        // NEW: Discount per line item
+    suggested_category: string;
+  }[];
+}
 ```
 
-**Same fix needed in:**
-- `src/pages/ProjectDetail.tsx` (if similar logic exists)
-- `src/pages/BusinessExpenses.tsx` (if similar logic exists)
+**2. Update AI System Prompt**
+
+Add specific instructions for discount handling:
+
+```text
+═══════════════════════════════════════════════════════
+DISCOUNT HANDLING (HOME DEPOT, LOWE'S, ETC.)
+═══════════════════════════════════════════════════════
+
+Many receipts have DISCOUNT columns. ALWAYS use the AFTER-DISCOUNT price!
+
+HOME DEPOT RECEIPT COLUMNS:
+| Item | Qty | Unit Price | Discount | Net Unit Price | Pre Tax Amount |
+|------|-----|------------|----------|----------------|----------------|
+| Board| 1   | $6.78      | $5.29    | $1.49          | $1.49          |
+
+EXTRACTION RULE:
+- unit_price = "Net Unit Price" column (NOT "Unit Price")
+- total_price = "Pre Tax Amount" column
+- discount = value from "Discount" column (per item)
+
+If receipt shows:
+  Subtotal: $102.98
+  Discount: -$15.62
+  Tax: $8.50
+  Total: $111.48
+
+Then:
+- subtotal = 102.98 (the discounted subtotal)
+- discount_amount = 15.62
+- tax_amount = 8.50
+- total_amount = 111.48
+- Sum of line item total_price values MUST equal 102.98
+
+VALIDATION: 
+subtotal + tax_amount = total_amount (discount already subtracted)
+```
+
+**3. Update User Prompt JSON Schema**
+
+```json
+{
+  "vendor_name": "THE HOME DEPOT",
+  "total_amount": 111.48,
+  "tax_amount": 8.50,
+  "subtotal": 102.98,
+  "discount_amount": 15.62,
+  "purchase_date": "2026-01-28",
+  "line_items": [
+    {
+      "item_name": "1 in. x 4 in. x 12 ft. Ground Contact Board",
+      "quantity": 1,
+      "unit_price": 1.49,
+      "total_price": 1.49,
+      "discount": 5.29,
+      "suggested_category": "framing"
+    }
+  ]
+}
+```
+
+**4. Add Post-Processing Validation**
+
+Add logic to detect and warn about discount issues:
+
+```typescript
+// Validate discount detection
+const lineItemsTotal = cleanedData.line_items.reduce((sum, item) => sum + item.total_price, 0);
+const expectedSubtotal = cleanedData.subtotal;
+const difference = Math.abs(lineItemsTotal - expectedSubtotal);
+
+// If difference matches discount_amount, the AI used wrong price column
+if (cleanedData.discount_amount > 0 && Math.abs(difference - cleanedData.discount_amount) < 1) {
+  console.warn("AI may have used pre-discount prices. Attempting correction...");
+  // Scale down line items proportionally
+  const scaleFactor = expectedSubtotal / lineItemsTotal;
+  cleanedData.line_items = cleanedData.line_items.map(item => ({
+    ...item,
+    unit_price: Math.round(item.unit_price * scaleFactor * 100) / 100,
+    total_price: Math.round(item.total_price * scaleFactor * 100) / 100,
+  }));
+}
+```
 
 ---
 
 ### Data Flow After Fix
 
 ```text
-Database contains:
-  purchase_769 (Bathroom: $206.71) ✓ Shown
-  purchase_769_split_hardware ($188.38) ✓ Shown
-  purchase_769_split_light_fixtures ($187.79) ✓ Shown
-  purchase_769_split_plumbing ($79.01) ✓ Shown
-  purchase_769_split_misc ($9.71) ✓ Shown
-  ─────────────────────────────────
-  Total: $671.60 ✓ Matches original QB transaction
+Receipt Image → AI Parser
+                    ↓
+              Detects discount columns
+                    ↓
+              Uses Net Unit Price (not Unit Price)
+                    ↓
+              Returns: subtotal=$102.98, discount=$15.62
+                    ↓
+              SmartSplit shows: Split Total = $102.98 + $8.50 tax = $111.48 ✓
 ```
 
 ---
@@ -86,12 +158,16 @@ Database contains:
 
 | File | Change |
 |------|--------|
-| `src/pages/Expenses.tsx` | Remove split-filtering logic (lines 129-144) |
-| `src/pages/ProjectDetail.tsx` | Check for and remove similar filtering |
-| `src/components/project/ExportReports.tsx` | Check for similar filtering in export logic |
+| `supabase/functions/parse-receipt-image/index.ts` | Update ReceiptData interface, AI prompt, and validation logic |
 
 ---
 
 ### Summary
 
-The SmartSplit design changed: the original QB record is now updated with the first category's data instead of being left empty. The filtering logic that hides "parent" records is now incorrect because those records contain valid expense data. Removing this filter will display all split expenses including the first category.
+The fix updates the AI receipt parser to:
+1. Recognize discount columns on Home Depot/Lowe's receipts
+2. Extract the **net price** (after discount) instead of the original unit price
+3. Track the total discount amount separately
+4. Add fallback correction if the AI uses wrong price column
+
+This ensures split totals match the actual transaction amount.
