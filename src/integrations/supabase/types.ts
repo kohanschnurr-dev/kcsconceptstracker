@@ -850,9 +850,17 @@ export type Database = {
       projects: {
         Row: {
           address: string
+          annual_insurance: number | null
+          annual_property_taxes: number | null
           arv: number | null
           created_at: string
           id: string
+          interest_rate: number | null
+          loan_amount: number | null
+          loan_term_years: number | null
+          management_rate: number | null
+          monthly_maintenance: number | null
+          monthly_rent: number | null
           name: string
           project_type: Database["public"]["Enums"]["project_type"]
           purchase_price: number | null
@@ -861,12 +869,21 @@ export type Database = {
           total_budget: number
           updated_at: string
           user_id: string
+          vacancy_rate: number | null
         }
         Insert: {
           address: string
+          annual_insurance?: number | null
+          annual_property_taxes?: number | null
           arv?: number | null
           created_at?: string
           id?: string
+          interest_rate?: number | null
+          loan_amount?: number | null
+          loan_term_years?: number | null
+          management_rate?: number | null
+          monthly_maintenance?: number | null
+          monthly_rent?: number | null
           name: string
           project_type?: Database["public"]["Enums"]["project_type"]
           purchase_price?: number | null
@@ -875,12 +892,21 @@ export type Database = {
           total_budget?: number
           updated_at?: string
           user_id: string
+          vacancy_rate?: number | null
         }
         Update: {
           address?: string
+          annual_insurance?: number | null
+          annual_property_taxes?: number | null
           arv?: number | null
           created_at?: string
           id?: string
+          interest_rate?: number | null
+          loan_amount?: number | null
+          loan_term_years?: number | null
+          management_rate?: number | null
+          monthly_maintenance?: number | null
+          monthly_rent?: number | null
           name?: string
           project_type?: Database["public"]["Enums"]["project_type"]
           purchase_price?: number | null
@@ -889,6 +915,7 @@ export type Database = {
           total_budget?: number
           updated_at?: string
           user_id?: string
+          vacancy_rate?: number | null
         }
         Relationships: []
       }
