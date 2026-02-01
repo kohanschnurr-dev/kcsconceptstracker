@@ -39,7 +39,9 @@ import {
   RectangleHorizontal,
   Square,
   LayoutDashboard,
-  ChevronDown
+  ChevronDown,
+  TreePine,
+  Sparkles
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -84,6 +86,7 @@ export type ProcurementCategory =
   | 'flooring'
   | 'plumbing'
   | 'electrical'
+  | 'exterior_finishes'
   | 'hvac'
   | 'paint'
   | 'cabinets'
@@ -94,6 +97,7 @@ export type ProcurementCategory =
   | 'appliances'
   | 'windows'
   | 'fencing'
+  | 'landscaping'
   | 'roofing'
   | 'framing'
   | 'insulation'
@@ -170,6 +174,14 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
     placeholders: { voltage: '120V, 240V', amperage: '15A, 20A, 30A', wire_gauge: '12 AWG, 10 AWG' }
   },
   { 
+    value: 'exterior_finishes', 
+    label: 'Exterior Finishes', 
+    icon: Sparkles, 
+    color: 'bg-violet-500/10 text-violet-600 border-violet-500/30',
+    fields: ['material', 'coverage_sqft', 'finish', 'application'],
+    placeholders: { material: 'Stucco, Siding, Stone veneer', coverage_sqft: 'Total sq ft', finish: 'Smooth, Textured', application: 'New, Repair' }
+  },
+  { 
     value: 'fencing', 
     label: 'Fencing', 
     icon: Fence, 
@@ -216,6 +228,14 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
     color: 'bg-purple-500/10 text-purple-600 border-purple-500/30',
     fields: ['r_value', 'type', 'coverage_sqft'],
     placeholders: { r_value: 'R-13, R-19, R-30', type: 'Batt, Blown-in, Spray foam' }
+  },
+  { 
+    value: 'landscaping', 
+    label: 'Landscaping', 
+    icon: TreePine, 
+    color: 'bg-lime-500/10 text-lime-600 border-lime-500/30',
+    fields: ['material', 'coverage_sqft', 'plant_type', 'quantity'],
+    placeholders: { material: 'Mulch, Sod, Pavers, Gravel', coverage_sqft: 'Total sq ft', plant_type: 'Trees, Shrubs, Flowers' }
   },
   { 
     value: 'lighting', 
@@ -429,6 +449,8 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     if (name.includes('refrigerator') || name.includes('range') || name.includes('dishwasher') || name.includes('microwave')) return 'appliances';
     if (name.includes('window')) return 'windows';
     if (name.includes('fence')) return 'fencing';
+    if (name.includes('landscap') || name.includes('mulch') || name.includes('sod') || name.includes('paver') || name.includes('shrub') || name.includes('plant')) return 'landscaping';
+    if (name.includes('stucco') || name.includes('siding') || name.includes('stone veneer') || name.includes('hardie') || name.includes('exterior paint')) return 'exterior_finishes';
     if (name.includes('shingle') || name.includes('roof')) return 'roofing';
     if (name.includes('lumber') || name.includes('2x4') || name.includes('2x6') || name.includes('stud')) return 'framing';
     if (name.includes('insulation') || name.includes('r-')) return 'insulation';
