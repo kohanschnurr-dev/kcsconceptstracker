@@ -1,72 +1,59 @@
 
-## Plan: Fix Navigation Item to Use Dynamic Company Name
+## Plan: Restrict Row Click to External Link Button Only
 
 ### Problem
-The sidebar and mobile navigation show "KCS Concepts" as a hardcoded navigation item label (line 31 in Sidebar.tsx, line 34 in MobileNav.tsx). The header correctly shows the dynamic company name, but the nav link to business expenses doesn't update.
-
-### Root Cause
-The `navItems` array is a static constant defined outside the component, so it cannot access the `companyName` from the `useCompanySettings` hook.
+Currently, clicking anywhere on a table row in the Bundle Detail view opens the product's source URL. The user wants this behavior limited to only the orange external link button next to the store name.
 
 ### Solution
-Dynamically build the nav items inside the component so the Business Expenses link uses the dynamic company name.
+Remove the `onClick` handler and `cursor-pointer` styling from the `TableRow`, keeping the functionality only on the existing `<a>` tag with the `ExternalLink` icon.
 
 ### Changes
 
-#### 1. Sidebar.tsx
+**File: `src/pages/BundleDetail.tsx`**
 
-Move the navItems array inside the component and replace the hardcoded label:
+| Line | Current | New |
+|------|---------|-----|
+| 456-463 | `TableRow` with `onClick` and conditional `cursor-pointer` | Plain `TableRow` with just `hover:bg-muted/30` |
 
+**Before (lines 456-463):**
 ```tsx
-export function Sidebar() {
-  const { companyName, logoUrl } = useCompanySettings();
-  
-  const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/', exact: true },
-    { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
-    { icon: FolderKanban, label: 'Projects', path: '/projects' },
-    { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
-    { icon: Receipt, label: 'Expenses', path: '/expenses' },
-    { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
-    { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
-    { icon: Users, label: 'Vendors', path: '/vendors' },
-    { icon: Briefcase, label: companyName, path: '/business-expenses' },
-  ];
-  // ... rest of component
-}
+<TableRow 
+  key={item.id} 
+  className={item.source_url ? "cursor-pointer hover:bg-muted/30" : "hover:bg-muted/30"}
+  onClick={() => {
+    if (item.source_url) {
+      window.open(item.source_url, '_blank', 'noopener,noreferrer');
+    }
+  }}
+>
 ```
 
-#### 2. MobileNav.tsx
-
-Same approach - move navItems inside component:
-
+**After:**
 ```tsx
-export function MobileNav() {
-  const { companyName, logoUrl } = useCompanySettings();
-  
-  const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
-    { icon: FolderKanban, label: 'Projects', path: '/projects' },
-    { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
-    { icon: Receipt, label: 'Expenses', path: '/expenses' },
-    { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
-    { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
-    { icon: Users, label: 'Vendors', path: '/vendors' },
-    { icon: Briefcase, label: companyName, path: '/business-expenses' },
-  ];
-  // ... rest of component
-}
+<TableRow 
+  key={item.id} 
+  className="hover:bg-muted/30"
+>
 ```
+
+### What stays the same
+The existing external link button (lines 489-499) already works independently:
+```tsx
+{item.source_url && (
+  <a 
+    href={item.source_url} 
+    target="_blank" 
+    rel="noopener noreferrer"
+    className="text-primary hover:text-primary/80"
+    onClick={(e) => e.stopPropagation()}
+  >
+    <ExternalLink className="h-3 w-3" />
+  </a>
+)}
+```
+
+This anchor tag will continue to function as expected, and we can remove the `stopPropagation` since there's no longer a parent click handler to stop.
 
 ### Result
-
-| Location | Before | After |
-|----------|--------|-------|
-| Sidebar nav link | "KCS Concepts" | Uses dynamic company name (e.g., "Testt") |
-| Mobile nav link | "KCS Concepts" | Uses dynamic company name (e.g., "Testt") |
-| Business Expenses header | Already dynamic | No change needed |
-
-### Technical Notes
-- The `navItems` array must be inside the component to access the hook value
-- No memoization needed since React will re-render when `companyName` changes
-- The `isActiveLink` helper function can remain outside the component in Sidebar.tsx
+- Clicking the row: No action (allows easy quantity editing, etc.)
+- Clicking the orange external link icon: Opens the product URL in a new tab
