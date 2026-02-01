@@ -457,7 +457,7 @@ export default function Expenses() {
         <QuickBooksIntegration projects={projects} onExpenseImported={fetchData} />
 
         {/* Summary */}
-        <div className="glass-card p-4 flex items-center justify-between">
+        <div className="glass-card p-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Receipt className="h-5 w-5 text-primary" />
@@ -470,12 +470,6 @@ export default function Expenses() {
                 {formatCurrency(totalExpenses)}
               </p>
             </div>
-          </div>
-          <div className="text-right text-sm text-muted-foreground">
-            <p>TX Sales Tax (8.25%)</p>
-            <p className="font-mono text-foreground">
-              {formatCurrency(filteredExpenses.filter(e => e.includes_tax).reduce((sum, e) => sum + (e.tax_amount || 0), 0))}
-            </p>
           </div>
         </div>
 
