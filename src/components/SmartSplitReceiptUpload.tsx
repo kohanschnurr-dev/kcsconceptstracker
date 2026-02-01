@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2 } from 'lucide-react';
+import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -119,6 +119,69 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       style: 'currency',
       currency: 'USD',
     }).format(amount);
+  };
+
+  // Match criteria helper functions
+  const isAmountMatch = (receiptAmount: number, qbAmount: number) => 
+    Math.abs(receiptAmount - qbAmount) <= 0.01;
+
+  const isDateInRange = (receiptDate: string, qbDate: string) => {
+    const receipt = new Date(receiptDate);
+    const transaction = new Date(qbDate);
+    const diffDays = (transaction.getTime() - receipt.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays >= -2 && diffDays <= 5;
+  };
+
+  const isVendorMatch = (vendor1: string, vendor2: string) => {
+    const norm1 = vendor1?.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim() || '';
+    const norm2 = vendor2?.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim() || '';
+    if (!norm1 || !norm2) return false;
+    return norm1 === norm2 || norm1.includes(norm2) || norm2.includes(norm1);
+  };
+
+  // Match criteria indicator component
+  const MatchIndicators = ({ receipt, qbExpense }: { receipt: PendingReceipt; qbExpense: QBExpense }) => {
+    const amountMatched = isAmountMatch(receipt.total_amount, qbExpense.amount);
+    const dateMatched = isDateInRange(receipt.purchase_date, qbExpense.date);
+    const vendorMatched = isVendorMatch(receipt.vendor_name, qbExpense.vendor_name || '');
+
+    return (
+      <div className="flex items-center gap-1">
+        <div
+          className={cn(
+            "h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold border",
+            amountMatched 
+              ? "bg-success/20 border-success text-success" 
+              : "bg-muted/50 border-muted-foreground/30 text-muted-foreground"
+          )}
+          title={amountMatched ? "Price matched" : "Price did not match"}
+        >
+          $
+        </div>
+        <div
+          className={cn(
+            "h-5 w-5 rounded-full flex items-center justify-center border",
+            dateMatched 
+              ? "bg-success/20 border-success text-success" 
+              : "bg-muted/50 border-muted-foreground/30 text-muted-foreground"
+          )}
+          title={dateMatched ? "Date within range" : "Date outside range"}
+        >
+          <CalendarIcon className="h-2.5 w-2.5" />
+        </div>
+        <div
+          className={cn(
+            "h-5 w-5 rounded-full flex items-center justify-center border",
+            vendorMatched 
+              ? "bg-success/20 border-success text-success" 
+              : "bg-muted/50 border-muted-foreground/30 text-muted-foreground"
+          )}
+          title={vendorMatched ? "Vendor matched" : "Vendor did not match"}
+        >
+          <Building className="h-2.5 w-2.5" />
+        </div>
+      </div>
+    );
   };
 
   const formatDate = (date: string) => {
@@ -758,9 +821,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                             <div className="flex items-center gap-2">
                               <Receipt className="h-4 w-4 text-success" />
                               <span className="font-medium">{match.receipt.vendor_name}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {match.receipt.match_confidence}% match
-                              </Badge>
+                              <MatchIndicators receipt={match.receipt} qbExpense={match.qbExpense} />
                             </div>
                             <div className="text-sm text-muted-foreground mt-1">
                               {formatCurrency(match.receipt.total_amount)} • {formatDate(match.receipt.purchase_date)}
@@ -899,10 +960,10 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 <Sparkles className="h-5 w-5 text-primary" />
               )}
               {selectedMatch?.isManual ? 'Manual Link' : 'SmartSplit Match Found'}
-              {selectedMatch && !selectedMatch.isManual && selectedMatch.receipt.match_confidence && (
-                <Badge variant="outline" className="text-xs ml-auto">
-                  {selectedMatch.receipt.match_confidence}% confidence
-                </Badge>
+              {selectedMatch && !selectedMatch.isManual && (
+                <div className="ml-auto">
+                  <MatchIndicators receipt={selectedMatch.receipt} qbExpense={selectedMatch.qbExpense} />
+                </div>
               )}
               {selectedMatch?.isManual && (
                 <Badge variant="secondary" className="text-xs ml-auto bg-primary/10 text-primary">
