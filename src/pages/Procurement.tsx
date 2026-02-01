@@ -373,10 +373,10 @@ export default function Procurement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Bundles</SelectItem>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
                   {bundles.map(b => (
                     <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                   ))}
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
