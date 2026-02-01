@@ -509,7 +509,7 @@ export default function BundleDetail() {
                               handleUpdateBundleQuantity(item.id, val);
                             }}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-16 h-8 text-right text-sm"
+                            className="w-16 h-8 text-center text-sm ml-auto"
                           />
                         </TableCell>
                         <TableCell className="text-right font-mono font-medium">
