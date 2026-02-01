@@ -1,92 +1,96 @@
 
 
-## Plan: Fix Receipt Details Modal Item Display
+## Plan: Improve Receipt Details Modal UI Layout
 
-### Problem Identified
+### Problems Identified
 
-The Receipt Details modal is displaying information incorrectly:
+Looking at the screenshot, the modal has several visual issues:
 
-**Current display (wrong):**
-- Shows vendor address ("THE HOME DEPOT 542 FORT WORTH TX XXXX1006") as the main description
-- Shows actual item details ("USG SHEETROCK BRAND...") as a secondary italic note
-- This is redundant since the vendor name is already displayed in the header
-
-**Database structure:**
-| Field | Contains | Example |
-|-------|----------|---------|
-| `vendor_name` | Vendor name | "Home Depot" |
-| `description` | Vendor address (redundant) | "THE HOME DEPOT 542 FORT WORTH TX XXXX1006" |
-| `notes` | Actual item details | "USG SHEETROCK BRAND ULTRALIGHT 1/2 IN. X 4 FT. X 8 FT. G (3x)" |
+1. **Long text wrapping badly** - The "Framing" item description is extremely long and wraps messily
+2. **Cramped layout** - Category badge and description run together
+3. **Amounts misaligned** - Should form a clean right-aligned column
+4. **No structure** - Items feel like random text blobs rather than organized line items
 
 ### Solution
 
-Update the item display in `GroupedExpenseDetailModal.tsx` to:
-1. Show `notes` as the primary item description (this has the actual product info)
-2. Hide the redundant `description` field that just shows the vendor address
-3. Clean up the layout for better readability
+Redesign the items list with a proper table-like structure:
 
----
+| Category Badge | Item Description (truncated) | Amount (right-aligned) |
+|----------------|------------------------------|------------------------|
+
+### Visual Design (Before vs After)
+
+**Before (current mess):**
+```
+[Framing]
+LP SMARTSIDE 8"X16' LP LAP SIDING (3x), WEATHERSHIELD 2X8-16FT #2PRIME PT GC WEATHERSHIELD (3x), UNBRANDED 2X8-16FT #2PRIME PT GC (1x)    $119.81
+```
+
+**After (clean layout):**
+```
+┌──────────────────────────────────────────────────────────────┐
+│ [Drywall]                                                    │
+│ USG SHEETROCK BRAND ULTRALIGHT 1/2 IN. X 4 F...     $31.60  │
+├──────────────────────────────────────────────────────────────┤
+│ [Framing]                                                    │
+│ LP SMARTSIDE 8"X16' LP LAP SIDING (3x), WEAT...    $119.81  │
+├──────────────────────────────────────────────────────────────┤
+│ [Demolition]                                                 │
+│ HUSKY HUSKY 42G CONTRACTOR BAGS 50CT (1x)           $32.44  │
+├──────────────────────────────────────────────────────────────┤
+│ [Hardware]                                                   │
+│ GRIP-RITE 3" PG10 EXT DECK SCREWS...                $27.57  │
+└──────────────────────────────────────────────────────────────┘
+```
 
 ### Technical Changes
 
 **File: `src/components/GroupedExpenseDetailModal.tsx`**
 
-Update the items list rendering (lines 267-289) to prioritize `notes` over `description`:
+Restructure the items list to:
+1. **Stack vertically** - Category badge on top, description below
+2. **Fixed amount column** - Use grid or flex with fixed-width right column
+3. **Proper truncation** - Limit description to 1-2 lines max with ellipsis
+4. **Add padding** - More breathing room between items
 
 ```typescript
-{expenses.map((expense, index) => (
-  <div key={expense.id} className="flex items-center justify-between p-3 hover:bg-muted/30">
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-2">
+{expenses.map((expense) => (
+  <div key={expense.id} className="p-3 hover:bg-muted/30">
+    <div className="flex items-start justify-between gap-4">
+      <div className="flex-1 min-w-0 space-y-1">
         <Badge variant="secondary" className="text-xs">
           {getCategoryLabel(expense.category_id, expense.project_id)}
         </Badge>
+        {expense.notes && (
+          <p 
+            className="text-xs text-muted-foreground line-clamp-2" 
+            title={expense.notes}
+          >
+            {expense.notes}
+          </p>
+        )}
       </div>
-      {/* Show notes as primary text (contains actual item descriptions) */}
-      {expense.notes && (
-        <p className="text-xs text-muted-foreground truncate mt-1 max-w-[350px]" title={expense.notes}>
-          {expense.notes}
-        </p>
-      )}
-      {/* Only show description if there's no notes AND it's not just a vendor address */}
-      {!expense.notes && expense.description && !expense.description.includes('XXXX') && (
-        <p className="text-xs text-muted-foreground truncate mt-1">
-          {expense.description}
-        </p>
-      )}
+      <span className="font-mono text-sm font-medium whitespace-nowrap">
+        {formatCurrency(expense.amount)}
+      </span>
     </div>
-    <span className="font-mono text-sm ml-4 flex-shrink-0">
-      {formatCurrency(expense.amount)}
-    </span>
   </div>
 ))}
 ```
 
----
-
-### Visual Result
-
-**Before:**
-```
-[Drywall]
-THE HOME DEPOT 542 FORT WORTH TX XXXX1006        $31.60
-Note: USG SHEETROCK BRAND ULTRALIGHT...
-```
-
-**After:**
-```
-[Drywall]
-USG SHEETROCK BRAND ULTRALIGHT 1/2 IN. X 4 FT... $31.60
-```
-
----
+Key CSS changes:
+- `line-clamp-2` - Limits text to 2 lines with ellipsis
+- `items-start` instead of `items-center` - Badge stays at top
+- `gap-4` - More space before amount
+- `whitespace-nowrap` on amount - Prevents wrap
+- `space-y-1` - Proper vertical spacing
 
 ### Summary
 
-| Change | Purpose |
-|--------|---------|
-| Show `notes` as primary description | Contains actual product/item details |
-| Hide vendor address in `description` | Redundant - vendor already shown in header |
-| Add title attribute for hover | Show full text on hover for truncated items |
-| Add `flex-shrink-0` to amount | Prevent amount from being squished |
+| Issue | Fix |
+|-------|-----|
+| Text wrapping badly | `line-clamp-2` to limit and truncate |
+| Cramped layout | Stack badge above description |
+| Amounts misaligned | `whitespace-nowrap` + `gap-4` |
+| No structure | Consistent padding and spacing |
 
