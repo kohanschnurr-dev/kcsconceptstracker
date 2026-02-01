@@ -1,74 +1,55 @@
 
 
-## Plan: Require Explicit Project Selection for Pipeline Tasks
+## Plan: Fix Tooltip Text Visibility in Spending Donut Chart
 
 ### Overview
 
-Change the project dropdown behavior so it doesn't auto-select "Other (No Project)" by default. Users must explicitly choose a project or select "Other" before they can add a task to the pipeline.
+The tooltip in the "Spending by Category" donut chart has unreadable text because the text color isn't being properly applied. The tooltip needs `itemStyle` and `labelStyle` properties to ensure the text is visible against the dark background.
 
 ---
 
-### Current Behavior
+### Current Issue
 
-- The project dropdown defaults to `'none'` which maps to "Other (No Project)"
-- User types task → clicks "Add to Pipeline" → task is created with no project automatically
-
-### New Behavior
-
-- The project dropdown starts with no selection (placeholder shown: "Select project...")
-- The "Add to Pipeline" button is disabled until a project is selected
-- User must explicitly choose "Other (No Project)" or a specific project
-- Once selected, the task can be added
+The tooltip has:
+- Dark background: `backgroundColor: 'hsl(220, 18%, 13%)'`
+- `color` in `contentStyle` which doesn't affect the actual tooltip text items
+- Missing `itemStyle` and `labelStyle` properties that control the text colors
 
 ---
 
 ### Technical Implementation
 
-**File: `src/pages/DailyLogs.tsx`**
+**File: `src/components/dashboard/SpendingDonutChart.tsx`**
 
-**1. Change initial state (line 71):**
+Update the Tooltip component (lines 101-109) to include proper text styling:
+
 ```tsx
 // BEFORE:
-const [newTaskProjectId, setNewTaskProjectId] = useState<string>('none');
+<Tooltip
+  formatter={(value: number) => formatCurrency(value)}
+  contentStyle={{
+    backgroundColor: 'hsl(220, 18%, 13%)',
+    border: '1px solid hsl(220, 15%, 22%)',
+    borderRadius: '8px',
+    color: 'hsl(210, 20%, 95%)',
+  }}
+/>
 
 // AFTER:
-const [newTaskProjectId, setNewTaskProjectId] = useState<string>('');
-```
-
-**2. Update form submission logic (line 242):**
-```tsx
-// BEFORE:
-project_id: newTaskProjectId === 'none' ? null : newTaskProjectId,
-
-// AFTER:
-project_id: newTaskProjectId === 'none' || newTaskProjectId === '' ? null : newTaskProjectId,
-```
-
-**3. Reset state after creation (line 248):**
-```tsx
-// BEFORE:
-setNewTaskProjectId('none');
-
-// AFTER:
-setNewTaskProjectId('');
-```
-
-**4. Update button disabled condition (lines 606-609):**
-```tsx
-// BEFORE:
-disabled={!newTaskTitle.trim() || isCreating}
-
-// AFTER (for Master Pipeline):
-disabled={!newTaskTitle.trim() || isCreating || (checklistTab === 'master' && !newTaskProjectId)}
-```
-
-**5. Update Select placeholder (lines 594-596):**
-```tsx
-// BEFORE:
-<SelectValue placeholder="Project (optional)" />
-
-// AFTER:
-<SelectValue placeholder="Select project..." />
+<Tooltip
+  formatter={(value: number) => formatCurrency(value)}
+  contentStyle={{
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '8px',
+  }}
+  itemStyle={{
+    color: 'hsl(var(--foreground))',
+  }}
+  labelStyle={{
+    color: 'hsl(var(--foreground))',
+  }}
+/>
 ```
 
 ---
@@ -77,14 +58,11 @@ disabled={!newTaskTitle.trim() || isCreating || (checklistTab === 'master' && !n
 
 | File | Changes |
 |------|---------|
-| `src/pages/DailyLogs.tsx` | Change default project state from `'none'` to `''`, update button disabled logic, update placeholder text |
+| `src/components/dashboard/SpendingDonutChart.tsx` | Add `itemStyle` and `labelStyle` with proper text color, use CSS variables for theme consistency |
 
 ---
 
 ### Result
 
-- When in Master Pipeline view, the project dropdown shows "Select project..." by default
-- The "Add to Pipeline" button is disabled until user selects a project (including "Other")
-- Daily Sprint tasks are unaffected (they don't show the project dropdown)
-- After adding a task, the dropdown resets to require selection again
+The tooltip text will be clearly visible with proper contrast against the dark background, using the app's theme-aware CSS variables for consistent styling across light/dark modes.
 
