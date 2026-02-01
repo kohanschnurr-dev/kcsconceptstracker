@@ -164,8 +164,19 @@ export function GroupedExpenseRow({
         <td className="!text-center capitalize">{parentExpense.payment_method}</td>
         <td className="!text-center">
           <div className="flex items-center justify-center gap-2">
-            {hasReceipt && (
-              <Paperclip className="h-4 w-4 text-primary" />
+        {hasReceipt && (
+              <button
+                onClick={(e) => {
+                  const expenseWithReceipt = expenses.find(exp => exp.receipt_url);
+                  if (expenseWithReceipt?.receipt_url) {
+                    handleViewReceipt(expenseWithReceipt.receipt_url, e);
+                  }
+                }}
+                className="text-primary hover:text-primary/80 transition-colors"
+                title="View receipt"
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
             )}
             <span className="font-mono font-semibold">
               {formatCurrency(totalAmount)}
