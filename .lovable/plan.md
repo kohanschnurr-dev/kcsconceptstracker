@@ -1,173 +1,101 @@
 
-## Fix: Receipt Parser to Handle Discounts
 
-### The Problem
-The Home Depot receipt has a **Discount** column that the AI parser ignores:
+## Plan: Fix Matching Issues & Add Manual Transaction Selection
 
-| Column | Example Value | What AI Extracts | What We Need |
-|--------|---------------|------------------|--------------|
-| Unit Price | $6.78 | $6.78 | - |
-| Discount | $5.29 | (ignored) | - |
-| Net Unit Price | $1.49 | (ignored) | $1.49 |
-| Pre Tax Amount | $1.49 | (ignored) | $1.49 |
+### Problem 1: Matching Failed Despite Same Amount
 
-**Result**: Split total shows $127.10 instead of the correct $102.98 subtotal (difference = $15.62 discount)
+The receipt and transaction both show $111.48 but didn't match. Looking at the `match-receipts` edge function, matching requires:
 
----
+1. **Exact amount match** (within $0.01) 
+2. **Date within range** (receipt date -2 to +5 days of transaction date)
+3. **Vendor similarity > 0.3** (fuzzy name matching)
 
-### Solution Overview
+Possible failure reasons:
+- Receipt date vs transaction date might be outside the 2-day before / 5-day after window
+- Vendor name extraction from the parsed receipt might differ significantly
 
-Update the receipt parsing AI prompt to:
-1. Detect receipts with discount columns (Home Depot, Lowe's, etc.)
-2. Use **Net Unit Price** or **Pre Tax Amount** instead of Unit Price
-3. Extract the total discount as a separate field
-4. Add validation: line items should sum to subtotal (after discounts)
+**Solution**: Add debug logging in the match modal showing WHY a match failed, so you can see which criterion wasn't met.
 
 ---
 
-### Technical Changes
+### Problem 2: Manual Transaction Selection (New Feature)
 
-**File: `supabase/functions/parse-receipt-image/index.ts`**
+Add a dropdown in the "Awaiting Bank Transaction" section that lets you manually select a QuickBooks transaction for any pending receipt. The workflow:
 
-**1. Update ReceiptData Interface**
-
-Add a discount field to track total discounts:
-
-```typescript
-interface ReceiptData {
-  vendor_name: string;
-  total_amount: number;
-  tax_amount: number;
-  subtotal: number;
-  discount_amount: number;  // NEW: Total discount applied
-  purchase_date: string;
-  line_items: {
-    item_name: string;
-    quantity: number;
-    unit_price: number;      // Should be NET price (after discount)
-    total_price: number;     // Should be NET total
-    discount: number;        // NEW: Discount per line item
-    suggested_category: string;
-  }[];
-}
-```
-
-**2. Update AI System Prompt**
-
-Add specific instructions for discount handling:
-
-```text
-═══════════════════════════════════════════════════════
-DISCOUNT HANDLING (HOME DEPOT, LOWE'S, ETC.)
-═══════════════════════════════════════════════════════
-
-Many receipts have DISCOUNT columns. ALWAYS use the AFTER-DISCOUNT price!
-
-HOME DEPOT RECEIPT COLUMNS:
-| Item | Qty | Unit Price | Discount | Net Unit Price | Pre Tax Amount |
-|------|-----|------------|----------|----------------|----------------|
-| Board| 1   | $6.78      | $5.29    | $1.49          | $1.49          |
-
-EXTRACTION RULE:
-- unit_price = "Net Unit Price" column (NOT "Unit Price")
-- total_price = "Pre Tax Amount" column
-- discount = value from "Discount" column (per item)
-
-If receipt shows:
-  Subtotal: $102.98
-  Discount: -$15.62
-  Tax: $8.50
-  Total: $111.48
-
-Then:
-- subtotal = 102.98 (the discounted subtotal)
-- discount_amount = 15.62
-- tax_amount = 8.50
-- total_amount = 111.48
-- Sum of line item total_price values MUST equal 102.98
-
-VALIDATION: 
-subtotal + tax_amount = total_amount (discount already subtracted)
-```
-
-**3. Update User Prompt JSON Schema**
-
-```json
-{
-  "vendor_name": "THE HOME DEPOT",
-  "total_amount": 111.48,
-  "tax_amount": 8.50,
-  "subtotal": 102.98,
-  "discount_amount": 15.62,
-  "purchase_date": "2026-01-28",
-  "line_items": [
-    {
-      "item_name": "1 in. x 4 in. x 12 ft. Ground Contact Board",
-      "quantity": 1,
-      "unit_price": 1.49,
-      "total_price": 1.49,
-      "discount": 5.29,
-      "suggested_category": "framing"
-    }
-  ]
-}
-```
-
-**4. Add Post-Processing Validation**
-
-Add logic to detect and warn about discount issues:
-
-```typescript
-// Validate discount detection
-const lineItemsTotal = cleanedData.line_items.reduce((sum, item) => sum + item.total_price, 0);
-const expectedSubtotal = cleanedData.subtotal;
-const difference = Math.abs(lineItemsTotal - expectedSubtotal);
-
-// If difference matches discount_amount, the AI used wrong price column
-if (cleanedData.discount_amount > 0 && Math.abs(difference - cleanedData.discount_amount) < 1) {
-  console.warn("AI may have used pre-discount prices. Attempting correction...");
-  // Scale down line items proportionally
-  const scaleFactor = expectedSubtotal / lineItemsTotal;
-  cleanedData.line_items = cleanedData.line_items.map(item => ({
-    ...item,
-    unit_price: Math.round(item.unit_price * scaleFactor * 100) / 100,
-    total_price: Math.round(item.total_price * scaleFactor * 100) / 100,
-  }));
-}
-```
+1. For each pending receipt (In-Store Purchase, Amazon, Pro in your screenshot), add a "Link Transaction" button
+2. When clicked, shows a dropdown of all pending QuickBooks transactions (like the Home Depot $111.48 below)
+3. Selecting one creates a manual match, opening the split import modal
+4. Debug info displayed showing why auto-match failed
 
 ---
 
-### Data Flow After Fix
+### Technical Implementation
 
-```text
-Receipt Image → AI Parser
-                    ↓
-              Detects discount columns
-                    ↓
-              Uses Net Unit Price (not Unit Price)
-                    ↓
-              Returns: subtotal=$102.98, discount=$15.62
-                    ↓
-              SmartSplit shows: Split Total = $102.98 + $8.50 tax = $111.48 ✓
-```
+**File: `src/components/SmartSplitReceiptUpload.tsx`**
+
+1. **Add state for manual transaction selection**
+   - `availableQbExpenses`: List of pending QuickBooks transactions
+   - `manualLinkingReceiptId`: Track which receipt is being manually linked
+
+2. **Fetch pending QB transactions** (already available from QuickBooks integration)
+   - Pass `pendingExpenses` from `useQuickBooks` hook as a prop
+   - OR fetch directly from `quickbooks_expenses` table where `is_imported = false`
+
+3. **Add "Link Transaction" dropdown to each pending receipt card**
+   ```text
+   ┌─────────────────────────────────────────────────────────┐
+   │ 📷 In-Store Purchase                                   │
+   │ $111.48 • Jan 28, 2026 • 11 items parsed               │
+   │ [Link Transaction ▾]                          🗑️       │
+   └─────────────────────────────────────────────────────────┘
+   
+   Dropdown shows:
+   ┌─────────────────────────────────────────────────────┐
+   │ Home Depot - $111.48 - Jan 28, 2026               │
+   │ PayPal CentralMech - $374.50 - Jan 27, 2026       │
+   │ ...                                                │
+   └─────────────────────────────────────────────────────┘
+   ```
+
+4. **Manual match function**
+   - When a QB transaction is selected, create a `MatchedExpense` object manually
+   - Call `acceptMatch()` to open the split import modal
+   - Include debug info showing the match was manual
+
+5. **Debug information display**
+   - In the match modal header, show match source: "Auto (92% confidence)" or "Manual link"
+   - Optionally show why auto-match failed for manual links
 
 ---
 
 ### Files to Modify
 
-| File | Change |
-|------|--------|
-| `supabase/functions/parse-receipt-image/index.ts` | Update ReceiptData interface, AI prompt, and validation logic |
+| File | Changes |
+|------|---------|
+| `src/components/SmartSplitReceiptUpload.tsx` | Add manual transaction linking UI and logic |
 
 ---
 
-### Summary
+### UI Changes Summary
 
-The fix updates the AI receipt parser to:
-1. Recognize discount columns on Home Depot/Lowe's receipts
-2. Extract the **net price** (after discount) instead of the original unit price
-3. Track the total discount amount separately
-4. Add fallback correction if the AI uses wrong price column
+1. Each pending receipt card gets a "Link Transaction" dropdown
+2. Dropdown shows all pending QB transactions with vendor, amount, date
+3. Selecting a transaction manually creates the match and opens the import modal
+4. Match modal shows whether match was automatic or manual (for debugging)
 
-This ensures split totals match the actual transaction amount.
+---
+
+### Data Flow
+
+```text
+Pending Receipt (waiting)
+    │
+    ├── [Auto] Find Matches → Match found? → Open Import Modal
+    │
+    └── [Manual] Link Transaction dropdown
+                    │
+                    └── Select QB Transaction → Open Import Modal
+                                                  │
+                                                  └── Assign project & Import
+```
+
