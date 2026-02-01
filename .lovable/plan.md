@@ -1,57 +1,88 @@
 
-## Plan: Enlarge Expand/Collapse Hit Area
 
-### Overview
-Make the entire date cell clickable for expand/collapse on grouped expense rows, so users don't have to precisely click the small arrow icon.
+## Plan: Fix SmartSplit Amount Calculation Bug
 
-### Change
+### Problem Identified
 
-**File: `src/components/expenses/GroupedExpenseRow.tsx`**
+SmartSplit is creating expense records with amounts based on the **receipt's line item totals** instead of proportionally distributing the **QuickBooks transaction amount**.
 
-Convert the date cell content from a small button + text into a single clickable area that spans the whole cell.
+**Example from the data:**
+- Original QB transaction: `purchase_801` = **$111.48** (the real bank charge)
+- Receipt parsed with line items totaling: $201.31 (subtotal) + $20.04 (tax) = $221.35
+- SmartSplit created:
+  - Carpentry: $111.48 (from receipt line items)
+  - Drywall: $15.04
+  - Painting: $69.44
+  - Hardware: $25.39
+  - **Total: $221.35** ← Exceeds the actual QB transaction!
 
-### Technical Details
+### Root Cause
 
-**Current structure (lines 134-151):**
-```tsx
-<td className="whitespace-nowrap">
-  <div className="flex items-center gap-1">
-    <button onClick={(e) => {...}} className="p-1 -ml-1 hover:bg-muted/50 rounded">
-      {isExpanded ? <ChevronDown /> : <ChevronRight />}
-    </button>
-    {formatDisplayDate(parentExpense.date)}
-  </div>
-</td>
+In `SmartSplitReceiptUpload.tsx` lines 570-573:
+```typescript
+const proportion = subtotal > 0 ? group.total / subtotal : 0;
+const categoryTax = Math.round(taxAmount * proportion * 100) / 100;
+const categoryAmount = Math.round((group.total + categoryTax) * 100) / 100;
 ```
 
-**New structure:**
-```tsx
-<td 
-  className="whitespace-nowrap cursor-pointer hover:bg-muted/30 transition-colors"
-  onClick={(e) => {
-    e.stopPropagation();
-    setIsExpanded(!isExpanded);
-  }}
->
-  <div className="flex items-center gap-1">
-    {isExpanded ? (
-      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-    ) : (
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-    )}
-    {formatDisplayDate(parentExpense.date)}
-  </div>
-</td>
+The code uses `group.total` (receipt line item total) instead of scaling to the QB transaction amount.
+
+### Solution
+
+Scale each category's amount proportionally to the QB transaction amount:
+
+```typescript
+// Get the actual QB transaction amount
+const qbTransactionAmount = selectedMatch.qbExpense.amount;
+
+// For each category, calculate its proportion and scale to QB amount
+const proportion = subtotal > 0 ? group.total / subtotal : 0;
+const categoryAmount = Math.round(qbTransactionAmount * proportion * 100) / 100;
 ```
 
-### Key Changes
-1. Move the `onClick` handler from the button to the entire `<td>` cell
-2. Add `cursor-pointer` and hover styling to the cell
-3. Remove the inner button wrapper - the chevron icon becomes a simple visual indicator
-4. Keep `e.stopPropagation()` so clicking the date doesn't also trigger the row's detail modal
+### Technical Changes
 
-### Result
-- Clicking anywhere on the date (including the chevron) toggles expand/collapse
-- Much larger hit area - the entire date cell is clickable
-- Visual feedback on hover shows the cell is interactive
-- Clicking other cells still opens the expense detail modal as before
+**File: `src/components/SmartSplitReceiptUpload.tsx`**
+
+| Location | Change |
+|----------|--------|
+| ~Line 559 | Add `const qbTransactionAmount = selectedMatch.qbExpense.amount;` |
+| Lines 570-573 | Calculate proportional amounts based on QB transaction amount, not receipt totals |
+
+**Before:**
+```typescript
+const proportion = subtotal > 0 ? group.total / subtotal : 0;
+const categoryTax = Math.round(taxAmount * proportion * 100) / 100;
+const categoryAmount = Math.round((group.total + categoryTax) * 100) / 100;
+```
+
+**After:**
+```typescript
+// Calculate proportion of this category relative to receipt subtotal
+const proportion = subtotal > 0 ? group.total / subtotal : 0;
+// Scale to actual QB transaction amount (which includes tax already)
+const categoryAmount = Math.round(qbTransactionAmount * proportion * 100) / 100;
+```
+
+### Data Fix Required
+
+The existing incorrectly-split records need to be corrected. For `purchase_801`:
+- Current total: $221.35 (sum of all 4 records)
+- Should be: $111.48 (the actual QB transaction)
+- Each split amount should be scaled down by ratio: $111.48 / $221.35 = 0.5035
+
+**Corrected amounts:**
+| Category | Current | Corrected (proportional to $111.48) |
+|----------|---------|-------------------------------------|
+| Carpentry | $111.48 | $56.11 (50.35% of $111.48) |
+| Drywall | $15.04 | $7.57 |
+| Painting | $69.44 | $34.95 |
+| Hardware | $25.39 | $12.78 |
+| **Total** | $221.35 | **$111.41** (rounding) |
+
+### Summary
+
+1. Fix the SmartSplit calculation to use QB transaction amount
+2. Update the validation warning to catch mismatches between receipt total and QB total
+3. Consider adding a database migration or manual fix for existing incorrect data
+
