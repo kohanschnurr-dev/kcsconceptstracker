@@ -319,8 +319,21 @@ export default function Expenses() {
       groups.get(parentId)!.push(expense);
     });
     
+    // Filter out parent records when splits exist (prevents double-counting legacy data)
+    const filteredGroups = Array.from(groups.entries()).map(([parentId, groupExpenses]) => {
+      if (groupExpenses.length > 1) {
+        // Multiple expenses in group - filter out any that don't have _split_ in qb_id
+        // (these would be duplicate parent records from legacy imports)
+        const splitOnly = groupExpenses.filter(e => 
+          !e.qb_id || e.qb_id.includes('_split_')
+        );
+        return splitOnly.length > 0 ? splitOnly : groupExpenses;
+      }
+      return groupExpenses;
+    });
+    
     // Convert to array and sort by first expense date
-    return Array.from(groups.values()).sort((a, b) => {
+    return filteredGroups.sort((a, b) => {
       return new Date(b[0].date).getTime() - new Date(a[0].date).getTime();
     });
   }, [filteredExpenses]);
