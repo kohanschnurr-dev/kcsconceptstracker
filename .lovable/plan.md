@@ -1,77 +1,57 @@
 
-## Plan: Fix Category Totals in Grouped Expense Rows
+## Plan: Enlarge Expand/Collapse Hit Area
 
-### Issue Analysis
+### Overview
+Make the entire date cell clickable for expand/collapse on grouped expense rows, so users don't have to precisely click the small arrow icon.
 
-Based on my investigation:
-
-1. **Database values are correct** - Each split expense has its individual amount stored properly
-2. **Display code looks correct** - Child rows use `expense.amount` (line 220) for each individual expense
-3. **Parent total is calculated correctly** - Sum of all expenses in the group (line 45)
-
-However, the user reports that some categories show the parent's total instead of individual amounts. This suggests a possible data synchronization or grouping issue.
-
-### Root Cause Hypothesis
-
-After extensive analysis, I cannot reproduce the exact bug with current database state. However, the most likely causes are:
-
-1. **Data ordering issue**: Expenses within a group may not be in consistent order
-2. **Stale data from a previous import**: A past SmartSplit operation may have left inconsistent data that has since been corrected
-
-### Recommended Changes
+### Change
 
 **File: `src/components/expenses/GroupedExpenseRow.tsx`**
 
-#### 1. Add Debug Logging (Temporary)
-Add console logging to help diagnose if the issue recurs - this will show exactly what data is being rendered.
+Convert the date cell content from a small button + text into a single clickable area that spans the whole cell.
 
-#### 2. Ensure Consistent Ordering Within Groups
-Sort expenses within each group so the original QB expense (without `_split_`) always comes first, followed by splits.
+### Technical Details
 
-### Code Changes
-
-**Change 1: Sort expenses within the group to ensure consistent ordering**
-
-Currently, `expenses[0]` is used as `parentExpense`, but the order depends on how they were fetched. We should sort so the original (non-split) QB record is always first.
-
+**Current structure (lines 134-151):**
 ```tsx
-// After line 41, before line 43
-// Sort expenses so original QB expense comes first, then splits
-const sortedExpenses = [...expenses].sort((a, b) => {
-  // Non-split QB IDs should come first
-  const aIsSplit = a.qb_id?.includes('_split_') ?? false;
-  const bIsSplit = b.qb_id?.includes('_split_') ?? false;
-  if (aIsSplit && !bIsSplit) return 1;
-  if (!aIsSplit && bIsSplit) return -1;
-  return 0;
-});
+<td className="whitespace-nowrap">
+  <div className="flex items-center gap-1">
+    <button onClick={(e) => {...}} className="p-1 -ml-1 hover:bg-muted/50 rounded">
+      {isExpanded ? <ChevronDown /> : <ChevronRight />}
+    </button>
+    {formatDisplayDate(parentExpense.date)}
+  </div>
+</td>
 ```
 
-Then use `sortedExpenses` instead of `expenses` throughout the component.
-
-**Change 2: Add qb_id to the DBExpense interface**
-
-The interface needs `qb_id` for the sorting to work:
-
+**New structure:**
 ```tsx
-interface DBExpense {
-  // ... existing fields
-  qb_id?: string | null;
-}
+<td 
+  className="whitespace-nowrap cursor-pointer hover:bg-muted/30 transition-colors"
+  onClick={(e) => {
+    e.stopPropagation();
+    setIsExpanded(!isExpanded);
+  }}
+>
+  <div className="flex items-center gap-1">
+    {isExpanded ? (
+      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+    ) : (
+      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    )}
+    {formatDisplayDate(parentExpense.date)}
+  </div>
+</td>
 ```
 
-### Technical Summary
-
-| Location | Change |
-|----------|--------|
-| Line 7-22 | Add `qb_id` to DBExpense interface |
-| Lines 40-45 | Sort expenses before processing, use sortedExpenses |
-| Lines 52, 54, 56 | Use sortedExpenses instead of expenses |
-| Lines 121-182 | Use sortedExpenses for parent row |
-| Lines 189-224 | Use sortedExpenses for child rows |
+### Key Changes
+1. Move the `onClick` handler from the button to the entire `<td>` cell
+2. Add `cursor-pointer` and hover styling to the cell
+3. Remove the inner button wrapper - the chevron icon becomes a simple visual indicator
+4. Keep `e.stopPropagation()` so clicking the date doesn't also trigger the row's detail modal
 
 ### Result
-- Expenses within a group are always in consistent order
-- The original QB expense (with the first category's amount) is always first
-- Child rows continue to display their individual amounts correctly
-- Better debugging capability if the issue recurs
+- Clicking anywhere on the date (including the chevron) toggles expand/collapse
+- Much larger hit area - the entire date cell is clickable
+- Visual feedback on hover shows the cell is interactive
+- Clicking other cells still opens the expense detail modal as before
