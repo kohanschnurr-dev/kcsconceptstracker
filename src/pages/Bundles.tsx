@@ -238,12 +238,7 @@ export default function Bundles() {
                 <CardContent className="pt-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">{bundle.name}</h3>
-                      {bundle.projectName ? (
-                        <p className="text-sm text-muted-foreground truncate">→ {bundle.projectName}</p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">Not assigned</p>
-                      )}
+                    <h3 className="font-semibold text-foreground truncate">{bundle.name}</h3>
                     </div>
                     <div className="flex items-center gap-1 ml-2">
                       <Button 

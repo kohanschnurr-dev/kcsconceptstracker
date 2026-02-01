@@ -294,13 +294,6 @@ export default function BundleDetail() {
                 <FolderOpen className="h-6 w-6 text-primary" />
                 {bundle.name}
               </h1>
-              {project ? (
-                <p className="text-muted-foreground">
-                  Assigned to: <span className="text-foreground">{project.name}</span>
-                </p>
-              ) : (
-                <p className="text-muted-foreground italic">Not assigned to a project</p>
-              )}
             </div>
           </div>
           <div className="flex gap-2">
