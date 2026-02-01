@@ -1,56 +1,50 @@
 
 
-## Plan: Fix Tooltip Text Visibility in Spending Donut Chart
+## Plan: Improve Calendar Header Alignment
 
 ### Overview
 
-The tooltip in the "Spending by Category" donut chart has unreadable text because the text color isn't being properly applied. The tooltip needs `itemStyle` and `labelStyle` properties to ensure the text is visible against the dark background.
+The Calendar header currently has inconsistent vertical alignment and spacing between elements. This plan will standardize heights, improve spacing consistency, and ensure all controls align properly in a single row.
 
 ---
 
-### Current Issue
+### Current Issues (from screenshot)
 
-The tooltip has:
-- Dark background: `backgroundColor: 'hsl(220, 18%, 13%)'`
-- `color` in `contentStyle` which doesn't affect the actual tooltip text items
-- Missing `itemStyle` and `labelStyle` properties that control the text colors
+1. **Inconsistent heights**: The Weather widget, view toggle group, project dropdown, and "Add Project Event" button have slightly different heights
+2. **Spacing inconsistency**: Gap between elements varies
+3. **Vertical alignment**: Elements don't align perfectly along the center line
 
 ---
 
 ### Technical Implementation
 
-**File: `src/components/dashboard/SpendingDonutChart.tsx`**
+**File: `src/components/calendar/CalendarHeader.tsx`**
 
-Update the Tooltip component (lines 101-109) to include proper text styling:
+**1. Standardize button heights (h-9 throughout):**
+- View toggle buttons: Change from `h-8` to `h-9`
+- Navigation buttons: Keep at `h-8` (smaller is fine for icon-only)
+- Project dropdown: Already `h-9` - good
 
-```tsx
-// BEFORE:
-<Tooltip
-  formatter={(value: number) => formatCurrency(value)}
-  contentStyle={{
-    backgroundColor: 'hsl(220, 18%, 13%)',
-    border: '1px solid hsl(220, 15%, 22%)',
-    borderRadius: '8px',
-    color: 'hsl(210, 20%, 95%)',
-  }}
-/>
+**2. Adjust the toggle button container:**
+- Add consistent padding and ensure the group container aligns with other elements
 
-// AFTER:
-<Tooltip
-  formatter={(value: number) => formatCurrency(value)}
-  contentStyle={{
-    backgroundColor: 'hsl(var(--card))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '8px',
-  }}
-  itemStyle={{
-    color: 'hsl(var(--foreground))',
-  }}
-  labelStyle={{
-    color: 'hsl(var(--foreground))',
-  }}
-/>
-```
+**3. Update the "Add Project Event" button in NewEventModal:**
+- Ensure it has `h-9` height to match other controls
+
+---
+
+**File: `src/components/calendar/WeatherWidget.tsx`**
+
+**4. Match weather widget height with other controls:**
+- Adjust padding from `py-1.5` to `py-1` and ensure it aligns with `h-9` elements
+- Ensure consistent `min-h-[36px]` (h-9 = 36px)
+
+---
+
+**File: `src/components/calendar/NewEventModal.tsx`**
+
+**5. Standardize trigger button:**
+- Add explicit `h-9` to the trigger button for consistency
 
 ---
 
@@ -58,11 +52,17 @@ Update the Tooltip component (lines 101-109) to include proper text styling:
 
 | File | Changes |
 |------|---------|
-| `src/components/dashboard/SpendingDonutChart.tsx` | Add `itemStyle` and `labelStyle` with proper text color, use CSS variables for theme consistency |
+| `src/components/calendar/CalendarHeader.tsx` | Standardize toggle button heights to h-9, improve container padding |
+| `src/components/calendar/WeatherWidget.tsx` | Adjust padding/min-height to match h-9 standard |
+| `src/components/calendar/NewEventModal.tsx` | Add h-9 to trigger button |
 
 ---
 
 ### Result
 
-The tooltip text will be clearly visible with proper contrast against the dark background, using the app's theme-aware CSS variables for consistent styling across light/dark modes.
+All header elements will:
+- Have consistent 36px (h-9) heights
+- Align perfectly along the vertical center
+- Maintain uniform spacing between groups
+- Look clean and professional
 
