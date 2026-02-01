@@ -68,7 +68,7 @@ export default function DailyLogs() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskProjectId, setNewTaskProjectId] = useState<string>('none');
+  const [newTaskProjectId, setNewTaskProjectId] = useState<string>('');
   const [isCreating, setIsCreating] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -239,13 +239,13 @@ export default function DailyLogs() {
           priority_level: 'medium',
           is_daily: isDaily,
           scheduled_date: isDaily ? todayStr : null,
-          project_id: newTaskProjectId === 'none' ? null : newTaskProjectId,
+          project_id: newTaskProjectId === 'none' || newTaskProjectId === '' ? null : newTaskProjectId,
         });
 
       if (error) throw error;
 
       setNewTaskTitle('');
-      setNewTaskProjectId('none');
+      setNewTaskProjectId('');
       toast({ 
         title: 'Task created', 
         description: isDaily ? 'Added to today\'s sprint' : 'Added to master pipeline' 
@@ -593,7 +593,7 @@ export default function DailyLogs() {
               {checklistTab === 'master' && (
                 <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
                   <SelectTrigger className="w-full sm:w-44 h-11 sm:h-10">
-                    <SelectValue placeholder="Project (optional)" />
+                    <SelectValue placeholder="Select project..." />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Other (No Project)</SelectItem>
@@ -605,7 +605,7 @@ export default function DailyLogs() {
               )}
               <Button 
                 type="submit" 
-                disabled={!newTaskTitle.trim() || isCreating}
+                disabled={!newTaskTitle.trim() || isCreating || (checklistTab === 'master' && !newTaskProjectId)}
                 className="w-full sm:w-auto h-11 sm:h-10"
               >
                 {checklistTab === 'daily' ? 'Add to Today' : 'Add to Pipeline'}
