@@ -172,17 +172,17 @@ serve(async (req) => {
           continue; // Date must be within range
         }
 
-        // Calculate vendor similarity
+        // Calculate vendor similarity (bonus only, doesn't block)
         const vendorScore = vendorSimilarity(receipt.vendor_name, qbExpense.vendor_name);
         
-        // Minimum vendor similarity threshold
-        if (vendorScore < 0.3) {
-          continue;
-        }
+        // Debug logging
+        console.log(`Receipt ${receipt.id}: amount=${receiptAmount}, date=${receipt.purchase_date}, vendor="${receipt.vendor_name}"`);
+        console.log(`  vs QB ${qbExpense.qb_id}: amount=${qbAmount}, date=${qbExpense.date}, vendor="${qbExpense.vendor_name}"`);
+        console.log(`  → Amount diff: ${Math.abs(receiptAmount - qbAmount)}, Date in range: ${dateMatch}, Vendor score: ${vendorScore}`);
 
         // Calculate overall confidence
-        // Amount match = 50%, Date in range = 20%, Vendor similarity = 30%
-        const confidence = 0.5 + 0.2 + (vendorScore * 0.3);
+        // Amount match = 60%, Date in range = 30%, Vendor similarity = 10% (bonus)
+        const confidence = 0.6 + 0.3 + (vendorScore * 0.1);
 
         if (confidence > bestConfidence) {
           bestConfidence = confidence;
@@ -198,7 +198,8 @@ serve(async (req) => {
         }
       }
 
-      if (bestMatch && bestConfidence >= 0.7) {
+      // 85% threshold: Amount + Date = 90% base, so this will match
+      if (bestMatch && bestConfidence >= 0.85) {
         matches.push(bestMatch);
 
         // Update the receipt status to matched
