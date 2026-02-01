@@ -80,15 +80,15 @@ export function GroupedExpenseRow({
             )}
           </div>
         </td>
-        <td>{getProjectName(expense.project_id)}</td>
-        <td>
+        <td className="text-center">{getProjectName(expense.project_id)}</td>
+        <td className="text-center">
           <Badge variant="secondary" className="text-xs">
             {getCategoryLabel(expense.category_id, expense.project_id)}
           </Badge>
         </td>
-        <td className="capitalize">{expense.payment_method}</td>
-        <td className="text-right">
-          <div className="flex items-center justify-end gap-2">
+        <td className="text-center capitalize">{expense.payment_method}</td>
+        <td className="text-center">
+          <div className="flex items-center justify-center gap-2">
             {expense.receipt_url && (
               <button
                 onClick={(e) => handleViewReceipt(expense.receipt_url!, e)}
@@ -105,18 +105,6 @@ export function GroupedExpenseRow({
               )}
             </span>
           </div>
-        </td>
-        <td>
-          <Badge
-            variant="outline"
-            className={cn(
-              expense.status === 'actual' 
-                ? 'bg-success/10 text-success border-success/30'
-                : 'bg-warning/10 text-warning border-warning/30'
-            )}
-          >
-            {expense.status}
-          </Badge>
         </td>
       </tr>
     );
@@ -155,15 +143,15 @@ export function GroupedExpenseRow({
             )}
           </div>
         </td>
-        <td>{getProjectName(parentExpense.project_id)}</td>
-        <td>
+        <td className="text-center">{getProjectName(parentExpense.project_id)}</td>
+        <td className="text-center">
           <Badge variant="secondary" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">
             Multiple
           </Badge>
         </td>
-        <td className="capitalize">{parentExpense.payment_method}</td>
-        <td className="text-right">
-          <div className="flex items-center justify-end gap-2">
+        <td className="text-center capitalize">{parentExpense.payment_method}</td>
+        <td className="text-center">
+          <div className="flex items-center justify-center gap-2">
             {hasReceipt && (
               <Paperclip className="h-4 w-4 text-primary" />
             )}
@@ -171,14 +159,6 @@ export function GroupedExpenseRow({
               {formatCurrency(totalAmount)}
             </span>
           </div>
-        </td>
-        <td>
-          <Badge
-            variant="outline"
-            className="bg-success/10 text-success border-success/30"
-          >
-            actual
-          </Badge>
         </td>
       </tr>
       
@@ -205,15 +185,15 @@ export function GroupedExpenseRow({
               )}
             </div>
           </td>
-          <td className="text-muted-foreground text-sm">—</td>
-          <td>
+          <td className="text-center text-muted-foreground text-sm">—</td>
+          <td className="text-center">
             <Badge variant="secondary" className="text-xs">
               {getCategoryLabel(expense.category_id, expense.project_id)}
             </Badge>
           </td>
-          <td className="text-muted-foreground text-sm">—</td>
-          <td className="text-right">
-            <div className="flex items-center justify-end gap-2">
+          <td className="text-center text-muted-foreground text-sm">—</td>
+          <td className="text-center">
+            <div className="flex items-center justify-center gap-2">
               {expense.receipt_url && (
                 <button
                   onClick={(e) => handleViewReceipt(expense.receipt_url!, e)}
@@ -228,7 +208,6 @@ export function GroupedExpenseRow({
               </span>
             </div>
           </td>
-          <td></td>
         </tr>
       ))}
     </>
