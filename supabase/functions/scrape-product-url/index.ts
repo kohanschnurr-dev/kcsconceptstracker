@@ -689,9 +689,34 @@ Deno.serve(async (req) => {
     console.log('Scraping product URL:', formattedUrl);
 
     // Use Firecrawl to scrape the page
-    // Home Depot and other retailers have heavy JS - use longer timeout
+    // Home Depot and Lowe's have aggressive anti-bot protection - use enhanced mode
     const store = detectStore(formattedUrl);
-    const needsLongerTimeout = store === 'home_depot' || store === 'lowes';
+    const needsEnhancedMode = store === 'home_depot' || store === 'lowes';
+    
+    // Build scrape options
+    const scrapeOptions: Record<string, unknown> = {
+      url: formattedUrl,
+      formats: ['markdown', 'html'],
+      onlyMainContent: false, // Need full HTML to extract product images
+      waitFor: needsEnhancedMode ? 5000 : 3000,
+      timeout: needsEnhancedMode ? 90000 : 30000, // 90s for enhanced mode
+      location: {
+        country: 'US',
+        languages: ['en'],
+      },
+    };
+    
+    // Use enhanced proxy and actions for sites with anti-bot protection
+    if (needsEnhancedMode) {
+      console.log('Using enhanced mode for:', store);
+      scrapeOptions.proxy = 'enhanced';
+      // Add actions to wait and scroll for JS content to load
+      scrapeOptions.actions = [
+        { type: 'wait', milliseconds: 2000 },
+        { type: 'scroll', direction: 'down' },
+        { type: 'wait', milliseconds: 2000 },
+      ];
+    }
     
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
@@ -699,17 +724,7 @@ Deno.serve(async (req) => {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        url: formattedUrl,
-        formats: ['markdown', 'html'],
-        onlyMainContent: false, // Need full HTML to extract product images
-        waitFor: needsLongerTimeout ? 5000 : 3000, // Wait longer for heavy JS sites
-        timeout: needsLongerTimeout ? 60000 : 30000, // 60s for HD/Lowes, 30s for others
-        location: {
-          country: 'US',
-          languages: ['en'],
-        },
-      }),
+      body: JSON.stringify(scrapeOptions),
     });
 
     const data = await response.json();
