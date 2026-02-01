@@ -179,11 +179,16 @@ export default function Vendors() {
                       <div className="flex-1 min-w-0 pr-2">
                         <h3 className="font-semibold">{vendor.name}</h3>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {vendor.trades.map((trade) => (
+                          {vendor.trades.slice(0, 5).map((trade) => (
                             <Badge key={trade} variant="secondary" className="text-xs">
                               {getTradeLabel(trade)}
                             </Badge>
                           ))}
+                          {vendor.trades.length > 5 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{vendor.trades.length - 5} more
+                            </Badge>
+                          )}
                           {vendor.trades.length === 0 && (
                             <Badge variant="outline" className="text-xs text-muted-foreground">
                               No trades
