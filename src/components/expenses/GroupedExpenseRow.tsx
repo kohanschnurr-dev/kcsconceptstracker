@@ -122,12 +122,12 @@ export function GroupedExpenseRow({
       >
         <td className="whitespace-nowrap">
           <div className="flex items-center gap-1">
+            {formatDisplayDate(parentExpense.date)}
             {isExpanded ? (
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             ) : (
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             )}
-            {formatDisplayDate(parentExpense.date)}
           </div>
         </td>
         <td>
