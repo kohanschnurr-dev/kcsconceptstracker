@@ -1,82 +1,72 @@
 
-## Plan: Add Notes Field to Vendor Management
+## Plan: Fix Navigation Item to Use Dynamic Company Name
 
-### Current State
-The vendors table and edit modal do not have a notes field. The user wants to add the ability to store general notes about each vendor.
+### Problem
+The sidebar and mobile navigation show "KCS Concepts" as a hardcoded navigation item label (line 31 in Sidebar.tsx, line 34 in MobileNav.tsx). The header correctly shows the dynamic company name, but the nav link to business expenses doesn't update.
 
-### Changes Required
+### Root Cause
+The `navItems` array is a static constant defined outside the component, so it cannot access the `companyName` from the `useCompanySettings` hook.
 
-#### 1. Database Migration
-Add a `notes` column to the `vendors` table:
+### Solution
+Dynamically build the nav items inside the component so the Business Expenses link uses the dynamic company name.
 
-```sql
-ALTER TABLE public.vendors ADD COLUMN notes text;
-```
+### Changes
 
-#### 2. Update NewVendorModal Component
+#### 1. Sidebar.tsx
 
-**File: `src/components/NewVendorModal.tsx`**
+Move the navItems array inside the component and replace the hardcoded label:
 
-| Change | Details |
-|--------|---------|
-| Import | Add `Textarea` component |
-| State | Add `notes` state variable |
-| Populate | Load notes when editing |
-| Reset | Clear notes when modal closes |
-| Submit | Include notes in insert/update |
-| UI | Add Notes textarea field |
-| Remove | W9 toggle section (already hidden from cards) |
-
-**State changes:**
-```typescript
-const [notes, setNotes] = useState('');
-```
-
-**useEffect update:**
-```typescript
-// When editing
-setNotes(vendor.notes || '');
-
-// When closing
-setNotes('');
-```
-
-**Submit update:**
-```typescript
-// In update/insert
-notes: notes || null,
-```
-
-**New UI field (after Reliability Rating, replacing W9 toggle):**
 ```tsx
-<div className="space-y-2">
-  <Label>Notes</Label>
-  <Textarea
-    placeholder="General notes about this vendor..."
-    value={notes}
-    onChange={(e) => setNotes(e.target.value)}
-    className="min-h-[80px] resize-none"
-  />
-</div>
-```
-
-#### 3. Update Vendor Interface
-
-Add notes to the Vendor interface in the modal:
-```typescript
-interface Vendor {
-  // ... existing fields
-  notes: string | null;  // Add this
+export function Sidebar() {
+  const { companyName, logoUrl } = useCompanySettings();
+  
+  const navItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/', exact: true },
+    { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
+    { icon: FolderKanban, label: 'Projects', path: '/projects' },
+    { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
+    { icon: Receipt, label: 'Expenses', path: '/expenses' },
+    { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
+    { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
+    { icon: Users, label: 'Vendors', path: '/vendors' },
+    { icon: Briefcase, label: companyName, path: '/business-expenses' },
+  ];
+  // ... rest of component
 }
 ```
 
-### Summary
+#### 2. MobileNav.tsx
 
-| Step | Action |
-|------|--------|
-| 1 | Add `notes` column to vendors table |
-| 2 | Add notes state and form field to modal |
-| 3 | Remove W9 toggle from modal UI |
-| 4 | Update insert/update to include notes |
+Same approach - move navItems inside component:
 
-This allows users to store general information about vendors like availability, special instructions, or past experiences.
+```tsx
+export function MobileNav() {
+  const { companyName, logoUrl } = useCompanySettings();
+  
+  const navItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
+    { icon: FolderKanban, label: 'Projects', path: '/projects' },
+    { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
+    { icon: Receipt, label: 'Expenses', path: '/expenses' },
+    { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
+    { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
+    { icon: Users, label: 'Vendors', path: '/vendors' },
+    { icon: Briefcase, label: companyName, path: '/business-expenses' },
+  ];
+  // ... rest of component
+}
+```
+
+### Result
+
+| Location | Before | After |
+|----------|--------|-------|
+| Sidebar nav link | "KCS Concepts" | Uses dynamic company name (e.g., "Testt") |
+| Mobile nav link | "KCS Concepts" | Uses dynamic company name (e.g., "Testt") |
+| Business Expenses header | Already dynamic | No change needed |
+
+### Technical Notes
+- The `navItems` array must be inside the component to access the hook value
+- No memoization needed since React will re-render when `companyName` changes
+- The `isActiveLink` helper function can remain outside the component in Sidebar.tsx
