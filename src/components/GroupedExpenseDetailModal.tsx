@@ -265,29 +265,29 @@ export function GroupedExpenseDetailModal({
               <ScrollArea className="max-h-[240px] rounded-md border">
                 <div className="divide-y">
                   {expenses.map((expense) => (
-                    <div key={expense.id} className="flex items-center justify-between p-3 hover:bg-muted/30">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                    <div key={expense.id} className="p-3 hover:bg-muted/30">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0 space-y-1">
                           <Badge variant="secondary" className="text-xs">
                             {getCategoryLabel(expense.category_id, expense.project_id)}
                           </Badge>
+                          {/* Show notes as primary text (contains actual item descriptions) */}
+                          {expense.notes && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed" title={expense.notes}>
+                              {expense.notes}
+                            </p>
+                          )}
+                          {/* Only show description if there's no notes AND it's not just a vendor address */}
+                          {!expense.notes && expense.description && !expense.description.includes('XXXX') && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                              {expense.description}
+                            </p>
+                          )}
                         </div>
-                        {/* Show notes as primary text (contains actual item descriptions) */}
-                        {expense.notes && (
-                          <p className="text-xs text-muted-foreground truncate mt-1" title={expense.notes}>
-                            {expense.notes}
-                          </p>
-                        )}
-                        {/* Only show description if there's no notes AND it's not just a vendor address */}
-                        {!expense.notes && expense.description && !expense.description.includes('XXXX') && (
-                          <p className="text-xs text-muted-foreground truncate mt-1">
-                            {expense.description}
-                          </p>
-                        )}
+                        <span className="font-mono text-sm font-medium whitespace-nowrap">
+                          {formatCurrency(expense.amount)}
+                        </span>
                       </div>
-                      <span className="font-mono text-sm ml-4 flex-shrink-0">
-                        {formatCurrency(expense.amount)}
-                      </span>
                     </div>
                   ))}
                 </div>
