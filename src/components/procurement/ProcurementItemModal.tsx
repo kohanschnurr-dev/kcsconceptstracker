@@ -810,21 +810,6 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
 
   const renderDetailsStep = () => (
     <div className="space-y-4 py-4">
-      {/* Category Badge */}
-      {selectedCategory && (
-        <div className="flex items-center gap-2">
-          <Badge className={cn('gap-1', selectedCategory.color)}>
-            <selectedCategory.icon className="h-3 w-3" />
-            {selectedCategory.label}
-          </Badge>
-          {!item && (
-            <Button variant="ghost" size="sm" onClick={() => setStep('category')} className="h-6 text-xs">
-              <ArrowLeft className="h-3 w-3 mr-1" />
-              Change
-            </Button>
-          )}
-        </div>
-      )}
 
       <div className="grid grid-cols-2 gap-4">
         {/* Item Name */}
@@ -956,6 +941,29 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
               placeholder="0.00"
             />
           </div>
+        </div>
+
+        {/* Category */}
+        <div>
+          <Label>Category</Label>
+          <Select 
+            value={formData.category} 
+            onValueChange={(v) => setFormData(prev => ({ ...prev, category: v as ProcurementCategory }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              {PROCUREMENT_CATEGORIES.map(cat => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  <div className="flex items-center gap-2">
+                    <cat.icon className="h-4 w-4" />
+                    {cat.label}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
