@@ -496,7 +496,7 @@ export default function ProjectDetail() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Expenses</p>
-                  <p className="text-xl font-semibold">{expenses.length}</p>
+                  <p className="text-xl font-semibold">{allExpensesForExport.length}</p>
                 </div>
               </div>
             </CardContent>
