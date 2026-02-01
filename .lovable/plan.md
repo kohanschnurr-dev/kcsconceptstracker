@@ -1,60 +1,51 @@
 
-
-## Plan: Remove TX Sales Tax Section from Expenses Summary
+## Plan: Align QB Badges in Fixed Position
 
 ### Overview
 
-Remove the "TX Sales Tax (8.25%)" display from the right side of the expenses summary card.
+Move the QuickBooks (QB) badge to a fixed position on the right side of the Vendor column, so all badges line up vertically regardless of vendor name length.
 
 ---
 
 ### Technical Implementation
 
-**File: `src/pages/Expenses.tsx`**
+**File: `src/components/expenses/GroupedExpenseRow.tsx`**
 
-Remove lines 474-479 which contain the tax display:
+Change the vendor cell layout from inline flex to a flex container with `justify-between`, giving the vendor info and QB badge separate spaces:
 
+**Single expense rows (lines 64-81):**
 ```tsx
-// BEFORE (lines 459-480):
-<div className="glass-card p-4 flex items-center justify-between">
-  <div className="flex items-center gap-3">
-    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-      <Receipt className="h-5 w-5 text-primary" />
-    </div>
+// BEFORE:
+<td>
+  <div className="flex items-center gap-2">
     <div>
-      <p className="text-sm text-muted-foreground">
-        {filteredExpenses.length} expenses
-      </p>
-      <p className="text-xl font-semibold font-mono">
-        {formatCurrency(totalExpenses)}
-      </p>
+      <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
+      ...
     </div>
+    {expense.source === 'quickbooks' && (
+      <Badge ...>QB</Badge>
+    )}
   </div>
-  <div className="text-right text-sm text-muted-foreground">      // ← REMOVE
-    <p>TX Sales Tax (8.25%)</p>                                    // ← REMOVE
-    <p className="font-mono text-foreground">                      // ← REMOVE
-      {formatCurrency(...)}                                        // ← REMOVE
-    </p>                                                           // ← REMOVE
-  </div>                                                           // ← REMOVE
-</div>
+</td>
 
 // AFTER:
-<div className="glass-card p-4">
-  <div className="flex items-center gap-3">
-    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-      <Receipt className="h-5 w-5 text-primary" />
+<td>
+  <div className="flex items-center justify-between gap-2">
+    <div className="flex-1 min-w-0">
+      <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
+      ...
     </div>
-    <div>
-      <p className="text-sm text-muted-foreground">
-        {filteredExpenses.length} expenses
-      </p>
-      <p className="text-xl font-semibold font-mono">
-        {formatCurrency(totalExpenses)}
-      </p>
+    <div className="w-8 flex-shrink-0 flex justify-end">
+      {expense.source === 'quickbooks' && (
+        <Badge ...>QB</Badge>
+      )}
     </div>
   </div>
-</div>
+</td>
 ```
+
+**Parent (grouped) rows (lines 131-144):**
+Apply the same pattern - use `justify-between` and a fixed-width container for the QB badge on the right.
 
 ---
 
@@ -62,11 +53,10 @@ Remove lines 474-479 which contain the tax display:
 
 | File | Changes |
 |------|---------|
-| `src/pages/Expenses.tsx` | Remove TX Sales Tax section (lines 474-479), simplify card layout |
+| `src/components/expenses/GroupedExpenseRow.tsx` | Update vendor cell layout to use `justify-between` with fixed-width badge container |
 
 ---
 
 ### Result
 
-The summary card will show only the expense count and total amount, without the Texas Sales Tax information on the right side.
-
+All QB badges will appear in a fixed position on the right side of the Vendor column, creating a clean vertical alignment regardless of how long or short the vendor names are.
