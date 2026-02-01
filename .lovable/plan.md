@@ -1,99 +1,104 @@
 
 
-## Plan: Fix SmartSplit Parent Record Detection Logic
+## Plan: Fix Parent Transaction Totals Being Double-Counted
 
-### Problem Identified
+### Problem Confirmed
 
-The SmartSplit system updates the original QuickBooks record (`purchase_802`) with the first category's data (Framing), but the parent-exclusion logic in `ProjectBudget.tsx` and `Expenses.tsx` then incorrectly **hides** this record because it sees splits like `purchase_802_split_demolition` exist.
+Two separate data issues causing incorrect totals:
 
-**Current behavior:**
-- `purchase_802` = Framing ($119.81) - **EXCLUDED** as "parent"
-- `purchase_802_split_demolition` = Demolition ($32.44) - Shown
-- `purchase_802_split_drywall` = Drywall ($31.60) - Shown  
-- `purchase_802_split_hardware` = Hardware ($27.57) - Shown
+**Issue 1: `purchase_801` (Jan 28 Home Depot) - $221.34 shown, should be ~$111.48**
+- All 4 records correctly have `_split_` suffix
+- **BUT** the first split (`purchase_801_split_framing`) was saved with the full original amount ($111.48) instead of its proportional share
+- The amounts in database:
+  - `purchase_801_split_framing`: $111.48 (should be ~$56.11)
+  - `purchase_801_split_drywall`: $29.63 (should be ~$14.92)
+  - `purchase_801_split_hardware`: $10.79 (should be ~$5.43)
+  - `purchase_801_split_painting`: $69.44 (should be ~$34.95)
+- This was imported BEFORE the proportional scaling fix was applied
 
-**Expected behavior:**
-- All four should be shown (they represent different categories)
+**Issue 2: `purchase_769` (Jan 19 Amazon) - $1,136.49 shown, should be ~$671.60**
+- **Parent record still exists without `_split_` suffix** - this is the bug
+- Records in database:
+  - `purchase_769`: $671.60 (parent - should NOT exist or should have `_split_` suffix)
+  - `purchase_769_split_hardware`: $188.38
+  - `purchase_769_split_kitchen`: $79.01
+  - `purchase_769_split_light_fixtures`: $187.79
+  - `purchase_769_split_misc`: $9.71
+- The parent $671.60 is being added to all splits = $1,136.49
 
 ### Root Cause
 
-The filtering logic assumes that if `_split_` records exist, the original parent record is a duplicate that should be hidden. But SmartSplit actually **repurposes** the parent as the first category's expense, so it should NOT be excluded.
+These are **legacy data issues** from before the fixes were applied:
+1. The proportional scaling fix (line 573) was only applied after these transactions were imported
+2. The `_split_` suffix for the first category (line 611) was only added in the latest fix
 
-### Solution
-
-Update the SmartSplit naming convention so the first category also gets a `_split_` suffix. This makes all split records follow the same pattern and prevents the original record from being incorrectly hidden.
-
-**New naming pattern after SmartSplit:**
-- `purchase_802_split_framing` = Framing ($119.81)
-- `purchase_802_split_demolition` = Demolition ($32.44)
-- `purchase_802_split_drywall` = Drywall ($31.60)
-- `purchase_802_split_hardware` = Hardware ($27.57)
-
-### Technical Changes
-
-**File: `src/components/SmartSplitReceiptUpload.tsx`**
-
-Modify the SmartSplit logic so the first category also updates the `qb_id` to include the `_split_{category}` suffix:
-
-| Location | Change |
-|----------|--------|
-| Lines 609-645 | Update the first category's `qb_id` to `{originalQbId}_split_{category}` instead of keeping the original ID |
-
-**Before (first category):**
-```typescript
-if (i === 0) {
-  // Updates original record, keeps qb_id as "purchase_802"
-  await supabase
-    .from('quickbooks_expenses')
-    .update({ 
-      is_imported: true,
-      amount: categoryAmount,
-      // ... other fields
-    })
-    .eq('id', originalQbExpenseId);
-}
-```
-
-**After (first category):**
-```typescript
-if (i === 0) {
-  // Updates original record AND renames qb_id to include split suffix
-  const splitQbId = `${originalQbId}_split_${category}`;
-  await supabase
-    .from('quickbooks_expenses')
-    .update({ 
-      qb_id: splitQbId,  // Add split suffix to first category too
-      is_imported: true,
-      amount: categoryAmount,
-      // ... other fields
-    })
-    .eq('id', originalQbExpenseId);
-}
-```
+### Solution: Two-Part Fix
 
 ---
 
-### Data Migration Required
+### Part 1: Fix `purchase_769` (Amazon) - Rename Parent Record
 
-Fix existing incorrectly-named records. For `purchase_802`:
+The parent record `purchase_769` should have a `_split_` suffix like all other splits.
 
 ```sql
+-- Rename the parent record to include _split_ suffix
 UPDATE quickbooks_expenses 
-SET qb_id = 'purchase_802_split_framing'
-WHERE qb_id = 'purchase_802' 
-AND category_id = '3ae6ad2e-512d-4d0e-919d-edeae2399906';
+SET qb_id = 'purchase_769_split_plumbing'
+WHERE qb_id = 'purchase_769';
 ```
 
-For `purchase_801` (Jan 28 Home Depot - if it has the same issue):
+After this fix, all 5 Amazon records will have `_split_` suffixes and the parent-exclusion logic will correctly show them as individual items.
+
+---
+
+### Part 2: Fix `purchase_801` (Home Depot) - Scale Amounts Proportionally
+
+The amounts need to be scaled down to match the original QB transaction ($111.48).
+
+Current total: $221.34
+Target total: $111.48
+Scale factor: 111.48 / 221.34 = 0.5036
 
 ```sql
--- First check what category the parent has
-SELECT qb_id, category_id FROM quickbooks_expenses WHERE qb_id = 'purchase_801';
-
--- Then rename if needed (assuming it's carpentry based on earlier data)
+-- Scale all purchase_801 splits to proportionally match original total
 UPDATE quickbooks_expenses 
-SET qb_id = 'purchase_801_split_carpentry'
-WHERE qb_id = 'purchase_801';
+SET amount = ROUND(amount * (111.48 / 221.34), 2)
+WHERE qb_id LIKE 'purchase_801_split_%';
+```
+
+**After scaling:**
+| Category | Current | Corrected |
+|----------|---------|-----------|
+| Framing | $111.48 | $56.14 |
+| Painting | $69.44 | $34.97 |
+| Drywall | $29.63 | $14.92 |
+| Hardware | $10.79 | $5.43 |
+| **Total** | $221.34 | **$111.46** |
+
+---
+
+### Part 3: Add UI Protection (Defensive Code)
+
+Update the grouping logic in `Expenses.tsx` to **exclude parent records** when splits exist. This protects against any future data issues:
+
+**File: `src/pages/Expenses.tsx`**
+
+Add logic after grouping to filter out parent records if child splits exist:
+
+```typescript
+// After grouping, filter out any parent records that have child splits
+// This prevents double-counting if a parent record wasn't renamed correctly
+const filteredGroups = Array.from(groups.entries()).map(([parentId, groupExpenses]) => {
+  if (groupExpenses.length > 1) {
+    // Multiple expenses in group - filter out any that don't have _split_ in qb_id
+    // (these would be duplicate parent records)
+    const filtered = groupExpenses.filter(e => 
+      !e.qb_id || e.qb_id.includes('_split_')
+    );
+    return filtered.length > 0 ? filtered : groupExpenses;
+  }
+  return groupExpenses;
+});
 ```
 
 ---
@@ -102,14 +107,12 @@ WHERE qb_id = 'purchase_801';
 
 | Change | Purpose |
 |--------|---------|
-| Update SmartSplit to rename first category's `qb_id` | All split records follow same naming pattern |
-| Data migration for existing records | Fix Jan 28 and Jan 29 transactions |
-| No changes needed to filtering logic | The `_split_` pattern detection continues to work correctly |
+| SQL: Rename `purchase_769` to `purchase_769_split_plumbing` | Fix Amazon parent record showing twice |
+| SQL: Scale `purchase_801_split_*` amounts by 0.5036 | Fix Home Depot amounts to match original total |
+| Code: Add parent-exclusion filter in grouping | Prevent future double-counting issues |
 
-### Result
+### Result After Fix
 
-After this fix:
-- Framing category will show the $119.81 expense
-- All split records follow consistent `{parent}_split_{category}` naming
-- Parent-exclusion logic correctly ignores actual parent duplicates (if any exist)
+- Jan 28 Home Depot: $111.46 (was $221.34)
+- Jan 19 Amazon: Will show 5 separate category items totaling original QB amount (was double-counted at $1,136.49)
 
