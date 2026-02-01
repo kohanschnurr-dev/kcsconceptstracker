@@ -1,118 +1,126 @@
 
 
-## Plan: Fix Parent Transaction Totals Being Double-Counted
+## Plan: Group Split Expenses in QuickBooks Pending Queue
 
-### Problem Confirmed
+### Problem Identified
 
-Two separate data issues causing incorrect totals:
+After SmartSplit processes a receipt, it creates multiple `_split_` records (e.g., `purchase_769_split_hardware`, `purchase_769_split_light_fixtures`). These appear in the QuickBooks Integration pending queue as **individual expense cards**, each requiring separate project/category selection.
 
-**Issue 1: `purchase_801` (Jan 28 Home Depot) - $221.34 shown, should be ~$111.48**
-- All 4 records correctly have `_split_` suffix
-- **BUT** the first split (`purchase_801_split_framing`) was saved with the full original amount ($111.48) instead of its proportional share
-- The amounts in database:
-  - `purchase_801_split_framing`: $111.48 (should be ~$56.11)
-  - `purchase_801_split_drywall`: $29.63 (should be ~$14.92)
-  - `purchase_801_split_hardware`: $10.79 (should be ~$5.43)
-  - `purchase_801_split_painting`: $69.44 (should be ~$34.95)
-- This was imported BEFORE the proportional scaling fix was applied
+**Current behavior:**
+- SmartSplit creates 5 records for `purchase_769`
+- Each shows as a separate pending expense card ($187.79, $188.38, etc.)
+- User has to categorize each one individually
 
-**Issue 2: `purchase_769` (Jan 19 Amazon) - $1,136.49 shown, should be ~$671.60**
-- **Parent record still exists without `_split_` suffix** - this is the bug
-- Records in database:
-  - `purchase_769`: $671.60 (parent - should NOT exist or should have `_split_` suffix)
-  - `purchase_769_split_hardware`: $188.38
-  - `purchase_769_split_kitchen`: $79.01
-  - `purchase_769_split_light_fixtures`: $187.79
-  - `purchase_769_split_misc`: $9.71
-- The parent $671.60 is being added to all splits = $1,136.49
+**Expected behavior:**
+- Split expenses should be grouped under one parent row
+- Show total amount with expandable child items
+- Categorize children all at once or individually expand to see the breakdown
 
 ### Root Cause
 
-These are **legacy data issues** from before the fixes were applied:
-1. The proportional scaling fix (line 573) was only applied after these transactions were imported
-2. The `_split_` suffix for the first category (line 611) was only added in the latest fix
+The `fetchPendingExpenses` function in `useQuickBooks.ts` fetches all records with `is_imported: false` without grouping split expenses. The `QuickBooksIntegration.tsx` component then renders each one as a separate card.
 
-### Solution: Two-Part Fix
+### Solution
 
----
-
-### Part 1: Fix `purchase_769` (Amazon) - Rename Parent Record
-
-The parent record `purchase_769` should have a `_split_` suffix like all other splits.
-
-```sql
--- Rename the parent record to include _split_ suffix
-UPDATE quickbooks_expenses 
-SET qb_id = 'purchase_769_split_plumbing'
-WHERE qb_id = 'purchase_769';
-```
-
-After this fix, all 5 Amazon records will have `_split_` suffixes and the parent-exclusion logic will correctly show them as individual items.
+Add grouping logic in the QuickBooks Integration component to group split expenses together, similar to how the main Expenses page handles it.
 
 ---
 
-### Part 2: Fix `purchase_801` (Home Depot) - Scale Amounts Proportionally
+### Technical Changes
 
-The amounts need to be scaled down to match the original QB transaction ($111.48).
+**File: `src/components/QuickBooksIntegration.tsx`**
 
-Current total: $221.34
-Target total: $111.48
-Scale factor: 111.48 / 221.34 = 0.5036
-
-```sql
--- Scale all purchase_801 splits to proportionally match original total
-UPDATE quickbooks_expenses 
-SET amount = ROUND(amount * (111.48 / 221.34), 2)
-WHERE qb_id LIKE 'purchase_801_split_%';
-```
-
-**After scaling:**
-| Category | Current | Corrected |
-|----------|---------|-----------|
-| Framing | $111.48 | $56.14 |
-| Painting | $69.44 | $34.97 |
-| Drywall | $29.63 | $14.92 |
-| Hardware | $10.79 | $5.43 |
-| **Total** | $221.34 | **$111.46** |
-
----
-
-### Part 3: Add UI Protection (Defensive Code)
-
-Update the grouping logic in `Expenses.tsx` to **exclude parent records** when splits exist. This protects against any future data issues:
-
-**File: `src/pages/Expenses.tsx`**
-
-Add logic after grouping to filter out parent records if child splits exist:
+1. Add a memo to group pending expenses by parent QB transaction ID:
 
 ```typescript
-// After grouping, filter out any parent records that have child splits
-// This prevents double-counting if a parent record wasn't renamed correctly
-const filteredGroups = Array.from(groups.entries()).map(([parentId, groupExpenses]) => {
-  if (groupExpenses.length > 1) {
-    // Multiple expenses in group - filter out any that don't have _split_ in qb_id
-    // (these would be duplicate parent records)
-    const filtered = groupExpenses.filter(e => 
-      !e.qb_id || e.qb_id.includes('_split_')
-    );
-    return filtered.length > 0 ? filtered : groupExpenses;
-  }
-  return groupExpenses;
-});
+// Group pending expenses by parent QB transaction ID
+const groupedPendingExpenses = useMemo(() => {
+  const groups: Map<string, typeof pendingExpenses> = new Map();
+  
+  pendingExpenses.forEach((expense) => {
+    let parentId = expense.qb_id;
+    
+    // Extract parent ID from split pattern
+    const splitMatch = expense.qb_id?.match(/^(.+?)_split_/);
+    if (splitMatch) {
+      parentId = splitMatch[1];
+    }
+    
+    if (!groups.has(parentId)) {
+      groups.set(parentId, []);
+    }
+    groups.get(parentId)!.push(expense);
+  });
+  
+  return Array.from(groups.values()).sort((a, b) => 
+    new Date(b[0].date).getTime() - new Date(a[0].date).getTime()
+  );
+}, [pendingExpenses]);
 ```
+
+2. Create a new `GroupedPendingExpenseCard` component that:
+   - Displays parent info (vendor, date, total amount)
+   - Shows "X items" indicator for grouped expenses
+   - Allows expanding to see individual split line items
+   - Each child row shows its category (if already assigned) and amount
+   - Individual children can be re-categorized or the whole group can be imported
+
+3. Update the rendering loop to use `groupedPendingExpenses` instead of `pendingExpenses`
+
+---
+
+### UI Design for Grouped Pending Expense
+
+**Collapsed state:**
+```
+┌─────────────────────────────────────────────────────────┐
+│ ▶ Amazon    [Receipt]                        $671.60   │
+│   Jan 19, 2026 • 5 items split                         │
+│   ─────────────────────────────────────────────────    │
+│   [Select Project ▼] [Select Category ▼]  [Notes]      │
+│                               [Product] [Labor] [✓]    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Expanded state:**
+```
+┌─────────────────────────────────────────────────────────┐
+│ ▼ Amazon    [Receipt]                        $671.60   │
+│   Jan 19, 2026 • 5 items                               │
+│   ├── Light Fixtures                         $187.79   │
+│   ├── Hardware                               $188.38   │
+│   ├── Kitchen                                $79.01    │
+│   ├── Misc                                   $9.71     │
+│   └── Plumbing                               $79.01    │
+│   ─────────────────────────────────────────────────    │
+│   Categories already assigned via SmartSplit           │
+│                                     [Import All ✓]     │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Key Behaviors
+
+| Scenario | Behavior |
+|----------|----------|
+| Single expense (no splits) | Display as normal, user selects project/category |
+| Split expenses from SmartSplit | Group together, show total, expand to see breakdown |
+| Splits already have categories | Show "Import All" button to mark all as imported |
+| Some splits need categories | Allow individual categorization within expanded view |
+
+---
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/QuickBooksIntegration.tsx` | Add grouping memo, create grouped card rendering logic |
+| `src/hooks/useQuickBooks.ts` | Add `importAllSplits` function to mark multiple records as imported at once |
 
 ---
 
 ### Summary
 
-| Change | Purpose |
-|--------|---------|
-| SQL: Rename `purchase_769` to `purchase_769_split_plumbing` | Fix Amazon parent record showing twice |
-| SQL: Scale `purchase_801_split_*` amounts by 0.5036 | Fix Home Depot amounts to match original total |
-| Code: Add parent-exclusion filter in grouping | Prevent future double-counting issues |
-
-### Result After Fix
-
-- Jan 28 Home Depot: $111.46 (was $221.34)
-- Jan 19 Amazon: Will show 5 separate category items totaling original QB amount (was double-counted at $1,136.49)
+This change ensures that SmartSplit expenses remain visually grouped in the pending queue, matching user expectations. The parent row shows the total amount, and users can expand to see individual split line items. This eliminates the need to categorize each split separately when they've already been processed by SmartSplit.
 
