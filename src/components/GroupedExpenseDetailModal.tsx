@@ -264,7 +264,7 @@ export function GroupedExpenseDetailModal({
               <p className="text-sm font-medium">{expenses.length} Items</p>
               <ScrollArea className="max-h-[240px] rounded-md border">
                 <div className="divide-y">
-                  {expenses.map((expense, index) => (
+                  {expenses.map((expense) => (
                     <div key={expense.id} className="flex items-center justify-between p-3 hover:bg-muted/30">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -272,18 +272,20 @@ export function GroupedExpenseDetailModal({
                             {getCategoryLabel(expense.category_id, expense.project_id)}
                           </Badge>
                         </div>
-                        {expense.description && (
+                        {/* Show notes as primary text (contains actual item descriptions) */}
+                        {expense.notes && (
+                          <p className="text-xs text-muted-foreground truncate mt-1" title={expense.notes}>
+                            {expense.notes}
+                          </p>
+                        )}
+                        {/* Only show description if there's no notes AND it's not just a vendor address */}
+                        {!expense.notes && expense.description && !expense.description.includes('XXXX') && (
                           <p className="text-xs text-muted-foreground truncate mt-1">
                             {expense.description}
                           </p>
                         )}
-                        {expense.notes && (
-                          <p className="text-xs text-muted-foreground/70 italic truncate mt-0.5">
-                            Note: {expense.notes}
-                          </p>
-                        )}
                       </div>
-                      <span className="font-mono text-sm ml-4">
+                      <span className="font-mono text-sm ml-4 flex-shrink-0">
                         {formatCurrency(expense.amount)}
                       </span>
                     </div>
