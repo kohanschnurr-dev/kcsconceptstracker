@@ -11,12 +11,11 @@ import {
   ShoppingCart, 
   Plus, 
   Search, 
-  Filter,
+  ArrowUpDown,
   ExternalLink,
   Package,
   Truck,
   CheckCircle2,
-  Clock,
   Pencil,
   Trash2,
   FolderOpen,
@@ -110,9 +109,8 @@ export default function Procurement() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterPhase, setFilterPhase] = useState<string>('all');
   const [filterBundle, setFilterBundle] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('name_asc');
   const [modalOpen, setModalOpen] = useState(false);
   const [bundleModalOpen, setBundleModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ProcurementItem | null>(null);
@@ -219,12 +217,25 @@ export default function Procurement() {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.model_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.notes?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || (item.status || 'researching') === filterStatus;
-    const matchesPhase = filterPhase === 'all' || item.phase === filterPhase;
     const bundleIds = item.bundle_ids || [];
     const matchesBundle = filterBundle === 'all' || 
       (filterBundle === 'unassigned' ? bundleIds.length === 0 : bundleIds.includes(filterBundle));
-    return matchesSearch && matchesStatus && matchesPhase && matchesBundle;
+    return matchesSearch && matchesBundle;
+  });
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    switch (sortBy) {
+      case 'name_asc':
+        return a.name.localeCompare(b.name);
+      case 'name_desc':
+        return b.name.localeCompare(a.name);
+      case 'price_low':
+        return a.unit_price - b.unit_price;
+      case 'price_high':
+        return b.unit_price - a.unit_price;
+      default:
+        return 0;
+    }
   });
 
   // Summary stats
@@ -368,28 +379,16 @@ export default function Procurement() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full md:w-40">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="All Status" />
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full md:w-48">
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Sort By" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  {STATUSES.map(s => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterPhase} onValueChange={setFilterPhase}>
-                <SelectTrigger className="w-full md:w-40">
-                  <Clock className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="All Phases" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Phases</SelectItem>
-                  {PHASES.map(p => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                  ))}
+                  <SelectItem value="name_asc">A-Z</SelectItem>
+                  <SelectItem value="name_desc">Z-A</SelectItem>
+                  <SelectItem value="price_low">Price: Low to High</SelectItem>
+                  <SelectItem value="price_high">Price: High to Low</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -430,7 +429,7 @@ export default function Procurement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredItems.map((item) => (
+                    {sortedItems.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="text-center">
                           <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center mx-auto">
