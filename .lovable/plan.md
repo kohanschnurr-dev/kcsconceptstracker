@@ -1,157 +1,117 @@
 
 
-## Plan: Replace "90% match" Badge with Three Match Indicator Circles
+## Plan: Fix Grouped Expense Collapsing for Split Transactions
 
-### Overview
+### Root Cause
 
-Replace the text-based confidence badge (e.g., "90% match") with three small circular indicators that visually show which matching criteria passed:
+The grouping logic in `Expenses.tsx` is checking `expense.id` (which is a random UUID) for the `_split_` pattern. However, the split identifier is actually in the `qb_id` field (e.g., `purchase_801_split_drywall`), which is NOT being passed through to the expense list.
 
-| Icon | Criteria | Filled When |
-|------|----------|-------------|
-| $ | Price match | Amount difference ≤ $0.01 |
-| 📅 | Date match | Within -2 to +5 days |
-| 🏢 | Vendor match | Vendor similarity > 30% |
+**Database evidence:**
+```
+id: dc8eb3ae-5fdd-424c-9e51-cf7c225e7c1f
+qb_id: purchase_801_split_drywall  ← This has the pattern, but isn't used
+```
 
 ---
 
-### Visual Design
+### Solution
 
-```text
-BEFORE:
-┌─────────────────────────────────────────────────┐
-│ 🧾 In-Store Purchase   [90% match]              │
-│ $111.48 • Jan 28, 2026 • 11 items               │
-└─────────────────────────────────────────────────┘
-
-AFTER:
-┌─────────────────────────────────────────────────┐
-│ 🧾 In-Store Purchase   [$] [📅] [🏢]           │
-│ $111.48 • Jan 28, 2026 • 11 items               │
-└─────────────────────────────────────────────────┘
-
-[●] = Filled circle (criteria matched) - green/success color
-[○] = Empty/faded circle (criteria not matched) - muted/gray
-```
+Add `qb_id` to the DBExpense interface and use it for grouping logic.
 
 ---
 
 ### Technical Implementation
 
-**File: `src/components/SmartSplitReceiptUpload.tsx`**
+**File: `src/pages/Expenses.tsx`**
 
-**1. Add helper functions to calculate match criteria**
+**1. Add `qb_id` to the DBExpense interface (line 48-63)**
 
 ```typescript
-// Check if amounts match (within $0.01)
-const isAmountMatch = (receiptAmount: number, qbAmount: number) => 
-  Math.abs(receiptAmount - qbAmount) <= 0.01;
-
-// Check if date is in range (-2 to +5 days)
-const isDateInRange = (receiptDate: string, qbDate: string) => {
-  const receipt = new Date(receiptDate);
-  const transaction = new Date(qbDate);
-  const diffDays = (transaction.getTime() - receipt.getTime()) / (1000 * 60 * 60 * 24);
-  return diffDays >= -2 && diffDays <= 5;
-};
-
-// Vendor similarity (simplified: check if one contains the other or exact match)
-const isVendorMatch = (vendor1: string, vendor2: string) => {
-  const norm1 = vendor1?.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim() || '';
-  const norm2 = vendor2?.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim() || '';
-  if (!norm1 || !norm2) return false;
-  return norm1 === norm2 || norm1.includes(norm2) || norm2.includes(norm1);
-};
+interface DBExpense {
+  id: string;
+  project_id: string;
+  category_id: string;
+  amount: number;
+  date: string;
+  vendor_name: string | null;
+  payment_method: 'cash' | 'check' | 'card' | 'transfer' | null;
+  status: 'estimate' | 'actual';
+  description: string | null;
+  includes_tax: boolean;
+  tax_amount: number | null;
+  notes?: string | null;
+  receipt_url?: string | null;
+  source?: 'manual' | 'quickbooks';
+  qb_id?: string | null;  // ← ADD THIS
+}
 ```
 
-**2. Create a MatchIndicators component**
+**2. Add `qb_id` to the DBQuickBooksExpense interface (line 65-77)**
 
-```tsx
-// Match criteria indicator component
-const MatchIndicators = ({ receipt, qbExpense }: { receipt: PendingReceipt; qbExpense: QBExpense }) => {
-  const amountMatched = isAmountMatch(receipt.total_amount, qbExpense.amount);
-  const dateMatched = isDateInRange(receipt.purchase_date, qbExpense.date);
-  const vendorMatched = isVendorMatch(receipt.vendor_name, qbExpense.vendor_name || '');
-
-  return (
-    <div className="flex items-center gap-1">
-      {/* Price match indicator */}
-      <div
-        className={cn(
-          "h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold border",
-          amountMatched 
-            ? "bg-success/20 border-success text-success" 
-            : "bg-muted/50 border-muted-foreground/30 text-muted-foreground"
-        )}
-        title={amountMatched ? "Price matched" : "Price did not match"}
-      >
-        $
-      </div>
-      
-      {/* Date match indicator */}
-      <div
-        className={cn(
-          "h-5 w-5 rounded-full flex items-center justify-center border",
-          dateMatched 
-            ? "bg-success/20 border-success text-success" 
-            : "bg-muted/50 border-muted-foreground/30 text-muted-foreground"
-        )}
-        title={dateMatched ? "Date within range" : "Date outside range"}
-      >
-        <CalendarIcon className="h-2.5 w-2.5" />
-      </div>
-      
-      {/* Vendor match indicator */}
-      <div
-        className={cn(
-          "h-5 w-5 rounded-full flex items-center justify-center border",
-          vendorMatched 
-            ? "bg-success/20 border-success text-success" 
-            : "bg-muted/50 border-muted-foreground/30 text-muted-foreground"
-        )}
-        title={vendorMatched ? "Vendor matched" : "Vendor did not match"}
-      >
-        <Building className="h-2.5 w-2.5" />
-      </div>
-    </div>
-  );
-};
-```
-
-**3. Update import statement**
-
-Add `Building` and `CalendarIcon` from lucide-react:
 ```typescript
-import { ..., Building, CalendarIcon } from 'lucide-react';
+interface DBQuickBooksExpense {
+  id: string;
+  qb_id: string;  // ← ADD THIS
+  project_id: string | null;
+  // ... rest stays the same
+}
 ```
 
-**4. Replace the Badge in the matched receipts section (~line 761)**
+**3. Pass `qb_id` when transforming QB expenses (line 161-178)**
 
-```tsx
-// BEFORE:
-<Badge variant="outline" className="text-xs">
-  {match.receipt.match_confidence}% match
-</Badge>
-
-// AFTER:
-<MatchIndicators receipt={match.receipt} qbExpense={match.qbExpense} />
+```typescript
+const qbExpenses: DBExpense[] = filteredQbExpenses
+  .filter((e: DBQuickBooksExpense) => e.project_id && e.category_id)
+  .map((e: DBQuickBooksExpense) => ({
+    id: e.id,
+    project_id: e.project_id!,
+    category_id: e.category_id!,
+    amount: e.amount,
+    date: e.date,
+    vendor_name: e.vendor_name,
+    payment_method: e.payment_method as DBExpense['payment_method'],
+    status: 'actual' as const,
+    description: e.description,
+    includes_tax: false,
+    tax_amount: null,
+    notes: e.notes || null,
+    receipt_url: e.receipt_url || null,
+    source: 'quickbooks' as const,
+    qb_id: e.qb_id,  // ← ADD THIS
+  }));
 ```
 
-**5. Update the match modal header (~line 902-905)**
+**4. Fix the grouping logic to use `qb_id` (lines 296-314)**
 
-```tsx
-// BEFORE:
-{selectedMatch && !selectedMatch.isManual && selectedMatch.receipt.match_confidence && (
-  <Badge variant="outline" className="text-xs ml-auto">
-    {selectedMatch.receipt.match_confidence}% confidence
-  </Badge>
-)}
-
-// AFTER:
-{selectedMatch && !selectedMatch.isManual && (
-  <div className="ml-auto">
-    <MatchIndicators receipt={selectedMatch.receipt} qbExpense={selectedMatch.qbExpense} />
-  </div>
-)}
+```typescript
+const groupedExpenses = useMemo(() => {
+  const groups: Map<string, typeof filteredExpenses> = new Map();
+  
+  filteredExpenses.forEach((expense) => {
+    // For QB expenses, check qb_id for split pattern
+    // For manual expenses, use id as the group key
+    let parentId = expense.id;
+    
+    if (expense.source === 'quickbooks' && expense.qb_id) {
+      const splitMatch = expense.qb_id.match(/^(.+?)_split_/);
+      if (splitMatch) {
+        parentId = splitMatch[1]; // e.g., "purchase_801"
+      } else {
+        parentId = expense.qb_id; // Use qb_id as the key for consistency
+      }
+    }
+    
+    if (!groups.has(parentId)) {
+      groups.set(parentId, []);
+    }
+    groups.get(parentId)!.push(expense);
+  });
+  
+  // Convert to array and sort by first expense date
+  return Array.from(groups.values()).sort((a, b) => {
+    return new Date(b[0].date).getTime() - new Date(a[0].date).getTime();
+  });
+}, [filteredExpenses]);
 ```
 
 ---
@@ -160,16 +120,15 @@ import { ..., Building, CalendarIcon } from 'lucide-react';
 
 | File | Changes |
 |------|---------|
-| `src/components/SmartSplitReceiptUpload.tsx` | Add helper functions, MatchIndicators component, replace Badge with indicators |
+| `src/pages/Expenses.tsx` | Add `qb_id` to interfaces, pass it through transformation, fix grouping logic |
 
 ---
 
-### Summary
+### Expected Result
 
-This change replaces the percentage-based match badge with three visual indicator circles:
-- **$** (Dollar) - Shows if the price matched exactly
-- **Calendar** - Shows if the date was within the expected range
-- **Building** - Shows if the vendor name matched
-
-Each indicator is either filled (green/success) when the criterion matched or faded/gray when it didn't. This gives users instant visual feedback about why a match was found without needing to understand confidence percentages.
+After this fix:
+- All Home Depot split expenses (`purchase_801_split_drywall`, `purchase_801_split_painting`, etc.) will group under a single collapsible row
+- The parent row will show "Home Depot" with "Multiple" category badge and combined total ($111.48)
+- Clicking the row expands to show individual line items (Drywall $15.04, Painting $69.44, etc.)
+- Manual expenses continue to work as individual rows
 
