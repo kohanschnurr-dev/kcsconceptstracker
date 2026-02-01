@@ -712,9 +712,31 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         />
         
         {scrapeError && (
-          <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-2 rounded">
-            <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span>{scrapeError}</span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-2 rounded">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span>{scrapeError}</span>
+            </div>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              className="w-full"
+              onClick={() => {
+                // Save the URL even though scrape failed
+                setFormData(prev => ({
+                  ...prev,
+                  source_url: urlInput.trim(),
+                  source_store: urlInput.includes('homedepot') ? 'home_depot' : 
+                               urlInput.includes('lowes') ? 'lowes' :
+                               urlInput.includes('amazon') ? 'amazon' : 'other',
+                }));
+                setScrapeError(null);
+                setStep('category');
+                toast.info('Continuing with manual entry - URL saved');
+              }}
+            >
+              Continue with manual entry →
+            </Button>
           </div>
         )}
 
