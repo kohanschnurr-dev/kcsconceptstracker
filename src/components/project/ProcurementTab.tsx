@@ -371,9 +371,6 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
         <TableCell className="max-w-[200px]">
           <div className="space-y-1">
             <p className="font-medium truncate">{item.name}</p>
-            {item.model_number && (
-              <p className="text-xs text-muted-foreground">#{item.model_number}</p>
-            )}
             {item.source_url && (
               <span className="text-xs text-primary inline-flex items-center gap-1">
                 <ExternalLink className="h-3 w-3" />
@@ -395,32 +392,17 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
         <TableCell className="text-right font-mono">
           {formatCurrency(item.unit_price)}
         </TableCell>
-        <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+        <TableCell className="text-center" onClick={e => e.stopPropagation()}>
           <Input
             type="number"
             min="1"
             value={qty}
             onChange={(e) => handleUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
-            className="w-16 h-8 text-right text-sm"
+            className="w-16 h-8 text-center text-sm mx-auto"
           />
         </TableCell>
         <TableCell className="text-right font-mono font-medium">
           {formatCurrency(itemTotal)}
-        </TableCell>
-        <TableCell onClick={e => e.stopPropagation()}>
-          <Select 
-            value={item.status || 'researching'} 
-            onValueChange={(v) => handleUpdateStatus(item.id, v)}
-          >
-            <SelectTrigger className="w-32 h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUSES.map(s => (
-                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </TableCell>
         <TableCell>
           <Button 
@@ -623,9 +605,8 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
                             <TableHead>Category</TableHead>
                             <TableHead>Finish</TableHead>
                             <TableHead className="text-right">Price</TableHead>
-                            <TableHead className="text-right">Qty</TableHead>
+                            <TableHead className="text-center">Qty</TableHead>
                             <TableHead className="text-right">Total</TableHead>
-                            <TableHead>Status</TableHead>
                             <TableHead></TableHead>
                           </TableRow>
                         </TableHeader>
@@ -651,9 +632,8 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
                   <TableHead>Category</TableHead>
                   <TableHead>Finish</TableHead>
                   <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-center">Qty</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
