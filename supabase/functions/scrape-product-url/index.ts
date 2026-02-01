@@ -688,7 +688,11 @@ Deno.serve(async (req) => {
 
     console.log('Scraping product URL:', formattedUrl);
 
-    // Use Firecrawl to scrape the page with screenshot
+    // Use Firecrawl to scrape the page
+    // Home Depot and other retailers have heavy JS - use longer timeout
+    const store = detectStore(formattedUrl);
+    const needsLongerTimeout = store === 'home_depot' || store === 'lowes';
+    
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
@@ -699,7 +703,8 @@ Deno.serve(async (req) => {
         url: formattedUrl,
         formats: ['markdown', 'html'],
         onlyMainContent: false, // Need full HTML to extract product images
-        waitFor: 3000, // Wait for dynamic content
+        waitFor: needsLongerTimeout ? 5000 : 3000, // Wait longer for heavy JS sites
+        timeout: needsLongerTimeout ? 60000 : 30000, // 60s for HD/Lowes, 30s for others
         location: {
           country: 'US',
           languages: ['en'],
