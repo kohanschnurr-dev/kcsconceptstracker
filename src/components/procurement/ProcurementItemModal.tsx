@@ -930,15 +930,6 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         </div>
 
         <div>
-          <Label>Model Number</Label>
-          <Input
-            value={formData.model_number}
-            onChange={(e) => setFormData(prev => ({ ...prev, model_number: e.target.value }))}
-            placeholder="SKU or model #"
-          />
-        </div>
-
-        <div>
           <Label>Finish / Color</Label>
           <Input
             value={formData.finish}
@@ -978,50 +969,6 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           )}
         </div>
 
-        <div>
-          <Label>Phase</Label>
-          <Select 
-            value={formData.phase} 
-            onValueChange={(v) => setFormData(prev => ({ ...prev, phase: v as Phase }))}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PHASES.map(p => (
-                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label>Status</Label>
-          <Select 
-            value={formData.status} 
-            onValueChange={(v) => setFormData(prev => ({ ...prev, status: v as ItemStatus }))}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUSES.map(s => (
-                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label>Lead Time (days)</Label>
-          <Input
-            type="number"
-            value={formData.lead_time_days}
-            onChange={(e) => setFormData(prev => ({ ...prev, lead_time_days: e.target.value }))}
-            placeholder="Optional"
-          />
-        </div>
-
         <div className="col-span-2">
           <Label>Notes</Label>
           <Textarea
@@ -1051,13 +998,6 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           <Label>Price includes tax</Label>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Switch
-            checked={formData.bulk_discount_eligible}
-            onCheckedChange={(v) => setFormData(prev => ({ ...prev, bulk_discount_eligible: v }))}
-          />
-          <Label>HD Pro Desk eligible</Label>
-        </div>
       </div>
 
       {/* Price Summary */}
