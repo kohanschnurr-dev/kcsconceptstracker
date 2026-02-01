@@ -445,12 +445,12 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     if (name.includes('counter') || name.includes('quartz') || name.includes('granite')) return 'countertops';
     if (name.includes('tile') || name.includes('grout')) return 'tile';
     if (name.includes('light') || name.includes('fixture') || name.includes('chandelier') || name.includes('sconce')) return 'lighting';
-    if (name.includes('knob') || name.includes('pull') || name.includes('hinge')) return 'hardware';
+    if (name.includes('knob') || name.includes('pull') || name.includes('hinge') || name.includes('handle')) return 'hardware';
     if (name.includes('refrigerator') || name.includes('range') || name.includes('dishwasher') || name.includes('microwave')) return 'appliances';
     if (name.includes('window')) return 'windows';
     if (name.includes('fence')) return 'fencing';
     if (name.includes('landscap') || name.includes('mulch') || name.includes('sod') || name.includes('paver') || name.includes('shrub') || name.includes('plant')) return 'landscaping';
-    if (name.includes('stucco') || name.includes('siding') || name.includes('stone veneer') || name.includes('hardie') || name.includes('exterior paint')) return 'exterior_finishes';
+    if (name.includes('stucco') || name.includes('siding') || name.includes('stone veneer') || name.includes('hardie') || name.includes('exterior paint') || name.includes('mailbox')) return 'exterior_finishes';
     if (name.includes('shingle') || name.includes('roof')) return 'roofing';
     if (name.includes('lumber') || name.includes('2x4') || name.includes('2x6') || name.includes('stud')) return 'framing';
     if (name.includes('insulation') || name.includes('r-')) return 'insulation';
@@ -474,9 +474,12 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         
         const { specs, cleanNotes } = parseSpecsFromNotes(item.notes);
         const detectedCategory = detectCategory(item.name);
+        // Use stored category if available, otherwise detect from name
+        const storedCategory = (item as any).category;
+        const itemCategory = storedCategory && storedCategory !== 'other' ? storedCategory : detectedCategory;
         
         setFormData({
-          category: detectedCategory,
+          category: itemCategory,
           name: item.name,
           bundle_ids: bundleIds,
           source_url: item.source_url || '',
@@ -603,6 +606,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     
     const payload = {
       name: formData.name,
+      category: formData.category || 'other',
       bundle_id: formData.bundle_ids.length > 0 ? formData.bundle_ids[0] : null, // Keep for backwards compat
       source_url: formData.source_url || null,
       source_store: formData.source_store,
