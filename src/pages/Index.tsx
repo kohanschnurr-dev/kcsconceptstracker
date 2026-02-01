@@ -236,7 +236,6 @@ export default function Index() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">DFW Fix & Flip Budget Tracker</p>
       </div>
 
       {/* Tasks Due Today Banner - High Visibility Alert */}
