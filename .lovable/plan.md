@@ -1,68 +1,77 @@
 
+## Plan: Fix Category Totals in Grouped Expense Rows
 
-## Plan: Make Paperclip Clickable on Grouped Expense Rows
+### Issue Analysis
 
-### Overview
-The paperclip icon on grouped expense rows is currently just a visual indicator. It needs to be a clickable button that opens the receipt, matching the behavior of single expense rows.
+Based on my investigation:
 
-### Change
+1. **Database values are correct** - Each split expense has its individual amount stored properly
+2. **Display code looks correct** - Child rows use `expense.amount` (line 220) for each individual expense
+3. **Parent total is calculated correctly** - Sum of all expenses in the group (line 45)
+
+However, the user reports that some categories show the parent's total instead of individual amounts. This suggests a possible data synchronization or grouping issue.
+
+### Root Cause Hypothesis
+
+After extensive analysis, I cannot reproduce the exact bug with current database state. However, the most likely causes are:
+
+1. **Data ordering issue**: Expenses within a group may not be in consistent order
+2. **Stale data from a previous import**: A past SmartSplit operation may have left inconsistent data that has since been corrected
+
+### Recommended Changes
 
 **File: `src/components/expenses/GroupedExpenseRow.tsx`**
 
-#### 1. Find the first expense with a receipt (add after line 49)
-Add a variable to get the first expense that has a receipt URL, so we know which receipt to open.
+#### 1. Add Debug Logging (Temporary)
+Add console logging to help diagnose if the issue recurs - this will show exactly what data is being rendered.
 
-#### 2. Make the paperclip a clickable button (lines 167-169)
-Replace the static icon with a button that calls `handleViewReceipt`, using `e.stopPropagation()` to prevent the row click from also firing.
+#### 2. Ensure Consistent Ordering Within Groups
+Sort expenses within each group so the original QB expense (without `_split_`) always comes first, followed by splits.
 
-### Technical Details
+### Code Changes
 
-**Current code (lines 165-174):**
+**Change 1: Sort expenses within the group to ensure consistent ordering**
+
+Currently, `expenses[0]` is used as `parentExpense`, but the order depends on how they were fetched. We should sort so the original (non-split) QB record is always first.
+
 ```tsx
-<td className="!text-center">
-  <div className="flex items-center justify-center gap-2">
-    {hasReceipt && (
-      <Paperclip className="h-4 w-4 text-primary" />
-    )}
-    <span className="font-mono font-semibold">
-      {formatCurrency(totalAmount)}
-    </span>
-  </div>
-</td>
+// After line 41, before line 43
+// Sort expenses so original QB expense comes first, then splits
+const sortedExpenses = [...expenses].sort((a, b) => {
+  // Non-split QB IDs should come first
+  const aIsSplit = a.qb_id?.includes('_split_') ?? false;
+  const bIsSplit = b.qb_id?.includes('_split_') ?? false;
+  if (aIsSplit && !bIsSplit) return 1;
+  if (!aIsSplit && bIsSplit) return -1;
+  return 0;
+});
 ```
 
-**New code:**
+Then use `sortedExpenses` instead of `expenses` throughout the component.
+
+**Change 2: Add qb_id to the DBExpense interface**
+
+The interface needs `qb_id` for the sorting to work:
+
 ```tsx
-<td className="!text-center">
-  <div className="flex items-center justify-center gap-2">
-    {hasReceipt && (
-      <button
-        onClick={(e) => {
-          const expenseWithReceipt = expenses.find(exp => exp.receipt_url);
-          if (expenseWithReceipt?.receipt_url) {
-            handleViewReceipt(expenseWithReceipt.receipt_url, e);
-          }
-        }}
-        className="text-primary hover:text-primary/80 transition-colors"
-        title="View receipt"
-      >
-        <Paperclip className="h-4 w-4" />
-      </button>
-    )}
-    <span className="font-mono font-semibold">
-      {formatCurrency(totalAmount)}
-    </span>
-  </div>
-</td>
+interface DBExpense {
+  // ... existing fields
+  qb_id?: string | null;
+}
 ```
 
-### Summary of Changes
-| Line | Change |
-|------|--------|
-| 167-169 | Wrap Paperclip in a button with onClick that finds the first expense with a receipt and calls handleViewReceipt |
+### Technical Summary
+
+| Location | Change |
+|----------|--------|
+| Line 7-22 | Add `qb_id` to DBExpense interface |
+| Lines 40-45 | Sort expenses before processing, use sortedExpenses |
+| Lines 52, 54, 56 | Use sortedExpenses instead of expenses |
+| Lines 121-182 | Use sortedExpenses for parent row |
+| Lines 189-224 | Use sortedExpenses for child rows |
 
 ### Result
-- Clicking the orange paperclip on a grouped expense row opens the receipt
-- The click is stopped from propagating to the row, so it doesn't also open the expense detail modal
-- Matches the existing behavior of single expense rows
-
+- Expenses within a group are always in consistent order
+- The original QB expense (with the first category's amount) is always first
+- Child rows continue to display their individual amounts correctly
+- Better debugging capability if the issue recurs
