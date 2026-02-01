@@ -116,36 +116,41 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
     <Card className="bg-slate-900 border-slate-800">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
+          {/* Left: Title */}
           <CardTitle className="flex items-center gap-2 text-white">
             <CalendarIcon className="h-5 w-5 text-emerald-500" />
             Project Schedule
           </CardTitle>
+          
+          {/* Center: Month Navigation */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+              className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium text-white min-w-[120px] text-center">
+              {format(currentDate, 'MMMM yyyy')}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+              className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          {/* Right: Add Event Button */}
           <NewEventModal
             projects={[{ id: projectId, name: projectName, address: projectAddress }]}
             onEventCreated={fetchEvents}
             defaultProjectId={projectId}
           />
-        </div>
-        <div className="flex items-center gap-2 mt-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-medium text-white min-w-[120px] text-center">
-            {format(currentDate, 'MMMM yyyy')}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
         </div>
         <CalendarLegend />
       </CardHeader>
