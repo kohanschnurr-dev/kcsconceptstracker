@@ -40,8 +40,6 @@ import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotoGallery } from '@/components/project/PhotoGallery';
-import { MilestonesTimeline } from '@/components/project/MilestonesTimeline';
-import { ProjectNotes } from '@/components/project/ProjectNotes';
 import { SpendingChart } from '@/components/project/SpendingChart';
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { ProjectCalendar } from '@/components/project/ProjectCalendar';
@@ -532,18 +530,14 @@ export default function ProjectDetail() {
         <Tabs defaultValue="schedule" className="space-y-4">
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="financials">Financials</TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
             <TabsTrigger value="photos">Photos</TabsTrigger>
             <TabsTrigger value="logs">Logs ({dailyLogs.length})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <MilestonesTimeline projectId={id!} />
-              <ProjectNotes projectId={id!} />
-            </div>
+          <TabsContent value="tasks">
             <ProjectTasks projectId={id!} />
           </TabsContent>
 
