@@ -175,7 +175,27 @@ export default function ProjectBudget() {
     
     const categoriesData = categoriesRes.data || [];
     const expensesData = expensesRes.data || [];
-    const qbExpensesData = qbExpensesRes.data || [];
+    const rawQbExpensesData = qbExpensesRes.data || [];
+    
+    // Filter out parent QB expenses that have split children
+    // This prevents double-counting when a receipt was split into multiple categories
+    const splitParentIds = new Set<string>();
+    rawQbExpensesData.forEach(qb => {
+      if (qb.qb_id && qb.qb_id.includes('_split_')) {
+        // Extract the parent ID (everything before _split_)
+        const parentId = qb.qb_id.replace(/_split_.*$/, '');
+        splitParentIds.add(parentId);
+      }
+    });
+    
+    // Exclude parent records that have been split
+    const qbExpensesData = rawQbExpensesData.filter(qb => {
+      // If this qb_id is a parent that has splits, exclude it
+      if (qb.qb_id && splitParentIds.has(qb.qb_id)) {
+        return false;
+      }
+      return true;
+    });
     
     // Combine regular expenses with QB imported expenses for category calculations
     const categoriesWithSpent = categoriesData.map(cat => {
