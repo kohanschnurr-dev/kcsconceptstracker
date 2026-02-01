@@ -44,6 +44,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -580,7 +581,21 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
       setTimeout(() => setStep('category'), 500);
     } catch (err) {
       console.error('Scrape error:', err);
-      const message = err instanceof Error ? err.message : 'Failed to scrape URL';
+      
+      let message = 'Failed to scrape URL';
+      
+      // Handle FunctionsHttpError to extract the actual error message from response body
+      if (err instanceof FunctionsHttpError) {
+        try {
+          const errorData = await err.context.json();
+          message = errorData.error || message;
+        } catch {
+          // If we can't parse JSON, use the default message
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      
       setScrapeError(message);
       toast.error(message);
     } finally {
