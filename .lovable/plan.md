@@ -1,82 +1,71 @@
 
 
-## Plan: Fix Edge Function Error Handling with FunctionsHttpError
+## Plan: Add Unified Save Button for Settings
 
-### Problem
+### Current Behavior
+The settings page currently shows individual "Save" buttons that only appear when changes are detected:
+- "Save Company Name" button appears when company name changes
+- "Save Changes" button appears when first/last name changes
 
-When the `scrape-product-url` edge function returns a 408 error with a JSON body like:
-```json
-{"success":false,"error":"Could not scrape this URL. Home Depot pages may require manual price entry."}
-```
+### Proposed Change
+Add a unified "Save Settings" button that is always visible and saves all pending changes across both Company Branding and Account sections at once.
 
-The current error handling doesn't properly extract that message. Instead, it shows a generic error because we're not using Supabase's `FunctionsHttpError` class to parse the response.
+### Implementation
 
-### Solution
+**File: `src/pages/Settings.tsx`**
 
-Use `FunctionsHttpError` from `@supabase/supabase-js` to properly extract the error message from the function response body.
+1. **Add a combined save handler function**
+   - Create `handleSaveAll` that saves both company settings and profile changes if any exist
+   - Show a single success toast when complete
 
----
+2. **Add a sticky/fixed save button at the bottom of the page**
+   - Always visible when there are any unsaved changes
+   - Show "Save Settings" button with loading state
+   - Displays which sections have pending changes
 
-### Technical Changes
+3. **Keep the inline save buttons as secondary option (optional)**
+   - Users can still save individual sections if they prefer
 
-**File: `src/components/procurement/ProcurementItemModal.tsx`**
+### Changes Summary
 
-**1. Add import for FunctionsHttpError (at the top with other imports)**
+| Area | Change |
+|------|--------|
+| New handler | `handleSaveAll()` - saves company name and profile in one action |
+| New UI | Sticky save bar at bottom when changes exist |
+| Detection | Combined `hasAnyChanges` variable checking both sections |
+| Feedback | Single toast confirming all settings saved |
+
+### Code Structure
 
 ```typescript
-import { FunctionsHttpError } from '@supabase/supabase-js';
-```
+// Combined change detection
+const hasAnyChanges = hasProfileChanges || hasCompanyChanges;
 
-**2. Update error handling in handleScrape (lines 581-585)**
-
-Replace:
-```typescript
-} catch (err) {
-  console.error('Scrape error:', err);
-  const message = err instanceof Error ? err.message : 'Failed to scrape URL';
-  setScrapeError(message);
-  toast.error(message);
-}
-```
-
-With:
-```typescript
-} catch (err) {
-  console.error('Scrape error:', err);
-  
-  let message = 'Failed to scrape URL';
-  
-  // Handle FunctionsHttpError to extract the actual error message from response body
-  if (err instanceof FunctionsHttpError) {
-    try {
-      const errorData = await err.context.json();
-      message = errorData.error || message;
-    } catch {
-      // If we can't parse JSON, use the default message
+// Combined save handler
+const handleSaveAll = async () => {
+  try {
+    const promises = [];
+    if (hasCompanyChanges) {
+      promises.push(updateSettings.mutateAsync({ companyName }));
     }
-  } else if (err instanceof Error) {
-    message = err.message;
+    if (hasProfileChanges) {
+      promises.push(updateProfile.mutateAsync({ firstName, lastName }));
+    }
+    await Promise.all(promises);
+    toast.success('Settings saved successfully');
+  } catch (error) {
+    toast.error('Failed to save settings');
   }
-  
-  setScrapeError(message);
-  toast.error(message);
-}
+};
+
+// Sticky save bar at bottom of page (inside MainLayout, after the grid)
+{hasAnyChanges && (
+  <div className="sticky bottom-0 bg-background border-t p-4 flex justify-end">
+    <Button onClick={handleSaveAll} disabled={isSaving}>
+      {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+      Save Settings
+    </Button>
+  </div>
+)}
 ```
-
----
-
-### What This Fixes
-
-| Before | After |
-|--------|-------|
-| Generic "FunctionsHttpError" or cryptic message | Actual message: "Could not scrape this URL. Home Depot pages may require manual price entry." |
-| User confused about what went wrong | Clear guidance to use manual entry |
-
----
-
-### Why This Works
-
-1. **FunctionsHttpError**: Supabase wraps HTTP errors from edge functions in this class
-2. **error.context.json()**: Contains the actual response body we returned from the function
-3. **Fallback handling**: If JSON parsing fails, we still show a reasonable error
 
