@@ -53,7 +53,7 @@ import { BusinessQuickBooksIntegration } from '@/components/BusinessQuickBooksIn
 import { BusinessExpenseTrendChart } from '@/components/dashboard/BusinessExpenseTrendChart';
 import { BusinessExpenseDetailModal } from '@/components/BusinessExpenseDetailModal';
 import { formatDisplayDate, formatDateString } from '@/lib/dateUtils';
-
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 const BACKUP_KEY = 'dfw_project_expenses_backup';
 
 interface DBBusinessExpense {
@@ -84,7 +84,7 @@ export default function BusinessExpenses() {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [backupData, setBackupData] = useState<DBBusinessExpense[] | null>(null);
   const { toast } = useToast();
-
+  const { companyName } = useCompanySettings();
   // Form state for new expense
   const [formData, setFormData] = useState({
     amount: '',
@@ -434,7 +434,7 @@ export default function BusinessExpenses() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">KCS Concepts</h1>
+            <h1 className="text-2xl font-semibold">{companyName}</h1>
             <p className="text-muted-foreground mt-1">Track business expenses</p>
           </div>
           <div className="flex items-center gap-2">
