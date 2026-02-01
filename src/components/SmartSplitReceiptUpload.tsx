@@ -961,7 +961,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
               )}
               {selectedMatch?.isManual ? 'Manual Link' : 'SmartSplit Match Found'}
               {selectedMatch && !selectedMatch.isManual && (
-                <div className="ml-auto">
+                <div className="ml-auto mr-6">
                   <MatchIndicators receipt={selectedMatch.receipt} qbExpense={selectedMatch.qbExpense} />
                 </div>
               )}
