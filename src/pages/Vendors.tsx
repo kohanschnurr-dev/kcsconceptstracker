@@ -69,7 +69,7 @@ export default function Vendors() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold">Vendors</h1>
-            <p className="text-muted-foreground mt-1">Manage your DFW contractors</p>
+            <p className="text-muted-foreground mt-1">Manage your contractors</p>
           </div>
           <Button className="gap-2" onClick={() => setModalOpen(true)}>
             <Plus className="h-4 w-4" />
