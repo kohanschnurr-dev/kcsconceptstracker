@@ -131,21 +131,19 @@ export function GroupedExpenseRow({
         className="hover:bg-muted/20 transition-colors cursor-pointer"
         onClick={() => onExpenseClick(parentExpense)}
       >
-        <td className="whitespace-nowrap">
+        <td 
+          className="whitespace-nowrap cursor-pointer hover:bg-muted/30 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+        >
           <div className="flex items-center gap-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsExpanded(!isExpanded);
-              }}
-              className="p-1 -ml-1 hover:bg-muted/50 rounded transition-colors"
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
-            </button>
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
             {formatDisplayDate(parentExpense.date)}
           </div>
         </td>
