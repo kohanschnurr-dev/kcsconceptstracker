@@ -1,25 +1,41 @@
 
-## Plan: Perfect Quantity Column Centering
+
+## Plan: Remove Cost-to-Complete Section
 
 ### Problem
-The quantity input box is using `ml-auto` which pushes it right, but the "Qty" header appears to be more centered. The input box and text inside need to be truly centered under the header.
+The "Cost-to-Complete by Category" card in the Procurement tab is adding clutter to the interface.
 
 ### Solution
-Change the TableCell to use flexbox centering instead of `text-right`, and center the input within it.
+Remove the entire "Cost-to-Complete by Category" card component from the ProcurementTab.
 
 ### Changes
 
-**File: `src/pages/BundleDetail.tsx`**
+**File: `src/components/project/ProcurementTab.tsx`**
 
-| Line | Current | New |
-|------|---------|-----|
-| 502 | `<TableCell className="text-right">` | `<TableCell className="text-center">` |
-| 512 | `className="w-16 h-8 text-center text-sm ml-auto"` | `className="w-16 h-8 text-center text-sm mx-auto"` |
+Delete lines 506-543 which contain:
 
-### What This Does
-1. Changes the `TableCell` from `text-right` to `text-center` so the content is centered in the column
-2. Changes `ml-auto` to `mx-auto` on the Input to center it horizontally within the cell
+```tsx
+{/* Cost-to-Complete by Category */}
+{categories.length > 0 && items.length > 0 && (
+  <Card className="glass-card">
+    <CardHeader className="pb-2">
+      <CardTitle className="text-base">Cost-to-Complete by Category</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-3">
+        {categories
+          .filter(cat => totals.byCategoryId[cat.id]?.procured > 0 || cat.actualSpent > 0)
+          .slice(0, 5)
+          .map(cat => {
+            // ... progress bar rendering
+          })}
+      </div>
+    </CardContent>
+  </Card>
+)}
+```
 
 ### Result
-- The quantity input box will be perfectly centered under the "Qty" header
-- The number inside the input will remain centered
+- The Procurement tab will have a cleaner layout
+- The category budget tracking remains available in the Budget tab
+
