@@ -35,7 +35,10 @@ import {
   Archive,
   Refrigerator,
   AppWindow,
-  Triangle,
+  Home,
+  RectangleHorizontal,
+  Square,
+  LayoutDashboard,
   ChevronDown
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -121,7 +124,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   { 
     value: 'flooring', 
     label: 'Flooring', 
-    icon: Layers, 
+    icon: RectangleHorizontal, 
     color: 'bg-orange-500/10 text-orange-600 border-orange-500/30',
     fields: ['material', 'sqft', 'thickness', 'finish', 'underlayment'],
     placeholders: { material: 'LVP, Hardwood, Tile', sqft: 'Total sq ft needed', thickness: '6mm, 12mm, 3/4"' }
@@ -169,7 +172,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   { 
     value: 'countertops', 
     label: 'Countertops', 
-    icon: Grid3X3, 
+    icon: LayoutDashboard, 
     color: 'bg-stone-500/10 text-stone-600 border-stone-500/30',
     fields: ['material', 'edge_profile', 'thickness', 'sqft'],
     placeholders: { material: 'Quartz, Granite, Marble', edge_profile: 'Eased, Bullnose, Ogee', thickness: '2cm, 3cm' }
@@ -225,7 +228,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   { 
     value: 'roofing', 
     label: 'Roofing', 
-    icon: Triangle, 
+    icon: Home, 
     color: 'bg-red-500/10 text-red-600 border-red-500/30',
     fields: ['material', 'squares', 'warranty_years'],
     placeholders: { material: 'Shingles, Metal, Tile', squares: 'Roofing squares (100 sq ft each)' }
@@ -249,7 +252,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   { 
     value: 'drywall', 
     label: 'Drywall', 
-    icon: Grid3X3, 
+    icon: Square, 
     color: 'bg-gray-500/10 text-gray-600 border-gray-500/30',
     fields: ['thickness', 'sheet_size', 'type'],
     placeholders: { thickness: '1/2", 5/8"', sheet_size: '4x8, 4x12', type: 'Regular, Moisture-resistant, Fire-rated' }
