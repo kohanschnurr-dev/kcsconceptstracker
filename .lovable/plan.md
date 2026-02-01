@@ -1,19 +1,10 @@
 
 
-## Plan: Fix Column Alignment in Expenses Table
+## Plan: Remove TX Sales Tax Section from Expenses Summary
 
-### The Issue
+### Overview
 
-Looking at the screenshot, the columns are visually misaligned because:
-1. The base `.data-table th` CSS applies `text-left` by default
-2. The inline `text-center` classes may not be overriding properly due to CSS specificity
-3. The column widths may be inconsistent between header and body cells
-
----
-
-### Solution
-
-Fix the alignment by using proper CSS classes with higher specificity and ensuring consistent column widths.
+Remove the "TX Sales Tax (8.25%)" display from the right side of the expenses summary card.
 
 ---
 
@@ -21,73 +12,61 @@ Fix the alignment by using proper CSS classes with higher specificity and ensuri
 
 **File: `src/pages/Expenses.tsx`**
 
-Update the table headers to use `!text-center` (Tailwind's important modifier) to override the base CSS:
+Remove lines 474-479 which contain the tax display:
 
 ```tsx
-<thead>
-  <tr className="bg-muted/30">
-    <th className="w-[100px]">Date</th>
-    <th>Vendor</th>
-    <th className="!text-center">Project</th>
-    <th className="!text-center">Category</th>
-    <th className="!text-center">Payment</th>
-    <th className="!text-center">Amount</th>
-  </tr>
-</thead>
-```
+// BEFORE (lines 459-480):
+<div className="glass-card p-4 flex items-center justify-between">
+  <div className="flex items-center gap-3">
+    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+      <Receipt className="h-5 w-5 text-primary" />
+    </div>
+    <div>
+      <p className="text-sm text-muted-foreground">
+        {filteredExpenses.length} expenses
+      </p>
+      <p className="text-xl font-semibold font-mono">
+        {formatCurrency(totalExpenses)}
+      </p>
+    </div>
+  </div>
+  <div className="text-right text-sm text-muted-foreground">      // ← REMOVE
+    <p>TX Sales Tax (8.25%)</p>                                    // ← REMOVE
+    <p className="font-mono text-foreground">                      // ← REMOVE
+      {formatCurrency(...)}                                        // ← REMOVE
+    </p>                                                           // ← REMOVE
+  </div>                                                           // ← REMOVE
+</div>
 
-**File: `src/components/expenses/GroupedExpenseRow.tsx`**
-
-Update all `<td>` elements to use `!text-center` for the centered columns:
-
-For single expense rows:
-```tsx
-<td className="!text-center">{getProjectName(expense.project_id)}</td>
-<td className="!text-center">
-  <Badge ...>...</Badge>
-</td>
-<td className="!text-center capitalize">{expense.payment_method}</td>
-<td className="!text-center">
-  <div className="flex items-center justify-center gap-2">...</div>
-</td>
-```
-
-For parent (grouped) rows:
-```tsx
-<td className="!text-center">{getProjectName(parentExpense.project_id)}</td>
-<td className="!text-center">
-  <Badge ...>Multiple</Badge>
-</td>
-<td className="!text-center capitalize">{parentExpense.payment_method}</td>
-<td className="!text-center">
-  <div className="flex items-center justify-center gap-2">...</div>
-</td>
-```
-
-For child (expanded) rows:
-```tsx
-<td className="!text-center text-muted-foreground text-sm">—</td>
-<td className="!text-center">
-  <Badge ...>...</Badge>
-</td>
-<td className="!text-center text-muted-foreground text-sm">—</td>
-<td className="!text-center">
-  <div className="flex items-center justify-center gap-2">...</div>
-</td>
+// AFTER:
+<div className="glass-card p-4">
+  <div className="flex items-center gap-3">
+    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+      <Receipt className="h-5 w-5 text-primary" />
+    </div>
+    <div>
+      <p className="text-sm text-muted-foreground">
+        {filteredExpenses.length} expenses
+      </p>
+      <p className="text-xl font-semibold font-mono">
+        {formatCurrency(totalExpenses)}
+      </p>
+    </div>
+  </div>
+</div>
 ```
 
 ---
 
-### Files to Modify
+### Changes Summary
 
 | File | Changes |
 |------|---------|
-| `src/pages/Expenses.tsx` | Add `!text-center` to `<th>` elements for Project, Category, Payment, Amount |
-| `src/components/expenses/GroupedExpenseRow.tsx` | Add `!text-center` to all corresponding `<td>` elements |
+| `src/pages/Expenses.tsx` | Remove TX Sales Tax section (lines 474-479), simplify card layout |
 
 ---
 
-### Why This Works
+### Result
 
-The `!` prefix in Tailwind (e.g., `!text-center`) applies `!important` to the CSS rule, ensuring it overrides the base `.data-table th { text-align: left }` style defined in `src/index.css`.
+The summary card will show only the expense count and total amount, without the Texas Sales Tax information on the right side.
 
