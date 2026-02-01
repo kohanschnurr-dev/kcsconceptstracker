@@ -219,7 +219,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   },
   { 
     value: 'lighting', 
-    label: 'Lighting', 
+    label: 'Light Fixtures', 
     icon: Lightbulb, 
     color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
     fields: ['fixture_type', 'wattage', 'lumens', 'color_temp'],
