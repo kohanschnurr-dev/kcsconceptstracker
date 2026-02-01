@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +41,10 @@ import {
   LayoutDashboard,
   ChevronDown,
   TreePine,
-  Sparkles
+  Sparkles,
+  Upload,
+  Package,
+  X
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FunctionsHttpError } from '@supabase/supabase-js';
@@ -390,6 +393,9 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   const [scrapeSuccess, setScrapeSuccess] = useState(false);
   const [step, setStep] = useState<Step>('url');
   const [urlInput, setUrlInput] = useState('');
+  const [imageUploading, setImageUploading] = useState(false);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<FormData>({
     category: '',
@@ -411,6 +417,91 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     specs: {},
     image_url: '',
   });
+
+  // Image upload handler
+  const uploadImage = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    
+    setImageUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop() || 'png';
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      
+      const { error } = await supabase.storage
+        .from('procurement-images')
+        .upload(fileName, file);
+      
+      if (error) {
+        console.error('Upload error:', error);
+        toast.error('Failed to upload image');
+        return;
+      }
+      
+      const { data } = supabase.storage.from('procurement-images').getPublicUrl(fileName);
+      setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
+      toast.success('Image uploaded');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  // Handle file input change
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadImage(file);
+    // Reset input so the same file can be selected again
+    e.target.value = '';
+  };
+
+  // Handle drag over
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingImage(true);
+  };
+
+  // Handle drag leave
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingImage(false);
+  };
+
+  // Handle drop
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingImage(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      uploadImage(file);
+    }
+  };
+
+  // Handle paste events for image upload
+  useEffect(() => {
+    if (!open || step !== 'details') return;
+    
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) uploadImage(file);
+          break;
+        }
+      }
+    };
+    
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [open, step]);
 
   // Parse specs from notes field (stored as JSON)
   const parseSpecsFromNotes = (notes: string | null): { specs: Record<string, string>; cleanNotes: string } => {
@@ -847,6 +938,14 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
 
   const renderDetailsStep = () => (
     <div className="space-y-4 py-4">
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        className="hidden"
+      />
 
       <div className="grid grid-cols-2 gap-4">
         {/* Item Name */}
@@ -857,6 +956,60 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             placeholder={selectedCategory?.value === 'doors' ? 'e.g., 36" Shaker Interior Door' : 'Item description'}
           />
+        </div>
+
+        {/* Product Image Section */}
+        <div className="col-span-2">
+          <Label className="mb-2 block">Product Image</Label>
+          <div className="flex gap-4 items-start">
+            {/* Image Preview */}
+            <div className="w-24 h-24 rounded-lg border bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+              {imageUploading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              ) : formData.image_url ? (
+                <img 
+                  src={formData.image_url} 
+                  alt="Product" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <Package className="h-8 w-8 text-muted-foreground" />
+              )}
+            </div>
+            
+            {/* Upload Drop Zone */}
+            <div 
+              className={cn(
+                "flex-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors",
+                isDraggingImage ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/50",
+                imageUploading && "pointer-events-none opacity-50"
+              )}
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Drop image or click to browse</p>
+              <p className="text-xs text-muted-foreground mt-1">Ctrl+V to paste</p>
+            </div>
+          </div>
+          
+          {formData.image_url && (
+            <Button 
+              type="button"
+              variant="ghost" 
+              size="sm" 
+              className="mt-2 text-muted-foreground hover:text-destructive"
+              onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}
+            >
+              <X className="h-3 w-3 mr-1" />
+              Remove image
+            </Button>
+          )}
         </div>
 
         {/* Category-specific fields */}
