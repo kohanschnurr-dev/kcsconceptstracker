@@ -60,10 +60,12 @@ interface DBExpense {
   notes?: string | null;
   receipt_url?: string | null;
   source?: 'manual' | 'quickbooks';
+  qb_id?: string | null;
 }
 
 interface DBQuickBooksExpense {
   id: string;
+  qb_id: string;
   project_id: string | null;
   category_id: string | null;
   amount: number;
@@ -175,6 +177,7 @@ export default function Expenses() {
           notes: e.notes || null,
           receipt_url: e.receipt_url || null,
           source: 'quickbooks' as const,
+          qb_id: e.qb_id,
         }));
 
       const allExpenses = [...manualExpenses, ...qbExpenses].sort(
@@ -297,9 +300,18 @@ export default function Expenses() {
     const groups: Map<string, typeof filteredExpenses> = new Map();
     
     filteredExpenses.forEach((expense) => {
-      // Check if this is a split expense (has _split_ in the ID)
-      const splitMatch = expense.id.match(/^(.+?)_split_/);
-      const parentId = splitMatch ? splitMatch[1] : expense.id;
+      // For QB expenses, check qb_id for split pattern
+      // For manual expenses, use id as the group key
+      let parentId = expense.id;
+      
+      if (expense.source === 'quickbooks' && expense.qb_id) {
+        const splitMatch = expense.qb_id.match(/^(.+?)_split_/);
+        if (splitMatch) {
+          parentId = splitMatch[1]; // e.g., "purchase_801"
+        } else {
+          parentId = expense.qb_id; // Use qb_id as the key for consistency
+        }
+      }
       
       if (!groups.has(parentId)) {
         groups.set(parentId, []);
