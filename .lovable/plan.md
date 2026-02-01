@@ -1,49 +1,109 @@
 
-## Plan: Remove 78% Rule Section from Profit Calculator
+
+## Plan: Simplify Financials Tab
 
 ### Overview
 
-Remove the "78% Rule" check section from the Profit Calculator since the property has already been purchased and this pre-purchase analysis is no longer relevant.
+Remove the "Spending by Category" chart and "Category Breakdown" table from the Financials tab, keeping only the Profit Calculator and Export Reports for a cleaner, less cluttered view.
 
-### Changes
+### Current Layout
 
-**File: `src/components/project/ProfitCalculator.tsx`**
-
-| Lines | Change |
-|-------|--------|
-| 2 | Remove `Percent` from lucide-react imports |
-| 73-75 | Remove the `maxOffer` and `meetsRule` calculations |
-| 131-150 | Remove the entire 78% Rule display section |
-
-### Code to Remove
-
-```typescript
-// Line 2: Remove Percent from import
-import { Calculator, DollarSign, TrendingUp, Percent, Save, Loader2 } from 'lucide-react';
-//                                            ^^^^^^^^ remove this
-
-// Lines 73-75: Remove these calculations
-const maxOffer = (arv * 0.78) - totalBudget;
-const meetsRule = purchasePrice <= maxOffer;
-
-// Lines 131-150: Remove entire 78% Rule section
-{arv > 0 && (
-  <div className={cn(...)}>
-    <div className="flex items-center gap-2 mb-1">
-      <Percent className="h-4 w-4" />
-      <span className="font-medium">78% Rule</span>
-    </div>
-    <p className="text-sm text-muted-foreground">
-      Max offer: ...
-    </p>
-  </div>
-)}
 ```
+┌──────────────────────────────────────────────────────────┐
+│                     Financials Tab                        │
+├────────────────────────┬─────────────────────────────────┤
+│   Profit Calculator    │   Spending by Category (chart)  │  ← REMOVE chart
+├────────────────────────┴─────────────────────────────────┤
+│                    Export Reports                         │
+├──────────────────────────────────────────────────────────┤
+│                  Category Breakdown (table)               │  ← REMOVE table
+└──────────────────────────────────────────────────────────┘
+```
+
+### New Layout
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                     Financials Tab                        │
+├──────────────────────────────────────────────────────────┤
+│                    Profit Calculator                      │
+├──────────────────────────────────────────────────────────┤
+│                    Export Reports                         │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Technical Changes
+
+**File: `src/pages/ProjectDetail.tsx`**
+
+| Change | Lines |
+|--------|-------|
+| Remove SpendingChart import | Line 43 |
+| Remove 2-column grid and SpendingChart | Lines 553-562 |
+| Remove Category Breakdown Card | Lines 580-619 |
+| Remove Table component import (if unused elsewhere) | Line 26 |
+
+---
+
+### Code Changes
+
+1. **Remove import** (line 43):
+   ```typescript
+   // Remove this line
+   import { SpendingChart } from '@/components/project/SpendingChart';
+   ```
+
+2. **Simplify Financials TabsContent** (lines 552-620):
+   
+   **Before:**
+   ```typescript
+   <TabsContent value="financials" className="space-y-6">
+     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <ProfitCalculator ... />
+       <SpendingChart ... />
+     </div>
+     <ExportReports ... />
+     <Card className="glass-card">
+       {/* Category Breakdown table */}
+     </Card>
+   </TabsContent>
+   ```
+   
+   **After:**
+   ```typescript
+   <TabsContent value="financials" className="space-y-6">
+     <ProfitCalculator 
+       projectId={id!}
+       totalBudget={totalBudget}
+       totalSpent={totalSpent}
+       initialPurchasePrice={project.purchase_price || 0}
+       initialArv={project.arv || 0}
+     />
+     <ExportReports 
+       project={{...}}
+       categories={categories}
+       expenses={allExpensesForExport}
+     />
+   </TabsContent>
+   ```
+
+3. **Check Table import** - If no other tab uses `Table`, `TableBody`, etc., remove from imports (line 26). Otherwise keep it.
+
+---
+
+### Files Affected
+
+| File | Change |
+|------|--------|
+| `src/pages/ProjectDetail.tsx` | Remove SpendingChart + Category Breakdown table |
 
 ### Result
 
-The Profit Calculator will show just:
-1. Purchase Price and ARV inputs
-2. Est. Profit, Current Profit, and ROI metrics
+The Financials tab will show only:
+1. **Profit Calculator** - Purchase price, ARV, profit metrics
+2. **Export Reports** - CSV download options
 
-No more "78% Rule" or "Max offer" guidance since the deal is already closed.
+No more duplicate category information (chart + table).
+
