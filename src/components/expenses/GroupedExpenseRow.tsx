@@ -115,19 +115,27 @@ export function GroupedExpenseRow({
   // Multiple expenses - render collapsible group
   return (
     <>
-      {/* Parent row - clickable to expand */}
+      {/* Parent row - clickable to open detail, arrow to expand */}
       <tr 
         className="hover:bg-muted/20 transition-colors cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => onExpenseClick(parentExpense)}
       >
         <td className="whitespace-nowrap">
           <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+              className="p-1 -ml-1 hover:bg-muted/50 rounded transition-colors"
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
             {formatDisplayDate(parentExpense.date)}
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            )}
           </div>
         </td>
         <td>
@@ -135,7 +143,7 @@ export function GroupedExpenseRow({
             <div className="flex-1 min-w-0">
               <p className="font-medium">{parentExpense.vendor_name || 'Unknown'}</p>
               <p className="text-xs text-muted-foreground">
-                {expenses.length} items • Click to expand
+                {expenses.length} items • Click arrow to expand
               </p>
             </div>
             <div className="w-8 flex-shrink-0 flex justify-end">
