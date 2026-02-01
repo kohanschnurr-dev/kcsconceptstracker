@@ -42,6 +42,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PhotoGallery } from '@/components/project/PhotoGallery';
 
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
+import { CashFlowCalculator } from '@/components/project/CashFlowCalculator';
 import { ProjectCalendar } from '@/components/project/ProjectCalendar';
 import { ProjectTasks } from '@/components/project/ProjectTasks';
 
@@ -59,6 +60,16 @@ interface DBProject {
   start_date: string;
   purchase_price?: number;
   arv?: number;
+  // Rental-specific fields
+  monthly_rent?: number;
+  loan_amount?: number;
+  interest_rate?: number;
+  loan_term_years?: number;
+  annual_property_taxes?: number;
+  annual_insurance?: number;
+  vacancy_rate?: number;
+  monthly_maintenance?: number;
+  management_rate?: number;
 }
 
 interface DBCategory {
@@ -550,13 +561,32 @@ export default function ProjectDetail() {
           </TabsContent>
 
           <TabsContent value="financials" className="space-y-6">
-            <ProfitCalculator 
-              projectId={id!}
-              totalBudget={totalBudget}
-              totalSpent={totalSpent}
-              initialPurchasePrice={project.purchase_price || 0}
-              initialArv={project.arv || 0}
-            />
+            {isRental ? (
+              <CashFlowCalculator 
+                projectId={id!}
+                totalBudget={totalBudget}
+                totalSpent={totalSpent}
+                initialPurchasePrice={project.purchase_price || 0}
+                initialArv={project.arv || 0}
+                initialMonthlyRent={project.monthly_rent || 0}
+                initialLoanAmount={project.loan_amount || 0}
+                initialInterestRate={project.interest_rate || 0}
+                initialLoanTermYears={project.loan_term_years || 30}
+                initialAnnualPropertyTaxes={project.annual_property_taxes || 0}
+                initialAnnualInsurance={project.annual_insurance || 0}
+                initialVacancyRate={project.vacancy_rate || 8}
+                initialMonthlyMaintenance={project.monthly_maintenance || 0}
+                initialManagementRate={project.management_rate || 10}
+              />
+            ) : (
+              <ProfitCalculator 
+                projectId={id!}
+                totalBudget={totalBudget}
+                totalSpent={totalSpent}
+                initialPurchasePrice={project.purchase_price || 0}
+                initialArv={project.arv || 0}
+              />
+            )}
             
             <ExportReports 
               project={{
