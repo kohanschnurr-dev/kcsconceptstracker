@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const QB_CLIENT_ID = Deno.env.get("QUICKBOOKS_CLIENT_ID");
@@ -231,7 +231,8 @@ serve(async (req) => {
 
     // All other actions require authentication
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
+      console.log("Missing or invalid auth header");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -242,13 +243,19 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    // Use getClaims to validate the JWT token (works with new signing-keys system)
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.log("Token validation failed:", claimsError?.message);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const userId = claimsData.claims.sub as string;
 
     if (action === "authorize") {
       // Generate state and store it with user_id
@@ -259,7 +266,7 @@ serve(async (req) => {
       const { error: stateError } = await supabase
         .from("quickbooks_oauth_states")
         .insert({
-          user_id: user.id,
+          user_id: userId,
           state: state,
         });
 
@@ -288,7 +295,7 @@ serve(async (req) => {
       const { data: tokenData, error: tokenError } = await supabase
         .from("quickbooks_tokens")
         .select("expires_at, realm_id, refresh_token")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .single();
 
       if (tokenError || !tokenData) {
@@ -302,7 +309,7 @@ serve(async (req) => {
       // If token is expired, try to refresh it automatically
       if (isExpired && tokenData.refresh_token) {
         console.log("Access token expired, attempting to refresh...");
-        const refreshResult = await refreshAccessToken(user.id, tokenData.refresh_token, tokenData.realm_id);
+        const refreshResult = await refreshAccessToken(userId, tokenData.refresh_token, tokenData.realm_id);
         
         if (refreshResult.success) {
           // Token was refreshed successfully
@@ -339,7 +346,7 @@ serve(async (req) => {
       await supabase
         .from("quickbooks_tokens")
         .delete()
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
