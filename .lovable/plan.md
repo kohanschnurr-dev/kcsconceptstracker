@@ -1,32 +1,27 @@
 
-
-## Plan: Fix Home Depot URL Scraping with Firecrawl v2 API and Stealth Mode
+## Plan: Fix Home Depot Price Extraction Using Embedded JSON Data
 
 ### Problem Analysis
 
-The Home Depot product URL scraping is failing with `SCRAPE_TIMEOUT` errors despite using enhanced mode. Based on my investigation:
-
-1. **Using outdated v1 API** - The code uses `https://api.firecrawl.dev/v1/scrape` but Firecrawl v2 is current and has better anti-bot handling
-2. **Wrong proxy value** - Using `proxy: 'enhanced'` but for aggressive anti-bot sites, `proxy: 'stealth'` is the correct option
-3. **Missing helpful options** - Not using `blockAds: true` and `mobile: false` which can improve scraping success
-4. **Action syntax issues** - The scroll action syntax may need adjustment
-
-From the Firecrawl documentation, there are **three proxy types**:
-- `basic`: Fast, works for most sites
-- `enhanced`: For complex sites with moderate anti-bot (5 credits)
-- `stealth`: For sites with aggressive anti-bot protection like Home Depot (uses stealth proxies)
-
-The default `auto` setting doesn't include `stealth` - it only falls back to `enhanced`.
-
----
+The current implementation tries to scrape Home Depot pages using Firecrawl with stealth mode, but:
+1. The pages are heavily JavaScript-rendered and anti-bot protected
+2. Even when we get the HTML, the current price extraction logic doesn't have Home Depot-specific patterns
+3. Home Depot embeds **structured JSON data** in the page that contains clean, reliable price information
 
 ### Solution
 
-1. **Upgrade to Firecrawl v2 API** - Change endpoint from `/v1/scrape` to `/v2/scrape`
-2. **Use stealth proxy** for Home Depot/Lowe's - Change `proxy: 'enhanced'` to `proxy: 'stealth'`
-3. **Add blockAds option** - Enable ad blocking to reduce page complexity
-4. **Simplify actions** - Use a simpler scroll action that reliably triggers content loading
-5. **Add retry mechanism** - If stealth fails, return a clear error message
+Add **Home Depot-specific price extraction** that parses the embedded JSON data from the page HTML. This JSON contains:
+```json
+{
+  "itemId": "301688589",
+  "pricing": {
+    "value": 31.97,
+    "original": 31.97
+  }
+}
+```
+
+This approach is much more reliable than trying to parse dynamic CSS selectors.
 
 ---
 
@@ -34,45 +29,98 @@ The default `auto` setting doesn't include `stealth` - it only falls back to `en
 
 **File: `supabase/functions/scrape-product-url/index.ts`**
 
-**1. Update the Firecrawl API endpoint (line 721)**
+**1. Add new Home Depot price extraction function (after line 291)**
 
-Change from v1 to v2:
 ```typescript
-// Before
-const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+// Home Depot-specific price extraction from embedded JSON
+function extractHomeDepotPrice(html: string): number | null {
+  // Look for embedded JSON pricing data
+  const patterns = [
+    // Embedded product JSON with pricing
+    /"pricing"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i,
+    /"pricing":\{"value":([\d.]+)/i,
+    // Price format patterns
+    /"price"\s*:\s*([\d.]+)/i,
+    // Data attributes
+    /data-price="([\d.]+)"/i,
+    // Price display classes  
+    /class="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/i,
+    /price-format__main-price[^>]*>\s*\$?([\d,]+\.?\d*)/i,
+    /price__dollars[^>]*>([\d,]+)/i,
+  ];
 
-// After
-const response = await fetch('https://api.firecrawl.dev/v2/scrape', {
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match && match[1]) {
+      const price = parseFloat(match[1].replace(/,/g, ''));
+      if (price && price > 0 && price < 50000) {
+        console.log('Found Home Depot price via pattern:', pattern.toString().slice(0, 50));
+        return price;
+      }
+    }
+  }
+  
+  return null;
+}
 ```
 
-**2. Update scrape options (lines 696-719)**
+**2. Update extractProductData function (around line 497)**
 
-Use `stealth` proxy and add missing options:
+Add Home Depot price extraction before the markdown fallback:
 ```typescript
-// Build scrape options
-const scrapeOptions: Record<string, unknown> = {
-  url: formattedUrl,
-  formats: ['markdown', 'html'],
-  onlyMainContent: false,
-  waitFor: needsEnhancedMode ? 5000 : 3000,
-  timeout: needsEnhancedMode ? 120000 : 30000, // 2 minutes for stealth
-  location: {
-    country: 'US',
-    languages: ['en-US'],
-  },
-  blockAds: true, // Block ads and popups
-};
+// Extract price - use store-specific logic
+if (store === 'amazon') {
+  // Try HTML extraction first for Amazon (more reliable)
+  price = extractAmazonPrice(html);
+  
+  // Fall back to markdown extraction
+  if (!price) {
+    price = extractPriceFromMarkdown(markdown, store);
+  }
+} else if (store === 'home_depot') {
+  // Try embedded JSON extraction first for Home Depot
+  price = extractHomeDepotPrice(html);
+  
+  // Fall back to markdown extraction
+  if (!price) {
+    price = extractPriceFromMarkdown(markdown, store);
+  }
+} else if (store === 'lowes') {
+  // Similar pattern for Lowe's
+  price = extractLowesPrice(html);
+  
+  if (!price) {
+    price = extractPriceFromMarkdown(markdown, store);
+  }
+} else {
+  // For other stores, use markdown extraction
+  price = extractPriceFromMarkdown(markdown, store);
+}
+```
 
-// Use stealth proxy and actions for sites with aggressive anti-bot protection
-if (needsEnhancedMode) {
-  console.log('Using stealth mode for:', store);
-  scrapeOptions.proxy = 'stealth'; // Changed from 'enhanced'
-  // Simpler scroll action
-  scrapeOptions.actions = [
-    { type: 'wait', milliseconds: 3000 },
-    { type: 'scroll', direction: 'down' },
-    { type: 'wait', milliseconds: 2000 },
+**3. Add Lowe's price extraction function**
+
+```typescript
+// Lowe's-specific price extraction from embedded JSON
+function extractLowesPrice(html: string): number | null {
+  const patterns = [
+    /"price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i,
+    /"sellingPrice"\s*:\s*([\d.]+)/i,
+    /data-price="([\d.]+)"/i,
+    /class="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/i,
   ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match && match[1]) {
+      const price = parseFloat(match[1].replace(/,/g, ''));
+      if (price && price > 0 && price < 50000) {
+        return price;
+      }
+    }
+  }
+  
+  return null;
 }
 ```
 
@@ -82,27 +130,24 @@ if (needsEnhancedMode) {
 
 | Location | Change |
 |----------|--------|
-| Line 721 | Change API endpoint from v1 to v2 |
-| Line 702 | Increase timeout to 120000ms (2 minutes) |
-| Line 703-706 | Add `blockAds: true` option |
-| Line 712 | Change `proxy: 'enhanced'` to `proxy: 'stealth'` |
-| Lines 714-718 | Simplify actions with longer initial wait |
+| After line 291 | Add `extractHomeDepotPrice()` function |
+| After line 291 | Add `extractLowesPrice()` function |
+| Lines 488-500 | Update price extraction to use store-specific functions |
 
 ---
 
-### Why Stealth Mode Helps
+### Why This Works
 
-1. **Stealth Proxies**: Uses specialized residential proxies that appear as real users
-2. **Anti-Detection**: Bypasses JavaScript-based bot detection used by Home Depot
-3. **Cookie Handling**: Better cookie and session management
-4. **Longer Timeouts**: 2-minute timeout allows for complex page loading
+1. **Embedded JSON is reliable**: Home Depot pages contain structured product data as JSON, which is used by their own JavaScript
+2. **Multiple fallback patterns**: We try several patterns to catch the price data
+3. **No anti-bot issues**: Once we have the HTML (even partial), the JSON patterns can extract the price
+4. **Maintains existing fallback**: If JSON extraction fails, we still try markdown patterns
 
 ---
 
 ### Expected Result
 
-- Home Depot product URLs should scrape successfully with stealth mode
-- Product name, price, image, and specs will be extracted correctly
-- Lowe's and other difficult sites will also benefit from this change
-- Credit usage: Stealth mode costs more credits but ensures reliable scraping
-
+- Home Depot prices will be extracted from embedded JSON data
+- Works even when page JavaScript doesn't fully render
+- Lowe's products will also benefit from similar extraction
+- Price extraction becomes much more reliable for major retailers
