@@ -15,6 +15,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Button } from '@/components/ui/button';
 import kcsLogo from '@/assets/kcs-logo.png';
 
@@ -44,14 +45,19 @@ export function Sidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { displayName } = useProfile();
+  const { companyName, logoUrl } = useCompanySettings();
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-sidebar">
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-border px-4">
-          <img src={kcsLogo} alt="KCS Concepts" className="h-10 w-10 object-contain" />
-          <h1 className="font-bold text-foreground text-lg">KCS Concepts</h1>
+          <img 
+            src={logoUrl || kcsLogo} 
+            alt={companyName} 
+            className="h-10 w-10 object-contain" 
+          />
+          <h1 className="font-bold text-foreground text-lg truncate">{companyName}</h1>
         </div>
 
         {/* Navigation */}
