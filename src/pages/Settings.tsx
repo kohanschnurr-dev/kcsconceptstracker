@@ -167,16 +167,6 @@ export default function Settings() {
                       placeholder="Enter company name"
                     />
                   </div>
-                  {hasCompanyChanges && (
-                    <Button 
-                      onClick={handleSaveCompany} 
-                      disabled={updateSettings.isPending}
-                      size="sm"
-                    >
-                      {updateSettings.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Save Company Name
-                    </Button>
-                  )}
                   
                   <Separator />
                   
@@ -269,16 +259,6 @@ export default function Settings() {
                       />
                     </div>
                   </div>
-                  {hasProfileChangesCalc && (
-                    <Button 
-                      onClick={handleSaveProfile} 
-                      disabled={updateProfile.isPending}
-                      size="sm"
-                    >
-                      {updateProfile.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Save Changes
-                    </Button>
-                  )}
                   <Separator />
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Email</label>
