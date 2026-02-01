@@ -1,101 +1,104 @@
 
 
-## Plan: Fix Matching Issues & Add Manual Transaction Selection
+## Simplify Receipt Matching: Amount + Date Only
 
-### Problem 1: Matching Failed Despite Same Amount
+### Current Problem
 
-The receipt and transaction both show $111.48 but didn't match. Looking at the `match-receipts` edge function, matching requires:
+The current matching algorithm requires **all three criteria**:
+1. Exact amount match (within $0.01)
+2. Date within range (-2 to +5 days)
+3. Vendor similarity > 30%
 
-1. **Exact amount match** (within $0.01) 
-2. **Date within range** (receipt date -2 to +5 days of transaction date)
-3. **Vendor similarity > 0.3** (fuzzy name matching)
-
-Possible failure reasons:
-- Receipt date vs transaction date might be outside the 2-day before / 5-day after window
-- Vendor name extraction from the parsed receipt might differ significantly
-
-**Solution**: Add debug logging in the match modal showing WHY a match failed, so you can see which criterion wasn't met.
+This is too strict. The Home Depot receipt ($111.48) didn't match because the vendor name extracted from the receipt likely differs from what QuickBooks shows.
 
 ---
 
-### Problem 2: Manual Transaction Selection (New Feature)
+### New Matching Logic
 
-Add a dropdown in the "Awaiting Bank Transaction" section that lets you manually select a QuickBooks transaction for any pending receipt. The workflow:
+**Primary Match: Amount + Date = Enough**
 
-1. For each pending receipt (In-Store Purchase, Amazon, Pro in your screenshot), add a "Link Transaction" button
-2. When clicked, shows a dropdown of all pending QuickBooks transactions (like the Home Depot $111.48 below)
-3. Selecting one creates a manual match, opening the split import modal
-4. Debug info displayed showing why auto-match failed
+If the amount matches exactly AND the date is within range, that's a match. Vendor name becomes a "bonus" for confidence scoring, not a blocker.
+
+```text
+BEFORE:
+  Amount match? → Date in range? → Vendor > 30%? → Match ✓
+                                           ↓
+                                      No match ✗
+
+AFTER:
+  Amount match? → Date in range? → Match ✓ (vendor adds to confidence)
+```
 
 ---
 
-### Technical Implementation
+### Technical Changes
 
-**File: `src/components/SmartSplitReceiptUpload.tsx`**
+**File: `supabase/functions/match-receipts/index.ts`**
 
-1. **Add state for manual transaction selection**
-   - `availableQbExpenses`: List of pending QuickBooks transactions
-   - `manualLinkingReceiptId`: Track which receipt is being manually linked
+**1. Remove Vendor Blocking Logic (lines 178-181)**
 
-2. **Fetch pending QB transactions** (already available from QuickBooks integration)
-   - Pass `pendingExpenses` from `useQuickBooks` hook as a prop
-   - OR fetch directly from `quickbooks_expenses` table where `is_imported = false`
+```typescript
+// BEFORE: Vendor mismatch blocks the match
+if (vendorScore < 0.3) {
+  continue;  // ← REMOVE THIS
+}
 
-3. **Add "Link Transaction" dropdown to each pending receipt card**
-   ```text
-   ┌─────────────────────────────────────────────────────────┐
-   │ 📷 In-Store Purchase                                   │
-   │ $111.48 • Jan 28, 2026 • 11 items parsed               │
-   │ [Link Transaction ▾]                          🗑️       │
-   └─────────────────────────────────────────────────────────┘
-   
-   Dropdown shows:
-   ┌─────────────────────────────────────────────────────┐
-   │ Home Depot - $111.48 - Jan 28, 2026               │
-   │ PayPal CentralMech - $374.50 - Jan 27, 2026       │
-   │ ...                                                │
-   └─────────────────────────────────────────────────────┘
-   ```
+// AFTER: Vendor score only affects confidence, doesn't block
+```
 
-4. **Manual match function**
-   - When a QB transaction is selected, create a `MatchedExpense` object manually
-   - Call `acceptMatch()` to open the split import modal
-   - Include debug info showing the match was manual
+**2. Adjust Confidence Calculation**
 
-5. **Debug information display**
-   - In the match modal header, show match source: "Auto (92% confidence)" or "Manual link"
-   - Optionally show why auto-match failed for manual links
+```typescript
+// BEFORE: Amount=50%, Date=20%, Vendor=30%
+const confidence = 0.5 + 0.2 + (vendorScore * 0.3);
+
+// AFTER: Amount=60%, Date=30%, Vendor=10% (bonus)
+const confidence = 0.6 + 0.3 + (vendorScore * 0.1);
+// Minimum confidence with 0% vendor match = 90%
+// With vendor match = up to 100%
+```
+
+**3. Lower Minimum Confidence Threshold**
+
+```typescript
+// BEFORE: Required 70% confidence
+if (bestMatch && bestConfidence >= 0.7) {
+
+// AFTER: Required 85% (since amount+date now gives 90% base)
+if (bestMatch && bestConfidence >= 0.85) {
+```
+
+**4. Add Debug Logging**
+
+```typescript
+console.log(`Receipt ${receipt.id}: amount=${receiptAmount}, date=${receipt.purchase_date}, vendor="${receipt.vendor_name}"`);
+console.log(`  vs QB ${qbExpense.qb_id}: amount=${qbAmount}, date=${qbExpense.date}, vendor="${qbExpense.vendor_name}"`);
+console.log(`  → Amount diff: ${Math.abs(receiptAmount - qbAmount)}, Date in range: ${dateMatch}, Vendor score: ${vendorScore}`);
+```
+
+---
+
+### Updated Matching Summary
+
+| Criteria | Weight | Required? |
+|----------|--------|-----------|
+| Exact amount (±$0.01) | 60% | **Yes** |
+| Date in range (-2/+5 days) | 30% | **Yes** |
+| Vendor name similarity | 10% | No (bonus) |
+
+**Result**: Amount + Date match = 90% confidence = Auto-match ✓
 
 ---
 
 ### Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/SmartSplitReceiptUpload.tsx` | Add manual transaction linking UI and logic |
+| File | Change |
+|------|--------|
+| `supabase/functions/match-receipts/index.ts` | Remove vendor blocking, adjust confidence weights |
 
 ---
 
-### UI Changes Summary
+### Summary
 
-1. Each pending receipt card gets a "Link Transaction" dropdown
-2. Dropdown shows all pending QB transactions with vendor, amount, date
-3. Selecting a transaction manually creates the match and opens the import modal
-4. Match modal shows whether match was automatic or manual (for debugging)
-
----
-
-### Data Flow
-
-```text
-Pending Receipt (waiting)
-    │
-    ├── [Auto] Find Matches → Match found? → Open Import Modal
-    │
-    └── [Manual] Link Transaction dropdown
-                    │
-                    └── Select QB Transaction → Open Import Modal
-                                                  │
-                                                  └── Assign project & Import
-```
+The fix removes the vendor name requirement from the matching algorithm. Since exact amount + date within range is already very reliable (unlikely to have two transactions for $111.48 within the same week), we don't need vendor matching to block. Vendor name becomes a bonus for confidence scoring instead.
 
