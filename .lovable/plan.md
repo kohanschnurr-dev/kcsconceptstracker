@@ -1,53 +1,68 @@
 
-## Plan: Simplify Procurement Summary Cards
 
-### Overview
+## Plan: Fix Home Depot URL Scraping with Firecrawl Enhanced Mode
 
-Remove the "In Cart" and "Ordered" summary cards from the Procurement page, keeping only "Total Items" and "Bundles".
+### Problem Analysis
 
----
+The Home Depot product URL scraping is failing with `SCRAPE_TIMEOUT` errors. This is happening because:
 
-### Current Layout (4 cards)
+1. Home Depot has aggressive anti-bot protection
+2. Heavy JavaScript rendering that requires more time
+3. The current implementation uses basic Firecrawl settings without proxy enhancement
 
-| Total Items | In Cart | Ordered | Bundles |
-|-------------|---------|---------|---------|
-| 16 | $0.00 | $0.00 | 2 |
+### Solution
 
-### New Layout (2 cards)
+Use Firecrawl's **Enhanced Mode** with the `proxy: "auto"` parameter. This automatically retries with enhanced proxies when basic scraping fails, which is designed for complex sites like Home Depot.
 
-| Total Items | Bundles |
-|-------------|---------|
-| 16 | 2 |
+Additionally, add the `actions` parameter to scroll the page, which ensures all JavaScript content loads before extraction.
 
 ---
 
 ### Technical Implementation
 
-**File: `src/pages/Procurement.tsx`**
+**File: `supabase/functions/scrape-product-url/index.ts`**
 
-**1. Remove unused calculations (lines ~217-224)**
+**1. Update the Firecrawl API call (lines 696-713)**
 
-Remove these variables that are no longer needed:
-```tsx
-const cartTotal = filteredItems
-  .filter(i => (i.status || 'researching') === 'in_cart')
-  .reduce((sum, i) => sum + calculateItemTotal(i), 0);
+Add `proxy` parameter and `actions` for difficult sites:
 
-const orderedTotal = filteredItems
-  .filter(i => (i.status || 'researching') === 'ordered')
-  .reduce((sum, i) => sum + calculateItemTotal(i), 0);
+```typescript
+// Use Firecrawl to scrape the page
+const store = detectStore(formattedUrl);
+const needsEnhancedMode = store === 'home_depot' || store === 'lowes';
+
+const scrapeOptions: any = {
+  url: formattedUrl,
+  formats: ['markdown', 'html'],
+  onlyMainContent: false,
+  waitFor: needsEnhancedMode ? 5000 : 3000,
+  timeout: needsEnhancedMode ? 90000 : 30000,
+  location: {
+    country: 'US',
+    languages: ['en'],
+  },
+};
+
+// Use enhanced proxy for sites with anti-bot protection
+if (needsEnhancedMode) {
+  scrapeOptions.proxy = 'enhanced';
+  // Add actions to wait and scroll for JS content to load
+  scrapeOptions.actions = [
+    { type: 'wait', milliseconds: 2000 },
+    { type: 'scroll', direction: 'down' },
+    { type: 'wait', milliseconds: 2000 },
+  ];
+}
+
+const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify(scrapeOptions),
+});
 ```
-
-**2. Update grid layout (line ~274)**
-
-Change from 4 columns to 2:
-```tsx
-<div className="grid grid-cols-2 gap-4">
-```
-
-**3. Remove In Cart and Ordered cards (lines ~284-306)**
-
-Remove these two card components, keeping only Total Items and Bundles.
 
 ---
 
@@ -55,14 +70,32 @@ Remove these two card components, keeping only Total Items and Bundles.
 
 | Location | Change |
 |----------|--------|
-| Lines 217-224 | Remove cartTotal and orderedTotal calculations |
-| Line 274 | Change grid from `grid-cols-2 lg:grid-cols-4` to `grid-cols-2` |
-| Lines 284-306 | Remove In Cart and Ordered card components |
+| Lines 693-713 | Add `proxy: "enhanced"` for HD/Lowe's |
+| Lines 693-713 | Add scroll/wait actions to load dynamic content |
+| Lines 693-713 | Increase timeout to 90 seconds for enhanced mode |
 
 ---
 
-### Result
+### How Enhanced Mode Helps
 
-- Cleaner summary section with just 2 cards
-- Total Items and Bundles displayed side by side
-- Removed unused status-based calculations
+1. **Enhanced Proxy**: Uses specialized proxies designed to bypass anti-bot protection (costs 5 credits instead of 1)
+2. **Actions**: Scrolling the page triggers lazy-loaded content to render
+3. **Wait Time**: Additional waits allow JavaScript to fully execute
+
+---
+
+### Alternative: Fallback Mechanism
+
+If enhanced mode still fails occasionally, we could implement a fallback:
+- First attempt with basic mode
+- If timeout/error, retry with enhanced mode
+- This optimizes credit usage for sites that don't need enhancement
+
+---
+
+### Expected Result
+
+- Home Depot product URLs should scrape successfully
+- Product name, price, image, and specs will be extracted
+- Lowe's and other difficult sites will also benefit from this change
+
