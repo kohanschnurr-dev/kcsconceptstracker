@@ -1,5 +1,5 @@
-import { MapPin, Calendar, TrendingUp, Home, Hammer } from 'lucide-react';
-import { Project, BUDGET_CATEGORIES } from '@/types';
+import { MapPin, Calendar, Home, Hammer } from 'lucide-react';
+import { Project } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -17,10 +17,6 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
   const percentSpent = isRental ? 0 : (totalSpent / project.totalBudget) * 100;
   const remaining = isRental ? 0 : project.totalBudget - totalSpent;
 
-  // Check for overbudget categories (only for fix & flips)
-  const overbudgetCategories = isRental ? [] : project.categories.filter(
-    (cat) => cat.actualSpent > cat.estimatedBudget * 1.05
-  );
 
   const getProgressColor = () => {
     if (percentSpent > 100) return 'bg-destructive';
@@ -128,21 +124,6 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
         </div>
       </div>
 
-      {/* Overbudget Warning - Only for Fix & Flips */}
-      {!isRental && overbudgetCategories.length > 0 && (
-        <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-          <div className="flex items-center gap-2 text-destructive text-sm font-medium">
-            <TrendingUp className="h-4 w-4" />
-            <span>{overbudgetCategories.length} categories over budget</span>
-          </div>
-          <div className="mt-1 text-xs text-destructive/80">
-            {overbudgetCategories.map((cat) => {
-              const label = BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label;
-              return label;
-            }).join(', ')}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
