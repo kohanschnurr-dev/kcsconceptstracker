@@ -1,9 +1,25 @@
 
-## Plan: Align QB Badges in Fixed Position
+## Plan: Move Chevron to Right of Date
 
 ### Overview
 
-Move the QuickBooks (QB) badge to a fixed position on the right side of the Vendor column, so all badges line up vertically regardless of vendor name length.
+Move the dropdown chevron arrow from the left side of the date to the right side, so all dates remain left-aligned regardless of whether a row is expandable or not.
+
+---
+
+### Current Layout
+
+```
+> Jan 29, 2026   ← chevron on left, date shifted right
+  Jan 28, 2026   ← no chevron, date at normal position
+```
+
+### Target Layout
+
+```
+Jan 29, 2026 >   ← date at left, chevron on right
+Jan 28, 2026     ← no chevron, date at same position
+```
 
 ---
 
@@ -11,41 +27,33 @@ Move the QuickBooks (QB) badge to a fixed position on the right side of the Vend
 
 **File: `src/components/expenses/GroupedExpenseRow.tsx`**
 
-Change the vendor cell layout from inline flex to a flex container with `justify-between`, giving the vendor info and QB badge separate spaces:
+Update the parent row's date cell (lines 123-132) to place the chevron after the date instead of before:
 
-**Single expense rows (lines 64-81):**
 ```tsx
 // BEFORE:
-<td>
-  <div className="flex items-center gap-2">
-    <div>
-      <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
-      ...
-    </div>
-    {expense.source === 'quickbooks' && (
-      <Badge ...>QB</Badge>
+<td className="whitespace-nowrap">
+  <div className="flex items-center gap-1">
+    {isExpanded ? (
+      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+    ) : (
+      <ChevronRight className="h-4 w-4 text-muted-foreground" />
     )}
+    {formatDisplayDate(parentExpense.date)}
   </div>
 </td>
 
 // AFTER:
-<td>
-  <div className="flex items-center justify-between gap-2">
-    <div className="flex-1 min-w-0">
-      <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
-      ...
-    </div>
-    <div className="w-8 flex-shrink-0 flex justify-end">
-      {expense.source === 'quickbooks' && (
-        <Badge ...>QB</Badge>
-      )}
-    </div>
+<td className="whitespace-nowrap">
+  <div className="flex items-center gap-1">
+    {formatDisplayDate(parentExpense.date)}
+    {isExpanded ? (
+      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+    ) : (
+      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    )}
   </div>
 </td>
 ```
-
-**Parent (grouped) rows (lines 131-144):**
-Apply the same pattern - use `justify-between` and a fixed-width container for the QB badge on the right.
 
 ---
 
@@ -53,10 +61,10 @@ Apply the same pattern - use `justify-between` and a fixed-width container for t
 
 | File | Changes |
 |------|---------|
-| `src/components/expenses/GroupedExpenseRow.tsx` | Update vendor cell layout to use `justify-between` with fixed-width badge container |
+| `src/components/expenses/GroupedExpenseRow.tsx` | Swap order of chevron and date text in parent row (lines 123-132) |
 
 ---
 
 ### Result
 
-All QB badges will appear in a fixed position on the right side of the Vendor column, creating a clean vertical alignment regardless of how long or short the vendor names are.
+All dates will be left-aligned at the same position. Expandable rows will show the chevron arrow to the right of the date, providing a consistent visual alignment across all expense rows.
