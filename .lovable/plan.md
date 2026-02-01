@@ -1,28 +1,29 @@
 
-## Plan: Update Icons for Appliances, Windows, and Roofing
+## Plan: Convert Bundle Assignment to Dropdown
 
 ### Overview
 
-Replace the generic `Home` icon used for Appliances, Windows, and Roofing categories with more representative icons that clearly communicate what each category represents.
+The "Assign to Bundles" field currently displays bundles as a grid of checkbox buttons. The user wants this converted to a standard dropdown multi-select pattern for a cleaner appearance.
 
 ---
 
-### Current Issue
+### Current Implementation (lines 823-866)
 
-In `src/components/procurement/ProcurementItemModal.tsx`, three categories currently use the generic `Home` icon:
-- **Appliances** (line 200): `icon: Home` - should represent kitchen/home appliances
-- **Windows** (line 208): `icon: Home` - should represent a window frame
-- **Roofing** (line 224): `icon: Home` - should represent a roof/rooftop
+The current code shows bundles as:
+- A grid of checkboxes with bundle names
+- Users click on checkbox items to toggle selection
+- Selected bundles show as badges below the grid
 
----
-
-### Proposed Icon Changes
-
-| Category | Current Icon | New Icon | Rationale |
-|----------|-------------|----------|-----------|
-| Appliances | `Home` | `Refrigerator` | Refrigerator is a universally recognized appliance icon |
-| Windows | `Home` | `AppWindow` | A framed rectangle that resembles a window pane |
-| Roofing | `Home` | `Triangle` | A simple triangle shape resembles a roof profile |
+```tsx
+<div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border rounded-md bg-muted/30">
+  {bundles.map(b => (
+    <label className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer">
+      <Checkbox ... />
+      <span className="text-sm truncate">{b.name}</span>
+    </label>
+  ))}
+</div>
+```
 
 ---
 
@@ -30,36 +31,38 @@ In `src/components/procurement/ProcurementItemModal.tsx`, three categories curre
 
 **File: `src/components/procurement/ProcurementItemModal.tsx`**
 
-**1. Update imports (lines 12-36):**
-- Add: `Refrigerator`, `AppWindow`, `Triangle`
-- Remove: `Home` (if no longer used elsewhere)
+Replace the checkbox grid with a Popover-based multi-select dropdown that:
+1. Shows a trigger button displaying selected bundle count or names
+2. Opens a dropdown with checkboxes for each bundle
+3. Allows multiple selection
+4. Displays selected bundles as badges below (keep this part)
 
-**2. Update Appliances category (lines 197-204):**
+**Implementation approach:**
+
 ```tsx
-// BEFORE:
-icon: Home,
-
-// AFTER:
-icon: Refrigerator,
+<Popover>
+  <PopoverTrigger asChild>
+    <Button variant="outline" className="w-full justify-between">
+      {formData.bundle_ids.length === 0 
+        ? "Select bundles..." 
+        : `${formData.bundle_ids.length} bundle(s) selected`}
+      <ChevronDown className="h-4 w-4 opacity-50" />
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent className="w-full p-2">
+    {bundles.map(b => (
+      <div key={b.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer">
+        <Checkbox checked={...} onCheckedChange={...} />
+        <span>{b.name}</span>
+      </div>
+    ))}
+  </PopoverContent>
+</Popover>
 ```
 
-**3. Update Windows category (lines 205-212):**
-```tsx
-// BEFORE:
-icon: Home,
-
-// AFTER:
-icon: AppWindow,
-```
-
-**4. Update Roofing category (lines 221-228):**
-```tsx
-// BEFORE:
-icon: Home,
-
-// AFTER:
-icon: Triangle,
-```
+**Imports needed:**
+- Add `ChevronDown` to lucide-react imports
+- Add `Popover, PopoverTrigger, PopoverContent` imports
 
 ---
 
@@ -67,14 +70,14 @@ icon: Triangle,
 
 | File | Changes |
 |------|---------|
-| `src/components/procurement/ProcurementItemModal.tsx` | Replace `Home` icon with `Refrigerator`, `AppWindow`, and `Triangle` for the respective categories |
+| `src/components/procurement/ProcurementItemModal.tsx` | Add Popover imports, add ChevronDown icon, replace checkbox grid with Popover dropdown |
 
 ---
 
 ### Result
 
-Each category will have a distinct, meaningful icon:
-- Appliances: A refrigerator icon that clearly represents home appliances
-- Windows: A window-frame style icon that represents glass panes
-- Roofing: A triangular roof shape icon representing rooftops/shingles
-
+The bundle assignment will appear as a clean dropdown button that:
+- Shows "Select bundles..." when empty
+- Shows "X bundle(s) selected" when bundles are chosen
+- Opens a popover with checkbox list on click
+- Keeps the badge display for selected bundles below
