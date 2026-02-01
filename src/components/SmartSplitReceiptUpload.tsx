@@ -606,10 +606,12 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
           categoryId = newCategory.id;
         }
 
-        // First category updates original QB expense, rest use check-then-upsert
+        // First category updates original QB expense with _split_ suffix, rest use check-then-upsert
         if (i === 0) {
-          console.log('Updating original QB expense:', {
+          const splitQbId = `${originalQbId}_split_${category}`;
+          console.log('Updating original QB expense with split suffix:', {
             id: originalQbExpenseId,
+            newQbId: splitQbId,
             newAmount: categoryAmount,
             category,
             notes: itemNotes.slice(0, 50) + '...',
@@ -625,6 +627,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
           const { data: updateResult, error: qbError } = await supabase
             .from('quickbooks_expenses')
             .update({ 
+              qb_id: splitQbId, // Add split suffix to first category too
               is_imported: true,
               amount: categoryAmount,
               notes: itemNotes,
