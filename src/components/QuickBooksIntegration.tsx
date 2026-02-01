@@ -363,6 +363,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
       {/* SmartSplit Receipt Upload */}
       <SmartSplitReceiptUpload 
         projects={projects}
+        pendingQBExpenses={pendingExpenses}
         onReceiptProcessed={onExpenseImported} 
         onRefreshQBExpenses={fetchPendingExpenses}
       />

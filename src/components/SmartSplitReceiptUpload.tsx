@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench } from 'lucide-react';
+import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2 } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,25 +46,31 @@ interface PendingReceipt {
   line_items?: LineItem[];
 }
 
+interface QBExpense {
+  id: string;
+  qb_id?: string;
+  vendor_name: string | null;
+  amount: number;
+  date: string;
+  description?: string | null;
+  payment_method?: string | null;
+  is_imported?: boolean;
+}
+
 interface MatchedExpense {
   receipt: PendingReceipt;
-  qbExpense: {
-    id: string;
-    vendor_name: string;
-    amount: number;
-    date: string;
-    description?: string;
-    payment_method?: string;
-  };
+  qbExpense: QBExpense;
+  isManual?: boolean; // Track if this was a manual link
 }
 
 interface SmartSplitReceiptUploadProps {
   projects?: SimpleProject[];
+  pendingQBExpenses?: QBExpense[]; // QB transactions available for manual linking
   onReceiptProcessed?: () => void;
   onRefreshQBExpenses?: () => void;
 }
 
-export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onRefreshQBExpenses }: SmartSplitReceiptUploadProps) {
+export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [], onReceiptProcessed, onRefreshQBExpenses }: SmartSplitReceiptUploadProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
@@ -410,6 +416,24 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
     setEditableCategories(initialCategories);
     setEditableQuantities(initialQuantities);
     setShowMatchModal(true);
+  };
+
+  // Handle manual transaction linking (bypasses auto-match)
+  const handleManualLink = (receipt: PendingReceipt, qbExpense: QBExpense) => {
+    const manualMatch: MatchedExpense = {
+      receipt,
+      qbExpense: {
+        id: qbExpense.id,
+        qb_id: qbExpense.qb_id,
+        vendor_name: qbExpense.vendor_name,
+        amount: qbExpense.amount,
+        date: qbExpense.date,
+        description: qbExpense.description,
+        payment_method: qbExpense.payment_method,
+      },
+      isManual: true,
+    };
+    acceptMatch(manualMatch);
   };
 
   // Helper to group line items by category (with editable quantities)
@@ -791,11 +815,11 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
                   {pendingReceipts.filter(r => r.status === 'pending').map((receipt) => (
                     <Card key={receipt.id} className="border-warning/30 bg-warning/5">
                       <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <FileImage className="h-4 w-4 text-warning" />
-                              <span className="font-medium">{receipt.vendor_name}</span>
+                              <FileImage className="h-4 w-4 text-warning shrink-0" />
+                              <span className="font-medium truncate">{receipt.vendor_name}</span>
                             </div>
                             <div className="text-sm text-muted-foreground mt-1">
                               {formatCurrency(receipt.total_amount)} • {formatDate(receipt.purchase_date)}
@@ -803,12 +827,46 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
                                 <span> • {receipt.line_items.length} items parsed</span>
                               )}
                             </div>
+                            
+                            {/* Manual Link Transaction Dropdown */}
+                            {pendingQBExpenses.length > 0 && (
+                              <div className="mt-2">
+                                <Select
+                                  value=""
+                                  onValueChange={(qbId) => {
+                                    const selectedQb = pendingQBExpenses.find(qb => qb.id === qbId);
+                                    if (selectedQb) {
+                                      handleManualLink(receipt, selectedQb);
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className="h-7 w-full text-xs bg-background">
+                                    <div className="flex items-center gap-1 text-muted-foreground">
+                                      <Link2 className="h-3 w-3" />
+                                      <span>Link Transaction...</span>
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent className="max-h-[200px] z-50 bg-popover">
+                                    {pendingQBExpenses.map((qb) => (
+                                      <SelectItem key={qb.id} value={qb.id} className="text-xs">
+                                        <div className="flex items-center justify-between gap-2 w-full">
+                                          <span className="truncate">{qb.vendor_name || 'Unknown'}</span>
+                                          <span className="font-mono text-muted-foreground">
+                                            {formatCurrency(qb.amount)}
+                                          </span>
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => deleteReceipt(receipt.id)}
-                            className="text-muted-foreground hover:text-destructive"
+                            className="text-muted-foreground hover:text-destructive shrink-0"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -835,11 +893,27 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              SmartSplit Match Found
+              {selectedMatch?.isManual ? (
+                <Link2 className="h-5 w-5 text-primary" />
+              ) : (
+                <Sparkles className="h-5 w-5 text-primary" />
+              )}
+              {selectedMatch?.isManual ? 'Manual Link' : 'SmartSplit Match Found'}
+              {selectedMatch && !selectedMatch.isManual && selectedMatch.receipt.match_confidence && (
+                <Badge variant="outline" className="text-xs ml-auto">
+                  {selectedMatch.receipt.match_confidence}% confidence
+                </Badge>
+              )}
+              {selectedMatch?.isManual && (
+                <Badge variant="secondary" className="text-xs ml-auto bg-primary/10 text-primary">
+                  Manual
+                </Badge>
+              )}
             </DialogTitle>
             <DialogDescription>
-              We matched your receipt to a QuickBooks transaction. Review the suggested split below.
+              {selectedMatch?.isManual
+                ? 'You manually linked this receipt. Review the suggested split below.'
+                : 'We matched your receipt to a QuickBooks transaction. Review the suggested split below.'}
             </DialogDescription>
           </DialogHeader>
 

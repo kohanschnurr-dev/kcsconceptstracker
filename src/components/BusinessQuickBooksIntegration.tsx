@@ -149,7 +149,12 @@ export function BusinessQuickBooksIntegration({ onExpenseImported, projects = []
   return (
     <div className="space-y-4">
       {/* SmartSplit Receipt Upload - Always visible */}
-      <SmartSplitReceiptUpload onReceiptProcessed={onExpenseImported} projects={projects} />
+      <SmartSplitReceiptUpload 
+        projects={projects} 
+        pendingQBExpenses={pendingExpenses}
+        onReceiptProcessed={onExpenseImported} 
+        onRefreshQBExpenses={fetchPendingExpenses}
+      />
       
       {/* QuickBooks Integration Panel */}
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
