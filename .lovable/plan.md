@@ -1,51 +1,38 @@
 
-
-## Plan: Clean Up Procurement Table
+## Plan: Move Daily Logs Below Expenses in Navigation
 
 ### Overview
-Simplify the procurement table by removing clutter (model numbers and status column) and fixing the quantity input alignment.
+Reorder the navigation items in the sidebar and mobile navigation to place "Daily Logs" below "Expenses".
 
-### Changes
+### Current Order
+1. Dashboard
+2. Daily Logs
+3. Projects
+4. Calendar
+5. Expenses
+6. Budget Calculator
+7. Procurement
+8. Vendors
+9. KCS Concepts
 
-**File: `src/components/project/ProcurementTab.tsx`**
+### New Order
+1. Dashboard
+2. Projects
+3. Calendar
+4. Expenses
+5. Daily Logs
+6. Budget Calculator
+7. Procurement
+8. Vendors
+9. KCS Concepts
 
-#### 1. Remove Model Number Display (lines 374-376)
-Remove the `#{item.model_number}` text that appears under item names.
+### Files to Update
 
-| Location | Change |
-|----------|--------|
-| Lines 374-376 | Delete the conditional model_number display |
+**1. `src/components/layout/Sidebar.tsx`**
+- Reorder the `navItems` array to move Daily Logs after Expenses
 
-#### 2. Fix Qty Input Alignment (lines 398-405)
-Center the quantity input within the table cell.
+**2. `src/components/layout/MobileNav.tsx`**
+- Reorder the `navItems` array to match the sidebar order
 
-| Location | Current | New |
-|----------|---------|-----|
-| Line 398 | `<TableCell className="text-right"` | `<TableCell className="text-center"` |
-| Line 404 | `className="w-16 h-8 text-right text-sm"` | `className="w-16 h-8 text-center text-sm mx-auto"` |
-
-#### 3. Remove Status Column
-Delete the Status column from both the table headers and the row rendering.
-
-**Table Headers (2 locations):**
-- Lines 628 (phase view): Remove `<TableHead>Status</TableHead>`
-- Lines 656 (default view): Remove `<TableHead>Status</TableHead>`
-
-**Qty Header Alignment:**
-- Lines 626 and 654: Change `<TableHead className="text-right">Qty</TableHead>` to `<TableHead className="text-center">Qty</TableHead>`
-
-**Row Rendering (lines 410-424):**
-Delete the entire status `<Select>` component wrapped in `<TableCell>`.
-
-### Technical Summary
-- Lines 374-376: Delete model number display
-- Lines 398, 404: Update cell and input alignment for Qty column
-- Lines 410-424: Delete status column cell in row render
-- Lines 626, 654: Update Qty header alignment to center
-- Lines 628, 656: Delete Status header
-
-### Result
-- Cleaner table without model numbers cluttering item names
-- Properly centered quantity inputs
-- Removed status dropdown column for a more streamlined view
-
+### Technical Details
+Both files contain a `navItems` array that defines the navigation order. Simply reordering the objects in these arrays will update the navigation display.
