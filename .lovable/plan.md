@@ -1,58 +1,74 @@
 
-## Plan: Move Chevron to Right of Date
+
+## Plan: Require Explicit Project Selection for Pipeline Tasks
 
 ### Overview
 
-Move the dropdown chevron arrow from the left side of the date to the right side, so all dates remain left-aligned regardless of whether a row is expandable or not.
+Change the project dropdown behavior so it doesn't auto-select "Other (No Project)" by default. Users must explicitly choose a project or select "Other" before they can add a task to the pipeline.
 
 ---
 
-### Current Layout
+### Current Behavior
 
-```
-> Jan 29, 2026   ← chevron on left, date shifted right
-  Jan 28, 2026   ← no chevron, date at normal position
-```
+- The project dropdown defaults to `'none'` which maps to "Other (No Project)"
+- User types task → clicks "Add to Pipeline" → task is created with no project automatically
 
-### Target Layout
+### New Behavior
 
-```
-Jan 29, 2026 >   ← date at left, chevron on right
-Jan 28, 2026     ← no chevron, date at same position
-```
+- The project dropdown starts with no selection (placeholder shown: "Select project...")
+- The "Add to Pipeline" button is disabled until a project is selected
+- User must explicitly choose "Other (No Project)" or a specific project
+- Once selected, the task can be added
 
 ---
 
 ### Technical Implementation
 
-**File: `src/components/expenses/GroupedExpenseRow.tsx`**
+**File: `src/pages/DailyLogs.tsx`**
 
-Update the parent row's date cell (lines 123-132) to place the chevron after the date instead of before:
-
+**1. Change initial state (line 71):**
 ```tsx
 // BEFORE:
-<td className="whitespace-nowrap">
-  <div className="flex items-center gap-1">
-    {isExpanded ? (
-      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-    ) : (
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-    )}
-    {formatDisplayDate(parentExpense.date)}
-  </div>
-</td>
+const [newTaskProjectId, setNewTaskProjectId] = useState<string>('none');
 
 // AFTER:
-<td className="whitespace-nowrap">
-  <div className="flex items-center gap-1">
-    {formatDisplayDate(parentExpense.date)}
-    {isExpanded ? (
-      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-    ) : (
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-    )}
-  </div>
-</td>
+const [newTaskProjectId, setNewTaskProjectId] = useState<string>('');
+```
+
+**2. Update form submission logic (line 242):**
+```tsx
+// BEFORE:
+project_id: newTaskProjectId === 'none' ? null : newTaskProjectId,
+
+// AFTER:
+project_id: newTaskProjectId === 'none' || newTaskProjectId === '' ? null : newTaskProjectId,
+```
+
+**3. Reset state after creation (line 248):**
+```tsx
+// BEFORE:
+setNewTaskProjectId('none');
+
+// AFTER:
+setNewTaskProjectId('');
+```
+
+**4. Update button disabled condition (lines 606-609):**
+```tsx
+// BEFORE:
+disabled={!newTaskTitle.trim() || isCreating}
+
+// AFTER (for Master Pipeline):
+disabled={!newTaskTitle.trim() || isCreating || (checklistTab === 'master' && !newTaskProjectId)}
+```
+
+**5. Update Select placeholder (lines 594-596):**
+```tsx
+// BEFORE:
+<SelectValue placeholder="Project (optional)" />
+
+// AFTER:
+<SelectValue placeholder="Select project..." />
 ```
 
 ---
@@ -61,10 +77,14 @@ Update the parent row's date cell (lines 123-132) to place the chevron after the
 
 | File | Changes |
 |------|---------|
-| `src/components/expenses/GroupedExpenseRow.tsx` | Swap order of chevron and date text in parent row (lines 123-132) |
+| `src/pages/DailyLogs.tsx` | Change default project state from `'none'` to `''`, update button disabled logic, update placeholder text |
 
 ---
 
 ### Result
 
-All dates will be left-aligned at the same position. Expandable rows will show the chevron arrow to the right of the date, providing a consistent visual alignment across all expense rows.
+- When in Master Pipeline view, the project dropdown shows "Select project..." by default
+- The "Add to Pipeline" button is disabled until user selects a project (including "Other")
+- Daily Sprint tasks are unaffected (they don't show the project dropdown)
+- After adding a task, the dropdown resets to require selection again
+
