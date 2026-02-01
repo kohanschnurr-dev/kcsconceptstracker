@@ -23,7 +23,6 @@ import {
   Grid3X3,
   Lightbulb,
   Fence,
-  Home,
   Layers,
   Wrench,
   CheckCircle2,
@@ -32,7 +31,10 @@ import {
   Bath,
   Scissors,
   Waves,
-  Archive
+  Archive,
+  Refrigerator,
+  AppWindow,
+  Triangle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -197,7 +199,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   { 
     value: 'appliances', 
     label: 'Appliances', 
-    icon: Home, 
+    icon: Refrigerator, 
     color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30',
     fields: ['appliance_type', 'dimensions', 'energy_rating', 'fuel_type'],
     placeholders: { appliance_type: 'Range, Refrigerator, Dishwasher', dimensions: 'W x D x H', fuel_type: 'Gas, Electric' }
@@ -205,7 +207,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   { 
     value: 'windows', 
     label: 'Windows', 
-    icon: Home, 
+    icon: AppWindow, 
     color: 'bg-sky-500/10 text-sky-600 border-sky-500/30',
     fields: ['window_type', 'dimensions', 'glass_type', 'frame_material'],
     placeholders: { window_type: 'Single-hung, Double-hung, Casement', dimensions: 'Width x Height', glass_type: 'Double-pane, Low-E' }
@@ -221,7 +223,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   { 
     value: 'roofing', 
     label: 'Roofing', 
-    icon: Home, 
+    icon: Triangle, 
     color: 'bg-red-500/10 text-red-600 border-red-500/30',
     fields: ['material', 'squares', 'warranty_years'],
     placeholders: { material: 'Shingles, Metal, Tile', squares: 'Roofing squares (100 sq ft each)' }
