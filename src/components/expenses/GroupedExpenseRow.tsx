@@ -19,6 +19,7 @@ interface DBExpense {
   notes?: string | null;
   receipt_url?: string | null;
   source?: 'manual' | 'quickbooks';
+  qb_id?: string | null;
 }
 
 interface GroupedExpenseRowProps {
@@ -40,20 +41,30 @@ export function GroupedExpenseRow({
 }: GroupedExpenseRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
+  // Sort expenses so original QB expense comes first, then splits
+  // This ensures consistent ordering regardless of database fetch order
+  const sortedExpenses = [...expenses].sort((a, b) => {
+    const aIsSplit = a.qb_id?.includes('_split_') ?? false;
+    const bIsSplit = b.qb_id?.includes('_split_') ?? false;
+    if (aIsSplit && !bIsSplit) return 1;
+    if (!aIsSplit && bIsSplit) return -1;
+    return 0;
+  });
+  
   // Get the first expense for shared data (date, vendor, project, payment method)
-  const parentExpense = expenses[0];
-  const totalAmount = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-  const hasMultipleCategories = expenses.length > 1;
+  const parentExpense = sortedExpenses[0];
+  const totalAmount = sortedExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const hasMultipleCategories = sortedExpenses.length > 1;
   
   // Check if any expense has a receipt
-  const hasReceipt = expenses.some(e => e.receipt_url);
+  const hasReceipt = sortedExpenses.some(e => e.receipt_url);
   
   // Get unique categories for display when expanded
-  const categories = expenses.map(e => getCategoryLabel(e.category_id, e.project_id));
+  const categories = sortedExpenses.map(e => getCategoryLabel(e.category_id, e.project_id));
   
   if (!hasMultipleCategories) {
     // Single expense - render normally without collapsible
-    const expense = expenses[0];
+    const expense = sortedExpenses[0];
     return (
       <tr 
         className="hover:bg-muted/20 transition-colors cursor-pointer"
@@ -143,7 +154,7 @@ export function GroupedExpenseRow({
             <div className="flex-1 min-w-0">
               <p className="font-medium">{parentExpense.vendor_name || 'Unknown'}</p>
               <p className="text-xs text-muted-foreground">
-                {expenses.length} items • Click arrow to expand
+                {sortedExpenses.length} items • Click arrow to expand
               </p>
             </div>
             <div className="w-8 flex-shrink-0 flex justify-end">
@@ -167,7 +178,7 @@ export function GroupedExpenseRow({
         {hasReceipt && (
               <button
                 onClick={(e) => {
-                  const expenseWithReceipt = expenses.find(exp => exp.receipt_url);
+                  const expenseWithReceipt = sortedExpenses.find(exp => exp.receipt_url);
                   if (expenseWithReceipt?.receipt_url) {
                     handleViewReceipt(expenseWithReceipt.receipt_url, e);
                   }
@@ -186,7 +197,7 @@ export function GroupedExpenseRow({
       </tr>
       
       {/* Child rows - expanded details */}
-      {isExpanded && expenses.map((expense, index) => (
+      {isExpanded && sortedExpenses.map((expense, index) => (
         <tr 
           key={expense.id}
           className="bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer border-l-2 border-primary/30"
