@@ -38,6 +38,7 @@ interface ProcurementItem {
   bundle_id: string | null;
   bundle_ids?: string[];
   category_id: string | null;
+  category: string | null;
   name: string;
   source_url: string | null;
   source_store: SourceStore | null;
@@ -176,8 +177,8 @@ export default function Procurement() {
     }).format(value);
   };
 
-  const getCategoryLabel = (categoryId: string | null) => {
-    if (!categoryId) return null;
+  const getCategoryLabel = (category: string | null) => {
+    if (!category) return null;
     const categoryMap: Record<string, string> = {
       'appliances': 'Appliances',
       'bathroom': 'Bathroom',
@@ -186,12 +187,14 @@ export default function Procurement() {
       'doors': 'Doors',
       'drywall': 'Drywall',
       'electrical': 'Electrical',
+      'exterior_finishes': 'Exterior Finishes',
       'fencing': 'Fencing',
       'flooring': 'Flooring',
       'framing': 'Framing',
       'hardware': 'Hardware',
       'hvac': 'HVAC',
       'insulation': 'Insulation',
+      'landscaping': 'Landscaping',
       'lighting': 'Light Fixtures',
       'paint': 'Paint',
       'plumbing': 'Plumbing',
@@ -202,7 +205,7 @@ export default function Procurement() {
       'windows': 'Windows',
       'other': 'Other',
     };
-    return categoryMap[categoryId] || categoryId;
+    return categoryMap[category] || category;
   };
 
   const calculateItemTotal = (item: ProcurementItem) => {
@@ -513,9 +516,9 @@ export default function Procurement() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          {getCategoryLabel(item.category_id) ? (
+                          {getCategoryLabel(item.category) ? (
                             <Badge variant="secondary" className="text-xs">
-                              {getCategoryLabel(item.category_id)}
+                              {getCategoryLabel(item.category)}
                             </Badge>
                           ) : (
                             <span className="text-muted-foreground">-</span>
