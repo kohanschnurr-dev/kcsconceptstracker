@@ -16,8 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { VENDOR_TRADES, type VendorTrade } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,6 +32,7 @@ interface Vendor {
   has_w9: boolean;
   reliability_rating: number | null;
   pricing_model: 'flat' | 'hourly' | null;
+  notes: string | null;
 }
 
 interface NewVendorModalProps {
@@ -49,6 +50,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
   const [hasW9, setHasW9] = useState(false);
   const [reliabilityRating, setReliabilityRating] = useState(3);
   const [pricingModel, setPricingModel] = useState<'flat' | 'hourly'>('flat');
+  const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditing = !!vendor;
@@ -63,6 +65,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
       setHasW9(vendor.has_w9);
       setReliabilityRating(vendor.reliability_rating || 3);
       setPricingModel(vendor.pricing_model || 'flat');
+      setNotes(vendor.notes || '');
     } else if (!open) {
       // Reset form when closing
       setName('');
@@ -72,6 +75,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
       setHasW9(false);
       setReliabilityRating(3);
       setPricingModel('flat');
+      setNotes('');
     }
   }, [open, vendor]);
 
@@ -128,6 +132,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
             has_w9: hasW9,
             reliability_rating: reliabilityRating,
             pricing_model: pricingModel,
+            notes: notes || null,
           })
           .eq('id', vendor.id);
 
@@ -149,6 +154,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
             has_w9: hasW9,
             reliability_rating: reliabilityRating,
             pricing_model: pricingModel,
+            notes: notes || null,
             user_id: user.id,
           });
 
@@ -299,14 +305,13 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-            <Label htmlFor="w9" className="text-sm cursor-pointer">
-              W9 on file
-            </Label>
-            <Switch
-              id="w9"
-              checked={hasW9}
-              onCheckedChange={setHasW9}
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea
+              placeholder="General notes about this vendor..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="min-h-[80px] resize-none"
             />
           </div>
 

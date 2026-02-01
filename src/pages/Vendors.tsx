@@ -35,6 +35,7 @@ interface Vendor {
   has_w9: boolean;
   reliability_rating: number | null;
   pricing_model: 'flat' | 'hourly' | null;
+  notes: string | null;
 }
 
 export default function Vendors() {
