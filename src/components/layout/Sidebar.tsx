@@ -19,19 +19,7 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Button } from '@/components/ui/button';
 import kcsLogo from '@/assets/kcs-logo.png';
 
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/', exact: true },
-  { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
-  { icon: FolderKanban, label: 'Projects', path: '/projects' },
-  { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
-  { icon: Receipt, label: 'Expenses', path: '/expenses' },
-  { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
-  { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
-  { icon: Users, label: 'Vendors', path: '/vendors' },
-  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
-];
-
-const isActiveLink = (item: typeof navItems[0], pathname: string) => {
+const isActiveLink = (item: { path: string; exact?: boolean; matchPaths?: string[] }, pathname: string) => {
   if (item.exact) {
     return pathname === item.path;
   }
@@ -46,6 +34,18 @@ export function Sidebar() {
   const { user, signOut } = useAuth();
   const { displayName } = useProfile();
   const { companyName, logoUrl } = useCompanySettings();
+
+  const navItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/', exact: true },
+    { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
+    { icon: FolderKanban, label: 'Projects', path: '/projects' },
+    { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
+    { icon: Receipt, label: 'Expenses', path: '/expenses' },
+    { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
+    { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
+    { icon: Users, label: 'Vendors', path: '/vendors' },
+    { icon: Briefcase, label: companyName, path: '/business-expenses' },
+  ];
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-sidebar">
