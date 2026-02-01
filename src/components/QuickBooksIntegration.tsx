@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react';
-import { formatDisplayDate } from '@/lib/dateUtils';
+import { useState, useMemo } from 'react';
 import { format, subDays } from 'date-fns';
-import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Package, Wrench, StickyNote, Split, Receipt } from 'lucide-react';
+import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
@@ -12,200 +10,16 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { useQuickBooks } from '@/hooks/useQuickBooks';
-import { ALL_CATEGORIES, BUDGET_CATEGORIES, type BudgetCategory } from '@/types';
 import type { Project } from '@/types';
 import { SplitExpenseModal } from './SplitExpenseModal';
 import { SmartSplitReceiptUpload } from './SmartSplitReceiptUpload';
-
-// Helper to format category values: "tech_equipment" -> "Tech Equipment"
-const formatCategoryValue = (value: string) => {
-  return value
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
-// Get appropriate categories based on project type
-const getCategoriesForProject = (projectName: string) => {
-  // Business project gets business categories, flip projects get budget categories
-  if (projectName === 'KCS Concepts') {
-    return ALL_CATEGORIES;
-  }
-  return BUDGET_CATEGORIES;
-};
-
-// Auto-detect if expense is labor based on vendor name/description
-const detectExpenseType = (vendorName: string | null, description: string | null): 'product' | 'labor' => {
-  const text = `${vendorName || ''} ${description || ''}`.toLowerCase();
-  
-  // Labor indicators - contractors, services, installation, repairs
-  const laborKeywords = [
-    'contractor', 'construction', 'services', 'service', 'repair', 'repairs',
-    'install', 'installation', 'labor', 'plumber', 'plumbing', 'electrician',
-    'electrical', 'hvac', 'roofing', 'roofer', 'painter', 'painting',
-    'carpenter', 'carpentry', 'handyman', 'landscaping', 'landscaper',
-    'cleaning', 'hauling', 'demo', 'demolition', 'inspection', 'inspector',
-    'consultant', 'consulting', 'professional', 'technician', 'crew',
-    'flooring install', 'tile install', 'cabinet install', 'drywall'
-  ];
-  
-  // Product vendors/stores
-  const productKeywords = [
-    'home depot', 'lowes', 'lowe\'s', 'menards', 'ace hardware', 'harbor freight',
-    'floor & decor', 'floor and decor', 'ferguson', 'supply', 'supplies',
-    'depot', 'warehouse', 'wholesale', 'amazon', 'walmart', 'target',
-    'lumber', 'materials', 'cabinet', 'appliance', 'flooring', 'tile',
-    'windows', 'doors', 'fixtures', 'hardware', 'equipment'
-  ];
-  
-  // Check labor first (more specific usually)
-  for (const keyword of laborKeywords) {
-    if (text.includes(keyword)) {
-      // Double-check it's not a supply store with labor word
-      const isSupplyStore = productKeywords.some(pk => text.includes(pk));
-      if (!isSupplyStore) {
-        return 'labor';
-      }
-    }
-  }
-  
-  // Default to product
-  return 'product';
-};
-
-// Auto-detect category based on vendor name and description
-const detectCategory = (vendorName: string | null, description: string | null): string | null => {
-  const text = `${vendorName || ''} ${description || ''}`.toLowerCase();
-  
-  // Insurance companies
-  if (text.includes('allstate') || text.includes('state farm') || text.includes('farmers') ||
-      text.includes('liberty mutual') || text.includes('progressive') || text.includes('geico') ||
-      text.includes('nationwide') || text.includes('usaa') || text.includes('travelers') ||
-      text.includes('american family') || text.match(/\binsurance\b/)) {
-    return 'insurance_project';
-  }
-  
-  // Paint stores
-  if (text.includes('sherwin') || text.includes('benjamin moore') || text.includes('behr') ||
-      text.includes('ppg') || text.includes('dunn edwards') || text.includes('kelly-moore') ||
-      text.includes('valspar') || text.match(/\bpaint\b/)) {
-    return 'painting';
-  }
-  
-  // Hardware/general supplies
-  if (text.includes('home depot') || text.includes('lowes') || text.includes('lowe\'s') ||
-      text.includes('ace hardware') || text.includes('harbor freight') || text.includes('menards') ||
-      text.includes('true value') || text.includes('northern tool')) {
-    return 'hardware';
-  }
-  
-  // Plumbing
-  if (text.includes('ferguson') || text.includes('plumbing supply') || text.includes('plumbing wholesale')) {
-    return 'plumbing';
-  }
-  
-  // Flooring
-  if (text.includes('floor & decor') || text.includes('floor and decor') || 
-      text.includes('lumber liquidators') || text.includes('flooring depot') ||
-      text.match(/\bflooring\b/)) {
-    return 'flooring';
-  }
-  
-  // Electrical
-  if (text.includes('graybar') || text.includes('electrical supply') || 
-      text.includes('wholesale electric') || text.includes('electric supply')) {
-    return 'electrical';
-  }
-  
-  // HVAC
-  if (text.includes('carrier') || text.includes('lennox') || text.includes('trane') ||
-      text.includes('hvac supply') || text.includes('ac supply') || text.includes('goodman')) {
-    return 'hvac';
-  }
-  
-  // Appliances
-  if (text.includes('best buy') || text.includes('appliance direct') || 
-      text.includes('appliance warehouse') || text.match(/\bappliance\b/)) {
-    return 'appliances';
-  }
-  
-  // Dumpsters / Trash
-  if (text.includes('waste management') || text.includes('republic services') || 
-      text.includes('dumpster') || text.includes('waste')) {
-    return 'dumpsters_trash';
-  }
-  
-  // Utilities
-  if (text.includes('txu') || text.includes('oncor') || text.includes('atmos') ||
-      text.includes('electric bill') || text.includes('water bill') || text.includes('gas bill') ||
-      text.match(/\butility\b/) || text.match(/\butilities\b/)) {
-    return 'utilities';
-  }
-  
-  // Landscaping
-  if (text.includes('siteone') || text.includes('nursery') || text.includes('landscaping') ||
-      text.includes('lawn') || text.includes('garden center')) {
-    return 'landscaping';
-  }
-  
-  // Roofing
-  if (text.includes('abc supply') || text.includes('roofing supply') || 
-      text.includes('beacon roofing')) {
-    return 'roofing';
-  }
-  
-  // Cabinets
-  if (text.includes('cabinet') || text.includes('kraftmaid') || text.includes('ikea kitchen')) {
-    return 'cabinets';
-  }
-  
-  // Countertops
-  if (text.includes('countertop') || text.includes('granite') || text.includes('quartz') ||
-      text.includes('marble')) {
-    return 'countertops';
-  }
-  
-  // Light Fixtures
-  if (text.includes('lighting') || text.includes('light fixture') || text.includes('lamp') ||
-      text.includes('chandelier')) {
-    return 'light_fixtures';
-  }
-  
-  // Windows
-  if (text.includes('window world') || text.includes('pella') || text.includes('andersen') ||
-      text.match(/\bwindow\b/) || text.match(/\bwindows\b/)) {
-    return 'windows';
-  }
-  
-  // Doors
-  if (text.includes('door') && !text.includes('floor')) {
-    return 'doors';
-  }
-  
-  // Misc - general retailers
-  if (text.includes('amazon') || text.includes('walmart') || text.includes('target')) {
-    return 'misc';
-  }
-  
-  return null; // No match, user selects manually
-};
+import { GroupedPendingExpenseCard } from './quickbooks/GroupedPendingExpenseCard';
 
 interface QuickBooksIntegrationProps {
   projects: Project[];
@@ -227,13 +41,10 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     deleteExpense,
     fetchPendingExpenses,
     enableDemoMode,
+    importAllSplits,
   } = useQuickBooks();
 
   const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Record<string, string>>({});
-  const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
-  const [selectedExpenseType, setSelectedExpenseType] = useState<Record<string, 'product' | 'labor'>>({});
-  const [expenseNotes, setExpenseNotes] = useState<Record<string, string>>({});
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [splitModalOpen, setSplitModalOpen] = useState(false);
@@ -245,42 +56,6 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     description: string | null;
   } | null>(null);
 
-  // Auto-detect expense types, categories, and pre-fill notes when pending expenses change
-  useEffect(() => {
-    const newTypes: Record<string, 'product' | 'labor'> = {};
-    const newNotes: Record<string, string> = {};
-    const newCategories: Record<string, string> = {};
-    
-    pendingExpenses.forEach(expense => {
-      // Auto-detect expense type if not already set
-      if (!selectedExpenseType[expense.id]) {
-        newTypes[expense.id] = detectExpenseType(expense.vendor_name, expense.description);
-      }
-      // Auto-detect category if not already set
-      if (!selectedCategory[expense.id]) {
-        const detectedCat = detectCategory(expense.vendor_name, expense.description);
-        if (detectedCat) {
-          newCategories[expense.id] = detectedCat;
-        }
-      }
-      // Pre-fill notes from SmartSplit matched receipts
-      if (!expenseNotes[expense.id] && (expense as any).notes) {
-        newNotes[expense.id] = (expense as any).notes;
-      }
-    });
-    
-    if (Object.keys(newTypes).length > 0) {
-      setSelectedExpenseType(prev => ({ ...prev, ...newTypes }));
-    }
-    if (Object.keys(newCategories).length > 0) {
-      setSelectedCategory(prev => ({ ...prev, ...newCategories }));
-    }
-    if (Object.keys(newNotes).length > 0) {
-      setExpenseNotes(prev => ({ ...prev, ...newNotes }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingExpenses]);
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -289,25 +64,46 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     }).format(amount);
   };
 
+  // Group pending expenses by parent QB transaction ID
+  const groupedPendingExpenses = useMemo(() => {
+    const groups = new Map<string, typeof pendingExpenses>();
+    
+    pendingExpenses.forEach((expense) => {
+      let parentId = expense.qb_id;
+      
+      // Extract parent ID from split pattern
+      const splitMatch = expense.qb_id?.match(/^(.+?)_split_/);
+      if (splitMatch) {
+        parentId = splitMatch[1];
+      }
+      
+      if (!groups.has(parentId)) {
+        groups.set(parentId, []);
+      }
+      groups.get(parentId)!.push(expense);
+    });
+    
+    return Array.from(groups.values()).sort((a, b) => 
+      new Date(b[0].date).getTime() - new Date(a[0].date).getTime()
+    );
+  }, [pendingExpenses]);
 
-  const handleCategorize = async (expenseId: string) => {
-    const projectId = selectedProject[expenseId];
-    const categoryId = selectedCategory[expenseId];
-    const expenseType = selectedExpenseType[expenseId] || 'product';
-    const notes = expenseNotes[expenseId];
+  const handleCategorize = async (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor', notes?: string) => {
+    if (!projectId || !categoryValue) return;
 
-    if (!projectId || !categoryId) return;
-
-    const success = await categorizeExpense(expenseId, projectId, categoryId, expenseType, notes);
+    const success = await categorizeExpense(expenseId, projectId, categoryValue, expenseType, notes);
     if (success && onExpenseImported) {
       onExpenseImported();
     }
   };
 
-  const getProjectCategories = (projectId: string) => {
-    const project = projects.find(p => p.id === projectId);
-    return project?.categories || [];
+  const handleImportAll = async (expenseIds: string[], projectId: string) => {
+    const success = await importAllSplits(expenseIds, projectId);
+    if (success && onExpenseImported) {
+      onExpenseImported();
+    }
   };
+
 
   const handleSync = () => {
     const startStr = format(startDate, 'yyyy-MM-dd');
@@ -484,7 +280,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                   </Button>
                 </div>
 
-                {pendingExpenses.length === 0 ? (
+                {groupedPendingExpenses.length === 0 ? (
                   <div className="text-center py-6">
                     <Check className="h-12 w-12 mx-auto text-success mb-3" />
                     <p className="text-muted-foreground">
@@ -497,161 +293,16 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                       Categorize these expenses to import them into your projects, or delete ones you don't need:
                     </p>
                     <div className="max-h-[400px] overflow-y-auto space-y-3">
-                      {pendingExpenses.map((expense) => (
-                        <div
-                          key={expense.id}
-                          className="p-3 rounded-lg border border-border bg-muted/20"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium">{expense.vendor_name || 'Unknown Vendor'}</p>
-                                  {expense.receipt_url && (
-                                    <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30 gap-1">
-                                      <Receipt className="h-3 w-3" />
-                                      Receipt
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <p className="font-mono font-semibold">
-                                    {formatCurrency(expense.amount)}
-                                  </p>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                    onClick={() => handleOpenSplitModal(expense)}
-                                    title="Split this expense into multiple categories"
-                                  >
-                                    <Split className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => handleDelete(expense.id)}
-                                    title="Remove this expense"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                <span>{formatDisplayDate(expense.date)}</span>
-                                {expense.description && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="truncate max-w-[200px]">
-                                      {expense.description}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-2 mt-3">
-                            <div className="flex flex-col sm:flex-row gap-2">
-                              <Select
-                                value={selectedProject[expense.id] || ''}
-                                onValueChange={(value) =>
-                                  setSelectedProject((prev) => ({ ...prev, [expense.id]: value }))
-                                }
-                              >
-                                <SelectTrigger className="flex-1">
-                                  <SelectValue placeholder="Select Project" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {projects.map((project) => (
-                                    <SelectItem key={project.id} value={project.id}>
-                                      {project.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Select
-                                value={selectedCategory[expense.id] || ''}
-                                onValueChange={(value) =>
-                                  setSelectedCategory((prev) => ({ ...prev, [expense.id]: value }))
-                                }
-                                disabled={!selectedProject[expense.id]}
-                              >
-                                <SelectTrigger className="flex-1">
-                                  <SelectValue placeholder="Select Category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {selectedProject[expense.id] &&
-                                    getCategoriesForProject(
-                                      projects.find(p => p.id === selectedProject[expense.id])?.name || ''
-                                    ).map((cat) => (
-                                      <SelectItem key={cat.value} value={cat.value}>
-                                        {cat.label}
-                                      </SelectItem>
-                                    ))}
-                                </SelectContent>
-                              </Select>
-                              <div className="flex items-center gap-1 flex-1 min-w-0 sm:max-w-[180px]">
-                                <StickyNote className="h-4 w-4 text-muted-foreground shrink-0" />
-                                <Input
-                                  placeholder="Note (e.g., mailbox)"
-                                  value={expenseNotes[expense.id] || ''}
-                                  onChange={(e) =>
-                                    setExpenseNotes((prev) => ({ ...prev, [expense.id]: e.target.value }))
-                                  }
-                                  className="h-9 text-sm"
-                                />
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 justify-end">
-                              <ToggleGroup 
-                                type="single" 
-                                value={selectedExpenseType[expense.id] || 'product'}
-                                onValueChange={(value) => {
-                                  if (value) {
-                                    setSelectedExpenseType((prev) => ({ 
-                                      ...prev, 
-                                      [expense.id]: value as 'product' | 'labor' 
-                                    }));
-                                  }
-                                }}
-                                className="shrink-0"
-                              >
-                                <ToggleGroupItem 
-                                  value="product" 
-                                  aria-label="Product"
-                                  className={cn(
-                                    "gap-1 px-3",
-                                    selectedExpenseType[expense.id] === 'product' && "bg-blue-500/20 text-blue-400 border-blue-500/50"
-                                  )}
-                                >
-                                  <Package className="h-4 w-4" />
-                                  <span className="hidden sm:inline text-xs">Product</span>
-                                </ToggleGroupItem>
-                                <ToggleGroupItem 
-                                  value="labor" 
-                                  aria-label="Labor"
-                                  className={cn(
-                                    "gap-1 px-3",
-                                    selectedExpenseType[expense.id] === 'labor' && "bg-orange-500/20 text-orange-400 border-orange-500/50"
-                                  )}
-                                >
-                                  <Wrench className="h-4 w-4" />
-                                  <span className="hidden sm:inline text-xs">Labor</span>
-                                </ToggleGroupItem>
-                              </ToggleGroup>
-                              <Button
-                                size="sm"
-                                disabled={
-                                  !selectedProject[expense.id] || !selectedCategory[expense.id]
-                                }
-                                onClick={() => handleCategorize(expense.id)}
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
+                      {groupedPendingExpenses.map((expenseGroup) => (
+                        <GroupedPendingExpenseCard
+                          key={expenseGroup[0].id}
+                          expenses={expenseGroup}
+                          projects={projects}
+                          onCategorize={handleCategorize}
+                          onDelete={handleDelete}
+                          onImportAll={handleImportAll}
+                          formatCurrency={formatCurrency}
+                        />
                       ))}
                     </div>
                   </div>

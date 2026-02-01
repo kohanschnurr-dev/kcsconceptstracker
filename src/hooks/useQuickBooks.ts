@@ -673,6 +673,97 @@ export function useQuickBooks() {
     }
   }, [isConnected, isLoading, hasAutoSynced, isSyncing, syncExpenses]);
 
+  // Import all split expenses at once (when categories are already assigned from SmartSplit)
+  const importAllSplits = useCallback(async (expenseIds: string[], projectId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Fetch project categories to get category IDs
+      const { data: projectCategories } = await supabase
+        .from('project_categories')
+        .select('id, category')
+        .eq('project_id', projectId);
+
+      if (!projectCategories) {
+        toast({
+          title: 'Error',
+          description: 'Could not fetch project categories',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      // Create a map of category value -> id
+      const categoryMap = new Map(projectCategories.map(c => [c.category, c.id]));
+
+      // Get the expenses to import
+      const expensesToImport = pendingExpenses.filter(e => expenseIds.includes(e.id));
+
+      for (const expense of expensesToImport) {
+        // Extract category from qb_id pattern like purchase_769_split_hardware
+        const splitMatch = expense.qb_id?.match(/_split_([a-z_]+)$/);
+        const categoryValue = splitMatch ? splitMatch[1] : null;
+
+        if (!categoryValue) {
+          console.warn('No category found in qb_id for expense:', expense.id);
+          continue;
+        }
+
+        const categoryId = categoryMap.get(categoryValue as BudgetCategory);
+        if (!categoryId) {
+          console.warn('No matching category_id for:', categoryValue);
+          continue;
+        }
+
+        // Insert into expenses table
+        const { error: insertError } = await supabase
+          .from('expenses')
+          .insert({
+            project_id: projectId,
+            category_id: categoryId,
+            amount: expense.amount,
+            date: expense.date,
+            vendor_name: expense.vendor_name,
+            description: expense.description,
+            payment_method: (expense.payment_method as 'cash' | 'check' | 'card' | 'transfer') || 'card',
+            status: 'actual',
+            includes_tax: false,
+            expense_type: 'product',
+            notes: expense.notes || null,
+          });
+
+        if (insertError) {
+          console.error('Error inserting expense:', insertError);
+          continue;
+        }
+
+        // Mark as imported in quickbooks_expenses
+        await supabase
+          .from('quickbooks_expenses')
+          .update({ is_imported: true, project_id: projectId, category_id: categoryId })
+          .eq('id', expense.id);
+      }
+
+      await fetchPendingExpenses();
+
+      toast({
+        title: 'Imported!',
+        description: `${expensesToImport.length} split expenses imported`,
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error importing splits:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to import split expenses',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [pendingExpenses, fetchPendingExpenses, toast]);
+
   return {
     isConnected,
     isDemoMode,
@@ -687,5 +778,6 @@ export function useQuickBooks() {
     deleteExpense,
     fetchPendingExpenses,
     enableDemoMode,
+    importAllSplits,
   };
 }
