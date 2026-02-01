@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   DollarSign, 
   ArrowLeft, 
@@ -34,7 +35,8 @@ import {
   Archive,
   Refrigerator,
   AppWindow,
-  Triangle
+  Triangle,
+  ChevronDown
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -820,7 +822,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           </div>
         )}
 
-        {/* Bundle Assignment - Multi-select */}
+        {/* Bundle Assignment - Dropdown Multi-select */}
         <div className="col-span-2">
           <Label className="flex items-center gap-2 mb-2">
             <FolderOpen className="h-4 w-4" />
@@ -829,27 +831,37 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           {bundles.length === 0 ? (
             <p className="text-sm text-muted-foreground">No bundles available</p>
           ) : (
-            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border rounded-md bg-muted/30">
-              {bundles.map(b => (
-                <label 
-                  key={b.id} 
-                  className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
-                >
-                  <Checkbox
-                    checked={formData.bundle_ids.includes(b.id)}
-                    onCheckedChange={(checked) => {
-                      setFormData(prev => ({
-                        ...prev,
-                        bundle_ids: checked 
-                          ? [...prev.bundle_ids, b.id]
-                          : prev.bundle_ids.filter(id => id !== b.id)
-                      }));
-                    }}
-                  />
-                  <span className="text-sm truncate">{b.name}</span>
-                </label>
-              ))}
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-between">
+                  {formData.bundle_ids.length === 0 
+                    ? "Select bundles..." 
+                    : `${formData.bundle_ids.length} bundle(s) selected`}
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-2 max-h-48 overflow-y-auto">
+                {bundles.map(b => (
+                  <label 
+                    key={b.id} 
+                    className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={formData.bundle_ids.includes(b.id)}
+                      onCheckedChange={(checked) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          bundle_ids: checked 
+                            ? [...prev.bundle_ids, b.id]
+                            : prev.bundle_ids.filter(id => id !== b.id)
+                        }));
+                      }}
+                    />
+                    <span className="text-sm">{b.name}</span>
+                  </label>
+                ))}
+              </PopoverContent>
+            </Popover>
           )}
           {formData.bundle_ids.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
