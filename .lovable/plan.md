@@ -1,11 +1,11 @@
 
-## Plan: Fix Quantity Column Alignment
+## Plan: Perfect Quantity Column Centering
 
 ### Problem
-The "Qty" column header is right-aligned, but the quantity input box inside each row is left-aligned within its cell, causing a visual misalignment.
+The quantity input box is using `ml-auto` which pushes it right, but the "Qty" header appears to be more centered. The input box and text inside need to be truly centered under the header.
 
 ### Solution
-Add `ml-auto` to the Input element to push it to the right side of the cell, matching the header alignment.
+Change the TableCell to use flexbox centering instead of `text-right`, and center the input within it.
 
 ### Changes
 
@@ -13,10 +13,13 @@ Add `ml-auto` to the Input element to push it to the right side of the cell, mat
 
 | Line | Current | New |
 |------|---------|-----|
-| 512 | `className="w-16 h-8 text-right text-sm"` | `className="w-16 h-8 text-center text-sm ml-auto"` |
+| 502 | `<TableCell className="text-right">` | `<TableCell className="text-center">` |
+| 512 | `className="w-16 h-8 text-center text-sm ml-auto"` | `className="w-16 h-8 text-center text-sm mx-auto"` |
 
-Also change the text inside the input from `text-right` to `text-center` for better visual balance within the small input box.
+### What This Does
+1. Changes the `TableCell` from `text-right` to `text-center` so the content is centered in the column
+2. Changes `ml-auto` to `mx-auto` on the Input to center it horizontally within the cell
 
 ### Result
-- The quantity input box will be positioned to the right, aligning with the "Qty" header
-- The number inside the input will be centered for better readability
+- The quantity input box will be perfectly centered under the "Qty" header
+- The number inside the input will remain centered
