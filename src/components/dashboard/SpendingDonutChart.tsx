@@ -101,10 +101,15 @@ export function SpendingDonutChart({ expenses, categories }: SpendingDonutChartP
               <Tooltip
                 formatter={(value: number) => formatCurrency(value)}
                 contentStyle={{
-                  backgroundColor: 'hsl(220, 18%, 13%)',
-                  border: '1px solid hsl(220, 15%, 22%)',
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
-                  color: 'hsl(210, 20%, 95%)',
+                }}
+                itemStyle={{
+                  color: 'hsl(var(--foreground))',
+                }}
+                labelStyle={{
+                  color: 'hsl(var(--foreground))',
                 }}
               />
               <Legend
