@@ -519,7 +519,14 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
 
         // First category updates original QB expense, rest use check-then-upsert
         if (i === 0) {
-          const { error: qbError } = await supabase
+          console.log('Updating original QB expense:', {
+            id: originalQbExpenseId,
+            newAmount: categoryAmount,
+            category,
+            notes: itemNotes.slice(0, 50) + '...',
+          });
+          
+          const { data: updateResult, error: qbError } = await supabase
             .from('quickbooks_expenses')
             .update({ 
               is_imported: true,
@@ -531,9 +538,15 @@ export function SmartSplitReceiptUpload({ projects = [], onReceiptProcessed, onR
               expense_type: expenseType,
               payment_method: selectedMatch.qbExpense.payment_method || null,
             })
-            .eq('id', originalQbExpenseId);
+            .eq('id', originalQbExpenseId)
+            .select('id, amount');
 
-          if (qbError) throw qbError;
+          if (qbError) {
+            console.error('Failed to update original QB expense:', qbError);
+            throw qbError;
+          }
+          
+          console.log('Original QB expense updated:', updateResult);
         } else {
           // Check if this split already exists (prevents duplicate key error)
           const splitQbId = `${originalQbId}_split_${category}`;
