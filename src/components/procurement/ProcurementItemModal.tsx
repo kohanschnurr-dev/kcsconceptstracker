@@ -698,7 +698,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         <h3 className="font-semibold">Paste Product URL</h3>
         <p className="text-sm text-muted-foreground">
           Paste a link from Amazon, Home Depot, Lowe's, or other retailers.<br />
-          We'll extract the product details automatically for Dallas/DFW.
+          We'll extract the product details automatically.
         </p>
       </div>
 
