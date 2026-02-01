@@ -80,14 +80,14 @@ export function GroupedExpenseRow({
             )}
           </div>
         </td>
-        <td className="text-center">{getProjectName(expense.project_id)}</td>
-        <td className="text-center">
+        <td className="!text-center">{getProjectName(expense.project_id)}</td>
+        <td className="!text-center">
           <Badge variant="secondary" className="text-xs">
             {getCategoryLabel(expense.category_id, expense.project_id)}
           </Badge>
         </td>
-        <td className="text-center capitalize">{expense.payment_method}</td>
-        <td className="text-center">
+        <td className="!text-center capitalize">{expense.payment_method}</td>
+        <td className="!text-center">
           <div className="flex items-center justify-center gap-2">
             {expense.receipt_url && (
               <button
@@ -143,14 +143,14 @@ export function GroupedExpenseRow({
             )}
           </div>
         </td>
-        <td className="text-center">{getProjectName(parentExpense.project_id)}</td>
-        <td className="text-center">
+        <td className="!text-center">{getProjectName(parentExpense.project_id)}</td>
+        <td className="!text-center">
           <Badge variant="secondary" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">
             Multiple
           </Badge>
         </td>
-        <td className="text-center capitalize">{parentExpense.payment_method}</td>
-        <td className="text-center">
+        <td className="!text-center capitalize">{parentExpense.payment_method}</td>
+        <td className="!text-center">
           <div className="flex items-center justify-center gap-2">
             {hasReceipt && (
               <Paperclip className="h-4 w-4 text-primary" />
@@ -185,14 +185,14 @@ export function GroupedExpenseRow({
               )}
             </div>
           </td>
-          <td className="text-center text-muted-foreground text-sm">—</td>
-          <td className="text-center">
+          <td className="!text-center text-muted-foreground text-sm">—</td>
+          <td className="!text-center">
             <Badge variant="secondary" className="text-xs">
               {getCategoryLabel(expense.category_id, expense.project_id)}
             </Badge>
           </td>
-          <td className="text-center text-muted-foreground text-sm">—</td>
-          <td className="text-center">
+          <td className="!text-center text-muted-foreground text-sm">—</td>
+          <td className="!text-center">
             <div className="flex items-center justify-center gap-2">
               {expense.receipt_url && (
                 <button
