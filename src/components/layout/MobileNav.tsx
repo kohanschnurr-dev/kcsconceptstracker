@@ -31,10 +31,10 @@ export function MobileNav() {
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
     { icon: FolderKanban, label: 'Projects', path: '/projects' },
     { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
     { icon: Receipt, label: 'Expenses', path: '/expenses' },
+    { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
     { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
     { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
     { icon: Users, label: 'Vendors', path: '/vendors' },
