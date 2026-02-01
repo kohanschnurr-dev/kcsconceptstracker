@@ -1,99 +1,97 @@
 
-## Fix: Pass Projects to SmartSplit on Business Expenses Page
+## Fix: Bathroom Expense Not Appearing After SmartSplit
 
-### The Problem
-The `SmartSplitReceiptUpload` component on the Business Expenses page shows "No projects found" because no projects are being passed to it. Currently:
-- `BusinessExpenses.tsx` renders `<BusinessQuickBooksIntegration />` 
-- `BusinessQuickBooksIntegration` renders `<SmartSplitReceiptUpload />` **without** the `projects` prop
-- The component defaults to an empty array
+### Root Cause
 
-### Solution
-Fetch projects in `BusinessExpenses.tsx` and pass them through to the SmartSplit component.
+The Expenses page has a filter to prevent double-counting split transactions:
+
+```tsx
+// Lines 133-144 in Expenses.tsx
+const splitQbIds = qbExpensesData
+  .filter(e => e.qb_id.includes('_split_'))
+  .map(e => e.qb_id.split('_split_')[0]);
+
+const filteredQbExpenses = qbExpensesData.filter(e => {
+  // If this expense's qb_id is a parent of any split records, exclude it
+  if (!e.qb_id.includes('_split_') && splitQbIds.includes(e.qb_id)) {
+    return false;  // ← BATHROOM IS INCORRECTLY EXCLUDED
+  }
+  return true;
+});
+```
+
+This logic was designed for an old flow where the parent record was untouched. But SmartSplit now **updates the original record** with the first category's data (Bathroom in this case), making it a valid expense that should be displayed.
+
+### The Split Pattern
+
+| Record | qb_id | Amount | Category | Should Show? |
+|--------|-------|--------|----------|--------------|
+| Original (updated) | `purchase_769` | $206.71 | Bathroom | **YES** ← Currently hidden |
+| Split 1 | `purchase_769_split_hardware` | $188.38 | Hardware | YES |
+| Split 2 | `purchase_769_split_light_fixtures` | $187.79 | Light Fixtures | YES |
+| Split 3 | `purchase_769_split_plumbing` | $79.01 | Plumbing | YES |
+| Split 4 | `purchase_769_split_misc` | $9.71 | Misc | YES |
+
+**All 5 records should be displayed** because the original is no longer a "parent" - it's a full expense with its own category and amount.
 
 ---
 
-### Technical Changes
+### Technical Solution
 
-**File: `src/pages/BusinessExpenses.tsx`**
+**Remove the split-filtering logic entirely.** Since SmartSplit updates the original record with valid data (amount, category, notes), there's no risk of double-counting - each record represents a distinct expense.
 
-| Change | Description |
-|--------|-------------|
-| Add projects state | `const [projects, setProjects] = useState([])` |
-| Fetch projects in `fetchData` | Query `projects` table |
-| Pass to BusinessQuickBooksIntegration | `<BusinessQuickBooksIntegration projects={projects} />` |
+**File: `src/pages/Expenses.tsx`**
 
-**File: `src/components/BusinessQuickBooksIntegration.tsx`**
-
-| Change | Description |
-|--------|-------------|
-| Accept projects prop | Add `projects` to interface |
-| Pass to SmartSplitReceiptUpload | `<SmartSplitReceiptUpload projects={projects} />` |
-
----
-
-### Specific Code Changes
-
-**1. BusinessExpenses.tsx - Add Projects State & Fetch**
+Remove lines 129-144 (the split filtering):
 
 ```tsx
-// Add state near other state declarations
-const [projects, setProjects] = useState<{id: string; name: string; address?: string}[]>([]);
+// BEFORE: Complex filtering that incorrectly excludes first category
+const splitQbIds = (qbExpensesData || [])
+  .filter(e => e.qb_id.includes('_split_'))
+  .map(e => e.qb_id.split('_split_')[0]);
 
-// In fetchData function, add projects query:
-const { data: projectsData } = await supabase
-  .from('projects')
-  .select('id, name, address')
-  .order('name');
+const filteredQbExpenses = (qbExpensesData || []).filter(e => {
+  if (!e.qb_id.includes('_split_') && splitQbIds.includes(e.qb_id)) {
+    return false;
+  }
+  return true;
+});
 
-setProjects(projectsData || []);
+// AFTER: Use all imported QB expenses directly
+const filteredQbExpenses = qbExpensesData || [];
 ```
 
-**2. BusinessExpenses.tsx - Pass to Component**
-
-```tsx
-<BusinessQuickBooksIntegration 
-  onExpenseImported={fetchData}
-  projects={projects}  // Add this
-/>
-```
-
-**3. BusinessQuickBooksIntegration.tsx - Accept & Forward Prop**
-
-```tsx
-interface BusinessQuickBooksIntegrationProps {
-  onExpenseImported?: () => void;
-  projects?: { id: string; name: string; address?: string }[];  // Add this
-}
-
-export function BusinessQuickBooksIntegration({ 
-  onExpenseImported,
-  projects = []  // Add this
-}: BusinessQuickBooksIntegrationProps) {
-  // ...
-  
-  // Pass to SmartSplit
-  <SmartSplitReceiptUpload 
-    onReceiptProcessed={onExpenseImported}
-    projects={projects}  // Add this
-  />
-}
-```
+**Same fix needed in:**
+- `src/pages/ProjectDetail.tsx` (if similar logic exists)
+- `src/pages/BusinessExpenses.tsx` (if similar logic exists)
 
 ---
 
 ### Data Flow After Fix
 
 ```text
-BusinessExpenses.tsx
-  └── fetches projects from database
-  └── passes projects to BusinessQuickBooksIntegration
-        └── passes projects to SmartSplitReceiptUpload
-              └── ProjectAutocomplete shows real projects
+Database contains:
+  purchase_769 (Bathroom: $206.71) ✓ Shown
+  purchase_769_split_hardware ($188.38) ✓ Shown
+  purchase_769_split_light_fixtures ($187.79) ✓ Shown
+  purchase_769_split_plumbing ($79.01) ✓ Shown
+  purchase_769_split_misc ($9.71) ✓ Shown
+  ─────────────────────────────────
+  Total: $671.60 ✓ Matches original QB transaction
 ```
 
 ---
 
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/pages/Expenses.tsx` | Remove split-filtering logic (lines 129-144) |
+| `src/pages/ProjectDetail.tsx` | Check for and remove similar filtering |
+| `src/components/project/ExportReports.tsx` | Check for similar filtering in export logic |
+
+---
+
 ### Summary
-- Fetch projects from database in BusinessExpenses page
-- Thread the `projects` prop through BusinessQuickBooksIntegration to SmartSplitReceiptUpload
-- This matches how it already works on ProjectDetail page (which does pass projects)
+
+The SmartSplit design changed: the original QB record is now updated with the first category's data instead of being left empty. The filtering logic that hides "parent" records is now incorrect because those records contain valid expense data. Removing this filter will display all split expenses including the first category.
