@@ -21,6 +21,7 @@ import { BUDGET_CATEGORIES, ALL_CATEGORIES, type Project, type CategoryBudget } 
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { QuickBooksIntegration } from '@/components/QuickBooksIntegration';
 import { ExpenseDetailModal } from '@/components/ExpenseDetailModal';
+import { GroupedExpenseDetailModal } from '@/components/GroupedExpenseDetailModal';
 import { GroupedExpenseRow } from '@/components/expenses/GroupedExpenseRow';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -89,6 +90,8 @@ export default function Expenses() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedExpense, setSelectedExpense] = useState<DBExpense | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedExpenseGroup, setSelectedExpenseGroup] = useState<DBExpense[] | null>(null);
+  const [groupDetailModalOpen, setGroupDetailModalOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -513,6 +516,10 @@ export default function Expenses() {
                       setSelectedExpense(expense);
                       setDetailModalOpen(true);
                     }}
+                    onGroupClick={(expenses) => {
+                      setSelectedExpenseGroup(expenses);
+                      setGroupDetailModalOpen(true);
+                    }}
                   />
                 ))}
               </tbody>
@@ -541,6 +548,15 @@ export default function Expenses() {
         expense={selectedExpense}
         projectName={selectedExpense ? getProjectName(selectedExpense.project_id) : ''}
         categoryLabel={selectedExpense ? getCategoryLabel(selectedExpense.category_id, selectedExpense.project_id) : ''}
+        onExpenseUpdated={fetchData}
+      />
+
+      <GroupedExpenseDetailModal
+        open={groupDetailModalOpen}
+        onOpenChange={setGroupDetailModalOpen}
+        expenses={selectedExpenseGroup || []}
+        projectName={selectedExpenseGroup?.[0] ? getProjectName(selectedExpenseGroup[0].project_id) : ''}
+        getCategoryLabel={getCategoryLabel}
         onExpenseUpdated={fetchData}
       />
     </MainLayout>
