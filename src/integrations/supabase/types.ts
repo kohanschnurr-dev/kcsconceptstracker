@@ -455,6 +455,7 @@ export type Database = {
         Row: {
           bulk_discount_eligible: boolean | null
           bundle_id: string | null
+          category: string | null
           category_id: string | null
           created_at: string
           finish: string | null
@@ -480,6 +481,7 @@ export type Database = {
         Insert: {
           bulk_discount_eligible?: boolean | null
           bundle_id?: string | null
+          category?: string | null
           category_id?: string | null
           created_at?: string
           finish?: string | null
@@ -505,6 +507,7 @@ export type Database = {
         Update: {
           bulk_discount_eligible?: boolean | null
           bundle_id?: string | null
+          category?: string | null
           category_id?: string | null
           created_at?: string
           finish?: string | null
