@@ -615,6 +615,13 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
             notes: itemNotes.slice(0, 50) + '...',
           });
           
+          // First, preserve the original amount before we overwrite it (only if not already set)
+          await supabase
+            .from('quickbooks_expenses')
+            .update({ original_amount: qbTransactionAmount })
+            .eq('id', originalQbExpenseId)
+            .is('original_amount', null);
+          
           const { data: updateResult, error: qbError } = await supabase
             .from('quickbooks_expenses')
             .update({ 
