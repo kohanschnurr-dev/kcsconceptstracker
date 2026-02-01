@@ -1,109 +1,98 @@
 
 
-## Plan: Simplify Financials Tab
+## Plan: Align Month Navigation with Project Schedule Title
 
 ### Overview
 
-Remove the "Spending by Category" chart and "Category Breakdown" table from the Financials tab, keeping only the Profit Calculator and Export Reports for a cleaner, less cluttered view.
+Move the month navigation controls (< February 2026 >) to be inline with the "Project Schedule" title, creating a single-row header layout instead of the current stacked layout.
 
 ### Current Layout
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                     Financials Tab                        │
-├────────────────────────┬─────────────────────────────────┤
-│   Profit Calculator    │   Spending by Category (chart)  │  ← REMOVE chart
-├────────────────────────┴─────────────────────────────────┤
-│                    Export Reports                         │
-├──────────────────────────────────────────────────────────┤
-│                  Category Breakdown (table)               │  ← REMOVE table
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│ 📅 Project Schedule                              [+ Add Project Event]│
+├─────────────────────────────────────────────────────────────────────┤
+│ < February 2026 >                                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│ Legend...                                                            │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### New Layout
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                     Financials Tab                        │
-├──────────────────────────────────────────────────────────┤
-│                    Profit Calculator                      │
-├──────────────────────────────────────────────────────────┤
-│                    Export Reports                         │
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│ 📅 Project Schedule    < February 2026 >         [+ Add Project Event]│
+├─────────────────────────────────────────────────────────────────────┤
+│ Legend...                                                            │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ### Technical Changes
 
-**File: `src/pages/ProjectDetail.tsx`**
+**File: `src/components/project/ProjectCalendar.tsx`**
 
-| Change | Lines |
-|--------|-------|
-| Remove SpendingChart import | Line 43 |
-| Remove 2-column grid and SpendingChart | Lines 553-562 |
-| Remove Category Breakdown Card | Lines 580-619 |
-| Remove Table component import (if unused elsewhere) | Line 26 |
+| Lines | Change |
+|-------|--------|
+| 118-149 | Restructure CardHeader to put title, month nav, and button on same row |
 
----
+**Code Changes:**
 
-### Code Changes
+Modify the CardHeader content to use a single flex row with three sections:
 
-1. **Remove import** (line 43):
-   ```typescript
-   // Remove this line
-   import { SpendingChart } from '@/components/project/SpendingChart';
-   ```
-
-2. **Simplify Financials TabsContent** (lines 552-620):
-   
-   **Before:**
-   ```typescript
-   <TabsContent value="financials" className="space-y-6">
-     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-       <ProfitCalculator ... />
-       <SpendingChart ... />
-     </div>
-     <ExportReports ... />
-     <Card className="glass-card">
-       {/* Category Breakdown table */}
-     </Card>
-   </TabsContent>
-   ```
-   
-   **After:**
-   ```typescript
-   <TabsContent value="financials" className="space-y-6">
-     <ProfitCalculator 
-       projectId={id!}
-       totalBudget={totalBudget}
-       totalSpent={totalSpent}
-       initialPurchasePrice={project.purchase_price || 0}
-       initialArv={project.arv || 0}
-     />
-     <ExportReports 
-       project={{...}}
-       categories={categories}
-       expenses={allExpensesForExport}
-     />
-   </TabsContent>
-   ```
-
-3. **Check Table import** - If no other tab uses `Table`, `TableBody`, etc., remove from imports (line 26). Otherwise keep it.
+```typescript
+<CardHeader className="pb-2">
+  <div className="flex items-center justify-between">
+    {/* Left: Title */}
+    <CardTitle className="flex items-center gap-2 text-white">
+      <CalendarIcon className="h-5 w-5 text-emerald-500" />
+      Project Schedule
+    </CardTitle>
+    
+    {/* Center: Month Navigation */}
+    <div className="flex items-center gap-2">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+        className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <span className="text-sm font-medium text-white min-w-[120px] text-center">
+        {format(currentDate, 'MMMM yyyy')}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+        className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+    
+    {/* Right: Add Event Button */}
+    <NewEventModal
+      projects={[{ id: projectId, name: projectName, address: projectAddress }]}
+      onEventCreated={fetchEvents}
+      defaultProjectId={projectId}
+    />
+  </div>
+  <CalendarLegend />
+</CardHeader>
+```
 
 ---
-
-### Files Affected
-
-| File | Change |
-|------|--------|
-| `src/pages/ProjectDetail.tsx` | Remove SpendingChart + Category Breakdown table |
 
 ### Result
 
-The Financials tab will show only:
-1. **Profit Calculator** - Purchase price, ARV, profit metrics
-2. **Export Reports** - CSV download options
+The header will now display:
+- **Left**: Calendar icon + "Project Schedule" title
+- **Center**: Month navigation arrows with month/year label
+- **Right**: "+ Add Project Event" button
 
-No more duplicate category information (chart + table).
+All aligned on a single row for a cleaner, more compact header.
 
