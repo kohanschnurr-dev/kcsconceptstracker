@@ -1,29 +1,32 @@
 
-## Plan: Convert Bundle Assignment to Dropdown
+
+## Plan: Update Category Icons for Better Representation
 
 ### Overview
 
-The "Assign to Bundles" field currently displays bundles as a grid of checkbox buttons. The user wants this converted to a standard dropdown multi-select pattern for a cleaner appearance.
+Update icons for Roofing, Flooring, Drywall, and Countertops to be more visually distinct and representative.
 
 ---
 
-### Current Implementation (lines 823-866)
+### Current State
 
-The current code shows bundles as:
-- A grid of checkboxes with bundle names
-- Users click on checkbox items to toggle selection
-- Selected bundles show as badges below the grid
+| Category | Current Icon | Issue |
+|----------|-------------|-------|
+| Roofing | `Triangle` | User prefers `Home` icon |
+| Flooring | `Layers` | Could be more specific |
+| Drywall | `Grid3X3` | Same as Tile - not distinct |
+| Countertops | `Grid3X3` | Same as Tile - not distinct |
 
-```tsx
-<div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border rounded-md bg-muted/30">
-  {bundles.map(b => (
-    <label className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer">
-      <Checkbox ... />
-      <span className="text-sm truncate">{b.name}</span>
-    </label>
-  ))}
-</div>
-```
+---
+
+### Proposed Icon Changes
+
+| Category | Current | New Icon | Rationale |
+|----------|---------|----------|-----------|
+| **Roofing** | `Triangle` | `Home` | User preference - house silhouette represents roofing well |
+| **Flooring** | `Layers` | `RectangleHorizontal` | Represents horizontal floor planks |
+| **Drywall** | `Grid3X3` | `Square` | Simple wall panel shape |
+| **Countertops** | `Grid3X3` | `LayoutDashboard` | Represents a countertop surface layout |
 
 ---
 
@@ -31,38 +34,25 @@ The current code shows bundles as:
 
 **File: `src/components/procurement/ProcurementItemModal.tsx`**
 
-Replace the checkbox grid with a Popover-based multi-select dropdown that:
-1. Shows a trigger button displaying selected bundle count or names
-2. Opens a dropdown with checkboxes for each bundle
-3. Allows multiple selection
-4. Displays selected bundles as badges below (keep this part)
+**1. Update imports (add new icons):**
+- Add: `Home`, `RectangleHorizontal`, `Square`, `LayoutDashboard`
+- Remove: `Triangle` (no longer used)
 
-**Implementation approach:**
+**2. Update category definitions:**
 
 ```tsx
-<Popover>
-  <PopoverTrigger asChild>
-    <Button variant="outline" className="w-full justify-between">
-      {formData.bundle_ids.length === 0 
-        ? "Select bundles..." 
-        : `${formData.bundle_ids.length} bundle(s) selected`}
-      <ChevronDown className="h-4 w-4 opacity-50" />
-    </Button>
-  </PopoverTrigger>
-  <PopoverContent className="w-full p-2">
-    {bundles.map(b => (
-      <div key={b.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer">
-        <Checkbox checked={...} onCheckedChange={...} />
-        <span>{b.name}</span>
-      </div>
-    ))}
-  </PopoverContent>
-</Popover>
-```
+// Flooring (line 124): Layers → RectangleHorizontal
+icon: RectangleHorizontal,
 
-**Imports needed:**
-- Add `ChevronDown` to lucide-react imports
-- Add `Popover, PopoverTrigger, PopoverContent` imports
+// Countertops (line 172): Grid3X3 → LayoutDashboard  
+icon: LayoutDashboard,
+
+// Roofing (line 228): Triangle → Home
+icon: Home,
+
+// Drywall (line 252): Grid3X3 → Square
+icon: Square,
+```
 
 ---
 
@@ -70,14 +60,15 @@ Replace the checkbox grid with a Popover-based multi-select dropdown that:
 
 | File | Changes |
 |------|---------|
-| `src/components/procurement/ProcurementItemModal.tsx` | Add Popover imports, add ChevronDown icon, replace checkbox grid with Popover dropdown |
+| `src/components/procurement/ProcurementItemModal.tsx` | Update 4 category icons for better visual distinction |
 
 ---
 
 ### Result
 
-The bundle assignment will appear as a clean dropdown button that:
-- Shows "Select bundles..." when empty
-- Shows "X bundle(s) selected" when bundles are chosen
-- Opens a popover with checkbox list on click
-- Keeps the badge display for selected bundles below
+Each category will have a unique, meaningful icon:
+- **Roofing**: House icon (user's preference)
+- **Flooring**: Horizontal rectangle representing floor planks
+- **Drywall**: Simple square representing a wall panel
+- **Countertops**: Dashboard layout representing counter surface
+
