@@ -1,82 +1,100 @@
 
 
-## Plan: Fix Jan 29 Data and Prevent Future Data Loss
+## Plan: Fix SmartSplit Parent Record Detection Logic
 
-### Problem Summary
+### Problem Identified
 
-The Jan 29 Home Depot transaction (`purchase_802`) was imported **before** the SmartSplit fix. The data shows:
-- Current total: $303.65 (sum of raw receipt line items)
-- This is incorrect - it should equal the original QuickBooks bank transaction amount
+The SmartSplit system updates the original QuickBooks record (`purchase_802`) with the first category's data (Framing), but the parent-exclusion logic in `ProjectBudget.tsx` and `Expenses.tsx` then incorrectly **hides** this record because it sees splits like `purchase_802_split_demolition` exist.
 
-The core issue: **SmartSplit overwrites the original QB expense amount**, so we've lost the true bank transaction value.
+**Current behavior:**
+- `purchase_802` = Framing ($119.81) - **EXCLUDED** as "parent"
+- `purchase_802_split_demolition` = Demolition ($32.44) - Shown
+- `purchase_802_split_drywall` = Drywall ($31.60) - Shown  
+- `purchase_802_split_hardware` = Hardware ($27.57) - Shown
 
-### Solution: Two Parts
+**Expected behavior:**
+- All four should be shown (they represent different categories)
 
----
+### Root Cause
 
-### Part 1: Data Migration to Fix Jan 29
+The filtering logic assumes that if `_split_` records exist, the original parent record is a duplicate that should be hidden. But SmartSplit actually **repurposes** the parent as the first category's expense, so it should NOT be excluded.
 
-We need to determine what the original transaction amount was. Based on the pattern:
-- Jan 28 was fixed and totals $111.47 (the actual bank charge)
-- The user needs to confirm what the actual Jan 29 Home Depot charge was from their bank/QuickBooks
+### Solution
 
-**Option A**: If user knows the correct total, run SQL to scale amounts proportionally
-**Option B**: Re-sync from QuickBooks and re-run SmartSplit
+Update the SmartSplit naming convention so the first category also gets a `_split_` suffix. This makes all split records follow the same pattern and prevents the original record from being incorrectly hidden.
 
----
+**New naming pattern after SmartSplit:**
+- `purchase_802_split_framing` = Framing ($119.81)
+- `purchase_802_split_demolition` = Demolition ($32.44)
+- `purchase_802_split_drywall` = Drywall ($31.60)
+- `purchase_802_split_hardware` = Hardware ($27.57)
 
-### Part 2: Prevent Future Data Loss
-
-Store the original QB transaction amount before overwriting, so we can always reference it.
-
-**File: Database Schema Change**
-
-Add `original_amount` column to `quickbooks_expenses` table:
-
-```sql
-ALTER TABLE quickbooks_expenses 
-ADD COLUMN original_amount DECIMAL(12,2);
-```
+### Technical Changes
 
 **File: `src/components/SmartSplitReceiptUpload.tsx`**
 
-Before updating the first QB expense record, store the original amount:
+Modify the SmartSplit logic so the first category also updates the `qb_id` to include the `_split_{category}` suffix:
 
-| Lines | Change |
-|-------|--------|
-| ~618-640 | Before the update, set `original_amount` to preserve the true bank value |
+| Location | Change |
+|----------|--------|
+| Lines 609-645 | Update the first category's `qb_id` to `{originalQbId}_split_{category}` instead of keeping the original ID |
 
+**Before (first category):**
 ```typescript
-// Store original amount before we overwrite it
-const { error: preserveError } = await supabase
-  .from('quickbooks_expenses')
-  .update({ original_amount: selectedMatch.qbExpense.amount })
-  .eq('id', originalQbExpenseId)
-  .is('original_amount', null); // Only if not already set
+if (i === 0) {
+  // Updates original record, keeps qb_id as "purchase_802"
+  await supabase
+    .from('quickbooks_expenses')
+    .update({ 
+      is_imported: true,
+      amount: categoryAmount,
+      // ... other fields
+    })
+    .eq('id', originalQbExpenseId);
+}
+```
 
-// Then proceed with the category update
-const { data: updateResult, error: qbError } = await supabase
-  .from('quickbooks_expenses')
-  .update({ 
-    amount: categoryAmount,
-    // ... rest of fields
-  })
+**After (first category):**
+```typescript
+if (i === 0) {
+  // Updates original record AND renames qb_id to include split suffix
+  const splitQbId = `${originalQbId}_split_${category}`;
+  await supabase
+    .from('quickbooks_expenses')
+    .update({ 
+      qb_id: splitQbId,  // Add split suffix to first category too
+      is_imported: true,
+      amount: categoryAmount,
+      // ... other fields
+    })
+    .eq('id', originalQbExpenseId);
+}
 ```
 
 ---
 
-### Immediate Data Fix
+### Data Migration Required
 
-For the Jan 29 transaction, we need the user to confirm the actual bank amount. Once known, run:
+Fix existing incorrectly-named records. For `purchase_802`:
 
 ```sql
--- Example if actual amount was $150
 UPDATE quickbooks_expenses 
-SET amount = ROUND(amount * (150.00 / 303.65), 2)
-WHERE qb_id LIKE 'purchase_802%';
+SET qb_id = 'purchase_802_split_framing'
+WHERE qb_id = 'purchase_802' 
+AND category_id = '3ae6ad2e-512d-4d0e-919d-edeae2399906';
 ```
 
-This scales all splits proportionally to match the true total.
+For `purchase_801` (Jan 28 Home Depot - if it has the same issue):
+
+```sql
+-- First check what category the parent has
+SELECT qb_id, category_id FROM quickbooks_expenses WHERE qb_id = 'purchase_801';
+
+-- Then rename if needed (assuming it's carpentry based on earlier data)
+UPDATE quickbooks_expenses 
+SET qb_id = 'purchase_801_split_carpentry'
+WHERE qb_id = 'purchase_801';
+```
 
 ---
 
@@ -84,7 +102,14 @@ This scales all splits proportionally to match the true total.
 
 | Change | Purpose |
 |--------|---------|
-| Add `original_amount` column | Preserve true bank transaction amount |
-| Update SmartSplit to save original before overwriting | Prevent future data loss |
-| Data migration for Jan 29 | Fix existing incorrect data |
+| Update SmartSplit to rename first category's `qb_id` | All split records follow same naming pattern |
+| Data migration for existing records | Fix Jan 28 and Jan 29 transactions |
+| No changes needed to filtering logic | The `_split_` pattern detection continues to work correctly |
+
+### Result
+
+After this fix:
+- Framing category will show the $119.81 expense
+- All split records follow consistent `{parent}_split_{category}` naming
+- Parent-exclusion logic correctly ignores actual parent duplicates (if any exist)
 
