@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calculator, DollarSign, TrendingUp, Percent, Save, Loader2 } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, Save, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,9 +70,6 @@ export function ProfitCalculator({
   // ROI based on current investment
   const roi = currentInvestment > 0 ? (currentProfit / currentInvestment) * 100 : 0;
   
-  // 78% rule check (max offer = ARV * 0.78 - repairs)
-  const maxOffer = (arv * 0.78) - totalBudget;
-  const meetsRule = purchasePrice <= maxOffer;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -128,26 +125,6 @@ export function ProfitCalculator({
           </div>
         </div>
 
-        {/* 70% Rule Check */}
-        {arv > 0 && (
-          <div className={cn(
-            "p-3 rounded-lg border",
-            meetsRule ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30"
-          )}>
-            <div className="flex items-center gap-2 mb-1">
-              <Percent className="h-4 w-4" />
-              <span className="font-medium">78% Rule</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Max offer: <span className="font-mono font-medium">{formatCurrency(maxOffer)}</span>
-              {meetsRule ? (
-                <span className="text-success ml-2">✓ Meets rule</span>
-              ) : (
-                <span className="text-destructive ml-2">✗ Over by {formatCurrency(purchasePrice - maxOffer)}</span>
-              )}
-            </p>
-          </div>
-        )}
 
         {/* Results */}
         <div className="grid grid-cols-3 gap-4">
