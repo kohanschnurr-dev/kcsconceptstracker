@@ -1167,6 +1167,7 @@ export type Database = {
           has_w9: boolean
           id: string
           name: string
+          notes: string | null
           phone: string | null
           pricing_model: Database["public"]["Enums"]["pricing_model"] | null
           reliability_rating: number | null
@@ -1180,6 +1181,7 @@ export type Database = {
           has_w9?: boolean
           id?: string
           name: string
+          notes?: string | null
           phone?: string | null
           pricing_model?: Database["public"]["Enums"]["pricing_model"] | null
           reliability_rating?: number | null
@@ -1193,6 +1195,7 @@ export type Database = {
           has_w9?: boolean
           id?: string
           name?: string
+          notes?: string | null
           phone?: string | null
           pricing_model?: Database["public"]["Enums"]["pricing_model"] | null
           reliability_rating?: number | null
