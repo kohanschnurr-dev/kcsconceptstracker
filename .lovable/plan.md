@@ -1,109 +1,53 @@
 
-## Plan: Move Category Dropdown Next to Unit Price and Quantity
+## Plan: Simplify Procurement Summary Cards
 
 ### Overview
 
-Relocate the category selector from the top of the Edit Item modal (currently a static badge with "Change" button) to a dropdown in the form grid, positioned next to the Unit Price and Quantity fields. This allows editing the category directly without navigating back to the category selection step.
+Remove the "In Cart" and "Ordered" summary cards from the Procurement page, keeping only "Total Items" and "Bundles".
 
 ---
 
-### Current Layout
+### Current Layout (4 cards)
 
-The modal shows category as a static badge at the top:
-```
-[✓ Bathroom] [Change]
+| Total Items | In Cart | Ordered | Bundles |
+|-------------|---------|---------|---------|
+| 16 | $0.00 | $0.00 | 2 |
 
-Item Name *
-[________________________]
+### New Layout (2 cards)
 
-BATHROOM SPECIFICATIONS
-...
-```
-
-### New Layout
-
-Move category into the pricing row area:
-```
-Item Name *
-[________________________]
-
-BATHROOM SPECIFICATIONS
-...
-
-Category             Unit Price *
-[Dropdown v]         [$ 53.76]
-
-Quantity
-[1]
-```
+| Total Items | Bundles |
+|-------------|---------|
+| 16 | 2 |
 
 ---
 
 ### Technical Implementation
 
-**File: `src/components/procurement/ProcurementItemModal.tsx`**
+**File: `src/pages/Procurement.tsx`**
 
-**1. Remove the static category badge section (lines 813-827)**
+**1. Remove unused calculations (lines ~217-224)**
 
-Remove this entire block:
+Remove these variables that are no longer needed:
 ```tsx
-{/* Category Badge */}
-{selectedCategory && (
-  <div className="flex items-center gap-2">
-    <Badge className={cn('gap-1', selectedCategory.color)}>
-      <selectedCategory.icon className="h-3 w-3" />
-      {selectedCategory.label}
-    </Badge>
-    {!item && (
-      <Button variant="ghost" size="sm" onClick={() => setStep('category')} className="h-6 text-xs">
-        <ArrowLeft className="h-3 w-3 mr-1" />
-        Change
-      </Button>
-    )}
-  </div>
-)}
+const cartTotal = filteredItems
+  .filter(i => (i.status || 'researching') === 'in_cart')
+  .reduce((sum, i) => sum + calculateItemTotal(i), 0);
+
+const orderedTotal = filteredItems
+  .filter(i => (i.status || 'researching') === 'ordered')
+  .reduce((sum, i) => sum + calculateItemTotal(i), 0);
 ```
 
-**2. Add a Category dropdown in the grid (near lines 936-960)**
+**2. Update grid layout (line ~274)**
 
-Add the dropdown before or alongside the Unit Price field:
-
+Change from 4 columns to 2:
 ```tsx
-{/* Category */}
-<div>
-  <Label>Category</Label>
-  <Select 
-    value={formData.category} 
-    onValueChange={(v) => setFormData(prev => ({ ...prev, category: v as ProcurementCategory }))}
-  >
-    <SelectTrigger>
-      <SelectValue placeholder="Select category" />
-    </SelectTrigger>
-    <SelectContent className="max-h-[300px]">
-      {PROCUREMENT_CATEGORIES.map(cat => (
-        <SelectItem key={cat.value} value={cat.value}>
-          <div className="flex items-center gap-2">
-            <cat.icon className="h-4 w-4" />
-            {cat.label}
-          </div>
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
+<div className="grid grid-cols-2 gap-4">
 ```
 
-**3. Reorder form fields**
+**3. Remove In Cart and Ordered cards (lines ~284-306)**
 
-Current order in grid:
-- Finish / Color | Unit Price *
-- Quantity | Notes (col-span-2)
-
-New order:
-- Finish / Color | Unit Price *
-- Category | Quantity
-
-This puts Category dropdown next to Quantity, near the pricing fields as requested.
+Remove these two card components, keeping only Total Items and Bundles.
 
 ---
 
@@ -111,15 +55,14 @@ This puts Category dropdown next to Quantity, near the pricing fields as request
 
 | Location | Change |
 |----------|--------|
-| Lines 813-827 | Remove static category badge display |
-| Lines 961-974 | Add Category dropdown next to Quantity field |
+| Lines 217-224 | Remove cartTotal and orderedTotal calculations |
+| Line 274 | Change grid from `grid-cols-2 lg:grid-cols-4` to `grid-cols-2` |
+| Lines 284-306 | Remove In Cart and Ordered card components |
 
 ---
 
 ### Result
 
-- Category becomes an editable dropdown in the form
-- Positioned alongside Unit Price and Quantity for easy editing
-- Works for both Add and Edit scenarios
-- Dropdown sorted alphabetically with icons for each category
-- Max height 300px with scrolling for long category list
+- Cleaner summary section with just 2 cards
+- Total Items and Bundles displayed side by side
+- Removed unused status-based calculations
