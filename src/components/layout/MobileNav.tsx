@@ -22,24 +22,24 @@ import { useProfile } from '@/hooks/useProfile';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import kcsLogo from '@/assets/kcs-logo.png';
 
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
-  { icon: FolderKanban, label: 'Projects', path: '/projects' },
-  { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
-  { icon: Receipt, label: 'Expenses', path: '/expenses' },
-  { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
-  { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
-  { icon: Users, label: 'Vendors', path: '/vendors' },
-  { icon: Briefcase, label: 'KCS Concepts', path: '/business-expenses' },
-];
-
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { displayName } = useProfile();
   const { companyName, logoUrl } = useCompanySettings();
+
+  const navItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
+    { icon: FolderKanban, label: 'Projects', path: '/projects' },
+    { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
+    { icon: Receipt, label: 'Expenses', path: '/expenses' },
+    { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
+    { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
+    { icon: Users, label: 'Vendors', path: '/vendors' },
+    { icon: Briefcase, label: companyName, path: '/business-expenses' },
+  ];
 
   const handleSignOut = () => {
     setOpen(false);
