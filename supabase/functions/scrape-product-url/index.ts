@@ -801,44 +801,29 @@ Deno.serve(async (req) => {
     
     data = await response.json();
     
-    // If basic scrape failed and this is a difficult site, try enhanced mode
-    if (!response.ok && needsEnhancedMode) {
-      console.log('Basic scrape failed, trying enhanced mode...');
-      usedEnhancedMode = true;
-      
-      const enhancedOptions = {
-        url: formattedUrl,
-        formats: ['markdown', 'html'],
-        onlyMainContent: false,
-        timeout: 90000, // 90 seconds for stealth
-        location: { country: 'US', languages: ['en-US'] },
-        proxy: 'stealth',
-        actions: [
-          { type: 'wait', milliseconds: 3000 },
-          { type: 'scroll', direction: 'down' },
-          { type: 'wait', milliseconds: 2000 },
-        ],
-      };
-      
-      response = await fetch('https://api.firecrawl.dev/v1/scrape', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(enhancedOptions),
-      });
-      
-      data = await response.json();
-    }
-    
-    // Handle final error
+    // If basic scrape failed, DON'T try enhanced mode - it times out too
+    // Instead, check if we got ANY data we can use
     if (!response.ok) {
-      console.error('Firecrawl API error:', data);
-      return new Response(
-        JSON.stringify({ success: false, error: data.error || `Request failed with status ${response.status}` }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.log('Basic scrape failed with status:', response.status);
+      
+      // Check if we got partial data we can still use
+      const partialMarkdown = data?.data?.markdown || data?.markdown || '';
+      const partialHtml = data?.data?.html || data?.html || '';
+      
+      if (partialMarkdown || partialHtml) {
+        console.log('Got partial data despite error, attempting extraction...');
+        // Continue with extraction below
+      } else {
+        // No data at all - return error
+        console.error('Firecrawl API error with no usable data:', data);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Could not scrape this URL. Home Depot pages may require manual price entry.' 
+          }),
+          { status: 408, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
     
     console.log('Scrape successful, enhanced mode used:', usedEnhancedMode);
