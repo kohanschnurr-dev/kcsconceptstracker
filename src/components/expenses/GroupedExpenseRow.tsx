@@ -29,6 +29,7 @@ interface GroupedExpenseRowProps {
   formatCurrency: (amount: number) => string;
   handleViewReceipt: (receiptUrl: string, e: React.MouseEvent) => void;
   onExpenseClick: (expense: DBExpense) => void;
+  onGroupClick?: (expenses: DBExpense[]) => void;
 }
 
 export function GroupedExpenseRow({
@@ -38,6 +39,7 @@ export function GroupedExpenseRow({
   formatCurrency,
   handleViewReceipt,
   onExpenseClick,
+  onGroupClick,
 }: GroupedExpenseRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
@@ -126,10 +128,10 @@ export function GroupedExpenseRow({
   // Multiple expenses - render collapsible group
   return (
     <>
-      {/* Parent row - clickable to open detail, arrow to expand */}
+      {/* Parent row - clickable to open group modal, arrow to expand */}
       <tr 
         className="hover:bg-muted/20 transition-colors cursor-pointer"
-        onClick={() => onExpenseClick(parentExpense)}
+        onClick={() => onGroupClick ? onGroupClick(sortedExpenses) : onExpenseClick(parentExpense)}
       >
         <td 
           className="whitespace-nowrap cursor-pointer hover:bg-muted/30 transition-colors"
