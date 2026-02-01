@@ -114,52 +114,20 @@ interface CategoryConfig {
 
 const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   { 
-    value: 'doors', 
-    label: 'Doors', 
-    icon: DoorOpen, 
-    color: 'bg-amber-500/10 text-amber-600 border-amber-500/30',
-    fields: ['size', 'style', 'material', 'swing', 'prehung'],
-    placeholders: { size: '36" x 80"', style: 'Shaker, Panel, Flush', material: 'Solid wood, Hollow core, Fiberglass' }
+    value: 'appliances', 
+    label: 'Appliances', 
+    icon: Refrigerator, 
+    color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30',
+    fields: ['appliance_type', 'dimensions', 'energy_rating', 'fuel_type'],
+    placeholders: { appliance_type: 'Range, Refrigerator, Dishwasher', dimensions: 'W x D x H', fuel_type: 'Gas, Electric' }
   },
   { 
-    value: 'flooring', 
-    label: 'Flooring', 
-    icon: RectangleHorizontal, 
-    color: 'bg-orange-500/10 text-orange-600 border-orange-500/30',
-    fields: ['material', 'sqft', 'thickness', 'finish', 'underlayment'],
-    placeholders: { material: 'LVP, Hardwood, Tile', sqft: 'Total sq ft needed', thickness: '6mm, 12mm, 3/4"' }
-  },
-  { 
-    value: 'plumbing', 
-    label: 'Plumbing', 
-    icon: Droplets, 
-    color: 'bg-blue-500/10 text-blue-600 border-blue-500/30',
-    fields: ['fixture_type', 'connection_size', 'finish', 'gpm'],
-    placeholders: { fixture_type: 'Faucet, Toilet, Shower valve', connection_size: '1/2", 3/4"', gpm: 'Gallons per minute' }
-  },
-  { 
-    value: 'electrical', 
-    label: 'Electrical', 
-    icon: Zap, 
-    color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30',
-    fields: ['voltage', 'amperage', 'wire_gauge', 'circuit_type'],
-    placeholders: { voltage: '120V, 240V', amperage: '15A, 20A, 30A', wire_gauge: '12 AWG, 10 AWG' }
-  },
-  { 
-    value: 'hvac', 
-    label: 'HVAC', 
-    icon: Wind, 
-    color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30',
-    fields: ['btu', 'tonnage', 'seer_rating', 'duct_size'],
-    placeholders: { btu: 'BTU rating', tonnage: '2 ton, 3 ton', seer_rating: 'SEER efficiency' }
-  },
-  { 
-    value: 'paint', 
-    label: 'Paint', 
-    icon: Paintbrush, 
-    color: 'bg-pink-500/10 text-pink-600 border-pink-500/30',
-    fields: ['color_code', 'sheen', 'coverage_sqft', 'brand'],
-    placeholders: { color_code: 'SW 7015, BM OC-17', sheen: 'Flat, Eggshell, Satin, Semi-gloss', coverage_sqft: 'Sq ft per gallon' }
+    value: 'bathroom', 
+    label: 'Bathroom', 
+    icon: Bath, 
+    color: 'bg-cyan-600/10 text-cyan-500 border-cyan-500/30',
+    fields: ['fixture_type', 'dimensions', 'finish', 'material'],
+    placeholders: { fixture_type: 'Vanity, Mirror, Accessories', dimensions: 'W x D x H', finish: 'Chrome, Brushed Nickel, Matte Black' }
   },
   { 
     value: 'cabinets', 
@@ -178,76 +146,12 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
     placeholders: { material: 'Quartz, Granite, Marble', edge_profile: 'Eased, Bullnose, Ogee', thickness: '2cm, 3cm' }
   },
   { 
-    value: 'tile', 
-    label: 'Tile', 
-    icon: Grid3X3, 
-    color: 'bg-teal-500/10 text-teal-600 border-teal-500/30',
-    fields: ['tile_size', 'material', 'grout_color'],
-    placeholders: { tile_size: '12x24, 4x12, 3x6', material: 'Ceramic, Porcelain, Natural stone', grout_color: 'White, Gray, Charcoal' }
-  },
-  { 
-    value: 'lighting', 
-    label: 'Lighting', 
-    icon: Lightbulb, 
-    color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
-    fields: ['fixture_type', 'wattage', 'lumens', 'color_temp'],
-    placeholders: { fixture_type: 'Recessed, Pendant, Sconce', wattage: 'Max wattage', lumens: 'Brightness level', color_temp: '2700K, 3000K, 4000K' }
-  },
-  { 
-    value: 'hardware', 
-    label: 'Hardware', 
-    icon: Wrench, 
-    color: 'bg-slate-500/10 text-slate-600 border-slate-500/30',
-    fields: ['hardware_type', 'size', 'finish'],
-    placeholders: { hardware_type: 'Knobs, Pulls, Hinges', size: 'Center-to-center measurement' }
-  },
-  { 
-    value: 'appliances', 
-    label: 'Appliances', 
-    icon: Refrigerator, 
-    color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30',
-    fields: ['appliance_type', 'dimensions', 'energy_rating', 'fuel_type'],
-    placeholders: { appliance_type: 'Range, Refrigerator, Dishwasher', dimensions: 'W x D x H', fuel_type: 'Gas, Electric' }
-  },
-  { 
-    value: 'windows', 
-    label: 'Windows', 
-    icon: AppWindow, 
-    color: 'bg-sky-500/10 text-sky-600 border-sky-500/30',
-    fields: ['window_type', 'dimensions', 'glass_type', 'frame_material'],
-    placeholders: { window_type: 'Single-hung, Double-hung, Casement', dimensions: 'Width x Height', glass_type: 'Double-pane, Low-E' }
-  },
-  { 
-    value: 'fencing', 
-    label: 'Fencing', 
-    icon: Fence, 
-    color: 'bg-green-500/10 text-green-600 border-green-500/30',
-    fields: ['material', 'height', 'linear_feet', 'style'],
-    placeholders: { material: 'Cedar, Vinyl, Metal', height: '4ft, 6ft, 8ft', linear_feet: 'Total length' }
-  },
-  { 
-    value: 'roofing', 
-    label: 'Roofing', 
-    icon: Home, 
-    color: 'bg-red-500/10 text-red-600 border-red-500/30',
-    fields: ['material', 'squares', 'warranty_years'],
-    placeholders: { material: 'Shingles, Metal, Tile', squares: 'Roofing squares (100 sq ft each)' }
-  },
-  { 
-    value: 'framing', 
-    label: 'Framing', 
-    icon: Hammer, 
-    color: 'bg-amber-600/10 text-amber-700 border-amber-600/30',
-    fields: ['lumber_size', 'length', 'grade', 'treatment'],
-    placeholders: { lumber_size: '2x4, 2x6, 2x8', length: '8ft, 10ft, 12ft', grade: '#2, Stud grade' }
-  },
-  { 
-    value: 'insulation', 
-    label: 'Insulation', 
-    icon: Layers, 
-    color: 'bg-purple-500/10 text-purple-600 border-purple-500/30',
-    fields: ['r_value', 'type', 'coverage_sqft'],
-    placeholders: { r_value: 'R-13, R-19, R-30', type: 'Batt, Blown-in, Spray foam' }
+    value: 'doors', 
+    label: 'Doors', 
+    icon: DoorOpen, 
+    color: 'bg-amber-500/10 text-amber-600 border-amber-500/30',
+    fields: ['size', 'style', 'material', 'swing', 'prehung'],
+    placeholders: { size: '36" x 80"', style: 'Shaker, Panel, Flush', material: 'Solid wood, Hollow core, Fiberglass' }
   },
   { 
     value: 'drywall', 
@@ -258,12 +162,108 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
     placeholders: { thickness: '1/2", 5/8"', sheet_size: '4x8, 4x12', type: 'Regular, Moisture-resistant, Fire-rated' }
   },
   { 
-    value: 'bathroom', 
-    label: 'Bathroom', 
-    icon: Bath, 
-    color: 'bg-cyan-600/10 text-cyan-500 border-cyan-500/30',
-    fields: ['fixture_type', 'dimensions', 'finish', 'material'],
-    placeholders: { fixture_type: 'Vanity, Mirror, Accessories', dimensions: 'W x D x H', finish: 'Chrome, Brushed Nickel, Matte Black' }
+    value: 'electrical', 
+    label: 'Electrical', 
+    icon: Zap, 
+    color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30',
+    fields: ['voltage', 'amperage', 'wire_gauge', 'circuit_type'],
+    placeholders: { voltage: '120V, 240V', amperage: '15A, 20A, 30A', wire_gauge: '12 AWG, 10 AWG' }
+  },
+  { 
+    value: 'fencing', 
+    label: 'Fencing', 
+    icon: Fence, 
+    color: 'bg-green-500/10 text-green-600 border-green-500/30',
+    fields: ['material', 'height', 'linear_feet', 'style'],
+    placeholders: { material: 'Cedar, Vinyl, Metal', height: '4ft, 6ft, 8ft', linear_feet: 'Total length' }
+  },
+  { 
+    value: 'flooring', 
+    label: 'Flooring', 
+    icon: RectangleHorizontal, 
+    color: 'bg-orange-500/10 text-orange-600 border-orange-500/30',
+    fields: ['material', 'sqft', 'thickness', 'finish', 'underlayment'],
+    placeholders: { material: 'LVP, Hardwood, Tile', sqft: 'Total sq ft needed', thickness: '6mm, 12mm, 3/4"' }
+  },
+  { 
+    value: 'framing', 
+    label: 'Framing', 
+    icon: Hammer, 
+    color: 'bg-amber-600/10 text-amber-700 border-amber-600/30',
+    fields: ['lumber_size', 'length', 'grade', 'treatment'],
+    placeholders: { lumber_size: '2x4, 2x6, 2x8', length: '8ft, 10ft, 12ft', grade: '#2, Stud grade' }
+  },
+  { 
+    value: 'hardware', 
+    label: 'Hardware', 
+    icon: Wrench, 
+    color: 'bg-slate-500/10 text-slate-600 border-slate-500/30',
+    fields: ['hardware_type', 'size', 'finish'],
+    placeholders: { hardware_type: 'Knobs, Pulls, Hinges', size: 'Center-to-center measurement' }
+  },
+  { 
+    value: 'hvac', 
+    label: 'HVAC', 
+    icon: Wind, 
+    color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30',
+    fields: ['btu', 'tonnage', 'seer_rating', 'duct_size'],
+    placeholders: { btu: 'BTU rating', tonnage: '2 ton, 3 ton', seer_rating: 'SEER efficiency' }
+  },
+  { 
+    value: 'insulation', 
+    label: 'Insulation', 
+    icon: Layers, 
+    color: 'bg-purple-500/10 text-purple-600 border-purple-500/30',
+    fields: ['r_value', 'type', 'coverage_sqft'],
+    placeholders: { r_value: 'R-13, R-19, R-30', type: 'Batt, Blown-in, Spray foam' }
+  },
+  { 
+    value: 'lighting', 
+    label: 'Lighting', 
+    icon: Lightbulb, 
+    color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
+    fields: ['fixture_type', 'wattage', 'lumens', 'color_temp'],
+    placeholders: { fixture_type: 'Recessed, Pendant, Sconce', wattage: 'Max wattage', lumens: 'Brightness level', color_temp: '2700K, 3000K, 4000K' }
+  },
+  { 
+    value: 'paint', 
+    label: 'Paint', 
+    icon: Paintbrush, 
+    color: 'bg-pink-500/10 text-pink-600 border-pink-500/30',
+    fields: ['color_code', 'sheen', 'coverage_sqft', 'brand'],
+    placeholders: { color_code: 'SW 7015, BM OC-17', sheen: 'Flat, Eggshell, Satin, Semi-gloss', coverage_sqft: 'Sq ft per gallon' }
+  },
+  { 
+    value: 'plumbing', 
+    label: 'Plumbing', 
+    icon: Droplets, 
+    color: 'bg-blue-500/10 text-blue-600 border-blue-500/30',
+    fields: ['fixture_type', 'connection_size', 'finish', 'gpm'],
+    placeholders: { fixture_type: 'Faucet, Toilet, Shower valve', connection_size: '1/2", 3/4"', gpm: 'Gallons per minute' }
+  },
+  { 
+    value: 'pool', 
+    label: 'Pool', 
+    icon: Waves, 
+    color: 'bg-blue-600/10 text-blue-500 border-blue-600/30',
+    fields: ['equipment_type', 'dimensions', 'capacity', 'brand'],
+    placeholders: { equipment_type: 'Pump, Filter, Heater', dimensions: 'Pool size', capacity: 'Gallons' }
+  },
+  { 
+    value: 'roofing', 
+    label: 'Roofing', 
+    icon: Home, 
+    color: 'bg-red-500/10 text-red-600 border-red-500/30',
+    fields: ['material', 'squares', 'warranty_years'],
+    placeholders: { material: 'Shingles, Metal, Tile', squares: 'Roofing squares (100 sq ft each)' }
+  },
+  { 
+    value: 'tile', 
+    label: 'Tile', 
+    icon: Grid3X3, 
+    color: 'bg-teal-500/10 text-teal-600 border-teal-500/30',
+    fields: ['tile_size', 'material', 'grout_color'],
+    placeholders: { tile_size: '12x24, 4x12, 3x6', material: 'Ceramic, Porcelain, Natural stone', grout_color: 'White, Gray, Charcoal' }
   },
   { 
     value: 'trim', 
@@ -274,12 +274,12 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
     placeholders: { trim_type: 'Baseboards, Crown, Casing', dimensions: '3.25", 5.25"', profile: 'Colonial, Craftsman, Modern' }
   },
   { 
-    value: 'pool', 
-    label: 'Pool', 
-    icon: Waves, 
-    color: 'bg-blue-600/10 text-blue-500 border-blue-600/30',
-    fields: ['equipment_type', 'dimensions', 'capacity', 'brand'],
-    placeholders: { equipment_type: 'Pump, Filter, Heater', dimensions: 'Pool size', capacity: 'Gallons' }
+    value: 'windows', 
+    label: 'Windows', 
+    icon: AppWindow, 
+    color: 'bg-sky-500/10 text-sky-600 border-sky-500/30',
+    fields: ['window_type', 'dimensions', 'glass_type', 'frame_material'],
+    placeholders: { window_type: 'Single-hung, Double-hung, Casement', dimensions: 'Width x Height', glass_type: 'Double-pane, Low-E' }
   },
   { 
     value: 'other', 
