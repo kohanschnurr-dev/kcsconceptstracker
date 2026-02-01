@@ -1,96 +1,91 @@
 
 
-## Plan: Improve Receipt Details Modal UI Layout
+## Plan: Replace Overview Tab with Tasks Tab
 
-### Problems Identified
+### Overview
 
-Looking at the screenshot, the modal has several visual issues:
+Remove the "Overview" tab from the Project Detail page and replace it with a dedicated "Tasks" tab that shows only the Pipeline Tasks component (no Milestones or Notes & Reminders).
 
-1. **Long text wrapping badly** - The "Framing" item description is extremely long and wraps messily
-2. **Cramped layout** - Category badge and description run together
-3. **Amounts misaligned** - Should form a clean right-aligned column
-4. **No structure** - Items feel like random text blobs rather than organized line items
+### Current Structure
 
-### Solution
-
-Redesign the items list with a proper table-like structure:
-
-| Category Badge | Item Description (truncated) | Amount (right-aligned) |
-|----------------|------------------------------|------------------------|
-
-### Visual Design (Before vs After)
-
-**Before (current mess):**
 ```
-[Framing]
-LP SMARTSIDE 8"X16' LP LAP SIDING (3x), WEATHERSHIELD 2X8-16FT #2PRIME PT GC WEATHERSHIELD (3x), UNBRANDED 2X8-16FT #2PRIME PT GC (1x)    $119.81
+Tabs: Schedule | Overview | Financials | Team | Photos | Logs
+                    |
+                    └── Overview Content:
+                        ├── MilestonesTimeline
+                        ├── ProjectNotes
+                        └── ProjectTasks
 ```
 
-**After (clean layout):**
+### New Structure
+
 ```
-┌──────────────────────────────────────────────────────────────┐
-│ [Drywall]                                                    │
-│ USG SHEETROCK BRAND ULTRALIGHT 1/2 IN. X 4 F...     $31.60  │
-├──────────────────────────────────────────────────────────────┤
-│ [Framing]                                                    │
-│ LP SMARTSIDE 8"X16' LP LAP SIDING (3x), WEAT...    $119.81  │
-├──────────────────────────────────────────────────────────────┤
-│ [Demolition]                                                 │
-│ HUSKY HUSKY 42G CONTRACTOR BAGS 50CT (1x)           $32.44  │
-├──────────────────────────────────────────────────────────────┤
-│ [Hardware]                                                   │
-│ GRIP-RITE 3" PG10 EXT DECK SCREWS...                $27.57  │
-└──────────────────────────────────────────────────────────────┘
+Tabs: Schedule | Tasks | Financials | Team | Photos | Logs
+                   |
+                   └── Tasks Content:
+                       └── ProjectTasks (full width, no Card wrapper)
 ```
+
+---
 
 ### Technical Changes
 
-**File: `src/components/GroupedExpenseDetailModal.tsx`**
+**File: `src/pages/ProjectDetail.tsx`**
 
-Restructure the items list to:
-1. **Stack vertically** - Category badge on top, description below
-2. **Fixed amount column** - Use grid or flex with fixed-width right column
-3. **Proper truncation** - Limit description to 1-2 lines max with ellipsis
-4. **Add padding** - More breathing room between items
+| Line | Change |
+|------|--------|
+| 535 | Rename "overview" tab to "tasks" |
+| 542-548 | Replace Overview tab content with just ProjectTasks |
 
-```typescript
-{expenses.map((expense) => (
-  <div key={expense.id} className="p-3 hover:bg-muted/30">
-    <div className="flex items-start justify-between gap-4">
-      <div className="flex-1 min-w-0 space-y-1">
-        <Badge variant="secondary" className="text-xs">
-          {getCategoryLabel(expense.category_id, expense.project_id)}
-        </Badge>
-        {expense.notes && (
-          <p 
-            className="text-xs text-muted-foreground line-clamp-2" 
-            title={expense.notes}
-          >
-            {expense.notes}
-          </p>
-        )}
-      </div>
-      <span className="font-mono text-sm font-medium whitespace-nowrap">
-        {formatCurrency(expense.amount)}
-      </span>
-    </div>
-  </div>
-))}
-```
+Changes to make:
 
-Key CSS changes:
-- `line-clamp-2` - Limits text to 2 lines with ellipsis
-- `items-start` instead of `items-center` - Badge stays at top
-- `gap-4` - More space before amount
-- `whitespace-nowrap` on amount - Prevents wrap
-- `space-y-1` - Proper vertical spacing
+1. **TabsTrigger (line 535)**:
+   ```typescript
+   // Before
+   <TabsTrigger value="overview">Overview</TabsTrigger>
+   
+   // After
+   <TabsTrigger value="tasks">Tasks</TabsTrigger>
+   ```
 
-### Summary
+2. **TabsContent (lines 542-548)**:
+   ```typescript
+   // Before
+   <TabsContent value="overview" className="space-y-6">
+     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <MilestonesTimeline projectId={id!} />
+       <ProjectNotes projectId={id!} />
+     </div>
+     <ProjectTasks projectId={id!} />
+   </TabsContent>
+   
+   // After
+   <TabsContent value="tasks">
+     <ProjectTasks projectId={id!} />
+   </TabsContent>
+   ```
 
-| Issue | Fix |
-|-------|-----|
-| Text wrapping badly | `line-clamp-2` to limit and truncate |
-| Cramped layout | Stack badge above description |
-| Amounts misaligned | `whitespace-nowrap` + `gap-4` |
-| No structure | Consistent padding and spacing |
+3. **Cleanup imports** - Remove unused imports for `MilestonesTimeline` and `ProjectNotes` (lines 43-44)
+
+---
+
+### Component Updates
+
+The `ProjectTasks` component already has:
+- Card wrapper with header "Pipeline Tasks (count)"
+- "Add Task" button linking to `/logs`
+- Task list with checkboxes and priority badges
+- Empty state message
+
+No changes needed to `ProjectTasks.tsx` - it's already self-contained.
+
+---
+
+### Result
+
+| Before | After |
+|--------|-------|
+| Overview tab with 3 sections | Tasks tab with Pipeline Tasks only |
+| Milestones, Notes, Tasks | Just Tasks |
+| Cluttered view | Clean, focused task list |
 
