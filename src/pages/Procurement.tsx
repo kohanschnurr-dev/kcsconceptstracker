@@ -228,14 +228,6 @@ export default function Procurement() {
   });
 
   // Summary stats
-  const cartTotal = filteredItems
-    .filter(i => (i.status || 'researching') === 'in_cart')
-    .reduce((sum, i) => sum + calculateItemTotal(i), 0);
-  
-  const orderedTotal = filteredItems
-    .filter(i => (i.status || 'researching') === 'ordered')
-    .reduce((sum, i) => sum + calculateItemTotal(i), 0);
-
   const totalItems = filteredItems.length;
   const unassignedCount = filteredItems.filter(i => !i.bundle_ids || i.bundle_ids.length === 0).length;
 
@@ -326,7 +318,7 @@ export default function Procurement() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <Card className="glass-card">
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 mb-1">
@@ -334,26 +326,6 @@ export default function Procurement() {
                 <span className="text-sm text-muted-foreground">Total Items</span>
               </div>
               <p className="text-2xl font-bold">{totalItems}</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="glass-card">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <ShoppingCart className="h-4 w-4 text-warning" />
-                <span className="text-sm text-muted-foreground">In Cart</span>
-              </div>
-              <p className="text-2xl font-bold font-mono">{formatCurrency(cartTotal)}</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="glass-card">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Truck className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-muted-foreground">Ordered</span>
-              </div>
-              <p className="text-2xl font-bold font-mono">{formatCurrency(orderedTotal)}</p>
             </CardContent>
           </Card>
           
