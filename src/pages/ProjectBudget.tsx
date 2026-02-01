@@ -868,14 +868,6 @@ export default function ProjectBudget() {
                                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                       )}
                                       <span>{getCategoryName(cat.category)}</span>
-                                      {budgetStatus.badge && (
-                                        <Badge 
-                                          variant={budgetStatus.badge.variant} 
-                                          className={cn("text-xs", budgetStatus.badge.className)}
-                                        >
-                                          {budgetStatus.badge.label}
-                                        </Badge>
-                                      )}
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-center">
