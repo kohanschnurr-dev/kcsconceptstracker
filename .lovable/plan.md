@@ -1,59 +1,56 @@
 
-## Plan: Restrict Row Click to External Link Button Only
+## Plan: Remove "Not Assigned" Text from Bundle Views
 
 ### Problem
-Currently, clicking anywhere on a table row in the Bundle Detail view opens the product's source URL. The user wants this behavior limited to only the orange external link button next to the store name.
-
-### Solution
-Remove the `onClick` handler and `cursor-pointer` styling from the `TableRow`, keeping the functionality only on the existing `<a>` tag with the `ExternalLink` icon.
+The user doesn't want to see project assignment status in the bundle UI. Currently showing:
+- "Not assigned" on bundle cards in the Bundles list
+- "Not assigned to a project" in the Bundle Detail header
 
 ### Changes
 
-**File: `src/pages/BundleDetail.tsx`**
+#### 1. Bundles.tsx (Bundle Cards)
 
-| Line | Current | New |
-|------|---------|-----|
-| 456-463 | `TableRow` with `onClick` and conditional `cursor-pointer` | Plain `TableRow` with just `hover:bg-muted/30` |
+**Lines 242-246**: Remove the entire conditional block that shows project name or "Not assigned"
 
-**Before (lines 456-463):**
+| Before | After |
+|--------|-------|
+| Shows "→ {projectName}" or "Not assigned" | Show nothing - just the bundle name |
+
 ```tsx
-<TableRow 
-  key={item.id} 
-  className={item.source_url ? "cursor-pointer hover:bg-muted/30" : "hover:bg-muted/30"}
-  onClick={() => {
-    if (item.source_url) {
-      window.open(item.source_url, '_blank', 'noopener,noreferrer');
-    }
-  }}
->
-```
-
-**After:**
-```tsx
-<TableRow 
-  key={item.id} 
-  className="hover:bg-muted/30"
->
-```
-
-### What stays the same
-The existing external link button (lines 489-499) already works independently:
-```tsx
-{item.source_url && (
-  <a 
-    href={item.source_url} 
-    target="_blank" 
-    rel="noopener noreferrer"
-    className="text-primary hover:text-primary/80"
-    onClick={(e) => e.stopPropagation()}
-  >
-    <ExternalLink className="h-3 w-3" />
-  </a>
+// Remove this block entirely:
+{bundle.projectName ? (
+  <p className="text-sm text-muted-foreground truncate">→ {bundle.projectName}</p>
+) : (
+  <p className="text-sm text-muted-foreground italic">Not assigned</p>
 )}
 ```
 
-This anchor tag will continue to function as expected, and we can remove the `stopPropagation` since there's no longer a parent click handler to stop.
+#### 2. BundleDetail.tsx (Bundle Header)
+
+**Lines 297-303**: Remove the conditional block showing project assignment status
+
+| Before | After |
+|--------|-------|
+| Shows "Assigned to: {project}" or "Not assigned to a project" | Show nothing below the bundle name |
+
+```tsx
+// Remove this block entirely:
+{project ? (
+  <p className="text-muted-foreground">
+    Assigned to: <span className="text-foreground">{project.name}</span>
+  </p>
+) : (
+  <p className="text-muted-foreground italic">Not assigned to a project</p>
+)}
+```
 
 ### Result
-- Clicking the row: No action (allows easy quantity editing, etc.)
-- Clicking the orange external link icon: Opens the product URL in a new tab
+
+| Location | Before | After |
+|----------|--------|-------|
+| Bundle cards | Shows project name or "Not assigned" | Just bundle name and description |
+| Bundle detail header | Shows "Assigned to: X" or "Not assigned to a project" | Just bundle name |
+
+### Files Modified
+- `src/pages/Bundles.tsx`
+- `src/pages/BundleDetail.tsx`
