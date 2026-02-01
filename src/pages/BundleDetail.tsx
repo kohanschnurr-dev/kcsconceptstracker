@@ -455,12 +455,7 @@ export default function BundleDetail() {
                     {items.map((item) => (
                       <TableRow 
                         key={item.id} 
-                        className={item.source_url ? "cursor-pointer hover:bg-muted/30" : "hover:bg-muted/30"}
-                        onClick={() => {
-                          if (item.source_url) {
-                            window.open(item.source_url, '_blank', 'noopener,noreferrer');
-                          }
-                        }}
+                        className="hover:bg-muted/30"
                       >
                         <TableCell>
                           <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center">
