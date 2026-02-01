@@ -904,6 +904,7 @@ export type Database = {
           id: string
           is_imported: boolean
           notes: string | null
+          original_amount: number | null
           payment_method: string | null
           project_id: string | null
           qb_id: string
@@ -923,6 +924,7 @@ export type Database = {
           id?: string
           is_imported?: boolean
           notes?: string | null
+          original_amount?: number | null
           payment_method?: string | null
           project_id?: string | null
           qb_id: string
@@ -942,6 +944,7 @@ export type Database = {
           id?: string
           is_imported?: boolean
           notes?: string | null
+          original_amount?: number | null
           payment_method?: string | null
           project_id?: string | null
           qb_id?: string
