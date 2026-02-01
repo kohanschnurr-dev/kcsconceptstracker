@@ -1,87 +1,125 @@
 
-## Plan: Fix Category Display in Procurement Table
+## Plan: Move Category Dropdown Next to Unit Price and Quantity
 
-### Problem
+### Overview
 
-The procurement table is showing "-" for all categories because:
-1. The code reads from `category_id` (which is `null`)
-2. The actual categories are stored in the new `category` column
-3. The interface is missing the `category` field
+Relocate the category selector from the top of the Edit Item modal (currently a static badge with "Change" button) to a dropdown in the form grid, positioned next to the Unit Price and Quantity fields. This allows editing the category directly without navigating back to the category selection step.
 
-### Database Verification
+---
 
-Current data shows categories are correctly stored:
-| Item | category | category_id |
-|------|----------|-------------|
-| Black Shower Fixtures | bathroom | null |
-| Black Mailbox | exterior_finishes | null |
-| Cabinet Pulls Black | hardware | null |
+### Current Layout
+
+The modal shows category as a static badge at the top:
+```
+[✓ Bathroom] [Change]
+
+Item Name *
+[________________________]
+
+BATHROOM SPECIFICATIONS
+...
+```
+
+### New Layout
+
+Move category into the pricing row area:
+```
+Item Name *
+[________________________]
+
+BATHROOM SPECIFICATIONS
+...
+
+Category             Unit Price *
+[Dropdown v]         [$ 53.76]
+
+Quantity
+[1]
+```
 
 ---
 
 ### Technical Implementation
 
-**File: `src/pages/Procurement.tsx`**
+**File: `src/components/procurement/ProcurementItemModal.tsx`**
 
-**1. Update ProcurementItem interface (line 40)**
+**1. Remove the static category badge section (lines 813-827)**
 
-Add the `category` field:
-
+Remove this entire block:
 ```tsx
-interface ProcurementItem {
-  id: string;
-  bundle_id: string | null;
-  bundle_ids?: string[];
-  category_id: string | null;
-  category: string | null;  // Add this
-  name: string;
-  // ... rest of fields
-}
-```
-
-**2. Update getCategoryLabel mapping (lines 179-205)**
-
-Add the new categories:
-
-```tsx
-const getCategoryLabel = (categoryId: string | null) => {
-  if (!categoryId) return null;
-  const categoryMap: Record<string, string> = {
-    // ... existing categories ...
-    'exterior_finishes': 'Exterior Finishes',  // Add
-    'landscaping': 'Landscaping',              // Add
-    'other': 'Other',
-  };
-  return categoryMap[categoryId] || categoryId;
-};
-```
-
-**3. Update table display (line 516)**
-
-Change from `category_id` to `category`:
-
-```tsx
-{getCategoryLabel(item.category) ? (
-  <Badge variant="secondary" className="text-xs">
-    {getCategoryLabel(item.category)}
-  </Badge>
-) : (
-  <span className="text-muted-foreground">-</span>
+{/* Category Badge */}
+{selectedCategory && (
+  <div className="flex items-center gap-2">
+    <Badge className={cn('gap-1', selectedCategory.color)}>
+      <selectedCategory.icon className="h-3 w-3" />
+      {selectedCategory.label}
+    </Badge>
+    {!item && (
+      <Button variant="ghost" size="sm" onClick={() => setStep('category')} className="h-6 text-xs">
+        <ArrowLeft className="h-3 w-3 mr-1" />
+        Change
+      </Button>
+    )}
+  </div>
 )}
 ```
+
+**2. Add a Category dropdown in the grid (near lines 936-960)**
+
+Add the dropdown before or alongside the Unit Price field:
+
+```tsx
+{/* Category */}
+<div>
+  <Label>Category</Label>
+  <Select 
+    value={formData.category} 
+    onValueChange={(v) => setFormData(prev => ({ ...prev, category: v as ProcurementCategory }))}
+  >
+    <SelectTrigger>
+      <SelectValue placeholder="Select category" />
+    </SelectTrigger>
+    <SelectContent className="max-h-[300px]">
+      {PROCUREMENT_CATEGORIES.map(cat => (
+        <SelectItem key={cat.value} value={cat.value}>
+          <div className="flex items-center gap-2">
+            <cat.icon className="h-4 w-4" />
+            {cat.label}
+          </div>
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
+```
+
+**3. Reorder form fields**
+
+Current order in grid:
+- Finish / Color | Unit Price *
+- Quantity | Notes (col-span-2)
+
+New order:
+- Finish / Color | Unit Price *
+- Category | Quantity
+
+This puts Category dropdown next to Quantity, near the pricing fields as requested.
 
 ---
 
 ### Changes Summary
 
-| File | Changes |
-|------|---------|
-| `src/pages/Procurement.tsx` | Add `category` to interface, update label map with new categories, fix display to use `category` instead of `category_id` |
+| Location | Change |
+|----------|--------|
+| Lines 813-827 | Remove static category badge display |
+| Lines 961-974 | Add Category dropdown next to Quantity field |
 
 ---
 
 ### Result
 
-- Categories will display correctly based on what you selected when creating items
-- New categories (Landscaping, Exterior Finishes) will show proper labels
-- "Black Shower Fixtures" will show "Bathroom" as you selected
+- Category becomes an editable dropdown in the form
+- Positioned alongside Unit Price and Quantity for easy editing
+- Works for both Add and Edit scenarios
+- Dropdown sorted alphabetically with icons for each category
+- Max height 300px with scrolling for long category list
