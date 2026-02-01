@@ -487,11 +487,10 @@ export default function Expenses() {
                 <tr className="bg-muted/30">
                   <th>Date</th>
                   <th>Vendor</th>
-                  <th>Project</th>
-                  <th>Category</th>
-                  <th>Payment</th>
-                  <th className="text-right">Amount</th>
-                  <th>Status</th>
+                  <th className="text-center">Project</th>
+                  <th className="text-center">Category</th>
+                  <th className="text-center">Payment</th>
+                  <th className="text-center">Amount</th>
                 </tr>
               </thead>
               <tbody>
