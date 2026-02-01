@@ -1,44 +1,82 @@
 
-## Plan: Limit Trade Badges on Vendor Cards
+## Plan: Add Notes Field to Vendor Management
 
-### Problem
-When a vendor has many trades (like Jose with 18+ categories), all badges are displayed, making the card excessively tall and cluttered.
+### Current State
+The vendors table and edit modal do not have a notes field. The user wants to add the ability to store general notes about each vendor.
 
-### Solution
-Limit the display to 5 trade badges and show a "+X more" badge for any remaining trades.
+### Changes Required
 
-### Implementation
+#### 1. Database Migration
+Add a `notes` column to the `vendors` table:
 
-**File: `src/pages/Vendors.tsx`**
+```sql
+ALTER TABLE public.vendors ADD COLUMN notes text;
+```
 
-Update lines 181-192 to slice the trades array and add a count badge:
+#### 2. Update NewVendorModal Component
 
+**File: `src/components/NewVendorModal.tsx`**
+
+| Change | Details |
+|--------|---------|
+| Import | Add `Textarea` component |
+| State | Add `notes` state variable |
+| Populate | Load notes when editing |
+| Reset | Clear notes when modal closes |
+| Submit | Include notes in insert/update |
+| UI | Add Notes textarea field |
+| Remove | W9 toggle section (already hidden from cards) |
+
+**State changes:**
+```typescript
+const [notes, setNotes] = useState('');
+```
+
+**useEffect update:**
+```typescript
+// When editing
+setNotes(vendor.notes || '');
+
+// When closing
+setNotes('');
+```
+
+**Submit update:**
+```typescript
+// In update/insert
+notes: notes || null,
+```
+
+**New UI field (after Reliability Rating, replacing W9 toggle):**
 ```tsx
-<div className="flex flex-wrap gap-1 mt-1">
-  {vendor.trades.slice(0, 5).map((trade) => (
-    <Badge key={trade} variant="secondary" className="text-xs">
-      {getTradeLabel(trade)}
-    </Badge>
-  ))}
-  {vendor.trades.length > 5 && (
-    <Badge variant="outline" className="text-xs">
-      +{vendor.trades.length - 5} more
-    </Badge>
-  )}
-  {vendor.trades.length === 0 && (
-    <Badge variant="outline" className="text-xs text-muted-foreground">
-      No trades
-    </Badge>
-  )}
+<div className="space-y-2">
+  <Label>Notes</Label>
+  <Textarea
+    placeholder="General notes about this vendor..."
+    value={notes}
+    onChange={(e) => setNotes(e.target.value)}
+    className="min-h-[80px] resize-none"
+  />
 </div>
 ```
 
-### Result
+#### 3. Update Vendor Interface
 
-| Vendor | Before | After |
-|--------|--------|-------|
-| Jose (18 trades) | Shows all 18 badges | Shows 5 badges + "+13 more" |
-| Connor Z (6 trades) | Shows all 6 badges | Shows 5 badges + "+1 more" |
-| Frank (3 trades) | Shows all 3 badges | Shows all 3 badges (no change) |
+Add notes to the Vendor interface in the modal:
+```typescript
+interface Vendor {
+  // ... existing fields
+  notes: string | null;  // Add this
+}
+```
 
-This keeps cards compact and uniform in height while still indicating the full scope of each vendor's capabilities.
+### Summary
+
+| Step | Action |
+|------|--------|
+| 1 | Add `notes` column to vendors table |
+| 2 | Add notes state and form field to modal |
+| 3 | Remove W9 toggle from modal UI |
+| 4 | Update insert/update to include notes |
+
+This allows users to store general information about vendors like availability, special instructions, or past experiences.
