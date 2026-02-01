@@ -289,6 +289,58 @@ function extractAmazonPrice(html: string): number | null {
   
   return bestPrice;
 }
+// Home Depot-specific price extraction from embedded JSON
+function extractHomeDepotPrice(html: string): number | null {
+  const patterns = [
+    // Embedded product JSON with pricing
+    /"pricing"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i,
+    /"pricing":\{"value":([\d.]+)/i,
+    // Price format patterns
+    /"price"\s*:\s*([\d.]+)/i,
+    // Data attributes
+    /data-price="([\d.]+)"/i,
+    // Price display classes  
+    /class="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/i,
+    /price-format__main-price[^>]*>\s*\$?([\d,]+\.?\d*)/i,
+    /price__dollars[^>]*>([\d,]+)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match && match[1]) {
+      const price = parseFloat(match[1].replace(/,/g, ''));
+      if (price && price > 0 && price < 50000) {
+        console.log('Found Home Depot price via pattern:', pattern.toString().slice(0, 50));
+        return price;
+      }
+    }
+  }
+  
+  return null;
+}
+
+// Lowe's-specific price extraction from embedded JSON
+function extractLowesPrice(html: string): number | null {
+  const patterns = [
+    /"price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i,
+    /"sellingPrice"\s*:\s*([\d.]+)/i,
+    /data-price="([\d.]+)"/i,
+    /class="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match && match[1]) {
+      const price = parseFloat(match[1].replace(/,/g, ''));
+      if (price && price > 0 && price < 50000) {
+        console.log('Found Lowes price via pattern:', pattern.toString().slice(0, 50));
+        return price;
+      }
+    }
+  }
+  
+  return null;
+}
 
 // Extract price from markdown with context awareness
 function extractPriceFromMarkdown(markdown: string, store: string): number | null {
@@ -489,6 +541,22 @@ function extractProductData(markdown: string, html: string, url: string): Produc
   if (store === 'amazon') {
     // Try HTML extraction first for Amazon (more reliable)
     price = extractAmazonPrice(html);
+    
+    // Fall back to markdown extraction
+    if (!price) {
+      price = extractPriceFromMarkdown(markdown, store);
+    }
+  } else if (store === 'home_depot') {
+    // Try embedded JSON extraction first for Home Depot
+    price = extractHomeDepotPrice(html);
+    
+    // Fall back to markdown extraction
+    if (!price) {
+      price = extractPriceFromMarkdown(markdown, store);
+    }
+  } else if (store === 'lowes') {
+    // Try embedded JSON extraction first for Lowe's
+    price = extractLowesPrice(html);
     
     // Fall back to markdown extraction
     if (!price) {
