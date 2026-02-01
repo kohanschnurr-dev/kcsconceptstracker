@@ -21,6 +21,7 @@ import { BUDGET_CATEGORIES, ALL_CATEGORIES, type Project, type CategoryBudget } 
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { QuickBooksIntegration } from '@/components/QuickBooksIntegration';
 import { ExpenseDetailModal } from '@/components/ExpenseDetailModal';
+import { GroupedExpenseRow } from '@/components/expenses/GroupedExpenseRow';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -291,6 +292,27 @@ export default function Expenses() {
     });
   }, [expenses, search, projectFilter, categoryFilter, dateRange, projects]);
 
+  // Group expenses by parent QB transaction ID (for split expenses)
+  const groupedExpenses = useMemo(() => {
+    const groups: Map<string, typeof filteredExpenses> = new Map();
+    
+    filteredExpenses.forEach((expense) => {
+      // Check if this is a split expense (has _split_ in the ID)
+      const splitMatch = expense.id.match(/^(.+?)_split_/);
+      const parentId = splitMatch ? splitMatch[1] : expense.id;
+      
+      if (!groups.has(parentId)) {
+        groups.set(parentId, []);
+      }
+      groups.get(parentId)!.push(expense);
+    });
+    
+    // Convert to array and sort by first expense date
+    return Array.from(groups.values()).sort((a, b) => {
+      return new Date(b[0].date).getTime() - new Date(a[0].date).getTime();
+    });
+  }, [filteredExpenses]);
+
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
   const exportToCSV = () => {
@@ -461,75 +483,19 @@ export default function Expenses() {
                 </tr>
               </thead>
               <tbody>
-                {filteredExpenses.map((expense) => (
-                  <tr 
-                    key={expense.id} 
-                    className="hover:bg-muted/20 transition-colors cursor-pointer"
-                    onClick={() => {
+                {groupedExpenses.map((expenseGroup) => (
+                  <GroupedExpenseRow
+                    key={expenseGroup[0].id}
+                    expenses={expenseGroup}
+                    getProjectName={getProjectName}
+                    getCategoryLabel={getCategoryLabel}
+                    formatCurrency={formatCurrency}
+                    handleViewReceipt={handleViewReceipt}
+                    onExpenseClick={(expense) => {
                       setSelectedExpense(expense);
                       setDetailModalOpen(true);
                     }}
-                  >
-                    <td className="whitespace-nowrap">{formatDate(expense.date)}</td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
-                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                            {expense.description}
-                          </p>
-                          {expense.notes && (
-                            <p className="text-xs text-muted-foreground/70 italic truncate max-w-[200px]">
-                              Note: {expense.notes}
-                            </p>
-                          )}
-                        </div>
-                        {expense.source === 'quickbooks' && (
-                          <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">
-                            QB
-                          </Badge>
-                        )}
-                      </div>
-                    </td>
-                    <td>{getProjectName(expense.project_id)}</td>
-                    <td>
-                      <Badge variant="secondary" className="text-xs">
-                        {getCategoryLabel(expense.category_id, expense.project_id)}
-                      </Badge>
-                    </td>
-                    <td className="capitalize">{expense.payment_method}</td>
-                    <td className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {expense.receipt_url && (
-                          <button
-                            onClick={(e) => handleViewReceipt(expense.receipt_url!, e)}
-                            className="text-primary hover:text-primary/80 transition-colors"
-                            title="View receipt"
-                          >
-                            <Paperclip className="h-4 w-4" />
-                          </button>
-                        )}
-                        <span className="font-mono">
-                          {formatCurrency(expense.amount)}
-                          {expense.includes_tax && (
-                            <span className="text-xs text-muted-foreground ml-1">+tax</span>
-                          )}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          expense.status === 'actual' 
-                            ? 'bg-success/10 text-success border-success/30'
-                            : 'bg-warning/10 text-warning border-warning/30'
-                        )}
-                      >
-                        {expense.status}
-                      </Badge>
-                    </td>
-                  </tr>
+                  />
                 ))}
               </tbody>
             </table>
