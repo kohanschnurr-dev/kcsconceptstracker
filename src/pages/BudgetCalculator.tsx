@@ -79,11 +79,10 @@ export default function BudgetCalculator() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Calculator className="h-8 w-8 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">
             Budget Calculator
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground">
             Analyze potential deals with profit projections and the 78% rule
           </p>
         </div>
