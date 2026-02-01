@@ -1,71 +1,82 @@
 
+## Plan: Update Auth Page Branding and Improve Sign-up Flow
 
-## Plan: Add Unified Save Button for Settings
+### Part 1: Branding Updates
 
-### Current Behavior
-The settings page currently shows individual "Save" buttons that only appear when changes are detected:
-- "Save Company Name" button appears when company name changes
-- "Save Changes" button appears when first/last name changes
+**Changes to make:**
 
-### Proposed Change
-Add a unified "Save Settings" button that is always visible and saves all pending changes across both Company Branding and Account sections at once.
-
-### Implementation
-
-**File: `src/pages/Settings.tsx`**
-
-1. **Add a combined save handler function**
-   - Create `handleSaveAll` that saves both company settings and profile changes if any exist
-   - Show a single success toast when complete
-
-2. **Add a sticky/fixed save button at the bottom of the page**
-   - Always visible when there are any unsaved changes
-   - Show "Save Settings" button with loading state
-   - Displays which sections have pending changes
-
-3. **Keep the inline save buttons as secondary option (optional)**
-   - Users can still save individual sections if they prefer
-
-### Changes Summary
-
-| Area | Change |
+| File | Change |
 |------|--------|
-| New handler | `handleSaveAll()` - saves company name and profile in one action |
-| New UI | Sticky save bar at bottom when changes exist |
-| Detection | Combined `hasAnyChanges` variable checking both sections |
-| Feedback | Single toast confirming all settings saved |
+| `src/pages/Auth.tsx` | Change "FlipTracker DFW" to "FlipTracker" |
+| `src/pages/Auth.tsx` | Update subtitle from "Construction budget tracking for DFW investors" to "Construction budget tracking for fix & flip investors" |
+| `index.html` | Update title and meta tags to remove "DFW" references |
 
-### Code Structure
+### Part 2: Improve Sign-up Confirmation Flow
+
+**Current Issue:** When users sign up, they only see a brief success message. There's no clear guidance about what happens next (email verification, etc.) and the flow doesn't feel "intelligent" or guiding.
+
+**Improvements:**
+
+1. **After successful sign-up:**
+   - Show a more prominent confirmation message
+   - Auto-switch to the Sign In tab so users know where to go
+   - Display clearer instructions about checking email if email confirmation is enabled
+
+2. **Better error handling:**
+   - Add specific handling for common sign-up errors
+   - Show friendlier messages for rate limits, weak passwords, etc.
+
+3. **Password confirmation field (optional enhancement):**
+   - Add a "Confirm Password" field on sign-up to prevent typos
+
+### Technical Implementation
+
+**File: `src/pages/Auth.tsx`**
 
 ```typescript
-// Combined change detection
-const hasAnyChanges = hasProfileChanges || hasCompanyChanges;
+// Update branding
+<span className="text-2xl font-bold">FlipTracker</span>
+<p className="text-muted-foreground text-center">
+  Construction budget tracking for fix & flip investors
+</p>
 
-// Combined save handler
-const handleSaveAll = async () => {
-  try {
-    const promises = [];
-    if (hasCompanyChanges) {
-      promises.push(updateSettings.mutateAsync({ companyName }));
-    }
-    if (hasProfileChanges) {
-      promises.push(updateProfile.mutateAsync({ firstName, lastName }));
-    }
-    await Promise.all(promises);
-    toast.success('Settings saved successfully');
-  } catch (error) {
-    toast.error('Failed to save settings');
+// Add password confirmation to schema
+const signUpSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+// Improved success handling
+const handleSignUp = async (data: AuthFormData) => {
+  // ... existing logic
+  if (!error) {
+    setSuccessMessage('Account created successfully! Please check your email to verify your account, then sign in.');
+    reset();
+    // Auto-switch to sign in tab
+    setActiveTab('signin');
   }
 };
-
-// Sticky save bar at bottom of page (inside MainLayout, after the grid)
-{hasAnyChanges && (
-  <div className="sticky bottom-0 bg-background border-t p-4 flex justify-end">
-    <Button onClick={handleSaveAll} disabled={isSaving}>
-      {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-      Save Settings
-    </Button>
-  </div>
-)}
 ```
 
+**File: `index.html`**
+
+```html
+<title>FlipTracker | Fix & Flip Budget Tracker</title>
+<meta name="description" content="Track construction budgets, expenses, vendors, and daily logs for your fix and flip renovation projects." />
+<meta property="og:title" content="FlipTracker - Fix & Flip Budget Tracker" />
+<meta property="og:description" content="Track construction budgets, expenses, vendors, and daily logs for your fix and flip renovation projects." />
+```
+
+### Summary of Changes
+
+| Area | Before | After |
+|------|--------|-------|
+| App title | FlipTracker DFW | FlipTracker |
+| Subtitle | "for DFW investors" | "for fix & flip investors" |
+| Sign-up form | Single password field | Password + Confirm password fields |
+| Success message | Brief text | Clear instructions + auto-switch to Sign In tab |
+| Tab control | Uncontrolled | Controlled (to enable auto-switching) |
