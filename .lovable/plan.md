@@ -1,164 +1,83 @@
 
 
-## Plan: Parent Receipt Detail Modal with Grouped Send-Back
+## Plan: Fix Receipt Details Modal Item Display
 
-### Overview
+### Problem Identified
 
-Create a new modal or enhance the existing one to display grouped expenses as a complete receipt view, with a single action to send all related splits back to the QuickBooks queue at once.
+The Receipt Details modal is displaying information incorrectly:
 
-### Current Flow
+**Current display (wrong):**
+- Shows vendor address ("THE HOME DEPOT 542 FORT WORTH TX XXXX1006") as the main description
+- Shows actual item details ("USG SHEETROCK BRAND...") as a secondary italic note
+- This is redundant since the vendor name is already displayed in the header
 
-1. User clicks parent row (e.g., "Home Depot - 4 items")
-2. Modal opens showing only the first expense
-3. "Send Back to Queue" only resets that single item
-4. User must repeat for each split - very tedious
+**Database structure:**
+| Field | Contains | Example |
+|-------|----------|---------|
+| `vendor_name` | Vendor name | "Home Depot" |
+| `description` | Vendor address (redundant) | "THE HOME DEPOT 542 FORT WORTH TX XXXX1006" |
+| `notes` | Actual item details | "USG SHEETROCK BRAND ULTRALIGHT 1/2 IN. X 4 FT. X 8 FT. G (3x)" |
 
-### Proposed Solution
+### Solution
 
-Create a new `GroupedExpenseDetailModal` component that:
-- Shows the parent receipt summary (vendor, date, total)
-- Lists all child splits with their categories and amounts
-- Provides a single "Send All Back to Queue" button that resets ALL related records at once
+Update the item display in `GroupedExpenseDetailModal.tsx` to:
+1. Show `notes` as the primary item description (this has the actual product info)
+2. Hide the redundant `description` field that just shows the vendor address
+3. Clean up the layout for better readability
 
 ---
 
 ### Technical Changes
 
-#### 1. New Component: `GroupedExpenseDetailModal.tsx`
+**File: `src/components/GroupedExpenseDetailModal.tsx`**
 
-Create a new modal component specifically for viewing grouped/split expenses:
-
-| Section | Content |
-|---------|---------|
-| Header | "Receipt Details" with vendor name and QB badge |
-| Summary | Date, total amount, payment method |
-| Items List | Scrollable list of all splits with category, description, amount |
-| Receipt | Single receipt preview (shared across splits) |
-| Notes | Combined or individual notes |
-| Actions | "Send All Back to Queue" button that handles entire group |
-
-**Key props:**
-```typescript
-interface GroupedExpenseDetailModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  expenses: DBExpense[]; // All expenses in the group
-  projectName: string;
-  getCategoryLabel: (categoryId: string, projectId: string) => string;
-  onExpenseUpdated: () => void;
-}
-```
-
-#### 2. Update `GroupedExpenseRow.tsx`
-
-Change the parent row click handler to pass the ENTIRE expense group instead of just the first expense:
+Update the items list rendering (lines 267-289) to prioritize `notes` over `description`:
 
 ```typescript
-// Current
-onClick={() => onExpenseClick(parentExpense)}
-
-// New prop needed
-onGroupClick?: (expenses: DBExpense[]) => void;
-```
-
-#### 3. Update `Expenses.tsx`
-
-Add state and handler for grouped expense selection:
-
-```typescript
-const [selectedExpenseGroup, setSelectedExpenseGroup] = useState<DBExpense[] | null>(null);
-const [groupDetailModalOpen, setGroupDetailModalOpen] = useState(false);
-```
-
-Update the `GroupedExpenseRow` to call `onGroupClick` for parent row clicks (when it has multiple items) and `onExpenseClick` for single expenses or child rows.
-
----
-
-### UI Design
-
-**Grouped Receipt Detail Modal:**
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ 📄 Receipt Details                               [QB] [X]  │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Home Depot                                                 │
-│  Jan 29, 2026 • Card                           $211.42     │
-│                                                             │
-│  ─────────────────────────────────────────────────────────  │
-│                                                             │
-│  4 Items                                                    │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ Framing         LP SMARTSIDE 8'X16'...    $119.81   │   │
-│  │ Drywall         USG SHEETROCK BRAND...     $31.60   │   │
-│  │ Demolition      HUSKY HUSKY 42G CONT...    $32.44   │   │
-│  │ Hardware        GRIP-RITE 3" PG10 EXT...   $27.57   │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  [📎 View Receipt]                                         │
-│                                                             │
-│  ─────────────────────────────────────────────────────────  │
-│                                                             │
-│  ⟲ Send All Back to Queue    │    🗑 Delete All    │ Save  │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+{expenses.map((expense, index) => (
+  <div key={expense.id} className="flex items-center justify-between p-3 hover:bg-muted/30">
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-2">
+        <Badge variant="secondary" className="text-xs">
+          {getCategoryLabel(expense.category_id, expense.project_id)}
+        </Badge>
+      </div>
+      {/* Show notes as primary text (contains actual item descriptions) */}
+      {expense.notes && (
+        <p className="text-xs text-muted-foreground truncate mt-1 max-w-[350px]" title={expense.notes}>
+          {expense.notes}
+        </p>
+      )}
+      {/* Only show description if there's no notes AND it's not just a vendor address */}
+      {!expense.notes && expense.description && !expense.description.includes('XXXX') && (
+        <p className="text-xs text-muted-foreground truncate mt-1">
+          {expense.description}
+        </p>
+      )}
+    </div>
+    <span className="font-mono text-sm ml-4 flex-shrink-0">
+      {formatCurrency(expense.amount)}
+    </span>
+  </div>
+))}
 ```
 
 ---
 
-### Backend Logic: Send All Back
+### Visual Result
 
-The `handleSendAllBackToQueue` function will:
-
-1. Get the parent `qb_id` (e.g., `purchase_802`)
-2. Delete all split records from `quickbooks_expenses` where `qb_id` starts with `purchase_802_split_`
-3. Re-create a single pending expense with the original amount (from `original_amount` column if exists, or sum of splits)
-
-```typescript
-const handleSendAllBackToQueue = async () => {
-  // Get the parent qb_id
-  const parentQbId = expenses[0].qb_id?.replace(/_split_.*$/, '');
-  
-  // 1. Get original amount from any record (stored in original_amount column)
-  const { data: firstRecord } = await supabase
-    .from('quickbooks_expenses')
-    .select('original_amount, vendor_name, date, payment_method')
-    .like('qb_id', `${parentQbId}%`)
-    .limit(1)
-    .single();
-  
-  // 2. Delete all split records for this parent
-  await supabase
-    .from('quickbooks_expenses')
-    .delete()
-    .like('qb_id', `${parentQbId}_split_%`);
-  
-  // 3. Reset the parent record (or create new pending if needed)
-  await supabase
-    .from('quickbooks_expenses')
-    .upsert({
-      qb_id: parentQbId,
-      amount: firstRecord.original_amount,
-      vendor_name: firstRecord.vendor_name,
-      date: firstRecord.date,
-      payment_method: firstRecord.payment_method,
-      is_imported: false,
-      project_id: null,
-      category_id: null,
-    });
-};
+**Before:**
+```
+[Drywall]
+THE HOME DEPOT 542 FORT WORTH TX XXXX1006        $31.60
+Note: USG SHEETROCK BRAND ULTRALIGHT...
 ```
 
----
-
-### Files to Create/Modify
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/components/GroupedExpenseDetailModal.tsx` | Create | New modal for viewing grouped receipts |
-| `src/components/expenses/GroupedExpenseRow.tsx` | Modify | Add `onGroupClick` prop for parent row clicks |
-| `src/pages/Expenses.tsx` | Modify | Add state for group modal, pass handler to row |
+**After:**
+```
+[Drywall]
+USG SHEETROCK BRAND ULTRALIGHT 1/2 IN. X 4 FT... $31.60
+```
 
 ---
 
@@ -166,15 +85,8 @@ const handleSendAllBackToQueue = async () => {
 
 | Change | Purpose |
 |--------|---------|
-| New `GroupedExpenseDetailModal` | Shows full receipt with all splits in one view |
-| Add `onGroupClick` handler | Distinguishes parent row click from child row click |
-| "Send All Back to Queue" action | Resets entire transaction group in one click |
-| Preserve original amount | Uses `original_amount` column to restore correct pending value |
-
-### Result
-
-- Clicking the parent "Home Depot" row opens a full receipt view with all 4 items
-- Single button sends all splits back to the QuickBooks pending queue
-- Child rows can still be clicked individually to edit a specific split
-- No more clicking through each item one by one
+| Show `notes` as primary description | Contains actual product/item details |
+| Hide vendor address in `description` | Redundant - vendor already shown in header |
+| Add title attribute for hover | Show full text on hover for truncated items |
+| Add `flex-shrink-0` to amount | Prevent amount from being squished |
 
