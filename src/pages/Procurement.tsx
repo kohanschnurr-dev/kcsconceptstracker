@@ -455,7 +455,6 @@ export default function Procurement() {
                       <TableHead className="text-center">Category</TableHead>
                       <TableHead className="text-right">Price</TableHead>
                       <TableHead className="text-center">Qty</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
                       <TableHead className="text-center"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -528,9 +527,6 @@ export default function Procurement() {
                           {formatCurrency(item.unit_price)}
                         </TableCell>
                         <TableCell className="text-center">{item.quantity}</TableCell>
-                        <TableCell className="text-right font-mono font-medium">
-                          {formatCurrency(calculateItemTotal(item))}
-                        </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
                             <Button 
