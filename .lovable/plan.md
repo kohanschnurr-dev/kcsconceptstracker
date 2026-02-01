@@ -1,74 +1,89 @@
 
-
-## Plan: Organize Categories A-Z with Other Last
+## Plan: Update Procurement Table Columns
 
 ### Overview
 
-Reorder the `PROCUREMENT_CATEGORIES` array so categories appear in alphabetical order (A-Z), with "Other" always positioned last.
+Modify the procurement items table to:
+1. Remove the "Phase" column
+2. Remove the "Color" column
+3. Add a "Category" column
+4. Fix column alignment - center text properly
 
 ---
 
-### Current vs. New Order
+### Current Table Structure
 
-| Current Position | Category | New Position |
-|-----------------|----------|--------------|
-| 1 | Doors | 5 |
-| 2 | Flooring | 9 |
-| 3 | Plumbing | 16 |
-| 4 | Electrical | 7 |
-| 5 | HVAC | 12 |
-| 6 | Paint | 15 |
-| 7 | Cabinets | 3 |
-| 8 | Countertops | 4 |
-| 9 | Tile | 19 |
-| 10 | Lighting | 14 |
-| 11 | Hardware | 11 |
-| 12 | Appliances | 1 |
-| 13 | Windows | 21 |
-| 14 | Fencing | 8 |
-| 15 | Roofing | 18 |
-| 16 | Framing | 10 |
-| 17 | Insulation | 13 |
-| 18 | Drywall | 6 |
-| 19 | Bathroom | 2 |
-| 20 | Trim | 20 |
-| 21 | Pool | 17 |
-| 22 | Other | 22 (last) |
+| Column | Alignment | Status |
+|--------|-----------|--------|
+| (image) | left | Keep |
+| Item | left | Keep |
+| Bundle | left | Keep |
+| Source | left | Keep |
+| Phase | left | **Remove** |
+| Color | left | **Remove** |
+| Price | right | Keep |
+| Qty | right | Keep |
+| Total | right | Keep |
+| (actions) | - | Keep |
 
 ---
 
-### New Alphabetical Order
+### New Table Structure
 
-1. Appliances
-2. Bathroom
-3. Cabinets
-4. Countertops
-5. Doors
-6. Drywall
-7. Electrical
-8. Fencing
-9. Flooring
-10. Framing
-11. Hardware
-12. HVAC
-13. Insulation
-14. Lighting
-15. Paint
-16. Plumbing
-17. Pool
-18. Roofing
-19. Tile
-20. Trim
-21. Windows
-22. **Other** (always last)
+| Column | Alignment | Status |
+|--------|-----------|--------|
+| (image) | center | Keep |
+| Item | left | Keep |
+| Bundle | center | Keep |
+| Source | center | Keep |
+| **Category** | center | **Add** |
+| Price | right | Keep |
+| Qty | center | Keep |
+| Total | right | Keep |
+| (actions) | center | Keep |
 
 ---
 
 ### Technical Implementation
 
-**File: `src/components/procurement/ProcurementItemModal.tsx`**
+**File: `src/pages/Procurement.tsx`**
 
-Reorder the `PROCUREMENT_CATEGORIES` array (lines 115-291) to follow alphabetical order with Other at the end. The category objects themselves remain unchanged - only their position in the array changes.
+**1. Create a category lookup helper function:**
+```tsx
+const getCategoryLabel = (categoryId: string | null) => {
+  if (!categoryId) return '-';
+  // Map category_id to label from PROCUREMENT_CATEGORIES
+  const categoryMap: Record<string, string> = {
+    'appliances': 'Appliances',
+    'bathroom': 'Bathroom',
+    'cabinets': 'Cabinets',
+    // ... etc
+  };
+  return categoryMap[categoryId] || categoryId;
+};
+```
+
+**2. Update TableHeader (lines 417-429):**
+- Remove Phase and Color headers
+- Add Category header with center alignment
+- Add text-center class to Bundle, Source, Qty columns
+
+**3. Update TableBody cells (lines 432-526):**
+- Remove Phase cell (lines 487-491)
+- Remove Color cell (lines 492-498)
+- Add Category cell with Badge display
+- Add text-center classes to Bundle, Source, Category, Qty cells
+
+---
+
+### Column Alignment Changes
+
+| Column | Current | New |
+|--------|---------|-----|
+| Bundle | left | center |
+| Source | left | center |
+| Category | n/a | center |
+| Qty | right | center |
 
 ---
 
@@ -76,11 +91,13 @@ Reorder the `PROCUREMENT_CATEGORIES` array (lines 115-291) to follow alphabetica
 
 | File | Changes |
 |------|---------|
-| `src/components/procurement/ProcurementItemModal.tsx` | Reorder `PROCUREMENT_CATEGORIES` array alphabetically (A-Z), with "Other" last |
+| `src/pages/Procurement.tsx` | Remove Phase/Color columns, add Category column, fix text alignment |
 
 ---
 
 ### Result
 
-The category selection grid will display categories in a predictable, easy-to-scan alphabetical order, making it faster for users to find the category they need.
-
+The table will display:
+- Cleaner structure without Phase and Color columns
+- New Category column showing item categories as badges
+- Properly centered text in Bundle, Source, Category, and Qty columns
