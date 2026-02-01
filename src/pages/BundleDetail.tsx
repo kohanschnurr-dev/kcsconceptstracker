@@ -465,9 +465,6 @@ export default function BundleDetail() {
                         </TableCell>
                         <TableCell>
                           <p className="font-medium">{item.name}</p>
-                          {item.model_number && (
-                            <p className="text-xs text-muted-foreground">SKU: {item.model_number}</p>
-                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
