@@ -205,20 +205,9 @@ export function GroupedExpenseRow({
           </td>
           <td className="!text-center text-muted-foreground text-sm">—</td>
           <td className="!text-center">
-            <div className="flex items-center justify-center gap-2">
-              {expense.receipt_url && (
-                <button
-                  onClick={(e) => handleViewReceipt(expense.receipt_url!, e)}
-                  className="text-primary hover:text-primary/80 transition-colors"
-                  title="View receipt"
-                >
-                  <Paperclip className="h-4 w-4" />
-                </button>
-              )}
-              <span className="font-mono text-sm">
-                {formatCurrency(expense.amount)}
-              </span>
-            </div>
+            <span className="font-mono text-sm">
+              {formatCurrency(expense.amount)}
+            </span>
           </td>
         </tr>
       ))}
