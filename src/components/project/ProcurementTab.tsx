@@ -503,44 +503,6 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
         </Card>
       )}
 
-      {/* Cost-to-Complete by Category */}
-      {categories.length > 0 && items.length > 0 && (
-        <Card className="glass-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Cost-to-Complete by Category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {categories
-                .filter(cat => totals.byCategoryId[cat.id]?.procured > 0 || cat.actualSpent > 0)
-                .slice(0, 5)
-                .map(cat => {
-                  const data = totals.byCategoryId[cat.id];
-                  const totalProjected = data.spent + data.procured;
-                  const remaining = data.budget - totalProjected;
-                  const percentUsed = data.budget > 0 ? (totalProjected / data.budget) * 100 : 0;
-                  const isOver = remaining < 0;
-                  
-                  return (
-                    <div key={cat.id} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{getCategoryName(cat.id)}</span>
-                        <span className={cn("font-mono text-xs", isOver ? "text-destructive" : "text-muted-foreground")}>
-                          {formatCurrency(totalProjected)} / {formatCurrency(data.budget)}
-                          {isOver && <span className="ml-1">(+{formatCurrency(Math.abs(remaining))} over)</span>}
-                        </span>
-                      </div>
-                      <Progress 
-                        value={Math.min(percentUsed, 100)} 
-                        className={cn("h-2", isOver ? "[&>div]:bg-destructive" : "[&>div]:bg-primary")}
-                      />
-                    </div>
-                  );
-                })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Filters & Actions */}
       <div className="flex flex-col sm:flex-row gap-3">
