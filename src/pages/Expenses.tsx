@@ -126,22 +126,9 @@ export default function Expenses() {
 
       if (qbExpensesError) throw qbExpensesError;
 
-      // Filter out parent QB records that have been split
-      // When SmartSplit splits a transaction, the first category updates the original record
-      // and creates new records with qb_id like "original_split_category"
-      // We need to show ONLY the split records, not the parent
-      const splitQbIds = (qbExpensesData || [])
-        .filter(e => e.qb_id.includes('_split_'))
-        .map(e => e.qb_id.split('_split_')[0]);
-      
-      const filteredQbExpenses = (qbExpensesData || []).filter(e => {
-        // If this expense's qb_id is a parent of any split records, exclude it
-        // (but include the split records themselves)
-        if (!e.qb_id.includes('_split_') && splitQbIds.includes(e.qb_id)) {
-          return false;
-        }
-        return true;
-      });
+      // SmartSplit updates the original record with the first category's data,
+      // so all QB expenses (original + splits) should be shown - no filtering needed
+      const filteredQbExpenses = qbExpensesData || [];
 
       // Transform to match Project type
       const transformedProjects: Project[] = (projectsData || [])
