@@ -1,153 +1,130 @@
 
-## Plan: Fix Home Depot Price Extraction Using Embedded JSON Data
+## Plan: Quick Fix for Home Depot Price Extraction
 
-### Problem Analysis
+### The Real Problem
 
-The current implementation tries to scrape Home Depot pages using Firecrawl with stealth mode, but:
-1. The pages are heavily JavaScript-rendered and anti-bot protected
-2. Even when we get the HTML, the current price extraction logic doesn't have Home Depot-specific patterns
-3. Home Depot embeds **structured JSON data** in the page that contains clean, reliable price information
+The scrape is **timing out completely** (even with 2-minute timeout) - so no content is returned at all. The extraction functions never even run.
 
-### Solution
+Looking at the logs:
+- `SCRAPE_TIMEOUT` error - page took too long
+- `ERR_TUNNEL_CONNECTION_FAILED` - proxy issues
 
-Add **Home Depot-specific price extraction** that parses the embedded JSON data from the page HTML. This JSON contains:
-```json
-{
-  "itemId": "301688589",
-  "pricing": {
-    "value": 31.97,
-    "original": 31.97
-  }
-}
-```
+The stealth mode is actually making things WORSE by adding complexity.
 
-This approach is much more reliable than trying to parse dynamic CSS selectors.
+### Quick Solution
 
----
+**Try a fast, simple scrape FIRST** - without stealth proxy and without scroll actions. Many sites include price data in the initial HTML even before JavaScript renders:
 
-### Technical Implementation
+1. **First attempt**: Fast basic scrape (10 second timeout, no proxy, no actions)
+2. **Fallback**: If that fails, try the enhanced mode
+
+This way we get SOMETHING back quickly instead of timing out completely.
+
+### Technical Changes
 
 **File: `supabase/functions/scrape-product-url/index.ts`**
 
-**1. Add new Home Depot price extraction function (after line 291)**
+**1. Add a two-attempt strategy (around lines 759-807)**
 
 ```typescript
-// Home Depot-specific price extraction from embedded JSON
-function extractHomeDepotPrice(html: string): number | null {
-  // Look for embedded JSON pricing data
-  const patterns = [
-    // Embedded product JSON with pricing
-    /"pricing"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i,
-    /"pricing":\{"value":([\d.]+)/i,
-    // Price format patterns
-    /"price"\s*:\s*([\d.]+)/i,
-    // Data attributes
-    /data-price="([\d.]+)"/i,
-    // Price display classes  
-    /class="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/i,
-    /price-format__main-price[^>]*>\s*\$?([\d,]+\.?\d*)/i,
-    /price__dollars[^>]*>([\d,]+)/i,
-  ];
+// Try fast scrape first, then fallback to enhanced mode
+let data: any = null;
+let usedEnhancedMode = false;
 
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match && match[1]) {
-      const price = parseFloat(match[1].replace(/,/g, ''));
-      if (price && price > 0 && price < 50000) {
-        console.log('Found Home Depot price via pattern:', pattern.toString().slice(0, 50));
-        return price;
-      }
+// ATTEMPT 1: Fast basic scrape (no proxy, no actions, short timeout)
+const basicScrapeOptions = {
+  url: formattedUrl,
+  formats: ['markdown', 'html'],
+  onlyMainContent: false,
+  timeout: 15000, // 15 seconds
+  location: { country: 'US', languages: ['en-US'] },
+};
+
+console.log('Attempting fast basic scrape for:', store);
+let response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify(basicScrapeOptions),
+});
+
+data = await response.json();
+
+// If basic scrape failed and this is a difficult site, try enhanced mode
+if (!response.ok && needsEnhancedMode) {
+  console.log('Basic scrape failed, trying enhanced mode...');
+  usedEnhancedMode = true;
+  
+  const enhancedOptions = {
+    ...basicScrapeOptions,
+    timeout: 90000,
+    proxy: 'stealth',
+    actions: [
+      { type: 'wait', milliseconds: 3000 },
+      { type: 'scroll', direction: 'down' },
+      { type: 'wait', milliseconds: 2000 },
+    ],
+  };
+  
+  response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(enhancedOptions),
+  });
+  
+  data = await response.json();
+}
+
+// Handle final error
+if (!response.ok) {
+  console.error('Firecrawl API error:', data);
+  return new Response(
+    JSON.stringify({ success: false, error: data.error || 'Scrape failed' }),
+    { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+```
+
+**2. Also add super-simple price fallback for markdown (in extractPriceFromMarkdown)**
+
+If we get any markdown back, grab the first reasonable price we see:
+
+```typescript
+// Ultra-simple fallback: just find ANY price in the markdown for HD/Lowes
+if ((store === 'home_depot' || store === 'lowes') && candidates.length === 0) {
+  const allPrices = [...markdown.matchAll(/\$(\d{2,4}\.\d{2})/g)];
+  for (const match of allPrices) {
+    const price = parseFloat(match[1]);
+    if (price >= 15 && price < 10000) {
+      console.log('Using simple fallback price:', price);
+      return price;
     }
   }
-  
-  return null;
 }
 ```
-
-**2. Update extractProductData function (around line 497)**
-
-Add Home Depot price extraction before the markdown fallback:
-```typescript
-// Extract price - use store-specific logic
-if (store === 'amazon') {
-  // Try HTML extraction first for Amazon (more reliable)
-  price = extractAmazonPrice(html);
-  
-  // Fall back to markdown extraction
-  if (!price) {
-    price = extractPriceFromMarkdown(markdown, store);
-  }
-} else if (store === 'home_depot') {
-  // Try embedded JSON extraction first for Home Depot
-  price = extractHomeDepotPrice(html);
-  
-  // Fall back to markdown extraction
-  if (!price) {
-    price = extractPriceFromMarkdown(markdown, store);
-  }
-} else if (store === 'lowes') {
-  // Similar pattern for Lowe's
-  price = extractLowesPrice(html);
-  
-  if (!price) {
-    price = extractPriceFromMarkdown(markdown, store);
-  }
-} else {
-  // For other stores, use markdown extraction
-  price = extractPriceFromMarkdown(markdown, store);
-}
-```
-
-**3. Add Lowe's price extraction function**
-
-```typescript
-// Lowe's-specific price extraction from embedded JSON
-function extractLowesPrice(html: string): number | null {
-  const patterns = [
-    /"price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i,
-    /"sellingPrice"\s*:\s*([\d.]+)/i,
-    /data-price="([\d.]+)"/i,
-    /class="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match && match[1]) {
-      const price = parseFloat(match[1].replace(/,/g, ''));
-      if (price && price > 0 && price < 50000) {
-        return price;
-      }
-    }
-  }
-  
-  return null;
-}
-```
-
----
 
 ### Changes Summary
 
 | Location | Change |
 |----------|--------|
-| After line 291 | Add `extractHomeDepotPrice()` function |
-| After line 291 | Add `extractLowesPrice()` function |
-| Lines 488-500 | Update price extraction to use store-specific functions |
-
----
+| Lines 759-807 | Replace single-attempt with two-attempt strategy |
+| Line 374-382 | Add simpler price fallback for HD/Lowes |
 
 ### Why This Works
 
-1. **Embedded JSON is reliable**: Home Depot pages contain structured product data as JSON, which is used by their own JavaScript
-2. **Multiple fallback patterns**: We try several patterns to catch the price data
-3. **No anti-bot issues**: Once we have the HTML (even partial), the JSON patterns can extract the price
-4. **Maintains existing fallback**: If JSON extraction fails, we still try markdown patterns
-
----
+1. **Fast first attempt**: Most pages have price in initial HTML/JSON data
+2. **No timeout on basic pages**: 15-second timeout is enough for basic content
+3. **Fallback still available**: If basic fails, we try enhanced
+4. **Credit-efficient**: Basic scrape costs 1 credit, enhanced costs 5+
 
 ### Expected Result
 
-- Home Depot prices will be extracted from embedded JSON data
-- Works even when page JavaScript doesn't fully render
-- Lowe's products will also benefit from similar extraction
-- Price extraction becomes much more reliable for major retailers
+- Home Depot URLs get a quick response (15 seconds or less)
+- Price extracted from embedded JSON or simple markdown patterns
+- If that fails, falls back to enhanced mode
+- Much higher success rate overall
