@@ -99,7 +99,7 @@ export function WeatherWidget() {
   }
 
   return (
-    <div className="flex items-center gap-1 bg-slate-800 rounded-lg px-2 py-1.5">
+    <div className="flex items-center gap-1 bg-slate-800 rounded-lg px-2 h-9">
       <span className="text-xs text-slate-500 mr-1 hidden lg:block">DFW</span>
       {forecast.map((day, i) => (
         <Tooltip key={day.date}>

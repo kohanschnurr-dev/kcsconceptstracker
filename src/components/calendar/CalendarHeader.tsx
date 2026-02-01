@@ -116,14 +116,14 @@ export function CalendarHeader({
 
         <WeatherWidget />
         
-        <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1 h-9">
           <Button
             variant={view === 'monthly' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onViewChange('monthly')}
             className={view === 'monthly' 
-              ? 'h-8 bg-emerald-600 hover:bg-emerald-700 text-white' 
-              : 'h-8 text-slate-400 hover:text-white hover:bg-slate-700'}
+              ? 'h-7 bg-emerald-600 hover:bg-emerald-700 text-white' 
+              : 'h-7 text-slate-400 hover:text-white hover:bg-slate-700'}
           >
             <LayoutGrid className="h-4 w-4 mr-1" />
             Month
@@ -133,8 +133,8 @@ export function CalendarHeader({
             size="sm"
             onClick={() => onViewChange('weekly')}
             className={view === 'weekly' 
-              ? 'h-8 bg-emerald-600 hover:bg-emerald-700 text-white' 
-              : 'h-8 text-slate-400 hover:text-white hover:bg-slate-700'}
+              ? 'h-7 bg-emerald-600 hover:bg-emerald-700 text-white' 
+              : 'h-7 text-slate-400 hover:text-white hover:bg-slate-700'}
           >
             <List className="h-4 w-4 mr-1" />
             Week
@@ -144,8 +144,8 @@ export function CalendarHeader({
             size="sm"
             onClick={() => onViewChange('gantt')}
             className={view === 'gantt' 
-              ? 'h-8 bg-emerald-600 hover:bg-emerald-700 text-white' 
-              : 'h-8 text-slate-400 hover:text-white hover:bg-slate-700'}
+              ? 'h-7 bg-emerald-600 hover:bg-emerald-700 text-white' 
+              : 'h-7 text-slate-400 hover:text-white hover:bg-slate-700'}
           >
             <GanttChart className="h-4 w-4 mr-1" />
             Gantt
