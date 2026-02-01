@@ -370,8 +370,24 @@ function extractPriceFromMarkdown(markdown: string, store: string): number | nul
   // Sort by score and return best candidate
   candidates.sort((a, b) => b.score - a.score);
   
+  if (candidates.length > 0) {
+    return candidates[0].price;
+  }
+  
+  // Ultra-simple fallback: just find ANY price in the markdown for HD/Lowes
+  if (store === 'home_depot' || store === 'lowes') {
+    const allPrices = [...markdown.matchAll(/\$(\d{2,4}\.\d{2})/g)];
+    for (const match of allPrices) {
+      const price = parseFloat(match[1]);
+      if (price >= 15 && price < 10000) {
+        console.log('Using simple fallback price:', price);
+        return price;
+      }
+    }
+  }
+  
   // For non-Amazon stores, also try the first reasonable price
-  if (store !== 'amazon' && candidates.length === 0) {
+  if (store !== 'amazon') {
     const basicMatch = markdown.match(/\$(\d{2,4}\.?\d{0,2})/);
     if (basicMatch) {
       const price = parseFloat(basicMatch[1]);
@@ -381,7 +397,7 @@ function extractPriceFromMarkdown(markdown: string, store: string): number | nul
     }
   }
   
-  return candidates.length > 0 ? candidates[0].price : null;
+  return null;
 }
 
 function parseLeadTime(text: string): number | null {
@@ -757,47 +773,66 @@ Deno.serve(async (req) => {
     console.log('Scraping product URL:', formattedUrl);
 
     // Use Firecrawl to scrape the page
-    // Home Depot and Lowe's have aggressive anti-bot protection - use enhanced mode
+    // Try fast basic scrape first, then fallback to enhanced mode for difficult sites
     const store = detectStore(formattedUrl);
     const needsEnhancedMode = store === 'home_depot' || store === 'lowes';
     
-    // Build scrape options
-    const scrapeOptions: Record<string, unknown> = {
+    let data: any = null;
+    let usedEnhancedMode = false;
+    
+    // ATTEMPT 1: Fast basic scrape (no proxy, no actions, short timeout)
+    const basicScrapeOptions = {
       url: formattedUrl,
       formats: ['markdown', 'html'],
-      onlyMainContent: false, // Need full HTML to extract product images
-      waitFor: needsEnhancedMode ? 5000 : 3000,
-      timeout: needsEnhancedMode ? 120000 : 30000, // 2 minutes for stealth mode
-      location: {
-        country: 'US',
-        languages: ['en-US'],
-      },
-      blockAds: true, // Block ads and popups to reduce page complexity
+      onlyMainContent: false,
+      timeout: 15000, // 15 seconds - fast!
+      location: { country: 'US', languages: ['en-US'] },
     };
     
-    // Use stealth proxy and actions for sites with aggressive anti-bot protection
-    if (needsEnhancedMode) {
-      console.log('Using stealth mode for:', store);
-      scrapeOptions.proxy = 'stealth'; // Stealth proxies bypass aggressive anti-bot
-      // Simpler scroll action with longer initial wait
-      scrapeOptions.actions = [
-        { type: 'wait', milliseconds: 3000 },
-        { type: 'scroll', direction: 'down' },
-        { type: 'wait', milliseconds: 2000 },
-      ];
-    }
-    
-    const response = await fetch('https://api.firecrawl.dev/v2/scrape', {
+    console.log('Attempting fast basic scrape for:', store);
+    let response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(scrapeOptions),
+      body: JSON.stringify(basicScrapeOptions),
     });
-
-    const data = await response.json();
-
+    
+    data = await response.json();
+    
+    // If basic scrape failed and this is a difficult site, try enhanced mode
+    if (!response.ok && needsEnhancedMode) {
+      console.log('Basic scrape failed, trying enhanced mode...');
+      usedEnhancedMode = true;
+      
+      const enhancedOptions = {
+        url: formattedUrl,
+        formats: ['markdown', 'html'],
+        onlyMainContent: false,
+        timeout: 90000, // 90 seconds for stealth
+        location: { country: 'US', languages: ['en-US'] },
+        proxy: 'stealth',
+        actions: [
+          { type: 'wait', milliseconds: 3000 },
+          { type: 'scroll', direction: 'down' },
+          { type: 'wait', milliseconds: 2000 },
+        ],
+      };
+      
+      response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(enhancedOptions),
+      });
+      
+      data = await response.json();
+    }
+    
+    // Handle final error
     if (!response.ok) {
       console.error('Firecrawl API error:', data);
       return new Response(
@@ -805,6 +840,8 @@ Deno.serve(async (req) => {
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log('Scrape successful, enhanced mode used:', usedEnhancedMode);
 
     // Extract markdown and HTML content
     const markdown = data.data?.markdown || data.markdown || '';
