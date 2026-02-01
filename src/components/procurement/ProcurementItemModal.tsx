@@ -140,7 +140,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   { 
     value: 'countertops', 
     label: 'Countertops', 
-    icon: LayoutDashboard, 
+    icon: Grid3X3, 
     color: 'bg-stone-500/10 text-stone-600 border-stone-500/30',
     fields: ['material', 'edge_profile', 'thickness', 'sqft'],
     placeholders: { material: 'Quartz, Granite, Marble', edge_profile: 'Eased, Bullnose, Ogee', thickness: '2cm, 3cm' }
@@ -260,7 +260,7 @@ const PROCUREMENT_CATEGORIES: CategoryConfig[] = [
   { 
     value: 'tile', 
     label: 'Tile', 
-    icon: Grid3X3, 
+    icon: LayoutDashboard, 
     color: 'bg-teal-500/10 text-teal-600 border-teal-500/30',
     fields: ['tile_size', 'material', 'grout_color'],
     placeholders: { tile_size: '12x24, 4x12, 3x6', material: 'Ceramic, Porcelain, Natural stone', grout_color: 'White, Gray, Charcoal' }
