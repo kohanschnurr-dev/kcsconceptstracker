@@ -1,32 +1,66 @@
 
 
-## Plan: Update Category Icons for Better Representation
+## Plan: Organize Categories A-Z with Other Last
 
 ### Overview
 
-Update icons for Roofing, Flooring, Drywall, and Countertops to be more visually distinct and representative.
+Reorder the `PROCUREMENT_CATEGORIES` array so categories appear in alphabetical order (A-Z), with "Other" always positioned last.
 
 ---
 
-### Current State
+### Current vs. New Order
 
-| Category | Current Icon | Issue |
-|----------|-------------|-------|
-| Roofing | `Triangle` | User prefers `Home` icon |
-| Flooring | `Layers` | Could be more specific |
-| Drywall | `Grid3X3` | Same as Tile - not distinct |
-| Countertops | `Grid3X3` | Same as Tile - not distinct |
+| Current Position | Category | New Position |
+|-----------------|----------|--------------|
+| 1 | Doors | 5 |
+| 2 | Flooring | 9 |
+| 3 | Plumbing | 16 |
+| 4 | Electrical | 7 |
+| 5 | HVAC | 12 |
+| 6 | Paint | 15 |
+| 7 | Cabinets | 3 |
+| 8 | Countertops | 4 |
+| 9 | Tile | 19 |
+| 10 | Lighting | 14 |
+| 11 | Hardware | 11 |
+| 12 | Appliances | 1 |
+| 13 | Windows | 21 |
+| 14 | Fencing | 8 |
+| 15 | Roofing | 18 |
+| 16 | Framing | 10 |
+| 17 | Insulation | 13 |
+| 18 | Drywall | 6 |
+| 19 | Bathroom | 2 |
+| 20 | Trim | 20 |
+| 21 | Pool | 17 |
+| 22 | Other | 22 (last) |
 
 ---
 
-### Proposed Icon Changes
+### New Alphabetical Order
 
-| Category | Current | New Icon | Rationale |
-|----------|---------|----------|-----------|
-| **Roofing** | `Triangle` | `Home` | User preference - house silhouette represents roofing well |
-| **Flooring** | `Layers` | `RectangleHorizontal` | Represents horizontal floor planks |
-| **Drywall** | `Grid3X3` | `Square` | Simple wall panel shape |
-| **Countertops** | `Grid3X3` | `LayoutDashboard` | Represents a countertop surface layout |
+1. Appliances
+2. Bathroom
+3. Cabinets
+4. Countertops
+5. Doors
+6. Drywall
+7. Electrical
+8. Fencing
+9. Flooring
+10. Framing
+11. Hardware
+12. HVAC
+13. Insulation
+14. Lighting
+15. Paint
+16. Plumbing
+17. Pool
+18. Roofing
+19. Tile
+20. Trim
+21. Windows
+22. **Other** (always last)
 
 ---
 
@@ -34,25 +68,7 @@ Update icons for Roofing, Flooring, Drywall, and Countertops to be more visually
 
 **File: `src/components/procurement/ProcurementItemModal.tsx`**
 
-**1. Update imports (add new icons):**
-- Add: `Home`, `RectangleHorizontal`, `Square`, `LayoutDashboard`
-- Remove: `Triangle` (no longer used)
-
-**2. Update category definitions:**
-
-```tsx
-// Flooring (line 124): Layers → RectangleHorizontal
-icon: RectangleHorizontal,
-
-// Countertops (line 172): Grid3X3 → LayoutDashboard  
-icon: LayoutDashboard,
-
-// Roofing (line 228): Triangle → Home
-icon: Home,
-
-// Drywall (line 252): Grid3X3 → Square
-icon: Square,
-```
+Reorder the `PROCUREMENT_CATEGORIES` array (lines 115-291) to follow alphabetical order with Other at the end. The category objects themselves remain unchanged - only their position in the array changes.
 
 ---
 
@@ -60,15 +76,11 @@ icon: Square,
 
 | File | Changes |
 |------|---------|
-| `src/components/procurement/ProcurementItemModal.tsx` | Update 4 category icons for better visual distinction |
+| `src/components/procurement/ProcurementItemModal.tsx` | Reorder `PROCUREMENT_CATEGORIES` array alphabetically (A-Z), with "Other" last |
 
 ---
 
 ### Result
 
-Each category will have a unique, meaningful icon:
-- **Roofing**: House icon (user's preference)
-- **Flooring**: Horizontal rectangle representing floor planks
-- **Drywall**: Simple square representing a wall panel
-- **Countertops**: Dashboard layout representing counter surface
+The category selection grid will display categories in a predictable, easy-to-scan alphabetical order, making it faster for users to find the category they need.
 
