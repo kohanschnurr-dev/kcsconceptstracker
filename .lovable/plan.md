@@ -1,81 +1,87 @@
 
-## Plan: Auto-Assign Categories to Existing Procurement Items
+## Plan: Fix Category Display in Procurement Table
 
-### Overview
+### Problem
 
-Create a database update to automatically assign categories to existing procurement items based on their names, using the keyword detection logic.
+The procurement table is showing "-" for all categories because:
+1. The code reads from `category_id` (which is `null`)
+2. The actual categories are stored in the new `category` column
+3. The interface is missing the `category` field
 
----
+### Database Verification
 
-### Items Analysis (from screenshot)
-
-| Item Name | Detected Category | Keywords |
-|-----------|------------------|----------|
-| Black Mailbox | other | (no match) |
-| Wood Grain Bathroom Mirror | bathroom | "bathroom", "mirror" |
-| Black Bathroom Faucet | bathroom | "bathroom", "faucet" |
-| Cabinet Pulls Black | hardware | "pull" |
-| Cabinet Knobs Black | hardware | "knob" |
-| Shower Rod | bathroom | "shower" |
-| Bathroom Faucet | bathroom | "bathroom", "faucet" |
-| Bathroom Light Fixture | lighting | "light", "fixture" |
-| Interior Door Handles | hardware | "handle" |
+Current data shows categories are correctly stored:
+| Item | category | category_id |
+|------|----------|-------------|
+| Black Shower Fixtures | bathroom | null |
+| Black Mailbox | exterior_finishes | null |
+| Cabinet Pulls Black | hardware | null |
 
 ---
 
 ### Technical Implementation
 
-**1. Add "handle" keyword detection (line 448)**
+**File: `src/pages/Procurement.tsx`**
 
-Update the detectCategory function to also detect "handle" for hardware:
+**1. Update ProcurementItem interface (line 40)**
 
-```tsx
-if (name.includes('knob') || name.includes('pull') || name.includes('hinge') || name.includes('handle')) return 'hardware';
-```
-
-**2. Add "mailbox" keyword detection for exterior_finishes**
+Add the `category` field:
 
 ```tsx
-if (name.includes('stucco') || name.includes('siding') || ... || name.includes('mailbox')) return 'exterior_finishes';
+interface ProcurementItem {
+  id: string;
+  bundle_id: string | null;
+  bundle_ids?: string[];
+  category_id: string | null;
+  category: string | null;  // Add this
+  name: string;
+  // ... rest of fields
+}
 ```
 
-**3. Create a SQL migration to update existing items**
+**2. Update getCategoryLabel mapping (lines 179-205)**
 
-Run a database migration that updates `category_id` for all items based on name pattern matching:
+Add the new categories:
 
-```sql
-UPDATE procurement_items
-SET category_id = CASE
-  WHEN LOWER(name) LIKE '%door%' THEN 'doors'
-  WHEN LOWER(name) LIKE '%floor%' OR LOWER(name) LIKE '%lvp%' OR LOWER(name) LIKE '%hardwood%' THEN 'flooring'
-  WHEN LOWER(name) LIKE '%faucet%' OR LOWER(name) LIKE '%toilet%' OR LOWER(name) LIKE '%sink%' THEN 'plumbing'
-  WHEN LOWER(name) LIKE '%cabinet%' THEN 'cabinets'
-  WHEN LOWER(name) LIKE '%knob%' OR LOWER(name) LIKE '%pull%' OR LOWER(name) LIKE '%hinge%' OR LOWER(name) LIKE '%handle%' THEN 'hardware'
-  WHEN LOWER(name) LIKE '%light%' OR LOWER(name) LIKE '%fixture%' OR LOWER(name) LIKE '%chandelier%' THEN 'lighting'
-  WHEN LOWER(name) LIKE '%bathroom%' OR LOWER(name) LIKE '%vanity%' OR LOWER(name) LIKE '%mirror%' OR LOWER(name) LIKE '%shower%' OR LOWER(name) LIKE '%towel%' THEN 'bathroom'
-  WHEN LOWER(name) LIKE '%mailbox%' THEN 'exterior_finishes'
-  ELSE 'other'
-END
-WHERE category_id IS NULL;
+```tsx
+const getCategoryLabel = (categoryId: string | null) => {
+  if (!categoryId) return null;
+  const categoryMap: Record<string, string> = {
+    // ... existing categories ...
+    'exterior_finishes': 'Exterior Finishes',  // Add
+    'landscaping': 'Landscaping',              // Add
+    'other': 'Other',
+  };
+  return categoryMap[categoryId] || categoryId;
+};
+```
+
+**3. Update table display (line 516)**
+
+Change from `category_id` to `category`:
+
+```tsx
+{getCategoryLabel(item.category) ? (
+  <Badge variant="secondary" className="text-xs">
+    {getCategoryLabel(item.category)}
+  </Badge>
+) : (
+  <span className="text-muted-foreground">-</span>
+)}
 ```
 
 ---
 
-### File Changes
+### Changes Summary
 
 | File | Changes |
 |------|---------|
-| `src/components/procurement/ProcurementItemModal.tsx` | Add "handle" and "mailbox" keyword detection |
-| Database migration | Update existing items with detected categories |
+| `src/pages/Procurement.tsx` | Add `category` to interface, update label map with new categories, fix display to use `category` instead of `category_id` |
 
 ---
 
 ### Result
 
-All existing procurement items will be assigned appropriate categories based on their names:
-- Bathroom items get "bathroom"
-- Cabinet hardware gets "hardware"
-- Light fixtures get "lighting"
-- Door-related items get "doors"
-- Mailbox gets "exterior_finishes"
-- Unmatched items get "other"
+- Categories will display correctly based on what you selected when creating items
+- New categories (Landscaping, Exterior Finishes) will show proper labels
+- "Black Shower Fixtures" will show "Bathroom" as you selected
