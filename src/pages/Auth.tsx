@@ -14,12 +14,22 @@ import { Separator } from '@/components/ui/separator';
 import { HardHat, Loader2 } from 'lucide-react';
 import { lovable } from '@/integrations/lovable/index';
 
-const authSchema = z.object({
+const signInSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-type AuthFormData = z.infer<typeof authSchema>;
+const signUpSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type SignInFormData = z.infer<typeof signInSchema>;
+type SignUpFormData = z.infer<typeof signUpSchema>;
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -28,14 +38,14 @@ export default function Auth() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('signin');
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm<AuthFormData>({
-    resolver: zodResolver(authSchema),
+  const signInForm = useForm<SignInFormData>({
+    resolver: zodResolver(signInSchema),
+  });
+
+  const signUpForm = useForm<SignUpFormData>({
+    resolver: zodResolver(signUpSchema),
   });
 
   // Redirect if already logged in
@@ -45,7 +55,7 @@ export default function Auth() {
     }
   }, [user, authLoading, navigate]);
 
-  const handleSignIn = async (data: AuthFormData) => {
+  const handleSignIn = async (data: SignInFormData) => {
     setIsLoading(true);
     setError(null);
     
@@ -54,6 +64,8 @@ export default function Auth() {
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
         setError('Invalid email or password. Please try again.');
+      } else if (error.message.includes('Email not confirmed')) {
+        setError('Please verify your email address before signing in. Check your inbox for a verification link.');
       } else {
         setError(error.message);
       }
@@ -62,7 +74,7 @@ export default function Auth() {
     setIsLoading(false);
   };
 
-  const handleSignUp = async (data: AuthFormData) => {
+  const handleSignUp = async (data: SignUpFormData) => {
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
@@ -72,12 +84,18 @@ export default function Auth() {
     if (error) {
       if (error.message.includes('already registered')) {
         setError('This email is already registered. Please sign in instead.');
+      } else if (error.message.includes('rate limit')) {
+        setError('Too many attempts. Please wait a moment and try again.');
+      } else if (error.message.includes('weak password')) {
+        setError('Please choose a stronger password.');
       } else {
         setError(error.message);
       }
     } else {
-      setSuccessMessage('Account created successfully! You can now sign in.');
-      reset();
+      setSuccessMessage('Account created successfully! Please check your email to verify your account, then sign in.');
+      signUpForm.reset();
+      // Auto-switch to sign in tab after successful registration
+      setActiveTab('signin');
     }
     
     setIsLoading(false);
@@ -112,10 +130,10 @@ export default function Auth() {
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-3">
             <HardHat className="h-10 w-10 text-primary" />
-            <span className="text-2xl font-bold">FlipTracker DFW</span>
+            <span className="text-2xl font-bold">FlipTracker</span>
           </div>
           <p className="text-muted-foreground text-center">
-            Construction budget tracking for DFW investors
+            Construction budget tracking for fix & flip investors
           </p>
         </div>
 
@@ -125,7 +143,7 @@ export default function Auth() {
             <CardDescription>Sign in or create an account to continue</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -174,10 +192,16 @@ export default function Auth() {
                   </div>
                 </div>
 
-                <form onSubmit={handleSubmit(handleSignIn)} className="space-y-4">
-                  {error && (
+                <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
+                  {error && activeTab === 'signin' && (
                     <Alert variant="destructive">
                       <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {successMessage && activeTab === 'signin' && (
+                    <Alert className="border-green-500/50 bg-green-500/10 text-green-400">
+                      <AlertDescription>{successMessage}</AlertDescription>
                     </Alert>
                   )}
                   
@@ -187,10 +211,10 @@ export default function Auth() {
                       id="signin-email"
                       type="email"
                       placeholder="you@example.com"
-                      {...register('email')}
+                      {...signInForm.register('email')}
                     />
-                    {errors.email && (
-                      <p className="text-sm text-destructive">{errors.email.message}</p>
+                    {signInForm.formState.errors.email && (
+                      <p className="text-sm text-destructive">{signInForm.formState.errors.email.message}</p>
                     )}
                   </div>
                   
@@ -200,10 +224,10 @@ export default function Auth() {
                       id="signin-password"
                       type="password"
                       placeholder="••••••••"
-                      {...register('password')}
+                      {...signInForm.register('password')}
                     />
-                    {errors.password && (
-                      <p className="text-sm text-destructive">{errors.password.message}</p>
+                    {signInForm.formState.errors.password && (
+                      <p className="text-sm text-destructive">{signInForm.formState.errors.password.message}</p>
                     )}
                   </div>
                   
@@ -263,16 +287,10 @@ export default function Auth() {
                   </div>
                 </div>
 
-                <form onSubmit={handleSubmit(handleSignUp)} className="space-y-4">
-                  {error && (
+                <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
+                  {error && activeTab === 'signup' && (
                     <Alert variant="destructive">
                       <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  {successMessage && (
-                    <Alert className="border-success/50 bg-success/10 text-success">
-                      <AlertDescription>{successMessage}</AlertDescription>
                     </Alert>
                   )}
                   
@@ -282,10 +300,10 @@ export default function Auth() {
                       id="signup-email"
                       type="email"
                       placeholder="you@example.com"
-                      {...register('email')}
+                      {...signUpForm.register('email')}
                     />
-                    {errors.email && (
-                      <p className="text-sm text-destructive">{errors.email.message}</p>
+                    {signUpForm.formState.errors.email && (
+                      <p className="text-sm text-destructive">{signUpForm.formState.errors.email.message}</p>
                     )}
                   </div>
                   
@@ -295,10 +313,23 @@ export default function Auth() {
                       id="signup-password"
                       type="password"
                       placeholder="••••••••"
-                      {...register('password')}
+                      {...signUpForm.register('password')}
                     />
-                    {errors.password && (
-                      <p className="text-sm text-destructive">{errors.password.message}</p>
+                    {signUpForm.formState.errors.password && (
+                      <p className="text-sm text-destructive">{signUpForm.formState.errors.password.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                    <Input
+                      id="signup-confirm-password"
+                      type="password"
+                      placeholder="••••••••"
+                      {...signUpForm.register('confirmPassword')}
+                    />
+                    {signUpForm.formState.errors.confirmPassword && (
+                      <p className="text-sm text-destructive">{signUpForm.formState.errors.confirmPassword.message}</p>
                     )}
                   </div>
                   
