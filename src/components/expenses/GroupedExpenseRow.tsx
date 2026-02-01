@@ -61,8 +61,8 @@ export function GroupedExpenseRow({
       >
         <td className="whitespace-nowrap">{formatDisplayDate(expense.date)}</td>
         <td>
-          <div className="flex items-center gap-2">
-            <div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
               <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
               <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                 {expense.description}
@@ -73,11 +73,13 @@ export function GroupedExpenseRow({
                 </p>
               )}
             </div>
-            {expense.source === 'quickbooks' && (
-              <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">
-                QB
-              </Badge>
-            )}
+            <div className="w-8 flex-shrink-0 flex justify-end">
+              {expense.source === 'quickbooks' && (
+                <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">
+                  QB
+                </Badge>
+              )}
+            </div>
           </div>
         </td>
         <td className="!text-center">{getProjectName(expense.project_id)}</td>
@@ -129,18 +131,20 @@ export function GroupedExpenseRow({
           </div>
         </td>
         <td>
-          <div className="flex items-center gap-2">
-            <div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
               <p className="font-medium">{parentExpense.vendor_name || 'Unknown'}</p>
               <p className="text-xs text-muted-foreground">
                 {expenses.length} items • Click to expand
               </p>
             </div>
-            {parentExpense.source === 'quickbooks' && (
-              <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">
-                QB
-              </Badge>
-            )}
+            <div className="w-8 flex-shrink-0 flex justify-end">
+              {parentExpense.source === 'quickbooks' && (
+                <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">
+                  QB
+                </Badge>
+              )}
+            </div>
           </div>
         </td>
         <td className="!text-center">{getProjectName(parentExpense.project_id)}</td>
