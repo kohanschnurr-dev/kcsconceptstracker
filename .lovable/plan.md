@@ -1,98 +1,151 @@
 
 
-## Plan: Align Month Navigation with Project Schedule Title
+## Plan: Add Cash Flow / Refi Tab for Rental Projects
 
 ### Overview
 
-Move the month navigation controls (< February 2026 >) to be inline with the "Project Schedule" title, creating a single-row header layout instead of the current stacked layout.
+Create a dedicated "Cash Flow / Refi" tab that appears only for rental-type projects. This tab will contain calculations specific to rental property investing, including monthly cash flow analysis and refinance projections (BRRRR method).
 
-### Current Layout
+---
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ 📅 Project Schedule                              [+ Add Project Event]│
-├─────────────────────────────────────────────────────────────────────┤
-│ < February 2026 >                                                    │
-├─────────────────────────────────────────────────────────────────────┤
-│ Legend...                                                            │
-└─────────────────────────────────────────────────────────────────────┘
-```
+### New Component: CashFlowCalculator
 
-### New Layout
+**File: `src/components/project/CashFlowCalculator.tsx`**
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ 📅 Project Schedule    < February 2026 >         [+ Add Project Event]│
-├─────────────────────────────────────────────────────────────────────┤
-│ Legend...                                                            │
-└─────────────────────────────────────────────────────────────────────┘
+A new component with rental-specific financial calculations:
+
+**Input Fields:**
+| Field | Description |
+|-------|-------------|
+| Purchase Price | Property acquisition cost |
+| After Repair Value (ARV) | Post-renovation market value |
+| Monthly Rent | Expected rental income |
+| Loan Amount | Refinance loan amount (typically 75% ARV) |
+| Interest Rate | Annual interest rate (%) |
+| Loan Term | Years (default 30) |
+| Property Taxes | Annual amount |
+| Insurance | Annual amount |
+| Vacancy Rate | Percentage (default 8%) |
+| Maintenance | Monthly estimate |
+| Property Management | Percentage of rent (default 10%) |
+
+**Calculated Outputs:**
+| Metric | Calculation |
+|--------|-------------|
+| Monthly Mortgage (P&I) | Standard amortization formula |
+| Gross Monthly Income | Rent - vacancy allowance |
+| Monthly Expenses | Taxes + Insurance + Maintenance + Management |
+| Monthly Cash Flow | Income - Mortgage - Expenses |
+| Annual Cash Flow | Monthly x 12 |
+| Cash-on-Cash ROI | Annual cash flow / Cash invested |
+| **Refi Cash Out** | Loan amount - (Purchase + Rehab costs) |
+
+**Display Sections:**
+1. **Income & Expenses** - Rental income breakdown
+2. **Cash Flow Metrics** - Monthly/annual cash flow, CoC ROI
+3. **Refi Analysis** - Cash out amount, equity remaining
+
+---
+
+### Database Changes
+
+Add new columns to `projects` table for rental-specific data:
+
+```sql
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS monthly_rent numeric DEFAULT 0;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS loan_amount numeric DEFAULT 0;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS interest_rate numeric DEFAULT 0;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS loan_term_years integer DEFAULT 30;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS annual_property_taxes numeric DEFAULT 0;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS annual_insurance numeric DEFAULT 0;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS vacancy_rate numeric DEFAULT 8;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS monthly_maintenance numeric DEFAULT 0;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS management_rate numeric DEFAULT 10;
 ```
 
 ---
 
-### Technical Changes
+### ProjectDetail.tsx Changes
 
-**File: `src/components/project/ProjectCalendar.tsx`**
-
-| Lines | Change |
-|-------|--------|
-| 118-149 | Restructure CardHeader to put title, month nav, and button on same row |
-
-**Code Changes:**
-
-Modify the CardHeader content to use a single flex row with three sections:
+**Conditional Financials Tab Content:**
 
 ```typescript
-<CardHeader className="pb-2">
-  <div className="flex items-center justify-between">
-    {/* Left: Title */}
-    <CardTitle className="flex items-center gap-2 text-white">
-      <CalendarIcon className="h-5 w-5 text-emerald-500" />
-      Project Schedule
-    </CardTitle>
-    
-    {/* Center: Month Navigation */}
-    <div className="flex items-center gap-2">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-        className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
-      <span className="text-sm font-medium text-white min-w-[120px] text-center">
-        {format(currentDate, 'MMMM yyyy')}
-      </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-        className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
-    </div>
-    
-    {/* Right: Add Event Button */}
-    <NewEventModal
-      projects={[{ id: projectId, name: projectName, address: projectAddress }]}
-      onEventCreated={fetchEvents}
-      defaultProjectId={projectId}
+<TabsContent value="financials" className="space-y-6">
+  {project.project_type === 'rental' ? (
+    <CashFlowCalculator 
+      projectId={id!}
+      totalBudget={totalBudget}
+      totalSpent={totalSpent}
+      initialPurchasePrice={project.purchase_price || 0}
+      initialArv={project.arv || 0}
+      // ... rental-specific props
     />
-  </div>
-  <CalendarLegend />
-</CardHeader>
+  ) : (
+    <ProfitCalculator 
+      projectId={id!}
+      totalBudget={totalBudget}
+      totalSpent={totalSpent}
+      initialPurchasePrice={project.purchase_price || 0}
+      initialArv={project.arv || 0}
+    />
+  )}
+  
+  <ExportReports ... />
+</TabsContent>
 ```
 
 ---
 
-### Result
+### UI Layout
 
-The header will now display:
-- **Left**: Calendar icon + "Project Schedule" title
-- **Center**: Month navigation arrows with month/year label
-- **Right**: "+ Add Project Event" button
+```text
++------------------------------------------------------------------+
+|  Cash Flow Calculator                                   [Save]    |
++------------------------------------------------------------------+
+| Purchase Price        | ARV              | Monthly Rent          |
+| $ ___________        | $ ___________    | $ ___________         |
++------------------------------------------------------------------+
+| REFI DETAILS                                                      |
++------------------------------------------------------------------+
+| Loan Amount (75% ARV) | Interest Rate    | Loan Term             |
+| $ ___________        | _____ %          | _____ years           |
++------------------------------------------------------------------+
+| EXPENSES                                                          |
++------------------------------------------------------------------+
+| Property Taxes/yr    | Insurance/yr     | Vacancy %             |
+| $ ___________       | $ ___________    | _____ %               |
+| Maintenance/mo      | Management %      |                       |
+| $ ___________       | _____ %          |                        |
++------------------------------------------------------------------+
+|                    RESULTS                                        |
++------------------------------------------------------------------+
+| Monthly Cash Flow    | Annual Cash Flow  | Cash-on-Cash ROI      |
+|     $XXX            |     $X,XXX        |      XX.X%            |
++------------------------------------------------------------------+
+| REFI ANALYSIS                                                     |
++------------------------------------------------------------------+
+| Refi Loan Amount    | Cash Out at Refi  | Equity in Property    |
+|    $XXX,XXX         |    $XX,XXX        |     $XX,XXX           |
++------------------------------------------------------------------+
+```
 
-All aligned on a single row for a cleaner, more compact header.
+---
+
+### Files to Create/Modify
+
+| File | Action |
+|------|--------|
+| `src/components/project/CashFlowCalculator.tsx` | **Create** - New rental calculator component |
+| `src/pages/ProjectDetail.tsx` | **Modify** - Conditionally render calculator based on project type |
+| Database migration | **Create** - Add rental-specific columns |
+
+---
+
+### Technical Notes
+
+- The Profit Calculator (for fix & flip) calculates flip profit and ROI
+- The Cash Flow Calculator (for rentals) calculates ongoing cash flow and refinance metrics
+- Both share Purchase Price and ARV inputs (already in database)
+- New rental-specific fields will be saved to the projects table
+- Export Reports component remains the same for both project types
 
