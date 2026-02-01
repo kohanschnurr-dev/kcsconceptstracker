@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, Phone, Mail, Star, X } from 'lucide-react';
 import {
   Dialog,
@@ -23,13 +23,25 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
+interface Vendor {
+  id: string;
+  name: string;
+  trades: string[];
+  phone: string | null;
+  email: string | null;
+  has_w9: boolean;
+  reliability_rating: number | null;
+  pricing_model: 'flat' | 'hourly' | null;
+}
+
 interface NewVendorModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onVendorCreated?: () => void;
+  vendor?: Vendor | null;
 }
 
-export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendorModalProps) {
+export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: NewVendorModalProps) {
   const [name, setName] = useState('');
   const [trades, setTrades] = useState<VendorTrade[]>([]);
   const [phone, setPhone] = useState('');
@@ -38,6 +50,30 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendo
   const [reliabilityRating, setReliabilityRating] = useState(3);
   const [pricingModel, setPricingModel] = useState<'flat' | 'hourly'>('flat');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isEditing = !!vendor;
+
+  // Populate form when editing
+  useEffect(() => {
+    if (open && vendor) {
+      setName(vendor.name);
+      setTrades(vendor.trades as VendorTrade[]);
+      setPhone(vendor.phone || '');
+      setEmail(vendor.email || '');
+      setHasW9(vendor.has_w9);
+      setReliabilityRating(vendor.reliability_rating || 3);
+      setPricingModel(vendor.pricing_model || 'flat');
+    } else if (!open) {
+      // Reset form when closing
+      setName('');
+      setTrades([]);
+      setPhone('');
+      setEmail('');
+      setHasW9(false);
+      setReliabilityRating(3);
+      setPricingModel('flat');
+    }
+  }, [open, vendor]);
 
   const handleAddTrade = (trade: string) => {
     if (trade && !trades.includes(trade as VendorTrade)) {
@@ -74,47 +110,63 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendo
       if (!user) {
         toast({
           title: 'Error',
-          description: 'You must be logged in to add a vendor.',
+          description: 'You must be logged in to manage vendors.',
           variant: 'destructive',
         });
         return;
       }
 
-      const { error } = await supabase
-        .from('vendors')
-        .insert({
-          name,
-          trades: trades,
-          phone: phone || null,
-          email: email || null,
-          has_w9: hasW9,
-          reliability_rating: reliabilityRating,
-          pricing_model: pricingModel,
-          user_id: user.id,
+      if (isEditing) {
+        // Update existing vendor
+        const { error } = await supabase
+          .from('vendors')
+          .update({
+            name,
+            trades: trades,
+            phone: phone || null,
+            email: email || null,
+            has_w9: hasW9,
+            reliability_rating: reliabilityRating,
+            pricing_model: pricingModel,
+          })
+          .eq('id', vendor.id);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Vendor updated!',
+          description: `${name} has been updated.`,
         });
+      } else {
+        // Create new vendor
+        const { error } = await supabase
+          .from('vendors')
+          .insert({
+            name,
+            trades: trades,
+            phone: phone || null,
+            email: email || null,
+            has_w9: hasW9,
+            reliability_rating: reliabilityRating,
+            pricing_model: pricingModel,
+            user_id: user.id,
+          });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: 'Vendor added!',
-        description: `${name} has been added to your vendors.`,
-      });
+        toast({
+          title: 'Vendor added!',
+          description: `${name} has been added to your vendors.`,
+        });
+      }
 
-      // Reset form
-      setName('');
-      setTrades([]);
-      setPhone('');
-      setEmail('');
-      setHasW9(false);
-      setReliabilityRating(3);
-      setPricingModel('flat');
       onOpenChange(false);
       onVendorCreated?.();
     } catch (error: any) {
-      console.error('Error creating vendor:', error);
+      console.error('Error saving vendor:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to add vendor.',
+        description: error.message || 'Failed to save vendor.',
         variant: 'destructive',
       });
     } finally {
@@ -128,7 +180,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            Add Vendor
+            {isEditing ? 'Edit Vendor' : 'Add Vendor'}
           </DialogTitle>
         </DialogHeader>
 
@@ -268,7 +320,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated }: NewVendo
               Cancel
             </Button>
             <Button type="submit" className="flex-1" disabled={isSubmitting}>
-              {isSubmitting ? 'Adding...' : 'Add Vendor'}
+              {isSubmitting ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Vendor')}
             </Button>
           </div>
         </form>

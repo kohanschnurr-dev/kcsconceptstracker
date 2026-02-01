@@ -1,10 +1,26 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Star, CheckCircle, XCircle, Users } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Star, CheckCircle, XCircle, Users, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { NewVendorModal } from '@/components/NewVendorModal';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { BUDGET_CATEGORIES } from '@/types';
@@ -27,6 +43,9 @@ export default function Vendors() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
 
   useEffect(() => {
     fetchVendors();
@@ -60,6 +79,48 @@ export default function Vendors() {
 
   const getTradeLabel = (trade: string) => {
     return BUDGET_CATEGORIES.find(b => b.value === trade)?.label || trade;
+  };
+
+  const handleEditVendor = (vendor: Vendor) => {
+    setEditingVendor(vendor);
+    setModalOpen(true);
+  };
+
+  const handleDeleteVendor = async () => {
+    if (!vendorToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .delete()
+        .eq('id', vendorToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Vendor deleted',
+        description: `${vendorToDelete.name} has been removed.`,
+      });
+      
+      fetchVendors();
+    } catch (error: any) {
+      console.error('Error deleting vendor:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete vendor',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setVendorToDelete(null);
+    }
+  };
+
+  const handleModalClose = (open: boolean) => {
+    setModalOpen(open);
+    if (!open) {
+      setEditingVendor(null);
+    }
   };
 
   return (
@@ -115,7 +176,7 @@ export default function Vendors() {
                     )}
                   >
                     <div className="flex items-start justify-between mb-4">
-                      <div>
+                      <div className="flex-1 min-w-0 pr-2">
                         <h3 className="font-semibold">{vendor.name}</h3>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {vendor.trades.map((trade) => (
@@ -130,18 +191,43 @@ export default function Vendors() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={cn(
-                              'h-4 w-4',
-                              i < (vendor.reliability_rating || 0)
-                                ? 'fill-primary text-primary'
-                                : 'text-muted-foreground/30'
-                            )}
-                          />
-                        ))}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={cn(
+                                'h-4 w-4',
+                                i < (vendor.reliability_rating || 0)
+                                  ? 'fill-primary text-primary'
+                                  : 'text-muted-foreground/30'
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditVendor(vendor)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => {
+                                setVendorToDelete(vendor);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
 
@@ -203,9 +289,30 @@ export default function Vendors() {
 
       <NewVendorModal
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={handleModalClose}
         onVendorCreated={fetchVendors}
+        vendor={editingVendor}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Vendor</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{vendorToDelete?.name}</strong>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteVendor}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
