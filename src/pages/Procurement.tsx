@@ -176,6 +176,35 @@ export default function Procurement() {
     }).format(value);
   };
 
+  const getCategoryLabel = (categoryId: string | null) => {
+    if (!categoryId) return null;
+    const categoryMap: Record<string, string> = {
+      'appliances': 'Appliances',
+      'bathroom': 'Bathroom',
+      'cabinets': 'Cabinets',
+      'countertops': 'Countertops',
+      'doors': 'Doors',
+      'drywall': 'Drywall',
+      'electrical': 'Electrical',
+      'fencing': 'Fencing',
+      'flooring': 'Flooring',
+      'framing': 'Framing',
+      'hardware': 'Hardware',
+      'hvac': 'HVAC',
+      'insulation': 'Insulation',
+      'lighting': 'Light Fixtures',
+      'paint': 'Paint',
+      'plumbing': 'Plumbing',
+      'pool': 'Pool',
+      'roofing': 'Roofing',
+      'tile': 'Tile',
+      'trim': 'Trim',
+      'windows': 'Windows',
+      'other': 'Other',
+    };
+    return categoryMap[categoryId] || categoryId;
+  };
+
   const calculateItemTotal = (item: ProcurementItem) => {
     // If pack price, don't multiply by quantity
     const subtotal = item.is_pack_price ? item.unit_price : item.unit_price * item.quantity;
@@ -416,23 +445,22 @@ export default function Procurement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-16"></TableHead>
+                      <TableHead className="w-16 text-center"></TableHead>
                       <TableHead>Item</TableHead>
-                      <TableHead>Bundle</TableHead>
-                      <TableHead>Source</TableHead>
-                      <TableHead>Phase</TableHead>
-                      <TableHead>Color</TableHead>
+                      <TableHead className="text-center">Bundle</TableHead>
+                      <TableHead className="text-center">Source</TableHead>
+                      <TableHead className="text-center">Category</TableHead>
                       <TableHead className="text-right">Price</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-center">Qty</TableHead>
                       <TableHead className="text-right">Total</TableHead>
-                      <TableHead></TableHead>
+                      <TableHead className="text-center"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredItems.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>
-                          <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                        <TableCell className="text-center">
+                          <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center mx-auto">
                             {item.image_url ? (
                               <img 
                                 src={item.image_url} 
@@ -447,7 +475,7 @@ export default function Procurement() {
                         <TableCell>
                           <p className="font-medium">{item.name}</p>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                           <div>
                             {getBundleNames(item.bundle_ids).map((name, idx) => (
                               <span 
@@ -467,8 +495,8 @@ export default function Procurement() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
                             <span className="text-sm">
                               {STORES.find(s => s.value === item.source_store)?.label || '-'}
                             </span>
@@ -484,14 +512,11 @@ export default function Procurement() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <span className="text-sm">
-                            {PHASES.find(p => p.value === item.phase)?.label || '-'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {item.finish ? (
-                            <Badge variant="secondary" className="text-xs">{item.finish}</Badge>
+                        <TableCell className="text-center">
+                          {getCategoryLabel(item.category_id) ? (
+                            <Badge variant="secondary" className="text-xs">
+                              {getCategoryLabel(item.category_id)}
+                            </Badge>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
@@ -499,12 +524,12 @@ export default function Procurement() {
                         <TableCell className="text-right font-mono">
                           {formatCurrency(item.unit_price)}
                         </TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        <TableCell className="text-center">{item.quantity}</TableCell>
                         <TableCell className="text-right font-mono font-medium">
                           {formatCurrency(calculateItemTotal(item))}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
                             <Button 
                               variant="ghost" 
                               size="icon" 
