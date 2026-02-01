@@ -567,10 +567,12 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         const category = categoryKeys[i];
         const group = categoryGroups[category];
 
-        // Calculate proportional tax
+        // Calculate this category's proportion of the receipt subtotal
         const proportion = subtotal > 0 ? group.total / subtotal : 0;
-        const categoryTax = Math.round(taxAmount * proportion * 100) / 100;
-        const categoryAmount = Math.round((group.total + categoryTax) * 100) / 100;
+        
+        // Scale to the actual QB transaction amount (which already includes tax)
+        const qbTransactionAmount = selectedMatch.qbExpense.amount;
+        const categoryAmount = Math.round(qbTransactionAmount * proportion * 100) / 100;
 
         // Build notes from items in this category (using edited quantities)
         const itemNotes = group.items
