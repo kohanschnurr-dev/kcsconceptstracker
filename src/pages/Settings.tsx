@@ -22,6 +22,7 @@ export default function Settings() {
   const [lastName, setLastName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -104,6 +105,27 @@ export default function Settings() {
   const hasCompanyChanges = settings && (
     companyName !== (settings.company_name || '')
   );
+
+  const hasAnyChanges = hasProfileChanges || hasCompanyChanges;
+
+  const handleSaveAll = async () => {
+    setIsSaving(true);
+    try {
+      const promises = [];
+      if (hasCompanyChanges) {
+        promises.push(updateSettings.mutateAsync({ companyName }));
+      }
+      if (hasProfileChanges) {
+        promises.push(updateProfile.mutateAsync({ firstName, lastName }));
+      }
+      await Promise.all(promises);
+      toast.success('Settings saved successfully');
+    } catch (error) {
+      toast.error('Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <MainLayout>
@@ -299,6 +321,16 @@ export default function Settings() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Sticky Save Bar */}
+        {hasAnyChanges && (
+          <div className="sticky bottom-0 -mx-4 lg:-mx-8 -mb-4 lg:-mb-8 bg-background border-t border-border p-4 flex justify-end">
+            <Button onClick={handleSaveAll} disabled={isSaving}>
+              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Settings
+            </Button>
+          </div>
+        )}
       </div>
     </MainLayout>
   );
