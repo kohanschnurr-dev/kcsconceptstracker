@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const QB_CLIENT_ID = Deno.env.get("QUICKBOOKS_CLIENT_ID");
@@ -80,7 +80,8 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
+      console.log("Missing or invalid auth header");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -91,19 +92,25 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    // Use getClaims to validate the JWT token (works with new signing-keys system)
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.log("Token validation failed:", claimsError?.message);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const userId = claimsData.claims.sub as string;
+
     // Get user's QuickBooks tokens
     const { data: tokenData, error: tokenError } = await supabase
       .from("quickbooks_tokens")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (tokenError || !tokenData) {
@@ -119,7 +126,7 @@ serve(async (req) => {
     if (new Date(tokenData.expires_at) < new Date()) {
       accessToken = await refreshToken(
         supabase, 
-        user.id, 
+        userId, 
         tokenData.refresh_token, 
         tokenData.realm_id
       );
@@ -143,7 +150,7 @@ serve(async (req) => {
 
     for (const purchase of purchases) {
       expenses.push({
-        user_id: user.id,
+        user_id: userId,
         qb_id: `purchase_${purchase.Id}`,
         vendor_name: purchase.EntityRef?.name || extractVendorFromDescription(purchase.PrivateNote || purchase.Line?.[0]?.Description) || "Unknown Vendor",
         amount: purchase.TotalAmt || 0,
@@ -163,7 +170,7 @@ serve(async (req) => {
 
     for (const bill of bills) {
       expenses.push({
-        user_id: user.id,
+        user_id: userId,
         qb_id: `bill_${bill.Id}`,
         vendor_name: bill.VendorRef?.name || "Unknown Vendor",
         amount: bill.TotalAmt || 0,
@@ -193,7 +200,7 @@ serve(async (req) => {
 
     for (const transfer of transfers) {
       expenses.push({
-        user_id: user.id,
+        user_id: userId,
         qb_id: `transfer_${transfer.Id}`,
         vendor_name: transfer.ToAccountRef?.name || transfer.FromAccountRef?.name || "Transfer",
         amount: transfer.Amount || 0,
