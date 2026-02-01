@@ -83,7 +83,7 @@ export default function BudgetCalculator() {
             Budget Calculator
           </h1>
           <p className="text-muted-foreground">
-            Analyze potential deals with profit projections and the 78% rule
+            Analyze potential deals with profit projections
           </p>
         </div>
 
