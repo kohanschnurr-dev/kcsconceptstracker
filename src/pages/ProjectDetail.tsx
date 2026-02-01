@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +40,7 @@ import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotoGallery } from '@/components/project/PhotoGallery';
-import { SpendingChart } from '@/components/project/SpendingChart';
+
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { ProjectCalendar } from '@/components/project/ProjectCalendar';
 import { ProjectTasks } from '@/components/project/ProjectTasks';
@@ -550,18 +550,14 @@ export default function ProjectDetail() {
           </TabsContent>
 
           <TabsContent value="financials" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ProfitCalculator 
-                projectId={id!}
-                totalBudget={totalBudget}
-                totalSpent={totalSpent}
-                initialPurchasePrice={project.purchase_price || 0}
-                initialArv={project.arv || 0}
-              />
-              <SpendingChart categories={categories} totalBudget={totalBudget} />
-            </div>
+            <ProfitCalculator 
+              projectId={id!}
+              totalBudget={totalBudget}
+              totalSpent={totalSpent}
+              initialPurchasePrice={project.purchase_price || 0}
+              initialArv={project.arv || 0}
+            />
             
-            {/* Export Reports */}
             <ExportReports 
               project={{
                 id: project.id,
@@ -576,47 +572,6 @@ export default function ProjectDetail() {
               categories={categories}
               expenses={allExpensesForExport}
             />
-            
-            {/* Budget Breakdown Table */}
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-lg">Category Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {categories.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No budget categories set up yet</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Category</TableHead>
-                          <TableHead className="text-right">Estimated</TableHead>
-                          <TableHead className="text-right">Actual</TableHead>
-                          <TableHead className="text-right">Remaining</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {categories.map((cat) => {
-                          const label = BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label || cat.category;
-                          const remaining = cat.estimated_budget - cat.actualSpent;
-                          return (
-                            <TableRow key={cat.id}>
-                              <TableCell className="font-medium">{label}</TableCell>
-                              <TableCell className="text-right font-mono">{formatCurrency(cat.estimated_budget)}</TableCell>
-                              <TableCell className="text-right font-mono">{formatCurrency(cat.actualSpent)}</TableCell>
-                              <TableCell className={cn("text-right font-mono", remaining < 0 ? 'text-destructive' : 'text-success')}>
-                                {formatCurrency(remaining)}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="team">
