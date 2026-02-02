@@ -37,6 +37,7 @@ export default function BudgetCalculator() {
   const [budgetDescription, setBudgetDescription] = useState<string>('');
   const [currentTemplateName, setCurrentTemplateName] = useState<string>('');
   const [profitBreakdownOpen, setProfitBreakdownOpen] = useState(false);
+  const [maoPercentage, setMaoPercentage] = useState<number>(78);
   const [isSaving, setIsSaving] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
@@ -91,9 +92,9 @@ export default function BudgetCalculator() {
   const grossProfit = arvNum - totalCosts;
   const roi = totalInvestment > 0 ? (grossProfit / totalInvestment) * 100 : 0;
   
-  // 78% Rule
-  const maxOffer = (arvNum * 0.78) - totalBudget;
-  const meets78Rule = purchasePriceNum <= maxOffer && purchasePriceNum > 0;
+  // Dynamic MAO Rule
+  const maxOffer = (arvNum * (maoPercentage / 100)) - totalBudget;
+  const meetsMaoRule = purchasePriceNum <= maxOffer && purchasePriceNum > 0;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -314,6 +315,8 @@ export default function BudgetCalculator() {
             arv={arvNum}
             currentBudget={totalBudget}
             purchasePrice={purchasePriceNum}
+            maoPercentage={maoPercentage}
+            onPercentageChange={setMaoPercentage}
           />
         </div>
 
@@ -442,19 +445,19 @@ export default function BudgetCalculator() {
                             </div>
                           </div>
 
-                          {/* 78% Rule Check */}
+                          {/* MAO Rule Check */}
                           {purchasePriceNum > 0 && arvNum > 0 && (
-                            <div className={`mt-6 p-4 rounded-lg ${meets78Rule ? 'bg-green-500/10 border border-green-500/30' : 'bg-destructive/10 border border-destructive/30'}`}>
+                            <div className={`mt-6 p-4 rounded-lg ${meetsMaoRule ? 'bg-green-500/10 border border-green-500/30' : 'bg-destructive/10 border border-destructive/30'}`}>
                               <div className="flex items-center gap-2">
-                                {meets78Rule ? (
+                                {meetsMaoRule ? (
                                   <CheckCircle2 className="h-5 w-5 text-green-500" />
                                 ) : (
                                   <AlertTriangle className="h-5 w-5 text-destructive" />
                                 )}
-                                <span className={`font-medium ${meets78Rule ? 'text-green-500' : 'text-destructive'}`}>
-                                  {meets78Rule
-                                    ? `✓ Meets 78% Rule - Your offer is ${formatCurrency(maxOffer - purchasePriceNum)} under the max!`
-                                    : `✗ Over 78% Rule - Your offer is ${formatCurrency(purchasePriceNum - maxOffer)} over the max!`}
+                                <span className={`font-medium ${meetsMaoRule ? 'text-green-500' : 'text-destructive'}`}>
+                                  {meetsMaoRule
+                                    ? `✓ Meets ${maoPercentage}% Rule - Your offer is ${formatCurrency(maxOffer - purchasePriceNum)} under the max!`
+                                    : `✗ Over ${maoPercentage}% Rule - Your offer is ${formatCurrency(purchasePriceNum - maxOffer)} over the max!`}
                                 </span>
                               </div>
                             </div>
