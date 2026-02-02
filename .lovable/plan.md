@@ -1,10 +1,10 @@
 
 
-## Plan: Faster Fail-Fast Timeout for URL Scraping
+## Plan: Add Category Filter to Procurement Page
 
 ### Overview
 
-Reduce the wait time when scraping fails by implementing an aggressive abort controller timeout on the frontend and reducing the Firecrawl timeout further. Currently users wait 15+ seconds for Home Depot/Lowes URLs that consistently timeout - we should give up much faster (5-8 seconds).
+Add a category filter dropdown next to the existing Bundle filter and Sort dropdown, allowing users to filter procurement items by category (Bathroom, Tile, Hardware, etc.).
 
 ---
 
@@ -12,100 +12,105 @@ Reduce the wait time when scraping fails by implementing an aggressive abort con
 
 | File | Change |
 |------|--------|
-| `supabase/functions/scrape-product-url/index.ts` | Reduce Firecrawl timeout from 15s to 8s |
-| `src/components/procurement/ProcurementItemModal.tsx` | Add AbortController with 10s client-side timeout |
+| `src/pages/Procurement.tsx` | Add `filterCategory` state, category filter dropdown, and update filtering logic |
 
 ---
 
 ### Technical Details
 
-**File: `supabase/functions/scrape-product-url/index.ts`**
+**File: `src/pages/Procurement.tsx`**
 
-Reduce the Firecrawl timeout from 15 seconds to 8 seconds. This is still enough time for most successful scrapes but fails faster on problematic sites:
+**1. Add new state for category filter (around line 113):**
 
 ```typescript
-// Line 788 - Change timeout from 15000 to 8000
-const basicScrapeOptions = {
-  url: formattedUrl,
-  formats: ['markdown', 'html'],
-  onlyMainContent: false,
-  timeout: 8000, // 8 seconds - fail fast!
-  location: { country: 'US', languages: ['en-US'] },
-};
+const [filterCategory, setFilterCategory] = useState<string>('all');
+```
+
+**2. Extract unique categories from items for the dropdown:**
+
+```typescript
+const uniqueCategories = [...new Set(items.map(i => i.category).filter(Boolean))]
+  .sort((a, b) => (getCategoryLabel(a) || '').localeCompare(getCategoryLabel(b) || ''));
+```
+
+**3. Update filtering logic (lines 216-224) to include category:**
+
+```typescript
+const filteredItems = items.filter(item => {
+  const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.model_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.notes?.toLowerCase().includes(searchQuery.toLowerCase());
+  const bundleIds = item.bundle_ids || [];
+  const matchesBundle = filterBundle === 'all' || 
+    (filterBundle === 'unassigned' ? bundleIds.length === 0 : bundleIds.includes(filterBundle));
+  const matchesCategory = filterCategory === 'all' || item.category === filterCategory;
+  return matchesSearch && matchesBundle && matchesCategory;
+});
+```
+
+**4. Add category filter dropdown between Bundle filter and Sort (after line 381):**
+
+```tsx
+<Select value={filterCategory} onValueChange={setFilterCategory}>
+  <SelectTrigger className="w-full md:w-48">
+    <Package className="h-4 w-4 mr-2" />
+    <SelectValue placeholder="All Categories" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">All Categories</SelectItem>
+    {uniqueCategories.map(cat => (
+      <SelectItem key={cat} value={cat!}>{getCategoryLabel(cat)}</SelectItem>
+    ))}
+  </SelectContent>
+</Select>
 ```
 
 ---
 
-**File: `src/components/procurement/ProcurementItemModal.tsx`**
-
-Add a client-side AbortController to ensure the frontend doesn't wait indefinitely:
-
-```typescript
-const handleScrapeUrl = async () => {
-  if (!urlInput.trim()) return;
-  
-  setScrapingUrl(true);
-  
-  // Create abort controller with 10s timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-  
-  try {
-    const { data, error } = await supabase.functions.invoke('scrape-product-url', {
-      body: { url: urlInput.trim() },
-    });
-    
-    clearTimeout(timeoutId);
-    
-    // ... rest of handler
-  } catch (error) {
-    clearTimeout(timeoutId);
-    
-    if (error.name === 'AbortError') {
-      toast({
-        title: "Scraping timed out",
-        description: "This site is slow to respond. Try pasting a screenshot instead.",
-        variant: "destructive",
-      });
-    }
-    // ... error handling
-  }
-};
-```
-
----
-
-### Timeout Strategy
+### Visual Result
 
 ```text
-Current behavior:
-User clicks "Scrape" → Waits 15-30 seconds → Times out
+Before:
+┌─────────────────────────────┐ ┌──────────────┐ ┌──────────┐
+│ 🔍 Search items...          │ │ All Bundles ▼│ │ A-Z     ▼│
+└─────────────────────────────┘ └──────────────┘ └──────────┘
 
-New behavior:
-User clicks "Scrape" → Waits 8-10 seconds max → Shows helpful message
-
-Timeline:
-0s ────────── 8s ─────────── 10s
-   Firecrawl    Edge fn      Client
-   timeout      returns      aborts
+After:
+┌─────────────────────────────┐ ┌──────────────┐ ┌────────────────┐ ┌──────────┐
+│ 🔍 Search items...          │ │ All Bundles ▼│ │ All Categories▼│ │ A-Z     ▼│
+└─────────────────────────────┘ └──────────────┘ └────────────────┘ └──────────┘
 ```
 
 ---
 
-### User Experience
+### Category Options
 
-| Before | After |
-|--------|-------|
-| Wait 15-30+ seconds for timeout | Wait max 10 seconds |
-| Unclear what's happening | Clear timeout message |
-| Same error for all failures | Suggests screenshot alternative |
+The dropdown will include all categories that have at least one item, sorted alphabetically:
+- All Categories (default)
+- Appliances
+- Bathroom
+- Cabinets
+- Countertops
+- Doors
+- Electrical
+- Exterior Finishes
+- Flooring
+- Hardware
+- HVAC
+- Light Fixtures
+- Paint
+- Plumbing
+- Tile
+- Trim
+- Windows
+- Other
+- (etc. - only shows categories with items)
 
 ---
 
 ### Files to Modify
 
-| File | Changes |
-|------|---------|
-| `supabase/functions/scrape-product-url/index.ts` | Line 788: Change `timeout: 15000` to `timeout: 8000` |
-| `src/components/procurement/ProcurementItemModal.tsx` | Add AbortController with 10s timeout to `handleScrapeUrl` |
+| File | Lines | Changes |
+|------|-------|---------|
+| `src/pages/Procurement.tsx` | 113, 216-224, 381 | Add state, update filter logic, add dropdown |
 
