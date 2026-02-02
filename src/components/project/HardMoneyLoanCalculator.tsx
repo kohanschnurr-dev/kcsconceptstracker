@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -75,6 +76,10 @@ export function HardMoneyLoanCalculator({
   const [savePresetOpen, setSavePresetOpen] = useState(false);
   const [presetName, setPresetName] = useState('');
   const [savingPreset, setSavingPreset] = useState(false);
+
+  // Custom term popover
+  const [customTermOpen, setCustomTermOpen] = useState(false);
+  const [customTermInput, setCustomTermInput] = useState('');
 
   // Sync editable purchase price with prop
   useEffect(() => {
@@ -446,14 +451,59 @@ export function HardMoneyLoanCalculator({
                       {term === 360 ? '30yr' : term}
                     </Button>
                   ))}
-                  <Input
-                    type="number"
-                    value={loanTermMonths}
-                    onChange={(e) => setLoanTermMonths(Number(e.target.value))}
-                    className="w-20 rounded-sm"
-                    min={1}
-                    max={360}
-                  />
+                  <Popover open={customTermOpen} onOpenChange={setCustomTermOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant={!termOptions.includes(loanTermMonths) ? 'default' : 'outline'}
+                        size="sm"
+                        className="rounded-sm"
+                      >
+                        {!termOptions.includes(loanTermMonths) ? loanTermMonths : 'Custom'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-3" align="end">
+                      <div className="space-y-2">
+                        <Label htmlFor="custom-term" className="text-xs">Custom Term (Months)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="custom-term"
+                            type="number"
+                            value={customTermInput}
+                            onChange={(e) => setCustomTermInput(e.target.value)}
+                            className="h-8 rounded-sm text-sm"
+                            placeholder="e.g. 9"
+                            min={1}
+                            max={360}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const val = Number(customTermInput);
+                                if (val > 0 && val <= 360) {
+                                  setLoanTermMonths(val);
+                                  setCustomTermOpen(false);
+                                  setCustomTermInput('');
+                                }
+                              }
+                            }}
+                          />
+                          <Button
+                            size="sm"
+                            className="h-8"
+                            onClick={() => {
+                              const val = Number(customTermInput);
+                              if (val > 0 && val <= 360) {
+                                setLoanTermMonths(val);
+                                setCustomTermOpen(false);
+                                setCustomTermInput('');
+                              }
+                            }}
+                          >
+                            Set
+                          </Button>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
