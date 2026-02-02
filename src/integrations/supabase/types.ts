@@ -344,6 +344,48 @@ export type Database = {
           },
         ]
       }
+      loan_presets: {
+        Row: {
+          closing_costs_percent: number | null
+          created_at: string | null
+          id: string
+          interest_only: boolean | null
+          interest_rate: number
+          is_default: boolean | null
+          loan_term_months: number
+          name: string
+          points: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          closing_costs_percent?: number | null
+          created_at?: string | null
+          id?: string
+          interest_only?: boolean | null
+          interest_rate: number
+          is_default?: boolean | null
+          loan_term_months: number
+          name: string
+          points: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          closing_costs_percent?: number | null
+          created_at?: string | null
+          id?: string
+          interest_only?: boolean | null
+          interest_rate?: number
+          is_default?: boolean | null
+          loan_term_months?: number
+          name?: string
+          points?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       pending_receipts: {
         Row: {
           created_at: string
