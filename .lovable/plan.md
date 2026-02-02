@@ -1,47 +1,49 @@
 
 
-## Plan: Rename "Carpentry" Label to "Trims"
+## Plan: Remove Icons from Individual Category Cards
 
-### Overview
+### Problem
 
-Change the display label from "Carpentry (Trim, Baseboards, etc.)" to simply "Trims" across the application. The internal value `carpentry` will remain unchanged to avoid database migration issues.
+Currently, only some category cards have icons (Demolition, Framing, Electrical, etc.) while others don't. This creates visual inconsistency. The user wants a standardized look by removing all icons from the individual category items, while keeping the icons in the main group headers (Structure, MEPs, Finishes, etc.).
 
 ---
 
 ### Changes Required
 
-**File: `src/types/index.ts`**
+**File: `src/components/budget/BudgetCanvas.tsx`**
 
-Update the label in the `BUDGET_CATEGORIES` array:
+1. Remove the `CATEGORY_ICONS` mapping object (lines 51-63)
+2. Remove the icon prop from the `BudgetCategoryCard` component call (line 144)
+3. Clean up unused icon imports (Hammer, Wrench, Grid3X3, Fence, FileCheck)
 
 | Current | New |
 |---------|-----|
-| `{ value: 'carpentry', label: 'Carpentry (Trim, Baseboards, etc.)' }` | `{ value: 'carpentry', label: 'Trims' }` |
-
-This single change will propagate to all UI elements that display this category because:
-- Budget Calculator category cards use `BUDGET_CATEGORIES` for labels
-- Expense dropdowns reference `BUDGET_CATEGORIES`
-- Vendor trade selections reference this array
-- All other category displays derive from this source of truth
+| Some categories have icons, some don't | No categories have icons |
+| Group headers keep their icons | Group headers keep their icons (unchanged) |
 
 ---
 
-### No Changes Needed
+### Visual Result
 
-| Location | Reason |
-|----------|--------|
-| `src/components/budget/BudgetCanvas.tsx` | Uses the value `carpentry` which stays the same |
-| `src/components/SmartSplitReceiptUpload.tsx` | Uses the value `carpentry` which stays the same |
-| `supabase/functions/parse-receipt-image/index.ts` | Uses the value `carpentry` for AI parsing (internal) |
-| `src/integrations/supabase/types.ts` | Auto-generated from database, uses value not label |
-| Database | The `carpentry` value in existing records remains valid |
+```text
+BEFORE (inconsistent):
+> Structure ($0)
+  [Hammer] Demolition    [House] Framing    Foundation
+  Roofing                Drywall            Insulation
+
+AFTER (consistent):
+> Structure ($0)
+  Demolition    Framing    Foundation
+  Roofing       Drywall    Insulation
+```
+
+The main group headers (Structure, MEPs, Finishes, etc.) will retain their icons since those are consistently applied to all headers.
 
 ---
 
-### Result
+### Files to Modify
 
-- All UI displays will show "Trims" instead of "Carpentry (Trim, Baseboards, etc.)"
-- Existing database records with `carpentry` continue to work
-- No database migration required
-- Alphabetical sorting in dropdowns will place it under "T" instead of "C"
+| File | Action |
+|------|--------|
+| `src/components/budget/BudgetCanvas.tsx` | Remove `CATEGORY_ICONS` object and stop passing icon prop to cards |
 
