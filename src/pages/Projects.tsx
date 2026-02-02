@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FolderKanban, Home, Hammer } from 'lucide-react';
+import { Plus, Search, FolderKanban, Home, Hammer, Building2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ export default function Projects() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
-  const [mainTab, setMainTab] = useState<'fix_flip' | 'rental'>('fix_flip');
+  const [mainTab, setMainTab] = useState<'fix_flip' | 'rental' | 'new_construction'>('fix_flip');
   const [statusTab, setStatusTab] = useState('all');
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,7 +92,7 @@ export default function Projects() {
           totalBudget: calculatedTotalBudget,
           startDate: p.start_date,
           status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
-          projectType: (p.project_type || 'fix_flip') as 'fix_flip' | 'rental',
+          projectType: (p.project_type || 'fix_flip') as ProjectType,
           categories: projectCategories,
         };
       });
@@ -123,6 +123,7 @@ export default function Projects() {
 
   const fixFlipProjects = getFilteredProjects('fix_flip');
   const rentalProjects = getFilteredProjects('rental');
+  const newConstructionProjects = getFilteredProjects('new_construction');
 
   const getStatusCounts = (type: ProjectType) => {
     const typeProjects = projects.filter(p => p.projectType === type);
@@ -135,9 +136,12 @@ export default function Projects() {
 
   const fixFlipCounts = getStatusCounts('fix_flip');
   const rentalCounts = getStatusCounts('rental');
+  const newConstructionCounts = getStatusCounts('new_construction');
 
   const renderProjectGrid = (filteredProjects: Project[], type: ProjectType) => {
-    const counts = type === 'fix_flip' ? fixFlipCounts : rentalCounts;
+    const counts = type === 'fix_flip' ? fixFlipCounts : type === 'rental' ? rentalCounts : newConstructionCounts;
+    const typeLabel = type === 'fix_flip' ? 'fix & flip' : type === 'rental' ? 'rental' : 'new construction';
+    const createLabel = type === 'fix_flip' ? 'Flip' : type === 'rental' ? 'Rental' : 'Build';
     
     return (
       <div className="space-y-4">
@@ -180,13 +184,13 @@ export default function Projects() {
                 <FolderKanban className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                 <p className="text-muted-foreground mb-4">
                   {counts.total === 0 
-                    ? `No ${type === 'fix_flip' ? 'fix & flip' : 'rental'} projects yet` 
+                    ? `No ${typeLabel} projects yet` 
                     : 'No projects match your search'}
                 </p>
                 {counts.total === 0 && (
                   <Button onClick={() => setModalOpen(true)} className="gap-2">
                     <Plus className="h-4 w-4" />
-                    Create Your First {type === 'fix_flip' ? 'Flip' : 'Rental'}
+                    Create Your First {createLabel}
                   </Button>
                 )}
               </div>
@@ -224,8 +228,8 @@ export default function Projects() {
         </div>
 
         {/* Main Type Tabs */}
-        <Tabs value={mainTab} onValueChange={(v) => { setMainTab(v as 'fix_flip' | 'rental'); setStatusTab('all'); }}>
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+        <Tabs value={mainTab} onValueChange={(v) => { setMainTab(v as 'fix_flip' | 'rental' | 'new_construction'); setStatusTab('all'); }}>
+          <TabsList className="grid w-full max-w-xl grid-cols-3">
             <TabsTrigger value="fix_flip" className="gap-2">
               <Hammer className="h-4 w-4" />
               Fix & Flips ({fixFlipCounts.total})
@@ -233,6 +237,10 @@ export default function Projects() {
             <TabsTrigger value="rental" className="gap-2">
               <Home className="h-4 w-4" />
               Rentals ({rentalCounts.total})
+            </TabsTrigger>
+            <TabsTrigger value="new_construction" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              New Builds ({newConstructionCounts.total})
             </TabsTrigger>
           </TabsList>
 
@@ -242,6 +250,10 @@ export default function Projects() {
 
           <TabsContent value="rental" className="mt-6">
             {renderProjectGrid(rentalProjects, 'rental')}
+          </TabsContent>
+
+          <TabsContent value="new_construction" className="mt-6">
+            {renderProjectGrid(newConstructionProjects, 'new_construction')}
           </TabsContent>
         </Tabs>
       </div>

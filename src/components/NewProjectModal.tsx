@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, MapPin, DollarSign, Calendar, Hammer, Home } from 'lucide-react';
+import { Building2, MapPin, DollarSign, Calendar, Hammer, Home, HardHat } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -131,7 +131,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
           <div className="space-y-2">
             <Label>Project Type</Label>
             <Tabs value={projectType} onValueChange={(v) => setProjectType(v as ProjectType)}>
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="fix_flip" className="gap-2">
                   <Hammer className="h-4 w-4" />
                   Fix & Flip
@@ -140,6 +140,10 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
                   <Home className="h-4 w-4" />
                   Rental
                 </TabsTrigger>
+                <TabsTrigger value="new_construction" className="gap-2">
+                  <Building2 className="h-4 w-4" />
+                  New Build
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -147,7 +151,13 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
           <div className="space-y-2">
             <Label>Project Name *</Label>
             <Input
-              placeholder={projectType === 'fix_flip' ? "Oak Cliff Flip, Downtown Bungalow..." : "Rental Property 1, Main St Duplex..."}
+              placeholder={
+                projectType === 'new_construction' 
+                  ? "Lot 45 Custom Home, Lakeside Estates..." 
+                  : projectType === 'fix_flip' 
+                    ? "Oak Cliff Flip, Downtown Bungalow..." 
+                    : "Rental Property 1, Main St Duplex..."
+              }
               value={name}
               onChange={(e) => setName(e.target.value)}
             />

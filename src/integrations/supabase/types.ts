@@ -1316,7 +1316,7 @@ export type Database = {
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
       project_status: "active" | "complete" | "on_hold"
-      project_type: "fix_flip" | "rental"
+      project_type: "fix_flip" | "rental" | "new_construction"
       task_priority: "low" | "medium" | "high" | "urgent"
       task_status: "pending" | "in_progress" | "completed"
       vendor_trade:
@@ -1558,7 +1558,7 @@ export const Constants = {
       payment_method: ["cash", "check", "card", "transfer"],
       pricing_model: ["flat", "hourly"],
       project_status: ["active", "complete", "on_hold"],
-      project_type: ["fix_flip", "rental"],
+      project_type: ["fix_flip", "rental", "new_construction"],
       task_priority: ["low", "medium", "high", "urgent"],
       task_status: ["pending", "in_progress", "completed"],
       vendor_trade: [
