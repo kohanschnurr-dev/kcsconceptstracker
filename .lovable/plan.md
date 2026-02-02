@@ -1,12 +1,10 @@
 
-## Plan: Loan Calculator Updates
+
+## Plan: Convert Custom Loan Term Input to Popover
 
 ### Overview
 
-Update the Loan Calculator with three key changes:
-1. Rename from "Hard Money Loan Calculator" to "Loan Calculator"
-2. Add editable Purchase Price field that defaults to the project's purchase price
-3. Add preset loan packages for quick loading of common loan configurations
+Replace the always-visible custom loan term input with a compact "Custom" button that opens a small popover for entering a custom term. This saves horizontal space and keeps the UI cleaner.
 
 ---
 
@@ -14,161 +12,164 @@ Update the Loan Calculator with three key changes:
 
 | File | Change |
 |------|--------|
-| `src/components/project/HardMoneyLoanCalculator.tsx` | Rename title, add editable purchase price, add loan presets dropdown |
-| Database Migration | Create `loan_presets` table for user-saved presets |
+| `src/components/project/HardMoneyLoanCalculator.tsx` | Replace inline Input with a Popover triggered by a "Custom" button |
 
 ---
 
 ### Technical Details
 
-#### 1. Rename Title
+**File: `src/components/project/HardMoneyLoanCalculator.tsx`**
 
-Change the CardTitle from "Hard Money Loan Calculator" to "Loan Calculator"
+**1. Add Popover import (line 10):**
 
 ```tsx
-// Before
-Hard Money Loan Calculator
-
-// After
-Loan Calculator
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 ```
 
-#### 2. Add Editable Purchase Price
-
-Add a new state variable and input field for purchase price that:
-- Defaults to the `purchasePrice` prop passed from the project
-- Can be edited by the user for testing different scenarios
-- Updates the LTV calculation dynamically
+**2. Add state for popover and custom term input (around line 76):**
 
 ```tsx
-// New state
-const [editablePurchasePrice, setEditablePurchasePrice] = useState(purchasePrice);
+const [customTermOpen, setCustomTermOpen] = useState(false);
+const [customTermInput, setCustomTermInput] = useState('');
+```
 
-// New input field (placed above Loan Amount)
+**3. Replace the Loan Term section (lines 433-458):**
+
+Current code:
+```tsx
+{/* Loan Term */}
 <div className="space-y-2">
-  <Label htmlFor="purchase-price">Purchase Price</Label>
-  <div className="relative">
-    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  <Label>Loan Term (Months)</Label>
+  <div className="flex gap-2">
+    {termOptions.map((term) => (
+      <Button ...>
+        {term === 360 ? '30yr' : term}
+      </Button>
+    ))}
     <Input
-      id="purchase-price"
       type="number"
-      value={editablePurchasePrice || ''}
-      onChange={(e) => setEditablePurchasePrice(Number(e.target.value))}
-      className="pl-9 rounded-sm"
-      placeholder="0"
+      value={loanTermMonths}
+      onChange={(e) => setLoanTermMonths(Number(e.target.value))}
+      className="w-20 rounded-sm"
+      min={1}
+      max={360}
     />
   </div>
 </div>
 ```
 
-Update all references to use `editablePurchasePrice` instead of `purchasePrice` where appropriate (LTV calculation, slider max, closing costs default).
-
-#### 3. Add Loan Presets Feature
-
-**A. Create database table for user-saved presets**
-
-```sql
-CREATE TABLE public.loan_presets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL,
-  name TEXT NOT NULL,
-  interest_rate NUMERIC NOT NULL,
-  loan_term_months INTEGER NOT NULL,
-  points NUMERIC NOT NULL,
-  closing_costs_percent NUMERIC DEFAULT 2,
-  interest_only BOOLEAN DEFAULT true,
-  is_default BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE public.loan_presets ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can manage their own loan presets"
-  ON public.loan_presets
-  FOR ALL
-  USING (auth.uid() = user_id);
-```
-
-**B. Add preset dropdown and built-in defaults**
-
-Built-in preset examples:
-- "Standard Hard Money" - 12%, 6 mo, 3 pts, interest-only
-- "Competitive Rate" - 10%, 12 mo, 2 pts, interest-only
-- "Extended Term" - 11%, 18 mo, 2.5 pts, interest-only
-- "Conventional 30yr" - 7%, 360 mo, 1 pt, amortizing
-
+New code:
 ```tsx
-// Add imports
-import { ChevronDown, Package } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-// Built-in presets array
-const BUILT_IN_PRESETS = [
-  { name: 'Standard Hard Money', interestRate: 12, loanTermMonths: 6, points: 3, closingCostsPercent: 2, interestOnly: true },
-  { name: 'Competitive Rate', interestRate: 10, loanTermMonths: 12, points: 2, closingCostsPercent: 2, interestOnly: true },
-  { name: 'Extended Term', interestRate: 11, loanTermMonths: 18, points: 2.5, closingCostsPercent: 2, interestOnly: true },
-  { name: 'Conventional 30yr', interestRate: 7, loanTermMonths: 360, points: 1, closingCostsPercent: 2, interestOnly: false },
-];
-
-// Load preset function
-const loadPreset = (preset) => {
-  setInterestRate(preset.interestRate);
-  setLoanTermMonths(preset.loanTermMonths);
-  setPoints(preset.points);
-  setClosingCosts(editablePurchasePrice * (preset.closingCostsPercent / 100));
-  setInterestOnly(preset.interestOnly);
-  toast.success(`Loaded "${preset.name}" preset`);
-};
+{/* Loan Term */}
+<div className="space-y-2">
+  <Label>Loan Term (Months)</Label>
+  <div className="flex gap-2">
+    {termOptions.map((term) => (
+      <Button
+        key={term}
+        type="button"
+        variant={loanTermMonths === term ? 'default' : 'outline'}
+        size="sm"
+        onClick={() => setLoanTermMonths(term)}
+        className="flex-1 rounded-sm"
+      >
+        {term === 360 ? '30yr' : term}
+      </Button>
+    ))}
+    <Popover open={customTermOpen} onOpenChange={setCustomTermOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant={!termOptions.includes(loanTermMonths) ? 'default' : 'outline'}
+          size="sm"
+          className="rounded-sm"
+        >
+          {!termOptions.includes(loanTermMonths) ? loanTermMonths : 'Custom'}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-3" align="end">
+        <div className="space-y-2">
+          <Label htmlFor="custom-term" className="text-xs">Custom Term (Months)</Label>
+          <div className="flex gap-2">
+            <Input
+              id="custom-term"
+              type="number"
+              value={customTermInput}
+              onChange={(e) => setCustomTermInput(e.target.value)}
+              className="h-8 rounded-sm text-sm"
+              placeholder="e.g. 9"
+              min={1}
+              max={360}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const val = Number(customTermInput);
+                  if (val > 0 && val <= 360) {
+                    setLoanTermMonths(val);
+                    setCustomTermOpen(false);
+                    setCustomTermInput('');
+                  }
+                }
+              }}
+            />
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                const val = Number(customTermInput);
+                if (val > 0 && val <= 360) {
+                  setLoanTermMonths(val);
+                  setCustomTermOpen(false);
+                  setCustomTermInput('');
+                }
+              }}
+            >
+              Set
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  </div>
+</div>
 ```
-
-**C. Add Save Preset functionality**
-
-Add a button to save current loan settings as a new preset (opens a simple dialog to name it).
 
 ---
 
-### UI Layout Update
+### Visual Result
 
+**Before:**
 ```text
-Card Header:
-┌─────────────────────────────────────────────────────────────┐
-│ 🏛 Loan Calculator         [Load Preset ▼] [Save Preset] [Save] │
-└─────────────────────────────────────────────────────────────┘
-
-Left Column (Inputs):
-┌───────────────────────────────────────┐
-│ Purchase Price (NEW - editable)       │
-│ $ [200,000]                           │
-├───────────────────────────────────────┤
-│ Loan Amount                           │
-│ $ [150,000] ────────○────── 75% LTV   │
-├───────────────────────────────────────┤
-│ ... (rest of existing fields)         │
-└───────────────────────────────────────┘
+Loan Term (Months)
+┌────┐ ┌────┐ ┌────┐ ┌──────┐ ┌──────────┐
+│  6 │ │ 12 │ │ 18 │ │ 30yr │ │   360    │  <-- Input always visible
+└────┘ └────┘ └────┘ └──────┘ └──────────┘
 ```
 
+**After:**
+```text
+Loan Term (Months)
+┌────┐ ┌────┐ ┌────┐ ┌──────┐ ┌────────┐
+│  6 │ │ 12 │ │ 18 │ │ 30yr │ │ Custom │  <-- Compact button
+└────┘ └────┘ └────┘ └──────┘ └────────┘
+                                   │
+                                   ▼ (click to open popover)
+                              ┌─────────────────┐
+                              │ Custom (Months) │
+                              │ ┌─────┐ ┌─────┐ │
+                              │ │  9  │ │ Set │ │
+                              │ └─────┘ └─────┘ │
+                              └─────────────────┘
+```
+
+When a custom value is set (not in preset list), the button shows the value instead of "Custom" (e.g., shows "9" if 9 months is selected).
+
 ---
 
-### Files to Create/Modify
+### Files to Modify
 
-| File | Action | Changes |
-|------|--------|---------|
-| Database | Create | `loan_presets` table with RLS |
-| `src/components/project/HardMoneyLoanCalculator.tsx` | Modify | Rename title, add purchase price input, add preset dropdown/save |
+| File | Lines | Changes |
+|------|-------|---------|
+| `src/components/project/HardMoneyLoanCalculator.tsx` | 10 | Add Popover import |
+| `src/components/project/HardMoneyLoanCalculator.tsx` | ~76 | Add customTermOpen and customTermInput state |
+| `src/components/project/HardMoneyLoanCalculator.tsx` | 433-458 | Replace Input with Popover component |
 
----
-
-### Implementation Steps
-
-1. Create database migration for `loan_presets` table
-2. Update component:
-   - Rename title to "Loan Calculator"
-   - Add `editablePurchasePrice` state initialized from prop
-   - Add Purchase Price input field before Loan Amount
-   - Update LTV and slider max calculations to use editable value
-   - Add built-in presets array
-   - Add preset dropdown in header
-   - Add load preset functionality
-   - Add save preset button and dialog
-   - Fetch user's saved presets on mount
