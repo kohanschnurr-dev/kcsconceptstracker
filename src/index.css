@@ -142,6 +142,15 @@
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Safe area support for iOS devices with home indicator */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0));
+  }
 }
 
 /* Hide number input spinners */
