@@ -485,19 +485,28 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     }
   };
 
-  // Handle paste events for image upload
+  // Handle paste events for image upload (details step) or screenshot parsing (url step with fallback)
   useEffect(() => {
-    if (!open || step !== 'details') return;
+    if (!open) return;
     
-    const handlePaste = (e: ClipboardEvent) => {
+    const handlePaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
       
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
+      for (const clipboardItem of items) {
+        if (clipboardItem.type.startsWith('image/')) {
           e.preventDefault();
-          const file = item.getAsFile();
-          if (file) uploadImage(file);
+          const file = clipboardItem.getAsFile();
+          if (file) {
+            // If on URL step with fallback showing - parse as product screenshot
+            if (step === 'url' && showFallbackOptions) {
+              await handleScreenshotUpload(file);
+            } 
+            // If on details step - upload as product image
+            else if (step === 'details') {
+              await uploadImage(file);
+            }
+          }
           break;
         }
       }
@@ -505,7 +514,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [open, step]);
+  }, [open, step, showFallbackOptions]);
 
   // Parse specs from notes field (stored as JSON)
   const parseSpecsFromNotes = (notes: string | null): { specs: Record<string, string>; cleanNotes: string } => {
@@ -903,7 +912,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
                   <Camera className="h-6 w-6 text-muted-foreground" />
                 )}
                 <span className="font-medium">Upload Screenshot</span>
-                <span className="text-xs text-muted-foreground text-center">We'll read it for you</span>
+                <span className="text-xs text-muted-foreground text-center">Ctrl+V to paste or click to browse</span>
               </button>
             </div>
             
