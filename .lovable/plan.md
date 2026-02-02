@@ -1,14 +1,14 @@
 
 
-## Plan: Enlarge Calendar Grid to Fill Available Space
+## Plan: Update Toggle to Control Only Sell Closing Costs
 
-### Problem Analysis
+### Clarification
 
-Looking at your screenshot, the calendar has significant dead space below it. The calendar grid uses a fixed `min-h-[120px]` for each day cell, which doesn't adapt to the available viewport height.
+You want:
+- **Closing costs (Buy, 2%)** → Always included in calculations
+- **Closing costs (Sell, 6%)** → Toggle on/off
 
-### Solution
-
-Make the calendar expand vertically to fill the available space while keeping cells reasonably sized. The goal is to use the viewport height more effectively without overdoing it.
+The current toggle controls both buy AND sell closing costs. We need to update it so the buy closing costs are always included, and only the sell closing costs are toggled.
 
 ---
 
@@ -16,87 +16,60 @@ Make the calendar expand vertically to fill the available space while keeping ce
 
 | File | Change |
 |------|--------|
-| `src/pages/Calendar.tsx` | Make the calendar container use flexbox to fill available height |
-| `src/components/calendar/MonthlyView.tsx` | Increase day cell minimum height and make grid fill container |
+| `src/pages/BudgetCalculator.tsx` | Rename state to `includeSellClosingCosts`, always calculate buy closing costs, only toggle sell |
+| `src/components/budget/DealSidebar.tsx` | Update prop names, update label to "Sell Closing", always show buy closing costs row |
 
 ---
 
 ### Technical Details
 
-**File: `src/pages/Calendar.tsx`**
+**File: `src/pages/BudgetCalculator.tsx`**
 
-Change the outer layout container to use flex column with `flex-1` so the calendar can grow:
-- Update `space-y-4` wrapper to `flex flex-col h-[calc(100vh-8rem)] gap-4`
-- This gives the calendar a defined height to fill (viewport minus header padding)
+| Current | New |
+|---------|-----|
+| `includeClosingCosts` state | `includeSellClosingCosts` state |
+| `closingCostsBuy = includeClosingCosts ? ... : 0` | `closingCostsBuy = purchasePriceNum * 0.02` (always) |
+| `closingCostsSell = includeClosingCosts ? ... : 0` | `closingCostsSell = includeSellClosingCosts ? arvNum * 0.06 : 0` |
+| Conditionally show buy closing row | Always show buy closing row |
+| Conditionally show sell closing row | Keep conditional based on toggle |
 
-**File: `src/components/calendar/MonthlyView.tsx`**
+**File: `src/components/budget/DealSidebar.tsx`**
 
-Increase the day cell height and make the grid fill available space:
-- Change container from `p-4` to `flex flex-col h-full p-4`
-- Change calendar grid to `grid grid-cols-7 gap-1 flex-1`
-- Increase day cells from `min-h-[120px]` to `min-h-[140px]` or use dynamic sizing
+| Current | New |
+|---------|-----|
+| `includeClosingCosts` prop | `includeSellClosingCosts` prop |
+| `onClosingCostsChange` prop | `onSellClosingCostsChange` prop |
+| Label: "Closing" | Label: "Sell Closing" or "Incl. Sale" |
+| Hide both buy/sell when OFF | Always show buy, hide only sell when OFF |
+| `closingCostsBuy` respects toggle | `closingCostsBuy = purchasePriceNum * 0.02` (always) |
 
 ---
 
-### Visual Before/After
+### Updated UI
+
+**Sidebar - Estimated Costs Section:**
 
 ```text
-BEFORE:
-┌──────────────────────────────────────┐
-│ Header + Legend                      │
-├──────────────────────────────────────┤
-│ Calendar Grid (120px rows)           │
-│                                      │
-│                                      │
-├──────────────────────────────────────┤
-│ Dead Space                           │
-│                                      │
-│                                      │
-└──────────────────────────────────────┘
-
-AFTER:
-┌──────────────────────────────────────┐
-│ Header + Legend                      │
-├──────────────────────────────────────┤
-│ Calendar Grid (expanded rows)        │
-│                                      │
-│                                      │
-│                                      │
-│                                      │
-│                                      │
-│                                      │
-└──────────────────────────────────────┘
+ESTIMATED COSTS          [Sell Closing ◉]
+─────────────────────────────────────────
+Closing (Buy, 2%)           $3,140    ← Always shown
+Holding (3%)                $4,710    ← Always shown
+Closing (Sell, 6%)         $16,800    ← Only when toggle ON
 ```
 
 ---
 
-### Specific Code Changes
+### Updated Calculation Logic
 
-**MonthlyView.tsx - Day cell sizing:**
 ```tsx
-// Current
-className="min-h-[120px] p-2 rounded-lg border ..."
+// BudgetCalculator.tsx
+const [includeSellClosingCosts, setIncludeSellClosingCosts] = useState(true);
 
-// New - taller cells to fill space
-className="min-h-[140px] p-2 rounded-lg border ..."
-```
+// Buy closing costs - ALWAYS included
+const closingCostsBuy = purchasePriceNum * 0.02;
 
-**Calendar.tsx - Container height:**
-```tsx
-// Current
-<div className="space-y-4">
-
-// New - flex container that fills viewport
-<div className="flex flex-col min-h-[calc(100vh-10rem)] gap-4">
-```
-
-**Calendar.tsx - Grid container:**
-```tsx
-// Current
-<div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-
-// New - flex-1 to grow
-<div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex-1">
+// Sell closing costs - TOGGLE controlled
+const closingCostsSell = includeSellClosingCosts ? arvNum * 0.06 : 0;
 ```
 
 ---
@@ -105,6 +78,6 @@ className="min-h-[140px] p-2 rounded-lg border ..."
 
 | File | Changes |
 |------|---------|
-| `src/pages/Calendar.tsx` | Add flex container with calculated height, make calendar grid `flex-1` |
-| `src/components/calendar/MonthlyView.tsx` | Increase cell height to `140px`, make container fill available space |
+| `src/pages/BudgetCalculator.tsx` | Rename state, update calculations, always show buy row in Profit Breakdown |
+| `src/components/budget/DealSidebar.tsx` | Rename props, update label, always show buy row, only toggle sell row |
 
