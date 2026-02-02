@@ -1,14 +1,31 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, TrendingDown, Clock, Package, Plus } from 'lucide-react';
+import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, TrendingDown, Clock, Package, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -80,6 +97,21 @@ export function HardMoneyLoanCalculator({
   // Custom term popover
   const [customTermOpen, setCustomTermOpen] = useState(false);
   const [customTermInput, setCustomTermInput] = useState('');
+
+  // Edit preset dialog
+  const [editPresetOpen, setEditPresetOpen] = useState(false);
+  const [editingPreset, setEditingPreset] = useState<LoanPreset | null>(null);
+  const [editPresetName, setEditPresetName] = useState('');
+  const [editInterestRate, setEditInterestRate] = useState(0);
+  const [editLoanTermMonths, setEditLoanTermMonths] = useState(0);
+  const [editPoints, setEditPoints] = useState(0);
+  const [editClosingCostsPercent, setEditClosingCostsPercent] = useState(2);
+  const [editInterestOnly, setEditInterestOnly] = useState(true);
+  const [updatingPreset, setUpdatingPreset] = useState(false);
+
+  // Delete confirmation
+  const [deletePresetOpen, setDeletePresetOpen] = useState(false);
+  const [deletingPreset, setDeletingPreset] = useState<LoanPreset | null>(null);
 
   // Sync editable purchase price with prop
   useEffect(() => {
@@ -212,7 +244,82 @@ export function HardMoneyLoanCalculator({
     setSavingPreset(false);
   };
 
-  const allPresets = [...BUILT_IN_PRESETS, ...userPresets];
+  // Delete preset handler
+  const handleDeletePreset = async (preset: LoanPreset) => {
+    if (!preset.id) return;
+
+    const { error } = await supabase
+      .from('loan_presets')
+      .delete()
+      .eq('id', preset.id);
+
+    if (error) {
+      toast.error('Failed to delete preset');
+      console.error(error);
+    } else {
+      setUserPresets(prev => prev.filter(p => p.id !== preset.id));
+      toast.success(`Preset "${preset.name}" deleted`);
+    }
+    setDeletePresetOpen(false);
+    setDeletingPreset(null);
+  };
+
+  // Open edit dialog
+  const openEditDialog = (preset: LoanPreset) => {
+    setEditingPreset(preset);
+    setEditPresetName(preset.name);
+    setEditInterestRate(preset.interestRate);
+    setEditLoanTermMonths(preset.loanTermMonths);
+    setEditPoints(preset.points);
+    setEditClosingCostsPercent(preset.closingCostsPercent);
+    setEditInterestOnly(preset.interestOnly);
+    setEditPresetOpen(true);
+  };
+
+  // Update preset handler
+  const handleUpdatePreset = async () => {
+    if (!editingPreset?.id || !editPresetName.trim()) {
+      toast.error('Please enter a preset name');
+      return;
+    }
+
+    setUpdatingPreset(true);
+
+    const { error } = await supabase
+      .from('loan_presets')
+      .update({
+        name: editPresetName.trim(),
+        interest_rate: editInterestRate,
+        loan_term_months: editLoanTermMonths,
+        points: editPoints,
+        closing_costs_percent: editClosingCostsPercent,
+        interest_only: editInterestOnly,
+      })
+      .eq('id', editingPreset.id);
+
+    if (error) {
+      toast.error('Failed to update preset');
+      console.error(error);
+    } else {
+      setUserPresets(prev => prev.map(p => 
+        p.id === editingPreset.id 
+          ? {
+              ...p,
+              name: editPresetName.trim(),
+              interestRate: editInterestRate,
+              loanTermMonths: editLoanTermMonths,
+              points: editPoints,
+              closingCostsPercent: editClosingCostsPercent,
+              interestOnly: editInterestOnly,
+            }
+          : p
+      ));
+      toast.success(`Preset "${editPresetName}" updated`);
+      setEditPresetOpen(false);
+      setEditingPreset(null);
+    }
+    setUpdatingPreset(false);
+  };
 
   // Calculations
   const calculations = useMemo(() => {
@@ -314,37 +421,61 @@ export function HardMoneyLoanCalculator({
             Loan Calculator
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Select onValueChange={(value) => {
-              const preset = allPresets.find(p => p.name === value);
-              if (preset) loadPreset(preset);
-            }}>
-              <SelectTrigger className="w-[180px]">
-                <Package className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Load Preset" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__header_builtin" disabled className="font-semibold text-muted-foreground">
-                  Built-in Presets
-                </SelectItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="w-[180px] justify-start">
+                  <Package className="h-4 w-4 mr-2" />
+                  Load Preset
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Built-in Presets</DropdownMenuLabel>
                 {BUILT_IN_PRESETS.map((preset) => (
-                  <SelectItem key={preset.name} value={preset.name}>
+                  <DropdownMenuItem key={preset.name} onClick={() => loadPreset(preset)}>
                     {preset.name}
-                  </SelectItem>
+                  </DropdownMenuItem>
                 ))}
                 {userPresets.length > 0 && (
                   <>
-                    <SelectItem value="__header_custom" disabled className="font-semibold text-muted-foreground mt-2">
-                      My Presets
-                    </SelectItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>My Presets</DropdownMenuLabel>
                     {userPresets.map((preset) => (
-                      <SelectItem key={preset.id || preset.name} value={preset.name}>
-                        {preset.name}
-                      </SelectItem>
+                      <div key={preset.id} className="flex items-center group">
+                        <DropdownMenuItem 
+                          className="flex-1 cursor-pointer"
+                          onClick={() => loadPreset(preset)}
+                        >
+                          {preset.name}
+                        </DropdownMenuItem>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditDialog(preset);
+                          }}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 text-destructive shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingPreset(preset);
+                            setDeletePresetOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     ))}
                   </>
                 )}
-              </SelectContent>
-            </Select>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button size="sm" variant="outline" onClick={() => setSavePresetOpen(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Save Preset
@@ -710,6 +841,102 @@ export function HardMoneyLoanCalculator({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Preset Dialog */}
+      <Dialog open={editPresetOpen} onOpenChange={setEditPresetOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Loan Preset</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-preset-name">Preset Name</Label>
+              <Input
+                id="edit-preset-name"
+                value={editPresetName}
+                onChange={(e) => setEditPresetName(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-interest-rate">Interest Rate (%)</Label>
+                <Input
+                  id="edit-interest-rate"
+                  type="number"
+                  value={editInterestRate}
+                  onChange={(e) => setEditInterestRate(Number(e.target.value))}
+                  step={0.01}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-term">Term (Months)</Label>
+                <Input
+                  id="edit-term"
+                  type="number"
+                  value={editLoanTermMonths}
+                  onChange={(e) => setEditLoanTermMonths(Number(e.target.value))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-points">Points (%)</Label>
+                <Input
+                  id="edit-points"
+                  type="number"
+                  value={editPoints}
+                  onChange={(e) => setEditPoints(Number(e.target.value))}
+                  step={0.5}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-closing">Closing Costs (%)</Label>
+                <Input
+                  id="edit-closing"
+                  type="number"
+                  value={editClosingCostsPercent}
+                  onChange={(e) => setEditClosingCostsPercent(Number(e.target.value))}
+                  step={0.5}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-sm bg-muted/50">
+              <Label htmlFor="edit-interest-only">Interest Only</Label>
+              <Switch
+                id="edit-interest-only"
+                checked={editInterestOnly}
+                onCheckedChange={setEditInterestOnly}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditPresetOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdatePreset} disabled={updatingPreset}>
+              {updatingPreset ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Update Preset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deletePresetOpen} onOpenChange={setDeletePresetOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Preset</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingPreset?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deletingPreset && handleDeletePreset(deletingPreset)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
