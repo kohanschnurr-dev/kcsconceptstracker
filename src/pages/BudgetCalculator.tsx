@@ -1,41 +1,98 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Calculator, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ClipboardList, ChevronDown, Plus } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ChevronDown, RotateCcw } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { CreateBudgetModal, BudgetTemplate } from '@/components/CreateBudgetModal';
-import { SavedBudgetsPanel } from '@/components/SavedBudgetsPanel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { MAOGauge } from '@/components/budget/MAOGauge';
+import { BudgetCanvas } from '@/components/budget/BudgetCanvas';
+import { TemplatePicker } from '@/components/budget/TemplatePicker';
+import { DealSidebar } from '@/components/budget/DealSidebar';
+import { BUDGET_CATEGORIES } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface Project {
+  id: string;
+  name: string;
+  address: string;
+}
+
+interface BudgetTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  purchase_price: number;
+  arv: number;
+  category_budgets: Record<string, number>;
+  total_budget: number;
+}
 
 export default function BudgetCalculator() {
   const [purchasePrice, setPurchasePrice] = useState<string>('');
   const [arv, setArv] = useState<string>('');
-  const [rehabBudget, setRehabBudget] = useState<string>('');
-  const [showBudgetModal, setShowBudgetModal] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<BudgetTemplate | null>(null);
-  const [defaultTab, setDefaultTab] = useState<'save' | 'apply'>('save');
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [dealAnalysisOpen, setDealAnalysisOpen] = useState(true);
+  const [budgetName, setBudgetName] = useState<string>('');
+  const [budgetDescription, setBudgetDescription] = useState<string>('');
+  const [currentTemplateName, setCurrentTemplateName] = useState<string>('');
+  const [profitBreakdownOpen, setProfitBreakdownOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   
+  // Category budgets state
+  const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    BUDGET_CATEGORIES.forEach(cat => {
+      initial[cat.value] = '';
+    });
+    return initial;
+  });
+
+  // Fetch projects on mount
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setIsLoadingProjects(true);
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('id, name, address')
+          .eq('status', 'active')
+          .order('name');
+        
+        if (error) throw error;
+        setProjects(data || []);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
+
+  // Calculate totals
+  const totalBudget = Object.values(categoryBudgets).reduce((sum, val) => {
+    return sum + (parseFloat(val) || 0);
+  }, 0);
+
   const purchasePriceNum = parseFloat(purchasePrice) || 0;
   const arvNum = parseFloat(arv) || 0;
-  const rehabBudgetNum = parseFloat(rehabBudget) || 0;
 
-  // Calculations
+  // Profit calculations
   const closingCostsBuy = purchasePriceNum * 0.02;
   const closingCostsSell = arvNum * 0.06;
   const holdingCosts = purchasePriceNum * 0.03;
   
-  const totalInvestment = purchasePriceNum + rehabBudgetNum + closingCostsBuy + holdingCosts;
+  const totalInvestment = purchasePriceNum + totalBudget + closingCostsBuy + holdingCosts;
   const totalCosts = totalInvestment + closingCostsSell;
   const grossProfit = arvNum - totalCosts;
   const roi = totalInvestment > 0 ? (grossProfit / totalInvestment) * 100 : 0;
   
   // 78% Rule
-  const maxOffer = (arvNum * 0.78) - rehabBudgetNum;
+  const maxOffer = (arvNum * 0.78) - totalBudget;
   const meets78Rule = purchasePriceNum <= maxOffer && purchasePriceNum > 0;
 
   const formatCurrency = (value: number) => {
@@ -47,340 +104,407 @@ export default function BudgetCalculator() {
     }).format(value);
   };
 
-  const handleClear = () => {
+  const handleCategoryChange = (category: string, value: string) => {
+    setCategoryBudgets(prev => ({
+      ...prev,
+      [category]: value,
+    }));
+  };
+
+  const handleSelectTemplate = (template: BudgetTemplate | null) => {
+    if (!template) {
+      handleClearAll();
+      return;
+    }
+
+    // Load template values
+    setBudgetName(template.name);
+    setBudgetDescription(template.description || '');
+    setPurchasePrice(template.purchase_price?.toString() || '');
+    setArv(template.arv?.toString() || '');
+    setCurrentTemplateName(template.name);
+
+    // Load category budgets
+    const newBudgets: Record<string, string> = {};
+    BUDGET_CATEGORIES.forEach(cat => {
+      newBudgets[cat.value] = template.category_budgets[cat.value]?.toString() || '';
+    });
+    setCategoryBudgets(newBudgets);
+
+    toast.success(`Loaded "${template.name}" template`);
+  };
+
+  const handleClearAll = () => {
+    setBudgetName('');
+    setBudgetDescription('');
     setPurchasePrice('');
     setArv('');
-    setRehabBudget('');
+    setCurrentTemplateName('');
+    
+    const cleared: Record<string, string> = {};
+    BUDGET_CATEGORIES.forEach(cat => {
+      cleared[cat.value] = '';
+    });
+    setCategoryBudgets(cleared);
   };
 
-  const handleEditBudget = (template: BudgetTemplate) => {
-    setEditingTemplate(template);
-    setDefaultTab('save');
-    setShowBudgetModal(true);
+  const getCategoryBudgetsObject = () => {
+    const budgets: Record<string, number> = {};
+    BUDGET_CATEGORIES.forEach(cat => {
+      const val = parseFloat(categoryBudgets[cat.value]) || 0;
+      if (val > 0) {
+        budgets[cat.value] = val;
+      }
+    });
+    return budgets;
   };
 
-  const handleApplyToProject = (template: BudgetTemplate) => {
-    setEditingTemplate(template);
-    setDefaultTab('apply');
-    setShowBudgetModal(true);
+  const handleSave = async () => {
+    if (!budgetName.trim()) {
+      toast.error('Please enter a name for this budget');
+      return;
+    }
+
+    const hasAnyBudget = Object.values(categoryBudgets).some(val => parseFloat(val) > 0);
+    if (!hasAnyBudget) {
+      toast.error('Please enter at least one category budget');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const templateData = {
+        user_id: user.id,
+        name: budgetName.trim(),
+        description: budgetDescription.trim() || null,
+        purchase_price: parseFloat(purchasePrice) || 0,
+        arv: parseFloat(arv) || 0,
+        category_budgets: getCategoryBudgetsObject(),
+      };
+
+      const { error } = await supabase
+        .from('budget_templates')
+        .insert(templateData);
+      
+      if (error) throw error;
+      toast.success('Budget saved to folder');
+      setCurrentTemplateName(budgetName);
+    } catch (error: any) {
+      console.error('Error saving budget:', error);
+      toast.error(error.message || 'Failed to save budget');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleNewBudget = () => {
-    setEditingTemplate(null);
-    setDefaultTab('save');
-    setShowBudgetModal(true);
-  };
+  const handleApplyToProject = async (projectId: string) => {
+    if (!projectId) {
+      toast.error('Please select a project');
+      return;
+    }
 
-  const handleBudgetCreated = () => {
-    setRefreshTrigger(prev => prev + 1);
-    setEditingTemplate(null);
+    const hasAnyBudget = Object.values(categoryBudgets).some(val => parseFloat(val) > 0);
+    if (!hasAnyBudget) {
+      toast.error('Please enter at least one category budget');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // First, get existing categories for this project
+      const { data: existingCategories, error: fetchError } = await supabase
+        .from('project_categories')
+        .select('id, category')
+        .eq('project_id', projectId);
+
+      if (fetchError) throw fetchError;
+
+      const existingCategoryMap = new Map(
+        existingCategories?.map(c => [c.category, c.id]) || []
+      );
+
+      // Prepare category data
+      const categoriesToUpdate = [];
+      const categoriesToInsert = [];
+
+      for (const cat of BUDGET_CATEGORIES) {
+        const budgetValue = parseFloat(categoryBudgets[cat.value]) || 0;
+        if (budgetValue > 0) {
+          const existingId = existingCategoryMap.get(cat.value);
+          if (existingId) {
+            categoriesToUpdate.push({
+              id: existingId,
+              estimated_budget: budgetValue,
+            });
+          } else {
+            categoriesToInsert.push({
+              project_id: projectId,
+              category: cat.value,
+              estimated_budget: budgetValue,
+            });
+          }
+        }
+      }
+
+      // Update existing categories
+      for (const cat of categoriesToUpdate) {
+        const { error } = await supabase
+          .from('project_categories')
+          .update({ estimated_budget: cat.estimated_budget })
+          .eq('id', cat.id);
+        if (error) throw error;
+      }
+
+      // Insert new categories
+      if (categoriesToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('project_categories')
+          .insert(categoriesToInsert);
+        if (insertError) throw insertError;
+      }
+
+      // Update project total budget
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ total_budget: totalBudget })
+        .eq('id', projectId);
+
+      if (updateError) throw updateError;
+
+      toast.success(`Budget of ${formatCurrency(totalBudget)} applied to project`);
+    } catch (error: any) {
+      console.error('Error applying budget:', error);
+      toast.error(error.message || 'Failed to apply budget');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <MainLayout>
-      <div className="space-y-8">
+      <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Budget Calculator
-          </h1>
-          <p className="text-muted-foreground">
-            Create and manage category budgets for your projects
-          </p>
-        </div>
-
-        {/* Primary Section: Budget Creation */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Hero Budget Creation Card */}
-          <Card className="xl:col-span-2 bg-gradient-to-br from-primary/5 via-background to-primary/10 border-primary/20">
-            <CardContent className="p-8">
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                <div className="flex-shrink-0 p-4 rounded-2xl bg-primary/10">
-                  <ClipboardList className="h-12 w-12 text-primary" />
-                </div>
-                <div className="flex-1 space-y-3">
-                  <h2 className="text-2xl font-bold text-foreground">Create New Budget</h2>
-                  <p className="text-muted-foreground max-w-xl">
-                    Build detailed category budgets for your rehab projects. Define allocations for each trade, 
-                    save as templates, and apply them to new or existing projects.
-                  </p>
-                  <Button 
-                    onClick={handleNewBudget}
-                    size="lg"
-                    className="mt-4"
-                  >
-                    <Plus className="h-5 w-5 mr-2" />
-                    Create Category Budget
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Saved Budgets Panel */}
-          <div className="xl:col-span-1">
-            <SavedBudgetsPanel
-              onEditBudget={handleEditBudget}
-              onApplyToProject={handleApplyToProject}
-              refreshTrigger={refreshTrigger}
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-background">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Budget Calculator</h1>
+            <p className="text-muted-foreground text-sm">
+              Build and manage rehab budgets with real-time MAO tracking
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <TemplatePicker
+              onSelectTemplate={handleSelectTemplate}
+              onCreateNew={handleClearAll}
+              currentTemplateName={currentTemplateName}
             />
+            <Button variant="outline" size="icon" onClick={handleClearAll} title="Clear all">
+              <RotateCcw className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
-        {/* Secondary Section: Deal Analysis Tools */}
-        <Collapsible open={dealAnalysisOpen} onOpenChange={setDealAnalysisOpen}>
-          <div className="flex items-center gap-3 pt-4">
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-                <ChevronDown className={`h-4 w-4 transition-transform ${dealAnalysisOpen ? '' : '-rotate-90'}`} />
-                <Calculator className="h-4 w-4" />
-                <span className="font-medium">Deal Analysis Tools</span>
-              </Button>
-            </CollapsibleTrigger>
-            <Separator className="flex-1" />
+        {/* MAO Gauge - Sticky */}
+        <div className="px-6 py-3 border-b bg-muted/30">
+          <MAOGauge
+            arv={arvNum}
+            currentBudget={totalBudget}
+            purchasePrice={purchasePriceNum}
+          />
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Budget Canvas - Primary Workspace */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <ScrollArea className="flex-1">
+              <div className="p-6">
+                {/* Total Budget Summary */}
+                <div className="flex items-center justify-between mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20">
+                  <div className="flex items-center gap-3">
+                    <DollarSign className="h-6 w-6 text-primary" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Rehab Budget</p>
+                      <p className="text-3xl font-bold font-mono text-primary">
+                        {formatCurrency(totalBudget)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Categories with budget</p>
+                    <p className="text-xl font-semibold">
+                      {Object.values(categoryBudgets).filter(v => parseFloat(v) > 0).length} / {BUDGET_CATEGORIES.length}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Category Cards Grid */}
+                <BudgetCanvas
+                  categoryBudgets={categoryBudgets}
+                  onCategoryChange={handleCategoryChange}
+                />
+
+                {/* Profit Breakdown - Collapsible */}
+                <div className="mt-8">
+                  <Collapsible open={profitBreakdownOpen} onOpenChange={setProfitBreakdownOpen}>
+                    <div className="flex items-center gap-3">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                          <ChevronDown className={`h-4 w-4 transition-transform ${profitBreakdownOpen ? '' : '-rotate-90'}`} />
+                          <Calculator className="h-4 w-4" />
+                          <span className="font-medium">Profit Breakdown</span>
+                        </Button>
+                      </CollapsibleTrigger>
+                      <Separator className="flex-1" />
+                    </div>
+
+                    <CollapsibleContent className="pt-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Profit Analysis</CardTitle>
+                          <CardDescription>
+                            Detailed cost analysis based on current budget and deal parameters
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {/* Costs Column */}
+                            <div className="space-y-3">
+                              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Acquisition</h4>
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span>Purchase Price</span>
+                                  <span className="font-mono">{formatCurrency(purchasePriceNum)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Closing Costs (2%)</span>
+                                  <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Rehab Column */}
+                            <div className="space-y-3">
+                              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Rehab & Holding</h4>
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span>Rehab Budget</span>
+                                  <span className="font-mono">{formatCurrency(totalBudget)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Holding Costs (3%)</span>
+                                  <span className="font-mono">{formatCurrency(holdingCosts)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Sale Column */}
+                            <div className="space-y-3">
+                              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Sale</h4>
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span>ARV (Sale Price)</span>
+                                  <span className="font-mono">{formatCurrency(arvNum)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Selling Costs (6%)</span>
+                                  <span className="font-mono">-{formatCurrency(closingCostsSell)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Profit Column */}
+                            <div className="space-y-3">
+                              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Returns</h4>
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span>Total Investment</span>
+                                  <span className="font-mono">{formatCurrency(totalInvestment)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm font-medium">
+                                  <span>Gross Profit</span>
+                                  <span className={`font-mono ${grossProfit >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                    {formatCurrency(grossProfit)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between text-sm font-medium">
+                                  <span>ROI</span>
+                                  <span className={`font-mono ${roi >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                    {roi.toFixed(1)}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Summary Cards */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+                            <div className="p-4 rounded-lg bg-muted/50 text-center">
+                              <p className="text-sm text-muted-foreground">Total Investment</p>
+                              <p className="text-2xl font-bold font-mono">{formatCurrency(totalInvestment)}</p>
+                            </div>
+                            <div className={`p-4 rounded-lg text-center ${grossProfit >= 0 ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
+                              <p className="text-sm text-muted-foreground">Projected Profit</p>
+                              <p className={`text-2xl font-bold font-mono ${grossProfit >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                {formatCurrency(grossProfit)}
+                              </p>
+                            </div>
+                            <div className={`p-4 rounded-lg text-center ${roi >= 20 ? 'bg-green-500/10' : roi >= 0 ? 'bg-amber-500/10' : 'bg-destructive/10'}`}>
+                              <p className="text-sm text-muted-foreground">Return on Investment</p>
+                              <p className={`text-2xl font-bold font-mono ${roi >= 20 ? 'text-green-500' : roi >= 0 ? 'text-amber-500' : 'text-destructive'}`}>
+                                {roi.toFixed(1)}%
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* 78% Rule Check */}
+                          {purchasePriceNum > 0 && arvNum > 0 && (
+                            <div className={`mt-6 p-4 rounded-lg ${meets78Rule ? 'bg-green-500/10 border border-green-500/30' : 'bg-destructive/10 border border-destructive/30'}`}>
+                              <div className="flex items-center gap-2">
+                                {meets78Rule ? (
+                                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                ) : (
+                                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                                )}
+                                <span className={`font-medium ${meets78Rule ? 'text-green-500' : 'text-destructive'}`}>
+                                  {meets78Rule
+                                    ? `✓ Meets 78% Rule - Your offer is ${formatCurrency(maxOffer - purchasePriceNum)} under the max!`
+                                    : `✗ Over 78% Rule - Your offer is ${formatCurrency(purchasePriceNum - maxOffer)} over the max!`}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              </div>
+            </ScrollArea>
           </div>
 
-          <CollapsibleContent className="pt-6">
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Input Section */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5" />
-                      Deal Inputs
-                    </CardTitle>
-                    <CardDescription>
-                      Enter the property details to calculate potential returns
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="purchasePrice">Purchase Price</Label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="purchasePrice"
-                          type="number"
-                          placeholder="0"
-                          className="pl-9"
-                          value={purchasePrice}
-                          onChange={(e) => setPurchasePrice(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="arv">After Repair Value (ARV)</Label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="arv"
-                          type="number"
-                          placeholder="0"
-                          className="pl-9"
-                          value={arv}
-                          onChange={(e) => setArv(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="rehabBudget">Rehab Budget</Label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="rehabBudget"
-                          type="number"
-                          placeholder="0"
-                          className="pl-9"
-                          value={rehabBudget}
-                          onChange={(e) => setRehabBudget(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <Button variant="outline" onClick={handleClear} className="w-full">
-                      Clear All
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* 78% Rule Card */}
-                <Card className={purchasePriceNum > 0 ? (meets78Rule ? 'border-green-500/50' : 'border-destructive/50') : ''}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      {purchasePriceNum > 0 ? (
-                        meets78Rule ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <AlertTriangle className="h-5 w-5 text-destructive" />
-                        )
-                      ) : (
-                        <TrendingUp className="h-5 w-5" />
-                      )}
-                      78% Rule Analysis
-                    </CardTitle>
-                    <CardDescription>
-                      Max Offer = (ARV × 78%) - Rehab Costs
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="text-center p-6 rounded-lg bg-muted/50">
-                      <p className="text-sm text-muted-foreground mb-1">Maximum Offer Price</p>
-                      <p className="text-4xl font-bold text-primary">
-                        {formatCurrency(Math.max(0, maxOffer))}
-                      </p>
-                    </div>
-
-                    {purchasePriceNum > 0 && (
-                      <div className={`p-4 rounded-lg ${meets78Rule ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-destructive/10 text-destructive'}`}>
-                        <p className="text-sm font-medium">
-                          {meets78Rule
-                            ? `✓ Your offer of ${formatCurrency(purchasePriceNum)} is ${formatCurrency(maxOffer - purchasePriceNum)} under the max!`
-                            : `✗ Your offer of ${formatCurrency(purchasePriceNum)} is ${formatCurrency(purchasePriceNum - maxOffer)} over the max!`}
-                        </p>
-                      </div>
-                    )}
-
-                    <Separator />
-
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">ARV × 78%</span>
-                        <span>{formatCurrency(arvNum * 0.78)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Less: Rehab Budget</span>
-                        <span>-{formatCurrency(rehabBudgetNum)}</span>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between font-medium">
-                        <span>Max Offer</span>
-                        <span className="text-primary">{formatCurrency(Math.max(0, maxOffer))}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Results Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Profit Breakdown</CardTitle>
-                  <CardDescription>
-                    Detailed cost analysis and projected returns
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* Costs Column */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Acquisition</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Purchase Price</span>
-                          <span>{formatCurrency(purchasePriceNum)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Closing Costs (2%)</span>
-                          <span>{formatCurrency(closingCostsBuy)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Rehab Column */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Rehab & Holding</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Rehab Budget</span>
-                          <span>{formatCurrency(rehabBudgetNum)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Holding Costs (3%)</span>
-                          <span>{formatCurrency(holdingCosts)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Sale Column */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Sale</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>ARV (Sale Price)</span>
-                          <span>{formatCurrency(arvNum)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Selling Costs (6%)</span>
-                          <span>-{formatCurrency(closingCostsSell)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Profit Column */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Returns</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Total Investment</span>
-                          <span>{formatCurrency(totalInvestment)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm font-medium">
-                          <span>Gross Profit</span>
-                          <span className={grossProfit >= 0 ? 'text-green-600' : 'text-destructive'}>
-                            {formatCurrency(grossProfit)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm font-medium">
-                          <span>ROI</span>
-                          <span className={roi >= 0 ? 'text-green-600' : 'text-destructive'}>
-                            {roi.toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Summary Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-                    <div className="p-4 rounded-lg bg-muted/50 text-center">
-                      <p className="text-sm text-muted-foreground">Total Investment</p>
-                      <p className="text-2xl font-bold">{formatCurrency(totalInvestment)}</p>
-                    </div>
-                    <div className={`p-4 rounded-lg text-center ${grossProfit >= 0 ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
-                      <p className="text-sm text-muted-foreground">Projected Profit</p>
-                      <p className={`text-2xl font-bold ${grossProfit >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                        {formatCurrency(grossProfit)}
-                      </p>
-                    </div>
-                    <div className={`p-4 rounded-lg text-center ${roi >= 20 ? 'bg-green-500/10' : roi >= 0 ? 'bg-yellow-500/10' : 'bg-destructive/10'}`}>
-                      <p className="text-sm text-muted-foreground">Return on Investment</p>
-                      <p className={`text-2xl font-bold ${roi >= 20 ? 'text-green-600' : roi >= 0 ? 'text-yellow-600' : 'text-destructive'}`}>
-                        {roi.toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+          {/* Deal Sidebar - Right Panel */}
+          <DealSidebar
+            purchasePrice={purchasePrice}
+            onPurchasePriceChange={setPurchasePrice}
+            arv={arv}
+            onArvChange={setArv}
+            budgetName={budgetName}
+            onBudgetNameChange={setBudgetName}
+            budgetDescription={budgetDescription}
+            onBudgetDescriptionChange={setBudgetDescription}
+            onSave={handleSave}
+            onApplyToProject={handleApplyToProject}
+            isSaving={isSaving}
+            projects={projects}
+            isLoadingProjects={isLoadingProjects}
+          />
+        </div>
       </div>
-
-      {/* Create Budget Modal */}
-      <CreateBudgetModal
-        open={showBudgetModal}
-        onOpenChange={(open) => {
-          setShowBudgetModal(open);
-          if (!open) setEditingTemplate(null);
-        }}
-        initialTotalBudget={rehabBudgetNum}
-        onBudgetCreated={handleBudgetCreated}
-        editingTemplate={editingTemplate}
-        defaultTab={defaultTab}
-      />
     </MainLayout>
   );
 }
