@@ -1,10 +1,13 @@
 
 
-## Plan: Add "New Construction" as Third Project Type
+## Plan: Transform Scrape Fallback into Friendly Options
 
 ### Overview
 
-Add "New Construction" as a new project type alongside "Fix & Flips" and "Rentals". This will include filler content for testing the functionality with the card display.
+When the product URL scraper fails (e.g., Home Depot times out), instead of showing a red error banner, we'll present a friendly blue/gray info state with two clear options:
+
+1. **Enter Manually** - Proceed to manual entry with the URL saved
+2. **Upload Screenshot** - Upload a product page screenshot and let AI extract the details
 
 ---
 
@@ -12,162 +15,214 @@ Add "New Construction" as a new project type alongside "Fix & Flips" and "Rental
 
 | File | Change |
 |------|--------|
-| Database Migration | Add `new_construction` to `project_type` enum |
-| `src/types/index.ts` | Add `new_construction` to `ProjectType` union |
-| `src/pages/Projects.tsx` | Add third tab, update state type, add new construction grid |
-| `src/components/dashboard/ProjectCard.tsx` | Add new construction icon and display logic |
-| `src/components/NewProjectModal.tsx` | Add third tab trigger for New Construction |
+| `src/components/procurement/ProcurementItemModal.tsx` | Replace error UI with friendly options UI, add screenshot upload handler |
+| `supabase/functions/parse-product-screenshot/index.ts` | NEW - Edge function to parse product screenshots using Lovable AI Vision |
 
 ---
 
-### Database Migration
+### UI Change: From Error to Friendly Fallback
 
-Add the new enum value to the existing `project_type` enum:
+**Current (Error State):**
+```text
+┌─────────────────────────────────────────┐
+│ ⚠ Could not extract product data (red) │
+│ [Continue with manual entry →]          │
+└─────────────────────────────────────────┘
+```
 
-```sql
-ALTER TYPE project_type ADD VALUE 'new_construction';
+**New (Friendly Options State):**
+```text
+┌──────────────────────────────────────────────────────┐
+│ 🔗 Couldn't auto-extract from this page              │
+│    No worries - here are your options:               │
+│                                                      │
+│ ┌──────────────────┐  ┌──────────────────┐          │
+│ │   📝 Enter       │  │   📸 Upload      │          │
+│ │   Manually       │  │   Screenshot     │          │
+│ │                  │  │                  │          │
+│ │ Type in the      │  │ We'll read it    │          │
+│ │ details yourself │  │ for you          │          │
+│ └──────────────────┘  └──────────────────┘          │
+└──────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ### Technical Details
 
-**File: `src/types/index.ts`**
+**File: `src/components/procurement/ProcurementItemModal.tsx`**
 
-Update the `ProjectType` union:
+1. **New State Variables:**
 ```typescript
-// Before
-export type ProjectType = 'fix_flip' | 'rental';
-
-// After
-export type ProjectType = 'fix_flip' | 'rental' | 'new_construction';
+const [showFallbackOptions, setShowFallbackOptions] = useState(false);
+const [parsingScreenshot, setParsingScreenshot] = useState(false);
+const screenshotInputRef = useRef<HTMLInputElement>(null);
 ```
 
----
+2. **Update Error Handler:**
+- Instead of setting `setScrapeError(message)`, set `setShowFallbackOptions(true)` and save the URL
+- Remove the red destructive styling
+- Don't show toast.error (remove "error" feel)
 
-**File: `src/pages/Projects.tsx`**
-
-| Current | New |
-|---------|-----|
-| `mainTab` state type: `'fix_flip' \| 'rental'` | `'fix_flip' \| 'rental' \| 'new_construction'` |
-| 2-column TabsList | 3-column TabsList |
-| 2 TabsContent (fix_flip, rental) | 3 TabsContent (add new_construction) |
-
-Add new construction filtering and counts:
+3. **Add Screenshot Upload Handler:**
 ```typescript
-const newConstructionProjects = getFilteredProjects('new_construction');
-const newConstructionCounts = getStatusCounts('new_construction');
+const handleScreenshotUpload = async (file: File) => {
+  setParsingScreenshot(true);
+  try {
+    // Convert to base64
+    const base64 = await fileToBase64(file);
+    
+    // Call AI parsing function
+    const { data, error } = await supabase.functions.invoke('parse-product-screenshot', {
+      body: { image_base64: base64 }
+    });
+    
+    if (error) throw error;
+    
+    // Populate form with parsed data
+    setFormData(prev => ({
+      ...prev,
+      name: data.name || prev.name,
+      unit_price: data.price?.toString() || prev.unit_price,
+      model_number: data.model_number || prev.model_number,
+      finish: data.finish || prev.finish,
+      source_url: urlInput.trim(),
+      source_store: detectStoreFromUrl(urlInput),
+    }));
+    
+    setShowFallbackOptions(false);
+    setStep('category');
+    toast.success('Product info extracted from screenshot!');
+  } catch (err) {
+    toast.error('Could not read screenshot - try entering manually');
+  } finally {
+    setParsingScreenshot(false);
+  }
+};
 ```
 
-Add tab with icon:
+4. **New Fallback Options UI:**
 ```tsx
-<TabsTrigger value="new_construction" className="gap-2">
-  <Building2 className="h-4 w-4" />
-  New Construction ({newConstructionCounts.total})
-</TabsTrigger>
-```
-
-Update empty state messaging for new construction.
-
----
-
-**File: `src/components/dashboard/ProjectCard.tsx`**
-
-Add display logic for new construction projects:
-- Icon: `Building2` (same as project modal)
-- Budget progress: Show similar to fix_flip (tracked budget)
-- Type label in stats: "New Build"
-
-```typescript
-const isNewConstruction = project.projectType === 'new_construction';
-
-// Icon selection
-{isNewConstruction ? (
-  <Building2 className="h-4 w-4 text-muted-foreground" />
-) : isRental ? (
-  <Home className="h-4 w-4 text-muted-foreground" />
-) : (
-  <Hammer className="h-4 w-4 text-muted-foreground" />
+{showFallbackOptions && (
+  <div className="space-y-4">
+    <div className="flex items-center gap-2 text-muted-foreground text-sm bg-muted p-3 rounded-lg">
+      <LinkIcon className="h-4 w-4 flex-shrink-0" />
+      <span>Couldn't auto-extract from this page. No worries!</span>
+    </div>
+    
+    <div className="grid grid-cols-2 gap-3">
+      {/* Enter Manually Card */}
+      <button
+        onClick={() => {
+          setFormData(prev => ({
+            ...prev,
+            source_url: urlInput.trim(),
+            source_store: detectStoreFromUrl(urlInput),
+          }));
+          setShowFallbackOptions(false);
+          setStep('category');
+        }}
+        className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed hover:border-primary hover:bg-primary/5 transition-colors"
+      >
+        <Pencil className="h-6 w-6 text-muted-foreground" />
+        <span className="font-medium">Enter Manually</span>
+        <span className="text-xs text-muted-foreground text-center">Type in the details yourself</span>
+      </button>
+      
+      {/* Upload Screenshot Card */}
+      <button
+        onClick={() => screenshotInputRef.current?.click()}
+        disabled={parsingScreenshot}
+        className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed hover:border-primary hover:bg-primary/5 transition-colors"
+      >
+        {parsingScreenshot ? (
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        ) : (
+          <Camera className="h-6 w-6 text-muted-foreground" />
+        )}
+        <span className="font-medium">Upload Screenshot</span>
+        <span className="text-xs text-muted-foreground text-center">We'll read it for you</span>
+      </button>
+    </div>
+    
+    <input
+      type="file"
+      ref={screenshotInputRef}
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) handleScreenshotUpload(file);
+        e.target.value = '';
+      }}
+      accept="image/*"
+      className="hidden"
+    />
+  </div>
 )}
 ```
 
-New construction will show budget progress like fix & flips since builds have budgets.
-
 ---
 
-**File: `src/components/NewProjectModal.tsx`**
+**File: `supabase/functions/parse-product-screenshot/index.ts`** (NEW)
 
-Update to 3-column grid with new tab:
-```tsx
-<TabsList className="grid w-full grid-cols-3">
-  <TabsTrigger value="fix_flip" className="gap-2">
-    <Hammer className="h-4 w-4" />
-    Fix & Flip
-  </TabsTrigger>
-  <TabsTrigger value="rental" className="gap-2">
-    <Home className="h-4 w-4" />
-    Rental
-  </TabsTrigger>
-  <TabsTrigger value="new_construction" className="gap-2">
-    <Building2 className="h-4 w-4" />
-    New Build
-  </TabsTrigger>
-</TabsList>
-```
+Create a new edge function that uses Lovable AI Vision to parse product screenshots:
 
-Update placeholder text for new construction:
 ```typescript
-placeholder={
-  projectType === 'new_construction' 
-    ? "Lot 45 Custom Home, Lakeside Estates..." 
-    : projectType === 'fix_flip' 
-      ? "Oak Cliff Flip..." 
-      : "Rental Property 1..."
-}
+// Uses google/gemini-2.5-flash for speed
+// Extracts: name, price, model_number, finish, brand, dimensions
+// Returns structured JSON for form population
 ```
+
+**AI Prompt Focus:**
+- Extract product name (concise, 3-5 words)
+- Extract price (current/sale price preferred)
+- Extract model/SKU number
+- Extract finish/color
+- Extract brand
+- Handle Home Depot, Lowe's, Amazon, etc. layouts
 
 ---
 
-### UI Layout Change
-
-**Projects Page Tabs:**
+### Flow Diagram
 
 ```text
-BEFORE:
-┌─────────────────────┬─────────────────────┐
-│   Fix & Flips (1)   │    Rentals (1)      │
-└─────────────────────┴─────────────────────┘
-
-AFTER:
-┌───────────────┬───────────────┬───────────────────┐
-│ Fix & Flips(1)│  Rentals (1)  │ New Construction(0)│
-└───────────────┴───────────────┴───────────────────┘
+User pastes URL
+      │
+      ▼
+[Try Auto-Scrape]
+      │
+      ├── Success ──► Populate form ──► Category step
+      │
+      └── Fail ──► Show Friendly Options
+                          │
+            ┌─────────────┴─────────────┐
+            │                           │
+            ▼                           ▼
+     [Enter Manually]          [Upload Screenshot]
+            │                           │
+            ▼                           ▼
+    Save URL, go to           Parse with AI Vision
+    category step                       │
+                                        ▼
+                              Populate form ──► Category step
 ```
 
 ---
 
-### Empty State for New Construction
+### Key Behavior Changes
 
-When no new construction projects exist:
-```tsx
-<p className="text-muted-foreground mb-4">
-  No new construction projects yet
-</p>
-<Button onClick={() => setModalOpen(true)} className="gap-2">
-  <Plus className="h-4 w-4" />
-  Create Your First Build
-</Button>
-```
+| Current | New |
+|---------|-----|
+| Red error banner with "Error" styling | Gray/neutral info box with friendly message |
+| `toast.error()` on scrape fail | No toast (just show options) |
+| Single "Continue with manual entry" button | Two card options: Manual + Screenshot |
+| Feels like something broke | Feels like a simple alternative path |
 
 ---
 
-### Files to Modify
+### Files to Create/Modify
 
-| File | Changes |
-|------|---------|
-| Database | Add migration for enum value |
-| `src/types/index.ts` | Add `new_construction` to ProjectType |
-| `src/pages/Projects.tsx` | Add 3rd tab, filtering, counts, empty state |
-| `src/components/dashboard/ProjectCard.tsx` | Add Building2 icon, new construction display logic |
-| `src/components/NewProjectModal.tsx` | Add 3rd tab option with Building2 icon |
+| File | Action |
+|------|--------|
+| `src/components/procurement/ProcurementItemModal.tsx` | Modify - Replace error UI, add screenshot handler |
+| `supabase/functions/parse-product-screenshot/index.ts` | Create - New AI vision parsing function |
 
