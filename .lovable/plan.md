@@ -1,49 +1,84 @@
 
 
-## Plan: Remove Icons from Individual Category Cards
+## Plan: Add Rehab Budget Field with Auto-Update + Manual Override
 
-### Problem
+### Overview
 
-Currently, only some category cards have icons (Demolition, Framing, Electrical, etc.) while others don't. This creates visual inconsistency. The user wants a standardized look by removing all icons from the individual category items, while keeping the icons in the main group headers (Structure, MEPs, Finishes, etc.).
-
----
-
-### Changes Required
-
-**File: `src/components/budget/BudgetCanvas.tsx`**
-
-1. Remove the `CATEGORY_ICONS` mapping object (lines 51-63)
-2. Remove the icon prop from the `BudgetCategoryCard` component call (line 144)
-3. Clean up unused icon imports (Hammer, Wrench, Grid3X3, Fence, FileCheck)
-
-| Current | New |
-|---------|-----|
-| Some categories have icons, some don't | No categories have icons |
-| Group headers keep their icons | Group headers keep their icons (unchanged) |
+Add a "Rehab Budget" input field in the left sidebar after ARV. This field will:
+1. Automatically sync with the total calculated from all category budgets
+2. Allow manual entry for fast underwriting (when user doesn't want to fill in every category)
+3. When manually edited, distribute the value evenly across categories (optional behavior)
 
 ---
 
-### Visual Result
+### UI Changes
 
-```text
-BEFORE (inconsistent):
-> Structure ($0)
-  [Hammer] Demolition    [House] Framing    Foundation
-  Roofing                Drywall            Insulation
+**Left Sidebar - New Field Order:**
 
-AFTER (consistent):
-> Structure ($0)
-  Demolition    Framing    Foundation
-  Roofing       Drywall    Insulation
+| Field | Behavior |
+|-------|----------|
+| Purchase Price | Manual input |
+| After Repair Value (ARV) | Manual input |
+| **Rehab Budget** (NEW) | Auto-updates from category total OR manual entry |
+
+---
+
+### Implementation Details
+
+**File: `src/components/CreateBudgetModal.tsx`**
+
+1. **Add new state for manual override mode**
+   - Track whether user is manually editing the Rehab Budget vs auto-syncing
+   - `rehabBudgetOverride`: string (manual value when user types directly)
+   - `isRehabBudgetManual`: boolean (tracks if user is in manual mode)
+
+2. **Add Rehab Budget input after ARV field**
+   - Shows calculated `totalBudget` by default
+   - When user types, switches to manual mode
+   - Small "sync" button to reset back to auto-calculated value
+
+3. **Behavior Logic**
+   - Default: Field displays the sum of all category budgets (read-only appearance but editable)
+   - On manual edit: User types a value, this becomes the "override" 
+   - When user edits categories: If in auto mode, Rehab Budget updates; if in manual mode, stays fixed
+   - Optional: "Distribute" button spreads manual Rehab Budget evenly across categories
+
+4. **Update form reset logic**
+   - Reset manual override state when modal opens/closes
+   - Load rehab budget from template when editing
+
+---
+
+### Visual Design
+
+```
+After Repair Value (ARV)
+┌─────────────────────────┐
+│ $  350000               │
+└─────────────────────────┘
+
+Rehab Budget
+┌─────────────────────────┐
+│ $  85000          [↻]   │  ← Auto-synced (or manual with reset button)
+└─────────────────────────┘
 ```
 
-The main group headers (Structure, MEPs, Finishes, etc.) will retain their icons since those are consistently applied to all headers.
+The field will have a subtle indicator showing whether it's auto-calculated or manually set, with a reset/sync icon to return to auto mode.
 
 ---
 
 ### Files to Modify
 
-| File | Action |
-|------|--------|
-| `src/components/budget/BudgetCanvas.tsx` | Remove `CATEGORY_ICONS` object and stop passing icon prop to cards |
+| File | Changes |
+|------|---------|
+| `src/components/CreateBudgetModal.tsx` | Add Rehab Budget field with dual-mode logic (auto-sync + manual override) |
+
+---
+
+### Edge Cases Handled
+
+- **Editing existing template**: Load the stored total as the initial Rehab Budget value
+- **Manual then category edit**: If user manually sets Rehab Budget, then edits a category, the Rehab Budget stays fixed (manual mode)
+- **Reset to auto**: User can click sync icon to return to auto-calculated mode
+- **Empty state**: Shows $0 when no categories have values
 
