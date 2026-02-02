@@ -32,8 +32,8 @@ interface DealSidebarProps {
   isSaving: boolean;
   projects: Project[];
   isLoadingProjects: boolean;
-  includeClosingCosts: boolean;
-  onClosingCostsChange: (value: boolean) => void;
+  includeSellClosingCosts: boolean;
+  onSellClosingCostsChange: (value: boolean) => void;
 }
 
 export function DealSidebar({
@@ -50,8 +50,8 @@ export function DealSidebar({
   isSaving,
   projects,
   isLoadingProjects,
-  includeClosingCosts,
-  onClosingCostsChange,
+  includeSellClosingCosts,
+  onSellClosingCostsChange,
 }: DealSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedProject, setSelectedProject] = useState('');
@@ -60,9 +60,9 @@ export function DealSidebar({
   const purchasePriceNum = parseFloat(purchasePrice) || 0;
   const arvNum = parseFloat(arv) || 0;
 
-  // Quick calculations (respecting closing costs toggle)
-  const closingCostsBuy = includeClosingCosts ? purchasePriceNum * 0.02 : 0;
-  const closingCostsSell = includeClosingCosts ? arvNum * 0.06 : 0;
+  // Quick calculations - buy closing always included, sell closing toggleable
+  const closingCostsBuy = purchasePriceNum * 0.02;
+  const closingCostsSell = includeSellClosingCosts ? arvNum * 0.06 : 0;
   const holdingCosts = purchasePriceNum * 0.03;
 
   const formatCurrency = (value: number) => {
@@ -153,28 +153,26 @@ export function DealSidebar({
                     Estimated Costs
                   </h4>
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="closing-costs-toggle" className="text-xs text-muted-foreground">
-                      Closing
+                    <Label htmlFor="sell-closing-toggle" className="text-xs text-muted-foreground">
+                      Sell Closing
                     </Label>
                     <Switch
-                      id="closing-costs-toggle"
-                      checked={includeClosingCosts}
-                      onCheckedChange={onClosingCostsChange}
+                      id="sell-closing-toggle"
+                      checked={includeSellClosingCosts}
+                      onCheckedChange={onSellClosingCostsChange}
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5 text-sm">
-                  {includeClosingCosts && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Closing (Buy, 2%)</span>
-                      <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Closing (Buy, 2%)</span>
+                    <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Holding (3%)</span>
                     <span className="font-mono">{formatCurrency(holdingCosts)}</span>
                   </div>
-                  {includeClosingCosts && (
+                  {includeSellClosingCosts && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Closing (Sell, 6%)</span>
                       <span className="font-mono">{formatCurrency(closingCostsSell)}</span>

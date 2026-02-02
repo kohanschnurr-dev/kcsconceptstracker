@@ -38,7 +38,7 @@ export default function BudgetCalculator() {
   const [currentTemplateName, setCurrentTemplateName] = useState<string>('');
   const [profitBreakdownOpen, setProfitBreakdownOpen] = useState(false);
   const [maoPercentage, setMaoPercentage] = useState<number>(78);
-  const [includeClosingCosts, setIncludeClosingCosts] = useState(true);
+  const [includeSellClosingCosts, setIncludeSellClosingCosts] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
@@ -84,8 +84,10 @@ export default function BudgetCalculator() {
   const arvNum = parseFloat(arv) || 0;
 
   // Profit calculations
-  const closingCostsBuy = includeClosingCosts ? purchasePriceNum * 0.02 : 0;
-  const closingCostsSell = includeClosingCosts ? arvNum * 0.06 : 0;
+  // Buy closing costs - ALWAYS included
+  const closingCostsBuy = purchasePriceNum * 0.02;
+  // Sell closing costs - TOGGLE controlled
+  const closingCostsSell = includeSellClosingCosts ? arvNum * 0.06 : 0;
   const holdingCosts = purchasePriceNum * 0.03;
   
   const totalInvestment = purchasePriceNum + totalBudget + closingCostsBuy + holdingCosts;
@@ -365,12 +367,10 @@ export default function BudgetCalculator() {
                                   <span>Purchase Price</span>
                                   <span className="font-mono">{formatCurrency(purchasePriceNum)}</span>
                                 </div>
-                                {includeClosingCosts && (
-                                  <div className="flex justify-between text-sm">
-                                    <span>Closing Costs (2%)</span>
-                                    <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
-                                  </div>
-                                )}
+                                <div className="flex justify-between text-sm">
+                                  <span>Closing Costs (2%)</span>
+                                  <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
+                                </div>
                               </div>
                             </div>
 
@@ -397,7 +397,7 @@ export default function BudgetCalculator() {
                                   <span>ARV (Sale Price)</span>
                                   <span className="font-mono">{formatCurrency(arvNum)}</span>
                                 </div>
-                                {includeClosingCosts && (
+                                {includeSellClosingCosts && (
                                   <div className="flex justify-between text-sm">
                                     <span>Selling Costs (6%)</span>
                                     <span className="font-mono">-{formatCurrency(closingCostsSell)}</span>
@@ -491,8 +491,8 @@ export default function BudgetCalculator() {
             isSaving={isSaving}
             projects={projects}
             isLoadingProjects={isLoadingProjects}
-            includeClosingCosts={includeClosingCosts}
-            onClosingCostsChange={setIncludeClosingCosts}
+            includeSellClosingCosts={includeSellClosingCosts}
+            onSellClosingCostsChange={setIncludeSellClosingCosts}
           />
         </div>
       </div>
