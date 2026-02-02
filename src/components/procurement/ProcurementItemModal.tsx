@@ -44,7 +44,9 @@ import {
   Sparkles,
   Upload,
   Package,
-  X
+  X,
+  Pencil,
+  Camera
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FunctionsHttpError } from '@supabase/supabase-js';
@@ -389,13 +391,15 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [scraping, setScraping] = useState(false);
-  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [showFallbackOptions, setShowFallbackOptions] = useState(false);
+  const [parsingScreenshot, setParsingScreenshot] = useState(false);
   const [scrapeSuccess, setScrapeSuccess] = useState(false);
   const [step, setStep] = useState<Step>('url');
   const [urlInput, setUrlInput] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<FormData>({
     category: '',
@@ -592,7 +596,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         });
         setStep('details');
         setUrlInput('');
-        setScrapeError(null);
+        setShowFallbackOptions(false);
         setScrapeSuccess(false);
       } else if (open) {
         setFormData({
@@ -617,7 +621,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         });
         setStep('url');
         setUrlInput('');
-        setScrapeError(null);
+        setShowFallbackOptions(false);
         setScrapeSuccess(false);
       }
     };
@@ -632,7 +636,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     }
 
     setScraping(true);
-    setScrapeError(null);
+    setShowFallbackOptions(false);
     setScrapeSuccess(false);
 
     try {
@@ -672,25 +676,69 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
       setTimeout(() => setStep('category'), 500);
     } catch (err) {
       console.error('Scrape error:', err);
-      
-      let message = 'Failed to scrape URL';
-      
-      // Handle FunctionsHttpError to extract the actual error message from response body
-      if (err instanceof FunctionsHttpError) {
-        try {
-          const errorData = await err.context.json();
-          message = errorData.error || message;
-        } catch {
-          // If we can't parse JSON, use the default message
-        }
-      } else if (err instanceof Error) {
-        message = err.message;
-      }
-      
-      setScrapeError(message);
-      toast.error(message);
+      // Don't show error toast - just show friendly fallback options
+      setShowFallbackOptions(true);
     } finally {
       setScraping(false);
+    }
+  };
+
+  // Detect store from URL
+  const detectStoreFromUrl = (url: string): SourceStore => {
+    if (url.includes('homedepot')) return 'home_depot';
+    if (url.includes('lowes')) return 'lowes';
+    if (url.includes('amazon')) return 'amazon';
+    if (url.includes('build.com')) return 'build';
+    if (url.includes('ferguson')) return 'ferguson';
+    if (url.includes('flooranddecor')) return 'floor_decor';
+    return 'other';
+  };
+
+  // Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+    });
+  };
+
+  // Handle screenshot upload for AI parsing
+  const handleScreenshotUpload = async (file: File) => {
+    setParsingScreenshot(true);
+    try {
+      const base64 = await fileToBase64(file);
+      
+      const { data, error } = await supabase.functions.invoke('parse-product-screenshot', {
+        body: { image_base64: base64 }
+      });
+      
+      if (error) throw error;
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to parse screenshot');
+      }
+      
+      // Populate form with parsed data
+      setFormData(prev => ({
+        ...prev,
+        name: data.data.name || prev.name,
+        unit_price: data.data.price?.toString() || prev.unit_price,
+        model_number: data.data.model_number || prev.model_number,
+        finish: data.data.finish || prev.finish,
+        source_url: urlInput.trim(),
+        source_store: detectStoreFromUrl(urlInput),
+      }));
+      
+      setShowFallbackOptions(false);
+      setStep('category');
+      toast.success('Product info extracted from screenshot!');
+    } catch (err) {
+      console.error('Screenshot parse error:', err);
+      toast.error('Could not read screenshot - try entering manually');
+    } finally {
+      setParsingScreenshot(false);
     }
   };
 
@@ -817,32 +865,59 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           disabled={scraping}
         />
         
-        {scrapeError && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-2 rounded">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span>{scrapeError}</span>
+        {showFallbackOptions && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm bg-muted p-3 rounded-lg">
+              <LinkIcon className="h-4 w-4 flex-shrink-0" />
+              <span>Couldn't auto-extract from this page. No worries!</span>
             </div>
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              className="w-full"
-              onClick={() => {
-                // Save the URL even though scrape failed
-                setFormData(prev => ({
-                  ...prev,
-                  source_url: urlInput.trim(),
-                  source_store: urlInput.includes('homedepot') ? 'home_depot' : 
-                               urlInput.includes('lowes') ? 'lowes' :
-                               urlInput.includes('amazon') ? 'amazon' : 'other',
-                }));
-                setScrapeError(null);
-                setStep('category');
-                toast.info('Continuing with manual entry - URL saved');
+            
+            <div className="grid grid-cols-2 gap-3">
+              {/* Enter Manually Card */}
+              <button
+                onClick={() => {
+                  setFormData(prev => ({
+                    ...prev,
+                    source_url: urlInput.trim(),
+                    source_store: detectStoreFromUrl(urlInput),
+                  }));
+                  setShowFallbackOptions(false);
+                  setStep('category');
+                }}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors"
+              >
+                <Pencil className="h-6 w-6 text-muted-foreground" />
+                <span className="font-medium">Enter Manually</span>
+                <span className="text-xs text-muted-foreground text-center">Type in the details yourself</span>
+              </button>
+              
+              {/* Upload Screenshot Card */}
+              <button
+                onClick={() => screenshotInputRef.current?.click()}
+                disabled={parsingScreenshot}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+              >
+                {parsingScreenshot ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                ) : (
+                  <Camera className="h-6 w-6 text-muted-foreground" />
+                )}
+                <span className="font-medium">Upload Screenshot</span>
+                <span className="text-xs text-muted-foreground text-center">We'll read it for you</span>
+              </button>
+            </div>
+            
+            <input
+              type="file"
+              ref={screenshotInputRef}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleScreenshotUpload(file);
+                e.target.value = '';
               }}
-            >
-              Continue with manual entry →
-            </Button>
+              accept="image/*"
+              className="hidden"
+            />
           </div>
         )}
 

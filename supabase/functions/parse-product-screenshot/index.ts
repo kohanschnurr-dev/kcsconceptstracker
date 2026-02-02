@@ -1,0 +1,161 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const { image_base64 } = await req.json();
+    
+    if (!image_base64) {
+      return new Response(
+        JSON.stringify({ error: 'No image provided' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY is not configured");
+      return new Response(
+        JSON.stringify({ error: 'AI service not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log("Parsing product screenshot with AI vision...");
+
+    const systemPrompt = `You are an expert at extracting product information from retail website screenshots. 
+Extract the following details from the product page image:
+
+1. Product name - Create a concise 3-5 word title. For standard items use "[Finish] [Category] [Type]" pattern. For tile, use "[Size] [Material] Tile" format.
+2. Price - Extract the current/sale price. Just the number, no $ sign.
+3. Model number / SKU - Look for "Model #", "SKU", "Item #"
+4. Finish/Color - The color or finish of the product
+5. Brand - The manufacturer name
+
+Return ONLY valid JSON with this exact structure:
+{
+  "name": "string or null",
+  "price": number or null,
+  "model_number": "string or null",
+  "finish": "string or null",
+  "brand": "string or null"
+}
+
+If you cannot determine a value with confidence, use null.
+Do NOT include any explanation - only the JSON object.`;
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Extract product information from this retail website screenshot:"
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: image_base64.startsWith('data:') ? image_base64 : `data:image/png;base64,${image_base64}`
+                }
+              }
+            ]
+          }
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI API error:", response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded, please try again later' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits depleted' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ error: 'Failed to analyze screenshot' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const aiResponse = await response.json();
+    const content = aiResponse.choices?.[0]?.message?.content;
+    
+    console.log("AI response content:", content);
+
+    if (!content) {
+      return new Response(
+        JSON.stringify({ error: 'No response from AI' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse the JSON from the response
+    let productData;
+    try {
+      // Try to find JSON in the response (in case there's extra text)
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        productData = JSON.parse(jsonMatch[0]);
+      } else {
+        productData = JSON.parse(content);
+      }
+    } catch (parseError) {
+      console.error("Failed to parse AI response as JSON:", parseError);
+      return new Response(
+        JSON.stringify({ error: 'Could not parse product data from screenshot' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log("Parsed product data:", productData);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: {
+          name: productData.name || null,
+          price: productData.price || null,
+          model_number: productData.model_number || null,
+          finish: productData.finish || null,
+          brand: productData.brand || null,
+        }
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error("Error parsing product screenshot:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
