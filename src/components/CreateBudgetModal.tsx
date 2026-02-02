@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ClipboardList, DollarSign, FolderOpen, Save, Loader2 } from 'lucide-react';
+import { ClipboardList, DollarSign, FolderOpen, Save, Loader2, RefreshCw } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Dialog,
@@ -23,6 +23,7 @@ import {
 import { BUDGET_CATEGORIES } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface CreateBudgetModalProps {
   open: boolean;
@@ -71,6 +72,10 @@ export function CreateBudgetModal({
   const [purchasePrice, setPurchasePrice] = useState('');
   const [arv, setArv] = useState('');
   
+  // Rehab Budget - manual override mode
+  const [rehabBudgetManual, setRehabBudgetManual] = useState('');
+  const [isRehabBudgetManual, setIsRehabBudgetManual] = useState(false);
+  
   // Category budgets
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
@@ -95,12 +100,17 @@ export function CreateBudgetModal({
         });
         setCategoryBudgets(budgets);
         setActiveTab(defaultTab);
+        // Reset manual mode when editing
+        setIsRehabBudgetManual(false);
+        setRehabBudgetManual('');
       } else {
         // Reset form for new budget
         setTemplateName('');
         setTemplateDescription('');
         setPurchasePrice('');
         setArv('');
+        setIsRehabBudgetManual(false);
+        setRehabBudgetManual('');
         
         if (initialTotalBudget > 0) {
           const perCategory = Math.round(initialTotalBudget / BUDGET_CATEGORIES.length);
@@ -154,18 +164,43 @@ export function CreateBudgetModal({
     }));
   };
 
-  const totalBudget = Object.values(categoryBudgets).reduce((sum, val) => {
+  // Calculate total from categories
+  const calculatedTotal = Object.values(categoryBudgets).reduce((sum, val) => {
     return sum + (parseFloat(val) || 0);
   }, 0);
 
+  // The displayed/used total budget - manual value when in manual mode, otherwise calculated
+  const totalBudget = isRehabBudgetManual 
+    ? (parseFloat(rehabBudgetManual) || 0) 
+    : calculatedTotal;
+
+  // Handle rehab budget input change - switches to manual mode
+  const handleRehabBudgetChange = (value: string) => {
+    setRehabBudgetManual(value);
+    setIsRehabBudgetManual(true);
+  };
+
+  // Reset to auto-calculated mode
+  const handleResetRehabBudget = () => {
+    setIsRehabBudgetManual(false);
+    setRehabBudgetManual('');
+  };
+
   const handleDistributeEvenly = () => {
-    if (totalBudget > 0) {
-      const perCategory = Math.round(totalBudget / BUDGET_CATEGORIES.length);
+    const budgetToDistribute = isRehabBudgetManual 
+      ? (parseFloat(rehabBudgetManual) || 0) 
+      : calculatedTotal;
+    
+    if (budgetToDistribute > 0) {
+      const perCategory = Math.round(budgetToDistribute / BUDGET_CATEGORIES.length);
       const newBudgets: Record<string, string> = {};
       BUDGET_CATEGORIES.forEach(cat => {
         newBudgets[cat.value] = perCategory.toString();
       });
       setCategoryBudgets(newBudgets);
+      // After distributing, switch back to auto mode since categories now match
+      setIsRehabBudgetManual(false);
+      setRehabBudgetManual('');
     }
   };
 
@@ -409,6 +444,40 @@ export function CreateBudgetModal({
                     value={arv}
                     onChange={(e) => setArv(e.target.value)}
                   />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="rehabBudget" className="text-xs flex items-center gap-1">
+                  Rehab Budget
+                  {isRehabBudgetManual && (
+                    <span className="text-[10px] text-muted-foreground">(manual)</span>
+                  )}
+                </Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    id="rehabBudget"
+                    type="number"
+                    placeholder="0"
+                    className={cn(
+                      "pl-7 pr-8 h-9 font-mono",
+                      !isRehabBudgetManual && "text-muted-foreground"
+                    )}
+                    value={isRehabBudgetManual ? rehabBudgetManual : calculatedTotal.toString()}
+                    onChange={(e) => handleRehabBudgetChange(e.target.value)}
+                  />
+                  {isRehabBudgetManual && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7"
+                      onClick={handleResetRehabBudget}
+                      title="Reset to auto-calculated"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
