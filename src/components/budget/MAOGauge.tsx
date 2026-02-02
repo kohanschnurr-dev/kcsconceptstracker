@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Target, AlertTriangle, CheckCircle2, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -6,6 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,8 +28,10 @@ export function MAOGauge({
   maoPercentage = 78,
   onPercentageChange 
 }: MAOGaugeProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Dynamic MAO Rule: Max Offer = (ARV × percentage) - Rehab Budget
   const maxAllowableOffer = (arv * (maoPercentage / 100)) - currentBudget;
@@ -51,15 +54,38 @@ export function MAOGauge({
     ? Math.min(100, Math.max(0, (currentBudget / (arv * (maoPercentage / 100))) * 100))
     : 0;
 
+  // Focus input when custom mode is shown
+  useEffect(() => {
+    if (showCustomInput && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [showCustomInput]);
+
   const handlePercentageSelect = (percent: number) => {
     onPercentageChange?.(percent);
     setShowCustomInput(false);
+    setIsOpen(false);
+  };
+
+  const handleCustomClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowCustomInput(true);
   };
 
   const handleCustomSubmit = () => {
     const value = parseFloat(customValue);
     if (value > 0 && value <= 100) {
       onPercentageChange?.(value);
+      setShowCustomInput(false);
+      setCustomValue('');
+      setIsOpen(false);
+    }
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
       setShowCustomInput(false);
       setCustomValue('');
     }
@@ -155,19 +181,20 @@ export function MAOGauge({
           )}
         </div>
 
-        {/* Percentage Selector */}
-        <DropdownMenu>
+        {/* MAO Percentage Selector */}
+        <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
           <DropdownMenuTrigger asChild>
             <Button 
               variant="outline" 
               size="sm" 
-              className="h-8 gap-1 font-mono text-sm min-w-[70px]"
+              className="h-8 gap-1.5 font-mono text-sm min-w-[90px]"
             >
+              <span className="text-muted-foreground text-xs">MAO</span>
               {maoPercentage}%
               <ChevronDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32 bg-popover">
+          <DropdownMenuContent align="end" className="w-36 bg-popover z-50">
             {PRESET_PERCENTAGES.map((percent) => (
               <DropdownMenuItem
                 key={percent}
@@ -180,15 +207,23 @@ export function MAOGauge({
                 {percent}%
               </DropdownMenuItem>
             ))}
-            <DropdownMenuItem
-              onClick={() => setShowCustomInput(true)}
-              className="cursor-pointer"
-            >
-              Custom...
-            </DropdownMenuItem>
-            {showCustomInput && (
-              <div className="p-2 flex gap-2" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuSeparator />
+            {!showCustomInput ? (
+              <DropdownMenuItem
+                onSelect={(e) => e.preventDefault()}
+                onClick={handleCustomClick}
+                className="cursor-pointer"
+              >
+                Custom...
+              </DropdownMenuItem>
+            ) : (
+              <div 
+                className="p-2 flex gap-2" 
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
                 <Input
+                  ref={inputRef}
                   type="number"
                   placeholder="%"
                   value={customValue}
@@ -196,9 +231,16 @@ export function MAOGauge({
                   className="h-7 w-16 text-sm font-mono"
                   min="1"
                   max="100"
-                  onKeyDown={(e) => e.key === 'Enter' && handleCustomSubmit()}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') handleCustomSubmit();
+                    if (e.key === 'Escape') {
+                      setShowCustomInput(false);
+                      setCustomValue('');
+                    }
+                  }}
                 />
-                <Button size="sm" className="h-7" onClick={handleCustomSubmit}>
+                <Button size="sm" className="h-7 px-2" onClick={handleCustomSubmit}>
                   Set
                 </Button>
               </div>
