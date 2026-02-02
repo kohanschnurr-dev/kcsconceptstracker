@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { BudgetCategoryCard } from './BudgetCategoryCard';
 import { BUDGET_CATEGORIES } from '@/types';
 import { 
-  Hammer, Wrench, Zap, Droplets, Wind, PaintBucket, 
-  Grid3X3, Home, Fence, Trees, Package, FileCheck,
+  Zap, Droplets, PaintBucket, 
+  Home, Trees, Package,
   ChevronRight
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -48,19 +48,6 @@ const CATEGORY_GROUPS = [
   },
 ];
 
-// Icons for specific categories
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  demolition: <Hammer className="h-3.5 w-3.5" />,
-  framing: <Home className="h-3.5 w-3.5" />,
-  electrical: <Zap className="h-3.5 w-3.5" />,
-  plumbing: <Droplets className="h-3.5 w-3.5" />,
-  hvac: <Wind className="h-3.5 w-3.5" />,
-  painting: <PaintBucket className="h-3.5 w-3.5" />,
-  flooring: <Grid3X3 className="h-3.5 w-3.5" />,
-  landscaping: <Trees className="h-3.5 w-3.5" />,
-  fencing: <Fence className="h-3.5 w-3.5" />,
-  permits_inspections: <FileCheck className="h-3.5 w-3.5" />,
-};
 
 export function BudgetCanvas({ categoryBudgets, onCategoryChange }: BudgetCanvasProps) {
   const [openGroups, setOpenGroups] = useState<string[]>(['Structure']);
@@ -141,7 +128,6 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange }: BudgetCanvas
                     label={getCategoryLabel(category)}
                     value={categoryBudgets[category] || ''}
                     onChange={(value) => onCategoryChange(category, value)}
-                    icon={CATEGORY_ICONS[category]}
                   />
                 ))}
               </div>
