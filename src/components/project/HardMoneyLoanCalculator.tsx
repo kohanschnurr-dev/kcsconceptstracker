@@ -223,8 +223,8 @@ export function HardMoneyLoanCalculator({
               <Slider
                 value={[interestRate]}
                 onValueChange={([val]) => setInterestRate(val)}
-                min={8}
-                max={18}
+                min={2}
+                max={15}
                 step={0.25}
               />
               <div className="flex items-center gap-2">
