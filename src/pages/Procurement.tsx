@@ -110,6 +110,7 @@ export default function Procurement() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBundle, setFilterBundle] = useState<string>('all');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name_asc');
   const [modalOpen, setModalOpen] = useState(false);
   const [bundleModalOpen, setBundleModalOpen] = useState(false);
@@ -213,6 +214,10 @@ export default function Procurement() {
     return subtotal + tax;
   };
 
+  // Get unique categories for filter dropdown (sorted alphabetically)
+  const uniqueCategories = [...new Set(items.map(i => i.category).filter(Boolean))]
+    .sort((a, b) => (getCategoryLabel(a) || '').localeCompare(getCategoryLabel(b) || ''));
+
   const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.model_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -220,7 +225,8 @@ export default function Procurement() {
     const bundleIds = item.bundle_ids || [];
     const matchesBundle = filterBundle === 'all' || 
       (filterBundle === 'unassigned' ? bundleIds.length === 0 : bundleIds.includes(filterBundle));
-    return matchesSearch && matchesBundle;
+    const matchesCategory = filterCategory === 'all' || item.category === filterCategory;
+    return matchesSearch && matchesBundle && matchesCategory;
   });
 
   const sortedItems = [...filteredItems].sort((a, b) => {
@@ -377,6 +383,18 @@ export default function Procurement() {
                     <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                   ))}
                   <SelectItem value="unassigned">Unassigned</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-full md:w-48">
+                  <Package className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {uniqueCategories.map(cat => (
+                    <SelectItem key={cat} value={cat!}>{getCategoryLabel(cat)}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
