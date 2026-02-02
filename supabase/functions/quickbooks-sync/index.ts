@@ -270,8 +270,33 @@ serve(async (req) => {
         } else {
           console.error("Error updating existing expense:", error);
         }
+      } else if (!existing) {
+        // NEW: Check if splits exist for this transaction before inserting
+        const { data: existingSplits } = await serviceSupabase
+          .from("quickbooks_expenses")
+          .select("id")
+          .eq("user_id", expense.user_id)
+          .like("qb_id", `${expense.qb_id}_split_%`)
+          .limit(1);
+        
+        if (existingSplits && existingSplits.length > 0) {
+          // Splits exist - skip inserting parent record to prevent duplicates
+          skippedCount++;
+          console.log(`Skipping ${expense.qb_id} - splits already exist`);
+        } else {
+          // New expense - full upsert
+          const { error } = await serviceSupabase
+            .from("quickbooks_expenses")
+            .upsert(expense, { onConflict: "user_id,qb_id" });
+          
+          if (!error) {
+            successCount++;
+          } else {
+            console.error("Error upserting expense:", error);
+          }
+        }
       } else {
-        // New expense or not yet assigned - full upsert
+        // Existing but not yet assigned - update it
         const { error } = await serviceSupabase
           .from("quickbooks_expenses")
           .upsert(expense, { onConflict: "user_id,qb_id" });
