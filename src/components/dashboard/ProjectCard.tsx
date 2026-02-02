@@ -1,4 +1,4 @@
-import { MapPin, Calendar, Home, Hammer } from 'lucide-react';
+import { MapPin, Calendar, Home, Hammer, Building2 } from 'lucide-react';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -12,10 +12,12 @@ interface ProjectCardProps {
 export function ProjectCard({ project, onClick }: ProjectCardProps) {
   const totalSpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
   const isRental = project.projectType === 'rental';
+  const isNewConstruction = project.projectType === 'new_construction';
+  const showBudgetProgress = !isRental; // Show budget for fix_flip and new_construction
   
-  // Only calculate budget metrics for fix & flips
-  const percentSpent = isRental ? 0 : (totalSpent / project.totalBudget) * 100;
-  const remaining = isRental ? 0 : project.totalBudget - totalSpent;
+  // Calculate budget metrics for fix & flips and new construction
+  const percentSpent = showBudgetProgress ? (totalSpent / project.totalBudget) * 100 : 0;
+  const remaining = showBudgetProgress ? project.totalBudget - totalSpent : 0;
 
 
   const getProgressColor = () => {
@@ -45,7 +47,9 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
       <div className="flex items-start justify-between mb-4">
         <div>
           <div className="flex items-center gap-2">
-            {isRental ? (
+            {isNewConstruction ? (
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+            ) : isRental ? (
               <Home className="h-4 w-4 text-muted-foreground" />
             ) : (
               <Hammer className="h-4 w-4 text-muted-foreground" />
@@ -69,8 +73,8 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
         </Badge>
       </div>
 
-      {/* Budget Progress - Only for Fix & Flips */}
-      {!isRental && (
+      {/* Budget Progress - For Fix & Flips and New Construction */}
+      {showBudgetProgress && (
         <div className="space-y-2 mb-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Budget Progress</span>
@@ -99,7 +103,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-        {!isRental ? (
+        {showBudgetProgress ? (
           <div>
             <p className="text-xs text-muted-foreground">Remaining</p>
             <p className={cn(

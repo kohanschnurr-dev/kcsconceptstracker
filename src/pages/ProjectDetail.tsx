@@ -55,7 +55,7 @@ interface DBProject {
   name: string;
   address: string;
   status: 'active' | 'complete' | 'on_hold';
-  project_type: 'fix_flip' | 'rental';
+  project_type: 'fix_flip' | 'rental' | 'new_construction';
   total_budget: number;
   start_date: string;
   purchase_price?: number;
