@@ -1,10 +1,10 @@
 
 
-## Plan: Move Expand/Collapse All Button to Top Left
+## Plan: Faster Fail-Fast Timeout for URL Scraping
 
 ### Overview
 
-Move the "Expand All / Collapse All" toggle button from the top-right to the top-left of the budget category grid.
+Reduce the wait time when scraping fails by implementing an aggressive abort controller timeout on the frontend and reducing the Firecrawl timeout further. Currently users wait 15+ seconds for Home Depot/Lowes URLs that consistently timeout - we should give up much faster (5-8 seconds).
 
 ---
 
@@ -12,41 +12,100 @@ Move the "Expand All / Collapse All" toggle button from the top-right to the top
 
 | File | Change |
 |------|--------|
-| `src/components/budget/BudgetCanvas.tsx` | Change `justify-end` to `justify-start` on line 77 |
+| `supabase/functions/scrape-product-url/index.ts` | Reduce Firecrawl timeout from 15s to 8s |
+| `src/components/procurement/ProcurementItemModal.tsx` | Add AbortController with 10s client-side timeout |
 
 ---
 
 ### Technical Details
 
-**File: `src/components/budget/BudgetCanvas.tsx`**
+**File: `supabase/functions/scrape-product-url/index.ts`**
 
-Change the flex container alignment from right to left:
+Reduce the Firecrawl timeout from 15 seconds to 8 seconds. This is still enough time for most successful scrapes but fails faster on problematic sites:
 
-```tsx
-// Before (line 77)
-<div className="flex justify-end mb-2">
-
-// After
-<div className="flex justify-start mb-2">
+```typescript
+// Line 788 - Change timeout from 15000 to 8000
+const basicScrapeOptions = {
+  url: formattedUrl,
+  formats: ['markdown', 'html'],
+  onlyMainContent: false,
+  timeout: 8000, // 8 seconds - fail fast!
+  location: { country: 'US', languages: ['en-US'] },
+};
 ```
 
 ---
 
-### Visual Result
+**File: `src/components/procurement/ProcurementItemModal.tsx`**
+
+Add a client-side AbortController to ensure the frontend doesn't wait indefinitely:
+
+```typescript
+const handleScrapeUrl = async () => {
+  if (!urlInput.trim()) return;
+  
+  setScrapingUrl(true);
+  
+  // Create abort controller with 10s timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  
+  try {
+    const { data, error } = await supabase.functions.invoke('scrape-product-url', {
+      body: { url: urlInput.trim() },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    // ... rest of handler
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    if (error.name === 'AbortError') {
+      toast({
+        title: "Scraping timed out",
+        description: "This site is slow to respond. Try pasting a screenshot instead.",
+        variant: "destructive",
+      });
+    }
+    // ... error handling
+  }
+};
+```
+
+---
+
+### Timeout Strategy
 
 ```text
-Before:                                    After:
-                     [↕ Expand All]        [↕ Expand All]
-┌──────────────┐  ┌──────────────┐        ┌──────────────┐  ┌──────────────┐
-│ Structure    │  │ MEPs         │        │ Structure    │  │ MEPs         │
-└──────────────┘  └──────────────┘        └──────────────┘  └──────────────┘
+Current behavior:
+User clicks "Scrape" → Waits 15-30 seconds → Times out
+
+New behavior:
+User clicks "Scrape" → Waits 8-10 seconds max → Shows helpful message
+
+Timeline:
+0s ────────── 8s ─────────── 10s
+   Firecrawl    Edge fn      Client
+   timeout      returns      aborts
 ```
+
+---
+
+### User Experience
+
+| Before | After |
+|--------|-------|
+| Wait 15-30+ seconds for timeout | Wait max 10 seconds |
+| Unclear what's happening | Clear timeout message |
+| Same error for all failures | Suggests screenshot alternative |
 
 ---
 
 ### Files to Modify
 
-| File | Lines | Changes |
-|------|-------|---------|
-| `src/components/budget/BudgetCanvas.tsx` | 77 | Change `justify-end` → `justify-start` |
+| File | Changes |
+|------|---------|
+| `supabase/functions/scrape-product-url/index.ts` | Line 788: Change `timeout: 15000` to `timeout: 8000` |
+| `src/components/procurement/ProcurementItemModal.tsx` | Add AbortController with 10s timeout to `handleScrapeUrl` |
 
