@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, TrendingDown, Clock, Package, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, TrendingDown, Clock, Package, Plus, Pencil, Trash2, Star, ChevronDown, ChevronUp, MoreVertical } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ interface LoanPreset {
   closingCostsPercent: number;
   interestOnly: boolean;
   isBuiltIn?: boolean;
+  isDefault?: boolean;
 }
 
 const BUILT_IN_PRESETS: LoanPreset[] = [
@@ -113,6 +115,9 @@ export function HardMoneyLoanCalculator({
   const [deletePresetOpen, setDeletePresetOpen] = useState(false);
   const [deletingPreset, setDeletingPreset] = useState<LoanPreset | null>(null);
 
+  // Presets collapsible state
+  const [presetsOpen, setPresetsOpen] = useState(false);
+
   // Sync editable purchase price with prop
   useEffect(() => {
     setEditablePurchasePrice(purchasePrice);
@@ -127,7 +132,7 @@ export function HardMoneyLoanCalculator({
     setInterestOnly(initialInterestOnly);
   }, [initialLoanAmount, initialInterestRate, initialLoanTermMonths, initialPoints, initialClosingCosts, initialInterestOnly, editablePurchasePrice]);
 
-  // Fetch user presets
+  // Fetch user presets and auto-load default
   useEffect(() => {
     const fetchPresets = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -145,20 +150,32 @@ export function HardMoneyLoanCalculator({
       }
 
       if (data) {
-        setUserPresets(data.map(p => ({
+        const presets = data.map(p => ({
           id: p.id,
           name: p.name,
           interestRate: Number(p.interest_rate),
           loanTermMonths: p.loan_term_months,
           points: Number(p.points),
           closingCostsPercent: Number(p.closing_costs_percent),
-          interestOnly: p.interest_only,
-        })));
+          interestOnly: p.interest_only ?? true,
+          isDefault: p.is_default ?? false,
+        }));
+        setUserPresets(presets);
+
+        // Find and auto-load the default preset if no initial loan values were provided
+        const defaultPreset = presets.find(p => p.isDefault);
+        if (defaultPreset && !initialLoanAmount) {
+          setInterestRate(defaultPreset.interestRate);
+          setLoanTermMonths(defaultPreset.loanTermMonths);
+          setPoints(defaultPreset.points);
+          setClosingCosts(editablePurchasePrice * (defaultPreset.closingCostsPercent / 100));
+          setInterestOnly(defaultPreset.interestOnly);
+        }
       }
     };
 
     fetchPresets();
-  }, []);
+  }, [initialLoanAmount, editablePurchasePrice]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -321,6 +338,37 @@ export function HardMoneyLoanCalculator({
     setUpdatingPreset(false);
   };
 
+  // Set as default handler
+  const handleSetDefaultPreset = async (preset: LoanPreset) => {
+    if (!preset.id) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // First, clear any existing default
+    await supabase
+      .from('loan_presets')
+      .update({ is_default: false })
+      .eq('user_id', user.id);
+
+    // Then set the new default
+    const { error } = await supabase
+      .from('loan_presets')
+      .update({ is_default: true })
+      .eq('id', preset.id);
+
+    if (error) {
+      toast.error('Failed to set default preset');
+      console.error(error);
+    } else {
+      setUserPresets(prev => prev.map(p => ({
+        ...p,
+        isDefault: p.id === preset.id,
+      })));
+      toast.success(`"${preset.name}" set as default`);
+    }
+  };
+
   // Calculations
   const calculations = useMemo(() => {
     const monthlyRate = interestRate / 100 / 12;
@@ -421,64 +469,18 @@ export function HardMoneyLoanCalculator({
             Loan Calculator
           </CardTitle>
           <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="w-[180px] justify-start">
-                  <Package className="h-4 w-4 mr-2" />
-                  Load Preset
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Built-in Presets</DropdownMenuLabel>
-                {BUILT_IN_PRESETS.map((preset) => (
-                  <DropdownMenuItem key={preset.name} onClick={() => loadPreset(preset)}>
-                    {preset.name}
-                  </DropdownMenuItem>
-                ))}
-                {userPresets.length > 0 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>My Presets</DropdownMenuLabel>
-                    {userPresets.map((preset) => (
-                      <div key={preset.id} className="flex items-center group">
-                        <DropdownMenuItem 
-                          className="flex-1 cursor-pointer"
-                          onClick={() => loadPreset(preset)}
-                        >
-                          {preset.name}
-                        </DropdownMenuItem>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditDialog(preset);
-                          }}
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 text-destructive shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletingPreset(preset);
-                            setDeletePresetOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="sm" variant="outline" onClick={() => setSavePresetOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              Save Preset
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setPresetsOpen(!presetsOpen)}
+            >
+              <Package className="h-4 w-4 mr-2" />
+              Presets
+              {presetsOpen ? (
+                <ChevronUp className="h-4 w-4 ml-2" />
+              ) : (
+                <ChevronDown className="h-4 w-4 ml-2" />
+              )}
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
@@ -486,6 +488,92 @@ export function HardMoneyLoanCalculator({
             </Button>
           </div>
         </CardHeader>
+
+        {/* Collapsible Presets Panel */}
+        <Collapsible open={presetsOpen} onOpenChange={setPresetsOpen}>
+          <CollapsibleContent className="border-b border-border">
+            <div className="px-6 py-4 bg-muted/30">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium">Loan Presets</h4>
+                <Button size="sm" variant="outline" onClick={() => setSavePresetOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Save Current
+                </Button>
+              </div>
+              
+              {/* Built-in Presets */}
+              <div className="mb-4">
+                <p className="text-xs text-muted-foreground mb-2">Built-in</p>
+                <div className="flex flex-wrap gap-2">
+                  {BUILT_IN_PRESETS.map((preset) => (
+                    <Button
+                      key={preset.name}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => loadPreset(preset)}
+                    >
+                      {preset.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* User Presets */}
+              {userPresets.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">My Presets</p>
+                  <div className="flex flex-wrap gap-2">
+                    {userPresets.map((preset) => (
+                      <div key={preset.id} className="flex items-center gap-1 group">
+                        <Button
+                          variant={preset.isDefault ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => loadPreset(preset)}
+                          className="flex items-center gap-1"
+                        >
+                          {preset.isDefault && <Star className="h-3 w-3 fill-current" />}
+                          {preset.name}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                            >
+                              <MoreVertical className="h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleSetDefaultPreset(preset)}>
+                              <Star className="h-4 w-4 mr-2" />
+                              Set as Default
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEditDialog(preset)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => {
+                                setDeletingPreset(preset);
+                                setDeletePresetOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column - Inputs */}
