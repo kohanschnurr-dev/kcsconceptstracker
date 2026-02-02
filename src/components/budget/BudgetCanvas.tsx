@@ -4,7 +4,7 @@ import { BUDGET_CATEGORIES } from '@/types';
 import { 
   Zap, Droplets, PaintBucket, 
   Home, Trees, Package,
-  ChevronRight
+  ChevronRight, ChevronsUpDown, ChevronsDownUp
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
@@ -52,6 +52,17 @@ const CATEGORY_GROUPS = [
 export function BudgetCanvas({ categoryBudgets, onCategoryChange }: BudgetCanvasProps) {
   const [openGroups, setOpenGroups] = useState<string[]>(['Structure']);
 
+  const allGroupNames = CATEGORY_GROUPS.map(g => g.name);
+  const allExpanded = allGroupNames.every(name => openGroups.includes(name));
+
+  const toggleAll = () => {
+    if (allExpanded) {
+      setOpenGroups([]);
+    } else {
+      setOpenGroups(allGroupNames);
+    }
+  };
+
   const getCategoryLabel = (categoryValue: string) => {
     const cat = BUDGET_CATEGORIES.find(c => c.value === categoryValue);
     return cat?.label || categoryValue.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -81,8 +92,27 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange }: BudgetCanvas
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-      {CATEGORY_GROUPS.map((group) => {
+    <div>
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={toggleAll}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {allExpanded ? (
+            <>
+              <ChevronsDownUp className="h-3.5 w-3.5" />
+              Collapse All
+            </>
+          ) : (
+            <>
+              <ChevronsUpDown className="h-3.5 w-3.5" />
+              Expand All
+            </>
+          )}
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {CATEGORY_GROUPS.map((group) => {
         const GroupIcon = group.icon;
         const groupCategories = group.categories.filter(cat => 
           BUDGET_CATEGORIES.some(bc => bc.value === cat)
@@ -135,6 +165,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange }: BudgetCanvas
           </Collapsible>
         );
       })}
+      </div>
     </div>
   );
 }
