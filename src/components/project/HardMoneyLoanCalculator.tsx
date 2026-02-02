@@ -37,12 +37,13 @@ export function HardMoneyLoanCalculator({
 }: HardMoneyLoanCalculatorProps) {
   // Default loan amount to 75% of purchase price if not set
   const defaultLoanAmount = initialLoanAmount || (purchasePrice * 0.75);
+  const defaultClosingCosts = initialClosingCosts ?? (purchasePrice * 0.02);
   
   const [loanAmount, setLoanAmount] = useState(defaultLoanAmount);
   const [interestRate, setInterestRate] = useState(initialInterestRate);
   const [loanTermMonths, setLoanTermMonths] = useState(initialLoanTermMonths);
   const [points, setPoints] = useState(initialPoints);
-  const [closingCosts, setClosingCosts] = useState(initialClosingCosts);
+  const [closingCosts, setClosingCosts] = useState(defaultClosingCosts);
   const [interestOnly, setInterestOnly] = useState(initialInterestOnly);
   const [saving, setSaving] = useState(false);
 
@@ -51,7 +52,7 @@ export function HardMoneyLoanCalculator({
     setInterestRate(initialInterestRate);
     setLoanTermMonths(initialLoanTermMonths);
     setPoints(initialPoints);
-    setClosingCosts(initialClosingCosts);
+    setClosingCosts(initialClosingCosts ?? (purchasePrice * 0.02));
     setInterestOnly(initialInterestOnly);
   }, [initialLoanAmount, initialInterestRate, initialLoanTermMonths, initialPoints, initialClosingCosts, initialInterestOnly, purchasePrice]);
 
@@ -167,7 +168,7 @@ export function HardMoneyLoanCalculator({
 
   const loanToValue = purchasePrice > 0 ? ((loanAmount / purchasePrice) * 100) : 0;
 
-  const termOptions = [6, 12, 18];
+  const termOptions = [6, 12, 18, 360];
 
   return (
     <Card className="bg-card border-border">
@@ -255,7 +256,7 @@ export function HardMoneyLoanCalculator({
                     onClick={() => setLoanTermMonths(term)}
                     className="flex-1 rounded-sm"
                   >
-                    {term}
+                    {term === 360 ? '30yr' : term}
                   </Button>
                 ))}
                 <Input
@@ -264,7 +265,7 @@ export function HardMoneyLoanCalculator({
                   onChange={(e) => setLoanTermMonths(Number(e.target.value))}
                   className="w-20 rounded-sm"
                   min={1}
-                  max={36}
+                  max={360}
                 />
               </div>
             </div>
