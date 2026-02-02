@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.match-receipts]
 verify_jwt = false
+
+[functions.parse-product-screenshot]
+verify_jwt = false
