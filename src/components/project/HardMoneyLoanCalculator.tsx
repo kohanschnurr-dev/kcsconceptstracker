@@ -219,14 +219,14 @@ export function HardMoneyLoanCalculator({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="interest-rate">Annual Interest Rate</Label>
-                <span className="text-sm font-mono text-primary">{interestRate.toFixed(1)}%</span>
+                <span className="text-sm font-mono text-primary">{interestRate.toFixed(2)}%</span>
               </div>
               <Slider
                 value={[interestRate]}
                 onValueChange={([val]) => setInterestRate(val)}
                 min={2}
                 max={15}
-                step={0.25}
+                step={0.01}
               />
               <div className="flex items-center gap-2">
                 <Percent className="h-4 w-4 text-muted-foreground" />
@@ -236,7 +236,7 @@ export function HardMoneyLoanCalculator({
                   value={interestRate || ''}
                   onChange={(e) => setInterestRate(Number(e.target.value))}
                   className="rounded-sm"
-                  step={0.25}
+                  step={0.01}
                   min={0}
                   max={30}
                 />
