@@ -648,10 +648,16 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     setShowFallbackOptions(false);
     setScrapeSuccess(false);
 
+    // Create abort controller with 10s client-side timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     try {
       const { data, error } = await supabase.functions.invoke('scrape-product-url', {
         body: { url: urlInput.trim() },
       });
+
+      clearTimeout(timeoutId);
 
       if (error) throw error;
 
@@ -683,9 +689,16 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
       
       // Move to category step to confirm/change category
       setTimeout(() => setStep('category'), 500);
-    } catch (err) {
+    } catch (err: any) {
+      clearTimeout(timeoutId);
       console.error('Scrape error:', err);
-      // Don't show error toast - just show friendly fallback options
+      
+      // Check if it was a timeout abort
+      if (err?.name === 'AbortError') {
+        toast.error('Scraping timed out. Try pasting a screenshot instead.');
+      }
+      
+      // Show friendly fallback options
       setShowFallbackOptions(true);
     } finally {
       setScraping(false);

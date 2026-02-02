@@ -785,7 +785,7 @@ Deno.serve(async (req) => {
       url: formattedUrl,
       formats: ['markdown', 'html'],
       onlyMainContent: false,
-      timeout: 15000, // 15 seconds - fast!
+      timeout: 8000, // 8 seconds - fail fast!
       location: { country: 'US', languages: ['en-US'] },
     };
     
