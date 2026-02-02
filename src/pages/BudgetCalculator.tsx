@@ -322,26 +322,7 @@ export default function BudgetCalculator() {
           {/* Budget Canvas - Primary Workspace */}
           <div className="flex-1 overflow-hidden flex flex-col">
             <ScrollArea className="flex-1">
-              <div className="p-6">
-                {/* Total Budget Summary */}
-                <div className="flex items-center justify-between mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20">
-                  <div className="flex items-center gap-3">
-                    <DollarSign className="h-6 w-6 text-primary" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Rehab Budget</p>
-                      <p className="text-3xl font-bold font-mono text-primary">
-                        {formatCurrency(totalBudget)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Categories with budget</p>
-                    <p className="text-xl font-semibold">
-                      {Object.values(categoryBudgets).filter(v => parseFloat(v) > 0).length} / {BUDGET_CATEGORIES.length}
-                    </p>
-                  </div>
-                </div>
-
+              <div className="p-4">
                 {/* Category Cards Grid */}
                 <BudgetCanvas
                   categoryBudgets={categoryBudgets}
