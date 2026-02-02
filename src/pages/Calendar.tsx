@@ -263,7 +263,7 @@ export default function Calendar() {
 
   return (
     <MainLayout>
-      <div className="space-y-4">
+      <div className="flex flex-col min-h-[calc(100vh-10rem)] gap-4">
         <CalendarHeader
           view={view}
           onViewChange={setView}
@@ -286,7 +286,7 @@ export default function Calendar() {
           <CalendarLegend />
         </div>
 
-        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex-1 flex flex-col">
           {view === 'monthly' && (
             <MonthlyView
               currentDate={currentDate}

@@ -43,7 +43,7 @@ export function MonthlyView({ currentDate, tasks, onTaskClick }: MonthlyViewProp
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <div className="p-4">
+    <div className="flex flex-col h-full p-4">
       {/* Week day headers */}
       <div className="grid grid-cols-7 gap-1 mb-2">
         {weekDays.map(day => (
@@ -54,7 +54,7 @@ export function MonthlyView({ currentDate, tasks, onTaskClick }: MonthlyViewProp
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1 flex-1">
         {days.map(day => {
           const dayTasks = getTasksForDay(day);
           const isCurrentMonth = isSameMonth(day, currentDate);
@@ -62,8 +62,8 @@ export function MonthlyView({ currentDate, tasks, onTaskClick }: MonthlyViewProp
           return (
             <div
               key={day.toISOString()}
-              className={cn(
-                'min-h-[120px] p-2 rounded-lg border transition-colors',
+                className={cn(
+                'min-h-[140px] p-2 rounded-lg border transition-colors',
                 isCurrentMonth 
                   ? 'bg-slate-800/50 border-slate-700' 
                   : 'bg-slate-900/50 border-slate-800',
