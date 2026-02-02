@@ -1,10 +1,10 @@
 
 
-## Plan: Add Expand/Collapse All Button for Budget Category Groups
+## Plan: Auto-Extract Product Image from Screenshot using AI Vision
 
 ### Overview
 
-Add a quick toggle button above the category groups that allows users to expand or collapse all 6 groups at once, instead of clicking each one individually.
+When parsing a product screenshot with AI, also use AI image generation to extract/isolate the product image from the screenshot. This automatically populates the "Product Image" field, saving the user from having to manually upload a separate product photo.
 
 ---
 
@@ -12,86 +12,182 @@ Add a quick toggle button above the category groups that allows users to expand 
 
 | File | Change |
 |------|--------|
-| `src/components/budget/BudgetCanvas.tsx` | Add expand/collapse all button with toggle state logic |
+| `supabase/functions/parse-product-screenshot/index.ts` | Add a second AI call to extract/generate the product image |
+| `src/components/procurement/ProcurementItemModal.tsx` | Update `handleScreenshotUpload` to handle the returned image and upload it to storage |
+
+---
+
+### Technical Approach
+
+Use the Lovable AI image generation model (`google/gemini-2.5-flash-image`) in a follow-up call after extracting text data. The model can:
+1. Look at the screenshot
+2. Generate a clean, isolated image of just the product
+
+This is more reliable than trying to crop coordinates from the screenshot, since AI can intelligently extract just the product.
 
 ---
 
 ### Technical Details
 
-**File: `src/components/budget/BudgetCanvas.tsx`**
+**File: `supabase/functions/parse-product-screenshot/index.ts`**
 
-**1. Add helper to determine current state:**
+After extracting text data, make a second AI call to generate the product image:
+
 ```typescript
-const allGroupNames = CATEGORY_GROUPS.map(g => g.name);
-const allExpanded = allGroupNames.every(name => openGroups.includes(name));
-const allCollapsed = openGroups.length === 0;
+// Second AI call - extract product image
+const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "google/gemini-2.5-flash-image",
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Extract just the main product image from this retail website screenshot. Generate a clean, isolated image of the product on a plain white background. Focus only on the product itself, not the webpage elements."
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: image_base64.startsWith('data:') ? image_base64 : `data:image/png;base64,${image_base64}`
+            }
+          }
+        ]
+      }
+    ],
+    modalities: ["image", "text"]
+  }),
+});
+
+// Extract the generated image from response
+const imageData = await imageResponse.json();
+const extractedImage = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 ```
 
-**2. Add toggle all function:**
+Return the extracted image in the response:
 ```typescript
-const toggleAll = () => {
-  if (allExpanded) {
-    setOpenGroups([]); // Collapse all
-  } else {
-    setOpenGroups(allGroupNames); // Expand all
-  }
-};
-```
-
-**3. Add button above the grid:**
-```tsx
-<div className="flex justify-end mb-2">
-  <button
-    onClick={toggleAll}
-    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-  >
-    {allExpanded ? (
-      <>
-        <ChevronsDownUp className="h-3.5 w-3.5" />
-        Collapse All
-      </>
-    ) : (
-      <>
-        <ChevronsUpDown className="h-3.5 w-3.5" />
-        Expand All
-      </>
-    )}
-  </button>
-</div>
-```
-
-**4. Add new icon imports:**
-```typescript
-import { ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
+return new Response(
+  JSON.stringify({
+    success: true,
+    data: {
+      name: productData.name || null,
+      price: productData.price || null,
+      model_number: productData.model_number || null,
+      finish: productData.finish || null,
+      brand: productData.brand || null,
+      product_image: extractedImage || null, // NEW: base64 image data
+    }
+  }),
+  ...
+);
 ```
 
 ---
 
-### UI Layout
+**File: `src/components/procurement/ProcurementItemModal.tsx`**
 
-```text
-                                    [↕ Expand All]  ← New button (right-aligned)
-┌───────────────────────────┐  ┌───────────────────────────┐
-│ > 🏠 Structure       $0   │  │ > ⚡ MEPs            $0   │
-└───────────────────────────┘  └───────────────────────────┘
-┌───────────────────────────┐  ┌───────────────────────────┐
-│ > 🎨 Finishes        $0   │  │ > 💧 Kitchen & Bath  $0   │
-└───────────────────────────┘  └───────────────────────────┘
-┌───────────────────────────┐  ┌───────────────────────────┐
-│ > 🌳 Exterior        $0   │  │ > 📦 Other           $0   │
-└───────────────────────────┘  └───────────────────────────┘
+Update `handleScreenshotUpload` to handle the extracted image:
+
+```typescript
+const handleScreenshotUpload = async (file: File) => {
+  setParsingScreenshot(true);
+  try {
+    const base64 = await fileToBase64(file);
+    
+    const { data, error } = await supabase.functions.invoke('parse-product-screenshot', {
+      body: { image_base64: base64 }
+    });
+    
+    if (error) throw error;
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to parse screenshot');
+    }
+    
+    // If AI extracted a product image, upload it to storage
+    let imageUrl = '';
+    if (data.data.product_image) {
+      imageUrl = await uploadBase64Image(data.data.product_image);
+    }
+    
+    // Populate form with parsed data including image
+    setFormData(prev => ({
+      ...prev,
+      name: data.data.name || prev.name,
+      unit_price: data.data.price?.toString() || prev.unit_price,
+      model_number: data.data.model_number || prev.model_number,
+      finish: data.data.finish || prev.finish,
+      source_url: urlInput.trim(),
+      source_store: detectStoreFromUrl(urlInput),
+      image_url: imageUrl || prev.image_url, // NEW: use extracted image
+    }));
+    
+    ...
+  }
+};
+
+// Helper to upload base64 image to Supabase storage
+const uploadBase64Image = async (base64Data: string): Promise<string> => {
+  // Convert base64 to blob
+  const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, '');
+  const byteCharacters = atob(base64Content);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: 'image/png' });
+  
+  const fileName = `${Date.now()}-ai-extracted.png`;
+  const { error } = await supabase.storage
+    .from('procurement-images')
+    .upload(fileName, blob);
+  
+  if (error) throw error;
+  
+  const { data } = supabase.storage.from('procurement-images').getPublicUrl(fileName);
+  return data.publicUrl;
+};
 ```
 
-After clicking "Expand All":
+---
+
+### Flow
+
 ```text
-                                    [↕ Collapse All]  ← Text changes
-┌───────────────────────────┐  ┌───────────────────────────┐
-│ ∨ 🏠 Structure       $0   │  │ ∨ ⚡ MEPs            $0   │
-│  [Demolition] [Framing]   │  │  [Electrical] [Plumbing]  │
-│  [Foundation] ...         │  │  [HVAC] ...               │
-└───────────────────────────┘  └───────────────────────────┘
-...
+User pastes/uploads product screenshot
+            │
+            ▼
+[Edge Function: parse-product-screenshot]
+            │
+            ├─► AI Call #1: Extract text data (name, price, model, etc.)
+            │
+            └─► AI Call #2: Extract/generate product image
+                     │
+                     ▼
+            Return both to frontend
+            │
+            ▼
+[Frontend uploads extracted image to storage]
+            │
+            ▼
+Form populated with all data + product image
 ```
+
+---
+
+### User Experience
+
+| Before | After |
+|--------|-------|
+| Parse screenshot → Only text fields filled | Parse screenshot → Text fields + Product Image filled |
+| Product Image shows empty placeholder | Product Image shows the extracted product photo |
+| User must manually upload product image | Product image auto-populated (user can still change it) |
 
 ---
 
@@ -99,5 +195,6 @@ After clicking "Expand All":
 
 | File | Changes |
 |------|---------|
-| `src/components/budget/BudgetCanvas.tsx` | Add expand/collapse all button, toggle logic, and new icon imports |
+| `supabase/functions/parse-product-screenshot/index.ts` | Add second AI call with image generation model, return `product_image` in response |
+| `src/components/procurement/ProcurementItemModal.tsx` | Add `uploadBase64Image` helper, update `handleScreenshotUpload` to process and save extracted image |
 
