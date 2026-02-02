@@ -1,115 +1,55 @@
 
-## Plan: Fix Duplicate Parent Records in QuickBooks Pending Queue
 
-### Problem
+## Plan: Clean Up Orphan Parent QuickBooks Records
 
-When SmartSplit imports a transaction, the original record's `qb_id` is renamed with a `_split_` suffix (e.g., `purchase_802` becomes `purchase_802_split_framing`). On the next QuickBooks sync, the system looks for `qb_id = 'purchase_802'`, finds nothing (because it was renamed), and creates a **duplicate parent record** with `is_imported: false`. This causes already-imported transactions to reappear in the pending queue.
+### Problem Confirmed
 
-### Root Cause
+The database contains an orphan parent record (`purchase_802`) with `is_imported: false` while its split children exist with `is_imported: true`. This is why Home Depot $211.42 still appears in the pending queue despite the edge function fix being deployed.
 
-```text
-Sync Logic (current):
-1. Fetch transaction from QuickBooks: qb_id = "purchase_802"
-2. Check: Does qb_id = "purchase_802" exist? → NO (it was renamed to "_split_")
-3. Insert new record with qb_id = "purchase_802", is_imported = false
-4. Result: Duplicate parent appears in pending queue
+**Evidence from network logs:**
 ```
+qb_id: "purchase_802"
+amount: 211.42
+is_imported: false  ← Orphan parent still exists!
+```
+
+**Evidence from database:**
+```
+purchase_802_split_demolition → is_imported: true
+purchase_802_split_drywall → is_imported: true
+purchase_802_split_framing → is_imported: true
+purchase_802_split_hardware → is_imported: true
+```
+
+---
 
 ### Solution
 
-Modify the sync function to check for **split records** before inserting new transactions:
+**Step 1: Database Cleanup Migration**
 
-```text
-Sync Logic (fixed):
-1. Fetch transaction from QuickBooks: qb_id = "purchase_802"
-2. Check: Does qb_id = "purchase_802" exist? → NO
-3. NEW CHECK: Do any records with qb_id LIKE "purchase_802_split_%" exist? → YES
-4. Skip insert (splits already exist)
-5. Result: No duplicate, queue stays clean
+Create a SQL migration to delete ALL existing orphan parent records where splits already exist:
+
+```sql
+DELETE FROM quickbooks_expenses parent
+WHERE parent.is_imported = false 
+  AND parent.qb_id NOT LIKE '%_split_%'
+  AND EXISTS (
+    SELECT 1 
+    FROM quickbooks_expenses splits 
+    WHERE splits.qb_id LIKE parent.qb_id || '_split_%'
+      AND splits.user_id = parent.user_id
+  );
 ```
 
----
+This will:
+- Find parent records (`qb_id` without `_split_`)
+- That are not imported (`is_imported = false`)
+- Where split records already exist for the same transaction
+- Delete only those orphan parents
 
-### Technical Changes
+**Step 2: Verify Edge Function Fix**
 
-**File: `supabase/functions/quickbooks-sync/index.ts`**
-
-| Lines | Change |
-|-------|--------|
-| 244-284 | Add split detection logic before upsert |
-
-**Updated Sync Logic:**
-
-```typescript
-for (const expense of expenses) {
-  // First, check if this expense already exists and has been assigned
-  const { data: existing } = await serviceSupabase
-    .from("quickbooks_expenses")
-    .select("id, project_id, category_id, is_imported")
-    .eq("user_id", expense.user_id)
-    .eq("qb_id", expense.qb_id)
-    .maybeSingle();
-  
-  if (existing && (existing.project_id || existing.is_imported)) {
-    // Expense was already assigned - only update non-assignment fields
-    // ... (existing update logic)
-    skippedCount++;
-  } else if (!existing) {
-    // NEW: Check if splits exist for this transaction
-    const { data: existingSplits } = await serviceSupabase
-      .from("quickbooks_expenses")
-      .select("id")
-      .eq("user_id", expense.user_id)
-      .like("qb_id", `${expense.qb_id}_split_%`)
-      .limit(1);
-    
-    if (existingSplits && existingSplits.length > 0) {
-      // Splits exist - skip inserting parent record
-      skippedCount++;
-      console.log(`Skipping ${expense.qb_id} - splits already exist`);
-    } else {
-      // New expense - full upsert
-      const { error } = await serviceSupabase
-        .from("quickbooks_expenses")
-        .upsert(expense, { onConflict: "user_id,qb_id" });
-      
-      if (!error) {
-        successCount++;
-      }
-    }
-  } else {
-    // Existing but not yet assigned - update it
-    const { error } = await serviceSupabase
-      .from("quickbooks_expenses")
-      .upsert(expense, { onConflict: "user_id,qb_id" });
-    
-    if (!error) {
-      successCount++;
-    }
-  }
-}
-```
-
----
-
-### Cleanup: Remove Existing Orphan Parents
-
-After deploying the fix, we also need to clean up existing orphan parent records. We can either:
-
-1. **Manual SQL cleanup** (one-time):
-   ```sql
-   DELETE FROM quickbooks_expenses 
-   WHERE is_imported = false 
-     AND qb_id NOT LIKE '%_split_%'
-     AND EXISTS (
-       SELECT 1 FROM quickbooks_expenses splits 
-       WHERE splits.qb_id LIKE quickbooks_expenses.qb_id || '_split_%'
-     );
-   ```
-
-2. **Add cleanup logic to fetchPendingExpenses** in the frontend to filter out orphan parents
-
-I recommend option 1 (SQL cleanup) for existing data, plus the edge function fix for future syncs.
+The edge function was already updated to prevent future orphans. After cleanup, the sync will work correctly.
 
 ---
 
@@ -117,10 +57,13 @@ I recommend option 1 (SQL cleanup) for existing data, plus the edge function fix
 
 | File | Action |
 |------|--------|
-| `supabase/functions/quickbooks-sync/index.ts` | Add split detection before insert |
+| Database migration | Execute cleanup SQL |
+
+---
 
 ### Result
 
+- Home Depot $211.42 will be removed from the pending queue
+- Any other orphan parents will also be cleaned up
 - Future syncs will not recreate parent records when splits exist
-- The Home Depot $211.42 transaction will no longer appear in the pending queue after cleanup
-- SmartSplit workflow will continue to work correctly
+
