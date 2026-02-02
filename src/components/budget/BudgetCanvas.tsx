@@ -93,7 +93,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange }: BudgetCanvas
 
   return (
     <div>
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-start mb-2">
         <button
           onClick={toggleAll}
           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
