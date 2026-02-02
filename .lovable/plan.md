@@ -1,48 +1,43 @@
 
 
-## Plan: Make Calendar Fill More Vertical Space
+## Plan: Increase Calendar Cell Height to Fill More Vertical Space
 
 ### Problem
 
-The Project Schedule calendar on the project detail page has small calendar cells (`min-h-[60px]`) which leaves significant dead space below the calendar grid, especially on larger screens.
-
----
+The main Calendar page (at `/calendar`) has significant dead space below the calendar grid. The current cell height of `100px` leaves a lot of empty space, especially on larger screens.
 
 ### Solution
 
-Increase the calendar cell heights to better utilize the available vertical space, making the calendar more prominent and easier to interact with.
+Increase the calendar day cell height from `100px` to `120px` in the MonthlyView component. This is a subtle 20% increase that will help fill more vertical space without being overwhelming.
 
 ---
 
-### Changes to ProjectCalendar.tsx
+### Technical Changes
 
-**File: `src/components/project/ProjectCalendar.tsx`**
+**File: `src/components/calendar/MonthlyView.tsx`**
 
 | Line | Current | New |
 |------|---------|-----|
-| 181 | `min-h-[60px]` | `min-h-[100px]` |
+| 66 | `min-h-[100px]` | `min-h-[120px]` |
 
-This matches the height used in the main Calendar page's MonthlyView component, providing visual consistency across the application.
-
-**Additional improvements:**
-- Increase cell padding from `p-1` to `p-2` for better spacing
-- Increase day number size from `w-6 h-6` to `w-7 h-7` for better touch targets
-- Show up to 3 events per cell instead of 2 before showing "+X more"
+This single change will make the calendar grid taller, reducing the dead space below while keeping the same overall design and functionality.
 
 ---
 
-### Visual Result
+### Visual Impact
 
 ```text
-Before (60px cells):              After (100px cells):
-+--+--+--+--+--+--+--+           +----+----+----+----+----+----+----+
-|1 |2 |3 |4 |5 |6 |7 |           | 1  | 2  | 3  | 4  | 5  | 6  | 7  |
-|  |██|  |  |  |  |  |           |    | ██ |    |    |    |    |    |
-+--+--+--+--+--+--+--+           |    | ██ |    |    |    |    |    |
-|8 |9 |10|..                     +----+----+----+----+----+----+----+
-                                 | 8  | 9  | 10 |...
-[lots of empty space]
-                                 [Calendar fills more of the screen]
+Before (100px cells):           After (120px cells):
++--+--+--+--+--+--+--+         +---+---+---+---+---+---+---+
+|1 |2 |3 |4 |5 |6 |7 |         | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|  |██|██|  |  |  |  |         |   | ██| ██|   |   |   |   |
++--+--+--+--+--+--+--+         |   |   |   |   |   |   |   |
+|8 |9 |10|11|12|13|14|         +---+---+---+---+---+---+---+
+...                            | 8 | 9 | 10| 11| 12| 13| 14|
+                               |   |   |   |   |   |   |   |
+[lots of empty space]          +---+---+---+---+---+---+---+
+                               ...
+                               [Less dead space below]
 ```
 
 ---
@@ -51,5 +46,5 @@ Before (60px cells):              After (100px cells):
 
 | File | Action |
 |------|--------|
-| `src/components/project/ProjectCalendar.tsx` | Increase cell height and improve spacing |
+| `src/components/calendar/MonthlyView.tsx` | Change `min-h-[100px]` to `min-h-[120px]` on line 66 |
 
