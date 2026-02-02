@@ -171,14 +171,14 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
             const isCurrentMonth = isSameMonth(day, currentDate);
             const dayKey = day.toISOString();
             const isExpanded = expandedDay === dayKey;
-            const visibleTasks = isExpanded ? dayTasks : dayTasks.slice(0, 2);
-            const hasMore = dayTasks.length > 2;
+            const visibleTasks = isExpanded ? dayTasks : dayTasks.slice(0, 3);
+            const hasMore = dayTasks.length > 3;
             
             return (
               <div
                 key={dayKey}
                 className={cn(
-                  'min-h-[60px] p-1 rounded border transition-colors',
+                  'min-h-[100px] p-2 rounded border transition-colors',
                   isCurrentMonth 
                     ? 'bg-slate-800/50 border-slate-700' 
                     : 'bg-slate-900/50 border-slate-800',
@@ -193,7 +193,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                     }
                   }}
                   className={cn(
-                    'text-xs font-medium mb-1 w-6 h-6 rounded-full flex items-center justify-center transition-colors',
+                    'text-xs font-medium mb-1 w-7 h-7 rounded-full flex items-center justify-center transition-colors',
                     isToday(day) 
                       ? 'text-emerald-400' 
                       : isCurrentMonth 
@@ -224,7 +224,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                       onClick={() => setExpandedDay(dayKey)}
                       className="text-[10px] text-slate-500 text-center w-full hover:text-slate-300 transition-colors"
                     >
-                      +{dayTasks.length - 2} more
+                      +{dayTasks.length - 3} more
                     </button>
                   )}
                 </div>
