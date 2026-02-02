@@ -545,6 +545,7 @@ export default function ProjectDetail() {
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="financials">Financials</TabsTrigger>
+            {!isRental && <TabsTrigger value="loan">Loan</TabsTrigger>}
             <TabsTrigger value="team">Team</TabsTrigger>
             <TabsTrigger value="photos">Photos</TabsTrigger>
             <TabsTrigger value="logs">Logs ({dailyLogs.length})</TabsTrigger>
@@ -582,27 +583,13 @@ export default function ProjectDetail() {
                 initialManagementRate={project.management_rate || 10}
               />
             ) : (
-              <>
-                <ProfitCalculator 
-                  projectId={id!}
-                  totalBudget={totalBudget}
-                  totalSpent={totalSpent}
-                  initialPurchasePrice={project.purchase_price || 0}
-                  initialArv={project.arv || 0}
-                />
-                <HardMoneyLoanCalculator
-                  projectId={id!}
-                  purchasePrice={project.purchase_price || 0}
-                  totalBudget={totalBudget}
-                  arv={project.arv || 0}
-                  initialLoanAmount={(project as any).hm_loan_amount}
-                  initialInterestRate={(project as any).hm_interest_rate || 12}
-                  initialLoanTermMonths={(project as any).hm_loan_term_months || 6}
-                  initialPoints={(project as any).hm_points || 3}
-                  initialClosingCosts={(project as any).hm_closing_costs || 0}
-                  initialInterestOnly={(project as any).hm_interest_only ?? true}
-                />
-              </>
+              <ProfitCalculator 
+                projectId={id!}
+                totalBudget={totalBudget}
+                totalSpent={totalSpent}
+                initialPurchasePrice={project.purchase_price || 0}
+                initialArv={project.arv || 0}
+              />
             )}
             
             <ExportReports 
@@ -620,6 +607,23 @@ export default function ProjectDetail() {
               expenses={allExpensesForExport}
             />
           </TabsContent>
+
+          {!isRental && (
+            <TabsContent value="loan">
+              <HardMoneyLoanCalculator
+                projectId={id!}
+                purchasePrice={project.purchase_price || 0}
+                totalBudget={totalBudget}
+                arv={project.arv || 0}
+                initialLoanAmount={(project as any).hm_loan_amount}
+                initialInterestRate={(project as any).hm_interest_rate || 12}
+                initialLoanTermMonths={(project as any).hm_loan_term_months || 6}
+                initialPoints={(project as any).hm_points || 3}
+                initialClosingCosts={(project as any).hm_closing_costs || 0}
+                initialInterestOnly={(project as any).hm_interest_only ?? true}
+              />
+            </TabsContent>
+          )}
 
           <TabsContent value="team">
             <ProjectVendors projectId={id!} />
