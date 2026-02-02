@@ -713,6 +713,29 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     });
   };
 
+  // Helper to upload base64 image to Supabase storage
+  const uploadBase64Image = async (base64Data: string): Promise<string> => {
+    // Convert base64 to blob
+    const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, '');
+    const byteCharacters = atob(base64Content);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'image/png' });
+    
+    const fileName = `${Date.now()}-ai-extracted.png`;
+    const { error } = await supabase.storage
+      .from('procurement-images')
+      .upload(fileName, blob);
+    
+    if (error) throw error;
+    
+    const { data } = supabase.storage.from('procurement-images').getPublicUrl(fileName);
+    return data.publicUrl;
+  };
+
   // Handle screenshot upload for AI parsing
   const handleScreenshotUpload = async (file: File) => {
     setParsingScreenshot(true);
@@ -729,7 +752,19 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         throw new Error(data.error || 'Failed to parse screenshot');
       }
       
-      // Populate form with parsed data
+      // If AI extracted a product image, upload it to storage
+      let imageUrl = '';
+      if (data.data.product_image) {
+        try {
+          imageUrl = await uploadBase64Image(data.data.product_image);
+          toast.success('Product image extracted!');
+        } catch (uploadError) {
+          console.error('Failed to upload extracted image:', uploadError);
+          // Continue without image - don't fail the whole operation
+        }
+      }
+      
+      // Populate form with parsed data including image
       setFormData(prev => ({
         ...prev,
         name: data.data.name || prev.name,
@@ -738,6 +773,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         finish: data.data.finish || prev.finish,
         source_url: urlInput.trim(),
         source_store: detectStoreFromUrl(urlInput),
+        image_url: imageUrl || prev.image_url,
       }));
       
       setShowFallbackOptions(false);

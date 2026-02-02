@@ -137,6 +137,51 @@ Do NOT include any explanation - only the JSON object.`;
 
     console.log("Parsed product data:", productData);
 
+    // Second AI call - extract product image
+    let extractedImage: string | null = null;
+    try {
+      console.log("Extracting product image from screenshot...");
+      const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-image",
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "Extract just the main product image from this retail website screenshot. Generate a clean, isolated image of the product on a plain white background. Focus only on the product itself, not the webpage elements, buttons, or text."
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: image_base64.startsWith('data:') ? image_base64 : `data:image/png;base64,${image_base64}`
+                  }
+                }
+              ]
+            }
+          ],
+          modalities: ["image", "text"]
+        }),
+      });
+
+      if (imageResponse.ok) {
+        const imageData = await imageResponse.json();
+        extractedImage = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
+        console.log("Product image extracted:", extractedImage ? "success" : "no image in response");
+      } else {
+        console.error("Image extraction failed with status:", imageResponse.status);
+      }
+    } catch (imageError) {
+      console.error("Error extracting product image:", imageError);
+      // Don't fail the whole request if image extraction fails
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -146,6 +191,7 @@ Do NOT include any explanation - only the JSON object.`;
           model_number: productData.model_number || null,
           finish: productData.finish || null,
           brand: productData.brand || null,
+          product_image: extractedImage,
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
