@@ -1,10 +1,10 @@
 
 
-## Plan: Add Ctrl+V Quick Paste for Screenshot Upload
+## Plan: Add Expand/Collapse All Button for Budget Category Groups
 
 ### Overview
 
-Add keyboard paste functionality (Ctrl+V / Cmd+V) to the fallback options screen so users can quickly paste a product screenshot without having to click "Upload Screenshot" first.
+Add a quick toggle button above the category groups that allows users to expand or collapse all 6 groups at once, instead of clicking each one individually.
 
 ---
 
@@ -12,92 +12,86 @@ Add keyboard paste functionality (Ctrl+V / Cmd+V) to the fallback options screen
 
 | File | Change |
 |------|--------|
-| `src/components/procurement/ProcurementItemModal.tsx` | Add paste event listener for URL step when fallback options are shown |
+| `src/components/budget/BudgetCanvas.tsx` | Add expand/collapse all button with toggle state logic |
 
 ---
 
 ### Technical Details
 
-**File: `src/components/procurement/ProcurementItemModal.tsx`**
+**File: `src/components/budget/BudgetCanvas.tsx`**
 
-**1. Update the paste event listener (lines 489-508)**
-
-Currently, paste only works on the `details` step for product images. We need to extend it to also handle the `url` step when `showFallbackOptions` is true.
-
+**1. Add helper to determine current state:**
 ```typescript
-// Current logic (only details step)
-useEffect(() => {
-  if (!open || step !== 'details') return;
-  // ... paste handler for product image upload
-}, [open, step]);
-
-// New logic - also handle URL step with fallback options
-useEffect(() => {
-  if (!open) return;
-  
-  const handlePaste = async (e: ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (file) {
-          // If on URL step with fallback showing - parse as product screenshot
-          if (step === 'url' && showFallbackOptions) {
-            await handleScreenshotUpload(file);
-          } 
-          // If on details step - upload as product image
-          else if (step === 'details') {
-            await uploadImage(file);
-          }
-        }
-        break;
-      }
-    }
-  };
-  
-  document.addEventListener('paste', handlePaste);
-  return () => document.removeEventListener('paste', handlePaste);
-}, [open, step, showFallbackOptions]);
+const allGroupNames = CATEGORY_GROUPS.map(g => g.name);
+const allExpanded = allGroupNames.every(name => openGroups.includes(name));
+const allCollapsed = openGroups.length === 0;
 ```
 
----
+**2. Add toggle all function:**
+```typescript
+const toggleAll = () => {
+  if (allExpanded) {
+    setOpenGroups([]); // Collapse all
+  } else {
+    setOpenGroups(allGroupNames); // Expand all
+  }
+};
+```
 
-**2. Add visual hint to the Upload Screenshot card (around line 895)**
-
-Add a hint so users know they can just paste:
-
+**3. Add button above the grid:**
 ```tsx
-{/* Upload Screenshot Card */}
-<button
-  onClick={() => screenshotInputRef.current?.click()}
-  disabled={parsingScreenshot}
-  className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
->
-  {parsingScreenshot ? (
-    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-  ) : (
-    <Camera className="h-6 w-6 text-muted-foreground" />
-  )}
-  <span className="font-medium">Upload Screenshot</span>
-  <span className="text-xs text-muted-foreground text-center">
-    Ctrl+V to paste or click to browse
-  </span>
-</button>
+<div className="flex justify-end mb-2">
+  <button
+    onClick={toggleAll}
+    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+  >
+    {allExpanded ? (
+      <>
+        <ChevronsDownUp className="h-3.5 w-3.5" />
+        Collapse All
+      </>
+    ) : (
+      <>
+        <ChevronsUpDown className="h-3.5 w-3.5" />
+        Expand All
+      </>
+    )}
+  </button>
+</div>
+```
+
+**4. Add new icon imports:**
+```typescript
+import { ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
 ```
 
 ---
 
-### User Experience
+### UI Layout
 
-| Trigger | Action |
-|---------|--------|
-| URL scrape fails | Show fallback options |
-| User presses Ctrl+V with image in clipboard | Immediately sends image to AI for parsing |
-| User clicks "Upload Screenshot" | Opens file picker |
-| AI successfully parses | Moves to category step with extracted data |
+```text
+                                    [↕ Expand All]  ← New button (right-aligned)
+┌───────────────────────────┐  ┌───────────────────────────┐
+│ > 🏠 Structure       $0   │  │ > ⚡ MEPs            $0   │
+└───────────────────────────┘  └───────────────────────────┘
+┌───────────────────────────┐  ┌───────────────────────────┐
+│ > 🎨 Finishes        $0   │  │ > 💧 Kitchen & Bath  $0   │
+└───────────────────────────┘  └───────────────────────────┘
+┌───────────────────────────┐  ┌───────────────────────────┐
+│ > 🌳 Exterior        $0   │  │ > 📦 Other           $0   │
+└───────────────────────────┘  └───────────────────────────┘
+```
+
+After clicking "Expand All":
+```text
+                                    [↕ Collapse All]  ← Text changes
+┌───────────────────────────┐  ┌───────────────────────────┐
+│ ∨ 🏠 Structure       $0   │  │ ∨ ⚡ MEPs            $0   │
+│  [Demolition] [Framing]   │  │  [Electrical] [Plumbing]  │
+│  [Foundation] ...         │  │  [HVAC] ...               │
+└───────────────────────────┘  └───────────────────────────┘
+...
+```
 
 ---
 
@@ -105,5 +99,5 @@ Add a hint so users know they can just paste:
 
 | File | Changes |
 |------|---------|
-| `src/components/procurement/ProcurementItemModal.tsx` | Extend paste handler to work on URL step with fallback options, update hint text |
+| `src/components/budget/BudgetCanvas.tsx` | Add expand/collapse all button, toggle logic, and new icon imports |
 
