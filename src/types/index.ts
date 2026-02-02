@@ -7,7 +7,8 @@ export type BudgetCategory =
   | 'brick_siding_stucco'
   | 'cabinets'
   | 'carpentry'
-  | 'cleaning_final_punch'
+  | 'cleaning'
+  | 'final_punch'
   | 'closing_costs'
   | 'countertops'
   | 'demolition'
@@ -178,7 +179,7 @@ export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'brick_siding_stucco', label: 'Exterior Finish' },
   { value: 'cabinets', label: 'Cabinets' },
   { value: 'carpentry', label: 'Trims' },
-  { value: 'cleaning_final_punch', label: 'Cleaning / Final Punch' },
+  { value: 'cleaning', label: 'Cleaning' },
   { value: 'closing_costs', label: 'Closing Costs' },
   { value: 'countertops', label: 'Countertops' },
   { value: 'demolition', label: 'Demolition' },
@@ -189,6 +190,7 @@ export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'dumpsters_trash', label: 'Trash Hauling' },
   { value: 'electrical', label: 'Electrical' },
   { value: 'fencing', label: 'Fencing' },
+  { value: 'final_punch', label: 'Final Punch' },
   { value: 'flooring', label: 'Flooring' },
   { value: 'food', label: 'Food' },
   { value: 'foundation_repair', label: 'Foundation' },
