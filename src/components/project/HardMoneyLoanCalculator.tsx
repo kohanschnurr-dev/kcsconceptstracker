@@ -431,16 +431,12 @@ export function HardMoneyLoanCalculator({
     });
   }, [loanAmount, interestRate, loanTermMonths, points, closingCosts, arv, editablePurchasePrice, totalBudget]);
 
-  // Payoff timeline comparison
+  // Payoff timeline comparison - limited to 4, 6, 12, 18 month options
   const payoffComparison = useMemo(() => {
     const monthlyInt = (loanAmount * (interestRate / 100)) / 12;
-    const baseMonths = [4, 6];
-    if (!baseMonths.includes(loanTermMonths)) {
-      baseMonths.push(loanTermMonths);
-    }
-    baseMonths.sort((a, b) => a - b);
+    const allowedMonths = [4, 6, 12, 18];
     
-    return baseMonths.map(months => ({
+    return allowedMonths.map(months => ({
       months,
       interest: monthlyInt * months,
       savings: months < loanTermMonths ? (loanTermMonths - months) * monthlyInt : 0,
