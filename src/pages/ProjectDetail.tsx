@@ -43,6 +43,7 @@ import { PhotoGallery } from '@/components/project/PhotoGallery';
 
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { CashFlowCalculator } from '@/components/project/CashFlowCalculator';
+import { HardMoneyLoanCalculator } from '@/components/project/HardMoneyLoanCalculator';
 import { ProjectCalendar } from '@/components/project/ProjectCalendar';
 import { ProjectTasks } from '@/components/project/ProjectTasks';
 
@@ -581,13 +582,27 @@ export default function ProjectDetail() {
                 initialManagementRate={project.management_rate || 10}
               />
             ) : (
-              <ProfitCalculator 
-                projectId={id!}
-                totalBudget={totalBudget}
-                totalSpent={totalSpent}
-                initialPurchasePrice={project.purchase_price || 0}
-                initialArv={project.arv || 0}
-              />
+              <>
+                <ProfitCalculator 
+                  projectId={id!}
+                  totalBudget={totalBudget}
+                  totalSpent={totalSpent}
+                  initialPurchasePrice={project.purchase_price || 0}
+                  initialArv={project.arv || 0}
+                />
+                <HardMoneyLoanCalculator
+                  projectId={id!}
+                  purchasePrice={project.purchase_price || 0}
+                  totalBudget={totalBudget}
+                  arv={project.arv || 0}
+                  initialLoanAmount={(project as any).hm_loan_amount}
+                  initialInterestRate={(project as any).hm_interest_rate || 12}
+                  initialLoanTermMonths={(project as any).hm_loan_term_months || 6}
+                  initialPoints={(project as any).hm_points || 3}
+                  initialClosingCosts={(project as any).hm_closing_costs || 0}
+                  initialInterestOnly={(project as any).hm_interest_only ?? true}
+                />
+              </>
             )}
             
             <ExportReports 

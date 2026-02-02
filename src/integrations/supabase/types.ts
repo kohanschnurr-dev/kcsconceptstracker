@@ -855,6 +855,12 @@ export type Database = {
           annual_property_taxes: number | null
           arv: number | null
           created_at: string
+          hm_closing_costs: number | null
+          hm_interest_only: boolean | null
+          hm_interest_rate: number | null
+          hm_loan_amount: number | null
+          hm_loan_term_months: number | null
+          hm_points: number | null
           id: string
           interest_rate: number | null
           loan_amount: number | null
@@ -879,6 +885,12 @@ export type Database = {
           annual_property_taxes?: number | null
           arv?: number | null
           created_at?: string
+          hm_closing_costs?: number | null
+          hm_interest_only?: boolean | null
+          hm_interest_rate?: number | null
+          hm_loan_amount?: number | null
+          hm_loan_term_months?: number | null
+          hm_points?: number | null
           id?: string
           interest_rate?: number | null
           loan_amount?: number | null
@@ -903,6 +915,12 @@ export type Database = {
           annual_property_taxes?: number | null
           arv?: number | null
           created_at?: string
+          hm_closing_costs?: number | null
+          hm_interest_only?: boolean | null
+          hm_interest_rate?: number | null
+          hm_loan_amount?: number | null
+          hm_loan_term_months?: number | null
+          hm_points?: number | null
           id?: string
           interest_rate?: number | null
           loan_amount?: number | null
