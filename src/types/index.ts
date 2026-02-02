@@ -177,7 +177,7 @@ export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'bathroom', label: 'Bathroom' },
   { value: 'brick_siding_stucco', label: 'Brick / Siding / Stucco' },
   { value: 'cabinets', label: 'Cabinets' },
-  { value: 'carpentry', label: 'Carpentry (Trim, Baseboards, etc.)' },
+  { value: 'carpentry', label: 'Trims' },
   { value: 'cleaning_final_punch', label: 'Cleaning / Final Punch' },
   { value: 'closing_costs', label: 'Closing Costs' },
   { value: 'countertops', label: 'Countertops' },
