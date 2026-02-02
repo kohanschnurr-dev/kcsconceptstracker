@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +32,8 @@ interface DealSidebarProps {
   isSaving: boolean;
   projects: Project[];
   isLoadingProjects: boolean;
+  includeClosingCosts: boolean;
+  onClosingCostsChange: (value: boolean) => void;
 }
 
 export function DealSidebar({
@@ -47,6 +50,8 @@ export function DealSidebar({
   isSaving,
   projects,
   isLoadingProjects,
+  includeClosingCosts,
+  onClosingCostsChange,
 }: DealSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedProject, setSelectedProject] = useState('');
@@ -55,9 +60,9 @@ export function DealSidebar({
   const purchasePriceNum = parseFloat(purchasePrice) || 0;
   const arvNum = parseFloat(arv) || 0;
 
-  // Quick calculations
-  const closingCostsBuy = purchasePriceNum * 0.02;
-  const closingCostsSell = arvNum * 0.06;
+  // Quick calculations (respecting closing costs toggle)
+  const closingCostsBuy = includeClosingCosts ? purchasePriceNum * 0.02 : 0;
+  const closingCostsSell = includeClosingCosts ? arvNum * 0.06 : 0;
   const holdingCosts = purchasePriceNum * 0.03;
 
   const formatCurrency = (value: number) => {
@@ -143,22 +148,38 @@ export function DealSidebar({
             <>
               <Separator />
               <div className="space-y-2">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Estimated Costs
-                </h4>
-                <div className="space-y-1.5 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Closing (Buy, 2%)</span>
-                    <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Estimated Costs
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="closing-costs-toggle" className="text-xs text-muted-foreground">
+                      Closing
+                    </Label>
+                    <Switch
+                      id="closing-costs-toggle"
+                      checked={includeClosingCosts}
+                      onCheckedChange={onClosingCostsChange}
+                    />
                   </div>
+                </div>
+                <div className="space-y-1.5 text-sm">
+                  {includeClosingCosts && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Closing (Buy, 2%)</span>
+                      <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Holding (3%)</span>
                     <span className="font-mono">{formatCurrency(holdingCosts)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Closing (Sell, 6%)</span>
-                    <span className="font-mono">{formatCurrency(closingCostsSell)}</span>
-                  </div>
+                  {includeClosingCosts && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Closing (Sell, 6%)</span>
+                      <span className="font-mono">{formatCurrency(closingCostsSell)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </>
