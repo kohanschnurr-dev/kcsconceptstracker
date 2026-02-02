@@ -1310,6 +1310,8 @@ export type Database = {
         | "variable"
         | "drain_line_repair"
         | "wholesale_fee"
+        | "final_punch"
+        | "cleaning"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
@@ -1549,6 +1551,8 @@ export const Constants = {
         "variable",
         "drain_line_repair",
         "wholesale_fee",
+        "final_punch",
+        "cleaning",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer"],
