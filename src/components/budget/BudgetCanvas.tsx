@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { BudgetCategoryCard } from './BudgetCategoryCard';
 import { BUDGET_CATEGORIES } from '@/types';
 import { 
   Hammer, Wrench, Zap, Droplets, Wind, PaintBucket, 
-  Grid3X3, Home, Fence, Trees, Package, FileCheck 
+  Grid3X3, Home, Fence, Trees, Package, FileCheck,
+  ChevronRight
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 
 interface BudgetCanvasProps {
   categoryBudgets: Record<string, string>;
@@ -46,55 +50,103 @@ const CATEGORY_GROUPS = [
 
 // Icons for specific categories
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  demolition: <Hammer className="h-4 w-4" />,
-  framing: <Home className="h-4 w-4" />,
-  electrical: <Zap className="h-4 w-4" />,
-  plumbing: <Droplets className="h-4 w-4" />,
-  hvac: <Wind className="h-4 w-4" />,
-  painting: <PaintBucket className="h-4 w-4" />,
-  flooring: <Grid3X3 className="h-4 w-4" />,
-  landscaping: <Trees className="h-4 w-4" />,
-  fencing: <Fence className="h-4 w-4" />,
-  permits_inspections: <FileCheck className="h-4 w-4" />,
+  demolition: <Hammer className="h-3.5 w-3.5" />,
+  framing: <Home className="h-3.5 w-3.5" />,
+  electrical: <Zap className="h-3.5 w-3.5" />,
+  plumbing: <Droplets className="h-3.5 w-3.5" />,
+  hvac: <Wind className="h-3.5 w-3.5" />,
+  painting: <PaintBucket className="h-3.5 w-3.5" />,
+  flooring: <Grid3X3 className="h-3.5 w-3.5" />,
+  landscaping: <Trees className="h-3.5 w-3.5" />,
+  fencing: <Fence className="h-3.5 w-3.5" />,
+  permits_inspections: <FileCheck className="h-3.5 w-3.5" />,
 };
 
 export function BudgetCanvas({ categoryBudgets, onCategoryChange }: BudgetCanvasProps) {
+  const [openGroups, setOpenGroups] = useState<string[]>(['Structure']);
+
   const getCategoryLabel = (categoryValue: string) => {
     const cat = BUDGET_CATEGORIES.find(c => c.value === categoryValue);
     return cat?.label || categoryValue.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const getGroupTotal = (categories: string[]) => {
+    return categories.reduce((sum, cat) => {
+      return sum + (parseFloat(categoryBudgets[cat]) || 0);
+    }, 0);
+  };
+
+  const toggleGroup = (groupName: string) => {
+    setOpenGroups(prev => 
+      prev.includes(groupName) 
+        ? prev.filter(g => g !== groupName)
+        : [...prev, groupName]
+    );
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
       {CATEGORY_GROUPS.map((group) => {
         const GroupIcon = group.icon;
         const groupCategories = group.categories.filter(cat => 
           BUDGET_CATEGORIES.some(bc => bc.value === cat)
         );
+        const groupTotal = getGroupTotal(groupCategories);
+        const isOpen = openGroups.includes(group.name);
+        const hasValue = groupTotal > 0;
 
         if (groupCategories.length === 0) return null;
 
         return (
-          <div key={group.name}>
-            <div className="flex items-center gap-2 mb-4">
-              <GroupIcon className="h-5 w-5 text-muted-foreground" />
-              <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                {group.name}
-              </h3>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {groupCategories.map((category) => (
-                <BudgetCategoryCard
-                  key={category}
-                  category={category}
-                  label={getCategoryLabel(category)}
-                  value={categoryBudgets[category] || ''}
-                  onChange={(value) => onCategoryChange(category, value)}
-                  icon={CATEGORY_ICONS[category]}
-                />
-              ))}
-            </div>
-          </div>
+          <Collapsible 
+            key={group.name} 
+            open={isOpen}
+            onOpenChange={() => toggleGroup(group.name)}
+            className={cn(
+              "rounded-lg border bg-card transition-colors",
+              hasValue && "border-primary/30"
+            )}
+          >
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-accent/50 transition-colors rounded-t-lg">
+              <div className="flex items-center gap-2">
+                <ChevronRight className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform",
+                  isOpen && "rotate-90"
+                )} />
+                <GroupIcon className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium text-sm">{group.name}</span>
+              </div>
+              <span className={cn(
+                "text-sm font-mono",
+                hasValue ? "text-primary font-semibold" : "text-muted-foreground"
+              )}>
+                {formatCurrency(groupTotal)}
+              </span>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="p-2 pt-0 grid grid-cols-2 lg:grid-cols-3 gap-1.5">
+                {groupCategories.map((category) => (
+                  <BudgetCategoryCard
+                    key={category}
+                    category={category}
+                    label={getCategoryLabel(category)}
+                    value={categoryBudgets[category] || ''}
+                    onChange={(value) => onCategoryChange(category, value)}
+                    icon={CATEGORY_ICONS[category]}
+                  />
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         );
       })}
     </div>
