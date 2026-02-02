@@ -339,7 +339,7 @@ export function HardMoneyLoanCalculator({
               <div className="p-3 rounded-sm bg-destructive/10 border border-destructive/30 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Effective APR</p>
                 <p className="text-lg font-bold font-mono text-destructive">
-                  {calculations.effectiveAPR.toFixed(1)}%
+                  {calculations.effectiveAPR.toFixed(2)}%
                 </p>
               </div>
             </div>
