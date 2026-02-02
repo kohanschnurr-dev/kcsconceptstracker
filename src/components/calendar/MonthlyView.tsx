@@ -63,7 +63,7 @@ export function MonthlyView({ currentDate, tasks, onTaskClick }: MonthlyViewProp
             <div
               key={day.toISOString()}
               className={cn(
-                'min-h-[100px] p-2 rounded-lg border transition-colors',
+                'min-h-[120px] p-2 rounded-lg border transition-colors',
                 isCurrentMonth 
                   ? 'bg-slate-800/50 border-slate-700' 
                   : 'bg-slate-900/50 border-slate-800',
