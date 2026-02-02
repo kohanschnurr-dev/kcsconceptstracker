@@ -1,69 +1,79 @@
 
 
-## Plan: Add Rehab Budget Field with Auto-Update + Manual Override
+## Plan: Compact MAO Gauge Layout with Custom Percentage Setting
 
 ### Overview
 
-Add a "Rehab Budget" input field in the left sidebar after ARV. This field will:
-1. Automatically sync with the total calculated from all category budgets
-2. Allow manual entry for fast underwriting (when user doesn't want to fill in every category)
-3. When manually edited, distribute the value evenly across categories (optional behavior)
+Redesign the MAO Gauge component to be more compact and add a customizable percentage setting that users can adjust from the default 78%.
 
 ---
 
 ### UI Changes
 
-**Left Sidebar - New Field Order:**
+**Current Layout (too spaced out):**
+```text
+┌──────────────────────────────────────────────────────────────────────────┐
+│ [icon] MAX OFFER (78% RULE)    [icon] REHAB BUDGET    [icon] UNDER MAO   │
+│        $273,000                        $0                    +$95,000    │
+│                                                                          │
+│ Budget vs 78% of ARV ──────────────────────────────────────────── 0%     │
+└──────────────────────────────────────────────────────────────────────────┘
+```
 
-| Field | Behavior |
-|-------|----------|
-| Purchase Price | Manual input |
-| After Repair Value (ARV) | Manual input |
-| **Rehab Budget** (NEW) | Auto-updates from category total OR manual entry |
+**New Layout (compact, inline percentage control):**
+```text
+┌──────────────────────────────────────────────────────────────────────────┐
+│ [icon] MAX OFFER    [icon] REHAB BUDGET    [icon] UNDER MAO    [78% ▼]  │
+│        $273,000            $0                    +$95,000               │
+│ Budget vs ARV ────────────────────────────────────────────────── 0%     │
+└──────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-### Implementation Details
+### Changes Required
 
-**File: `src/components/CreateBudgetModal.tsx`**
+**File: `src/components/budget/MAOGauge.tsx`**
 
-1. **Add new state for manual override mode**
-   - Track whether user is manually editing the Rehab Budget vs auto-syncing
-   - `rehabBudgetOverride`: string (manual value when user types directly)
-   - `isRehabBudgetManual`: boolean (tracks if user is in manual mode)
+| Change | Details |
+|--------|---------|
+| Add percentage prop | Accept `maoPercentage` prop with default of 78 |
+| Add percentage callback | Accept `onPercentageChange` for user adjustments |
+| Remove "(78% Rule)" text | Change label from "Max Offer (78% Rule)" to just "Max Offer" |
+| Add dropdown selector | Small dropdown showing current % with common options (70%, 75%, 78%, 80%) |
+| Reduce padding | Change `p-4` to `p-3`, reduce icon sizes and gaps |
+| Compact text sizing | Reduce `text-xl` to `text-lg` for values |
+| Update progress label | Change "Budget vs 78% of ARV" to "Budget vs {percentage}% of ARV" |
 
-2. **Add Rehab Budget input after ARV field**
-   - Shows calculated `totalBudget` by default
-   - When user types, switches to manual mode
-   - Small "sync" button to reset back to auto-calculated value
+**File: `src/pages/BudgetCalculator.tsx`**
 
-3. **Behavior Logic**
-   - Default: Field displays the sum of all category budgets (read-only appearance but editable)
-   - On manual edit: User types a value, this becomes the "override" 
-   - When user edits categories: If in auto mode, Rehab Budget updates; if in manual mode, stays fixed
-   - Optional: "Distribute" button spreads manual Rehab Budget evenly across categories
-
-4. **Update form reset logic**
-   - Reset manual override state when modal opens/closes
-   - Load rehab budget from template when editing
+| Change | Details |
+|--------|---------|
+| Add state for percentage | `const [maoPercentage, setMaoPercentage] = useState(78)` |
+| Pass props to MAOGauge | Pass `maoPercentage` and `onPercentageChange` |
+| Update calculations | Update `maxOffer` calculation to use dynamic percentage |
 
 ---
 
-### Visual Design
+### Percentage Selector Design
 
+The percentage selector will be a compact dropdown positioned at the far right of the gauge:
+
+```text
+┌──────┐
+│ 78% ▾│  ← Current value shown with dropdown arrow
+└──────┘
+   │
+   ▼
+┌──────┐
+│ 70%  │
+│ 75%  │
+│ 78%  │  ← Checkmark on current
+│ 80%  │
+│ 85%  │
+│ Custom│ ← Opens input for custom value
+└──────┘
 ```
-After Repair Value (ARV)
-┌─────────────────────────┐
-│ $  350000               │
-└─────────────────────────┘
-
-Rehab Budget
-┌─────────────────────────┐
-│ $  85000          [↻]   │  ← Auto-synced (or manual with reset button)
-└─────────────────────────┘
-```
-
-The field will have a subtle indicator showing whether it's auto-calculated or manually set, with a reset/sync icon to return to auto mode.
 
 ---
 
@@ -71,14 +81,16 @@ The field will have a subtle indicator showing whether it's auto-calculated or m
 
 | File | Changes |
 |------|---------|
-| `src/components/CreateBudgetModal.tsx` | Add Rehab Budget field with dual-mode logic (auto-sync + manual override) |
+| `src/components/budget/MAOGauge.tsx` | Accept percentage props, compact layout, add dropdown selector |
+| `src/pages/BudgetCalculator.tsx` | Add percentage state, pass to MAOGauge, update calculations |
 
 ---
 
-### Edge Cases Handled
+### Visual Improvements
 
-- **Editing existing template**: Load the stored total as the initial Rehab Budget value
-- **Manual then category edit**: If user manually sets Rehab Budget, then edits a category, the Rehab Budget stays fixed (manual mode)
-- **Reset to auto**: User can click sync icon to return to auto-calculated mode
-- **Empty state**: Shows $0 when no categories have values
+- **Reduced padding**: `p-4` → `p-3` for tighter layout
+- **Smaller gaps**: `gap-3` → `gap-2` between elements
+- **Compact values**: `text-xl` → `text-lg` for currency amounts
+- **Inline percentage control**: Right-aligned dropdown instead of text in label
+- **Shorter labels**: Remove verbose explanations from headers
 
