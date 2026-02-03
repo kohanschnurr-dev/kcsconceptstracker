@@ -1,12 +1,69 @@
 
-
-## Plan: Collapsible Expenses Table + Resizable QuickBooks Pending Area
+## Plan: Auto-Calculate Category Presets on Sqft Entry
 
 ### Overview
 
-1. **Expenses Table**: Wrap the expenses table in a collapsible section with a header showing the count and total, allowing users to collapse/expand it when dealing with many expenses.
+Replace the inefficient popover-based presets with an automatic calculation system. When the user enters sqft in Deal Parameters, categories with defined presets will auto-populate their budget values instantly. The "Presets" popover will be replaced with a simpler "Edit Rates" button for customization.
 
-2. **QuickBooks Pending Area**: Replace the fixed `max-h-[400px]` scroll container with a resizable panel that has a visible drag handle at the bottom, allowing users to manually adjust how much space the pending expenses take up.
+---
+
+### Current vs New Workflow
+
+```text
+CURRENT (6+ clicks):
+1. Enter sqft in Deal Parameters
+2. Open Presets popover
+3. Click Apply on Painting
+4. Click Apply on Flooring
+5. Click Apply on Tile
+6. Click Apply on Drywall
+7. Click Apply on Roofing
+8. Close popover
+
+NEW (1 action):
+1. Enter sqft in Deal Parameters → Categories auto-populate!
+```
+
+---
+
+### UI Changes
+
+**Before:**
+```text
+┌─────────────────────────────────────────┐
+│ Collapse All    [Presets ▼]             │
+├─────────────────────────────────────────┤
+│ Structure                               │
+│   Drywall  [$ ___]   Roofing  [$ ___]   │
+│ Finishes                                │
+│   Painting [$ ___]   Flooring [$ ___]   │
+│   Tile     [$ ___]                      │
+└─────────────────────────────────────────┘
+```
+
+**After:**
+```text
+┌─────────────────────────────────────────┐
+│ Collapse All    [Edit Rates ⚙]          │
+├─────────────────────────────────────────┤
+│ Structure                               │
+│   Drywall  [$ 3,750]✦  Roofing [$ 7,500]✦│
+│ Finishes                                │
+│   Painting [$ 5,250]✦  Flooring [$ 12,000]✦│
+│   Tile     [$ 18,000]✦                  │
+└─────────────────────────────────────────┘
+
+✦ = Auto-calculated indicator (subtle dot or different styling)
+```
+
+---
+
+### Behavior
+
+1. **Auto-populate on sqft entry**: When sqft changes and is > 0, automatically calculate and fill preset categories
+2. **Clear on sqft removal**: When sqft is cleared or set to 0, optionally clear preset categories (or keep values)
+3. **Manual override respected**: If user manually edits a preset category's value, it stays until next sqft change
+4. **Visual indicator**: Categories with active presets show a subtle indicator (small dot or background tint)
 
 ---
 
@@ -14,195 +71,104 @@
 
 | File | Changes |
 |------|---------|
-| `src/pages/Expenses.tsx` | Wrap expenses table in Collapsible component |
-| `src/components/QuickBooksIntegration.tsx` | Replace fixed max-height with resizable panel using a draggable divider |
-
----
-
-### UI Design
-
-**Expenses Table (Collapsible):**
-```text
-┌────────────────────────────────────────────────────────┐
-│ ▼ Expenses Table    47 expenses • $23,456.78   [─]    │
-├────────────────────────────────────────────────────────┤
-│ Date     Vendor     Project    Category   Payment  Amt │
-│ ...                                                    │
-│ ...                                                    │
-└────────────────────────────────────────────────────────┘
-
-Collapsed:
-┌────────────────────────────────────────────────────────┐
-│ ▶ Expenses Table    47 expenses • $23,456.78   [+]    │
-└────────────────────────────────────────────────────────┘
-```
-
-**QuickBooks Pending Area (Resizable):**
-```text
-┌────────────────────────────────────────────────────────┐
-│ Pending from QuickBooks                                │
-├────────────────────────────────────────────────────────┤
-│ [Expense Card 1]                                       │
-│ [Expense Card 2]                                       │
-│ [Expense Card 3]                                       │
-│ ...                                                    │
-├────────────────────────────────────────────────────────┤
-│ ═══════════════════ ⋮⋮⋮ ═══════════════════           │  ← Drag handle
-└────────────────────────────────────────────────────────┘
-```
+| `src/components/budget/BudgetCanvas.tsx` | Remove Popover, add useEffect to auto-calculate presets when sqft changes, add Edit Rates dialog trigger |
+| `src/components/budget/BudgetCategoryCard.tsx` | Add optional `hasPreset` prop for visual indicator |
 
 ---
 
 ### Technical Details
 
-#### 1. Expenses.tsx - Collapsible Expenses Table
+#### 1. BudgetCanvas.tsx - Auto-Calculate on Sqft Change
 
-**Add imports:**
+**Replace the popover with a useEffect:**
 ```typescript
-import { ChevronDown } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+// Auto-calculate presets when sqft changes
+useEffect(() => {
+  const sqftNum = parseFloat(sqft) || 0;
+  if (sqftNum > 0) {
+    presets.forEach(preset => {
+      const calculated = sqftNum * preset.pricePerSqft;
+      onCategoryChange(preset.category, calculated.toFixed(2));
+    });
+  }
+}, [sqft]); // Only trigger on sqft change
 ```
 
-**Add state:**
-```typescript
-const [expensesTableOpen, setExpensesTableOpen] = useState(true);
-```
-
-**Wrap the expenses table section:**
+**Replace Presets button with Edit Rates button:**
 ```tsx
-<Collapsible open={expensesTableOpen} onOpenChange={setExpensesTableOpen}>
-  <div className="glass-card overflow-hidden">
-    <CollapsibleTrigger asChild>
-      <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/20 transition-colors border-b border-border/30">
-        <div className="flex items-center gap-2">
-          <ChevronDown className={`h-4 w-4 transition-transform ${expensesTableOpen ? '' : '-rotate-90'}`} />
-          <span className="font-medium">Expenses Table</span>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <span>{filteredExpenses.length} expenses</span>
-          <span>•</span>
-          <span className="font-mono">{formatCurrency(totalExpenses)}</span>
-        </div>
-      </div>
-    </CollapsibleTrigger>
-    
-    <CollapsibleContent>
-      <div className="overflow-x-auto">
-        <table className="data-table">
-          {/* ... existing table content ... */}
-        </table>
-      </div>
-      {filteredExpenses.length === 0 && (
-        <div className="text-center py-12">
-          {/* ... empty state ... */}
-        </div>
-      )}
-    </CollapsibleContent>
-  </div>
-</Collapsible>
+<button
+  onClick={() => setIsEditDialogOpen(true)}
+  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-4"
+>
+  <Settings className="h-3.5 w-3.5" />
+  Edit Rates
+</button>
+```
+
+**Keep the Edit Dialog** for customizing $/sqft rates, but remove:
+- The Popover component entirely
+- Individual "Apply" buttons
+- "Apply All" button
+- `isPresetsOpen` state
+
+---
+
+#### 2. BudgetCategoryCard.tsx - Visual Indicator for Preset Categories
+
+**Add optional prop:**
+```typescript
+interface BudgetCategoryCardProps {
+  category: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  icon?: React.ReactNode;
+  hasPreset?: boolean; // NEW
+}
+```
+
+**Show subtle indicator:**
+```tsx
+<span className="text-xs truncate flex-1 min-w-0" title={label}>
+  {label}
+  {hasPreset && (
+    <span className="ml-1 text-primary/60 text-[8px]">●</span>
+  )}
+</span>
 ```
 
 ---
 
-#### 2. QuickBooksIntegration.tsx - Resizable Pending Area
+#### 3. Pass Preset Info to Cards
 
-**Add state for height:**
+In BudgetCanvas, track which categories have presets:
 ```typescript
-const [pendingAreaHeight, setPendingAreaHeight] = useState(400);
-const [isDragging, setIsDragging] = useState(false);
+const presetCategories = new Set(presets.map(p => p.category));
 ```
 
-**Replace the fixed max-height div with a resizable container:**
+Pass to BudgetCategoryCard:
 ```tsx
-<div 
-  className="relative overflow-y-auto space-y-3"
-  style={{ maxHeight: `${pendingAreaHeight}px` }}
->
-  {groupedPendingExpenses.map((expenseGroup) => (
-    <GroupedPendingExpenseCard ... />
-  ))}
-</div>
-
-{/* Resize Handle */}
-<div
-  className="h-4 flex items-center justify-center cursor-ns-resize hover:bg-muted/30 transition-colors group"
-  onMouseDown={handleDragStart}
-  onTouchStart={handleTouchStart}
->
-  <div className="w-12 h-1 rounded-full bg-border group-hover:bg-muted-foreground/50 transition-colors" />
-</div>
+<BudgetCategoryCard
+  key={category}
+  category={category}
+  label={getCategoryLabel(category)}
+  value={categoryBudgets[category] || ''}
+  onChange={(value) => onCategoryChange(category, value)}
+  hasPreset={presetCategories.has(category)}
+/>
 ```
-
-**Add resize handlers:**
-```typescript
-const handleDragStart = (e: React.MouseEvent) => {
-  e.preventDefault();
-  setIsDragging(true);
-  const startY = e.clientY;
-  const startHeight = pendingAreaHeight;
-  
-  const handleMouseMove = (moveEvent: MouseEvent) => {
-    const delta = moveEvent.clientY - startY;
-    const newHeight = Math.max(150, Math.min(800, startHeight + delta));
-    setPendingAreaHeight(newHeight);
-  };
-  
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  };
-  
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
-};
-
-const handleTouchStart = (e: React.TouchEvent) => {
-  const startY = e.touches[0].clientY;
-  const startHeight = pendingAreaHeight;
-  
-  const handleTouchMove = (moveEvent: TouchEvent) => {
-    const delta = moveEvent.touches[0].clientY - startY;
-    const newHeight = Math.max(150, Math.min(800, startHeight + delta));
-    setPendingAreaHeight(newHeight);
-  };
-  
-  const handleTouchEnd = () => {
-    document.removeEventListener('touchmove', handleTouchMove);
-    document.removeEventListener('touchend', handleTouchEnd);
-  };
-  
-  document.addEventListener('touchmove', handleTouchMove);
-  document.addEventListener('touchend', handleTouchEnd);
-};
-```
-
----
-
-### Height Constraints
-
-| Constraint | Value |
-|------------|-------|
-| Minimum height | 150px |
-| Default height | 400px |
-| Maximum height | 800px |
 
 ---
 
 ### User Flow
 
-**Expenses Table:**
-1. Table shows expanded by default with header showing count and total
-2. User clicks header to collapse the table
-3. Collapsed state still shows count and total for quick reference
-4. Click again to expand
-
-**QuickBooks Pending Area:**
-1. Area defaults to 400px height (current behavior)
-2. User sees a horizontal drag handle bar at the bottom of the pending list
-3. Drag the handle up to shrink, down to expand
-4. Min 150px, max 800px
-5. Works with both mouse and touch
+1. User opens Budget Calculator
+2. Enters Purchase Price, ARV in Deal Parameters
+3. Enters **Square Footage** (e.g., 1500)
+4. → Categories with presets (Painting, Flooring, Tile, Drywall, Roofing) auto-populate!
+5. User sees small indicator dots on preset categories
+6. User can click "Edit Rates" to customize $/sqft rates for future use
+7. Changing sqft recalculates all preset categories
 
 ---
 
@@ -210,6 +176,5 @@ const handleTouchStart = (e: React.TouchEvent) => {
 
 | File | Key Changes |
 |------|-------------|
-| `src/pages/Expenses.tsx` | Add `ChevronDown` import, Collapsible imports, `expensesTableOpen` state, wrap table section with Collapsible |
-| `src/components/QuickBooksIntegration.tsx` | Add `pendingAreaHeight` state, replace fixed `max-h-[400px]` with dynamic height, add drag handle with mouse/touch event handlers |
-
+| `src/components/budget/BudgetCanvas.tsx` | Remove Popover and related state, add useEffect for auto-calculation, simplify header to just "Edit Rates" button, pass `hasPreset` to cards |
+| `src/components/budget/BudgetCategoryCard.tsx` | Add `hasPreset` prop, show subtle indicator dot for preset categories |
