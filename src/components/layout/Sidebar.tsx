@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { 
   LayoutDashboard, 
   FolderKanban, 
@@ -30,6 +31,7 @@ const isActiveLink = (item: { path: string; exact?: boolean; matchPaths?: string
 };
 
 export function Sidebar() {
+  const [isExpanded, setIsExpanded] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { displayName } = useProfile();
@@ -48,20 +50,32 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-sidebar">
+    <aside 
+      className={cn(
+        "fixed left-0 top-0 z-40 h-screen border-r border-border bg-sidebar transition-all duration-300 ease-in-out",
+        isExpanded ? "w-64" : "w-16"
+      )}
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={() => setIsExpanded(false)}
+    >
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex h-16 items-center gap-3 border-b border-border px-4">
+        <div className={cn(
+          "flex h-16 items-center border-b border-border",
+          isExpanded ? "gap-3 px-4" : "justify-center px-2"
+        )}>
           <img 
             src={logoUrl || kcsLogo} 
             alt={companyName} 
-            className="h-10 w-10 object-contain" 
+            className="h-10 w-10 object-contain flex-shrink-0" 
           />
-          <h1 className="font-bold text-foreground text-lg truncate">{companyName}</h1>
+          {isExpanded && (
+            <h1 className="font-bold text-foreground text-lg truncate">{companyName}</h1>
+          )}
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className={cn("flex-1 space-y-1", isExpanded ? "p-4" : "p-2")}>
           {navItems.map((item) => {
             const isActive = isActiveLink(item, location.pathname);
             return (
@@ -69,22 +83,24 @@ export function Sidebar() {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  'flex items-center rounded-lg text-sm font-medium transition-colors',
+                  isExpanded ? 'gap-3 px-3 py-2.5' : 'justify-center p-2.5',
                   isActive
                     ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
+                title={!isExpanded ? item.label : undefined}
               >
-                <item.icon className="h-5 w-5" />
-                {item.label}
+                <item.icon className="h-5 w-5 flex-shrink-0" />
+                {isExpanded && <span>{item.label}</span>}
               </NavLink>
             );
           })}
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-border p-4 space-y-2">
-          {user && (
+        <div className={cn("border-t border-border space-y-2", isExpanded ? "p-4" : "p-2")}>
+          {user && isExpanded && (
             <div className="flex items-center justify-between px-3 py-2">
               <span className="text-xs text-muted-foreground truncate">{displayName || user.email}</span>
               <NavLink
@@ -100,13 +116,31 @@ export function Sidebar() {
               </NavLink>
             </div>
           )}
+          {!isExpanded && user && (
+            <NavLink
+              to="/settings"
+              className={cn(
+                'flex justify-center p-2.5 rounded-lg transition-colors',
+                location.pathname === '/settings'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+              title="Settings"
+            >
+              <Settings className="h-5 w-5" />
+            </NavLink>
+          )}
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+            className={cn(
+              "w-full text-muted-foreground hover:text-foreground",
+              isExpanded ? "justify-start gap-3" : "justify-center p-2.5"
+            )}
             onClick={signOut}
+            title={!isExpanded ? "Sign Out" : undefined}
           >
             <LogOut className="h-5 w-5" />
-            Sign Out
+            {isExpanded && <span>Sign Out</span>}
           </Button>
         </div>
       </div>
