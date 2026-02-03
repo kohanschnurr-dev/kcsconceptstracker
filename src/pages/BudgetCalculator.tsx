@@ -144,6 +144,7 @@ export default function BudgetCalculator() {
     setBudgetDescription('');
     setPurchasePrice('');
     setArv('');
+    setSqft('');
     setCurrentTemplateName('');
     
     const cleared: Record<string, string> = {};
