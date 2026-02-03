@@ -1,325 +1,212 @@
 
 
-## Plan: Add Category Presets with $/sqft Calculator
+## Plan: Swap Deal Parameters to Left + Add Unified Sqft Field
 
 ### Overview
 
-Add a "Presets" button next to "Expand All/Collapse All" that allows users to define custom $/sqft rates for specific categories (like Painting, Flooring, Tile). When the user enters a square footage value, clicking a preset automatically calculates and inserts the budget value for that category.
+Move the "Deal Parameters" sidebar from the right side to the left side of the Budget Calculator layout, as this is where users naturally enter data first (Purchase Price, ARV, Sqft). Add a centralized "Sqft" field in the Deal Parameters that becomes the single source of truth for both the BudgetCanvas presets and TemplatePicker baselines.
+
+---
+
+### Current vs New Layout
+
+```text
+CURRENT:
+┌──────────────────────────────────────────────────────┐
+│ Header + MAO Gauge                                   │
+├─────────────────────────────────┬────────────────────┤
+│                                 │  Deal Parameters   │
+│       Budget Canvas             │  (right sidebar)   │
+│  (categories, profit breakdown) │                    │
+└─────────────────────────────────┴────────────────────┘
+
+NEW:
+┌──────────────────────────────────────────────────────┐
+│ Header + MAO Gauge                                   │
+├────────────────────┬─────────────────────────────────┤
+│  Deal Parameters   │                                 │
+│  (left sidebar)    │       Budget Canvas             │
+│                    │  (categories, profit breakdown) │
+│  + Sqft field      │                                 │
+└────────────────────┴─────────────────────────────────┘
+```
 
 ---
 
 ### Changes Summary
 
-| File | Change |
-|------|--------|
-| `src/components/budget/BudgetCanvas.tsx` | Add Presets button, dialog, sqft input, and auto-fill logic |
-
----
-
-### UI Design
-
-**Header Controls (Updated):**
-```text
-┌────────────────────────────────────────────────────────┐
-│ ⇅ Expand All     📐 Presets ⚙️     Sqft: [___1500___] │
-└────────────────────────────────────────────────────────┘
-```
-
-**Presets Popover/Dialog (click "Presets" to open):**
-```text
-┌───────────────────────────────────────────┐
-│ Category Presets                        X │
-├───────────────────────────────────────────┤
-│ Set $/sqft rates for quick calculations  │
-│                                           │
-│  Category          $/sqft    [Apply]      │
-│ ┌──────────────┐  ┌───────┐              │
-│ │ Painting     │  │ 3.50  │   [Apply]    │
-│ └──────────────┘  └───────┘              │
-│ ┌──────────────┐  ┌───────┐              │
-│ │ Flooring     │  │ 8.00  │   [Apply]    │
-│ └──────────────┘  └───────┘              │
-│ ┌──────────────┐  ┌───────┐              │
-│ │ Tile         │  │ 12.00 │   [Apply]    │
-│ └──────────────┘  └───────┘              │
-│ ┌──────────────┐  ┌───────┐              │
-│ │ Drywall      │  │ 2.50  │   [Apply]    │
-│ └──────────────┘  └───────┘              │
-│                                           │
-│              [Reset]    [Apply All]       │
-└───────────────────────────────────────────┘
-```
-
----
-
-### Default Preset Categories
-
-| Category | Default $/sqft |
-|----------|---------------|
-| Painting | $3.50 |
-| Flooring | $8.00 |
-| Tile | $12.00 |
-| Drywall | $2.50 |
-| Roofing | $5.00 |
+| File | Changes |
+|------|---------|
+| `src/pages/BudgetCalculator.tsx` | Add `sqft` state, pass to children, swap sidebar position |
+| `src/components/budget/DealSidebar.tsx` | Add Sqft input field below ARV, accept sqft props |
+| `src/components/budget/BudgetCanvas.tsx` | Accept sqft as prop (remove internal state) |
+| `src/components/budget/TemplatePicker.tsx` | Accept sqft as prop (remove internal state) |
 
 ---
 
 ### Technical Details
 
-**File: `src/components/budget/BudgetCanvas.tsx`**
+#### 1. BudgetCalculator.tsx - Add Sqft State + Swap Layout
 
-#### 1. Add imports
+Add new state and pass to children:
 
 ```typescript
-import { Ruler, Settings } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+const [sqft, setSqft] = useState<string>('');
 ```
 
-#### 2. Update props interface
+Update the layout to swap sidebar position (move DealSidebar before BudgetCanvas):
+
+```tsx
+{/* Main Content Area */}
+<div className="flex flex-1 overflow-hidden">
+  {/* Deal Sidebar - NOW ON LEFT */}
+  <DealSidebar
+    sqft={sqft}
+    onSqftChange={setSqft}
+    purchasePrice={purchasePrice}
+    // ... other props
+  />
+  
+  {/* Budget Canvas - Primary Workspace */}
+  <div className="flex-1 overflow-hidden flex flex-col">
+    <BudgetCanvas
+      categoryBudgets={categoryBudgets}
+      onCategoryChange={handleCategoryChange}
+      sqft={sqft}
+    />
+    {/* ... profit breakdown */}
+  </div>
+</div>
+```
+
+Update TemplatePicker in the header to receive sqft:
+
+```tsx
+<TemplatePicker
+  onSelectTemplate={handleSelectTemplate}
+  onCreateNew={handleClearAll}
+  currentTemplateName={currentTemplateName}
+  sqft={sqft}
+  onSqftChange={setSqft}
+/>
+```
+
+---
+
+#### 2. DealSidebar.tsx - Add Sqft Field
+
+Add sqft props to interface:
+
+```typescript
+interface DealSidebarProps {
+  sqft: string;
+  onSqftChange: (value: string) => void;
+  // ... existing props
+}
+```
+
+Add Sqft input field after ARV:
+
+```tsx
+<div className="space-y-2">
+  <Label htmlFor="sqft" className="text-xs">Square Footage</Label>
+  <Input
+    id="sqft"
+    type="number"
+    placeholder="1500"
+    className="font-mono"
+    value={sqft}
+    onChange={(e) => onSqftChange(e.target.value)}
+  />
+</div>
+```
+
+Update collapsed state icons to include a ruler for sqft visibility.
+
+---
+
+#### 3. BudgetCanvas.tsx - Use Sqft Prop
+
+Update props interface to receive sqft from parent:
 
 ```typescript
 interface BudgetCanvasProps {
   categoryBudgets: Record<string, string>;
   onCategoryChange: (category: string, value: string) => void;
-  sqft?: string;  // Optional: passed from parent if available
-  onSqftChange?: (value: string) => void;
+  sqft: string;  // Now from parent
 }
 ```
 
-#### 3. Define preset types and defaults
+Remove internal sqft state and the Sqft input from the header. The Presets popover will use the sqft prop directly.
+
+---
+
+#### 4. TemplatePicker.tsx - Use Sqft Prop
+
+Update props interface:
 
 ```typescript
-interface CategoryPreset {
-  category: string;
-  label: string;
-  pricePerSqft: number;
+interface TemplatePickerProps {
+  onSelectTemplate: (template: BudgetTemplate | null) => void;
+  onCreateNew: () => void;
+  currentTemplateName?: string;
+  sqft: string;
+  onSqftChange: (value: string) => void;
 }
-
-const DEFAULT_CATEGORY_PRESETS: CategoryPreset[] = [
-  { category: 'painting', label: 'Painting', pricePerSqft: 3.50 },
-  { category: 'flooring', label: 'Flooring', pricePerSqft: 8.00 },
-  { category: 'tile', label: 'Tile', pricePerSqft: 12.00 },
-  { category: 'drywall', label: 'Drywall', pricePerSqft: 2.50 },
-  { category: 'roofing', label: 'Roofing', pricePerSqft: 5.00 },
-];
-
-const PRESETS_STORAGE_KEY = 'budget-category-presets';
 ```
 
-#### 4. Add state for presets and sqft
+Remove internal sqft state. Remove the sqft input from the dropdown (since it's now in DealSidebar). The baselines will read from the sqft prop.
 
-```typescript
-const [sqft, setSqft] = useState<string>('');
-const [presets, setPresets] = useState<CategoryPreset[]>(DEFAULT_CATEGORY_PRESETS);
-const [editingPresets, setEditingPresets] = useState<CategoryPreset[]>([]);
-const [isPresetsOpen, setIsPresetsOpen] = useState(false);
-```
+---
 
-#### 5. Load presets from localStorage on mount
+### Deal Parameters Sidebar (Updated Layout)
 
-```typescript
-useEffect(() => {
-  const stored = localStorage.getItem(PRESETS_STORAGE_KEY);
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        setPresets(parsed);
-      }
-    } catch (e) {
-      console.error('Failed to parse stored presets:', e);
-    }
-  }
-}, []);
-```
-
-#### 6. Handle applying a single preset
-
-```typescript
-const handleApplyPreset = (preset: CategoryPreset) => {
-  const sqftNum = parseFloat(sqft) || 0;
-  if (sqftNum <= 0) {
-    toast.error('Please enter square footage first');
-    return;
-  }
-  const calculated = sqftNum * preset.pricePerSqft;
-  onCategoryChange(preset.category, calculated.toFixed(2));
-};
-```
-
-#### 7. Handle applying all presets at once
-
-```typescript
-const handleApplyAll = () => {
-  const sqftNum = parseFloat(sqft) || 0;
-  if (sqftNum <= 0) {
-    toast.error('Please enter square footage first');
-    return;
-  }
-  presets.forEach(preset => {
-    const calculated = sqftNum * preset.pricePerSqft;
-    onCategoryChange(preset.category, calculated.toFixed(2));
-  });
-  setIsPresetsOpen(false);
-};
-```
-
-#### 8. Handle saving edited presets
-
-```typescript
-const handleSavePresets = () => {
-  setPresets(editingPresets);
-  localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(editingPresets));
-};
-
-const updatePresetRate = (index: number, value: number) => {
-  setEditingPresets(prev => prev.map((p, i) => 
-    i === index ? { ...p, pricePerSqft: value } : p
-  ));
-};
-```
-
-#### 9. Update the header controls UI
-
-```tsx
-<div className="flex items-center justify-between mb-2 gap-4">
-  <div className="flex items-center gap-2">
-    <button
-      onClick={toggleAll}
-      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-    >
-      {allExpanded ? (
-        <>
-          <ChevronsDownUp className="h-3.5 w-3.5" />
-          Collapse All
-        </>
-      ) : (
-        <>
-          <ChevronsUpDown className="h-3.5 w-3.5" />
-          Expand All
-        </>
-      )}
-    </button>
-
-    <Popover open={isPresetsOpen} onOpenChange={setIsPresetsOpen}>
-      <PopoverTrigger asChild>
-        <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-4">
-          <Ruler className="h-3.5 w-3.5" />
-          Presets
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80" align="start">
-        {/* Presets content here */}
-      </PopoverContent>
-    </Popover>
-  </div>
-
-  <div className="flex items-center gap-2">
-    <span className="text-xs text-muted-foreground">Sqft:</span>
-    <Input
-      type="number"
-      value={sqft}
-      onChange={(e) => setSqft(e.target.value)}
-      placeholder="1500"
-      className="h-7 w-24 text-sm"
-    />
-  </div>
-</div>
-```
-
-#### 10. Popover content for presets
-
-```tsx
-<PopoverContent className="w-80" align="start">
-  <div className="space-y-3">
-    <div className="flex items-center justify-between">
-      <h4 className="font-medium text-sm">Category Presets</h4>
-      <button
-        onClick={() => setEditingPresets([...presets])}
-        className="p-1 hover:bg-accent rounded-sm"
-      >
-        <Settings className="h-3.5 w-3.5 text-muted-foreground" />
-      </button>
-    </div>
-    <p className="text-xs text-muted-foreground">
-      Calculate category budgets from $/sqft rates
-    </p>
-    
-    <div className="space-y-2">
-      {presets.map((preset, index) => {
-        const sqftNum = parseFloat(sqft) || 0;
-        const calculated = sqftNum * preset.pricePerSqft;
-        return (
-          <div key={preset.category} className="flex items-center justify-between gap-2">
-            <span className="text-sm flex-1">{preset.label}</span>
-            <span className="text-xs text-muted-foreground w-16">
-              ${preset.pricePerSqft}/sqft
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleApplyPreset(preset)}
-              disabled={sqftNum <= 0}
-              className="h-6 text-xs"
-            >
-              {sqftNum > 0 ? `$${calculated.toLocaleString()}` : 'Apply'}
-            </Button>
-          </div>
-        );
-      })}
-    </div>
-    
-    <div className="flex justify-end pt-2 border-t">
-      <Button
-        size="sm"
-        onClick={handleApplyAll}
-        disabled={parseFloat(sqft) <= 0}
-      >
-        Apply All
-      </Button>
-    </div>
-  </div>
-</PopoverContent>
+```text
+┌─────────────────────────────┐
+│ Deal Parameters          ◀ │
+├─────────────────────────────┤
+│ Purchase Price              │
+│ [$ _______________]         │
+│                             │
+│ After Repair Value (ARV)    │
+│ [$ _______________]         │
+│                             │
+│ Square Footage              │
+│ [________________]          │
+├─────────────────────────────┤
+│ ESTIMATED COSTS             │
+│ Closing (Buy, 2%)    $X,XXX │
+│ Holding (3%)         $X,XXX │
+│ Closing (Sell, 6%)   $X,XXX │
+├─────────────────────────────┤
+│ Budget Name *               │
+│ [________________]          │
+│                             │
+│ [Save] [Apply]              │
+└─────────────────────────────┘
 ```
 
 ---
 
 ### User Flow
 
-1. User enters square footage in the "Sqft" input (e.g., 1500)
-2. User clicks "Presets" to open the popover
-3. Each preset row shows: category name, $/sqft rate, and calculated total
-4. Click "Apply" next to a category to auto-fill that budget field
-5. Or click "Apply All" to fill all preset categories at once
-6. Click the settings icon to edit $/sqft rates (persisted to localStorage)
-
----
-
-### Storage
-
-Custom presets are stored in localStorage under `budget-category-presets`:
-
-```json
-[
-  {"category": "painting", "label": "Painting", "pricePerSqft": 3.50},
-  {"category": "flooring", "label": "Flooring", "pricePerSqft": 9.00},
-  {"category": "tile", "label": "Tile", "pricePerSqft": 14.00},
-  {"category": "drywall", "label": "Drywall", "pricePerSqft": 2.75},
-  {"category": "roofing", "label": "Roofing", "pricePerSqft": 5.50}
-]
-```
+1. User opens Budget Calculator
+2. Sees Deal Parameters on the LEFT (natural first step)
+3. Enters Purchase Price, ARV, and **Square Footage**
+4. The Sqft value automatically populates:
+   - Baselines in TemplatePicker dropdown (header)
+   - Category Presets in BudgetCanvas (Presets popover)
+5. User can click a Baseline or Preset and it uses the same sqft value
+6. Single source of truth - no duplicate sqft inputs
 
 ---
 
 ### Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/budget/BudgetCanvas.tsx` | Add Presets popover, sqft input, preset state management, apply logic, localStorage persistence |
+| File | Key Changes |
+|------|-------------|
+| `src/pages/BudgetCalculator.tsx` | Add sqft state, swap DealSidebar to left, pass sqft to children |
+| `src/components/budget/DealSidebar.tsx` | Add sqft/onSqftChange props, add Sqft input field after ARV, change border from `border-l` to `border-r` |
+| `src/components/budget/BudgetCanvas.tsx` | Accept sqft prop, remove internal sqft state and sqft input from header |
+| `src/components/budget/TemplatePicker.tsx` | Accept sqft/onSqftChange props, remove internal sqft state and sqft input from dropdown |
 
