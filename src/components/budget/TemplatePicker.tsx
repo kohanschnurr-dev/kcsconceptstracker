@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FileText, ChevronDown, Ruler, FolderOpen, Plus, Settings } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Ruler, FolderOpen, Plus, Settings } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -59,6 +60,7 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
   const [baselineTiers, setBaselineTiers] = useState<BaselineTier[]>(DEFAULT_BASELINE_TIERS);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingTiers, setEditingTiers] = useState<BaselineTier[]>([]);
+  const [baselinesOpen, setBaselinesOpen] = useState(true);
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -165,47 +167,58 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
           
           <DropdownMenuSeparator />
           
-          <DropdownMenuLabel className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Ruler className="h-3 w-3" />
-              Baselines
-            </div>
-            <button
-              onClick={handleOpenEdit}
-              className="p-1 hover:bg-accent rounded-sm transition-colors"
-            >
-              <Settings className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-            </button>
-          </DropdownMenuLabel>
-          
-          
-          {baselineTiers.map((tier, index) => {
-            const calculatedTotal = sqftNum * tier.pricePerSqft;
-            return (
-              <DropdownMenuItem 
-                key={`${tier.name}-${index}`}
-                onClick={() => handleBaselineSelect(tier)}
-                className="cursor-pointer"
+          <Collapsible open={baselinesOpen} onOpenChange={setBaselinesOpen}>
+            <CollapsibleTrigger asChild>
+              <div 
+                className="flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm"
+                onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between w-full gap-2">
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="font-medium">{tier.name}</span>
-                    <span className="text-xs text-muted-foreground">{tier.description}</span>
-                  </div>
-                  <div className="flex flex-col items-end gap-0.5 shrink-0">
-                    <span className="text-xs text-muted-foreground">
-                      ${tier.pricePerSqft}/sqft
-                    </span>
-                    {sqftNum > 0 && (
-                      <span className="text-xs font-mono text-primary">
-                        {formatCurrency(calculatedTotal)}
-                      </span>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <ChevronRight 
+                    className={`h-3 w-3 transition-transform ${baselinesOpen ? 'rotate-90' : ''}`} 
+                  />
+                  <Ruler className="h-3 w-3" />
+                  Baselines
                 </div>
-              </DropdownMenuItem>
-            );
-          })}
+                <button
+                  onClick={handleOpenEdit}
+                  className="p-1 hover:bg-accent rounded-sm transition-colors"
+                >
+                  <Settings className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                </button>
+              </div>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              {baselineTiers.map((tier, index) => {
+                const calculatedTotal = sqftNum * tier.pricePerSqft;
+                return (
+                  <DropdownMenuItem 
+                    key={`${tier.name}-${index}`}
+                    onClick={() => handleBaselineSelect(tier)}
+                    className="cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between w-full gap-2">
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <span className="font-medium">{tier.name}</span>
+                        <span className="text-xs text-muted-foreground">{tier.description}</span>
+                      </div>
+                      <div className="flex flex-col items-end gap-0.5 shrink-0">
+                        <span className="text-xs text-muted-foreground">
+                          ${tier.pricePerSqft}/sqft
+                        </span>
+                        {sqftNum > 0 && (
+                          <span className="text-xs font-mono text-primary">
+                            {formatCurrency(calculatedTotal)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                );
+              })}
+            </CollapsibleContent>
+          </Collapsible>
 
           {savedTemplates.length > 0 && (
             <>
