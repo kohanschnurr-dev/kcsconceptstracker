@@ -80,7 +80,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
         onClick={onClick}
         className={cn(
           'w-full text-left px-2 py-1 rounded text-xs truncate transition-all border',
-          'hover:ring-1 hover:ring-emerald-500/50 cursor-pointer',
+          'hover:ring-1 hover:ring-emerald-500/50 cursor-grab active:cursor-grabbing',
           task.isCriticalPath 
             ? 'bg-red-500/30 text-red-300 border-red-500/50' 
             : getCategoryColor(task.eventCategory || 'due_diligence')
@@ -101,7 +101,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
       onClick={onClick}
       className={cn(
         'w-full text-left p-3 rounded-lg border transition-all',
-        'hover:ring-2 hover:ring-emerald-500/50 cursor-pointer',
+        'hover:ring-2 hover:ring-emerald-500/50 cursor-grab active:cursor-grabbing',
         task.isCriticalPath
           ? 'bg-red-500/10 border-red-500/50'
           : 'bg-slate-800/50 border-slate-700'

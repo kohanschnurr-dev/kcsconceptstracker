@@ -292,6 +292,7 @@ export default function Calendar() {
               currentDate={currentDate}
               tasks={filteredTasks}
               onTaskClick={handleTaskClick}
+              onTaskMove={handleTaskMove}
             />
           )}
           {view === 'weekly' && (
@@ -299,6 +300,7 @@ export default function Calendar() {
               currentDate={currentDate}
               tasks={filteredTasks}
               onTaskClick={handleTaskClick}
+              onTaskMove={handleTaskMove}
             />
           )}
           {view === 'gantt' && (
