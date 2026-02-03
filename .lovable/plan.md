@@ -1,10 +1,10 @@
 
 
-## Plan: Filter Payoff Timeline to Show Only Shorter Terms
+## Plan: Remove "Save" Display from Payoff Timeline
 
 ### Overview
 
-Update the Payoff Timeline comparison to only display term options that are less than or equal to the current loan term. This makes the comparison more relevant by showing how much interest you'd save by paying off early.
+Remove the savings indicator ("Save $X") from each row in the Payoff Timeline to reduce visual clutter. Only the interest amount will be displayed.
 
 ---
 
@@ -12,7 +12,7 @@ Update the Payoff Timeline comparison to only display term options that are less
 
 | File | Change |
 |------|--------|
-| `src/components/project/HardMoneyLoanCalculator.tsx` | Filter `allowedMonths` to only include values <= `loanTermMonths` |
+| `src/components/project/HardMoneyLoanCalculator.tsx` | Remove the savings display from payoff timeline rows |
 
 ---
 
@@ -20,48 +20,39 @@ Update the Payoff Timeline comparison to only display term options that are less
 
 **File: `src/components/project/HardMoneyLoanCalculator.tsx`**
 
-**Current code (lines 434-444):**
+**Current code (lines 878-886):**
 ```tsx
-// Payoff timeline comparison - limited to 4, 6, 12, 18 month options
-const payoffComparison = useMemo(() => {
-  const monthlyInt = (loanAmount * (interestRate / 100)) / 12;
-  const allowedMonths = [4, 6, 12, 18];
-  
-  return allowedMonths.map(months => ({
-    months,
-    interest: monthlyInt * months,
-    savings: months < loanTermMonths ? (loanTermMonths - months) * monthlyInt : 0,
-  }));
-}, [loanAmount, interestRate, loanTermMonths]);
+<div className="flex items-center gap-4 text-sm">
+  <span className="font-mono">{formatCurrency(row.interest)} int</span>
+  {row.savings > 0 && (
+    <span className="text-success font-mono flex items-center gap-1">
+      <TrendingDown className="h-3 w-3" />
+      Save {formatCurrency(row.savings)}
+    </span>
+  )}
+</div>
 ```
 
 **New code:**
 ```tsx
-// Payoff timeline comparison - only show terms up to current loan term
-const payoffComparison = useMemo(() => {
-  const monthlyInt = (loanAmount * (interestRate / 100)) / 12;
-  const allowedMonths = [4, 6, 12, 18].filter(m => m <= loanTermMonths);
-  
-  return allowedMonths.map(months => ({
-    months,
-    interest: monthlyInt * months,
-    savings: months < loanTermMonths ? (loanTermMonths - months) * monthlyInt : 0,
-  }));
-}, [loanAmount, interestRate, loanTermMonths]);
+<span className="font-mono text-sm">{formatCurrency(row.interest)} int</span>
 ```
 
 ---
 
-### Behavior Examples
+### Visual Result
 
-| Loan Term | Visible Options |
-|-----------|-----------------|
-| 4 months  | 4mo             |
-| 6 months  | 4mo, 6mo        |
-| 12 months | 4mo, 6mo, 12mo  |
-| 18 months | 4mo, 6mo, 12mo, 18mo |
-| 9 months (custom) | 4mo, 6mo |
-| 24 months (custom) | 4mo, 6mo, 12mo, 18mo |
+**Before:**
+```
+If sold at 4 mo:     $2,977.33 int    ↘ Save $1,488.67
+If sold at 6 mo:                      $4,466.00 int
+```
+
+**After:**
+```
+If sold at 4 mo:     $2,977.33 int
+If sold at 6 mo:     $4,466.00 int
+```
 
 ---
 
@@ -69,5 +60,5 @@ const payoffComparison = useMemo(() => {
 
 | File | Lines | Changes |
 |------|-------|---------|
-| `src/components/project/HardMoneyLoanCalculator.tsx` | 437 | Add `.filter(m => m <= loanTermMonths)` to allowedMonths |
+| `src/components/project/HardMoneyLoanCalculator.tsx` | 878-886 | Simplify to show only interest amount |
 
