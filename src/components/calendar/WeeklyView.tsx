@@ -1,11 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { 
   startOfWeek, 
   endOfWeek, 
   eachDayOfInterval,
   isToday,
-  format
+  format,
+  startOfDay,
+  differenceInDays,
+  addDays
 } from 'date-fns';
+import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { DealCard } from './DealCard';
 import type { CalendarTask } from '@/pages/Calendar';
@@ -14,9 +18,52 @@ interface WeeklyViewProps {
   currentDate: Date;
   tasks: CalendarTask[];
   onTaskClick: (task: CalendarTask) => void;
+  onTaskMove: (taskId: string, newStartDate: Date, newEndDate: Date) => void;
 }
 
-export function WeeklyView({ currentDate, tasks, onTaskClick }: WeeklyViewProps) {
+function DraggableCard({ task, onTaskClick }: { task: CalendarTask; onTaskClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+    data: { task },
+  });
+  
+  const style = transform ? {
+    transform: `translate(${transform.x}px, ${transform.y}px)`,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 'auto',
+  } : undefined;
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      <DealCard task={task} onClick={onTaskClick} />
+    </div>
+  );
+}
+
+function DroppableDay({ day, children }: { day: Date; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: day.toISOString(),
+    data: { date: day },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'min-h-[400px] p-3 rounded-lg border transition-colors',
+        'bg-slate-800/50 border-slate-700',
+        isToday(day) && 'ring-2 ring-emerald-500/50',
+        isOver && 'ring-2 ring-primary/50 bg-primary/5'
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove }: WeeklyViewProps) {
+  const [activeTask, setActiveTask] = useState<CalendarTask | null>(null);
+
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate);
     const weekEnd = endOfWeek(currentDate);
@@ -31,53 +78,79 @@ export function WeeklyView({ currentDate, tasks, onTaskClick }: WeeklyViewProps)
     });
   };
 
+  const handleDragStart = (event: any) => {
+    const task = tasks.find(t => t.id === event.active.id);
+    if (task) setActiveTask(task);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const task = tasks.find(t => t.id === active.id);
+    if (!task) return;
+
+    const targetDate = new Date(over.id as string);
+    const taskStartDay = startOfDay(task.startDate);
+    
+    // Don't update if dropped on the same day
+    if (targetDate.getTime() === taskStartDay.getTime()) return;
+
+    const duration = differenceInDays(task.endDate, task.startDate);
+    const newEndDate = addDays(targetDate, duration);
+
+    onTaskMove(task.id, targetDate, newEndDate);
+  };
+
   return (
-    <div className="p-4">
-      <div className="grid grid-cols-7 gap-3">
-        {days.map(day => {
-          const dayTasks = getTasksForDay(day);
-          
-          return (
-            <div
-              key={day.toISOString()}
-              className={cn(
-                'min-h-[400px] p-3 rounded-lg border transition-colors',
-                'bg-slate-800/50 border-slate-700',
-                isToday(day) && 'ring-2 ring-emerald-500/50'
-              )}
-            >
-              <div className={cn(
-                'text-center mb-3 pb-2 border-b border-slate-700',
-              )}>
-                <p className="text-xs text-slate-500 uppercase">
-                  {format(day, 'EEE')}
-                </p>
-                <p className={cn(
-                  'text-2xl font-bold',
-                  isToday(day) ? 'text-emerald-400' : 'text-white'
-                )}>
-                  {format(day, 'd')}
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                {dayTasks.map(task => (
-                  <DealCard
-                    key={task.id}
-                    task={task}
-                    onClick={() => onTaskClick(task)}
-                  />
-                ))}
-                {dayTasks.length === 0 && (
-                  <p className="text-xs text-slate-600 text-center py-4">
-                    No tasks
+    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="p-4">
+        <div className="grid grid-cols-7 gap-3">
+          {days.map(day => {
+            const dayTasks = getTasksForDay(day);
+            
+            return (
+              <DroppableDay key={day.toISOString()} day={day}>
+                <div className="text-center mb-3 pb-2 border-b border-slate-700">
+                  <p className="text-xs text-slate-500 uppercase">
+                    {format(day, 'EEE')}
                   </p>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                  <p className={cn(
+                    'text-2xl font-bold',
+                    isToday(day) ? 'text-emerald-400' : 'text-white'
+                  )}>
+                    {format(day, 'd')}
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  {dayTasks.map(task => (
+                    <DraggableCard
+                      key={task.id}
+                      task={task}
+                      onTaskClick={() => onTaskClick(task)}
+                    />
+                  ))}
+                  {dayTasks.length === 0 && (
+                    <p className="text-xs text-slate-600 text-center py-4">
+                      No tasks
+                    </p>
+                  )}
+                </div>
+              </DroppableDay>
+            );
+          })}
+        </div>
       </div>
-    </div>
+      
+      <DragOverlay>
+        {activeTask ? (
+          <div className="opacity-90 scale-105">
+            <DealCard task={activeTask} />
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
