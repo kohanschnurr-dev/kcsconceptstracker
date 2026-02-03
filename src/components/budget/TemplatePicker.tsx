@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, ChevronDown, ChevronRight, Ruler, FolderOpen, Plus, Settings } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Ruler, FolderOpen, Plus, Settings, Star } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface BudgetTemplate {
   id: string;
@@ -27,6 +28,8 @@ interface BudgetTemplate {
   description: string | null;
   purchase_price: number;
   arv: number;
+  sqft: number | null;
+  is_default: boolean;
   category_budgets: Record<string, number>;
   total_budget: number;
 }
@@ -68,11 +71,25 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
         const { data, error } = await supabase
           .from('budget_templates')
           .select('*')
+          .order('is_default', { ascending: false })
           .order('updated_at', { ascending: false })
-          .limit(5);
+          .limit(10);
 
         if (error) throw error;
-        setSavedTemplates((data as BudgetTemplate[]) || []);
+        
+        const templates: BudgetTemplate[] = (data || []).map(d => ({
+          id: d.id,
+          name: d.name,
+          description: d.description,
+          purchase_price: d.purchase_price || 0,
+          arv: d.arv || 0,
+          sqft: d.sqft,
+          is_default: d.is_default || false,
+          category_budgets: (d.category_budgets as Record<string, number>) || {},
+          total_budget: d.total_budget || 0,
+        }));
+        
+        setSavedTemplates(templates);
       } catch (error) {
         console.error('Error fetching templates:', error);
       } finally {
@@ -117,6 +134,8 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
       description: tier.description,
       purchase_price: 0,
       arv: 0,
+      sqft: sqftNum || null,
+      is_default: false,
       total_budget: totalBudget,
       category_budgets: {},
     };
@@ -145,6 +164,31 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     setEditingTiers(prev => prev.map((tier, i) => 
       i === index ? { ...tier, [field]: value } : tier
     ));
+  };
+
+  const handleSetDefault = async (e: React.MouseEvent, templateId: string, currentlyDefault: boolean) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    try {
+      const { error } = await supabase
+        .from('budget_templates')
+        .update({ is_default: !currentlyDefault })
+        .eq('id', templateId);
+
+      if (error) throw error;
+
+      // Update local state
+      setSavedTemplates(prev => prev.map(t => ({
+        ...t,
+        is_default: t.id === templateId ? !currentlyDefault : (currentlyDefault ? t.is_default : false)
+      })));
+      
+      toast.success(currentlyDefault ? 'Default removed' : 'Set as default startup template');
+    } catch (error) {
+      console.error('Error setting default:', error);
+      toast.error('Failed to update default');
+    }
   };
 
   const sqftNum = parseFloat(sqft) || 0;
@@ -233,10 +277,24 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
                   <DropdownMenuItem 
                     key={template.id}
                     onClick={() => onSelectTemplate(template)}
+                    className="cursor-pointer"
                   >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="font-medium truncate">{template.name}</span>
-                      <span className="text-xs font-mono text-muted-foreground">
+                    <div className="flex items-center justify-between w-full gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <button
+                          onClick={(e) => handleSetDefault(e, template.id, template.is_default)}
+                          className="shrink-0 p-0.5 hover:scale-110 transition-transform"
+                          title={template.is_default ? 'Remove as default' : 'Set as default startup'}
+                        >
+                          {template.is_default ? (
+                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                          ) : (
+                            <Star className="h-3.5 w-3.5 text-muted-foreground hover:text-amber-400" />
+                          )}
+                        </button>
+                        <span className="font-medium truncate">{template.name}</span>
+                      </div>
+                      <span className="text-xs font-mono text-muted-foreground shrink-0">
                         {formatCurrency(total)}
                       </span>
                     </div>
