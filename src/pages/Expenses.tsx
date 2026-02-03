@@ -1,5 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Download, Receipt, Calendar, Paperclip } from 'lucide-react';
+import { Plus, Search, Download, Receipt, Calendar, Paperclip, ChevronDown } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,6 +97,7 @@ export default function Expenses() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedExpenseGroup, setSelectedExpenseGroup] = useState<DBExpense[] | null>(null);
   const [groupDetailModalOpen, setGroupDetailModalOpen] = useState(false);
+  const [expensesTableOpen, setExpensesTableOpen] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -490,49 +496,67 @@ export default function Expenses() {
         </div>
 
         {/* Expenses Table */}
-        <div className="glass-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="data-table">
-              <thead>
-                <tr className="bg-muted/30">
-                  <th>Date</th>
-                  <th>Vendor</th>
-                  <th className="!text-center">Project</th>
-                  <th className="!text-center">Category</th>
-                  <th className="!text-center">Payment</th>
-                  <th className="!text-center">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groupedExpenses.map((expenseGroup) => (
-                  <GroupedExpenseRow
-                    key={expenseGroup[0].id}
-                    expenses={expenseGroup}
-                    getProjectName={getProjectName}
-                    getCategoryLabel={getCategoryLabel}
-                    formatCurrency={formatCurrency}
-                    handleViewReceipt={handleViewReceipt}
-                    onExpenseClick={(expense) => {
-                      setSelectedExpense(expense);
-                      setDetailModalOpen(true);
-                    }}
-                    onGroupClick={(expenses) => {
-                      setSelectedExpenseGroup(expenses);
-                      setGroupDetailModalOpen(true);
-                    }}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <Collapsible open={expensesTableOpen} onOpenChange={setExpensesTableOpen}>
+          <div className="glass-card overflow-hidden">
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/20 transition-colors border-b border-border/30">
+                <div className="flex items-center gap-2">
+                  <ChevronDown className={`h-4 w-4 transition-transform ${expensesTableOpen ? '' : '-rotate-90'}`} />
+                  <span className="font-medium">Expenses Table</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <span>{filteredExpenses.length} expenses</span>
+                  <span>•</span>
+                  <span className="font-mono">{formatCurrency(totalExpenses)}</span>
+                </div>
+              </div>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr className="bg-muted/30">
+                      <th>Date</th>
+                      <th>Vendor</th>
+                      <th className="!text-center">Project</th>
+                      <th className="!text-center">Category</th>
+                      <th className="!text-center">Payment</th>
+                      <th className="!text-center">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groupedExpenses.map((expenseGroup) => (
+                      <GroupedExpenseRow
+                        key={expenseGroup[0].id}
+                        expenses={expenseGroup}
+                        getProjectName={getProjectName}
+                        getCategoryLabel={getCategoryLabel}
+                        formatCurrency={formatCurrency}
+                        handleViewReceipt={handleViewReceipt}
+                        onExpenseClick={(expense) => {
+                          setSelectedExpense(expense);
+                          setDetailModalOpen(true);
+                        }}
+                        onGroupClick={(expenses) => {
+                          setSelectedExpenseGroup(expenses);
+                          setGroupDetailModalOpen(true);
+                        }}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-          {filteredExpenses.length === 0 && (
-            <div className="text-center py-12">
-              <Receipt className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">No expenses found</p>
-            </div>
-          )}
-        </div>
+              {filteredExpenses.length === 0 && (
+                <div className="text-center py-12">
+                  <Receipt className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                  <p className="text-muted-foreground">No expenses found</p>
+                </div>
+              )}
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
       </div>
 
       <QuickExpenseModal
