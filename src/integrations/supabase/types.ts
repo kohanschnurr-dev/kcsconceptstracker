@@ -21,8 +21,10 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_default: boolean | null
           name: string
           purchase_price: number | null
+          sqft: number | null
           total_budget: number | null
           updated_at: string
           user_id: string
@@ -33,8 +35,10 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_default?: boolean | null
           name: string
           purchase_price?: number | null
+          sqft?: number | null
           total_budget?: number | null
           updated_at?: string
           user_id: string
@@ -45,8 +49,10 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_default?: boolean | null
           name?: string
           purchase_price?: number | null
+          sqft?: number | null
           total_budget?: number | null
           updated_at?: string
           user_id?: string

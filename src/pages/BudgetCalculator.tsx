@@ -26,6 +26,8 @@ interface BudgetTemplate {
   description: string | null;
   purchase_price: number;
   arv: number;
+  sqft: number | null;
+  is_default: boolean;
   category_budgets: Record<string, number>;
   total_budget: number;
 }
@@ -74,6 +76,51 @@ export default function BudgetCalculator() {
     };
 
     fetchProjects();
+  }, []);
+
+  // Load default template on mount
+  useEffect(() => {
+    const loadDefaultTemplate = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('budget_templates')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_default', true)
+        .maybeSingle();
+
+      if (data) {
+        const template: BudgetTemplate = {
+          id: data.id,
+          name: data.name,
+          description: data.description,
+          purchase_price: data.purchase_price || 0,
+          arv: data.arv || 0,
+          sqft: data.sqft,
+          is_default: data.is_default || false,
+          category_budgets: (data.category_budgets as Record<string, number>) || {},
+          total_budget: data.total_budget || 0,
+        };
+        
+        // Load template values without toast for auto-load
+        setBudgetName(template.name);
+        setBudgetDescription(template.description || '');
+        setPurchasePrice(template.purchase_price?.toString() || '');
+        setArv(template.arv?.toString() || '');
+        setSqft(template.sqft?.toString() || '');
+        setCurrentTemplateName(template.name);
+
+        const newBudgets: Record<string, string> = {};
+        BUDGET_CATEGORIES.forEach(cat => {
+          newBudgets[cat.value] = template.category_budgets[cat.value]?.toString() || '';
+        });
+        setCategoryBudgets(newBudgets);
+      }
+    };
+
+    loadDefaultTemplate();
   }, []);
 
   // Calculate totals
@@ -127,6 +174,7 @@ export default function BudgetCalculator() {
     setBudgetDescription(template.description || '');
     setPurchasePrice(template.purchase_price?.toString() || '');
     setArv(template.arv?.toString() || '');
+    setSqft(template.sqft?.toString() || '');
     setCurrentTemplateName(template.name);
 
     // Load category budgets
@@ -189,6 +237,7 @@ export default function BudgetCalculator() {
         description: budgetDescription.trim() || null,
         purchase_price: parseFloat(purchasePrice) || 0,
         arv: parseFloat(arv) || 0,
+        sqft: parseInt(sqft) || null,
         category_budgets: getCategoryBudgetsObject(),
       };
 
