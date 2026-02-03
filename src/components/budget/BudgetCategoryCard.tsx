@@ -8,6 +8,7 @@ interface BudgetCategoryCardProps {
   value: string;
   onChange: (value: string) => void;
   icon?: React.ReactNode;
+  hasPreset?: boolean;
 }
 
 export function BudgetCategoryCard({ 
@@ -15,7 +16,8 @@ export function BudgetCategoryCard({
   label, 
   value, 
   onChange,
-  icon 
+  icon,
+  hasPreset 
 }: BudgetCategoryCardProps) {
   const numericValue = parseFloat(value) || 0;
   const hasValue = numericValue > 0;
@@ -34,6 +36,9 @@ export function BudgetCategoryCard({
       )}
       <span className="text-xs truncate flex-1 min-w-0" title={label}>
         {label}
+        {hasPreset && (
+          <span className="ml-1 text-primary/60 text-[8px]">●</span>
+        )}
       </span>
       <div className="relative flex-shrink-0">
         <DollarSign className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
