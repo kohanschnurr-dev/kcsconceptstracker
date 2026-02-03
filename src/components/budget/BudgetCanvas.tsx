@@ -34,6 +34,7 @@ const PRESETS_STORAGE_KEY = 'budget-category-presets';
 interface BudgetCanvasProps {
   categoryBudgets: Record<string, string>;
   onCategoryChange: (category: string, value: string) => void;
+  sqft: string;
 }
 
 // Category groups for organized display
@@ -71,9 +72,8 @@ const CATEGORY_GROUPS = [
 ];
 
 
-export function BudgetCanvas({ categoryBudgets, onCategoryChange }: BudgetCanvasProps) {
+export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: BudgetCanvasProps) {
   const [openGroups, setOpenGroups] = useState<string[]>(['Structure']);
-  const [sqft, setSqft] = useState<string>('');
   const [presets, setPresets] = useState<CategoryPreset[]>(DEFAULT_CATEGORY_PRESETS);
   const [editingPresets, setEditingPresets] = useState<CategoryPreset[]>([]);
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
@@ -262,17 +262,6 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange }: BudgetCanvas
               </div>
             </PopoverContent>
           </Popover>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Sqft:</span>
-          <Input
-            type="number"
-            value={sqft}
-            onChange={(e) => setSqft(e.target.value)}
-            placeholder="1500"
-            className="h-7 w-24 text-sm"
-          />
         </div>
       </div>
 

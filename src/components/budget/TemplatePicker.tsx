@@ -34,6 +34,8 @@ interface TemplatePickerProps {
   onSelectTemplate: (template: BudgetTemplate | null) => void;
   onCreateNew: () => void;
   currentTemplateName?: string;
+  sqft: string;
+  onSqftChange: (value: string) => void;
 }
 
 interface BaselineTier {
@@ -51,10 +53,9 @@ const DEFAULT_BASELINE_TIERS: BaselineTier[] = [
 
 const BASELINES_STORAGE_KEY = 'budget-baseline-tiers';
 
-export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateName }: TemplatePickerProps) {
+export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateName, sqft, onSqftChange }: TemplatePickerProps) {
   const [savedTemplates, setSavedTemplates] = useState<BudgetTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [sqft, setSqft] = useState<string>('');
   const [baselineTiers, setBaselineTiers] = useState<BaselineTier[]>(DEFAULT_BASELINE_TIERS);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingTiers, setEditingTiers] = useState<BaselineTier[]>([]);
@@ -177,19 +178,6 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
             </button>
           </DropdownMenuLabel>
           
-          <div className="px-2 py-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">Sqft:</span>
-              <Input
-                type="number"
-                value={sqft}
-                onChange={(e) => setSqft(e.target.value)}
-                placeholder="1500"
-                className="h-7 text-sm"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          </div>
           
           {baselineTiers.map((tier, index) => {
             const calculatedTotal = sqftNum * tier.pricePerSqft;
