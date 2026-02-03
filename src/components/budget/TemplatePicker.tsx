@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, ChevronDown, Sparkles, FolderOpen, Plus } from 'lucide-react';
+import { FileText, ChevronDown, Ruler, FolderOpen, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,8 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { BUDGET_CATEGORIES } from '@/types';
 
 interface BudgetTemplate {
   id: string;
@@ -28,75 +28,18 @@ interface TemplatePickerProps {
   currentTemplateName?: string;
 }
 
-// Preset templates for common rehab scenarios
-const PRESET_TEMPLATES: Omit<BudgetTemplate, 'id'>[] = [
-  {
-    name: 'Cosmetic Refresh',
-    description: 'Light cosmetic updates - paint, flooring, fixtures',
-    purchase_price: 0,
-    arv: 0,
-    total_budget: 25000,
-    category_budgets: {
-      painting: 5000,
-      flooring: 8000,
-      light_fixtures: 2000,
-      hardware: 1500,
-      landscaping: 3000,
-      cleaning_final_punch: 1500,
-      dumpsters_trash: 1000,
-      misc: 3000,
-    },
-  },
-  {
-    name: 'Standard Rental Refresh',
-    description: 'Rental-ready with kitchen/bath updates',
-    purchase_price: 0,
-    arv: 0,
-    total_budget: 45000,
-    category_budgets: {
-      painting: 6000,
-      flooring: 10000,
-      cabinets: 8000,
-      countertops: 4000,
-      appliances: 4000,
-      bathroom: 5000,
-      light_fixtures: 2500,
-      hardware: 1500,
-      landscaping: 2000,
-      cleaning_final_punch: 2000,
-    },
-  },
-  {
-    name: 'Full Gut Flip',
-    description: 'Complete renovation - structure to finishes',
-    purchase_price: 0,
-    arv: 0,
-    total_budget: 120000,
-    category_budgets: {
-      demolition: 8000,
-      framing: 10000,
-      electrical: 12000,
-      plumbing: 10000,
-      hvac: 8000,
-      drywall: 8000,
-      painting: 8000,
-      flooring: 15000,
-      kitchen: 15000,
-      bathroom: 10000,
-      cabinets: 6000,
-      countertops: 5000,
-      appliances: 5000,
-      permits_inspections: 3000,
-      dumpsters_trash: 3000,
-      cleaning_final_punch: 2000,
-      landscaping: 4000,
-    },
-  },
+// Baseline tiers for $/sqft budgeting
+const BASELINE_TIERS = [
+  { name: 'Cosmetic', pricePerSqft: 35, description: 'Light refresh - paint, fixtures' },
+  { name: 'Standard', pricePerSqft: 45, description: 'Typical rental-ready updates' },
+  { name: 'High Level', pricePerSqft: 55, description: 'Quality finishes and systems' },
+  { name: 'Overhaul', pricePerSqft: 65, description: 'Major renovation work' },
 ];
 
 export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateName }: TemplatePickerProps) {
   const [savedTemplates, setSavedTemplates] = useState<BudgetTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sqft, setSqft] = useState<string>('');
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -128,6 +71,25 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     }).format(value);
   };
 
+  const handleBaselineSelect = (tier: typeof BASELINE_TIERS[0]) => {
+    const sqftNum = parseFloat(sqft) || 0;
+    const totalBudget = sqftNum * tier.pricePerSqft;
+    
+    const template: BudgetTemplate = {
+      id: `baseline-${tier.name.toLowerCase().replace(' ', '-')}`,
+      name: `${tier.name} (${sqftNum.toLocaleString()} sqft)`,
+      description: tier.description,
+      purchase_price: 0,
+      arv: 0,
+      total_budget: totalBudget,
+      category_budgets: {},
+    };
+    
+    onSelectTemplate(template);
+  };
+
+  const sqftNum = parseFloat(sqft) || 0;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -137,7 +99,7 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-72">
+      <DropdownMenuContent align="start" className="w-80">
         <DropdownMenuItem onClick={onCreateNew}>
           <Plus className="h-4 w-4 mr-2" />
           Start Blank
@@ -146,27 +108,51 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
         <DropdownMenuSeparator />
         
         <DropdownMenuLabel className="flex items-center gap-2">
-          <Sparkles className="h-3 w-3" />
-          Quick Start Templates
+          <Ruler className="h-3 w-3" />
+          Baselines
         </DropdownMenuLabel>
-        {PRESET_TEMPLATES.map((template) => (
-          <DropdownMenuItem 
-            key={template.name}
-            onClick={() => onSelectTemplate({ ...template, id: `preset-${template.name}` })}
-          >
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center justify-between w-full">
-                <span className="font-medium">{template.name}</span>
-                <span className="text-xs font-mono text-muted-foreground">
-                  {formatCurrency(template.total_budget)}
-                </span>
+        
+        <div className="px-2 py-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Sqft:</span>
+            <Input
+              type="number"
+              value={sqft}
+              onChange={(e) => setSqft(e.target.value)}
+              placeholder="1500"
+              className="h-7 text-sm"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+        
+        {BASELINE_TIERS.map((tier) => {
+          const calculatedTotal = sqftNum * tier.pricePerSqft;
+          return (
+            <DropdownMenuItem 
+              key={tier.name}
+              onClick={() => handleBaselineSelect(tier)}
+              className="cursor-pointer"
+            >
+              <div className="flex items-center justify-between w-full gap-2">
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="font-medium">{tier.name}</span>
+                  <span className="text-xs text-muted-foreground">{tier.description}</span>
+                </div>
+                <div className="flex flex-col items-end gap-0.5 shrink-0">
+                  <span className="text-xs text-muted-foreground">
+                    ${tier.pricePerSqft}/sqft
+                  </span>
+                  {sqftNum > 0 && (
+                    <span className="text-xs font-mono text-primary">
+                      {formatCurrency(calculatedTotal)}
+                    </span>
+                  )}
+                </div>
               </div>
-              {template.description && (
-                <span className="text-xs text-muted-foreground">{template.description}</span>
-              )}
-            </div>
-          </DropdownMenuItem>
-        ))}
+            </DropdownMenuItem>
+          );
+        })}
 
         {savedTemplates.length > 0 && (
           <>
