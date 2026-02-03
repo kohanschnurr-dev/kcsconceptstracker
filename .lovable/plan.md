@@ -1,119 +1,208 @@
 
 
-## Plan: Make Baselines Section Collapsible
+## Plan: Collapsible Expenses Table + Resizable QuickBooks Pending Area
 
 ### Overview
 
-Convert the "Baselines" section in the TemplatePicker dropdown into a collapsible section that can be expanded/collapsed to save vertical space in the dropdown menu.
+1. **Expenses Table**: Wrap the expenses table in a collapsible section with a header showing the count and total, allowing users to collapse/expand it when dealing with many expenses.
+
+2. **QuickBooks Pending Area**: Replace the fixed `max-h-[400px]` scroll container with a resizable panel that has a visible drag handle at the bottom, allowing users to manually adjust how much space the pending expenses take up.
 
 ---
 
 ### Changes Summary
 
-| File | Change |
-|------|--------|
-| `src/components/budget/TemplatePicker.tsx` | Wrap Baselines section with Collapsible component |
+| File | Changes |
+|------|---------|
+| `src/pages/Expenses.tsx` | Wrap expenses table in Collapsible component |
+| `src/components/QuickBooksIntegration.tsx` | Replace fixed max-height with resizable panel using a draggable divider |
 
 ---
 
 ### UI Design
 
-**Collapsed State:**
+**Expenses Table (Collapsible):**
 ```text
-┌──────────────────────────────────┐
-│ + Start Blank                    │
-├──────────────────────────────────┤
-│ ▶ Baselines                   ⚙️ │
-├──────────────────────────────────┤
-│ 📁 Your Saved Budgets            │
-│ ...                              │
-└──────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│ ▼ Expenses Table    47 expenses • $23,456.78   [─]    │
+├────────────────────────────────────────────────────────┤
+│ Date     Vendor     Project    Category   Payment  Amt │
+│ ...                                                    │
+│ ...                                                    │
+└────────────────────────────────────────────────────────┘
+
+Collapsed:
+┌────────────────────────────────────────────────────────┐
+│ ▶ Expenses Table    47 expenses • $23,456.78   [+]    │
+└────────────────────────────────────────────────────────┘
 ```
 
-**Expanded State:**
+**QuickBooks Pending Area (Resizable):**
 ```text
-┌──────────────────────────────────┐
-│ + Start Blank                    │
-├──────────────────────────────────┤
-│ ▼ Baselines                   ⚙️ │
-│   Cosmetic          $35/sqft     │
-│   Standard          $45/sqft     │
-│   High Level        $55/sqft     │
-│   Overhaul          $65/sqft     │
-├──────────────────────────────────┤
-│ 📁 Your Saved Budgets            │
-│ ...                              │
-└──────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│ Pending from QuickBooks                                │
+├────────────────────────────────────────────────────────┤
+│ [Expense Card 1]                                       │
+│ [Expense Card 2]                                       │
+│ [Expense Card 3]                                       │
+│ ...                                                    │
+├────────────────────────────────────────────────────────┤
+│ ═══════════════════ ⋮⋮⋮ ═══════════════════           │  ← Drag handle
+└────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ### Technical Details
 
-**File: `src/components/budget/TemplatePicker.tsx`**
+#### 1. Expenses.tsx - Collapsible Expenses Table
 
-#### 1. Add imports
-
+**Add imports:**
 ```typescript
-import { ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 ```
 
-#### 2. Add state for baselines expansion
-
+**Add state:**
 ```typescript
-const [baselinesOpen, setBaselinesOpen] = useState(true); // Start expanded
+const [expensesTableOpen, setExpensesTableOpen] = useState(true);
 ```
 
-#### 3. Replace the Baselines section with a Collapsible
-
-Wrap the DropdownMenuLabel and baseline items in a Collapsible:
-
+**Wrap the expenses table section:**
 ```tsx
-<Collapsible open={baselinesOpen} onOpenChange={setBaselinesOpen}>
-  <CollapsibleTrigger asChild>
-    <div 
-      className="flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="flex items-center gap-2 text-sm font-semibold">
-        <ChevronRight 
-          className={`h-3 w-3 transition-transform ${baselinesOpen ? 'rotate-90' : ''}`} 
-        />
-        <Ruler className="h-3 w-3" />
-        Baselines
+<Collapsible open={expensesTableOpen} onOpenChange={setExpensesTableOpen}>
+  <div className="glass-card overflow-hidden">
+    <CollapsibleTrigger asChild>
+      <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/20 transition-colors border-b border-border/30">
+        <div className="flex items-center gap-2">
+          <ChevronDown className={`h-4 w-4 transition-transform ${expensesTableOpen ? '' : '-rotate-90'}`} />
+          <span className="font-medium">Expenses Table</span>
+        </div>
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span>{filteredExpenses.length} expenses</span>
+          <span>•</span>
+          <span className="font-mono">{formatCurrency(totalExpenses)}</span>
+        </div>
       </div>
-      <button
-        onClick={handleOpenEdit}
-        className="p-1 hover:bg-accent rounded-sm transition-colors"
-      >
-        <Settings className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-      </button>
-    </div>
-  </CollapsibleTrigger>
-  
-  <CollapsibleContent>
-    {baselineTiers.map((tier, index) => {
-      // ... existing tier rendering
-    })}
-  </CollapsibleContent>
+    </CollapsibleTrigger>
+    
+    <CollapsibleContent>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          {/* ... existing table content ... */}
+        </table>
+      </div>
+      {filteredExpenses.length === 0 && (
+        <div className="text-center py-12">
+          {/* ... empty state ... */}
+        </div>
+      )}
+    </CollapsibleContent>
+  </div>
 </Collapsible>
 ```
 
-#### 4. Handle click propagation
+---
 
-Ensure clicking the collapse trigger doesn't close the dropdown by using `e.stopPropagation()`.
+#### 2. QuickBooksIntegration.tsx - Resizable Pending Area
+
+**Add state for height:**
+```typescript
+const [pendingAreaHeight, setPendingAreaHeight] = useState(400);
+const [isDragging, setIsDragging] = useState(false);
+```
+
+**Replace the fixed max-height div with a resizable container:**
+```tsx
+<div 
+  className="relative overflow-y-auto space-y-3"
+  style={{ maxHeight: `${pendingAreaHeight}px` }}
+>
+  {groupedPendingExpenses.map((expenseGroup) => (
+    <GroupedPendingExpenseCard ... />
+  ))}
+</div>
+
+{/* Resize Handle */}
+<div
+  className="h-4 flex items-center justify-center cursor-ns-resize hover:bg-muted/30 transition-colors group"
+  onMouseDown={handleDragStart}
+  onTouchStart={handleTouchStart}
+>
+  <div className="w-12 h-1 rounded-full bg-border group-hover:bg-muted-foreground/50 transition-colors" />
+</div>
+```
+
+**Add resize handlers:**
+```typescript
+const handleDragStart = (e: React.MouseEvent) => {
+  e.preventDefault();
+  setIsDragging(true);
+  const startY = e.clientY;
+  const startHeight = pendingAreaHeight;
+  
+  const handleMouseMove = (moveEvent: MouseEvent) => {
+    const delta = moveEvent.clientY - startY;
+    const newHeight = Math.max(150, Math.min(800, startHeight + delta));
+    setPendingAreaHeight(newHeight);
+  };
+  
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+  
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
+};
+
+const handleTouchStart = (e: React.TouchEvent) => {
+  const startY = e.touches[0].clientY;
+  const startHeight = pendingAreaHeight;
+  
+  const handleTouchMove = (moveEvent: TouchEvent) => {
+    const delta = moveEvent.touches[0].clientY - startY;
+    const newHeight = Math.max(150, Math.min(800, startHeight + delta));
+    setPendingAreaHeight(newHeight);
+  };
+  
+  const handleTouchEnd = () => {
+    document.removeEventListener('touchmove', handleTouchMove);
+    document.removeEventListener('touchend', handleTouchEnd);
+  };
+  
+  document.addEventListener('touchmove', handleTouchMove);
+  document.addEventListener('touchend', handleTouchEnd);
+};
+```
+
+---
+
+### Height Constraints
+
+| Constraint | Value |
+|------------|-------|
+| Minimum height | 150px |
+| Default height | 400px |
+| Maximum height | 800px |
 
 ---
 
 ### User Flow
 
-1. User opens the Template Picker dropdown
-2. Baselines section starts expanded (default)
-3. User can click the "Baselines" header to collapse/expand the section
-4. Chevron icon rotates to indicate state (▶ collapsed, ▼ expanded)
-5. Settings icon remains accessible to edit baseline rates
-6. Collapsed state saves vertical space in the dropdown
+**Expenses Table:**
+1. Table shows expanded by default with header showing count and total
+2. User clicks header to collapse the table
+3. Collapsed state still shows count and total for quick reference
+4. Click again to expand
+
+**QuickBooks Pending Area:**
+1. Area defaults to 400px height (current behavior)
+2. User sees a horizontal drag handle bar at the bottom of the pending list
+3. Drag the handle up to shrink, down to expand
+4. Min 150px, max 800px
+5. Works with both mouse and touch
 
 ---
 
@@ -121,5 +210,6 @@ Ensure clicking the collapse trigger doesn't close the dropdown by using `e.stop
 
 | File | Key Changes |
 |------|-------------|
-| `src/components/budget/TemplatePicker.tsx` | Add `ChevronRight` import, add Collapsible imports, add `baselinesOpen` state, wrap Baselines section with Collapsible component |
+| `src/pages/Expenses.tsx` | Add `ChevronDown` import, Collapsible imports, `expensesTableOpen` state, wrap table section with Collapsible |
+| `src/components/QuickBooksIntegration.tsx` | Add `pendingAreaHeight` state, replace fixed `max-h-[400px]` with dynamic height, add drag handle with mouse/touch event handlers |
 
