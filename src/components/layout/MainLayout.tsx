@@ -35,7 +35,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           totalBudget: p.total_budget,
           startDate: p.start_date,
           status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
-          projectType: p.project_type as 'fix_flip' | 'rental',
+          projectType: p.project_type as 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling',
           categories: (categoriesData || [])
             .filter((c: any) => c.project_id === p.id)
             .map((c: any) => ({

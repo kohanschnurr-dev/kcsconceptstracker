@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, MapPin, DollarSign, Calendar, Hammer, Home, HardHat } from 'lucide-react';
+import { Building2, MapPin, DollarSign, Calendar, Hammer, Home, Handshake } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -131,18 +131,22 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
           <div className="space-y-2">
             <Label>Project Type</Label>
             <Tabs value={projectType} onValueChange={(v) => setProjectType(v as ProjectType)}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="fix_flip" className="gap-2">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="fix_flip" className="gap-1 text-xs">
                   <Hammer className="h-4 w-4" />
-                  Fix & Flip
+                  <span className="hidden sm:inline">Fix & Flip</span>
                 </TabsTrigger>
-                <TabsTrigger value="rental" className="gap-2">
+                <TabsTrigger value="rental" className="gap-1 text-xs">
                   <Home className="h-4 w-4" />
-                  Rental
+                  <span className="hidden sm:inline">Rental</span>
                 </TabsTrigger>
-                <TabsTrigger value="new_construction" className="gap-2">
+                <TabsTrigger value="new_construction" className="gap-1 text-xs">
                   <Building2 className="h-4 w-4" />
-                  New Build
+                  <span className="hidden sm:inline">New Build</span>
+                </TabsTrigger>
+                <TabsTrigger value="wholesaling" className="gap-1 text-xs">
+                  <Handshake className="h-4 w-4" />
+                  <span className="hidden sm:inline">Wholesale</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -156,7 +160,9 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
                   ? "Lot 45 Custom Home, Lakeside Estates..." 
                   : projectType === 'fix_flip' 
                     ? "Oak Cliff Flip, Downtown Bungalow..." 
-                    : "Rental Property 1, Main St Duplex..."
+                    : projectType === 'wholesaling'
+                      ? "123 Main St Contract, Quick Assignment..."
+                      : "Rental Property 1, Main St Duplex..."
               }
               value={name}
               onChange={(e) => setName(e.target.value)}

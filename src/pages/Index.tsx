@@ -122,7 +122,7 @@ export default function Index() {
           totalBudget: calculatedTotalBudget,
           startDate: p.start_date,
           status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
-          projectType: p.project_type as 'fix_flip' | 'rental',
+          projectType: p.project_type as 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling',
           categories: projectCategories,
         };
       });
@@ -176,13 +176,12 @@ export default function Index() {
   };
 
   // Calculate stats
-  // Sort fix & flips before rentals (more active management needed)
+  // Sort by project type priority (fix & flips first, then wholesaling, etc.)
   const activeProjects = projects
     .filter(p => p.status === 'active')
     .sort((a, b) => {
-      if (a.projectType === 'fix_flip' && b.projectType !== 'fix_flip') return -1;
-      if (a.projectType !== 'fix_flip' && b.projectType === 'fix_flip') return 1;
-      return 0;
+      const priority = { fix_flip: 0, wholesaling: 1, new_construction: 2, rental: 3 };
+      return (priority[a.projectType] ?? 4) - (priority[b.projectType] ?? 4);
     });
   const totalBudget = projects.reduce((sum, p) => sum + p.totalBudget, 0);
   const totalSpent = projects.reduce((sum, p) => 
