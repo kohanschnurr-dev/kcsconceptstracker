@@ -359,10 +359,11 @@ export default function Procurement() {
           </Card>
         </div>
 
-        {/* Filters */}
+        {/* Items Table with Filters */}
         <Card className="glass-card">
           <CardContent className="pt-4">
-            <div className="flex flex-col md:flex-row gap-4">
+            {/* Filters Row */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -410,15 +411,12 @@ export default function Procurement() {
                 </SelectContent>
               </Select>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Items Table */}
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Items ({filteredItems.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
+            {/* Items Header */}
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-sm font-medium text-muted-foreground">Items</span>
+              <Badge variant="secondary" className="text-xs">{filteredItems.length}</Badge>
+            </div>
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Loading...</div>
             ) : filteredItems.length === 0 ? (
