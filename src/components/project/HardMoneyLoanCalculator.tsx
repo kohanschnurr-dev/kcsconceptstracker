@@ -875,15 +875,7 @@ export function HardMoneyLoanCalculator({
                           If sold at <span className="font-mono font-medium">{row.months} mo</span>:
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="font-mono">{formatCurrency(row.interest)} int</span>
-                        {row.savings > 0 && (
-                          <span className="text-success font-mono flex items-center gap-1">
-                            <TrendingDown className="h-3 w-3" />
-                            Save {formatCurrency(row.savings)}
-                          </span>
-                        )}
-                      </div>
+                      <span className="font-mono text-sm">{formatCurrency(row.interest)} int</span>
                     </div>
                   ))}
                 </div>
