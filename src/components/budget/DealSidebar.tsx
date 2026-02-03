@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DollarSign, ChevronLeft, ChevronRight, Calculator, Folder, Save, FolderOpen, Loader2 } from 'lucide-react';
+import { DollarSign, ChevronLeft, ChevronRight, Calculator, Folder, Save, FolderOpen, Loader2, Ruler } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,8 @@ interface DealSidebarProps {
   onPurchasePriceChange: (value: string) => void;
   arv: string;
   onArvChange: (value: string) => void;
+  sqft: string;
+  onSqftChange: (value: string) => void;
   budgetName: string;
   onBudgetNameChange: (value: string) => void;
   budgetDescription: string;
@@ -41,6 +43,8 @@ export function DealSidebar({
   onPurchasePriceChange,
   arv,
   onArvChange,
+  sqft,
+  onSqftChange,
   budgetName,
   onBudgetNameChange,
   budgetDescription,
@@ -76,25 +80,26 @@ export function DealSidebar({
 
   if (isCollapsed) {
     return (
-      <div className="w-12 border-l bg-muted/30 flex flex-col items-center py-4">
+      <div className="w-12 border-r bg-muted/30 flex flex-col items-center py-4">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setIsCollapsed(false)}
           className="mb-4"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4" />
         </Button>
         <div className="flex flex-col items-center gap-4 text-muted-foreground">
-          <Calculator className="h-5 w-5" />
-          <Folder className="h-5 w-5" />
+          <span title="Deal Parameters"><Calculator className="h-5 w-5" /></span>
+          <span title="Square Footage"><Ruler className="h-5 w-5" /></span>
+          <span title="Saved Budgets"><Folder className="h-5 w-5" /></span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-80 border-l bg-muted/30 flex flex-col">
+    <div className="w-80 border-r bg-muted/30 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <h3 className="font-semibold text-sm">Deal Parameters</h3>
@@ -104,7 +109,7 @@ export function DealSidebar({
           onClick={() => setIsCollapsed(true)}
           className="h-8 w-8"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
 
@@ -140,6 +145,18 @@ export function DealSidebar({
                   onChange={(e) => onArvChange(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="sqft" className="text-xs">Square Footage</Label>
+              <Input
+                id="sqft"
+                type="number"
+                placeholder="1500"
+                className="font-mono"
+                value={sqft}
+                onChange={(e) => onSqftChange(e.target.value)}
+              />
             </div>
           </div>
 

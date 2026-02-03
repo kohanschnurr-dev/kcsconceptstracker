@@ -42,6 +42,7 @@ export default function BudgetCalculator() {
   const [isSaving, setIsSaving] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [sqft, setSqft] = useState<string>('');
   
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
@@ -305,6 +306,8 @@ export default function BudgetCalculator() {
               onSelectTemplate={handleSelectTemplate}
               onCreateNew={handleClearAll}
               currentTemplateName={currentTemplateName}
+              sqft={sqft}
+              onSqftChange={setSqft}
             />
             <Button variant="outline" size="icon" onClick={handleClearAll} title="Clear all">
               <RotateCcw className="h-4 w-4" />
@@ -325,6 +328,27 @@ export default function BudgetCalculator() {
 
         {/* Main Content Area */}
         <div className="flex flex-1 overflow-hidden">
+          {/* Deal Sidebar - Left Panel */}
+          <DealSidebar
+            purchasePrice={purchasePrice}
+            onPurchasePriceChange={setPurchasePrice}
+            arv={arv}
+            onArvChange={setArv}
+            sqft={sqft}
+            onSqftChange={setSqft}
+            budgetName={budgetName}
+            onBudgetNameChange={setBudgetName}
+            budgetDescription={budgetDescription}
+            onBudgetDescriptionChange={setBudgetDescription}
+            onSave={handleSave}
+            onApplyToProject={handleApplyToProject}
+            isSaving={isSaving}
+            projects={projects}
+            isLoadingProjects={isLoadingProjects}
+            includeSellClosingCosts={includeSellClosingCosts}
+            onSellClosingCostsChange={setIncludeSellClosingCosts}
+          />
+          
           {/* Budget Canvas - Primary Workspace */}
           <div className="flex-1 overflow-hidden flex flex-col">
             <ScrollArea className="flex-1">
@@ -333,6 +357,7 @@ export default function BudgetCalculator() {
                 <BudgetCanvas
                   categoryBudgets={categoryBudgets}
                   onCategoryChange={handleCategoryChange}
+                  sqft={sqft}
                 />
 
                 {/* Profit Breakdown - Collapsible */}
@@ -476,24 +501,6 @@ export default function BudgetCalculator() {
             </ScrollArea>
           </div>
 
-          {/* Deal Sidebar - Right Panel */}
-          <DealSidebar
-            purchasePrice={purchasePrice}
-            onPurchasePriceChange={setPurchasePrice}
-            arv={arv}
-            onArvChange={setArv}
-            budgetName={budgetName}
-            onBudgetNameChange={setBudgetName}
-            budgetDescription={budgetDescription}
-            onBudgetDescriptionChange={setBudgetDescription}
-            onSave={handleSave}
-            onApplyToProject={handleApplyToProject}
-            isSaving={isSaving}
-            projects={projects}
-            isLoadingProjects={isLoadingProjects}
-            includeSellClosingCosts={includeSellClosingCosts}
-            onSellClosingCostsChange={setIncludeSellClosingCosts}
-          />
         </div>
       </div>
     </MainLayout>
