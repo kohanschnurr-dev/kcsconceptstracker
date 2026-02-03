@@ -1,10 +1,10 @@
 
 
-## Plan: Editable Baseline Tiers
+## Plan: Add Category Presets with $/sqft Calculator
 
 ### Overview
 
-Add a settings icon next to the "Baselines" label that opens a dialog where users can edit baseline tier names and $/sqft values. Custom baselines persist via localStorage.
+Add a "Presets" button next to "Expand All/Collapse All" that allows users to define custom $/sqft rates for specific categories (like Painting, Flooring, Tile). When the user enters a square footage value, clicking a preset automatically calculates and inserts the budget value for that category.
 
 ---
 
@@ -12,255 +12,306 @@ Add a settings icon next to the "Baselines" label that opens a dialog where user
 
 | File | Change |
 |------|--------|
-| `src/components/budget/TemplatePicker.tsx` | Add settings icon, edit dialog, and localStorage persistence |
+| `src/components/budget/BudgetCanvas.tsx` | Add Presets button, dialog, sqft input, and auto-fill logic |
 
 ---
 
 ### UI Design
 
-**Dropdown with Settings Icon:**
+**Header Controls (Updated):**
 ```text
-┌──────────────────────────────────┐
-│ + Start Blank                    │
-├──────────────────────────────────┤
-│ 📐 Baselines              ⚙️     │
-│ ┌──────────────────────────────┐ │
-│ │ Sqft: [___1500___]           │ │
-│ └──────────────────────────────┘ │
-│ ▪ Cosmetic      $35/sqft  $52,500│
-│ ...                              │
-└──────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│ ⇅ Expand All     📐 Presets ⚙️     Sqft: [___1500___] │
+└────────────────────────────────────────────────────────┘
 ```
 
-**Edit Baselines Dialog:**
+**Presets Popover/Dialog (click "Presets" to open):**
 ```text
-┌─────────────────────────────────────────┐
-│ Edit Baseline Tiers                   X │
-├─────────────────────────────────────────┤
-│                                         │
-│  Name                    $/sqft         │
-│ ┌─────────────────────┐ ┌─────────────┐ │
-│ │ Cosmetic            │ │ 35          │ │
-│ └─────────────────────┘ └─────────────┘ │
-│ ┌─────────────────────┐ ┌─────────────┐ │
-│ │ Standard            │ │ 45          │ │
-│ └─────────────────────┘ └─────────────┘ │
-│ ┌─────────────────────┐ ┌─────────────┐ │
-│ │ High Level          │ │ 55          │ │
-│ └─────────────────────┘ └─────────────┘ │
-│ ┌─────────────────────┐ ┌─────────────┐ │
-│ │ Overhaul            │ │ 65          │ │
-│ └─────────────────────┘ └─────────────┘ │
-│                                         │
-│              [Reset to Defaults]  [Save]│
-└─────────────────────────────────────────┘
+┌───────────────────────────────────────────┐
+│ Category Presets                        X │
+├───────────────────────────────────────────┤
+│ Set $/sqft rates for quick calculations  │
+│                                           │
+│  Category          $/sqft    [Apply]      │
+│ ┌──────────────┐  ┌───────┐              │
+│ │ Painting     │  │ 3.50  │   [Apply]    │
+│ └──────────────┘  └───────┘              │
+│ ┌──────────────┐  ┌───────┐              │
+│ │ Flooring     │  │ 8.00  │   [Apply]    │
+│ └──────────────┘  └───────┘              │
+│ ┌──────────────┐  ┌───────┐              │
+│ │ Tile         │  │ 12.00 │   [Apply]    │
+│ └──────────────┘  └───────┘              │
+│ ┌──────────────┐  ┌───────┐              │
+│ │ Drywall      │  │ 2.50  │   [Apply]    │
+│ └──────────────┘  └───────┘              │
+│                                           │
+│              [Reset]    [Apply All]       │
+└───────────────────────────────────────────┘
 ```
+
+---
+
+### Default Preset Categories
+
+| Category | Default $/sqft |
+|----------|---------------|
+| Painting | $3.50 |
+| Flooring | $8.00 |
+| Tile | $12.00 |
+| Drywall | $2.50 |
+| Roofing | $5.00 |
 
 ---
 
 ### Technical Details
 
-**File: `src/components/budget/TemplatePicker.tsx`**
+**File: `src/components/budget/BudgetCanvas.tsx`**
 
 #### 1. Add imports
 
 ```typescript
-import { Settings } from 'lucide-react';
+import { Ruler, Settings } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 ```
 
-#### 2. Define types and constants
+#### 2. Update props interface
 
 ```typescript
-interface BaselineTier {
-  name: string;
+interface BudgetCanvasProps {
+  categoryBudgets: Record<string, string>;
+  onCategoryChange: (category: string, value: string) => void;
+  sqft?: string;  // Optional: passed from parent if available
+  onSqftChange?: (value: string) => void;
+}
+```
+
+#### 3. Define preset types and defaults
+
+```typescript
+interface CategoryPreset {
+  category: string;
+  label: string;
   pricePerSqft: number;
-  description: string;
 }
 
-const DEFAULT_BASELINE_TIERS: BaselineTier[] = [
-  { name: 'Cosmetic', pricePerSqft: 35, description: 'Light refresh - paint, fixtures' },
-  { name: 'Standard', pricePerSqft: 45, description: 'Typical rental-ready updates' },
-  { name: 'High Level', pricePerSqft: 55, description: 'Quality finishes and systems' },
-  { name: 'Overhaul', pricePerSqft: 65, description: 'Major renovation work' },
+const DEFAULT_CATEGORY_PRESETS: CategoryPreset[] = [
+  { category: 'painting', label: 'Painting', pricePerSqft: 3.50 },
+  { category: 'flooring', label: 'Flooring', pricePerSqft: 8.00 },
+  { category: 'tile', label: 'Tile', pricePerSqft: 12.00 },
+  { category: 'drywall', label: 'Drywall', pricePerSqft: 2.50 },
+  { category: 'roofing', label: 'Roofing', pricePerSqft: 5.00 },
 ];
 
-const BASELINES_STORAGE_KEY = 'budget-baseline-tiers';
+const PRESETS_STORAGE_KEY = 'budget-category-presets';
 ```
 
-#### 3. Add state for baselines and edit dialog
+#### 4. Add state for presets and sqft
 
 ```typescript
-const [baselineTiers, setBaselineTiers] = useState<BaselineTier[]>(DEFAULT_BASELINE_TIERS);
-const [isEditOpen, setIsEditOpen] = useState(false);
-const [editingTiers, setEditingTiers] = useState<BaselineTier[]>([]);
+const [sqft, setSqft] = useState<string>('');
+const [presets, setPresets] = useState<CategoryPreset[]>(DEFAULT_CATEGORY_PRESETS);
+const [editingPresets, setEditingPresets] = useState<CategoryPreset[]>([]);
+const [isPresetsOpen, setIsPresetsOpen] = useState(false);
 ```
 
-#### 4. Load baselines from localStorage on mount
+#### 5. Load presets from localStorage on mount
 
 ```typescript
 useEffect(() => {
-  const stored = localStorage.getItem(BASELINES_STORAGE_KEY);
+  const stored = localStorage.getItem(PRESETS_STORAGE_KEY);
   if (stored) {
     try {
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length === 4) {
-        setBaselineTiers(parsed);
+      if (Array.isArray(parsed)) {
+        setPresets(parsed);
       }
     } catch (e) {
-      console.error('Failed to parse stored baselines:', e);
+      console.error('Failed to parse stored presets:', e);
     }
   }
 }, []);
 ```
 
-#### 5. Handle opening the edit dialog
+#### 6. Handle applying a single preset
 
 ```typescript
-const handleOpenEdit = (e: React.MouseEvent) => {
-  e.preventDefault();
-  e.stopPropagation();
-  setEditingTiers([...baselineTiers]);
-  setIsEditOpen(true);
+const handleApplyPreset = (preset: CategoryPreset) => {
+  const sqftNum = parseFloat(sqft) || 0;
+  if (sqftNum <= 0) {
+    toast.error('Please enter square footage first');
+    return;
+  }
+  const calculated = sqftNum * preset.pricePerSqft;
+  onCategoryChange(preset.category, calculated.toFixed(2));
 };
 ```
 
-#### 6. Handle saving changes
+#### 7. Handle applying all presets at once
 
 ```typescript
-const handleSaveBaselines = () => {
-  setBaselineTiers(editingTiers);
-  localStorage.setItem(BASELINES_STORAGE_KEY, JSON.stringify(editingTiers));
-  setIsEditOpen(false);
+const handleApplyAll = () => {
+  const sqftNum = parseFloat(sqft) || 0;
+  if (sqftNum <= 0) {
+    toast.error('Please enter square footage first');
+    return;
+  }
+  presets.forEach(preset => {
+    const calculated = sqftNum * preset.pricePerSqft;
+    onCategoryChange(preset.category, calculated.toFixed(2));
+  });
+  setIsPresetsOpen(false);
+};
+```
+
+#### 8. Handle saving edited presets
+
+```typescript
+const handleSavePresets = () => {
+  setPresets(editingPresets);
+  localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(editingPresets));
 };
 
-const handleResetDefaults = () => {
-  setEditingTiers([...DEFAULT_BASELINE_TIERS]);
-};
-
-const updateEditingTier = (index: number, field: 'name' | 'pricePerSqft', value: string | number) => {
-  setEditingTiers(prev => prev.map((tier, i) => 
-    i === index ? { ...tier, [field]: value } : tier
+const updatePresetRate = (index: number, value: number) => {
+  setEditingPresets(prev => prev.map((p, i) => 
+    i === index ? { ...p, pricePerSqft: value } : p
   ));
 };
 ```
 
-#### 7. Update UI - Add settings icon button
-
-In the DropdownMenuLabel for "Baselines", add a settings icon:
+#### 9. Update the header controls UI
 
 ```tsx
-<DropdownMenuLabel className="flex items-center justify-between">
+<div className="flex items-center justify-between mb-2 gap-4">
   <div className="flex items-center gap-2">
-    <Ruler className="h-3 w-3" />
-    Baselines
+    <button
+      onClick={toggleAll}
+      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+    >
+      {allExpanded ? (
+        <>
+          <ChevronsDownUp className="h-3.5 w-3.5" />
+          Collapse All
+        </>
+      ) : (
+        <>
+          <ChevronsUpDown className="h-3.5 w-3.5" />
+          Expand All
+        </>
+      )}
+    </button>
+
+    <Popover open={isPresetsOpen} onOpenChange={setIsPresetsOpen}>
+      <PopoverTrigger asChild>
+        <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-4">
+          <Ruler className="h-3.5 w-3.5" />
+          Presets
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="start">
+        {/* Presets content here */}
+      </PopoverContent>
+    </Popover>
   </div>
-  <button
-    onClick={handleOpenEdit}
-    className="p-1 hover:bg-accent rounded-sm transition-colors"
-  >
-    <Settings className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-  </button>
-</DropdownMenuLabel>
+
+  <div className="flex items-center gap-2">
+    <span className="text-xs text-muted-foreground">Sqft:</span>
+    <Input
+      type="number"
+      value={sqft}
+      onChange={(e) => setSqft(e.target.value)}
+      placeholder="1500"
+      className="h-7 w-24 text-sm"
+    />
+  </div>
+</div>
 ```
 
-#### 8. Add Edit Dialog
+#### 10. Popover content for presets
 
 ```tsx
-<Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-  <DialogContent className="sm:max-w-md">
-    <DialogHeader>
-      <DialogTitle>Edit Baseline Tiers</DialogTitle>
-      <DialogDescription>
-        Customize your $/sqft rates for quick budget estimates
-      </DialogDescription>
-    </DialogHeader>
+<PopoverContent className="w-80" align="start">
+  <div className="space-y-3">
+    <div className="flex items-center justify-between">
+      <h4 className="font-medium text-sm">Category Presets</h4>
+      <button
+        onClick={() => setEditingPresets([...presets])}
+        className="p-1 hover:bg-accent rounded-sm"
+      >
+        <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+      </button>
+    </div>
+    <p className="text-xs text-muted-foreground">
+      Calculate category budgets from $/sqft rates
+    </p>
     
-    <div className="space-y-4 py-4">
-      <div className="grid grid-cols-[1fr,100px] gap-2 text-sm font-medium text-muted-foreground">
-        <span>Name</span>
-        <span>$/sqft</span>
-      </div>
-      
-      {editingTiers.map((tier, index) => (
-        <div key={index} className="grid grid-cols-[1fr,100px] gap-2">
-          <Input
-            value={tier.name}
-            onChange={(e) => updateEditingTier(index, 'name', e.target.value)}
-            placeholder="Tier name"
-          />
-          <Input
-            type="number"
-            value={tier.pricePerSqft}
-            onChange={(e) => updateEditingTier(index, 'pricePerSqft', parseInt(e.target.value) || 0)}
-            placeholder="$/sqft"
-          />
-        </div>
-      ))}
+    <div className="space-y-2">
+      {presets.map((preset, index) => {
+        const sqftNum = parseFloat(sqft) || 0;
+        const calculated = sqftNum * preset.pricePerSqft;
+        return (
+          <div key={preset.category} className="flex items-center justify-between gap-2">
+            <span className="text-sm flex-1">{preset.label}</span>
+            <span className="text-xs text-muted-foreground w-16">
+              ${preset.pricePerSqft}/sqft
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleApplyPreset(preset)}
+              disabled={sqftNum <= 0}
+              className="h-6 text-xs"
+            >
+              {sqftNum > 0 ? `$${calculated.toLocaleString()}` : 'Apply'}
+            </Button>
+          </div>
+        );
+      })}
     </div>
     
-    <DialogFooter className="flex justify-between sm:justify-between">
-      <Button variant="ghost" onClick={handleResetDefaults}>
-        Reset to Defaults
+    <div className="flex justify-end pt-2 border-t">
+      <Button
+        size="sm"
+        onClick={handleApplyAll}
+        disabled={parseFloat(sqft) <= 0}
+      >
+        Apply All
       </Button>
-      <Button onClick={handleSaveBaselines}>
-        Save
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
-```
-
-#### 9. Update baseline rendering
-
-Replace the hardcoded `BASELINE_TIERS` with the dynamic `baselineTiers` state:
-
-```tsx
-{baselineTiers.map((tier, index) => {
-  const calculatedTotal = sqftNum * tier.pricePerSqft;
-  return (
-    <DropdownMenuItem 
-      key={`${tier.name}-${index}`}
-      onClick={() => handleBaselineSelect(tier)}
-      className="cursor-pointer"
-    >
-      {/* ... same content ... */}
-    </DropdownMenuItem>
-  );
-})}
+    </div>
+  </div>
+</PopoverContent>
 ```
 
 ---
 
 ### User Flow
 
-1. User clicks the settings icon (gear) next to "Baselines" label
-2. Dialog opens showing 4 rows with name and $/sqft inputs
-3. User can rename tiers (e.g., "Cosmetic" to "Light Touch")
-4. User can change $/sqft values (e.g., 35 to 40)
-5. Click "Save" to persist changes to localStorage
-6. "Reset to Defaults" reverts to original values
+1. User enters square footage in the "Sqft" input (e.g., 1500)
+2. User clicks "Presets" to open the popover
+3. Each preset row shows: category name, $/sqft rate, and calculated total
+4. Click "Apply" next to a category to auto-fill that budget field
+5. Or click "Apply All" to fill all preset categories at once
+6. Click the settings icon to edit $/sqft rates (persisted to localStorage)
 
 ---
 
 ### Storage
 
-Custom baselines are stored in localStorage under `budget-baseline-tiers` as JSON:
+Custom presets are stored in localStorage under `budget-category-presets`:
 
 ```json
 [
-  {"name": "Light Touch", "pricePerSqft": 40, "description": "Light refresh - paint, fixtures"},
-  {"name": "Standard", "pricePerSqft": 50, "description": "Typical rental-ready updates"},
-  {"name": "Premium", "pricePerSqft": 60, "description": "Quality finishes and systems"},
-  {"name": "Full Gut", "pricePerSqft": 75, "description": "Major renovation work"}
+  {"category": "painting", "label": "Painting", "pricePerSqft": 3.50},
+  {"category": "flooring", "label": "Flooring", "pricePerSqft": 9.00},
+  {"category": "tile", "label": "Tile", "pricePerSqft": 14.00},
+  {"category": "drywall", "label": "Drywall", "pricePerSqft": 2.75},
+  {"category": "roofing", "label": "Roofing", "pricePerSqft": 5.50}
 ]
 ```
 
@@ -270,5 +321,5 @@ Custom baselines are stored in localStorage under `budget-baseline-tiers` as JSO
 
 | File | Changes |
 |------|---------|
-| `src/components/budget/TemplatePicker.tsx` | Add Settings icon, edit dialog, localStorage persistence, dynamic tier rendering |
+| `src/components/budget/BudgetCanvas.tsx` | Add Presets popover, sqft input, preset state management, apply logic, localStorage persistence |
 
