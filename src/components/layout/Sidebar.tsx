@@ -52,7 +52,7 @@ export function Sidebar() {
   return (
     <aside 
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen border-r border-border bg-sidebar transition-all duration-300 ease-in-out",
+        "fixed left-0 top-0 z-40 h-screen border-r border-border bg-sidebar overflow-hidden transition-all duration-300 ease-in-out",
         isExpanded ? "w-64" : "w-16"
       )}
       onMouseEnter={() => setIsExpanded(true)}
@@ -60,22 +60,20 @@ export function Sidebar() {
     >
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className={cn(
-          "flex h-16 items-center border-b border-border",
-          isExpanded ? "gap-3 px-4" : "justify-center px-2"
-        )}>
+        <div className="flex h-16 items-center gap-3 border-b border-border px-3">
           <img 
             src={logoUrl || kcsLogo} 
             alt={companyName} 
             className="h-10 w-10 object-contain flex-shrink-0" 
           />
-          {isExpanded && (
-            <h1 className="font-bold text-foreground text-lg truncate">{companyName}</h1>
-          )}
+          <h1 className={cn(
+            "font-bold text-foreground text-lg whitespace-nowrap transition-opacity duration-300",
+            isExpanded ? "opacity-100" : "opacity-0"
+          )}>{companyName}</h1>
         </div>
 
         {/* Navigation */}
-        <nav className={cn("flex-1 space-y-1", isExpanded ? "p-4" : "p-2")}>
+        <nav className="flex-1 space-y-1 p-2">
           {navItems.map((item) => {
             const isActive = isActiveLink(item, location.pathname);
             return (
@@ -83,8 +81,7 @@ export function Sidebar() {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  'flex items-center rounded-lg text-sm font-medium transition-colors',
-                  isExpanded ? 'gap-3 px-3 py-2.5' : 'justify-center p-2.5',
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                   isActive
                     ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -92,17 +89,23 @@ export function Sidebar() {
                 title={!isExpanded ? item.label : undefined}
               >
                 <item.icon className="h-5 w-5 flex-shrink-0" />
-                {isExpanded && <span>{item.label}</span>}
+                <span className={cn(
+                  "whitespace-nowrap transition-opacity duration-300",
+                  isExpanded ? "opacity-100" : "opacity-0"
+                )}>{item.label}</span>
               </NavLink>
             );
           })}
         </nav>
 
         {/* Footer */}
-        <div className={cn("border-t border-border space-y-2", isExpanded ? "p-4" : "p-2")}>
-          {user && isExpanded && (
-            <div className="flex items-center justify-between px-3 py-2">
-              <span className="text-xs text-muted-foreground truncate">{displayName || user.email}</span>
+        <div className="border-t border-border space-y-2 p-2">
+          {user && (
+            <div className={cn(
+              "flex items-center justify-between px-3 py-2 transition-all duration-300",
+              isExpanded ? "opacity-100" : "opacity-0 h-0 overflow-hidden py-0"
+            )}>
+              <span className="text-xs text-muted-foreground truncate whitespace-nowrap">{displayName || user.email}</span>
               <NavLink
                 to="/settings"
                 className={cn(
@@ -132,15 +135,15 @@ export function Sidebar() {
           )}
           <Button
             variant="ghost"
-            className={cn(
-              "w-full text-muted-foreground hover:text-foreground",
-              isExpanded ? "justify-start gap-3" : "justify-center p-2.5"
-            )}
+            className="w-full justify-start gap-3 px-3 py-2.5 text-muted-foreground hover:text-foreground"
             onClick={signOut}
             title={!isExpanded ? "Sign Out" : undefined}
           >
-            <LogOut className="h-5 w-5" />
-            {isExpanded && <span>Sign Out</span>}
+            <LogOut className="h-5 w-5 flex-shrink-0" />
+            <span className={cn(
+              "whitespace-nowrap transition-opacity duration-300",
+              isExpanded ? "opacity-100" : "opacity-0"
+            )}>Sign Out</span>
           </Button>
         </div>
       </div>
