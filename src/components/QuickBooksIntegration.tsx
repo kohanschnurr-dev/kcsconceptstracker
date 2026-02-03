@@ -48,6 +48,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [pendingAreaHeight, setPendingAreaHeight] = useState(400);
   const [expenseToSplit, setExpenseToSplit] = useState<{
     id: string;
     vendor_name: string | null;
@@ -292,7 +293,10 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                     <p className="text-sm text-muted-foreground">
                       Categorize these expenses to import them into your projects, or delete ones you don't need:
                     </p>
-                    <div className="max-h-[400px] overflow-y-auto space-y-3">
+                    <div 
+                      className="overflow-y-auto space-y-3"
+                      style={{ maxHeight: `${pendingAreaHeight}px` }}
+                    >
                       {groupedPendingExpenses.map((expenseGroup) => (
                         <GroupedPendingExpenseCard
                           key={expenseGroup[0].id}
@@ -304,6 +308,50 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                           formatCurrency={formatCurrency}
                         />
                       ))}
+                    </div>
+                    
+                    {/* Resize Handle */}
+                    <div
+                      className="h-4 flex items-center justify-center cursor-ns-resize hover:bg-muted/30 transition-colors group select-none"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        const startY = e.clientY;
+                        const startHeight = pendingAreaHeight;
+                        
+                        const handleMouseMove = (moveEvent: MouseEvent) => {
+                          const delta = moveEvent.clientY - startY;
+                          const newHeight = Math.max(150, Math.min(800, startHeight + delta));
+                          setPendingAreaHeight(newHeight);
+                        };
+                        
+                        const handleMouseUp = () => {
+                          document.removeEventListener('mousemove', handleMouseMove);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                      }}
+                      onTouchStart={(e) => {
+                        const startY = e.touches[0].clientY;
+                        const startHeight = pendingAreaHeight;
+                        
+                        const handleTouchMove = (moveEvent: TouchEvent) => {
+                          const delta = moveEvent.touches[0].clientY - startY;
+                          const newHeight = Math.max(150, Math.min(800, startHeight + delta));
+                          setPendingAreaHeight(newHeight);
+                        };
+                        
+                        const handleTouchEnd = () => {
+                          document.removeEventListener('touchmove', handleTouchMove);
+                          document.removeEventListener('touchend', handleTouchEnd);
+                        };
+                        
+                        document.addEventListener('touchmove', handleTouchMove);
+                        document.addEventListener('touchend', handleTouchEnd);
+                      }}
+                    >
+                      <div className="w-12 h-1 rounded-full bg-border group-hover:bg-muted-foreground/50 transition-colors" />
                     </div>
                   </div>
                 )}
