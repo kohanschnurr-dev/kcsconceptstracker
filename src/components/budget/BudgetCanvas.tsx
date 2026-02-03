@@ -46,7 +46,7 @@ const CATEGORY_GROUPS = [
   {
     name: 'MEPs',
     icon: Zap,
-    categories: ['electrical', 'plumbing', 'hvac', 'natural_gas', 'water_heater'],
+    categories: ['electrical', 'plumbing', 'hvac', 'natural_gas', 'water_heater', 'drain_line_repair'],
   },
   {
     name: 'Finishes',
@@ -66,7 +66,7 @@ const CATEGORY_GROUPS = [
   {
     name: 'Other',
     icon: Package,
-    categories: ['permits_inspections', 'dumpsters_trash', 'cleaning', 'final_punch', 'staging', 'carpentry', 'pest_control', 'drain_line_repair', 'misc'],
+    categories: ['permits_inspections', 'dumpsters_trash', 'cleaning', 'final_punch', 'staging', 'carpentry', 'pest_control', 'misc'],
   },
 ];
 
