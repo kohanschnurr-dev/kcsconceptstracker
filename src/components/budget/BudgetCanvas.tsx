@@ -1,17 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BudgetCategoryCard } from './BudgetCategoryCard';
 import { BUDGET_CATEGORIES } from '@/types';
 import { 
   Zap, Droplets, PaintBucket, 
   Home, Trees, Package,
   ChevronRight, ChevronsUpDown, ChevronsDownUp,
-  Ruler, Settings
+  Settings
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
@@ -76,11 +75,12 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
   const [openGroups, setOpenGroups] = useState<string[]>(['Structure']);
   const [presets, setPresets] = useState<CategoryPreset[]>(DEFAULT_CATEGORY_PRESETS);
   const [editingPresets, setEditingPresets] = useState<CategoryPreset[]>([]);
-  const [isPresetsOpen, setIsPresetsOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const prevSqftRef = useRef<string>(sqft);
 
   const allGroupNames = CATEGORY_GROUPS.map(g => g.name);
   const allExpanded = allGroupNames.every(name => openGroups.includes(name));
+  const presetCategories = new Set(presets.map(p => p.category));
 
   // Load presets from localStorage on mount
   useEffect(() => {
@@ -97,6 +97,22 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
     }
   }, []);
 
+  // Auto-calculate presets when sqft changes
+  useEffect(() => {
+    const sqftNum = parseFloat(sqft) || 0;
+    const prevSqftNum = parseFloat(prevSqftRef.current) || 0;
+    
+    // Only auto-calculate if sqft actually changed and is > 0
+    if (sqftNum > 0 && sqft !== prevSqftRef.current) {
+      presets.forEach(preset => {
+        const calculated = sqftNum * preset.pricePerSqft;
+        onCategoryChange(preset.category, calculated.toFixed(2));
+      });
+    }
+    
+    prevSqftRef.current = sqft;
+  }, [sqft, presets, onCategoryChange]);
+
   const toggleAll = () => {
     if (allExpanded) {
       setOpenGroups([]);
@@ -105,34 +121,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
     }
   };
 
-  const handleApplyPreset = (preset: CategoryPreset) => {
-    const sqftNum = parseFloat(sqft) || 0;
-    if (sqftNum <= 0) {
-      toast.error('Please enter square footage first');
-      return;
-    }
-    const calculated = sqftNum * preset.pricePerSqft;
-    onCategoryChange(preset.category, calculated.toFixed(2));
-    toast.success(`Applied $${calculated.toLocaleString()} to ${preset.label}`);
-  };
-
-  const handleApplyAll = () => {
-    const sqftNum = parseFloat(sqft) || 0;
-    if (sqftNum <= 0) {
-      toast.error('Please enter square footage first');
-      return;
-    }
-    presets.forEach(preset => {
-      const calculated = sqftNum * preset.pricePerSqft;
-      onCategoryChange(preset.category, calculated.toFixed(2));
-    });
-    setIsPresetsOpen(false);
-    toast.success('Applied all presets');
-  };
-
-  const handleOpenEditDialog = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleOpenEditDialog = () => {
     setEditingPresets([...presets]);
     setIsEditDialogOpen(true);
   };
@@ -205,63 +194,13 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
             )}
           </button>
 
-          <Popover open={isPresetsOpen} onOpenChange={setIsPresetsOpen}>
-            <PopoverTrigger asChild>
-              <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-4">
-                <Ruler className="h-3.5 w-3.5" />
-                Presets
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="start">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-sm">Category Presets</h4>
-                  <button
-                    onClick={handleOpenEditDialog}
-                    className="p-1 hover:bg-accent rounded-sm transition-colors"
-                  >
-                    <Settings className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Calculate category budgets from $/sqft rates
-                </p>
-                
-                <div className="space-y-2">
-                  {presets.map((preset) => {
-                    const calculated = sqftNum * preset.pricePerSqft;
-                    return (
-                      <div key={preset.category} className="flex items-center justify-between gap-2">
-                        <span className="text-sm flex-1">{preset.label}</span>
-                        <span className="text-xs text-muted-foreground w-16">
-                          ${preset.pricePerSqft}/sqft
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleApplyPreset(preset)}
-                          disabled={sqftNum <= 0}
-                          className="h-6 text-xs"
-                        >
-                          {sqftNum > 0 ? `$${calculated.toLocaleString()}` : 'Apply'}
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                <div className="flex justify-end pt-2 border-t">
-                  <Button
-                    size="sm"
-                    onClick={handleApplyAll}
-                    disabled={sqftNum <= 0}
-                  >
-                    Apply All
-                  </Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <button 
+            onClick={handleOpenEditDialog}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-4"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Edit Rates
+          </button>
         </div>
       </div>
 
@@ -354,6 +293,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
                       label={getCategoryLabel(category)}
                       value={categoryBudgets[category] || ''}
                       onChange={(value) => onCategoryChange(category, value)}
+                      hasPreset={presetCategories.has(category)}
                     />
                   ))}
                 </div>
