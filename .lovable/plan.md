@@ -1,151 +1,75 @@
 
+## Plan: Click-to-Open, Hold-and-Drag UX for Document Cards
 
-## Plan: Enable Desktop Drag-and-Drop Upload + Folder-to-Folder Document Moving
+### Problem
+Currently, document cards have a separate drag handle that appears on hover. This is less intuitive than the calendar's approach where:
+- **Click** → Opens the item
+- **Hold + Move (8px)** → Starts dragging
 
-### Overview
-Add two capabilities to the Documents Gallery:
-1. **Desktop drag-and-drop** - Drop PDF/files directly from desktop onto the gallery for instant upload
-2. **Cross-folder document moving** - When inside a folder, show other folders as drop targets so documents can be moved between folders
-
----
-
-### Current Issues
-
-| Issue | Solution |
-|-------|----------|
-| Can't drag files from desktop onto gallery | Add drop zone handler to CardContent area |
-| When inside a folder, can't move docs to other folders | Show folder "chips" as drop targets when inside a folder |
-| Desktop drop would need category/date input | Use quick defaults (general category, today's date), allow editing after via preview modal |
-
----
-
-### UI Design
-
-**Desktop Drop Zone Indicator:**
-```text
-┌────────────────────────────────────────────────────────────────────────┐
-│ 📂 Documents (8)                      [Date ▾] [Category ▾] [+ Add]    │
-├────────────────────────────────────────────────────────────────────────┤
-│ ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓ │
-│ ┃                                                                    ┃ │
-│ ┃        Drop files here to upload                                   ┃ │
-│ ┃        ↓  ↓  ↓                                                     ┃ │
-│ ┃                                                                    ┃ │
-│ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ │
-│                                                                        │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-**Inside Folder - Folder Targets Bar:**
-```text
-┌────────────────────────────────────────────────────────────────────────┐
-│ ← Back     📁 Permits (4 files)                                        │
-├────────────────────────────────────────────────────────────────────────┤
-│ Move to: [📁 Contracts] [📁 Invoices] [📂 Root]                        │ ← Droppable folder chips
-├────────────────────────────────────────────────────────────────────────┤
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
-│  │ 📄 PDF   │  │ 📄 PDF   │  │ 📄 PDF   │  │ 📄 PDF   │               │
-│  │ Permit 1 │  │ Permit 2 │  │ Permit 3 │  │ Permit 4 │               │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘               │
-└────────────────────────────────────────────────────────────────────────┘
-```
+### Solution
+Apply the same `PointerSensor` with `distance` activation constraint pattern used in the calendar views. This eliminates the need for a visible drag handle and makes the entire card both clickable and draggable.
 
 ---
 
 ### Technical Changes
 
-**1. Desktop Drag-and-Drop Upload**
-
-Add native HTML5 drag event handlers to detect when files from the desktop are dragged over the gallery:
+**1. Add PointerSensor to DocumentsGallery.tsx**
 
 ```typescript
-const [desktopDragActive, setDesktopDragActive] = useState(false);
-const [uploadingDesktopFiles, setUploadingDesktopFiles] = useState(false);
+import { 
+  DndContext, 
+  DragEndEvent, 
+  DragOverlay, 
+  pointerWithin,
+  useSensor,      // Add
+  useSensors,     // Add
+  PointerSensor   // Add
+} from '@dnd-kit/core';
 
-// Handle desktop file drops (native HTML5, not dnd-kit)
-const handleDesktopDragOver = (e: React.DragEvent) => {
-  e.preventDefault();
-  if (e.dataTransfer.types.includes('Files')) {
-    setDesktopDragActive(true);
-  }
-};
+// Inside component:
+const sensors = useSensors(
+  useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: 8, // 8px movement before drag activates
+    },
+  })
+);
 
-const handleDesktopDragLeave = (e: React.DragEvent) => {
-  e.preventDefault();
-  setDesktopDragActive(false);
-};
-
-const handleDesktopDrop = async (e: React.DragEvent) => {
-  e.preventDefault();
-  setDesktopDragActive(false);
-  
-  const files = Array.from(e.dataTransfer.files).filter(f => 
-    ACCEPTED_FILE_TYPES.includes(f.type)
-  );
-  
-  if (files.length === 0) {
-    toast.error('No supported files found');
-    return;
-  }
-  
-  // Quick upload with defaults
-  setUploadingDesktopFiles(true);
-  for (const file of files) {
-    await uploadFile(file, 'general', new Date().toISOString().split('T')[0], null, currentFolderId);
-  }
-  setUploadingDesktopFiles(false);
-  toast.success(`${files.length} file(s) uploaded`);
-  fetchDocuments();
-};
+// Add to DndContext:
+<DndContext 
+  sensors={sensors}  // Add this
+  onDragStart={handleDragStart}
+  onDragEnd={handleDragEnd}
+  collisionDetection={pointerWithin}
+>
 ```
 
-**2. Folder Target Bar (when inside a folder)**
+**2. Simplify DraggableDocumentCard.tsx**
 
-Create a new component `FolderTargetBar` that shows other folders as droppable chips:
+- Remove the separate `GripVertical` drag handle div
+- Apply drag listeners to the entire card instead of just the handle
+- Keep click handler working via dnd-kit's activation constraint
 
-```tsx
-function FolderTargetBar({ folders, currentFolderId, activeDragId }) {
-  const otherFolders = folders.filter(f => f.id !== currentFolderId);
-  
-  if (!activeDragId || otherFolders.length === 0) return null;
-  
-  return (
-    <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-dashed">
-      <p className="text-xs text-muted-foreground mb-2">Move to folder:</p>
-      <div className="flex flex-wrap gap-2">
-        {otherFolders.map(folder => (
-          <DroppableFolderChip key={folder.id} folder={folder} />
-        ))}
-        <RootDropZone compact />
-      </div>
-    </div>
-  );
-}
-```
+```typescript
+// Before: Listeners only on drag handle
+<div {...listeners} {...attributes} className="...">
+  <GripVertical />
+</div>
 
-**3. Compact Droppable Folder Chip**
-
-```tsx
-function DroppableFolderChip({ folder }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `folder-${folder.id}`,
-  });
-  
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        "flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all",
-        isOver 
-          ? "bg-primary/20 border-primary ring-2 ring-primary" 
-          : "bg-background border-border hover:border-primary/50"
-      )}
-    >
-      <Folder className="h-3.5 w-3.5 text-amber-500" />
-      <span className="text-sm">{folder.name}</span>
-    </div>
-  );
-}
+// After: Listeners on entire card, click still works due to distance constraint
+<div
+  ref={setNodeRef}
+  style={style}
+  {...listeners}
+  {...attributes}
+  onClick={(e) => {
+    // Only trigger if not dragging
+    if (!isDragging) {
+      onSelect();
+    }
+  }}
+  className={cn(...)}
+>
 ```
 
 ---
@@ -154,46 +78,25 @@ function DroppableFolderChip({ folder }) {
 
 | File | Changes |
 |------|---------|
-| `src/components/project/DocumentsGallery.tsx` | Add desktop drop handlers, folder target bar, upload function |
-| `src/components/project/DroppableFolder.tsx` | Add compact "chip" variant for inline folder targets |
-| `src/components/project/RootDropZone.tsx` | Add compact variant for inline use |
+| `src/components/project/DocumentsGallery.tsx` | Import and configure `useSensor`, `useSensors`, `PointerSensor` with 8px distance constraint |
+| `src/components/project/DraggableDocumentCard.tsx` | Remove drag handle, apply listeners to full card, add conditional click handler |
 
 ---
 
-### Accepted File Types
+### How It Works
 
-Reuse from DocumentUploadModal:
-- PDF (`application/pdf`)
-- Word docs (`.doc`, `.docx`)
-- Excel (`.xls`, `.xlsx`)
-- Images (`.jpg`, `.jpeg`, `.png`, `.gif`)
-- Text (`.txt`)
+| User Action | Result |
+|-------------|--------|
+| Quick click on card | Opens document preview modal |
+| Click + hold + move 8px | Starts drag operation |
+| Release while dragging | Drops into folder/root |
 
----
-
-### User Flow
-
-**Desktop Upload:**
-1. User drags PDF from desktop over gallery
-2. Blue dashed border appears with "Drop files to upload" message
-3. User drops files
-4. Files upload immediately with defaults (general category, today's date)
-5. User can click on uploaded document to edit category/notes via preview modal
-
-**Cross-Folder Move:**
-1. User enters a folder (e.g., "Permits")
-2. User starts dragging a document card
-3. A bar appears at top showing other folders and "Move to root"
-4. User drops on target folder chip
-5. Document moves to that folder
+This matches the calendar's drag-and-drop behavior and provides a more intuitive experience.
 
 ---
 
 ### Result
-
-| Feature | Before | After |
-|---------|--------|-------|
-| Desktop drag-drop | Must open modal first | Drop directly onto gallery |
-| Move between folders | Exit folder → drag → drop | Folder chips appear while dragging |
-| Upload speed | Multiple clicks | Single drag-drop action |
-
+- More intuitive UX - no need to hunt for a drag handle
+- Consistent with calendar views
+- Cleaner card design without visible grip icons
+- Single click still opens documents reliably
