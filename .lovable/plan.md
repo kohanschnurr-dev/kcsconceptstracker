@@ -1,89 +1,83 @@
 
-## Plan: Enhance Expenses Search to Include Amount, Project, Category, etc.
+## Plan: Force Download Instead of Opening Receipt in New Tab
 
-### Current State
-The search bar currently only filters by:
-- Vendor name
-- Description
+### Problem
+When clicking the paperclip icon to view receipts, the file opens in a new browser tab which can trigger ad-blocker errors. The user wants the file to download directly instead.
 
-### Enhancement
-Expand the search to also match:
-- **Amount** (e.g., typing "$500" or "500" finds expenses with that amount)
-- **Project name** (resolved from project ID)
-- **Category label** (resolved from category ID)  
-- **Notes**
-- **Payment method** (cash, card, check, transfer)
-
----
+### Solution
+Change the `handleViewReceipt` function in `src/pages/Expenses.tsx` to trigger a file download instead of opening in a new tab. This is done by:
+1. Creating a temporary anchor (`<a>`) element
+2. Setting the `download` attribute with the filename
+3. Programmatically clicking it to trigger the browser's download behavior
 
 ### Technical Changes
 
 **File: `src/pages/Expenses.tsx`**
 
-Update the `filteredExpenses` useMemo to include additional search fields:
+Update the `handleViewReceipt` function to use the download approach:
 
 ```typescript
-const filteredExpenses = useMemo(() => {
-  return expenses.filter((expense) => {
-    const searchLower = search.toLowerCase().replace(/[$,]/g, ''); // Strip $ and commas for amount search
+const handleViewReceipt = async (receiptUrl: string, e: React.MouseEvent) => {
+  e.stopPropagation();
+  
+  try {
+    const urlParts = receiptUrl.split('/storage/v1/object/public/');
+    if (urlParts.length !== 2) {
+      // Fallback - trigger download via anchor
+      const link = document.createElement('a');
+      link.href = receiptUrl;
+      link.download = 'receipt';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
     
-    // Get resolved names for searching
-    const projectName = getProjectName(expense.project_id).toLowerCase();
-    const categoryLabel = getCategoryLabel(expense.category_id, expense.project_id).toLowerCase();
-    const amountStr = expense.amount.toString();
+    const [bucketName, ...pathParts] = urlParts[1].split('/');
+    const filePath = pathParts.join('/');
+    const fileName = pathParts[pathParts.length - 1] || 'receipt';
     
-    const matchesSearch = 
-      !search || // If no search, match everything
-      (expense.vendor_name?.toLowerCase() || '').includes(searchLower) ||
-      (expense.description?.toLowerCase() || '').includes(searchLower) ||
-      (expense.notes?.toLowerCase() || '').includes(searchLower) ||
-      (expense.payment_method?.toLowerCase() || '').includes(searchLower) ||
-      projectName.includes(searchLower) ||
-      categoryLabel.includes(searchLower) ||
-      amountStr.includes(searchLower);
+    // Use Supabase SDK to download the file (bypasses ad blockers)
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .download(filePath);
     
-    // ... rest of filters remain the same
-  });
-}, [expenses, search, projectFilter, categoryFilter, dateRange, projects]);
+    if (error || !data) {
+      console.error('Failed to download receipt:', error);
+      return;
+    }
+    
+    // Create blob URL and trigger download
+    const blobUrl = URL.createObjectURL(data);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up blob URL
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  } catch (error) {
+    console.error('Failed to download receipt:', error);
+  }
+};
 ```
 
-Also update the placeholder text to indicate expanded search capabilities:
-
-```typescript
-<Input
-  placeholder="Search vendor, amount, project..."
-  value={search}
-  onChange={(e) => setSearch(e.target.value)}
-  className="pl-9"
-/>
-```
-
----
-
-### Search Behavior Examples
-
-| Search Term | Matches |
-|-------------|---------|
-| `home depot` | Vendor name contains "home depot" |
-| `500` | Amount contains "500" ($500.00, $5,000, etc.) |
-| `$3,200` | Amount 3200 (strips $ and comma) |
-| `wales` | Project name "Wales Rental" |
-| `hvac` | Category "HVAC" |
-| `cash` | Payment method "Cash" |
-| `bathroom` | Category "Bathroom" |
-| `insurance` | Vendor or category containing "insurance" |
-
----
+### Key Changes
+| Before | After |
+|--------|-------|
+| `window.open(blobUrl, '_blank')` | Create `<a download>` element and click it |
+| Opens in new tab | Downloads file directly |
+| Subject to ad-blocker popup blocking | Uses native download behavior |
 
 ### Files to Modify
-
 | File | Change |
 |------|--------|
-| `src/pages/Expenses.tsx` | Expand `matchesSearch` logic to include amount, project name, category, notes, and payment method |
+| `src/pages/Expenses.tsx` | Update `handleViewReceipt` to trigger download instead of opening new tab |
 
----
-
-### Notes
-- The amount search strips `$` and `,` characters so users can type "$500" or "500" and get the same results
-- Project and category names are resolved using existing helper functions before matching
-- All matches are case-insensitive
+### Expected Behavior
+- Clicking the paperclip icon downloads the receipt file directly
+- No new tab opens
+- Bypasses ad-blocker issues completely
+- File saves with original filename
