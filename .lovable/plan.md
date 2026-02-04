@@ -1,89 +1,102 @@
 
-
-## Plan: Add "Split Manually" Button to Pending Expense Cards
+## Plan: Simplify Dashboard Sidebar Layout
 
 ### Overview
-Add a "Split Manually" button to pending expense cards so users can manually split a transaction into multiple categories without needing a receipt. This uses the existing `SplitExpenseModal` component.
+Remove the UrgentTasksWidget from the dashboard right sidebar and reorganize the CalendarGlanceWidget into a split two-box layout within the same height.
 
 ---
 
-### Current State
-- The `SplitExpenseModal` already exists and handles manual splitting
-- It's connected to `QuickBooksIntegration` via `handleOpenSplitModal` and `handleSplit` functions
-- `GroupedPendingExpenseCard` displays pending expenses but doesn't have access to trigger the split modal
-
-### New Behavior
-- Each single expense card will show a "Split" button (split icon)
-- Clicking it opens the existing `SplitExpenseModal`
-- User can manually split the expense into multiple categories/projects
-
----
-
-### UI Changes
-
-**Pending Expense Card - Add Split Button:**
-
+### Current Layout
 ```text
-Before:
-┌─────────────────────────────────────────────────────────────────────┐
-│  Zelle payment to                                        $5,000 🗑  │
-│  Feb 3, 2026 • Zelle payment...                                     │
-│  [Select Project  ▼]  [Select Category  ▼]  [Note...]               │
-│                                    [Product] [Labor] [✓]            │
-└─────────────────────────────────────────────────────────────────────┘
-
-After:
-┌─────────────────────────────────────────────────────────────────────┐
-│  Zelle payment to                                        $5,000 🗑  │
-│  Feb 3, 2026 • Zelle payment...                                     │
-│  [Select Project  ▼]  [Select Category  ▼]  [Note...]               │
-│                                [Split] [Product] [Labor] [✓]        │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  Main Content (flex-1)              │  Sidebar (w-72)   │
+│                                     │                   │
+│  - Quick Task Input                 │  ┌─────────────┐  │
+│  - Stats Grid                       │  │ Calendar    │  │
+│  - Active Projects                  │  │ Glance      │  │
+│  - Charts                           │  └─────────────┘  │
+│                                     │  ┌─────────────┐  │
+│                                     │  │ Urgent      │  │
+│                                     │  │ Tasks       │  │
+│                                     │  └─────────────┘  │
+└─────────────────────────────────────────────────────────┘
 ```
 
-The "Split" button uses the `Split` icon from Lucide.
+### New Layout
+```text
+┌─────────────────────────────────────────────────────────┐
+│  Main Content (flex-1)              │  Sidebar (w-72)   │
+│                                     │                   │
+│  - Quick Task Input                 │  ┌──────┬──────┐  │
+│  - Stats Grid                       │  │Today │Week  │  │
+│  - Active Projects                  │  │Events│Events│  │
+│  - Charts                           │  └──────┴──────┘  │
+│                                     │                   │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ### Technical Changes
 
-**File: `src/components/quickbooks/GroupedPendingExpenseCard.tsx`**
+**File: `src/pages/Index.tsx`**
 
-1. **Add prop for opening split modal:**
-   ```typescript
-   interface GroupedPendingExpenseCardProps {
-     // ... existing props
-     onOpenSplitModal?: (expense: PendingExpense) => void;
-   }
-   ```
+1. **Remove UrgentTasksWidget import:**
+   - Remove: `import { UrgentTasksWidget } from '@/components/dashboard/UrgentTasksWidget';`
 
-2. **Import Split icon:**
-   ```typescript
-   import { Split, ChevronDown, ChevronUp, ... } from 'lucide-react';
-   ```
+2. **Update sidebar section (lines 317-323):**
+   - Remove `<UrgentTasksWidget>` component
+   - Keep only `<CalendarGlanceWidget>`
 
-3. **Add Split button in the single expense action row (near line 217):**
+**File: `src/components/dashboard/CalendarGlanceWidget.tsx`**
+
+3. **Restructure into two-box grid layout:**
+   - Replace single column layout with a 2-column grid
+   - Left box: "Today" section (today's events)
+   - Right box: "This Week" section (upcoming week events)
+   - Both boxes share same height, creating balanced visual
+
+4. **Updated component structure:**
    ```tsx
-   <Button
-     variant="outline"
-     size="sm"
-     onClick={() => onOpenSplitModal?.(primaryExpense)}
-     className="gap-1"
-   >
-     <Split className="h-4 w-4" />
-     <span className="hidden sm:inline">Split</span>
-   </Button>
+   <div className="glass-card p-4">
+     <div className="grid grid-cols-2 gap-3">
+       {/* Left Box - Today */}
+       <div className="bg-muted/30 rounded-lg p-3 border border-border/30">
+         <Badge>Today</Badge>
+         {/* Today's events list */}
+       </div>
+       
+       {/* Right Box - This Week */}
+       <div className="bg-muted/30 rounded-lg p-3 border border-border/30">
+         <Badge>This Week</Badge>
+         {/* Week's events list */}
+       </div>
+     </div>
+   </div>
    ```
 
-**File: `src/components/QuickBooksIntegration.tsx`**
+5. **Show empty state in each box** when no events for that section (instead of hiding entire widget)
 
-4. **Pass `onOpenSplitModal` to `GroupedPendingExpenseCard`:**
-   ```tsx
-   <GroupedPendingExpenseCard
-     // ... existing props
-     onOpenSplitModal={handleOpenSplitModal}
-   />
-   ```
+---
+
+### Visual Result
+
+**New Calendar Glance Widget:**
+```text
+┌────────────────────────────────────────────────────────┐
+│  Week at a Glance                    [View Calendar →] │
+├──────────────────────────┬─────────────────────────────┤
+│  Today                   │  This Week                  │
+│  Tuesday, Feb 4          │                             │
+│                          │                             │
+│  ┌──────────────────┐    │  ┌──────────────────────┐   │
+│  │ 🕐 Electrical    │    │  │ Flooring - Wed      │   │
+│  └──────────────────┘    │  └──────────────────────┘   │
+│  ┌──────────────────┐    │  ┌──────────────────────┐   │
+│  │ 🕐 Painting      │    │  │ Final Walk - Fri    │   │
+│  └──────────────────┘    │  └──────────────────────┘   │
+└──────────────────────────┴─────────────────────────────┘
+```
 
 ---
 
@@ -91,13 +104,13 @@ The "Split" button uses the `Split` icon from Lucide.
 
 | File | Changes |
 |------|---------|
-| `src/components/quickbooks/GroupedPendingExpenseCard.tsx` | Add `onOpenSplitModal` prop, import Split icon, add Split button in single expense action row |
-| `src/components/QuickBooksIntegration.tsx` | Pass `onOpenSplitModal={handleOpenSplitModal}` to GroupedPendingExpenseCard |
+| `src/pages/Index.tsx` | Remove UrgentTasksWidget import and usage |
+| `src/components/dashboard/CalendarGlanceWidget.tsx` | Restructure into 2-column grid with Today/Week boxes |
 
 ---
 
 ### Expected Result
-- Single expense cards show a "Split" button alongside Product/Labor toggles
-- Clicking Split opens the existing manual split modal
-- Users can split expenses without needing a receipt
-
+- Sidebar shows only the CalendarGlanceWidget
+- Widget is divided into two equal boxes: "Today" (left) and "This Week" (right)
+- Both boxes maintain same height for balanced appearance
+- Cleaner dashboard with less visual clutter
