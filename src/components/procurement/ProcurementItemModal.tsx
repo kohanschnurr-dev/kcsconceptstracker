@@ -1445,12 +1445,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
                   key={store.value} 
                   className="flex items-center justify-between p-2 rounded-lg border bg-muted/30"
                 >
-                  <span className="text-sm">
-                    {store.label}
-                    {store.isCustom && (
-                      <Badge variant="secondary" className="ml-2 text-xs">Custom</Badge>
-                    )}
-                  </span>
+                  <span className="text-sm">{store.label}</span>
                   <Button
                     variant="ghost"
                     size="sm"
