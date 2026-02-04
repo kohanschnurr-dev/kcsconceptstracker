@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown } from 'lucide-react';
 import { format, subDays, startOfDay, isSameDay } from 'date-fns';
 
 interface BusinessExpense {
@@ -23,6 +25,8 @@ export function BusinessExpensesDashboard({
   onCategoryClick,
   selectedCategory 
 }: BusinessExpensesDashboardProps) {
+  const [isOpen, setIsOpen] = useState(true);
+
   // Last 30 days daily data for sparkline
   const sparklineData = useMemo(() => {
     const today = startOfDay(new Date());
@@ -74,94 +78,108 @@ export function BusinessExpensesDashboard({
     }).format(value);
   };
 
-  const formatCompactCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-      notation: value >= 1000 ? 'compact' : 'standard',
-    }).format(value);
-  };
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {/* Sparkline Card - 30 Day Spending */}
-      <div className="glass-card p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">30-Day Spending</p>
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(dailyAverage)}/day avg
-          </p>
-        </div>
-        
-        <div className="flex items-end gap-4">
-          <p className="text-2xl font-semibold font-mono">
-            {formatCurrency(last30DaysTotal)}
-          </p>
-        </div>
-        
-        {/* Sparkline */}
-        <div className="h-[60px] -mx-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={sparklineData}>
-              <defs>
-                <linearGradient id="sparklineGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <Area
-                type="monotone"
-                dataKey="amount"
-                stroke="hsl(var(--primary))"
-                strokeWidth={1.5}
-                fill="url(#sparklineGradient)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Category Cubes Card */}
-      <div className="glass-card p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">Category Breakdown</p>
-          {selectedCategory !== 'all' && (
-            <button 
-              onClick={() => onCategoryClick('all')}
-              className="text-xs text-primary hover:underline"
-            >
-              Clear filter
-            </button>
-          )}
-        </div>
-        
-        {categoryData.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No expenses yet</p>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
-            {categoryData.map((cat) => (
-              <button
-                key={cat.categoryKey}
-                onClick={() => onCategoryClick(cat.categoryKey === selectedCategory ? 'all' : cat.categoryKey)}
-                className={`flex flex-col justify-between p-3 rounded-lg border min-h-[70px] text-left transition-all hover:border-primary/50 hover:bg-primary/5 ${
-                  selectedCategory === cat.categoryKey 
-                    ? 'border-primary bg-primary/10' 
-                    : 'border-border/30 bg-muted/20'
-                }`}
-              >
-                <span className="text-xs text-muted-foreground line-clamp-2">
-                  {cat.label}
-                </span>
-                <span className="text-sm font-semibold font-mono text-foreground">
-                  {formatCurrency(cat.amount)}
-                </span>
-              </button>
-            ))}
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div className="glass-card">
+        {/* Collapsible Header */}
+        <CollapsibleTrigger asChild>
+          <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg">
+            <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+            <span className="text-sm font-medium">Dashboard Overview</span>
+            <div className="flex items-center gap-2 ml-auto">
+              <Badge variant="secondary" className="font-mono">
+                {formatCurrency(last30DaysTotal)}
+              </Badge>
+              <Badge variant="outline">
+                {categoryData.length} categories
+              </Badge>
+              {selectedCategory !== 'all' && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onCategoryClick('all'); }}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
           </div>
-        )}
+        </CollapsibleTrigger>
+
+        {/* Collapsible Content */}
+        <CollapsibleContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 pt-0">
+            {/* Sparkline Card - 30 Day Spending */}
+            <div className="glass-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">30-Day Spending</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatCurrency(dailyAverage)}/day avg
+                </p>
+              </div>
+              
+              <div className="flex items-end gap-4">
+                <p className="text-2xl font-semibold font-mono">
+                  {formatCurrency(last30DaysTotal)}
+                </p>
+              </div>
+              
+              {/* Sparkline */}
+              <div className="h-[60px] -mx-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={sparklineData}>
+                    <defs>
+                      <linearGradient id="sparklineGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <Area
+                      type="monotone"
+                      dataKey="amount"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={1.5}
+                      fill="url(#sparklineGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Category Cubes Card */}
+            <div className="glass-card p-4 space-y-3">
+              <p className="text-sm text-muted-foreground">Category Breakdown</p>
+              
+              {categoryData.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No expenses yet</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
+                  {categoryData.map((cat) => (
+                    <button
+                      key={cat.categoryKey}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCategoryClick(cat.categoryKey === selectedCategory ? 'all' : cat.categoryKey);
+                      }}
+                      className={`flex flex-col justify-between p-3 rounded-lg border min-h-[70px] text-left transition-all hover:border-primary/50 hover:bg-primary/5 ${
+                        selectedCategory === cat.categoryKey 
+                          ? 'border-primary bg-primary/10' 
+                          : 'border-border/30 bg-muted/20'
+                      }`}
+                    >
+                      <span className="text-xs text-muted-foreground line-clamp-2">
+                        {cat.label}
+                      </span>
+                      <span className="text-sm font-semibold font-mono text-foreground">
+                        {formatCurrency(cat.amount)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </CollapsibleContent>
       </div>
-    </div>
+    </Collapsible>
   );
 }
