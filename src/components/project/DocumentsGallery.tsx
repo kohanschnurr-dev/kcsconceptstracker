@@ -10,7 +10,15 @@ import {
   Folder,
   Upload
 } from 'lucide-react';
-import { DndContext, DragEndEvent, DragOverlay, pointerWithin } from '@dnd-kit/core';
+import { 
+  DndContext, 
+  DragEndEvent, 
+  DragOverlay, 
+  pointerWithin,
+  useSensor,
+  useSensors,
+  PointerSensor
+} from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -341,6 +349,15 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
     setNewFolderName('');
   };
 
+  // Configure drag sensors with distance constraint for click-to-open, hold-to-drag UX
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement before drag activates
+      },
+    })
+  );
+
   const activeDragDocument = activeDragId 
     ? allDocuments.find(d => d.id === activeDragId) 
     : null;
@@ -433,6 +450,7 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
 
   return (
     <DndContext 
+      sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       collisionDetection={pointerWithin}
