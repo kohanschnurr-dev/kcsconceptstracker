@@ -397,8 +397,11 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [editStoresOpen, setEditStoresOpen] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const screenshotInputRef = useRef<HTMLInputElement>(null);
+  const initialFormDataRef = useRef<string>('');
   
   const [formData, setFormData] = useState<FormData>({
     category: '',
@@ -657,6 +660,89 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     
     loadItemBundles();
   }, [item, open]);
+
+  // Store initial form data when entering edit mode to detect changes
+  useEffect(() => {
+    if (open && item && step === 'details') {
+      initialFormDataRef.current = JSON.stringify(formData);
+    }
+  }, [open, item, step === 'details']);
+
+  // Auto-save helper function for edit mode
+  const handleAutoSave = async () => {
+    if (!item || !formData.name || !formData.unit_price) return;
+    
+    // Don't save if no changes
+    if (JSON.stringify(formData) === initialFormDataRef.current) return;
+    
+    setAutoSaving(true);
+    
+    const finalNotes = serializeSpecsToNotes(formData.specs, formData.notes);
+    
+    const payload = {
+      name: formData.name,
+      category: formData.category || 'other',
+      bundle_id: formData.bundle_ids.length > 0 ? formData.bundle_ids[0] : null,
+      source_url: formData.source_url || null,
+      source_store: formData.source_store,
+      model_number: formData.model_number || null,
+      unit_price: parseFloat(formData.unit_price),
+      quantity: parseInt(formData.quantity) || 1,
+      includes_tax: formData.includes_tax,
+      is_pack_price: formData.is_pack_price,
+      tax_rate: TEXAS_TAX_RATE,
+      lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
+      phase: formData.phase,
+      status: formData.status,
+      finish: formData.finish || null,
+      notes: finalNotes || null,
+      bulk_discount_eligible: formData.bulk_discount_eligible,
+      image_url: formData.image_url || null,
+      user_id: user?.id,
+    };
+
+    const { error } = await supabase
+      .from('procurement_items')
+      .update(payload)
+      .eq('id', item.id);
+
+    if (!error) {
+      // Update bundle assignments
+      await supabase
+        .from('procurement_item_bundles')
+        .delete()
+        .eq('item_id', item.id);
+      
+      if (formData.bundle_ids.length > 0) {
+        await supabase
+          .from('procurement_item_bundles')
+          .insert(formData.bundle_ids.map(bundleId => ({
+            item_id: item.id,
+            bundle_id: bundleId,
+          })));
+      }
+      
+      setLastSaved(new Date());
+      initialFormDataRef.current = JSON.stringify(formData);
+      onSave(); // Refresh parent data
+    }
+    
+    setAutoSaving(false);
+  };
+
+  // Debounced auto-save effect for edit mode
+  useEffect(() => {
+    if (!item || step !== 'details' || !open) return;
+    
+    // Skip initial render
+    if (!initialFormDataRef.current) return;
+    
+    const timeoutId = setTimeout(() => {
+      handleAutoSave();
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [formData, item, step, open]);
 
   const handleScrapeUrl = async () => {
     if (!urlInput.trim()) {
@@ -1421,10 +1507,32 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
                 Back
               </Button>
             )}
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            {step === 'details' && (
+            
+            {/* Edit mode: show save status indicator */}
+            {step === 'details' && item && (
+              <div className="flex items-center gap-2 mr-auto text-sm text-muted-foreground">
+                {autoSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : lastSaved ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span className="text-green-600">Saved</span>
+                  </>
+                ) : null}
+              </div>
+            )}
+            
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              {item ? 'Close' : 'Cancel'}
+            </Button>
+            
+            {/* Only show Add Item button for new items */}
+            {step === 'details' && !item && (
               <Button onClick={handleSubmit} disabled={loading}>
-                {loading ? 'Saving...' : item ? 'Update Item' : 'Add Item'}
+                {loading ? 'Saving...' : 'Add Item'}
               </Button>
             )}
           </DialogFooter>
