@@ -27,10 +27,11 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ProcurementItemModal } from '@/components/procurement/ProcurementItemModal';
 import { BundleModal } from '@/components/procurement/BundleModal';
+import { useCustomStores } from '@/hooks/useCustomStores';
 
 type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'delivered' | 'installed';
 type Phase = 'rough_in' | 'trim_out' | 'finish' | 'punch';
-type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'other';
+type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'custom' | 'other' | string;
 
 interface ProcurementItem {
   id: string;
@@ -96,6 +97,7 @@ const STORES: { value: SourceStore; label: string }[] = [
   { value: 'floor_decor', label: 'Floor & Decor' },
   { value: 'build', label: 'Build.com' },
   { value: 'ferguson', label: 'Ferguson' },
+  { value: 'custom', label: 'Custom' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -104,6 +106,7 @@ const TEXAS_TAX_RATE = 0.0825;
 export default function Procurement() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { stores } = useCustomStores();
   const [items, setItems] = useState<ProcurementItem[]>([]);
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -486,7 +489,7 @@ export default function Procurement() {
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
                             <span className="text-sm">
-                              {STORES.find(s => s.value === item.source_store)?.label || '-'}
+                              {stores.find(s => s.value === item.source_store)?.label || item.source_store || '-'}
                             </span>
                             {item.source_url && (
                               <a 
