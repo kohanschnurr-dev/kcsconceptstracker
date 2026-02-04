@@ -1,111 +1,129 @@
 
-## Plan: Customizable Source Stores with Add/Remove/Save
+## Plan: Auto-Save for Edit Item Modal
 
 ### Overview
-Allow users to customize the Source Store dropdown by:
-1. Adding "Custom" as a built-in option alongside "Other"
-2. Removing stores they don't use
-3. Saving their preferences (persisted in localStorage)
-4. Ability to reset to defaults
+Implement automatic saving for the "Edit Item" modal so changes are persisted immediately without requiring the user to click a Save button. This creates a more seamless editing experience.
 
 ---
 
-### Current State
-The STORES constant is hardcoded:
+### Current Behavior
+- User opens Edit Item modal
+- Makes changes to fields (name, price, category, notes, etc.)
+- Must click "Update Item" button to save
+- Clicking Cancel discards changes
+
+---
+
+### Proposed Behavior
+- User opens Edit Item modal
+- Changes auto-save after a brief debounce (500ms)
+- Visual feedback shows save status (saving indicator)
+- Cancel button closes modal (changes already saved)
+- "Update Item" button removed for edit mode (only shown for new items)
+
+---
+
+### Technical Approach
+
+**1. Add debounced auto-save effect**
+
+Create a `useEffect` that watches `formData` changes when in edit mode (`item !== null`). Use a debounce timer to avoid saving on every keystroke.
+
 ```typescript
-const STORES = [
-  { value: 'amazon', label: 'Amazon' },
-  { value: 'home_depot', label: 'Home Depot' },
-  { value: 'lowes', label: "Lowe's" },
-  { value: 'floor_decor', label: 'Floor & Decor' },
-  { value: 'build', label: 'Build.com' },
-  { value: 'ferguson', label: 'Ferguson' },
-  { value: 'other', label: 'Other' },
-];
+// Auto-save effect for edit mode
+useEffect(() => {
+  if (!item || step !== 'details') return;
+  
+  const timeoutId = setTimeout(() => {
+    handleAutoSave();
+  }, 500);
+  
+  return () => clearTimeout(timeoutId);
+}, [formData, item, step]);
+```
+
+**2. Create handleAutoSave function**
+
+Similar to `handleSubmit` but:
+- Silent operation (no toast on every save)
+- Sets a "saving" indicator state
+- Shows brief "Saved" confirmation
+
+```typescript
+const [autoSaving, setAutoSaving] = useState(false);
+const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+const handleAutoSave = async () => {
+  if (!item || !formData.name || !formData.unit_price) return;
+  
+  setAutoSaving(true);
+  // ... same save logic as handleSubmit ...
+  setAutoSaving(false);
+  setLastSaved(new Date());
+};
+```
+
+**3. Update modal footer for edit mode**
+
+- Remove "Update Item" button when editing (auto-save handles it)
+- Show save status indicator instead
+- Keep Cancel button (renamed to "Close")
+
+**4. Add save status indicator in header/footer**
+
+Display subtle feedback:
+- Spinner when saving
+- "Saved" text with checkmark after successful save
+
+---
+
+### UI Changes
+
+**Edit Mode Footer (after):**
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                              [✓ Saved]  [Close]                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**During save:**
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                           [○ Saving...]  [Close]                │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Solution
-
-**1. Add "Custom" to default stores list**
-
-Update both `Procurement.tsx` and `ProcurementItemModal.tsx` to include "custom" in the SourceStore type and STORES array.
-
-**2. Create customizable stores with localStorage persistence**
-
-Add state management in `ProcurementItemModal.tsx`:
-- Load saved stores from `localStorage.getItem('procurement-source-stores')`
-- Allow users to remove stores via an "Edit Stores" dialog
-- Allow users to add custom store names
-- Provide "Reset to Defaults" option
-
-**3. Edit Stores Dialog UI**
-
-Add a settings gear icon next to the Source Store label that opens a dialog:
-- List all available stores with X buttons to remove
-- Input field to add custom stores
-- Save and Reset buttons
-
----
-
-### Technical Changes
-
-**File: `src/pages/Procurement.tsx`**
-
-1. Update `SourceStore` type to include `'custom'`
-2. Add "Custom" to STORES array
+### Technical Details
 
 **File: `src/components/procurement/ProcurementItemModal.tsx`**
 
-1. Update `SourceStore` type to include `'custom'` and allow custom string values
-2. Add "Custom" to default STORES array
-3. Add state for customized stores list loaded from localStorage
-4. Add "Edit Stores" dialog with:
-   - List of current stores with remove (X) buttons
-   - Input to add new custom store
-   - Save to localStorage
-   - Reset to defaults button
-5. Add settings icon next to "Source Store" label to open the edit dialog
+1. Add new state variables:
+   - `autoSaving: boolean` - tracks if currently auto-saving
+   - `lastSaved: Date | null` - tracks last successful save time
 
----
+2. Add `handleAutoSave` function:
+   - Extracted save logic from `handleSubmit`
+   - Silent operation (no toast notifications)
+   - Updates `lastSaved` on success
 
-### Data Structure (localStorage)
+3. Add debounced `useEffect`:
+   - Triggers only when `item` exists (edit mode)
+   - Triggers only when on 'details' step
+   - 500ms debounce to avoid excessive API calls
+   - Cleans up timeout on unmount
 
-```typescript
-interface CustomStore {
-  value: string;
-  label: string;
-  isCustom?: boolean; // true for user-added stores
-}
+4. Modify `DialogFooter`:
+   - When `item` exists (edit mode):
+     - Show save status indicator
+     - Show "Close" button instead of "Cancel"
+     - Hide "Update Item" button
+   - When adding new item:
+     - Keep existing behavior with "Add Item" button
 
-// Key: 'procurement-source-stores'
-// Value: JSON array of CustomStore objects
-```
-
----
-
-### UI Layout for Edit Dialog
-
-```text
-┌─────────────────────────────────────────┐
-│           Edit Source Stores            │
-├─────────────────────────────────────────┤
-│ ○ Amazon                           [X]  │
-│ ○ Home Depot                       [X]  │
-│ ○ Lowe's                           [X]  │
-│ ○ Floor & Decor                    [X]  │
-│ ○ Build.com                        [X]  │
-│ ○ Ferguson                         [X]  │
-│ ○ Custom                           [X]  │
-│ ○ Other                            [X]  │
-│                                         │
-│ [Add new store...        ] [+ Add]      │
-│                                         │
-├─────────────────────────────────────────┤
-│         [Reset to Defaults]   [Save]    │
-└─────────────────────────────────────────┘
-```
+5. Extract shared save logic:
+   - Create `saveItem` helper function used by both `handleSubmit` and `handleAutoSave`
 
 ---
 
@@ -113,15 +131,12 @@ interface CustomStore {
 
 | File | Changes |
 |------|---------|
-| `src/pages/Procurement.tsx` | Add `'custom'` to SourceStore type, add "Custom" to STORES array |
-| `src/components/procurement/ProcurementItemModal.tsx` | Add customizable stores with localStorage, edit dialog, settings icon |
+| `src/components/procurement/ProcurementItemModal.tsx` | Add auto-save state, debounced effect, handleAutoSave function, update footer UI |
 
 ---
 
-### Expected Behavior
-- Users see all default stores plus "Custom" by default
-- Clicking settings icon opens the Edit Stores dialog
-- Removing a store removes it from the dropdown (localStorage persisted)
-- Adding a new store adds it to the list
-- Reset restores original defaults
-- Changes persist across browser sessions
+### Edge Cases Handled
+- Empty required fields: Auto-save skips if name or price missing
+- Rapid changes: Debounce prevents excessive saves
+- Modal close during save: Save completes in background
+- Network errors: Silent fail (no disruptive toasts during auto-save)
