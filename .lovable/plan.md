@@ -1,116 +1,153 @@
 
-## Plan: Simplify Dashboard Sidebar Layout
 
-### Overview
-Remove the UrgentTasksWidget from the dashboard right sidebar and reorganize the CalendarGlanceWidget into a split two-box layout within the same height.
+## 3 Layout Ideas for Business Expenses Page
+
+Based on the current implementation, here are 3 alternative layouts to improve visual appeal and practicality:
 
 ---
 
-### Current Layout
+### Option A: Side-by-Side Stats + Chart Grid
+
+**Layout Concept:**
+Replace the large full-width chart with a two-column grid showing key metrics on the left and a compact chart on the right.
+
 ```text
-┌─────────────────────────────────────────────────────────┐
-│  Main Content (flex-1)              │  Sidebar (w-72)   │
-│                                     │                   │
-│  - Quick Task Input                 │  ┌─────────────┐  │
-│  - Stats Grid                       │  │ Calendar    │  │
-│  - Active Projects                  │  │ Glance      │  │
-│  - Charts                           │  └─────────────┘  │
-│                                     │  ┌─────────────┐  │
-│                                     │  │ Urgent      │  │
-│                                     │  │ Tasks       │  │
-│                                     │  └─────────────┘  │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  Company Name                                          [Export ▼] [+ Add Expense]│
+│  Track business expenses                                                         │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  [QuickBooks Integration - Connected]                                            │
+├────────────────────────────────┬────────────────────────────────────────────────┤
+│  SUMMARY CARDS (Left)          │  MINI CHART (Right)                            │
+│  ┌────────┐  ┌────────┐        │  ┌────────────────────────────────────────┐    │
+│  │ This   │  │ Total  │        │  │  Spending by Category (Donut)          │    │
+│  │ Month  │  │ All    │        │  │  ┌──────────────────────────────────┐  │    │
+│  │ $X,XXX │  │ $X,XXX │        │  │  │         [Pie Chart]              │  │    │
+│  └────────┘  └────────┘        │  │  │                                  │  │    │
+│  ┌────────┐  ┌────────┐        │  │  └──────────────────────────────────┘  │    │
+│  │ # of   │  │ Top    │        │  │  Legend: Subscriptions, Software...   │    │
+│  │ Trans  │  │ Categ  │        │  └────────────────────────────────────────┘    │
+│  └────────┘  └────────┘        │                                                │
+├────────────────────────────────┴────────────────────────────────────────────────┤
+│  [🔍 Search...] [All Categories ▼] [📅 Date Range]              [Last 30 Days ▼]│
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  EXPENSES TABLE                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### New Layout
+**Pros:**
+- Summary metrics are immediately visible (no scrolling)
+- Chart is compact and focused (donut instead of horizontal bars)
+- Better use of horizontal space
+
+**Cons:**
+- Loses the 30-day trend line and monthly comparison views
+
+---
+
+### Option B: Compact Stat Banner + Collapsible Chart
+
+**Layout Concept:**
+Move key stats into a horizontal banner, make the chart collapsible, and integrate filters into the table header.
+
 ```text
-┌─────────────────────────────────────────────────────────┐
-│  Main Content (flex-1)              │  Sidebar (w-72)   │
-│                                     │                   │
-│  - Quick Task Input                 │  ┌──────┬──────┐  │
-│  - Stats Grid                       │  │Today │Week  │  │
-│  - Active Projects                  │  │Events│Events│  │
-│  - Charts                           │  └──────┴──────┘  │
-│                                     │                   │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  Company Name                                          [Export ▼] [+ Add Expense]│
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  [QuickBooks - Connected ✓]                                                      │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  STAT BANNER (Horizontal Row)                                                    │
+│  ┌──────────────┬──────────────┬──────────────┬──────────────────────────────┐  │
+│  │ This Month   │ 30-Day Avg   │ Total Trans  │ Top: Subscriptions ($932)   │  │
+│  │ $2,958       │ $98/day      │ 47 expenses  │                              │  │
+│  └──────────────┴──────────────┴──────────────┴──────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  📊 Expense Trends                                              [Expand/Collapse]│
+│  ├──────────────────────────────────────────────────────────────────────────────│
+│  │  (Collapsed by default - click to expand full chart)                        │
+│  └──────────────────────────────────────────────────────────────────────────────│
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  EXPENSES (47 • $2,958)                      [🔍 Search] [Category ▼] [Date ▼] │
+│  ├──────────────────────────────────────────────────────────────────────────────│
+│  │  TABLE ROWS...                                                               │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+**Pros:**
+- All key metrics visible in one glance (horizontal stat bar)
+- Chart is available but doesn't dominate the page
+- Filters integrated into table header (like the project expenses page)
+- More focus on the actual expense data
 
-### Technical Changes
-
-**File: `src/pages/Index.tsx`**
-
-1. **Remove UrgentTasksWidget import:**
-   - Remove: `import { UrgentTasksWidget } from '@/components/dashboard/UrgentTasksWidget';`
-
-2. **Update sidebar section (lines 317-323):**
-   - Remove `<UrgentTasksWidget>` component
-   - Keep only `<CalendarGlanceWidget>`
-
-**File: `src/components/dashboard/CalendarGlanceWidget.tsx`**
-
-3. **Restructure into two-box grid layout:**
-   - Replace single column layout with a 2-column grid
-   - Left box: "Today" section (today's events)
-   - Right box: "This Week" section (upcoming week events)
-   - Both boxes share same height, creating balanced visual
-
-4. **Updated component structure:**
-   ```tsx
-   <div className="glass-card p-4">
-     <div className="grid grid-cols-2 gap-3">
-       {/* Left Box - Today */}
-       <div className="bg-muted/30 rounded-lg p-3 border border-border/30">
-         <Badge>Today</Badge>
-         {/* Today's events list */}
-       </div>
-       
-       {/* Right Box - This Week */}
-       <div className="bg-muted/30 rounded-lg p-3 border border-border/30">
-         <Badge>This Week</Badge>
-         {/* Week's events list */}
-       </div>
-     </div>
-   </div>
-   ```
-
-5. **Show empty state in each box** when no events for that section (instead of hiding entire widget)
+**Cons:**
+- Chart hidden by default (users might miss trends)
 
 ---
 
-### Visual Result
+### Option C: Dashboard Grid with Sparkline + Category Pills
 
-**New Calendar Glance Widget:**
+**Layout Concept:**
+Create a compact dashboard grid with sparklines instead of full charts, and show categories as interactive pills/tags.
+
 ```text
-┌────────────────────────────────────────────────────────┐
-│  Week at a Glance                    [View Calendar →] │
-├──────────────────────────┬─────────────────────────────┤
-│  Today                   │  This Week                  │
-│  Tuesday, Feb 4          │                             │
-│                          │                             │
-│  ┌──────────────────┐    │  ┌──────────────────────┐   │
-│  │ 🕐 Electrical    │    │  │ Flooring - Wed      │   │
-│  └──────────────────┘    │  └──────────────────────┘   │
-│  ┌──────────────────┐    │  ┌──────────────────────┐   │
-│  │ 🕐 Painting      │    │  │ Final Walk - Fri    │   │
-│  └──────────────────┘    │  └──────────────────────┘   │
-└──────────────────────────┴─────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  Company Name                                          [Export ▼] [+ Add Expense]│
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  [QuickBooks - Connected ✓]                                                      │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌────────────────────────────┐  ┌────────────────────────────────────────────┐ │
+│  │ 30-Day Spending            │  │ Category Breakdown                         │ │
+│  │ $2,958 total               │  │                                            │ │
+│  │ ╭──────────────────╮       │  │ [Subscriptions $932] [Software $425]       │ │
+│  │ │▁▂▄▃▅▆▄▃▅▇▅▃│ ← sparkline │  │ [Online Courses $900] [Gas $178]           │ │
+│  │ ╰──────────────────╯       │  │ [Licensing $392] [Cloud $42]               │ │
+│  │ ↑ $98/day avg              │  │                                            │ │
+│  └────────────────────────────┘  └────────────────────────────────────────────┘ │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  FILTERS: [🔍 Search...] [All Categories ▼] [📅 Date Range]                      │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  EXPENSES TABLE                                                                  │
+│  Date   │ Vendor      │ Category      │ Payment │ Amount                        │
+│  ─────────────────────────────────────────────────────────────────────────────  │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+**Pros:**
+- Most compact option - shows everything above the fold
+- Sparkline gives trend at a glance without taking space
+- Category pills are clickable to filter (interactive)
+- Clean, modern dashboard aesthetic
+- Better mobile responsiveness
+
+**Cons:**
+- No detailed chart views (monthly comparison, etc.)
+- Less data visualization depth
+
 ---
 
-### Files to Modify
+## Quick Comparison
 
-| File | Changes |
-|------|---------|
-| `src/pages/Index.tsx` | Remove UrgentTasksWidget import and usage |
-| `src/components/dashboard/CalendarGlanceWidget.tsx` | Restructure into 2-column grid with Today/Week boxes |
+| Aspect | Option A | Option B | Option C |
+|--------|----------|----------|----------|
+| Vertical space | Medium | Low | Lowest |
+| Chart detail | Donut only | Full (collapsible) | Sparkline only |
+| Stats visibility | Good | Best | Good |
+| Category display | Donut legend | Hidden in tabs | Clickable pills |
+| Implementation complexity | Medium | Low | Medium |
 
 ---
 
-### Expected Result
-- Sidebar shows only the CalendarGlanceWidget
-- Widget is divided into two equal boxes: "Today" (left) and "This Week" (right)
-- Both boxes maintain same height for balanced appearance
-- Cleaner dashboard with less visual clutter
+## Recommendation
+
+**Option C (Sparkline + Pills)** is the most modern and practical:
+- Shows trends without overwhelming the page
+- Category pills double as visual breakdown + filter shortcuts
+- Gets users to the expense table faster
+- Mobile-friendly compact design
+
+But if you prefer keeping detailed chart analysis, **Option B** lets you have it all while keeping the page clean by default.
+
+---
+
+Which option appeals to you? Or would you like to combine elements from multiple options?
+
