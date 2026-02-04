@@ -1,5 +1,10 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Search, Download, Receipt, Calendar, Briefcase, Upload, FileText, X, Paperclip, Save, RotateCcw, ChevronDown } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -84,6 +89,7 @@ export default function BusinessExpenses() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [backupData, setBackupData] = useState<DBBusinessExpense[] | null>(null);
+  const [expensesTableOpen, setExpensesTableOpen] = useState(true);
   const { toast } = useToast();
   const { companyName } = useCompanySettings();
   // Form state for new expense
@@ -316,16 +322,67 @@ export default function BusinessExpenses() {
     return formatDisplayDate(date);
   };
 
-  const getCategoryLabel = (category: string) => {
+  const getCategoryLabel = useCallback((category: string) => {
     return BUSINESS_EXPENSE_CATEGORIES.find(b => b.value === category)?.label || 
       category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  }, []);
+
+  const handleViewReceipt = async (receiptUrl: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      const urlParts = receiptUrl.split('/storage/v1/object/public/');
+      if (urlParts.length !== 2) {
+        const link = document.createElement('a');
+        link.href = receiptUrl;
+        link.download = 'receipt';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+      
+      const [bucketName, ...pathParts] = urlParts[1].split('/');
+      const filePath = pathParts.join('/');
+      const fileName = pathParts[pathParts.length - 1] || 'receipt';
+      
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .download(filePath);
+      
+      if (error || !data) {
+        console.error('Failed to download receipt:', error);
+        return;
+      }
+      
+      const blobUrl = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (error) {
+      console.error('Failed to download receipt:', error);
+    }
   };
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter((expense) => {
+      const searchLower = search.toLowerCase().replace(/[$,]/g, '');
+      const categoryLabel = getCategoryLabel(expense.category).toLowerCase();
+      const amountStr = expense.amount.toString();
+      
       const matchesSearch = 
-        (expense.vendor_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
-        (expense.description?.toLowerCase() || '').includes(search.toLowerCase());
+        !search ||
+        (expense.vendor_name?.toLowerCase() || '').includes(searchLower) ||
+        (expense.description?.toLowerCase() || '').includes(searchLower) ||
+        (expense.notes?.toLowerCase() || '').includes(searchLower) ||
+        (expense.payment_method?.toLowerCase() || '').includes(searchLower) ||
+        categoryLabel.includes(searchLower) ||
+        amountStr.includes(searchLower);
       
       const matchesCategory = categoryFilter === 'all' || expense.category === categoryFilter;
 
@@ -343,11 +400,17 @@ export default function BusinessExpenses() {
 
       return matchesSearch && matchesCategory && matchesDateRange;
     });
-  }, [expenses, search, categoryFilter, dateRange]);
+  }, [expenses, search, categoryFilter, dateRange, getCategoryLabel]);
 
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
-  // Sanitize string for CSV (remove commas, quotes, newlines)
+  const hasActiveFilters = search || categoryFilter !== 'all' || dateRange;
+
+  const resetFilters = () => {
+    setSearch('');
+    setCategoryFilter('all');
+    setDateRange(undefined);
+  };
   const sanitizeForCSV = (str: string | null | undefined): string => {
     if (!str) return '';
     return str
@@ -483,156 +546,181 @@ export default function BusinessExpenses() {
           selectedCategory={categoryFilter}
         />
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-4">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search expenses..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {BUSINESS_EXPENSE_CATEGORIES.map((cat) => (
-                <SelectItem key={cat.value} value={cat.value}>
-                  {cat.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2 min-w-[180px] justify-start">
-                <Calendar className="h-4 w-4" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <span>{format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}</span>
-                  ) : (
-                    <span>{format(dateRange.from, 'MMM d, yyyy')}</span>
-                  )
-                ) : (
-                  <span>Date Range</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent
-                mode="range"
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={1}
-              />
-              {dateRange && (
-                <div className="p-2 border-t">
+        {/* Expenses Table */}
+        <Collapsible open={expensesTableOpen} onOpenChange={setExpensesTableOpen}>
+          <div className="glass-card overflow-hidden">
+            <div className="flex flex-wrap items-center gap-3 p-4 border-b border-border/30">
+              {/* Toggle */}
+              <CollapsibleTrigger asChild>
+                <div className="flex items-center gap-2 cursor-pointer hover:text-foreground/80 transition-colors">
+                  <ChevronDown className={`h-4 w-4 transition-transform ${expensesTableOpen ? '' : '-rotate-90'}`} />
+                </div>
+              </CollapsibleTrigger>
+              
+              {/* Filters - prevent toggle on click */}
+              <div className="flex flex-wrap items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
+                <div className="relative min-w-[180px] max-w-[240px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-[160px] h-9">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {BUSINESS_EXPENSE_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 h-9">
+                      <Calendar className="h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <span>{format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}</span>
+                        ) : (
+                          <span>{format(dateRange.from, 'MMM d')}</span>
+                        )
+                      ) : (
+                        <span>Date Range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={1}
+                    />
+                    {dateRange && (
+                      <div className="p-2 border-t">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => setDateRange(undefined)}
+                        >
+                          Clear dates
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+                {hasActiveFilters && (
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="w-full"
-                    onClick={() => setDateRange(undefined)}
+                    onClick={resetFilters}
+                    className="h-9 text-muted-foreground hover:text-foreground"
                   >
-                    Clear dates
+                    <X className="h-4 w-4 mr-1" />
+                    Reset
                   </Button>
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        {/* Summary Badge */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Badge variant="outline" className="font-mono">
-            {filteredExpenses.length} expenses • {formatCurrency(totalExpenses)}
-          </Badge>
-          {filteredExpenses.filter(e => e.includes_tax).length > 0 && (
-            <Badge variant="outline" className="font-mono text-xs">
-              +{formatCurrency(filteredExpenses.filter(e => e.includes_tax).reduce((sum, e) => sum + (e.tax_amount || 0), 0))} tax
-            </Badge>
-          )}
-        </div>
-
-        {/* Expenses Table */}
-        <div className="glass-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="data-table">
-              <thead>
-                <tr className="bg-muted/30">
-                  <th>Date</th>
-                  <th>Vendor</th>
-                  <th>Category</th>
-                  <th>Payment</th>
-                  <th className="text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-8 text-muted-foreground">
-                      Loading...
-                    </td>
-                  </tr>
-                ) : filteredExpenses.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No business expenses found
-                    </td>
-                  </tr>
-                ) : (
-                  filteredExpenses.map((expense) => (
-                    <tr 
-                      key={expense.id} 
-                      className="hover:bg-muted/20 transition-colors cursor-pointer"
-                      onClick={() => {
-                        setSelectedExpense(expense);
-                        setDetailModalOpen(true);
-                      }}
-                    >
-                      <td className="whitespace-nowrap">{formatDate(expense.date)}</td>
-                      <td>
-                        <div>
-                          <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
-                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                            {expense.description}
-                          </p>
-                          {expense.notes && (
-                            <p className="text-xs text-muted-foreground/70 italic truncate max-w-[200px] mt-0.5">
-                              Note: {expense.notes}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <Badge variant="secondary" className="text-xs">
-                          {getCategoryLabel(expense.category)}
-                        </Badge>
-                      </td>
-                      <td className="capitalize">{expense.payment_method}</td>
-                      <td className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {expense.receipt_url && (
-                            <Paperclip className="h-4 w-4 text-primary" />
-                          )}
-                          <span className="font-mono">
-                            {formatCurrency(expense.amount)}
-                            {expense.includes_tax && (
-                              <span className="text-xs text-muted-foreground ml-1">+tax</span>
-                            )}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
                 )}
-              </tbody>
-            </table>
+              </div>
+              
+              {/* Summary */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                <span>{filteredExpenses.length} expenses</span>
+                <span>•</span>
+                <span className="font-mono font-medium">{formatCurrency(totalExpenses)}</span>
+              </div>
+            </div>
+            
+            <CollapsibleContent>
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr className="bg-muted/30">
+                      <th>Date</th>
+                      <th>Vendor</th>
+                      <th className="!text-center">Category</th>
+                      <th className="!text-center">Payment</th>
+                      <th className="!text-center">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                          Loading...
+                        </td>
+                      </tr>
+                    ) : filteredExpenses.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <Receipt className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                          <p>No business expenses found</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredExpenses.map((expense) => (
+                        <tr 
+                          key={expense.id} 
+                          className="hover:bg-muted/20 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedExpense(expense);
+                            setDetailModalOpen(true);
+                          }}
+                        >
+                          <td className="whitespace-nowrap">{formatDate(expense.date)}</td>
+                          <td>
+                            <div>
+                              <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
+                              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                {expense.description}
+                              </p>
+                              {expense.notes && (
+                                <p className="text-xs text-muted-foreground/70 italic truncate max-w-[200px] mt-0.5">
+                                  Note: {expense.notes}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="text-center">
+                            <Badge variant="secondary" className="text-xs">
+                              {getCategoryLabel(expense.category)}
+                            </Badge>
+                          </td>
+                          <td className="text-center capitalize">{expense.payment_method}</td>
+                          <td className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {expense.receipt_url && (
+                                <button
+                                  onClick={(e) => handleViewReceipt(expense.receipt_url!, e)}
+                                  className="text-primary hover:text-primary/80"
+                                >
+                                  <Paperclip className="h-4 w-4" />
+                                </button>
+                              )}
+                              <span className="font-mono">
+                                {formatCurrency(expense.amount)}
+                                {expense.includes_tax && (
+                                  <span className="text-xs text-muted-foreground ml-1">+tax</span>
+                                )}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CollapsibleContent>
           </div>
-        </div>
+        </Collapsible>
       </div>
 
       {/* Add Expense Modal */}
