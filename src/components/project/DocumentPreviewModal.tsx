@@ -62,17 +62,37 @@ export function DocumentPreviewModal({
   onUpdate,
   onDelete,
 }: DocumentPreviewModalProps) {
-  const [category, setCategory] = useState(document.category);
+  // Check if current category is custom (not in default list)
+  const defaultCategoryValues = DOCUMENT_CATEGORIES.map(c => c.value);
+  const isInitiallyCustom = !defaultCategoryValues.includes(document.category);
+  
+  const [category, setCategory] = useState(isInitiallyCustom ? '' : document.category);
+  const [isCustomCategory, setIsCustomCategory] = useState(isInitiallyCustom);
+  const [customCategoryName, setCustomCategoryName] = useState(isInitiallyCustom ? document.category : '');
   const [documentDate, setDocumentDate] = useState(
     document.document_date || new Date().toISOString().split('T')[0]
   );
   const [notes, setNotes] = useState(document.notes || '');
   const [saving, setSaving] = useState(false);
 
+  const handleCategoryChange = (value: string) => {
+    if (value === 'other') {
+      setIsCustomCategory(true);
+      setCategory('');
+    } else {
+      setIsCustomCategory(false);
+      setCategory(value);
+    }
+  };
+
+  const finalCategory = isCustomCategory ? customCategoryName.trim() : category;
+
   const hasChanges =
-    category !== document.category ||
+    finalCategory !== document.category ||
     documentDate !== document.document_date ||
     notes !== (document.notes || '');
+
+  const canSave = !isCustomCategory || customCategoryName.trim().length > 0;
 
   const handleSave = async () => {
     setSaving(true);
@@ -80,7 +100,7 @@ export function DocumentPreviewModal({
     const { error } = await supabase
       .from('project_documents')
       .update({
-        category,
+        category: finalCategory,
         document_date: documentDate,
         notes: notes || null,
       })
@@ -153,7 +173,7 @@ export function DocumentPreviewModal({
           {/* Category */}
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select value={category} onValueChange={setCategory}>
+            <Select value={isCustomCategory ? 'other' : category} onValueChange={handleCategoryChange}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -163,9 +183,24 @@ export function DocumentPreviewModal({
                     {cat.label}
                   </SelectItem>
                 ))}
+                <SelectItem value="other" className="border-t mt-1 pt-1">
+                  + Other (custom)...
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {/* Custom Category Input */}
+          {isCustomCategory && (
+            <div className="space-y-2">
+              <Label>Custom Category Name</Label>
+              <Input
+                placeholder="e.g., Warranty, Change Order, Quote..."
+                value={customCategoryName}
+                onChange={(e) => setCustomCategoryName(e.target.value)}
+              />
+            </div>
+          )}
 
           {/* Date */}
           <div className="space-y-2">
@@ -205,7 +240,7 @@ export function DocumentPreviewModal({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={saving || !hasChanges}>
+              <Button onClick={handleSave} disabled={saving || !hasChanges || !canSave}>
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

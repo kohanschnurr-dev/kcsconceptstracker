@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FileText, Plus, Filter, Loader2, Download, Trash2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,10 +60,18 @@ const getCategoryLabel = (value: string) => {
 
 export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
+  const [allDocuments, setAllDocuments] = useState<ProjectDocument[]>([]); // For deriving custom categories
   const [loading, setLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<ProjectDocument | null>(null);
+
+  // Get unique custom categories from all documents (not in default list)
+  const customCategories = useMemo(() => {
+    const defaultValues = DOCUMENT_CATEGORIES.map(c => c.value);
+    const uniqueCategories = [...new Set(allDocuments.map(d => d.category))];
+    return uniqueCategories.filter(cat => !defaultValues.includes(cat)).sort();
+  }, [allDocuments]);
 
   const fetchDocuments = async () => {
     setLoading(true);
@@ -83,7 +91,18 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
       console.error('Error fetching documents:', error);
       toast.error('Failed to load documents');
     } else {
-      setDocuments((data as ProjectDocument[]) || []);
+      const docs = (data as ProjectDocument[]) || [];
+      setDocuments(docs);
+      // Also fetch all docs for custom category derivation (without filter)
+      if (filterCategory !== 'all') {
+        const { data: allData } = await supabase
+          .from('project_documents')
+          .select('*')
+          .eq('project_id', projectId);
+        setAllDocuments((allData as ProjectDocument[]) || []);
+      } else {
+        setAllDocuments(docs);
+      }
     }
     setLoading(false);
   };
@@ -147,6 +166,18 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
                   {cat.label}
                 </SelectItem>
               ))}
+              {customCategories.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1">
+                    Custom
+                  </div>
+                  {customCategories.map((cat) => (
+                    <SelectItem key={cat} value={cat} className="italic">
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </>
+              )}
             </SelectContent>
           </Select>
           <Button size="sm" onClick={() => setUploadModalOpen(true)}>

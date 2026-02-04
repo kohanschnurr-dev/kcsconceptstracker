@@ -50,10 +50,24 @@ export function DocumentUploadModal({
 }: DocumentUploadModalProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [category, setCategory] = useState('general');
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryName, setCustomCategoryName] = useState('');
   const [documentDate, setDocumentDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+
+  const handleCategoryChange = (value: string) => {
+    if (value === 'other') {
+      setIsCustomCategory(true);
+      setCategory('');
+    } else {
+      setIsCustomCategory(false);
+      setCategory(value);
+    }
+  };
+
+  const finalCategory = isCustomCategory ? customCategoryName.trim() : category;
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -117,7 +131,7 @@ export function DocumentUploadModal({
           file_path: fileName,
           file_name: file.name,
           file_size: file.size,
-          category,
+          category: finalCategory,
           document_date: documentDate,
           notes: notes || null,
         });
@@ -143,9 +157,13 @@ export function DocumentUploadModal({
   const resetForm = () => {
     setFiles([]);
     setCategory('general');
+    setIsCustomCategory(false);
+    setCustomCategoryName('');
     setDocumentDate(new Date().toISOString().split('T')[0]);
     setNotes('');
   };
+
+  const canUpload = files.length > 0 && (!isCustomCategory || customCategoryName.trim().length > 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -219,7 +237,7 @@ export function DocumentUploadModal({
           {/* Category */}
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select value={category} onValueChange={setCategory}>
+            <Select value={isCustomCategory ? 'other' : category} onValueChange={handleCategoryChange}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -229,9 +247,24 @@ export function DocumentUploadModal({
                     {cat.label}
                   </SelectItem>
                 ))}
+                <SelectItem value="other" className="border-t mt-1 pt-1">
+                  + Other (custom)...
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {/* Custom Category Input */}
+          {isCustomCategory && (
+            <div className="space-y-2">
+              <Label>Custom Category Name</Label>
+              <Input
+                placeholder="e.g., Warranty, Change Order, Quote..."
+                value={customCategoryName}
+                onChange={(e) => setCustomCategoryName(e.target.value)}
+              />
+            </div>
+          )}
 
           {/* Date */}
           <div className="space-y-2">
@@ -259,7 +292,7 @@ export function DocumentUploadModal({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpload} disabled={uploading || files.length === 0}>
+            <Button onClick={handleUpload} disabled={uploading || !canUpload}>
               {uploading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
