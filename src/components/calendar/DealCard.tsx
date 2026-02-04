@@ -1,8 +1,7 @@
 import { 
   Hammer, 
-  Pipette, 
+  Droplets, 
   Zap, 
-  Landmark, 
   Fan, 
   PaintBucket,
   Wrench,
@@ -33,10 +32,13 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
       case 'acquisition_admin':
         return <FileText className={iconClass} />;
       case 'structural_exterior':
-        return <Landmark className={iconClass} />;
+        switch (category) {
+          case 'demo': return <Hammer className={iconClass} />;
+          default: return <Home className={iconClass} />;
+        }
       case 'rough_ins':
         switch (category) {
-          case 'plumbing_rough': return <Pipette className={iconClass} />;
+          case 'plumbing_rough': return <Droplets className={iconClass} />;
           case 'electrical_rough': return <Zap className={iconClass} />;
           case 'hvac_rough': return <Fan className={iconClass} />;
           case 'framing': return <Hammer className={iconClass} />;
