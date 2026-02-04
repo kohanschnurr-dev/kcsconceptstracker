@@ -46,18 +46,22 @@ import {
   Package,
   X,
   Pencil,
-  Camera
+  Camera,
+  Settings,
+  Plus,
+  RotateCcw
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useCustomStores, DEFAULT_STORES } from '@/hooks/useCustomStores';
 
 // Types
 type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'delivered' | 'installed';
 type Phase = 'rough_in' | 'trim_out' | 'finish' | 'punch';
-type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'other';
+type SourceStore = string;
 
 interface ProcurementItem {
   id: string;
@@ -331,15 +335,7 @@ const STATUSES: { value: ItemStatus; label: string }[] = [
   { value: 'installed', label: 'Installed' },
 ];
 
-const STORES: { value: SourceStore; label: string }[] = [
-  { value: 'amazon', label: 'Amazon' },
-  { value: 'home_depot', label: 'Home Depot' },
-  { value: 'lowes', label: "Lowe's" },
-  { value: 'floor_decor', label: 'Floor & Decor' },
-  { value: 'build', label: 'Build.com' },
-  { value: 'ferguson', label: 'Ferguson' },
-  { value: 'other', label: 'Other' },
-];
+// Stores are now managed via useCustomStores hook
 
 const TEXAS_TAX_RATE = 0.0825;
 
@@ -389,6 +385,7 @@ interface ScrapedData {
 
 export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave }: Props) {
   const { user } = useAuth();
+  const { stores, addStore, removeStore, resetToDefaults } = useCustomStores();
   const [loading, setLoading] = useState(false);
   const [scraping, setScraping] = useState(false);
   const [showFallbackOptions, setShowFallbackOptions] = useState(false);
@@ -398,6 +395,8 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   const [urlInput, setUrlInput] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const [editStoresOpen, setEditStoresOpen] = useState(false);
+  const [newStoreName, setNewStoreName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const screenshotInputRef = useRef<HTMLInputElement>(null);
   
@@ -421,6 +420,27 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     specs: {},
     image_url: '',
   });
+
+  const handleAddStore = () => {
+    if (!newStoreName.trim()) return;
+    if (addStore(newStoreName.trim())) {
+      toast.success(`Added "${newStoreName}" to stores`);
+      setNewStoreName('');
+    } else {
+      toast.error('Store already exists');
+    }
+  };
+
+  const handleRemoveStore = (value: string) => {
+    const store = stores.find(s => s.value === value);
+    removeStore(value);
+    toast.success(`Removed "${store?.label || value}" from stores`);
+  };
+
+  const handleResetStores = () => {
+    resetToDefaults();
+    toast.success('Stores reset to defaults');
+  };
 
   // Image upload handler
   const uploadImage = async (file: File) => {
@@ -667,7 +687,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
 
       const scraped: ScrapedData = data.data;
       const detectedCategory = detectCategory(scraped.name);
-      const storeValue = STORES.find(s => s.value === scraped.source_store)?.value || 'other';
+      const storeValue = stores.find(s => s.value === scraped.source_store)?.value || 'other';
 
       // Update form with scraped data
       setFormData(prev => ({
@@ -1216,7 +1236,17 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
 
         {/* Source */}
         <div>
-          <Label>Source Store</Label>
+          <div className="flex items-center justify-between mb-1">
+            <Label>Source Store</Label>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0"
+              onClick={() => setEditStoresOpen(true)}
+            >
+              <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          </div>
           <Select 
             value={formData.source_store} 
             onValueChange={(v) => setFormData(prev => ({ ...prev, source_store: v as SourceStore }))}
@@ -1225,7 +1255,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {STORES.map(s => (
+              {stores.map(s => (
                 <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
               ))}
             </SelectContent>
@@ -1367,37 +1397,100 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{getDialogTitle()}</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{getDialogTitle()}</DialogTitle>
+          </DialogHeader>
 
-        {step === 'url' && renderUrlStep()}
-        {step === 'category' && renderCategoryStep()}
-        {step === 'details' && renderDetailsStep()}
+          {step === 'url' && renderUrlStep()}
+          {step === 'category' && renderCategoryStep()}
+          {step === 'details' && renderDetailsStep()}
 
-        <DialogFooter>
-          {step === 'category' && !item && (
-            <Button variant="outline" onClick={() => setStep('url')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+          <DialogFooter>
+            {step === 'category' && !item && (
+              <Button variant="outline" onClick={() => setStep('url')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            )}
+            {step === 'details' && !item && (
+              <Button variant="outline" onClick={() => setStep('category')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            {step === 'details' && (
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading ? 'Saving...' : item ? 'Update Item' : 'Add Item'}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Stores Dialog */}
+      <Dialog open={editStoresOpen} onOpenChange={setEditStoresOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Source Stores</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {stores.map((store) => (
+                <div 
+                  key={store.value} 
+                  className="flex items-center justify-between p-2 rounded-lg border bg-muted/30"
+                >
+                  <span className="text-sm">
+                    {store.label}
+                    {store.isCustom && (
+                      <Badge variant="secondary" className="ml-2 text-xs">Custom</Badge>
+                    )}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleRemoveStore(store.value)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <Input
+                value={newStoreName}
+                onChange={(e) => setNewStoreName(e.target.value)}
+                placeholder="Add new store..."
+                onKeyDown={(e) => e.key === 'Enter' && handleAddStore()}
+              />
+              <Button onClick={handleAddStore} size="sm">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={handleResetStores}
+              className="mr-auto"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reset
             </Button>
-          )}
-          {step === 'details' && !item && (
-            <Button variant="outline" onClick={() => setStep('category')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+            <Button onClick={() => setEditStoresOpen(false)}>
+              Done
             </Button>
-          )}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          {step === 'details' && (
-            <Button onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Saving...' : item ? 'Update Item' : 'Add Item'}
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
