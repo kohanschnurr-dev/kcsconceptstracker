@@ -26,6 +26,7 @@ interface DocumentUploadModalProps {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   onUploadComplete: () => void;
+  defaultFolderId?: string | null;
 }
 
 const ACCEPTED_FILE_TYPES = [
@@ -47,6 +48,7 @@ export function DocumentUploadModal({
   onOpenChange,
   projectId,
   onUploadComplete,
+  defaultFolderId,
 }: DocumentUploadModalProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [category, setCategory] = useState('general');
@@ -134,6 +136,7 @@ export function DocumentUploadModal({
           category: finalCategory,
           document_date: documentDate,
           notes: notes || null,
+          folder_id: defaultFolderId || null,
         });
 
         if (dbError) {
