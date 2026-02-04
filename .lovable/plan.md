@@ -1,31 +1,29 @@
 
-## Plan: Move Filters into Expenses Table Header
 
-### Current Layout
-1. Page header with title + Export/Add buttons
-2. Standalone filters section (search, project, category, date range)
-3. QuickBooks integration
-4. Summary card (expense count + total)
-5. Collapsible Expenses Table
+## Plan: Add Reset Filters Button
 
-### New Layout
-1. Page header with title + Export/Add buttons
-2. QuickBooks integration
-3. Collapsible Expenses Table with **filters integrated into the header bar**
-   - Search input + Project + Category + Date Range filters in header
-   - Count and total moved to the right side of the filters
-
-The summary card will be removed since that information is already shown in the table header bar.
+### Overview
+Add a "Reset" button to the Expenses table header that clears all active filters with one click for fast access.
 
 ---
 
-### Visual Layout (Header Bar)
+### Current State
+The filter bar contains:
+- Search input
+- Project dropdown
+- Category dropdown  
+- Date Range picker
 
-```text
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ ▼ [🔍 Search vendor, amount...] [All Projects ▼] [All Categories ▼] [📅 Date Range]  50 expenses • $54,901.34 │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-```
+Users must clear each filter individually.
+
+---
+
+### Solution
+Add a "Reset" button that appears when any filter is active, clearing all filters at once:
+- Search → empty string
+- Project → "all"
+- Category → "all"
+- Date Range → undefined
 
 ---
 
@@ -33,60 +31,62 @@ The summary card will be removed since that information is already shown in the 
 
 **File: `src/pages/Expenses.tsx`**
 
-1. **Remove** the standalone filters section (lines 421-494)
-2. **Remove** the summary card section (lines 500-514)
-3. **Update** the Collapsible header to include:
-   - Search input (compact)
-   - Project dropdown
-   - Category dropdown  
-   - Date range picker
-   - Expense count and total on the right
+1. Add a computed flag to check if any filter is active:
+```typescript
+const hasActiveFilters = search || projectFilter !== 'all' || categoryFilter !== 'all' || dateRange;
+```
 
-The header will use `onClick={(e) => e.stopPropagation()}` on filter controls to prevent the collapsible from toggling when interacting with filters.
+2. Add a reset function:
+```typescript
+const resetFilters = () => {
+  setSearch('');
+  setProjectFilter('all');
+  setCategoryFilter('all');
+  setDateRange(undefined);
+};
+```
 
-**Updated Header Structure:**
+3. Add Reset button after the Date Range picker (conditionally shown when filters are active):
 ```tsx
-<div className="flex items-center justify-between p-4 border-b border-border/30">
-  {/* Left side - Toggle + Label */}
-  <CollapsibleTrigger asChild>
-    <div className="flex items-center gap-2 cursor-pointer">
-      <ChevronDown className={...} />
-      <span className="font-medium">Expenses</span>
-    </div>
-  </CollapsibleTrigger>
-  
-  {/* Center - Filters (click doesn't toggle collapsible) */}
-  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-    <Search input />
-    <Project select />
-    <Category select />
-    <Date range picker />
-  </div>
-  
-  {/* Right side - Summary */}
-  <div className="text-sm text-muted-foreground">
-    50 expenses • $54,901.34
-  </div>
-</div>
+{hasActiveFilters && (
+  <Button 
+    variant="ghost" 
+    size="sm" 
+    onClick={resetFilters}
+    className="h-9 text-muted-foreground hover:text-foreground"
+  >
+    <X className="h-4 w-4 mr-1" />
+    Reset
+  </Button>
+)}
 ```
 
 ---
 
-### Mobile Responsiveness
-On smaller screens, the filters will wrap naturally using `flex-wrap`. The date range picker will show abbreviated format.
+### Visual Layout
+
+```text
+Before (filters active):
+┌──────────────────────────────────────────────────────────────────────────────────────────────┐
+│ ▼ [🔍 ralph] [Wales Rental ▼] [Drain Line... ▼] [📅 Date Range] [✕ Reset]  50 expenses • $54,901 │
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
+
+After clicking Reset:
+┌──────────────────────────────────────────────────────────────────────────────────────────────┐
+│ ▼ [🔍 Search...] [All Projects ▼] [All Categories ▼] [📅 Date Range]  125 expenses • $84,901 │
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ### Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/pages/Expenses.tsx` | Move filters into table header, remove standalone filter section and summary card |
+| File | Change |
+|------|--------|
+| `src/pages/Expenses.tsx` | Add `hasActiveFilters` check, `resetFilters` function, and Reset button |
 
 ---
 
-### Result
-- Filters are now directly above the expense table
-- Users see the correlation between filters and the table content
-- Cleaner layout with less vertical space used
-- Summary info stays visible in the header even when scrolling through the table
+### Import Addition
+Add `X` to the existing lucide-react imports (already imported for other uses in the codebase).
+
