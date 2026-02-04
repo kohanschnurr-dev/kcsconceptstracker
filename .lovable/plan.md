@@ -1,153 +1,130 @@
 
 
-## Plan: Add SmartSplit Receipt Matching for Business Expenses
+## Plan: Restructure Tasks Due Today Banner into Two-Box Layout
 
 ### Overview
-Enable receipt matching for KCS Concepts Business Expenses, following the same pattern as project expenses. Users can upload receipts and match them to existing business expense transactions.
+Transform the current single-row TasksDueTodayBanner into a two-box grid layout, removing the task badges on the right side and creating a cleaner, more balanced visual design.
 
 ---
 
-### Current State
-- Business Expenses already supports manual receipt upload via the `BusinessExpenseDetailModal`
-- SmartSplit exists for project expenses with QB transaction matching
-- No automated receipt-to-business-expense matching exists
-
-### New Behavior
-- Upload a receipt on the Business Expenses page
-- System parses receipt (vendor, amount, date)
-- Match candidates shown from existing `business_expenses` table
-- User confirms match, receipt URL gets attached to the business expense
-
----
-
-### Architecture
-
+### Current Layout
 ```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  Business Expenses Page                                                         │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────────────────────────────────────────────────────────────────┐│
-│  │  Receipt Upload Zone (Collapsible)                                          ││
-│  │  [📎 Attach Receipt to Expense]                                             ││
-│  │  ┌───────────────────────────────────────────────────────────────────────┐  ││
-│  │  │ Drag & drop receipt image or paste (Ctrl+V)                           │  ││
-│  │  └───────────────────────────────────────────────────────────────────────┘  ││
-│  │                                                                             ││
-│  │  Parsed Receipt: Home Depot - $142.50 - Jan 15                              ││
-│  │  [Match Candidates from business_expenses:]                                 ││
-│  │    ○ Home Depot | $142.50 | Jan 15 | Hardware  ← [Attach Receipt]           ││
-│  │    ○ HD Supply  | $142.48 | Jan 14 | Hardware                               ││
-│  └─────────────────────────────────────────────────────────────────────────────┘│
-│                                                                                 │
-│  [Dashboard Cards] [Filters] [Expense Table]                                   │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ [Icon] Today  2 Items                    [Electrical...] [Painting] [Calendar btn] │
+│        📅 2 events today                                                            │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### New Layout
+```text
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│ [Icon] Today's Agenda                                         [View Calendar →]   │
+├─────────────────────────────────┬──────────────────────────────────────────────────┤
+│  Tasks                          │  Events                                          │
+│  ┌───────────────────────────┐  │  ┌───────────────────────────────────────────┐   │
+│  │ 2 tasks due today         │  │  │ Electrical for Condensor                  │   │
+│  │ 1 overdue                 │  │  │ Painting                                  │   │
+│  └───────────────────────────┘  │  └───────────────────────────────────────────┘   │
+│  [View Tasks →]                 │                                                  │
+└─────────────────────────────────┴──────────────────────────────────────────────────┘
 ```
 
 ---
 
 ### Technical Changes
 
-**New Component: `src/components/BusinessReceiptUpload.tsx`**
+**File: `src/components/dashboard/TasksDueTodayBanner.tsx`**
 
-A simplified receipt upload component for business expenses that:
-1. Accepts file upload (drag/drop, click, paste)
-2. Parses receipt using existing `parse-receipt-image` edge function
-3. Queries `business_expenses` table for match candidates (same amount ± $0.05, date within 5 days)
-4. Shows match candidates with match indicators (amount, date, vendor)
-5. Attaches receipt URL to selected expense on confirmation
+1. **Replace single-row layout with two-box grid:**
+   - Remove the horizontal flex layout with badges on the right
+   - Add a `grid grid-cols-2 gap-3` container like CalendarGlanceWidget
+   - Both boxes share same minimum height for balance
 
-**File: `src/pages/BusinessExpenses.tsx`**
+2. **Left Box - Tasks:**
+   - Show tasks due today count
+   - Show overdue count (if any, highlighted in destructive color)
+   - "View Tasks" button at bottom
 
-1. Import the new `BusinessReceiptUpload` component
-2. Add it above the Dashboard Cards section
-3. Pass `expenses` array and `onReceiptAttached` callback to refresh data
+3. **Right Box - Events:**
+   - Show today's calendar events as a list (up to 3)
+   - "+X more" indicator if more than 3 events
+   - Events styled with category colors
+
+4. **Header changes:**
+   - Keep icon + "Today's Agenda" title
+   - Move "Calendar" button to header right side
+   - Remove task/event badges from header area
 
 ---
 
-### Component Props
+### Component Structure
 
-```typescript
-interface BusinessReceiptUploadProps {
-  expenses: BusinessExpense[];
-  onReceiptAttached: () => void;
-}
+```tsx
+<div className="glass-card p-4">
+  {/* Header Row */}
+  <div className="flex items-center justify-between mb-3">
+    <div className="flex items-center gap-2">
+      <ListChecks icon />
+      <h3>Today's Agenda</h3>
+      <Badge>{totalActionable} Items</Badge>
+    </div>
+    <Button>View Calendar</Button>
+  </div>
+
+  {/* Two-Box Grid */}
+  <div className="grid grid-cols-2 gap-3">
+    {/* Left Box - Tasks */}
+    <div className="bg-muted/30 rounded-lg p-3 border min-h-[100px]">
+      <Badge>Tasks</Badge>
+      <div>
+        {tasksDueToday.length} due today
+        {overdueCount} overdue
+      </div>
+      <Button>View Tasks</Button>
+    </div>
+
+    {/* Right Box - Events */}
+    <div className="bg-muted/30 rounded-lg p-3 border min-h-[100px]">
+      <Badge>Events</Badge>
+      {todayEvents.map(event => <EventRow />)}
+    </div>
+  </div>
+</div>
 ```
 
 ---
 
-### Match Algorithm
-
-```typescript
-// Find expenses that could match the parsed receipt
-const findMatchCandidates = (receipt: ParsedReceipt, expenses: BusinessExpense[]) => {
-  return expenses
-    .filter(expense => {
-      // Amount match: within $0.05
-      const amountMatch = Math.abs(expense.amount - receipt.total_amount) <= 0.05;
-      // Date match: within 5 days
-      const dateMatch = isDateInRange(receipt.purchase_date, expense.date);
-      // Must match at least amount OR (date + vendor)
-      const vendorMatch = vendorSimilarity(receipt.vendor_name, expense.vendor_name);
-      
-      return amountMatch || (dateMatch && vendorMatch > 0.5);
-    })
-    .sort((a, b) => {
-      // Score by match quality
-      const scoreA = calculateMatchScore(receipt, a);
-      const scoreB = calculateMatchScore(receipt, b);
-      return scoreB - scoreA;
-    })
-    .slice(0, 5); // Top 5 candidates
-};
-```
-
----
-
-### UI States
-
-1. **Collapsed (default)**: Shows "Attach Receipt to Expense" with paperclip icon
-2. **Expanded/Upload**: Drag-drop zone for receipt image
-3. **Parsing**: Loading spinner while AI parses receipt
-4. **Match Selection**: Shows parsed receipt details + match candidates
-5. **Attaching**: Loading state while updating expense
-
----
-
-### Match Candidate Display
+### Visual Result
 
 ```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│  Parsed Receipt: Home Depot | $142.50 | Jan 15, 2026                     │
-├──────────────────────────────────────────────────────────────────────────┤
-│  Match to existing expense:                                              │
-│                                                                          │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │ [$][📅][🏢] Home Depot   | $142.50 | Jan 15 | Hardware [Attach ✓] │  │
-│  └────────────────────────────────────────────────────────────────────┘  │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │ [$][  ][🏢] HD Supply    | $142.48 | Jan 14 | Supplies [Attach]   │  │
-│  └────────────────────────────────────────────────────────────────────┘  │
-│                                                                          │
-│  [Cancel] ← Discard receipt and reset                                    │
-└──────────────────────────────────────────────────────────────────────────┘
-
-Legend: [$] Amount matched | [📅] Date in range | [🏢] Vendor matched
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│ ☑ Today's Agenda  [3 Items]                               [📅 View Calendar →]    │
+├─────────────────────────────────┬──────────────────────────────────────────────────┤
+│  TASKS                          │  EVENTS                                          │
+│  ─────────────────────────────  │  ─────────────────────────────────────────────   │
+│  📋 2 tasks due today           │  ┌─────────────────────────────────────────────┐ │
+│  ⚠️ 1 overdue                   │  │ Electrical for Condensor                   │ │
+│                                 │  └─────────────────────────────────────────────┘ │
+│                                 │  ┌─────────────────────────────────────────────┐ │
+│  [View Tasks →]                 │  │ Painting                                    │ │
+│                                 │  └─────────────────────────────────────────────┘ │
+└─────────────────────────────────┴──────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Files to Create/Modify
+### Files to Modify
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/components/BusinessReceiptUpload.tsx` | Create | New receipt upload + matching component |
-| `src/pages/BusinessExpenses.tsx` | Modify | Import and add BusinessReceiptUpload above dashboard |
+| File | Changes |
+|------|---------|
+| `src/components/dashboard/TasksDueTodayBanner.tsx` | Restructure from single row to two-box grid layout |
 
 ---
 
-### Expected Result
-- Users can upload receipts directly on the Business Expenses page
-- System auto-matches receipt to existing KCS Concepts transactions
-- One-click attachment to the correct expense
-- Receipt URL saved to `business_expenses.receipt_url` field
+### Key Styling Details
+- Match CalendarGlanceWidget styling: `bg-muted/30`, `border-border/30`, `min-h-[100px]`
+- Tasks box shows counts with appropriate colors (warning for due, destructive for overdue)
+- Events box lists actual event titles with category color coding
+- Both boxes equal height for visual balance
+- Maintains responsive behavior (banner already hidden on smaller screens via parent)
 
