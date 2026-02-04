@@ -305,6 +305,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                           onCategorize={handleCategorize}
                           onDelete={handleDelete}
                           onImportAll={handleImportAll}
+                          onOpenSplitModal={handleOpenSplitModal}
                           formatCurrency={formatCurrency}
                         />
                       ))}
