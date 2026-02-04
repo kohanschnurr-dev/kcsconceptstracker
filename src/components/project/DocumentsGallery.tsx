@@ -1,5 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FileText, Plus, Filter, Loader2, Download, Trash2, ExternalLink } from 'lucide-react';
+import { 
+  FileText, 
+  FileSpreadsheet, 
+  FileImage, 
+  File,
+  FolderOpen,
+  Plus, 
+  Filter, 
+  Loader2, 
+  Download, 
+  Trash2, 
+  Calendar,
+  Upload,
+  HardDrive,
+  Clock
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -9,10 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DocumentUploadModal } from './DocumentUploadModal';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
+import { cn } from '@/lib/utils';
 
 export const DOCUMENT_CATEGORIES = [
   { value: 'permit', label: 'Permit' },
@@ -54,15 +71,51 @@ const formatDate = (date: string) => {
   });
 };
 
+const getRelativeTime = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+  return formatDate(dateStr);
+};
+
 const getCategoryLabel = (value: string) => {
   return DOCUMENT_CATEGORIES.find(c => c.value === value)?.label || value;
 };
 
+const getFileIcon = (fileName: string) => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'pdf':
+      return { icon: FileText, color: 'text-red-500', bg: 'bg-red-500/10' };
+    case 'doc':
+    case 'docx':
+      return { icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/10' };
+    case 'xls':
+    case 'xlsx':
+      return { icon: FileSpreadsheet, color: 'text-green-500', bg: 'bg-green-500/10' };
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+    case 'gif':
+    case 'webp':
+      return { icon: FileImage, color: 'text-purple-500', bg: 'bg-purple-500/10' };
+    default:
+      return { icon: File, color: 'text-muted-foreground', bg: 'bg-muted' };
+  }
+};
+
 export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
-  const [allDocuments, setAllDocuments] = useState<ProjectDocument[]>([]); // For deriving custom categories
+  const [allDocuments, setAllDocuments] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterDate, setFilterDate] = useState<string>('all');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<ProjectDocument | null>(null);
 
@@ -91,10 +144,23 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
       console.error('Error fetching documents:', error);
       toast.error('Failed to load documents');
     } else {
-      const docs = (data as ProjectDocument[]) || [];
+      let docs = (data as ProjectDocument[]) || [];
+      
+      // Apply date filter
+      if (filterDate !== 'all') {
+        const now = new Date();
+        const cutoffDate = new Date();
+        if (filterDate === '7days') {
+          cutoffDate.setDate(now.getDate() - 7);
+        } else if (filterDate === '30days') {
+          cutoffDate.setDate(now.getDate() - 30);
+        }
+        docs = docs.filter(d => new Date(d.created_at) >= cutoffDate);
+      }
+      
       setDocuments(docs);
       // Also fetch all docs for custom category derivation (without filter)
-      if (filterCategory !== 'all') {
+      if (filterCategory !== 'all' || filterDate !== 'all') {
         const { data: allData } = await supabase
           .from('project_documents')
           .select('*')
@@ -109,9 +175,10 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
 
   useEffect(() => {
     fetchDocuments();
-  }, [projectId, filterCategory]);
+  }, [projectId, filterCategory, filterDate]);
 
-  const handleDownload = async (doc: ProjectDocument) => {
+  const handleDownload = async (doc: ProjectDocument, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const { data } = supabase.storage
       .from('project-documents')
       .getPublicUrl(doc.file_path);
@@ -150,14 +217,25 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
     <Card className="glass-card">
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
         <CardTitle className="text-lg flex items-center gap-2">
-          <FileText className="h-5 w-5" />
+          <FolderOpen className="h-5 w-5" />
           Documents ({filteredDocuments.length})
         </CardTitle>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={filterDate} onValueChange={setFilterDate}>
+            <SelectTrigger className="w-[130px]">
+              <Clock className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Uploaded" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="7days">Last 7 Days</SelectItem>
+              <SelectItem value="30days">Last 30 Days</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
             <SelectTrigger className="w-[140px]">
               <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filter" />
+              <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
@@ -193,54 +271,81 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
           </div>
         ) : filteredDocuments.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No documents uploaded yet</p>
-            <p className="text-sm">Upload permits, contracts, invoices, and more</p>
+            <FolderOpen className="h-16 w-16 mx-auto mb-4 opacity-30" />
+            <p className="font-medium">No documents uploaded yet</p>
+            <p className="text-sm mt-1">Upload permits, contracts, invoices, and more</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filteredDocuments.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-                onClick={() => setSelectedDocument(doc)}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <FileText className="h-8 w-8 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{doc.file_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {getCategoryLabel(doc.category)} • {doc.document_date ? formatDate(doc.document_date) : formatDate(doc.created_at)} • {formatFileSize(doc.file_size)}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {filteredDocuments.map((doc) => {
+              const fileInfo = getFileIcon(doc.file_name);
+              const IconComponent = fileInfo.icon;
+              const fileExt = doc.file_name.split('.').pop()?.toUpperCase() || '';
+
+              return (
+                <div
+                  key={doc.id}
+                  onClick={() => setSelectedDocument(doc)}
+                  className="group relative cursor-pointer rounded-xl border border-border/30 bg-card hover:border-primary/50 hover:shadow-lg transition-all overflow-hidden"
+                >
+                  {/* File Icon Area */}
+                  <div className={cn("flex flex-col items-center justify-center py-6 px-4", fileInfo.bg)}>
+                    <IconComponent className={cn("h-12 w-12", fileInfo.color)} />
+                    <span className={cn("text-xs font-bold mt-1 uppercase", fileInfo.color)}>
+                      .{fileExt}
+                    </span>
+                  </div>
+
+                  {/* Info Area */}
+                  <div className="p-3 space-y-2">
+                    {/* File Name */}
+                    <p className="font-medium text-sm truncate" title={doc.file_name}>
+                      {doc.file_name}
                     </p>
+
+                    {/* Category Badge */}
+                    <Badge variant="secondary" className="text-xs">
+                      {getCategoryLabel(doc.category)}
+                    </Badge>
+
+                    {/* Metadata */}
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{doc.document_date ? formatDate(doc.document_date) : 'No date'}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Upload className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{getRelativeTime(doc.created_at)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <HardDrive className="h-3 w-3 shrink-0" />
+                        <span>{formatFileSize(doc.file_size)}</span>
+                      </div>
+                    </div>
+
+                    {/* Notes Preview */}
+                    {doc.notes && (
+                      <p className="text-xs text-muted-foreground italic line-clamp-2 border-t border-border/30 pt-2 mt-2">
+                        "{doc.notes}"
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Hover Actions */}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      className="h-7 w-7 bg-background/80 backdrop-blur-sm"
+                      onClick={(e) => handleDownload(doc, e)}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(doc);
-                    }}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm('Delete this document?')) {
-                        handleDelete(doc);
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
