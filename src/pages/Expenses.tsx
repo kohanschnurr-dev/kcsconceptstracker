@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Search, Download, Receipt, Calendar, Paperclip, ChevronDown } from 'lucide-react';
+import { Plus, Search, Download, Receipt, Calendar, Paperclip, ChevronDown, X } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -367,6 +367,15 @@ export default function Expenses() {
 
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
+  const hasActiveFilters = search || projectFilter !== 'all' || categoryFilter !== 'all' || dateRange;
+
+  const resetFilters = () => {
+    setSearch('');
+    setProjectFilter('all');
+    setCategoryFilter('all');
+    setDateRange(undefined);
+  };
+
   const exportToCSV = () => {
     const headers = ['Date', 'Vendor', 'Project', 'Category', 'Payment Method', 'Amount', 'Tax', 'Status', 'Description'];
     const rows = filteredExpenses.map(e => [
@@ -505,6 +514,17 @@ export default function Expenses() {
                     )}
                   </PopoverContent>
                 </Popover>
+                {hasActiveFilters && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={resetFilters}
+                    className="h-9 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Reset
+                  </Button>
+                )}
               </div>
               
               {/* Summary */}
