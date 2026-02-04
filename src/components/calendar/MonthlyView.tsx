@@ -13,7 +13,7 @@ import {
   differenceInDays,
   addDays
 } from 'date-fns';
-import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { DealCard } from './DealCard';
 import type { CalendarTask } from '@/pages/Calendar';
@@ -77,6 +77,14 @@ function DroppableDay({
 
 export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: MonthlyViewProps) {
   const [activeTask, setActiveTask] = useState<CalendarTask | null>(null);
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
@@ -124,7 +132,7 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-full p-4">
         {/* Week day headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
