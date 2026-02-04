@@ -9,7 +9,7 @@ import {
   differenceInDays,
   addDays
 } from 'date-fns';
-import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { DealCard } from './DealCard';
 import type { CalendarTask } from '@/pages/Calendar';
@@ -63,6 +63,14 @@ function DroppableDay({ day, children }: { day: Date; children: React.ReactNode 
 
 export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove }: WeeklyViewProps) {
   const [activeTask, setActiveTask] = useState<CalendarTask | null>(null);
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate);
@@ -104,7 +112,7 @@ export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove }: Week
   };
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="p-4">
         <div className="grid grid-cols-7 gap-3">
           {days.map(day => {
