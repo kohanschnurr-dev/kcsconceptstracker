@@ -142,32 +142,34 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
   return (
     <div className="glass-card border-border bg-muted/30 p-4 animate-slide-up">
       {/* Header Row */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <ListChecks className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-foreground">Today's Agenda</h3>
-            <Badge variant="secondary" className="text-xs">
-              {totalActionable} {totalActionable === 1 ? 'Item' : 'Items'}
-            </Badge>
-          </div>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="p-2 rounded-lg bg-primary/10">
+          <ListChecks className="h-5 w-5 text-primary" />
         </div>
-        <Button
-          onClick={() => navigate('/calendar')}
-          variant="outline"
-          size="sm"
-          className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
-        >
-          <Calendar className="h-4 w-4" />
-          View Calendar
-        </Button>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-foreground">Today's Agenda</h3>
+          <Badge variant="secondary" className="text-xs">
+            {totalActionable} {totalActionable === 1 ? 'Item' : 'Items'}
+          </Badge>
+        </div>
       </div>
 
-      {/* Two-Box Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Left Box - Tasks */}
+      {/* Three-Box Grid: small View Calendar + equal Tasks & Events */}
+      <div className="grid grid-cols-[auto_1fr_1fr] gap-3">
+        {/* Left Box - View Calendar (compact) */}
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center min-w-[120px]">
+          <Calendar className="h-8 w-8 text-primary mb-2" />
+          <Button
+            onClick={() => navigate('/calendar')}
+            variant="outline"
+            size="sm"
+            className="gap-2 border-primary/30 text-primary hover:bg-primary/10 w-full"
+          >
+            View Calendar
+          </Button>
+        </div>
+
+        {/* Middle Box - Tasks */}
         <div className="bg-muted/30 rounded-lg p-3 border border-border/30 min-h-[100px] flex flex-col">
           <Badge variant="outline" className="w-fit mb-2 text-xs">
             Tasks
