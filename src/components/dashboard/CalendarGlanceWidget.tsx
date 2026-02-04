@@ -4,7 +4,7 @@ import { Calendar, ArrowRight, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { isToday, isThisWeek, format, startOfDay } from 'date-fns';
+import { isThisWeek, format, startOfDay } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
 
 interface CalendarEvent {
@@ -96,10 +96,6 @@ export function CalendarGlanceWidget({ refreshKey }: CalendarGlanceWidgetProps) 
 
   if (isLoading) return null;
 
-  const hasEvents = todayEvents.length > 0 || weekEvents.length > 0;
-
-  if (!hasEvents) return null;
-
   return (
     <div className="glass-card p-4 animate-slide-up">
       <div className="flex items-center justify-between mb-3">
@@ -118,66 +114,75 @@ export function CalendarGlanceWidget({ refreshKey }: CalendarGlanceWidgetProps) 
         </Button>
       </div>
 
-      {/* Today's Events */}
-      {todayEvents.length > 0 && (
-        <div className="mb-3">
+      <div className="grid grid-cols-2 gap-3">
+        {/* Left Box - Today */}
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 min-h-[140px]">
           <div className="flex items-center gap-2 mb-2">
             <Badge variant="secondary" className="bg-primary/20 text-primary text-xs">
               Today
             </Badge>
-            <span className="text-xs text-muted-foreground">
-              {format(new Date(), 'EEEE, MMM d')}
-            </span>
           </div>
-          <div className="space-y-1.5">
-            {todayEvents.slice(0, 4).map((event) => (
-              <div
-                key={event.id}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded-md border text-xs ${
-                  CATEGORY_COLORS[event.eventCategory] || 'bg-muted/50 text-foreground border-border'
-                }`}
-              >
-                <Clock className="h-3 w-3 flex-shrink-0" />
-                <span className="truncate">{event.title}</span>
-              </div>
-            ))}
-            {todayEvents.length > 4 && (
-              <p className="text-xs text-muted-foreground pl-2">
-                +{todayEvents.length - 4} more today
-              </p>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            {format(new Date(), 'EEE, MMM d')}
+          </p>
+          
+          {todayEvents.length > 0 ? (
+            <div className="space-y-1.5">
+              {todayEvents.slice(0, 3).map((event) => (
+                <div
+                  key={event.id}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-md border text-xs ${
+                    CATEGORY_COLORS[event.eventCategory] || 'bg-muted/50 text-foreground border-border'
+                  }`}
+                >
+                  <Clock className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{event.title}</span>
+                </div>
+              ))}
+              {todayEvents.length > 3 && (
+                <p className="text-xs text-muted-foreground">
+                  +{todayEvents.length - 3} more
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground/70 italic">No events today</p>
+          )}
         </div>
-      )}
 
-      {/* This Week's Events */}
-      {weekEvents.length > 0 && (
-        <div>
+        {/* Right Box - This Week */}
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 min-h-[140px]">
           <div className="flex items-center gap-2 mb-2">
             <Badge variant="outline" className="text-xs">
               This Week
             </Badge>
           </div>
-          <div className="space-y-1.5">
-            {weekEvents.slice(0, 3).map((event) => (
-              <div
-                key={event.id}
-                className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-muted/30 text-xs"
-              >
-                <span className="truncate text-muted-foreground">{event.title}</span>
-                <span className="text-muted-foreground/70 flex-shrink-0">
-                  {format(parseDateString(event.startDate), 'EEE')}
-                </span>
-              </div>
-            ))}
-            {weekEvents.length > 3 && (
-              <p className="text-xs text-muted-foreground pl-2">
-                +{weekEvents.length - 3} more this week
-              </p>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground mb-2">Upcoming</p>
+          
+          {weekEvents.length > 0 ? (
+            <div className="space-y-1.5">
+              {weekEvents.slice(0, 3).map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-background/50 text-xs border border-border/20"
+                >
+                  <span className="truncate text-muted-foreground">{event.title}</span>
+                  <span className="text-muted-foreground/70 flex-shrink-0 text-[10px]">
+                    {format(parseDateString(event.startDate), 'EEE')}
+                  </span>
+                </div>
+              ))}
+              {weekEvents.length > 3 && (
+                <p className="text-xs text-muted-foreground">
+                  +{weekEvents.length - 3} more
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground/70 italic">No upcoming events</p>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

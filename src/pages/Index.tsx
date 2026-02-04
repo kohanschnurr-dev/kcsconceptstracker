@@ -7,7 +7,6 @@ import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { SpendingDonutChart } from '@/components/dashboard/SpendingDonutChart';
 import { SpendingTrendChart } from '@/components/dashboard/SpendingTrendChart';
 import { QuickTaskInput } from '@/components/dashboard/QuickTaskInput';
-import { UrgentTasksWidget } from '@/components/dashboard/UrgentTasksWidget';
 import { TasksDueTodayBanner } from '@/components/dashboard/TasksDueTodayBanner';
 import { CalendarGlanceWidget } from '@/components/dashboard/CalendarGlanceWidget';
 import { QuickActionButton } from '@/components/QuickActionButton';
@@ -316,9 +315,8 @@ export default function Index() {
 
         {/* Right Sidebar - Urgent Tasks & Calendar */}
         <div className="hidden lg:block w-72 flex-shrink-0">
-          <div className="sticky top-6 space-y-4">
+          <div className="sticky top-6">
             <CalendarGlanceWidget refreshKey={taskRefreshKey} />
-            <UrgentTasksWidget refreshKey={taskRefreshKey} />
           </div>
         </div>
       </div>
