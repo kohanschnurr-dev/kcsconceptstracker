@@ -126,17 +126,31 @@ export function DocumentPreviewModal({
     window.open(data.publicUrl, '_blank');
   };
 
-  const handleDownload = () => {
-    const { data } = supabase.storage
-      .from('project-documents')
-      .getPublicUrl(document.file_path);
-
-    // Create a link and trigger download
-    const link = window.document.createElement('a');
-    link.href = data.publicUrl;
-    link.download = document.file_name;
-    link.target = '_blank';
-    link.click();
+  const handleDownload = async () => {
+    try {
+      // Fetch file as blob to avoid ad-blocker issues
+      const { data, error } = await supabase.storage
+        .from('project-documents')
+        .download(document.file_path);
+      
+      if (error || !data) {
+        toast.error('Failed to download file');
+        return;
+      }
+      
+      // Create blob URL and trigger download
+      const url = URL.createObjectURL(data);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = document.file_name;
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download file');
+    }
   };
 
   return (

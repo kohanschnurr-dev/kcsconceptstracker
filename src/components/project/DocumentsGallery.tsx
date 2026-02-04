@@ -179,11 +179,31 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
 
   const handleDownload = async (doc: ProjectDocument, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    const { data } = supabase.storage
-      .from('project-documents')
-      .getPublicUrl(doc.file_path);
-
-    window.open(data.publicUrl, '_blank');
+    
+    try {
+      // Fetch file as blob to avoid ad-blocker issues
+      const { data, error } = await supabase.storage
+        .from('project-documents')
+        .download(doc.file_path);
+      
+      if (error || !data) {
+        toast.error('Failed to download file');
+        return;
+      }
+      
+      // Create blob URL and trigger download
+      const url = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.file_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download file');
+    }
   };
 
   const handleDelete = async (doc: ProjectDocument) => {
