@@ -66,14 +66,16 @@ interface FolderTargetBarProps {
 }
 
 export function FolderTargetBar({ folders, currentFolderId, activeDragId }: FolderTargetBarProps) {
-  const otherFolders = folders.filter(f => f.id !== currentFolderId);
-  
   // Only show when actively dragging a document
   if (!activeDragId) return null;
   
-  // Show root option when inside a folder, show all folders when at root
+  // When at root, show all folders. When inside folder, show other folders + root
+  const targetFolders = currentFolderId 
+    ? folders.filter(f => f.id !== currentFolderId)
+    : folders;
+  
   const showRoot = currentFolderId !== null;
-  const hasTargets = otherFolders.length > 0 || showRoot;
+  const hasTargets = targetFolders.length > 0 || showRoot;
   
   if (!hasTargets) return null;
 
@@ -82,7 +84,7 @@ export function FolderTargetBar({ folders, currentFolderId, activeDragId }: Fold
       <p className="text-xs text-muted-foreground mb-2">Move to:</p>
       <div className="flex flex-wrap gap-2">
         {showRoot && <RootDropChip />}
-        {otherFolders.map(folder => (
+        {targetFolders.map(folder => (
           <DroppableFolderChip key={folder.id} folder={folder} />
         ))}
       </div>

@@ -14,7 +14,7 @@ import {
   DndContext, 
   DragEndEvent, 
   DragOverlay, 
-  pointerWithin,
+  closestCenter,
   useSensor,
   useSensors,
   PointerSensor
@@ -272,7 +272,8 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveDragId(null);
     const { active, over } = event;
-    if (!over) return;
+    
+    if (!over || active.id === over.id) return;
 
     const documentId = active.id as string;
     const overId = over.id as string;
@@ -455,7 +456,7 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      collisionDetection={pointerWithin}
+      collisionDetection={closestCenter}
     >
       <Card className="glass-card">
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
