@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Search, Download, Receipt, Calendar, Paperclip, ChevronDown } from 'lucide-react';
 import {
   Collapsible,
@@ -219,16 +219,16 @@ export default function Expenses() {
     return formatDisplayDate(date);
   };
 
-  const getProjectName = (projectId: string) => {
+  const getProjectName = useCallback((projectId: string) => {
     return projects.find(p => p.id === projectId)?.name || projectId;
-  };
+  }, [projects]);
 
-  const getCategoryLabel = (categoryId: string, projectId: string) => {
+  const getCategoryLabel = useCallback((categoryId: string, projectId: string) => {
     const project = projects.find(p => p.id === projectId);
     const category = project?.categories.find(c => c.id === categoryId);
     if (!category) return categoryId;
     return ALL_CATEGORIES.find(b => b.value === category.category)?.label || category.category;
-  };
+  }, [projects]);
 
   const handleViewReceipt = async (receiptUrl: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -273,9 +273,22 @@ export default function Expenses() {
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter((expense) => {
+      const searchLower = search.toLowerCase().replace(/[$,]/g, ''); // Strip $ and commas for amount search
+      
+      // Get resolved names for searching
+      const projectName = getProjectName(expense.project_id).toLowerCase();
+      const categoryLabel = getCategoryLabel(expense.category_id, expense.project_id).toLowerCase();
+      const amountStr = expense.amount.toString();
+      
       const matchesSearch = 
-        (expense.vendor_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
-        (expense.description?.toLowerCase() || '').includes(search.toLowerCase());
+        !search || // If no search, match everything
+        (expense.vendor_name?.toLowerCase() || '').includes(searchLower) ||
+        (expense.description?.toLowerCase() || '').includes(searchLower) ||
+        (expense.notes?.toLowerCase() || '').includes(searchLower) ||
+        (expense.payment_method?.toLowerCase() || '').includes(searchLower) ||
+        projectName.includes(searchLower) ||
+        categoryLabel.includes(searchLower) ||
+        amountStr.includes(searchLower);
       
       const matchesProject = projectFilter === 'all' || expense.project_id === projectFilter;
       
@@ -302,7 +315,7 @@ export default function Expenses() {
 
       return matchesSearch && matchesProject && matchesCategory && matchesDateRange;
     });
-  }, [expenses, search, projectFilter, categoryFilter, dateRange, projects]);
+  }, [expenses, search, projectFilter, categoryFilter, dateRange, projects, getProjectName, getCategoryLabel]);
 
   // Group expenses by parent QB transaction ID (for split expenses)
   const groupedExpenses = useMemo(() => {
@@ -405,7 +418,7 @@ export default function Expenses() {
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search expenses..."
+              placeholder="Search vendor, amount, project..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
