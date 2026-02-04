@@ -1,20 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  FileText, 
-  FileSpreadsheet, 
-  FileImage, 
-  File,
   FolderOpen,
   Plus, 
   Filter, 
   Loader2, 
-  Download, 
-  Trash2, 
-  Calendar,
-  Upload,
-  HardDrive,
-  Clock
+  Clock,
+  ArrowLeft,
+  FolderPlus,
+  Folder
 } from 'lucide-react';
+import { DndContext, DragEndEvent, DragOverlay, pointerWithin } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -24,12 +19,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DocumentUploadModal } from './DocumentUploadModal';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
-import { cn } from '@/lib/utils';
+import { CreateFolderModal } from './CreateFolderModal';
+import { DraggableDocumentCard } from './DraggableDocumentCard';
+import { DroppableFolder } from './DroppableFolder';
+import { RootDropZone } from './RootDropZone';
 
 export const DOCUMENT_CATEGORIES = [
   { value: 'permit', label: 'Permit' },
@@ -51,137 +59,138 @@ interface ProjectDocument {
   notes: string | null;
   document_date: string | null;
   created_at: string;
+  folder_id: string | null;
+}
+
+interface DocumentFolder {
+  id: string;
+  project_id: string;
+  name: string;
+  color: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface DocumentsGalleryProps {
   projectId: string;
 }
 
-const formatFileSize = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-};
-
-const getRelativeTime = (dateStr: string) => {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
-  return formatDate(dateStr);
-};
-
 const getCategoryLabel = (value: string) => {
   return DOCUMENT_CATEGORIES.find(c => c.value === value)?.label || value;
-};
-
-const getFileIcon = (fileName: string) => {
-  const ext = fileName.split('.').pop()?.toLowerCase();
-  switch (ext) {
-    case 'pdf':
-      return { icon: FileText, color: 'text-red-500', bg: 'bg-red-500/10' };
-    case 'doc':
-    case 'docx':
-      return { icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/10' };
-    case 'xls':
-    case 'xlsx':
-      return { icon: FileSpreadsheet, color: 'text-green-500', bg: 'bg-green-500/10' };
-    case 'jpg':
-    case 'jpeg':
-    case 'png':
-    case 'gif':
-    case 'webp':
-      return { icon: FileImage, color: 'text-purple-500', bg: 'bg-purple-500/10' };
-    default:
-      return { icon: File, color: 'text-muted-foreground', bg: 'bg-muted' };
-  }
 };
 
 export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [allDocuments, setAllDocuments] = useState<ProjectDocument[]>([]);
+  const [folders, setFolders] = useState<DocumentFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterDate, setFilterDate] = useState<string>('all');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<ProjectDocument | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  
+  // Folder management states
+  const [deleteFolderDialog, setDeleteFolderDialog] = useState<DocumentFolder | null>(null);
+  const [renameFolderDialog, setRenameFolderDialog] = useState<DocumentFolder | null>(null);
+  const [newFolderName, setNewFolderName] = useState('');
 
-  // Get unique custom categories from all documents (not in default list)
+  const currentFolder = useMemo(() => 
+    folders.find(f => f.id === currentFolderId) || null
+  , [folders, currentFolderId]);
+
+  // Get document counts per folder
+  const folderDocumentCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allDocuments.forEach(doc => {
+      if (doc.folder_id) {
+        counts[doc.folder_id] = (counts[doc.folder_id] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allDocuments]);
+
+  // Get unique custom categories from all documents
   const customCategories = useMemo(() => {
     const defaultValues = DOCUMENT_CATEGORIES.map(c => c.value);
     const uniqueCategories = [...new Set(allDocuments.map(d => d.category))];
     return uniqueCategories.filter(cat => !defaultValues.includes(cat)).sort();
   }, [allDocuments]);
 
+  const fetchFolders = async () => {
+    const { data, error } = await supabase
+      .from('document_folders')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching folders:', error);
+    } else {
+      setFolders((data as DocumentFolder[]) || []);
+    }
+  };
+
   const fetchDocuments = async () => {
     setLoading(true);
-    let query = supabase
+    
+    // Fetch all documents for counts
+    const { data: allData, error: allError } = await supabase
       .from('project_documents')
       .select('*')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false });
 
-    if (filterCategory !== 'all') {
-      query = query.eq('category', filterCategory);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Error fetching documents:', error);
+    if (allError) {
+      console.error('Error fetching documents:', allError);
       toast.error('Failed to load documents');
-    } else {
-      let docs = (data as ProjectDocument[]) || [];
-      
-      // Apply date filter
-      if (filterDate !== 'all') {
-        const now = new Date();
-        const cutoffDate = new Date();
-        if (filterDate === '7days') {
-          cutoffDate.setDate(now.getDate() - 7);
-        } else if (filterDate === '30days') {
-          cutoffDate.setDate(now.getDate() - 30);
-        }
-        docs = docs.filter(d => new Date(d.created_at) >= cutoffDate);
-      }
-      
-      setDocuments(docs);
-      // Also fetch all docs for custom category derivation (without filter)
-      if (filterCategory !== 'all' || filterDate !== 'all') {
-        const { data: allData } = await supabase
-          .from('project_documents')
-          .select('*')
-          .eq('project_id', projectId);
-        setAllDocuments((allData as ProjectDocument[]) || []);
-      } else {
-        setAllDocuments(docs);
-      }
+      setLoading(false);
+      return;
     }
+
+    setAllDocuments((allData as ProjectDocument[]) || []);
+
+    // Filter for current view
+    let filteredDocs = (allData as ProjectDocument[]) || [];
+    
+    // Filter by folder
+    filteredDocs = filteredDocs.filter(d => d.folder_id === currentFolderId);
+
+    // Filter by category
+    if (filterCategory !== 'all') {
+      filteredDocs = filteredDocs.filter(d => d.category === filterCategory);
+    }
+
+    // Filter by date
+    if (filterDate !== 'all') {
+      const now = new Date();
+      const cutoffDate = new Date();
+      if (filterDate === '7days') {
+        cutoffDate.setDate(now.getDate() - 7);
+      } else if (filterDate === '30days') {
+        cutoffDate.setDate(now.getDate() - 30);
+      }
+      filteredDocs = filteredDocs.filter(d => new Date(d.created_at) >= cutoffDate);
+    }
+
+    setDocuments(filteredDocs);
     setLoading(false);
   };
 
   useEffect(() => {
+    fetchFolders();
+  }, [projectId]);
+
+  useEffect(() => {
     fetchDocuments();
-  }, [projectId, filterCategory, filterDate]);
+  }, [projectId, filterCategory, filterDate, currentFolderId]);
 
   const handleDownload = async (doc: ProjectDocument, e?: React.MouseEvent) => {
     e?.stopPropagation();
     
     try {
-      // Fetch file as blob to avoid ad-blocker issues
       const { data, error } = await supabase.storage
         .from('project-documents')
         .download(doc.file_path);
@@ -191,7 +200,6 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
         return;
       }
       
-      // Create blob URL and trigger download
       const url = URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = url;
@@ -207,7 +215,6 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
   };
 
   const handleDelete = async (doc: ProjectDocument) => {
-    // Delete from storage
     const { error: storageError } = await supabase.storage
       .from('project-documents')
       .remove([doc.file_path]);
@@ -216,7 +223,6 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
       console.error('Error deleting file from storage:', storageError);
     }
 
-    // Delete from database
     const { error: dbError } = await supabase
       .from('project_documents')
       .delete()
@@ -231,150 +237,262 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
     }
   };
 
-  const filteredDocuments = documents;
+  const handleDragStart = (event: any) => {
+    setActiveDragId(event.active.id);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const documentId = active.id as string;
+    const overId = over.id as string;
+
+    // Dropped on a folder
+    if (overId.startsWith('folder-')) {
+      const folderId = overId.replace('folder-', '');
+      const { error } = await supabase
+        .from('project_documents')
+        .update({ folder_id: folderId })
+        .eq('id', documentId);
+
+      if (error) {
+        toast.error('Failed to move document');
+      } else {
+        toast.success('Document moved to folder');
+        fetchDocuments();
+      }
+    }
+
+    // Dropped on root zone
+    if (overId === 'root-drop-zone') {
+      const { error } = await supabase
+        .from('project_documents')
+        .update({ folder_id: null })
+        .eq('id', documentId);
+
+      if (error) {
+        toast.error('Failed to move document');
+      } else {
+        toast.success('Document moved to root');
+        fetchDocuments();
+      }
+    }
+  };
+
+  const handleDeleteFolder = async () => {
+    if (!deleteFolderDialog) return;
+
+    const { error } = await supabase
+      .from('document_folders')
+      .delete()
+      .eq('id', deleteFolderDialog.id);
+
+    if (error) {
+      console.error('Error deleting folder:', error);
+      toast.error('Failed to delete folder');
+    } else {
+      toast.success('Folder deleted (documents moved to root)');
+      if (currentFolderId === deleteFolderDialog.id) {
+        setCurrentFolderId(null);
+      }
+      fetchFolders();
+      fetchDocuments();
+    }
+    setDeleteFolderDialog(null);
+  };
+
+  const handleRenameFolder = async () => {
+    if (!renameFolderDialog || !newFolderName.trim()) return;
+
+    const { error } = await supabase
+      .from('document_folders')
+      .update({ name: newFolderName.trim() })
+      .eq('id', renameFolderDialog.id);
+
+    if (error) {
+      console.error('Error renaming folder:', error);
+      toast.error('Failed to rename folder');
+    } else {
+      toast.success('Folder renamed');
+      fetchFolders();
+    }
+    setRenameFolderDialog(null);
+    setNewFolderName('');
+  };
+
+  const activeDragDocument = activeDragId 
+    ? allDocuments.find(d => d.id === activeDragId) 
+    : null;
+
+  const totalCount = currentFolderId 
+    ? documents.length 
+    : allDocuments.filter(d => !d.folder_id).length + folders.length;
 
   return (
-    <Card className="glass-card">
-      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <FolderOpen className="h-5 w-5" />
-          Documents ({filteredDocuments.length})
-        </CardTitle>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select value={filterDate} onValueChange={setFilterDate}>
-            <SelectTrigger className="w-[130px]">
-              <Clock className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Uploaded" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Time</SelectItem>
-              <SelectItem value="7days">Last 7 Days</SelectItem>
-              <SelectItem value="30days">Last 30 Days</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-[140px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              {DOCUMENT_CATEGORIES.map((cat) => (
-                <SelectItem key={cat.value} value={cat.value}>
-                  {cat.label}
-                </SelectItem>
-              ))}
-              {customCategories.length > 0 && (
-                <>
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1">
-                    Custom
-                  </div>
-                  {customCategories.map((cat) => (
-                    <SelectItem key={cat} value={cat} className="italic">
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </>
-              )}
-            </SelectContent>
-          </Select>
-          <Button size="sm" onClick={() => setUploadModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : filteredDocuments.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <FolderOpen className="h-16 w-16 mx-auto mb-4 opacity-30" />
-            <p className="font-medium">No documents uploaded yet</p>
-            <p className="text-sm mt-1">Upload permits, contracts, invoices, and more</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {filteredDocuments.map((doc) => {
-              const fileInfo = getFileIcon(doc.file_name);
-              const IconComponent = fileInfo.icon;
-              const fileExt = doc.file_name.split('.').pop()?.toUpperCase() || '';
-
-              return (
-                <div
-                  key={doc.id}
-                  onClick={() => setSelectedDocument(doc)}
-                  className="group relative cursor-pointer rounded-xl border border-border/30 bg-card hover:border-primary/50 hover:shadow-lg transition-all overflow-hidden"
-                >
-                  {/* File Icon Area */}
-                  <div className={cn("flex flex-col items-center justify-center py-6 px-4", fileInfo.bg)}>
-                    <IconComponent className={cn("h-12 w-12", fileInfo.color)} />
-                    <span className={cn("text-xs font-bold mt-1 uppercase", fileInfo.color)}>
-                      .{fileExt}
-                    </span>
-                  </div>
-
-                  {/* Info Area */}
-                  <div className="p-3 space-y-2">
-                    {/* File Name */}
-                    <p className="font-medium text-sm truncate" title={doc.file_name}>
-                      {doc.file_name}
-                    </p>
-
-                    {/* Category Badge */}
-                    <Badge variant="secondary" className="text-xs">
-                      {getCategoryLabel(doc.category)}
-                    </Badge>
-
-                    {/* Metadata */}
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{doc.document_date ? formatDate(doc.document_date) : 'No date'}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Upload className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{getRelativeTime(doc.created_at)}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <HardDrive className="h-3 w-3 shrink-0" />
-                        <span>{formatFileSize(doc.file_size)}</span>
-                      </div>
+    <DndContext 
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      collisionDetection={pointerWithin}
+    >
+      <Card className="glass-card">
+        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
+          {currentFolder ? (
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setCurrentFolderId(null)}
+                className="gap-1"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Folder className="h-5 w-5 text-amber-500" />
+                {currentFolder.name} ({documents.length})
+              </CardTitle>
+            </div>
+          ) : (
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FolderOpen className="h-5 w-5" />
+              Documents ({totalCount})
+            </CardTitle>
+          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={filterDate} onValueChange={setFilterDate}>
+              <SelectTrigger className="w-[130px]">
+                <Clock className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Uploaded" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="7days">Last 7 Days</SelectItem>
+                <SelectItem value="30days">Last 30 Days</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-[140px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {DOCUMENT_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+                {customCategories.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1">
+                      Custom
                     </div>
+                    {customCategories.map((cat) => (
+                      <SelectItem key={cat} value={cat} className="italic">
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+            {!currentFolderId && (
+              <Button size="sm" variant="outline" onClick={() => setFolderModalOpen(true)}>
+                <FolderPlus className="h-4 w-4 mr-1" />
+                Folder
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setUploadModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Root drop zone when inside a folder */}
+          {currentFolderId && <div className="mb-4"><RootDropZone /></div>}
 
-                    {/* Notes Preview */}
-                    {doc.notes && (
-                      <p className="text-xs text-muted-foreground italic line-clamp-2 border-t border-border/30 pt-2 mt-2">
-                        "{doc.notes}"
-                      </p>
-                    )}
-                  </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (documents.length === 0 && folders.length === 0) || (currentFolderId && documents.length === 0) ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <FolderOpen className="h-16 w-16 mx-auto mb-4 opacity-30" />
+              <p className="font-medium">
+                {currentFolderId ? 'This folder is empty' : 'No documents uploaded yet'}
+              </p>
+              <p className="text-sm mt-1">
+                {currentFolderId 
+                  ? 'Drag documents here or upload new ones' 
+                  : 'Upload permits, contracts, invoices, and more'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {/* Show folders only at root level */}
+              {!currentFolderId && folders.map((folder) => (
+                <DroppableFolder
+                  key={folder.id}
+                  folder={folder}
+                  documentCount={folderDocumentCounts[folder.id] || 0}
+                  onClick={() => setCurrentFolderId(folder.id)}
+                  onDelete={() => setDeleteFolderDialog(folder)}
+                  onRename={() => {
+                    setRenameFolderDialog(folder);
+                    setNewFolderName(folder.name);
+                  }}
+                />
+              ))}
+              
+              {/* Documents */}
+              {documents.map((doc) => (
+                <DraggableDocumentCard
+                  key={doc.id}
+                  doc={doc}
+                  onSelect={() => setSelectedDocument(doc)}
+                  onDownload={(e) => handleDownload(doc, e)}
+                  getCategoryLabel={getCategoryLabel}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-                  {/* Hover Actions */}
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                    <Button 
-                      size="icon" 
-                      variant="ghost" 
-                      className="h-7 w-7 bg-background/80 backdrop-blur-sm"
-                      onClick={(e) => handleDownload(doc, e)}
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+      {/* Drag Overlay */}
+      <DragOverlay>
+        {activeDragDocument && (
+          <div className="opacity-80 rotate-3 scale-105">
+            <DraggableDocumentCard
+              doc={activeDragDocument}
+              onSelect={() => {}}
+              onDownload={() => {}}
+              getCategoryLabel={getCategoryLabel}
+            />
           </div>
         )}
-      </CardContent>
+      </DragOverlay>
 
+      {/* Modals */}
       <DocumentUploadModal
         open={uploadModalOpen}
         onOpenChange={setUploadModalOpen}
         projectId={projectId}
         onUploadComplete={fetchDocuments}
+        defaultFolderId={currentFolderId}
+      />
+
+      <CreateFolderModal
+        open={folderModalOpen}
+        onOpenChange={setFolderModalOpen}
+        projectId={projectId}
+        onFolderCreated={() => {
+          fetchFolders();
+          fetchDocuments();
+        }}
       />
 
       {selectedDocument && (
@@ -389,6 +507,50 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
           }}
         />
       )}
-    </Card>
+
+      {/* Delete Folder Confirmation */}
+      <AlertDialog open={!!deleteFolderDialog} onOpenChange={() => setDeleteFolderDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Folder</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteFolderDialog?.name}"? 
+              Documents inside will be moved back to the root level.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteFolder} className="bg-destructive text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Rename Folder Dialog */}
+      <AlertDialog open={!!renameFolderDialog} onOpenChange={() => setRenameFolderDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rename Folder</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter a new name for this folder.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="Folder name"
+            className="mt-2"
+            onKeyDown={(e) => e.key === 'Enter' && handleRenameFolder()}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRenameFolder} disabled={!newFolderName.trim()}>
+              Rename
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </DndContext>
   );
 }

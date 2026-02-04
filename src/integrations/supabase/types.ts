@@ -278,6 +278,41 @@ export type Database = {
           },
         ]
       }
+      document_folders: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+          project_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          project_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          project_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_folders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
@@ -696,6 +731,7 @@ export type Database = {
           file_name: string
           file_path: string
           file_size: number
+          folder_id: string | null
           id: string
           notes: string | null
           project_id: string
@@ -707,6 +743,7 @@ export type Database = {
           file_name: string
           file_path: string
           file_size?: number
+          folder_id?: string | null
           id?: string
           notes?: string | null
           project_id: string
@@ -718,11 +755,19 @@ export type Database = {
           file_name?: string
           file_path?: string
           file_size?: number
+          folder_id?: string | null
           id?: string
           notes?: string | null
           project_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_documents_project_id_fkey"
             columns: ["project_id"]
