@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { Plus, AlertTriangle, Zap, CalendarRange } from 'lucide-react';
+import { Plus, AlertTriangle, Zap, CalendarRange, Check, ChevronsUpDown } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Dialog,
@@ -15,14 +15,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
@@ -34,9 +33,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { 
   CATEGORY_GROUPS, 
-  getGroupedCategories,
+  CALENDAR_CATEGORIES,
   getCategoryStyles,
   getCategoryLabel,
+  type CategoryGroup,
+  type CalendarCategory,
 } from '@/lib/calendarCategories';
 
 interface Project {
@@ -66,8 +67,29 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
   const [leadTimeDays, setLeadTimeDays] = useState('0');
   const [expectedDate, setExpectedDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
 
-  const groupedCategories = getGroupedCategories();
+  // Filter categories based on search
+  const filteredCategories = useMemo(() => {
+    if (!categorySearch.trim()) {
+      return CALENDAR_CATEGORIES;
+    }
+    const query = categorySearch.toLowerCase().trim();
+    return CALENDAR_CATEGORIES.filter(cat =>
+      cat.label.toLowerCase().includes(query) ||
+      cat.groupLabel.toLowerCase().includes(query)
+    );
+  }, [categorySearch]);
+
+  // Group the filtered categories
+  const filteredGrouped = useMemo(() => {
+    return filteredCategories.reduce((acc, cat) => {
+      if (!acc[cat.group]) acc[cat.group] = [];
+      acc[cat.group].push(cat);
+      return acc;
+    }, {} as Record<CategoryGroup, CalendarCategory[]>);
+  }, [filteredCategories]);
 
   const resetForm = () => {
     setTitle('');
@@ -179,50 +201,89 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
             />
           </div>
 
-          {/* Category - Select first for natural flow */}
+          {/* Category - Searchable selector */}
           <div className="space-y-2">
             <Label className="text-slate-300">Category *</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className={cn(
-                "bg-slate-800 border-slate-700 text-white",
-                selectedCategoryStyles && `${selectedCategoryStyles.borderClass} border-2`
-              )}>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700 max-h-[300px]">
-                {(Object.entries(groupedCategories) as [keyof typeof CATEGORY_GROUPS, typeof groupedCategories[keyof typeof groupedCategories]][]).map(([groupKey, categories]) => (
-                  <SelectGroup key={groupKey}>
-                    <SelectLabel className={cn(
-                      "text-xs font-semibold py-2",
-                      CATEGORY_GROUPS[groupKey].textClass
-                    )}>
-                      {CATEGORY_GROUPS[groupKey].label}
-                    </SelectLabel>
-                    {categories.map((cat) => (
-                      <SelectItem 
-                        key={cat.value} 
-                        value={cat.value} 
-                        className={cn(
-                          "text-white cursor-pointer",
-                          "focus:bg-slate-700"
-                        )}
+            <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={categoryOpen}
+                  className={cn(
+                    "w-full justify-between bg-slate-800 border-slate-700 text-white hover:bg-slate-700",
+                    selectedCategoryStyles && `${selectedCategoryStyles.borderClass} border-2`,
+                    !category && "text-muted-foreground"
+                  )}
+                >
+                  {category ? (
+                    <div className="flex items-center gap-2">
+                      <span 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: selectedCategoryStyles ? `var(--${selectedCategoryStyles.color}-500, ${selectedCategoryStyles.color})` : undefined }} 
+                      />
+                      {getCategoryLabel(category)}
+                    </div>
+                  ) : (
+                    "Select category..."
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-slate-800 border-slate-700" align="start">
+                <Command shouldFilter={false} className="bg-slate-800">
+                  <CommandInput
+                    placeholder="Type to search categories..."
+                    value={categorySearch}
+                    onValueChange={setCategorySearch}
+                    className="text-white"
+                  />
+                  <CommandList className="max-h-[300px]">
+                    <CommandEmpty className="text-slate-400 py-6 text-center text-sm">
+                      No categories found
+                    </CommandEmpty>
+                    {(Object.entries(filteredGrouped) as [CategoryGroup, CalendarCategory[]][]).map(([groupKey, cats]) => (
+                      <CommandGroup 
+                        key={groupKey} 
+                        heading={
+                          <span className={cn("text-xs font-semibold", CATEGORY_GROUPS[groupKey].textClass)}>
+                            {CATEGORY_GROUPS[groupKey].label}
+                          </span>
+                        }
                       >
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "w-2 h-2 rounded-full",
-                            CATEGORY_GROUPS[groupKey].bgClass.replace('/20', ''),
-                          )} style={{ backgroundColor: `var(--${CATEGORY_GROUPS[groupKey].color}-500, ${CATEGORY_GROUPS[groupKey].color})` }} />
-                          {cat.label}
-                        </div>
-                      </SelectItem>
+                        {cats.map((cat) => (
+                          <CommandItem
+                            key={cat.value}
+                            value={cat.value}
+                            onSelect={() => {
+                              setCategory(cat.value);
+                              setCategoryOpen(false);
+                              setCategorySearch('');
+                            }}
+                            className="text-white cursor-pointer aria-selected:bg-slate-700"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                category === cat.value ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span 
+                              className="w-2 h-2 rounded-full mr-2" 
+                              style={{ backgroundColor: `var(--${CATEGORY_GROUPS[groupKey].color}-500, ${CATEGORY_GROUPS[groupKey].color})` }} 
+                            />
+                            {cat.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
                     ))}
-                  </SelectGroup>
-                ))}
-              </SelectContent>
-            </Select>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             {selectedCategoryStyles && (
               <p className={cn("text-xs", selectedCategoryStyles.textClass)}>
-                {CATEGORY_GROUPS[getCategoryStyles(category) ? Object.entries(CATEGORY_GROUPS).find(([_, v]) => v === selectedCategoryStyles)?.[0] as keyof typeof CATEGORY_GROUPS : 'acquisition_admin']?.label || 'Category'}
+                {CATEGORY_GROUPS[Object.entries(CATEGORY_GROUPS).find(([_, v]) => v === selectedCategoryStyles)?.[0] as CategoryGroup]?.label || 'Category'}
               </p>
             )}
           </div>
