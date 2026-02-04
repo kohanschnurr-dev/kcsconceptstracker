@@ -1,118 +1,146 @@
 
 
-## Plan: Fix Document Drag-and-Drop Into/Out of Folders
+## Plan: Modern Drag-and-Drop with Nested Folders
 
-### Problem Analysis
-
-After reviewing the code, I found the issue: when you drag a document, the `over` target is likely `null` when you release. This can happen because:
-
-1. **Collision detection issue**: The `pointerWithin` collision algorithm requires the pointer to be inside the droppable element, but the drag overlay or other elements might be interfering
-2. **Missing DragStartEvent tracking**: The `handleDragStart` only sets `activeDragId` but doesn't store the actual dragged item data needed for validation
-
-### Root Cause
-
-Looking at the `handleDragEnd` function (lines 272-310), it uses `active.id` to get the document ID. However, the issue is likely the **collision detection** - `pointerWithin` is stricter and may not detect small targets like folder chips reliably.
-
-### Solution
-
-1. **Change collision detection** from `pointerWithin` to `closestCenter` - this is more forgiving and works better with small drop targets
-2. **Add debug logging** temporarily to confirm the issue (then remove)
-3. **Ensure the FolderTargetBar appears at root level too** - currently at root, when dragging, the folders in the grid are the drop targets, but the FolderTargetBar could also help by showing chips for ALL folders when at root
+### Overview
+Upgrade the documents gallery to support:
+1. Dragging documents directly onto folder cards (not just chips)
+2. Making folders draggable so they can be moved into other folders
+3. Nested folder hierarchy (folders inside folders)
 
 ---
 
-### Technical Changes
+### Database Changes
 
-**File: `src/components/project/DocumentsGallery.tsx`**
+**Add `parent_id` column to `document_folders`:**
 
-1. Change the collision detection algorithm:
-```typescript
-import { 
-  DndContext, 
-  DragEndEvent, 
-  DragOverlay, 
-  closestCenter,  // Change from pointerWithin
-  useSensor,
-  useSensors,
-  PointerSensor
-} from '@dnd-kit/core';
-
-// In DndContext:
-<DndContext 
-  sensors={sensors}
-  onDragStart={handleDragStart}
-  onDragEnd={handleDragEnd}
-  collisionDetection={closestCenter}  // Changed
->
+```sql
+ALTER TABLE public.document_folders
+ADD COLUMN parent_id UUID REFERENCES public.document_folders(id) ON DELETE SET NULL;
 ```
 
-2. Update `handleDragEnd` to handle edge case where document is dropped on itself or invalid target:
-```typescript
-const handleDragEnd = async (event: DragEndEvent) => {
-  setActiveDragId(null);
-  const { active, over } = event;
-  
-  if (!over || active.id === over.id) return;
-  
-  const documentId = active.id as string;
-  const overId = over.id as string;
-  
-  // ... rest of logic
-};
+This enables the folder hierarchy - when a folder is deleted, child folders become root-level.
+
+---
+
+### Component Changes
+
+**1. Create `DraggableDroppableFolder.tsx`** (new component)
+
+A folder that is both draggable (can be picked up) AND droppable (can receive documents/folders):
+
+```text
+┌─────────────────────┐
+│     📁 Folder       │  ← Can drag this into another folder
+│    "Warranties"     │  ← Can drop documents/folders onto it
+│     3 items         │
+└─────────────────────┘
 ```
 
-3. **Show FolderTargetBar at root level when there are folders** - this gives a clearer drop target:
+Key implementation:
+- Uses both `useDraggable` and `useDroppable` from dnd-kit
+- Applies drag listeners to the whole card (8px activation constraint)
+- Shows visual feedback when something is hovering over it
+- Prevents dropping a folder into itself
 
-**File: `src/components/project/FolderTargetBar.tsx`**
+**2. Update `DocumentsGallery.tsx`**
 
-Currently the bar only shows when inside a folder or at root with other folders. Update logic to always show when dragging and there are folders to drop into:
+- Add `activeDragType` state to track whether dragging a document or folder
+- Update `handleDragEnd` to handle folder moves:
+  - Folder dropped on another folder → Update `parent_id`
+  - Folder dropped on root → Set `parent_id` to null
+- Update navigation to support breadcrumb trail
+- Replace `DroppableFolder` with `DraggableDroppableFolder`
+
+**3. Update `FolderTargetBar.tsx`**
+
+- Filter out the currently dragged folder from targets
+- Show parent folder as a target when inside nested folder
+- Prevent circular references (can't drop folder into its own child)
+
+**4. Add Breadcrumb Navigation**
+
+When inside a nested folder, show a breadcrumb trail:
+
+```text
+Documents > Warranties > Foundation  [Back]
+```
+
+---
+
+### Updated Folder Interface
 
 ```typescript
-export function FolderTargetBar({ folders, currentFolderId, activeDragId }: FolderTargetBarProps) {
-  // Only show when actively dragging a document
-  if (!activeDragId) return null;
-  
-  // When at root, show all folders. When inside folder, show other folders + root
-  const targetFolders = currentFolderId 
-    ? folders.filter(f => f.id !== currentFolderId)
-    : folders;
-  
-  const showRoot = currentFolderId !== null;
-  const hasTargets = targetFolders.length > 0 || showRoot;
-  
-  if (!hasTargets) return null;
-
-  return (
-    <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-dashed border-primary/30 animate-in fade-in duration-200">
-      <p className="text-xs text-muted-foreground mb-2">Move to:</p>
-      <div className="flex flex-wrap gap-2">
-        {showRoot && <RootDropChip />}
-        {targetFolders.map(folder => (
-          <DroppableFolderChip key={folder.id} folder={folder} />
-        ))}
-      </div>
-    </div>
-  );
+interface DocumentFolder {
+  id: string;
+  project_id: string;
+  name: string;
+  color: string | null;
+  parent_id: string | null;  // NEW
+  created_at: string;
+  updated_at: string;
 }
 ```
 
 ---
 
-### Files to Modify
+### Drag-and-Drop Logic
 
-| File | Changes |
-|------|---------|
-| `src/components/project/DocumentsGallery.tsx` | Change `pointerWithin` to `closestCenter` collision detection |
-| `src/components/project/FolderTargetBar.tsx` | Show all folders as targets when at root level |
+**`handleDragEnd` updated flow:**
+
+```text
+1. Get active item (document or folder)
+2. Get drop target (folder, root, or nothing)
+3. Validate:
+   - Can't drop folder into itself
+   - Can't drop folder into its own descendant
+4. Update database:
+   - Document → folder: Update document.folder_id
+   - Folder → folder: Update folder.parent_id
+   - Either → root: Set folder_id/parent_id to null
+5. Refresh data
+```
 
 ---
 
-### Expected Behavior After Fix
+### Visual Improvements for Modern Feel
+
+**Drag Overlay:**
+- Smooth transform with `transition: transform 0.15s ease`
+- Subtle shadow elevation when lifted
+- Slight rotation (3deg) to indicate movement
+
+**Drop Zones:**
+- Scale up slightly (105%) when hovered
+- Ring highlight with primary color
+- Smooth fade-in for target indicators
+
+**Folder Cards:**
+- Cursor changes to `grab` on hover, `grabbing` while dragging
+- Subtle bounce animation when item is dropped
+
+---
+
+### Files to Create/Modify
+
+| File | Action | Changes |
+|------|--------|---------|
+| Database migration | Create | Add `parent_id` column to `document_folders` |
+| `DraggableDroppableFolder.tsx` | Create | Combined draggable + droppable folder component |
+| `DocumentsGallery.tsx` | Modify | Handle folder dragging, breadcrumbs, updated drag logic |
+| `FolderTargetBar.tsx` | Modify | Support folder-as-drag-item, prevent circular drops |
+| `DroppableFolder.tsx` | Delete | Replaced by DraggableDroppableFolder |
+
+---
+
+### Expected User Experience
 
 | Action | Result |
 |--------|--------|
-| At root: drag document over folder card | Document moves into that folder |
-| At root: drag document over folder chip | Document moves into that folder |
-| Inside folder: drag document to Root chip | Document moves to root |
-| Inside folder: drag document to other folder chip | Document moves to that folder |
+| Drag PDF onto folder card | Document moves into that folder |
+| Drag folder onto another folder | Folder becomes nested inside target |
+| Drag folder to Root chip | Folder moves to root level |
+| Click folder | Navigate into it, breadcrumb updates |
+| Click breadcrumb segment | Navigate to that level |
+| Drag folder into itself | Blocked (no action) |
 
