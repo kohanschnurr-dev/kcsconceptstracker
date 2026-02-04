@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ListChecks, ArrowRight, Calendar } from 'lucide-react';
+import { ListChecks, ArrowRight, Calendar, Clock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -141,75 +141,97 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
 
   return (
     <div className="glass-card border-border bg-muted/30 p-4 animate-slide-up">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      {/* Header Row */}
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/10">
             <ListChecks className="h-5 w-5 text-primary" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-foreground">Today</h3>
-              <Badge 
-                variant="secondary" 
-                className="text-xs"
-              >
-                {totalActionable} {totalActionable === 1 ? 'Item' : 'Items'}
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
-              {todayEvents.length > 0 && (
-                <span className="text-primary font-medium flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {todayEvents.length} event{todayEvents.length !== 1 ? 's' : ''} today
-                </span>
-              )}
-              {tasksDueToday.length > 0 && (
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-foreground">Today's Agenda</h3>
+            <Badge variant="secondary" className="text-xs">
+              {totalActionable} {totalActionable === 1 ? 'Item' : 'Items'}
+            </Badge>
+          </div>
+        </div>
+        <Button
+          onClick={() => navigate('/calendar')}
+          variant="outline"
+          size="sm"
+          className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+        >
+          <Calendar className="h-4 w-4" />
+          View Calendar
+        </Button>
+      </div>
+
+      {/* Two-Box Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Left Box - Tasks */}
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 min-h-[100px] flex flex-col">
+          <Badge variant="outline" className="w-fit mb-2 text-xs">
+            Tasks
+          </Badge>
+          <div className="flex-1 space-y-1">
+            {tasksDueToday.length > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="h-3.5 w-3.5 text-warning" />
                 <span className="text-warning font-medium">
-                  {tasksDueToday.length} task{tasksDueToday.length !== 1 ? 's' : ''} due
+                  {tasksDueToday.length} due today
                 </span>
-              )}
-              {overdueCount > 0 && (
+              </div>
+            )}
+            {overdueCount > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
                 <span className="text-destructive font-medium">
                   {overdueCount} overdue
                 </span>
-              )}
-            </p>
+              </div>
+            )}
+            {tasksDueToday.length === 0 && overdueCount === 0 && (
+              <p className="text-sm text-muted-foreground">No tasks due</p>
+            )}
           </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {/* Show today's calendar events as preview badges */}
-          {todayEvents.length > 0 && todayEvents.length <= 3 && (
-            <div className="hidden sm:flex items-center gap-2 mr-2">
-              {todayEvents.slice(0, 3).map((event) => (
-                <Badge 
-                  key={event.id} 
-                  variant="outline" 
-                  className="text-xs max-w-[150px] truncate border-primary/30 text-primary"
-                >
-                  {event.title}
-                </Badge>
-              ))}
-            </div>
-          )}
-          <Button
-            onClick={() => navigate('/calendar')}
-            variant="outline"
-            size="sm"
-            className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
-          >
-            <Calendar className="h-4 w-4" />
-            Calendar
-          </Button>
           {(tasksDueToday.length > 0 || overdueCount > 0) && (
             <Button
               onClick={() => navigate('/checklist')}
-              className="gap-2"
+              size="sm"
+              className="gap-2 mt-2 w-full"
             >
               View Tasks
               <ArrowRight className="h-4 w-4" />
             </Button>
           )}
+        </div>
+
+        {/* Right Box - Events */}
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 min-h-[100px] flex flex-col">
+          <Badge variant="outline" className="w-fit mb-2 text-xs">
+            Events
+          </Badge>
+          <div className="flex-1 space-y-1.5">
+            {todayEvents.length > 0 ? (
+              <>
+                {todayEvents.slice(0, 3).map((event) => (
+                  <div
+                    key={event.id}
+                    className="text-sm text-foreground truncate flex items-center gap-2"
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                    <span className="truncate">{event.title}</span>
+                  </div>
+                ))}
+                {todayEvents.length > 3 && (
+                  <p className="text-xs text-muted-foreground">
+                    +{todayEvents.length - 3} more
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No events today</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
