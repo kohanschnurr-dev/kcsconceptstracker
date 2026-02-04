@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { formatDisplayDate } from '@/lib/dateUtils';
-import { ChevronDown, ChevronUp, Check, Trash2, Receipt, Package, Wrench, StickyNote } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, Trash2, Receipt, Package, Wrench, StickyNote, Split } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -55,6 +55,7 @@ interface GroupedPendingExpenseCardProps {
   onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor', notes?: string) => Promise<void>;
   onDelete: (expenseId: string) => Promise<void>;
   onImportAll: (expenseIds: string[], projectId: string) => Promise<void>;
+  onOpenSplitModal?: (expense: PendingExpense) => void;
   formatCurrency: (amount: number) => string;
 }
 
@@ -64,6 +65,7 @@ export function GroupedPendingExpenseCard({
   onCategorize,
   onDelete,
   onImportAll,
+  onOpenSplitModal,
   formatCurrency,
 }: GroupedPendingExpenseCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -215,6 +217,15 @@ export function GroupedPendingExpenseCard({
             </div>
           </div>
           <div className="flex items-center gap-2 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenSplitModal?.(primaryExpense)}
+              className="gap-1"
+            >
+              <Split className="h-4 w-4" />
+              <span className="hidden sm:inline">Split</span>
+            </Button>
             <ToggleGroup 
               type="single" 
               value={selectedExpenseType}
