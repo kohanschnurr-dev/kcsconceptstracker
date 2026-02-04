@@ -25,6 +25,7 @@ interface ProjectDocument {
   document_date: string | null;
   created_at: string;
   folder_id: string | null;
+  title: string | null;
 }
 
 interface DraggableDocumentCardProps {
@@ -130,9 +131,9 @@ export function DraggableDocumentCard({
 
       {/* Info Area */}
       <div className="p-3 space-y-2">
-        {/* File Name */}
-        <p className="font-medium text-sm truncate" title={doc.file_name}>
-          {doc.file_name}
+        {/* Title or File Name */}
+        <p className="font-medium text-sm truncate" title={doc.title || doc.file_name}>
+          {doc.title || doc.file_name}
         </p>
 
         {/* Category Badge */}

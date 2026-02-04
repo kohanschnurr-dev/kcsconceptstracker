@@ -83,6 +83,7 @@ interface ProjectDocument {
   document_date: string | null;
   created_at: string;
   folder_id: string | null;
+  title: string | null;
 }
 
 interface DocumentFolder {
@@ -430,6 +431,7 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
           document_date: new Date().toISOString().split('T')[0],
           notes: null,
           folder_id: currentFolderId || null,
+          title: null,
         });
 
         if (dbError) {

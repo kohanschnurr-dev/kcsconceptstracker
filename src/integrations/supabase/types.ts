@@ -735,6 +735,7 @@ export type Database = {
           id: string
           notes: string | null
           project_id: string
+          title: string | null
         }
         Insert: {
           category?: string
@@ -747,6 +748,7 @@ export type Database = {
           id?: string
           notes?: string | null
           project_id: string
+          title?: string | null
         }
         Update: {
           category?: string
@@ -759,6 +761,7 @@ export type Database = {
           id?: string
           notes?: string | null
           project_id?: string
+          title?: string | null
         }
         Relationships: [
           {
