@@ -1,50 +1,197 @@
 
 
-## Plan: Enable Multi-File Receipt Upload
+## Plan: Enhanced Documents Gallery with Library/Folder Design
 
 ### Overview
-Add the ability to select and upload multiple receipt files at once in the Smart Receipt Upload component. Each file will be processed sequentially (to avoid overwhelming the AI parsing), and users will see progress as files are parsed.
+Transform the Documents Gallery to have a more visual "library folder" look with file type icons, enhanced metadata display (upload date, document date, notes preview), and a card-based grid layout similar to file managers.
 
 ---
 
-### Current Behavior
-- File input accepts only one file at a time
-- Drag-and-drop only processes the first dropped file
-- Clipboard paste only processes the first image
+### Current State vs. New Design
 
-### New Behavior
-- File picker allows selecting multiple files
-- Drag-and-drop processes all dropped files
-- Each file is uploaded and parsed sequentially
-- Progress indicator shows "Parsing 2 of 5..." status
-- All receipts appear in the pending list after processing
+| Current | New |
+|---------|-----|
+| Simple list rows | Card-based grid with folder/file visual |
+| Single FileText icon | Dynamic icons based on file type (PDF, Word, Excel, Image) |
+| Limited metadata shown | Upload date, document date, category badge, file size, notes preview |
+| Linear layout | Responsive grid with visual file cards |
 
 ---
 
-### UI Changes
+### UI Design
 
-**Upload area during multi-file processing:**
+**Card Layout for Each Document:**
 ```text
-┌─────────────────────────────────────────────────────┐
-│                                                     │
-│           🔄 Parsing receipt 2 of 5...              │
-│                                                     │
-│              Home_Depot_receipt.jpg                 │
-│                                                     │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────┐
+│   ┌───────────────────┐     │
+│   │                   │     │
+│   │   📄 PDF Icon     │     │  ← Large file type icon with extension badge
+│   │                   │     │
+│   │      .PDF         │     │
+│   └───────────────────┘     │
+│                             │
+│  Building_Permit.pdf        │  ← File name (truncated)
+│  ────────────────────────── │
+│  📁 Permit                  │  ← Category badge
+│  📅 Jan 16, 2026            │  ← Document date
+│  ⬆️ Uploaded 2 days ago     │  ← Relative upload time
+│  💾 2.4 MB                  │  ← File size
+│                             │
+│  "Approved for foundation…" │  ← Notes preview (if any)
+└─────────────────────────────┘
+```
+
+**Gallery Grid View:**
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│ 📂 Documents (8)                      [Category ▾] [Date ▾] [+ Add]│
+├────────────────────────────────────────────────────────────────────┤
+│ ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐             │
+│ │ 📄 PDF   │  │ 📊 XLS   │  │ 📝 DOC   │  │ 🖼️ IMG   │             │
+│ │          │  │          │  │          │  │          │             │
+│ │ Permit   │  │ Budget   │  │ Contract │  │ Scan     │             │
+│ │ Jan 16   │  │ Jan 12   │  │ Jan 10   │  │ Jan 8    │             │
+│ └──────────┘  └──────────┘  └──────────┘  └──────────┘             │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ### Technical Changes
 
-| Location | Change |
-|----------|--------|
-| File input element | Add `multiple` attribute |
-| `handleFileInput` function | Loop through all selected files |
-| `handleDrop` function | Loop through all dropped files |
-| State management | Track upload progress (current/total) |
-| UI feedback | Show which file is being processed |
+**1. File Type Icon Function:**
+
+```typescript
+import { 
+  FileText, 
+  FileSpreadsheet, 
+  FileImage, 
+  File,
+  FolderOpen 
+} from 'lucide-react';
+
+const getFileIcon = (fileName: string) => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'pdf':
+      return { icon: FileText, color: 'text-red-500', bg: 'bg-red-500/10' };
+    case 'doc':
+    case 'docx':
+      return { icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/10' };
+    case 'xls':
+    case 'xlsx':
+      return { icon: FileSpreadsheet, color: 'text-green-500', bg: 'bg-green-500/10' };
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+    case 'gif':
+    case 'webp':
+      return { icon: FileImage, color: 'text-purple-500', bg: 'bg-purple-500/10' };
+    default:
+      return { icon: File, color: 'text-muted-foreground', bg: 'bg-muted' };
+  }
+};
+```
+
+**2. Relative Time for Upload Date:**
+
+```typescript
+const getRelativeTime = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return formatDate(dateStr);
+};
+```
+
+**3. New Card Grid Layout:**
+
+```tsx
+<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+  {filteredDocuments.map((doc) => {
+    const fileInfo = getFileIcon(doc.file_name);
+    const IconComponent = fileInfo.icon;
+    const fileExt = doc.file_name.split('.').pop()?.toUpperCase() || '';
+    
+    return (
+      <div
+        key={doc.id}
+        onClick={() => setSelectedDocument(doc)}
+        className="group cursor-pointer rounded-xl border border-border/50 bg-card hover:border-primary/50 hover:shadow-lg transition-all overflow-hidden"
+      >
+        {/* File Icon Area */}
+        <div className={cn("flex flex-col items-center justify-center py-6 px-4", fileInfo.bg)}>
+          <IconComponent className={cn("h-12 w-12", fileInfo.color)} />
+          <span className={cn("text-xs font-bold mt-1", fileInfo.color)}>
+            .{fileExt}
+          </span>
+        </div>
+        
+        {/* Info Area */}
+        <div className="p-3 space-y-2">
+          {/* File Name */}
+          <p className="font-medium text-sm truncate" title={doc.file_name}>
+            {doc.file_name}
+          </p>
+          
+          {/* Category Badge */}
+          <Badge variant="secondary" className="text-xs">
+            {getCategoryLabel(doc.category)}
+          </Badge>
+          
+          {/* Metadata */}
+          <div className="text-xs text-muted-foreground space-y-1">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {doc.document_date ? formatDate(doc.document_date) : 'No date'}
+            </div>
+            <div className="flex items-center gap-1">
+              <Upload className="h-3 w-3" />
+              {getRelativeTime(doc.created_at)}
+            </div>
+            <div className="flex items-center gap-1">
+              <HardDrive className="h-3 w-3" />
+              {formatFileSize(doc.file_size)}
+            </div>
+          </div>
+          
+          {/* Notes Preview */}
+          {doc.notes && (
+            <p className="text-xs text-muted-foreground italic line-clamp-2 border-t pt-2 mt-2">
+              "{doc.notes}"
+            </p>
+          )}
+        </div>
+        
+        {/* Hover Actions */}
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex gap-1">
+          <Button size="icon" variant="ghost" className="h-7 w-7">
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    );
+  })}
+</div>
+```
+
+---
+
+### Additional Enhancements
+
+| Feature | Description |
+|---------|-------------|
+| Date filter | Add "Uploaded" filter similar to Photo Gallery (All, Last 7 days, Last 30 days) |
+| Sort options | Add sorting by name, date, or upload time |
+| Folder icon header | Use FolderOpen icon in card header for visual library feel |
+| Empty state | Enhanced empty state with folder illustration |
+| Hover effects | Subtle shadow and border highlight on hover |
 
 ---
 
@@ -52,123 +199,42 @@ Add the ability to select and upload multiple receipt files at once in the Smart
 
 | File | Changes |
 |------|---------|
-| `src/components/SmartSplitReceiptUpload.tsx` | Add multi-file support to input, drag-drop, and upload functions |
+| `src/components/project/DocumentsGallery.tsx` | Complete redesign with card grid, file icons, enhanced metadata, date filter |
 
 ---
 
-### Implementation Details
-
-**1. Add state for tracking multi-file progress:**
+### New Imports Needed
 
 ```typescript
-const [uploadProgress, setUploadProgress] = useState<{
-  current: number;
-  total: number;
-  currentFileName: string;
-} | null>(null);
-```
-
-**2. Update file input to accept multiple:**
-
-```tsx
-<input
-  type="file"
-  accept="image/*,.pdf"
-  multiple  // ← Add this
-  onChange={handleFileInput}
-  className="hidden"
-  id="receipt-upload"
-  disabled={isUploading}
-/>
-```
-
-**3. Update `handleFileInput` to process all files:**
-
-```typescript
-const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  if (e.target.files && e.target.files.length > 0) {
-    const files = Array.from(e.target.files);
-    await processMultipleFiles(files);
-  }
-};
-```
-
-**4. Update `handleDrop` to process all dropped files:**
-
-```typescript
-const handleDrop = useCallback(async (e: React.DragEvent) => {
-  e.preventDefault();
-  e.stopPropagation();
-  setDragActive(false);
-  
-  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-    const files = Array.from(e.dataTransfer.files).filter(
-      file => file.type.startsWith('image/') || file.type === 'application/pdf'
-    );
-    await processMultipleFiles(files);
-  }
-}, []);
-```
-
-**5. Create new `processMultipleFiles` function:**
-
-```typescript
-const processMultipleFiles = async (files: File[]) => {
-  if (files.length === 0) return;
-  
-  setIsUploading(true);
-  setUploadProgress({ current: 0, total: files.length, currentFileName: '' });
-  
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    setUploadProgress({ 
-      current: i + 1, 
-      total: files.length, 
-      currentFileName: file.name 
-    });
-    
-    try {
-      await handleFileUpload(file);
-    } catch (error) {
-      console.error(`Failed to process ${file.name}:`, error);
-      // Continue with remaining files
-    }
-  }
-  
-  setUploadProgress(null);
-  setIsUploading(false);
-};
-```
-
-**6. Update upload area UI to show multi-file progress:**
-
-```tsx
-{uploadProgress && uploadProgress.total > 1 ? (
-  <div className="flex flex-col items-center gap-2">
-    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-    <p className="text-sm font-medium">
-      Parsing receipt {uploadProgress.current} of {uploadProgress.total}...
-    </p>
-    <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-      {uploadProgress.currentFileName}
-    </p>
-  </div>
-) : isParsing ? (
-  // Single file parsing (existing behavior)
-  ...
-)}
+import { 
+  FileText, 
+  FileSpreadsheet, 
+  FileImage, 
+  File,
+  FolderOpen,
+  Plus, 
+  Filter, 
+  Loader2, 
+  Download, 
+  Trash2, 
+  Calendar,
+  Upload,
+  HardDrive,
+  Clock
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 ```
 
 ---
 
-### Edge Cases Handled
+### Responsive Behavior
 
-| Case | Behavior |
-|------|----------|
-| Mixed valid/invalid files | Invalid files (non-images, non-PDFs) are filtered out |
-| One file fails to parse | Error toast shown, continue with remaining files |
-| User selects 0 files | No action taken |
-| Large batch (10+ files) | All processed sequentially with progress |
+| Screen Size | Columns |
+|-------------|---------|
+| Mobile (< 640px) | 2 columns |
+| Tablet (640-768px) | 3 columns |
+| Desktop (768-1024px) | 4 columns |
+| Large (> 1024px) | 5 columns |
 
 ---
 
@@ -176,7 +242,9 @@ const processMultipleFiles = async (files: File[]) => {
 
 | Before | After |
 |--------|-------|
-| Select one file at a time | Select multiple files at once |
-| Re-open picker for each receipt | Upload entire batch from folder |
-| No progress for single file | Progress indicator for batches |
+| Simple list view | Visual card grid like a file manager |
+| Single generic icon | Color-coded icons by file type |
+| Upload date only | Both document date and relative upload time |
+| No notes shown | Notes preview in card |
+| Basic hover | Enhanced hover with shadow + actions |
 
