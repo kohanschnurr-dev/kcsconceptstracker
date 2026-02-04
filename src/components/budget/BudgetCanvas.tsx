@@ -264,8 +264,8 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
               open={isOpen}
               onOpenChange={() => toggleGroup(group.name)}
               className={cn(
-                "rounded-lg border bg-card transition-colors",
-                hasValue && "border-primary/30"
+                "rounded-lg border border-border/30 bg-card transition-colors",
+                hasValue && "border-primary/40"
               )}
             >
               <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-accent/50 transition-colors rounded-t-lg">

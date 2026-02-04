@@ -25,8 +25,8 @@ export function BudgetCategoryCard({
   return (
     <div 
       className={cn(
-        "flex items-center gap-1.5 rounded-md border bg-background/50 p-1.5 transition-all hover:border-primary/50",
-        hasValue && "border-primary/30 bg-primary/5"
+        "flex items-center gap-1.5 rounded-md border border-border/30 bg-background/50 p-1.5 transition-all hover:border-primary/50",
+        hasValue && "border-primary/40 bg-primary/5"
       )}
     >
       {icon && (
