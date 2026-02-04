@@ -1,245 +1,199 @@
 
 
-## Plan: Add Folder Organization to Documents Gallery with Drag-and-Drop
+## Plan: Enable Desktop Drag-and-Drop Upload + Folder-to-Folder Document Moving
 
 ### Overview
-Add the ability to create folders for organizing documents within a project. Users can drag-and-drop documents into folders for better organization. The gallery will display folders alongside loose documents, and clicking a folder opens it to show its contents.
+Add two capabilities to the Documents Gallery:
+1. **Desktop drag-and-drop** - Drop PDF/files directly from desktop onto the gallery for instant upload
+2. **Cross-folder document moving** - When inside a folder, show other folders as drop targets so documents can be moved between folders
+
+---
+
+### Current Issues
+
+| Issue | Solution |
+|-------|----------|
+| Can't drag files from desktop onto gallery | Add drop zone handler to CardContent area |
+| When inside a folder, can't move docs to other folders | Show folder "chips" as drop targets when inside a folder |
+| Desktop drop would need category/date input | Use quick defaults (general category, today's date), allow editing after via preview modal |
 
 ---
 
 ### UI Design
 
-**Main Gallery View with Folders:**
+**Desktop Drop Zone Indicator:**
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
-│ 📂 Documents (12)                     [Date ▾] [Category ▾] [+ Folder] [+ Add] │
+│ 📂 Documents (8)                      [Date ▾] [Category ▾] [+ Add]    │
 ├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
-│  │ 📁       │  │ 📁       │  │ 📄 PDF   │  │ 📊 XLS   │               │
-│  │ Permits  │  │ Contracts│  │          │  │          │               │
-│  │ 4 files  │  │ 2 files  │  │ Invoice  │  │ Budget   │               │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘               │
-│      ↑              ↑                                                  │
-│   Folders       Folders         Loose documents at root                │
+│ ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓ │
+│ ┃                                                                    ┃ │
+│ ┃        Drop files here to upload                                   ┃ │
+│ ┃        ↓  ↓  ↓                                                     ┃ │
+│ ┃                                                                    ┃ │
+│ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ │
 │                                                                        │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Inside a Folder:**
+**Inside Folder - Folder Targets Bar:**
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
-│ ← Back to Documents     📁 Permits (4 files)                           │
+│ ← Back     📁 Permits (4 files)                                        │
 ├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
+│ Move to: [📁 Contracts] [📁 Invoices] [📂 Root]                        │ ← Droppable folder chips
+├────────────────────────────────────────────────────────────────────────┤
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
 │  │ 📄 PDF   │  │ 📄 PDF   │  │ 📄 PDF   │  │ 📄 PDF   │               │
-│  │          │  │          │  │          │  │          │               │
 │  │ Permit 1 │  │ Permit 2 │  │ Permit 3 │  │ Permit 4 │               │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────┘               │
-│                                                                        │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Drag-and-Drop Behavior:**
-- Dragging a document card over a folder highlights the folder
-- Dropping assigns the document to that folder
-- Documents can be dragged out of folders back to root (when inside a folder, show a "Move to Root" drop zone)
-
 ---
 
-### Database Changes
+### Technical Changes
 
-**New Table: `document_folders`**
+**1. Desktop Drag-and-Drop Upload**
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| project_id | uuid | Foreign key to projects |
-| name | text | Folder name |
-| color | text | Optional folder color (hex) |
-| created_at | timestamp | Creation timestamp |
-| updated_at | timestamp | Last update timestamp |
+Add native HTML5 drag event handlers to detect when files from the desktop are dragged over the gallery:
 
-**Modify Table: `project_documents`**
+```typescript
+const [desktopDragActive, setDesktopDragActive] = useState(false);
+const [uploadingDesktopFiles, setUploadingDesktopFiles] = useState(false);
 
-| Column | Type | Description |
-|--------|------|-------------|
-| folder_id | uuid (nullable) | Foreign key to document_folders (null = root level) |
+// Handle desktop file drops (native HTML5, not dnd-kit)
+const handleDesktopDragOver = (e: React.DragEvent) => {
+  e.preventDefault();
+  if (e.dataTransfer.types.includes('Files')) {
+    setDesktopDragActive(true);
+  }
+};
 
----
+const handleDesktopDragLeave = (e: React.DragEvent) => {
+  e.preventDefault();
+  setDesktopDragActive(false);
+};
 
-### Technical Implementation
-
-**1. Database Migration:**
-
-```sql
--- Create document_folders table
-CREATE TABLE public.document_folders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  color TEXT DEFAULT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Add folder_id to project_documents
-ALTER TABLE public.project_documents
-ADD COLUMN folder_id UUID REFERENCES public.document_folders(id) ON DELETE SET NULL;
-
--- Enable RLS
-ALTER TABLE public.document_folders ENABLE ROW LEVEL SECURITY;
-
--- RLS policies (same pattern as project_documents)
-CREATE POLICY "Users can view folders for their projects"
-  ON public.document_folders FOR SELECT
-  USING (project_id IN (SELECT id FROM public.projects WHERE user_id = auth.uid()));
-
-CREATE POLICY "Users can create folders for their projects"
-  ON public.document_folders FOR INSERT
-  WITH CHECK (project_id IN (SELECT id FROM public.projects WHERE user_id = auth.uid()));
-
-CREATE POLICY "Users can update their folders"
-  ON public.document_folders FOR UPDATE
-  USING (project_id IN (SELECT id FROM public.projects WHERE user_id = auth.uid()));
-
-CREATE POLICY "Users can delete their folders"
-  ON public.document_folders FOR DELETE
-  USING (project_id IN (SELECT id FROM public.projects WHERE user_id = auth.uid()));
-```
-
-**2. New Component: CreateFolderModal**
-
-Simple modal with:
-- Folder name input
-- Optional color picker
-- Create button
-
-**3. Update DocumentsGallery.tsx:**
-
-- Add state for `currentFolderId` (null = root view)
-- Add state for `folders` array
-- Fetch folders alongside documents
-- Wrap gallery in `DndContext` from @dnd-kit/core
-- Create `DraggableDocumentCard` component
-- Create `DroppableFolder` component
-- Handle drag-end to update document's `folder_id`
-- Add breadcrumb navigation when inside a folder
-- Add "New Folder" button to header
-
-**4. Folder Card Component:**
-
-```tsx
-function DroppableFolder({ folder, documentCount, onClick }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `folder-${folder.id}`,
-    data: { type: 'folder', folderId: folder.id },
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      onClick={onClick}
-      className={cn(
-        "group cursor-pointer rounded-xl border bg-card transition-all",
-        isOver && "ring-2 ring-primary border-primary bg-primary/5"
-      )}
-    >
-      <div className="flex flex-col items-center justify-center py-6 px-4 bg-amber-500/10">
-        <Folder className="h-12 w-12 text-amber-500" />
-      </div>
-      <div className="p-3">
-        <p className="font-medium text-sm truncate">{folder.name}</p>
-        <p className="text-xs text-muted-foreground">{documentCount} files</p>
-      </div>
-    </div>
+const handleDesktopDrop = async (e: React.DragEvent) => {
+  e.preventDefault();
+  setDesktopDragActive(false);
+  
+  const files = Array.from(e.dataTransfer.files).filter(f => 
+    ACCEPTED_FILE_TYPES.includes(f.type)
   );
-}
-```
-
-**5. Draggable Document Card:**
-
-```tsx
-function DraggableDocumentCard({ doc, onSelect, onDownload }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: doc.id,
-    data: { type: 'document', document: doc },
-  });
   
-  const style = transform ? {
-    transform: `translate(${transform.x}px, ${transform.y}px)`,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : 'auto',
-  } : undefined;
-
-  return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-      {/* Existing document card content */}
-    </div>
-  );
-}
-```
-
-**6. Drag End Handler:**
-
-```tsx
-const handleDragEnd = async (event: DragEndEvent) => {
-  const { active, over } = event;
-  if (!over) return;
-  
-  const documentId = active.id as string;
-  const overId = over.id as string;
-  
-  // Dropped on a folder
-  if (overId.startsWith('folder-')) {
-    const folderId = overId.replace('folder-', '');
-    await supabase
-      .from('project_documents')
-      .update({ folder_id: folderId })
-      .eq('id', documentId);
-    fetchDocuments();
+  if (files.length === 0) {
+    toast.error('No supported files found');
+    return;
   }
   
-  // Dropped on "root" zone (when inside a folder)
-  if (overId === 'root-drop-zone') {
-    await supabase
-      .from('project_documents')
-      .update({ folder_id: null })
-      .eq('id', documentId);
-    fetchDocuments();
+  // Quick upload with defaults
+  setUploadingDesktopFiles(true);
+  for (const file of files) {
+    await uploadFile(file, 'general', new Date().toISOString().split('T')[0], null, currentFolderId);
   }
+  setUploadingDesktopFiles(false);
+  toast.success(`${files.length} file(s) uploaded`);
+  fetchDocuments();
 };
 ```
 
+**2. Folder Target Bar (when inside a folder)**
+
+Create a new component `FolderTargetBar` that shows other folders as droppable chips:
+
+```tsx
+function FolderTargetBar({ folders, currentFolderId, activeDragId }) {
+  const otherFolders = folders.filter(f => f.id !== currentFolderId);
+  
+  if (!activeDragId || otherFolders.length === 0) return null;
+  
+  return (
+    <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-dashed">
+      <p className="text-xs text-muted-foreground mb-2">Move to folder:</p>
+      <div className="flex flex-wrap gap-2">
+        {otherFolders.map(folder => (
+          <DroppableFolderChip key={folder.id} folder={folder} />
+        ))}
+        <RootDropZone compact />
+      </div>
+    </div>
+  );
+}
+```
+
+**3. Compact Droppable Folder Chip**
+
+```tsx
+function DroppableFolderChip({ folder }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `folder-${folder.id}`,
+  });
+  
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all",
+        isOver 
+          ? "bg-primary/20 border-primary ring-2 ring-primary" 
+          : "bg-background border-border hover:border-primary/50"
+      )}
+    >
+      <Folder className="h-3.5 w-3.5 text-amber-500" />
+      <span className="text-sm">{folder.name}</span>
+    </div>
+  );
+}
+```
+
 ---
 
-### Files to Create/Modify
+### Files to Modify
 
-| File | Action | Description |
-|------|--------|-------------|
-| Database migration | Create | Add `document_folders` table and `folder_id` column |
-| `src/components/project/CreateFolderModal.tsx` | Create | Modal for creating new folders |
-| `src/components/project/DocumentsGallery.tsx` | Modify | Add folder display, drag-drop, navigation |
+| File | Changes |
+|------|---------|
+| `src/components/project/DocumentsGallery.tsx` | Add desktop drop handlers, folder target bar, upload function |
+| `src/components/project/DroppableFolder.tsx` | Add compact "chip" variant for inline folder targets |
+| `src/components/project/RootDropZone.tsx` | Add compact variant for inline use |
+
+---
+
+### Accepted File Types
+
+Reuse from DocumentUploadModal:
+- PDF (`application/pdf`)
+- Word docs (`.doc`, `.docx`)
+- Excel (`.xls`, `.xlsx`)
+- Images (`.jpg`, `.jpeg`, `.png`, `.gif`)
+- Text (`.txt`)
 
 ---
 
 ### User Flow
 
-1. **Create Folder**: Click "+ Folder" → Enter name → Create
-2. **Move to Folder**: Drag document card → Drop on folder (folder highlights on hover)
-3. **Open Folder**: Click folder card → See folder contents with back button
-4. **Move to Root**: While inside a folder, drag document → Drop on "Move to root" zone at top
-5. **Delete Folder**: Opens a confirmation modal (documents move back to root)
+**Desktop Upload:**
+1. User drags PDF from desktop over gallery
+2. Blue dashed border appears with "Drop files to upload" message
+3. User drops files
+4. Files upload immediately with defaults (general category, today's date)
+5. User can click on uploaded document to edit category/notes via preview modal
+
+**Cross-Folder Move:**
+1. User enters a folder (e.g., "Permits")
+2. User starts dragging a document card
+3. A bar appears at top showing other folders and "Move to root"
+4. User drops on target folder chip
+5. Document moves to that folder
 
 ---
 
-### Edge Cases
+### Result
 
-| Case | Behavior |
-|------|----------|
-| Delete folder with documents | Documents move to root (folder_id set to null via ON DELETE SET NULL) |
-| Filter by category | Filters apply within current view (root or folder) |
-| Upload while in folder | New documents go into current folder |
-| Empty folder | Show empty state with message |
+| Feature | Before | After |
+|---------|--------|-------|
+| Desktop drag-drop | Must open modal first | Drop directly onto gallery |
+| Move between folders | Exit folder → drag → drop | Folder chips appear while dragging |
+| Upload speed | Multiple clicks | Single drag-drop action |
 
