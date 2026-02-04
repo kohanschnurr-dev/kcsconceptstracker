@@ -1,153 +1,153 @@
 
 
-## 3 Layout Ideas for Business Expenses Page
+## Plan: Add SmartSplit Receipt Matching for Business Expenses
 
-Based on the current implementation, here are 3 alternative layouts to improve visual appeal and practicality:
+### Overview
+Enable receipt matching for KCS Concepts Business Expenses, following the same pattern as project expenses. Users can upload receipts and match them to existing business expense transactions.
 
 ---
 
-### Option A: Side-by-Side Stats + Chart Grid
+### Current State
+- Business Expenses already supports manual receipt upload via the `BusinessExpenseDetailModal`
+- SmartSplit exists for project expenses with QB transaction matching
+- No automated receipt-to-business-expense matching exists
 
-**Layout Concept:**
-Replace the large full-width chart with a two-column grid showing key metrics on the left and a compact chart on the right.
+### New Behavior
+- Upload a receipt on the Business Expenses page
+- System parses receipt (vendor, amount, date)
+- Match candidates shown from existing `business_expenses` table
+- User confirms match, receipt URL gets attached to the business expense
+
+---
+
+### Architecture
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│  Company Name                                          [Export ▼] [+ Add Expense]│
-│  Track business expenses                                                         │
+│  Business Expenses Page                                                         │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│  [QuickBooks Integration - Connected]                                            │
-├────────────────────────────────┬────────────────────────────────────────────────┤
-│  SUMMARY CARDS (Left)          │  MINI CHART (Right)                            │
-│  ┌────────┐  ┌────────┐        │  ┌────────────────────────────────────────┐    │
-│  │ This   │  │ Total  │        │  │  Spending by Category (Donut)          │    │
-│  │ Month  │  │ All    │        │  │  ┌──────────────────────────────────┐  │    │
-│  │ $X,XXX │  │ $X,XXX │        │  │  │         [Pie Chart]              │  │    │
-│  └────────┘  └────────┘        │  │  │                                  │  │    │
-│  ┌────────┐  ┌────────┐        │  │  └──────────────────────────────────┘  │    │
-│  │ # of   │  │ Top    │        │  │  Legend: Subscriptions, Software...   │    │
-│  │ Trans  │  │ Categ  │        │  └────────────────────────────────────────┘    │
-│  └────────┘  └────────┘        │                                                │
-├────────────────────────────────┴────────────────────────────────────────────────┤
-│  [🔍 Search...] [All Categories ▼] [📅 Date Range]              [Last 30 Days ▼]│
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  EXPENSES TABLE                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐│
+│  │  Receipt Upload Zone (Collapsible)                                          ││
+│  │  [📎 Attach Receipt to Expense]                                             ││
+│  │  ┌───────────────────────────────────────────────────────────────────────┐  ││
+│  │  │ Drag & drop receipt image or paste (Ctrl+V)                           │  ││
+│  │  └───────────────────────────────────────────────────────────────────────┘  ││
+│  │                                                                             ││
+│  │  Parsed Receipt: Home Depot - $142.50 - Jan 15                              ││
+│  │  [Match Candidates from business_expenses:]                                 ││
+│  │    ○ Home Depot | $142.50 | Jan 15 | Hardware  ← [Attach Receipt]           ││
+│  │    ○ HD Supply  | $142.48 | Jan 14 | Hardware                               ││
+│  └─────────────────────────────────────────────────────────────────────────────┘│
+│                                                                                 │
+│  [Dashboard Cards] [Filters] [Expense Table]                                   │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Pros:**
-- Summary metrics are immediately visible (no scrolling)
-- Chart is compact and focused (donut instead of horizontal bars)
-- Better use of horizontal space
+---
 
-**Cons:**
-- Loses the 30-day trend line and monthly comparison views
+### Technical Changes
+
+**New Component: `src/components/BusinessReceiptUpload.tsx`**
+
+A simplified receipt upload component for business expenses that:
+1. Accepts file upload (drag/drop, click, paste)
+2. Parses receipt using existing `parse-receipt-image` edge function
+3. Queries `business_expenses` table for match candidates (same amount ± $0.05, date within 5 days)
+4. Shows match candidates with match indicators (amount, date, vendor)
+5. Attaches receipt URL to selected expense on confirmation
+
+**File: `src/pages/BusinessExpenses.tsx`**
+
+1. Import the new `BusinessReceiptUpload` component
+2. Add it above the Dashboard Cards section
+3. Pass `expenses` array and `onReceiptAttached` callback to refresh data
 
 ---
 
-### Option B: Compact Stat Banner + Collapsible Chart
+### Component Props
 
-**Layout Concept:**
-Move key stats into a horizontal banner, make the chart collapsible, and integrate filters into the table header.
+```typescript
+interface BusinessReceiptUploadProps {
+  expenses: BusinessExpense[];
+  onReceiptAttached: () => void;
+}
+```
+
+---
+
+### Match Algorithm
+
+```typescript
+// Find expenses that could match the parsed receipt
+const findMatchCandidates = (receipt: ParsedReceipt, expenses: BusinessExpense[]) => {
+  return expenses
+    .filter(expense => {
+      // Amount match: within $0.05
+      const amountMatch = Math.abs(expense.amount - receipt.total_amount) <= 0.05;
+      // Date match: within 5 days
+      const dateMatch = isDateInRange(receipt.purchase_date, expense.date);
+      // Must match at least amount OR (date + vendor)
+      const vendorMatch = vendorSimilarity(receipt.vendor_name, expense.vendor_name);
+      
+      return amountMatch || (dateMatch && vendorMatch > 0.5);
+    })
+    .sort((a, b) => {
+      // Score by match quality
+      const scoreA = calculateMatchScore(receipt, a);
+      const scoreB = calculateMatchScore(receipt, b);
+      return scoreB - scoreA;
+    })
+    .slice(0, 5); // Top 5 candidates
+};
+```
+
+---
+
+### UI States
+
+1. **Collapsed (default)**: Shows "Attach Receipt to Expense" with paperclip icon
+2. **Expanded/Upload**: Drag-drop zone for receipt image
+3. **Parsing**: Loading spinner while AI parses receipt
+4. **Match Selection**: Shows parsed receipt details + match candidates
+5. **Attaching**: Loading state while updating expense
+
+---
+
+### Match Candidate Display
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  Company Name                                          [Export ▼] [+ Add Expense]│
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  [QuickBooks - Connected ✓]                                                      │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  STAT BANNER (Horizontal Row)                                                    │
-│  ┌──────────────┬──────────────┬──────────────┬──────────────────────────────┐  │
-│  │ This Month   │ 30-Day Avg   │ Total Trans  │ Top: Subscriptions ($932)   │  │
-│  │ $2,958       │ $98/day      │ 47 expenses  │                              │  │
-│  └──────────────┴──────────────┴──────────────┴──────────────────────────────┘  │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  📊 Expense Trends                                              [Expand/Collapse]│
-│  ├──────────────────────────────────────────────────────────────────────────────│
-│  │  (Collapsed by default - click to expand full chart)                        │
-│  └──────────────────────────────────────────────────────────────────────────────│
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  EXPENSES (47 • $2,958)                      [🔍 Search] [Category ▼] [Date ▼] │
-│  ├──────────────────────────────────────────────────────────────────────────────│
-│  │  TABLE ROWS...                                                               │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Parsed Receipt: Home Depot | $142.50 | Jan 15, 2026                     │
+├──────────────────────────────────────────────────────────────────────────┤
+│  Match to existing expense:                                              │
+│                                                                          │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │ [$][📅][🏢] Home Depot   | $142.50 | Jan 15 | Hardware [Attach ✓] │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │ [$][  ][🏢] HD Supply    | $142.48 | Jan 14 | Supplies [Attach]   │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│                                                                          │
+│  [Cancel] ← Discard receipt and reset                                    │
+└──────────────────────────────────────────────────────────────────────────┘
+
+Legend: [$] Amount matched | [📅] Date in range | [🏢] Vendor matched
 ```
 
-**Pros:**
-- All key metrics visible in one glance (horizontal stat bar)
-- Chart is available but doesn't dominate the page
-- Filters integrated into table header (like the project expenses page)
-- More focus on the actual expense data
+---
 
-**Cons:**
-- Chart hidden by default (users might miss trends)
+### Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/BusinessReceiptUpload.tsx` | Create | New receipt upload + matching component |
+| `src/pages/BusinessExpenses.tsx` | Modify | Import and add BusinessReceiptUpload above dashboard |
 
 ---
 
-### Option C: Dashboard Grid with Sparkline + Category Pills
-
-**Layout Concept:**
-Create a compact dashboard grid with sparklines instead of full charts, and show categories as interactive pills/tags.
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  Company Name                                          [Export ▼] [+ Add Expense]│
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  [QuickBooks - Connected ✓]                                                      │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  ┌────────────────────────────┐  ┌────────────────────────────────────────────┐ │
-│  │ 30-Day Spending            │  │ Category Breakdown                         │ │
-│  │ $2,958 total               │  │                                            │ │
-│  │ ╭──────────────────╮       │  │ [Subscriptions $932] [Software $425]       │ │
-│  │ │▁▂▄▃▅▆▄▃▅▇▅▃│ ← sparkline │  │ [Online Courses $900] [Gas $178]           │ │
-│  │ ╰──────────────────╯       │  │ [Licensing $392] [Cloud $42]               │ │
-│  │ ↑ $98/day avg              │  │                                            │ │
-│  └────────────────────────────┘  └────────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  FILTERS: [🔍 Search...] [All Categories ▼] [📅 Date Range]                      │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  EXPENSES TABLE                                                                  │
-│  Date   │ Vendor      │ Category      │ Payment │ Amount                        │
-│  ─────────────────────────────────────────────────────────────────────────────  │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Pros:**
-- Most compact option - shows everything above the fold
-- Sparkline gives trend at a glance without taking space
-- Category pills are clickable to filter (interactive)
-- Clean, modern dashboard aesthetic
-- Better mobile responsiveness
-
-**Cons:**
-- No detailed chart views (monthly comparison, etc.)
-- Less data visualization depth
-
----
-
-## Quick Comparison
-
-| Aspect | Option A | Option B | Option C |
-|--------|----------|----------|----------|
-| Vertical space | Medium | Low | Lowest |
-| Chart detail | Donut only | Full (collapsible) | Sparkline only |
-| Stats visibility | Good | Best | Good |
-| Category display | Donut legend | Hidden in tabs | Clickable pills |
-| Implementation complexity | Medium | Low | Medium |
-
----
-
-## Recommendation
-
-**Option C (Sparkline + Pills)** is the most modern and practical:
-- Shows trends without overwhelming the page
-- Category pills double as visual breakdown + filter shortcuts
-- Gets users to the expense table faster
-- Mobile-friendly compact design
-
-But if you prefer keeping detailed chart analysis, **Option B** lets you have it all while keeping the page clean by default.
-
----
-
-Which option appeals to you? Or would you like to combine elements from multiple options?
+### Expected Result
+- Users can upload receipts directly on the Business Expenses page
+- System auto-matches receipt to existing KCS Concepts transactions
+- One-click attachment to the correct expense
+- Receipt URL saved to `business_expenses.receipt_url` field
 
