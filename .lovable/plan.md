@@ -1,146 +1,70 @@
 
 
-## Plan: Modern Drag-and-Drop with Nested Folders
+## Plan: Fix Drag-and-Drop to Work on Folder Cards
 
-### Overview
-Upgrade the documents gallery to support:
-1. Dragging documents directly onto folder cards (not just chips)
-2. Making folders draggable so they can be moved into other folders
-3. Nested folder hierarchy (folders inside folders)
+### The Problem
+When you drag a document and hover over a folder card, it doesn't detect the folder as a drop target. This happens because the current collision detection (`closestCenter`) picks the droppable element whose **center** is closest to your cursor - which doesn't work well when you're trying to drop *into* containers like folder cards.
 
----
-
-### Database Changes
-
-**Add `parent_id` column to `document_folders`:**
-
-```sql
-ALTER TABLE public.document_folders
-ADD COLUMN parent_id UUID REFERENCES public.document_folders(id) ON DELETE SET NULL;
-```
-
-This enables the folder hierarchy - when a folder is deleted, child folders become root-level.
+### Solution
+Change the collision detection algorithm to `rectIntersection` which detects when the dragged item **overlaps** with a droppable area - this is the standard approach for "drop into container" scenarios.
 
 ---
 
-### Component Changes
+### Technical Changes
 
-**1. Create `DraggableDroppableFolder.tsx`** (new component)
+**File: `src/components/project/DocumentsGallery.tsx`**
 
-A folder that is both draggable (can be picked up) AND droppable (can receive documents/folders):
-
-```text
-┌─────────────────────┐
-│     📁 Folder       │  ← Can drag this into another folder
-│    "Warranties"     │  ← Can drop documents/folders onto it
-│     3 items         │
-└─────────────────────┘
-```
-
-Key implementation:
-- Uses both `useDraggable` and `useDroppable` from dnd-kit
-- Applies drag listeners to the whole card (8px activation constraint)
-- Shows visual feedback when something is hovering over it
-- Prevents dropping a folder into itself
-
-**2. Update `DocumentsGallery.tsx`**
-
-- Add `activeDragType` state to track whether dragging a document or folder
-- Update `handleDragEnd` to handle folder moves:
-  - Folder dropped on another folder → Update `parent_id`
-  - Folder dropped on root → Set `parent_id` to null
-- Update navigation to support breadcrumb trail
-- Replace `DroppableFolder` with `DraggableDroppableFolder`
-
-**3. Update `FolderTargetBar.tsx`**
-
-- Filter out the currently dragged folder from targets
-- Show parent folder as a target when inside nested folder
-- Prevent circular references (can't drop folder into its own child)
-
-**4. Add Breadcrumb Navigation**
-
-When inside a nested folder, show a breadcrumb trail:
-
-```text
-Documents > Warranties > Foundation  [Back]
-```
-
----
-
-### Updated Folder Interface
+1. **Change collision detection from `closestCenter` to `rectIntersection`:**
 
 ```typescript
-interface DocumentFolder {
-  id: string;
-  project_id: string;
-  name: string;
-  color: string | null;
-  parent_id: string | null;  // NEW
-  created_at: string;
-  updated_at: string;
-}
+import { 
+  DndContext, 
+  DragEndEvent, 
+  DragOverlay, 
+  DragStartEvent,
+  rectIntersection,  // ← Use this instead of closestCenter
+  useSensor,
+  useSensors,
+  PointerSensor
+} from '@dnd-kit/core';
 ```
 
----
+Then in the DndContext:
 
-### Drag-and-Drop Logic
-
-**`handleDragEnd` updated flow:**
-
-```text
-1. Get active item (document or folder)
-2. Get drop target (folder, root, or nothing)
-3. Validate:
-   - Can't drop folder into itself
-   - Can't drop folder into its own descendant
-4. Update database:
-   - Document → folder: Update document.folder_id
-   - Folder → folder: Update folder.parent_id
-   - Either → root: Set folder_id/parent_id to null
-5. Refresh data
+```typescript
+<DndContext 
+  sensors={sensors}
+  onDragStart={handleDragStart}
+  onDragEnd={handleDragEnd}
+  collisionDetection={rectIntersection}  // ← Changed
+>
 ```
 
----
+### Why This Works
 
-### Visual Improvements for Modern Feel
+| Algorithm | Best For | How It Works |
+|-----------|----------|--------------|
+| `closestCenter` | Sortable lists | Picks target with center closest to pointer |
+| `rectIntersection` | **Drop into containers** | Picks target that overlaps with dragged item |
+| `pointerWithin` | Small precise targets | Pointer must be inside target |
 
-**Drag Overlay:**
-- Smooth transform with `transition: transform 0.15s ease`
-- Subtle shadow elevation when lifted
-- Slight rotation (3deg) to indicate movement
-
-**Drop Zones:**
-- Scale up slightly (105%) when hovered
-- Ring highlight with primary color
-- Smooth fade-in for target indicators
-
-**Folder Cards:**
-- Cursor changes to `grab` on hover, `grabbing` while dragging
-- Subtle bounce animation when item is dropped
+Since folder cards are "containers" that should receive items when you drag over them, `rectIntersection` is the correct choice.
 
 ---
 
-### Files to Create/Modify
+### Files to Modify
 
-| File | Action | Changes |
-|------|--------|---------|
-| Database migration | Create | Add `parent_id` column to `document_folders` |
-| `DraggableDroppableFolder.tsx` | Create | Combined draggable + droppable folder component |
-| `DocumentsGallery.tsx` | Modify | Handle folder dragging, breadcrumbs, updated drag logic |
-| `FolderTargetBar.tsx` | Modify | Support folder-as-drag-item, prevent circular drops |
-| `DroppableFolder.tsx` | Delete | Replaced by DraggableDroppableFolder |
+| File | Change |
+|------|--------|
+| `src/components/project/DocumentsGallery.tsx` | Replace `closestCenter` with `rectIntersection` import and usage |
 
 ---
 
-### Expected User Experience
+### Expected Behavior After Fix
 
 | Action | Result |
 |--------|--------|
-| Drag PDF onto folder card | Document moves into that folder |
-| Drag folder onto another folder | Folder becomes nested inside target |
-| Drag folder to Root chip | Folder moves to root level |
-| Click folder | Navigate into it, breadcrumb updates |
-| Click breadcrumb segment | Navigate to that level |
-| Drag folder into itself | Blocked (no action) |
+| Drag PDF over folder card | Folder highlights, PDF moves in on release |
+| Drag folder over another folder | Target folder highlights, folder nests on release |
+| Drag to small chip targets | Still works (chips are also detected via intersection) |
 
