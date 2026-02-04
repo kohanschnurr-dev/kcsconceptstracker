@@ -8,8 +8,7 @@ import {
   Download, 
   Calendar,
   Upload,
-  HardDrive,
-  GripVertical
+  HardDrive
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -109,67 +108,60 @@ export function DraggableDocumentCard({
     <div
       ref={setNodeRef}
       style={style}
+      {...listeners}
+      {...attributes}
+      onClick={() => {
+        if (!isDragging) {
+          onSelect();
+        }
+      }}
       className={cn(
         "group relative cursor-pointer rounded-xl border border-border/30 bg-card hover:border-primary/50 hover:shadow-lg transition-all overflow-hidden",
         isDragging && "shadow-2xl ring-2 ring-primary"
       )}
     >
-      {/* Drag Handle */}
-      <div 
-        {...listeners} 
-        {...attributes}
-        className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10"
-      >
-        <div className="p-1 rounded bg-background/80 backdrop-blur-sm">
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </div>
+      {/* File Icon Area */}
+      <div className={cn("flex flex-col items-center justify-center py-6 px-4", fileInfo.bg)}>
+        <IconComponent className={cn("h-12 w-12", fileInfo.color)} />
+        <span className={cn("text-xs font-bold mt-1 uppercase", fileInfo.color)}>
+          .{fileExt}
+        </span>
       </div>
 
-      {/* Click area for opening preview */}
-      <div onClick={onSelect}>
-        {/* File Icon Area */}
-        <div className={cn("flex flex-col items-center justify-center py-6 px-4", fileInfo.bg)}>
-          <IconComponent className={cn("h-12 w-12", fileInfo.color)} />
-          <span className={cn("text-xs font-bold mt-1 uppercase", fileInfo.color)}>
-            .{fileExt}
-          </span>
-        </div>
+      {/* Info Area */}
+      <div className="p-3 space-y-2">
+        {/* File Name */}
+        <p className="font-medium text-sm truncate" title={doc.file_name}>
+          {doc.file_name}
+        </p>
 
-        {/* Info Area */}
-        <div className="p-3 space-y-2">
-          {/* File Name */}
-          <p className="font-medium text-sm truncate" title={doc.file_name}>
-            {doc.file_name}
-          </p>
+        {/* Category Badge */}
+        <Badge variant="secondary" className="text-xs">
+          {getCategoryLabel(doc.category)}
+        </Badge>
 
-          {/* Category Badge */}
-          <Badge variant="secondary" className="text-xs">
-            {getCategoryLabel(doc.category)}
-          </Badge>
-
-          {/* Metadata */}
-          <div className="text-xs text-muted-foreground space-y-1">
-            <div className="flex items-center gap-1">
-              <Calendar className="h-3 w-3 shrink-0" />
-              <span className="truncate">{doc.document_date ? formatDate(doc.document_date) : 'No date'}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Upload className="h-3 w-3 shrink-0" />
-              <span className="truncate">{getRelativeTime(doc.created_at)}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <HardDrive className="h-3 w-3 shrink-0" />
-              <span>{formatFileSize(doc.file_size)}</span>
-            </div>
+        {/* Metadata */}
+        <div className="text-xs text-muted-foreground space-y-1">
+          <div className="flex items-center gap-1">
+            <Calendar className="h-3 w-3 shrink-0" />
+            <span className="truncate">{doc.document_date ? formatDate(doc.document_date) : 'No date'}</span>
           </div>
-
-          {/* Notes Preview */}
-          {doc.notes && (
-            <p className="text-xs text-muted-foreground italic line-clamp-2 border-t border-border/30 pt-2 mt-2">
-              "{doc.notes}"
-            </p>
-          )}
+          <div className="flex items-center gap-1">
+            <Upload className="h-3 w-3 shrink-0" />
+            <span className="truncate">{getRelativeTime(doc.created_at)}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <HardDrive className="h-3 w-3 shrink-0" />
+            <span>{formatFileSize(doc.file_size)}</span>
+          </div>
         </div>
+
+        {/* Notes Preview */}
+        {doc.notes && (
+          <p className="text-xs text-muted-foreground italic line-clamp-2 border-t border-border/30 pt-2 mt-2">
+            "{doc.notes}"
+          </p>
+        )}
       </div>
 
       {/* Hover Actions */}
@@ -178,7 +170,10 @@ export function DraggableDocumentCard({
           size="icon" 
           variant="ghost" 
           className="h-7 w-7 bg-background/80 backdrop-blur-sm"
-          onClick={onDownload}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDownload(e);
+          }}
         >
           <Download className="h-3.5 w-3.5" />
         </Button>
