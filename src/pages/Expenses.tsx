@@ -418,117 +418,102 @@ export default function Expenses() {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-4">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search vendor, amount, project..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="All Projects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Projects</SelectItem>
-              {projects.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px] overflow-y-auto">
-              <SelectItem value="all">All Categories</SelectItem>
-              {BUDGET_CATEGORIES.map((cat) => (
-                <SelectItem key={cat.value} value={cat.value}>
-                  {cat.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2 min-w-[180px] justify-start">
-                <Calendar className="h-4 w-4" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <span>{format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}</span>
-                  ) : (
-                    <span>{format(dateRange.from, 'MMM d, yyyy')}</span>
-                  )
-                ) : (
-                  <span>Date Range</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent
-                mode="range"
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={1}
-              />
-              {dateRange && (
-                <div className="p-2 border-t">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => setDateRange(undefined)}
-                  >
-                    Clear dates
-                  </Button>
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
-        </div>
-
         {/* QuickBooks Integration */}
         <QuickBooksIntegration projects={projects} onExpenseImported={fetchData} />
-
-        {/* Summary */}
-        <div className="glass-card p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Receipt className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">
-                {filteredExpenses.length} expenses
-              </p>
-              <p className="text-xl font-semibold font-mono">
-                {formatCurrency(totalExpenses)}
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* Expenses Table */}
         <Collapsible open={expensesTableOpen} onOpenChange={setExpensesTableOpen}>
           <div className="glass-card overflow-hidden">
-            <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/20 transition-colors border-b border-border/30">
-                <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3 p-4 border-b border-border/30">
+              {/* Toggle */}
+              <CollapsibleTrigger asChild>
+                <div className="flex items-center gap-2 cursor-pointer hover:text-foreground/80 transition-colors">
                   <ChevronDown className={`h-4 w-4 transition-transform ${expensesTableOpen ? '' : '-rotate-90'}`} />
-                  <span className="font-medium">Expenses Table</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <span>{filteredExpenses.length} expenses</span>
-                  <span>•</span>
-                  <span className="font-mono">{formatCurrency(totalExpenses)}</span>
+              </CollapsibleTrigger>
+              
+              {/* Filters - prevent toggle on click */}
+              <div className="flex flex-wrap items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
+                <div className="relative min-w-[180px] max-w-[240px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 h-9"
+                  />
                 </div>
+                <Select value={projectFilter} onValueChange={setProjectFilter}>
+                  <SelectTrigger className="w-[140px] h-9">
+                    <SelectValue placeholder="All Projects" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-[140px] h-9">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px] overflow-y-auto">
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {BUDGET_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 h-9">
+                      <Calendar className="h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <span>{format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}</span>
+                        ) : (
+                          <span>{format(dateRange.from, 'MMM d')}</span>
+                        )
+                      ) : (
+                        <span>Date Range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={1}
+                    />
+                    {dateRange && (
+                      <div className="p-2 border-t">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => setDateRange(undefined)}
+                        >
+                          Clear dates
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
               </div>
-            </CollapsibleTrigger>
+              
+              {/* Summary */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                <span>{filteredExpenses.length} expenses</span>
+                <span>•</span>
+                <span className="font-mono font-medium">{formatCurrency(totalExpenses)}</span>
+              </div>
+            </div>
             
             <CollapsibleContent>
               <div className="overflow-x-auto">
