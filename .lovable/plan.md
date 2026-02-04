@@ -1,83 +1,92 @@
 
-## Plan: Force Download Instead of Opening Receipt in New Tab
+## Plan: Move Filters into Expenses Table Header
 
-### Problem
-When clicking the paperclip icon to view receipts, the file opens in a new browser tab which can trigger ad-blocker errors. The user wants the file to download directly instead.
+### Current Layout
+1. Page header with title + Export/Add buttons
+2. Standalone filters section (search, project, category, date range)
+3. QuickBooks integration
+4. Summary card (expense count + total)
+5. Collapsible Expenses Table
 
-### Solution
-Change the `handleViewReceipt` function in `src/pages/Expenses.tsx` to trigger a file download instead of opening in a new tab. This is done by:
-1. Creating a temporary anchor (`<a>`) element
-2. Setting the `download` attribute with the filename
-3. Programmatically clicking it to trigger the browser's download behavior
+### New Layout
+1. Page header with title + Export/Add buttons
+2. QuickBooks integration
+3. Collapsible Expenses Table with **filters integrated into the header bar**
+   - Search input + Project + Category + Date Range filters in header
+   - Count and total moved to the right side of the filters
+
+The summary card will be removed since that information is already shown in the table header bar.
+
+---
+
+### Visual Layout (Header Bar)
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ ▼ [🔍 Search vendor, amount...] [All Projects ▼] [All Categories ▼] [📅 Date Range]  50 expenses • $54,901.34 │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ### Technical Changes
 
 **File: `src/pages/Expenses.tsx`**
 
-Update the `handleViewReceipt` function to use the download approach:
+1. **Remove** the standalone filters section (lines 421-494)
+2. **Remove** the summary card section (lines 500-514)
+3. **Update** the Collapsible header to include:
+   - Search input (compact)
+   - Project dropdown
+   - Category dropdown  
+   - Date range picker
+   - Expense count and total on the right
 
-```typescript
-const handleViewReceipt = async (receiptUrl: string, e: React.MouseEvent) => {
-  e.stopPropagation();
+The header will use `onClick={(e) => e.stopPropagation()}` on filter controls to prevent the collapsible from toggling when interacting with filters.
+
+**Updated Header Structure:**
+```tsx
+<div className="flex items-center justify-between p-4 border-b border-border/30">
+  {/* Left side - Toggle + Label */}
+  <CollapsibleTrigger asChild>
+    <div className="flex items-center gap-2 cursor-pointer">
+      <ChevronDown className={...} />
+      <span className="font-medium">Expenses</span>
+    </div>
+  </CollapsibleTrigger>
   
-  try {
-    const urlParts = receiptUrl.split('/storage/v1/object/public/');
-    if (urlParts.length !== 2) {
-      // Fallback - trigger download via anchor
-      const link = document.createElement('a');
-      link.href = receiptUrl;
-      link.download = 'receipt';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
-    }
-    
-    const [bucketName, ...pathParts] = urlParts[1].split('/');
-    const filePath = pathParts.join('/');
-    const fileName = pathParts[pathParts.length - 1] || 'receipt';
-    
-    // Use Supabase SDK to download the file (bypasses ad blockers)
-    const { data, error } = await supabase.storage
-      .from(bucketName)
-      .download(filePath);
-    
-    if (error || !data) {
-      console.error('Failed to download receipt:', error);
-      return;
-    }
-    
-    // Create blob URL and trigger download
-    const blobUrl = URL.createObjectURL(data);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up blob URL
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-  } catch (error) {
-    console.error('Failed to download receipt:', error);
-  }
-};
+  {/* Center - Filters (click doesn't toggle collapsible) */}
+  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+    <Search input />
+    <Project select />
+    <Category select />
+    <Date range picker />
+  </div>
+  
+  {/* Right side - Summary */}
+  <div className="text-sm text-muted-foreground">
+    50 expenses • $54,901.34
+  </div>
+</div>
 ```
 
-### Key Changes
-| Before | After |
-|--------|-------|
-| `window.open(blobUrl, '_blank')` | Create `<a download>` element and click it |
-| Opens in new tab | Downloads file directly |
-| Subject to ad-blocker popup blocking | Uses native download behavior |
+---
+
+### Mobile Responsiveness
+On smaller screens, the filters will wrap naturally using `flex-wrap`. The date range picker will show abbreviated format.
+
+---
 
 ### Files to Modify
-| File | Change |
-|------|--------|
-| `src/pages/Expenses.tsx` | Update `handleViewReceipt` to trigger download instead of opening new tab |
 
-### Expected Behavior
-- Clicking the paperclip icon downloads the receipt file directly
-- No new tab opens
-- Bypasses ad-blocker issues completely
-- File saves with original filename
+| File | Changes |
+|------|---------|
+| `src/pages/Expenses.tsx` | Move filters into table header, remove standalone filter section and summary card |
+
+---
+
+### Result
+- Filters are now directly above the expense table
+- Users see the correlation between filters and the table content
+- Cleaner layout with less vertical space used
+- Summary info stays visible in the header even when scrolling through the table
