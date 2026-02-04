@@ -104,8 +104,14 @@ export function GroupedExpenseDetailModal({
       }
       
       const blobUrl = URL.createObjectURL(data);
-      window.open(blobUrl, '_blank');
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      const link = document.createElement('a');
+      const fileName = filePath.split('/').pop() || 'receipt';
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (error) {
       window.open(receiptUrl, '_blank');
     }
