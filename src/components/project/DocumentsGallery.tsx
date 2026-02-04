@@ -16,7 +16,7 @@ import {
   DragEndEvent, 
   DragOverlay, 
   DragStartEvent,
-  closestCenter,
+  rectIntersection,
   useSensor,
   useSensors,
   PointerSensor
@@ -570,7 +570,7 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      collisionDetection={closestCenter}
+      collisionDetection={rectIntersection}
     >
       <Card className="glass-card">
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
