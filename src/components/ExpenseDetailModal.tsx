@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, FileText, Paperclip, ExternalLink, Trash2, Save, RotateCcw, AlertTriangle, Loader2 } from 'lucide-react';
+import { X, Upload, FileText, Paperclip, Download, Trash2, Save, RotateCcw, AlertTriangle, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -147,6 +147,47 @@ export function ExpenseDetailModal({
   const handleRemoveReceipt = () => {
     setReceiptFile(null);
     setReceiptUrl(null);
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!receiptUrl) return;
+    try {
+      const urlParts = receiptUrl.split('/storage/v1/object/public/');
+      if (urlParts.length !== 2) {
+        // Fallback for external URLs - trigger download
+        const link = document.createElement('a');
+        link.href = receiptUrl;
+        link.download = 'receipt';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+      
+      const [bucketName, ...pathParts] = urlParts[1].split('/');
+      const filePath = pathParts.join('/');
+      
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .download(filePath);
+      
+      if (error || !data) {
+        toast({ title: 'Download failed', variant: 'destructive' });
+        return;
+      }
+      
+      const blobUrl = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filePath.split('/').pop() || 'receipt';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({ title: 'Download failed', variant: 'destructive' });
+    }
   };
 
   const handleSendBackToQueue = async () => {
@@ -465,14 +506,13 @@ export function ExpenseDetailModal({
                 <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
                   <Paperclip className="h-5 w-5 text-primary" />
                   <span className="text-sm flex-1">Receipt attached</span>
-                  <a
-                    href={receiptUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={handleDownloadReceipt}
                     className="text-primary hover:text-primary/80"
                   >
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+                    <Download className="h-4 w-4" />
+                  </button>
                   <Button
                     type="button"
                     variant="ghost"
