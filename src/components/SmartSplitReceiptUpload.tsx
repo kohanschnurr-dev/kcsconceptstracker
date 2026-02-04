@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon } from 'lucide-react';
+import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2 } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { BUDGET_CATEGORIES, type BudgetCategory } from '@/types';
+import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES, type BudgetCategory } from '@/types';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 
 interface SimpleProject {
   id: string;
@@ -71,6 +72,7 @@ interface SmartSplitReceiptUploadProps {
 }
 
 export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [], onReceiptProcessed, onRefreshQBExpenses }: SmartSplitReceiptUploadProps) {
+  const { companyName } = useCompanySettings();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
@@ -86,6 +88,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
   const [isImporting, setIsImporting] = useState(false);
+  const [assignmentType, setAssignmentType] = useState<'project' | 'business'>('project');
   const [uploadProgress, setUploadProgress] = useState<{
     current: number;
     total: number;
@@ -232,13 +235,26 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     return found?.label || category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ');
   };
 
-  // Category options for the dropdown (sorted A-Z) - using BUDGET_CATEGORIES values
-  const categoryOptions = [
+  // Category options for the dropdown - dynamic based on assignment type
+  const projectCategoryOptions = [
     'appliances', 'bathroom', 'cabinets', 'carpentry', 'countertops',
     'demolition', 'doors', 'drywall', 'electrical', 'flooring',
     'hardware', 'hvac', 'kitchen', 'landscaping', 'light_fixtures',
     'misc', 'painting', 'plumbing', 'roofing', 'windows'
   ];
+  
+  const businessCategoryOptions = BUSINESS_EXPENSE_CATEGORIES.map(c => c.value);
+  
+  const categoryOptions = assignmentType === 'project' ? projectCategoryOptions : businessCategoryOptions;
+  
+  // Get category label - check both project and business categories
+  const getCategoryLabelDynamic = (category: string) => {
+    const projectCat = BUDGET_CATEGORIES.find(c => c.value === category);
+    if (projectCat) return projectCat.label;
+    const businessCat = BUSINESS_EXPENSE_CATEGORIES.find(c => c.value === category);
+    if (businessCat) return businessCat.label;
+    return category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ');
+  };
 
   // Fetch pending receipts on mount
   const fetchPendingReceipts = useCallback(async () => {
@@ -566,7 +582,9 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
   // Finalize the import - create expense records split by category
   const finalizeImport = async () => {
-    if (!selectedMatch || !selectedProject) return;
+    // Validate: need project for project assignment, or just proceed for business
+    if (!selectedMatch) return;
+    if (assignmentType === 'project' && !selectedProject) return;
 
     setIsImporting(true);
     
@@ -608,157 +626,202 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       const originalQbExpenseId = selectedMatch.qbExpense.id;
       const categoryKeys = Object.keys(categoryGroups);
       
-      // Create expense record for each category
-      for (let i = 0; i < categoryKeys.length; i++) {
-        const category = categoryKeys[i];
-        const group = categoryGroups[category];
-
-        // Calculate this category's proportion of the receipt subtotal
-        const proportion = subtotal > 0 ? group.total / subtotal : 0;
-        
-        // Scale to the actual QB transaction amount (which already includes tax)
+      // BUSINESS ASSIGNMENT - Insert into business_expenses table
+      if (assignmentType === 'business') {
         const qbTransactionAmount = selectedMatch.qbExpense.amount;
-        const categoryAmount = Math.round(qbTransactionAmount * proportion * 100) / 100;
-
-        // Build notes from items in this category (using edited quantities)
-        const itemNotes = group.items
-          .map(item => `${item.item_name} (${item.editedQuantity}x)`)
-          .join(', ');
-
-        // Find or create project_category
-        const { data: existingCategory } = await supabase
-          .from('project_categories')
-          .select('id')
-          .eq('project_id', selectedProject)
-          .eq('category', category as any)
-          .maybeSingle();
-
-        let categoryId: string;
         
-        if (existingCategory) {
-          categoryId = existingCategory.id;
-        } else {
-          const { data: newCategory, error: categoryError } = await supabase
-            .from('project_categories')
+        for (const category of categoryKeys) {
+          const group = categoryGroups[category];
+          const proportion = subtotal > 0 ? group.total / subtotal : 0;
+          const categoryAmount = Math.round(qbTransactionAmount * proportion * 100) / 100;
+          
+          const itemNotes = group.items
+            .map(item => `${item.item_name} (${item.editedQuantity}x)`)
+            .join(', ');
+
+          // Insert into business_expenses
+          const { error: insertError } = await supabase
+            .from('business_expenses')
             .insert({
-              project_id: selectedProject,
-              category: category as any,
-              estimated_budget: 0,
-            })
-            .select('id')
-            .single();
-
-          if (categoryError) throw categoryError;
-          categoryId = newCategory.id;
-        }
-
-        // First category updates original QB expense with _split_ suffix, rest use check-then-upsert
-        if (i === 0) {
-          const splitQbId = `${originalQbId}_split_${category}`;
-          console.log('Updating original QB expense with split suffix:', {
-            id: originalQbExpenseId,
-            newQbId: splitQbId,
-            newAmount: categoryAmount,
-            category,
-            notes: itemNotes.slice(0, 50) + '...',
-          });
-          
-          // First, preserve the original amount before we overwrite it (only if not already set)
-          await supabase
-            .from('quickbooks_expenses')
-            .update({ original_amount: qbTransactionAmount })
-            .eq('id', originalQbExpenseId)
-            .is('original_amount', null);
-          
-          const { data: updateResult, error: qbError } = await supabase
-            .from('quickbooks_expenses')
-            .update({ 
-              qb_id: splitQbId, // Add split suffix to first category too
-              is_imported: true,
+              user_id: user.id,
+              category: category,
               amount: categoryAmount,
+              date: selectedMatch.qbExpense.date,
+              vendor_name: selectedMatch.qbExpense.vendor_name,
+              description: selectedMatch.qbExpense.description || selectedMatch.receipt.vendor_name,
               notes: itemNotes,
               receipt_url: selectedMatch.receipt.receipt_image_url || null,
-              project_id: selectedProject,
-              category_id: categoryId,
-              expense_type: expenseType,
-              payment_method: selectedMatch.qbExpense.payment_method || null,
-            })
-            .eq('id', originalQbExpenseId)
-            .select('id, amount');
+              payment_method: selectedMatch.qbExpense.payment_method as any || null,
+              includes_tax: true, // Amount already includes proportional tax
+            });
 
-          if (qbError) {
-            console.error('Failed to update original QB expense:', qbError);
-            throw qbError;
-          }
-          
-          console.log('Original QB expense updated:', updateResult);
-        } else {
-          // Check if this split already exists (prevents duplicate key error)
-          const splitQbId = `${originalQbId}_split_${category}`;
-          const { data: existingSplit } = await supabase
-            .from('quickbooks_expenses')
+          if (insertError) throw insertError;
+        }
+
+        // Mark original QB expense as imported (audit trail)
+        await supabase
+          .from('quickbooks_expenses')
+          .update({ is_imported: true })
+          .eq('id', originalQbExpenseId);
+
+        // Mark receipt as imported
+        const { error: receiptError } = await supabase
+          .from('pending_receipts')
+          .update({ status: 'imported' })
+          .eq('id', selectedMatch.receipt.id);
+
+        if (receiptError) throw receiptError;
+
+        toast({
+          title: 'Business expenses imported!',
+          description: `Split into ${categoryKeys.length} ${categoryKeys.length === 1 ? 'category' : 'categories'} for ${companyName}.`,
+        });
+      } else {
+        // PROJECT ASSIGNMENT - Existing flow
+        for (let i = 0; i < categoryKeys.length; i++) {
+          const category = categoryKeys[i];
+          const group = categoryGroups[category];
+
+          const proportion = subtotal > 0 ? group.total / subtotal : 0;
+          const qbTransactionAmount = selectedMatch.qbExpense.amount;
+          const categoryAmount = Math.round(qbTransactionAmount * proportion * 100) / 100;
+
+          const itemNotes = group.items
+            .map(item => `${item.item_name} (${item.editedQuantity}x)`)
+            .join(', ');
+
+          // Find or create project_category
+          const { data: existingCategory } = await supabase
+            .from('project_categories')
             .select('id')
-            .eq('qb_id', splitQbId)
+            .eq('project_id', selectedProject)
+            .eq('category', category as any)
             .maybeSingle();
 
-          if (existingSplit) {
-            // Update existing split record
-            const { error: updateError } = await supabase
-              .from('quickbooks_expenses')
-              .update({
-                amount: categoryAmount,
-                category_id: categoryId,
+          let categoryId: string;
+          
+          if (existingCategory) {
+            categoryId = existingCategory.id;
+          } else {
+            const { data: newCategory, error: categoryError } = await supabase
+              .from('project_categories')
+              .insert({
                 project_id: selectedProject,
-                expense_type: expenseType,
+                category: category as any,
+                estimated_budget: 0,
+              })
+              .select('id')
+              .single();
+
+            if (categoryError) throw categoryError;
+            categoryId = newCategory.id;
+          }
+
+          // First category updates original QB expense with _split_ suffix, rest use check-then-upsert
+          if (i === 0) {
+            const splitQbId = `${originalQbId}_split_${category}`;
+            console.log('Updating original QB expense with split suffix:', {
+              id: originalQbExpenseId,
+              newQbId: splitQbId,
+              newAmount: categoryAmount,
+              category,
+              notes: itemNotes.slice(0, 50) + '...',
+            });
+            
+            await supabase
+              .from('quickbooks_expenses')
+              .update({ original_amount: qbTransactionAmount })
+              .eq('id', originalQbExpenseId)
+              .is('original_amount', null);
+            
+            const { data: updateResult, error: qbError } = await supabase
+              .from('quickbooks_expenses')
+              .update({ 
+                qb_id: splitQbId,
+                is_imported: true,
+                amount: categoryAmount,
                 notes: itemNotes,
                 receipt_url: selectedMatch.receipt.receipt_image_url || null,
+                project_id: selectedProject,
+                category_id: categoryId,
+                expense_type: expenseType,
                 payment_method: selectedMatch.qbExpense.payment_method || null,
               })
-              .eq('id', existingSplit.id);
+              .eq('id', originalQbExpenseId)
+              .select('id, amount');
 
-            if (updateError) throw updateError;
+            if (qbError) {
+              console.error('Failed to update original QB expense:', qbError);
+              throw qbError;
+            }
+            
+            console.log('Original QB expense updated:', updateResult);
           } else {
-            // Insert new split record
-            const { error: insertError } = await supabase
+            const splitQbId = `${originalQbId}_split_${category}`;
+            const { data: existingSplit } = await supabase
               .from('quickbooks_expenses')
-              .insert({
-                user_id: user.id,
-                qb_id: splitQbId,
-                vendor_name: selectedMatch.qbExpense.vendor_name,
-                amount: categoryAmount,
-                date: selectedMatch.qbExpense.date,
-                description: selectedMatch.qbExpense.description,
-                is_imported: true,
-                project_id: selectedProject,
-                category_id: categoryId,
-                expense_type: expenseType,
-                notes: itemNotes,
-                receipt_url: selectedMatch.receipt.receipt_image_url || null,
-                payment_method: selectedMatch.qbExpense.payment_method || null,
-              });
+              .select('id')
+              .eq('qb_id', splitQbId)
+              .maybeSingle();
 
-            if (insertError) throw insertError;
+            if (existingSplit) {
+              const { error: updateError } = await supabase
+                .from('quickbooks_expenses')
+                .update({
+                  amount: categoryAmount,
+                  category_id: categoryId,
+                  project_id: selectedProject,
+                  expense_type: expenseType,
+                  notes: itemNotes,
+                  receipt_url: selectedMatch.receipt.receipt_image_url || null,
+                  payment_method: selectedMatch.qbExpense.payment_method || null,
+                })
+                .eq('id', existingSplit.id);
+
+              if (updateError) throw updateError;
+            } else {
+              const { error: insertError } = await supabase
+                .from('quickbooks_expenses')
+                .insert({
+                  user_id: user.id,
+                  qb_id: splitQbId,
+                  vendor_name: selectedMatch.qbExpense.vendor_name,
+                  amount: categoryAmount,
+                  date: selectedMatch.qbExpense.date,
+                  description: selectedMatch.qbExpense.description,
+                  is_imported: true,
+                  project_id: selectedProject,
+                  category_id: categoryId,
+                  expense_type: expenseType,
+                  notes: itemNotes,
+                  receipt_url: selectedMatch.receipt.receipt_image_url || null,
+                  payment_method: selectedMatch.qbExpense.payment_method || null,
+                });
+
+              if (insertError) throw insertError;
+            }
           }
         }
+
+        // Mark receipt as imported
+        const { error: receiptError } = await supabase
+          .from('pending_receipts')
+          .update({ status: 'imported' })
+          .eq('id', selectedMatch.receipt.id);
+
+        if (receiptError) throw receiptError;
+
+        toast({
+          title: 'Expenses imported!',
+          description: `Split into ${categoryKeys.length} ${categoryKeys.length === 1 ? 'category' : 'categories'} for ${selectedMatch.receipt.vendor_name}.`,
+        });
       }
-
-      // Mark receipt as imported
-      const { error: receiptError } = await supabase
-        .from('pending_receipts')
-        .update({ status: 'imported' })
-        .eq('id', selectedMatch.receipt.id);
-
-      if (receiptError) throw receiptError;
-
-      toast({
-        title: 'Expenses imported!',
-        description: `Split into ${categoryKeys.length} ${categoryKeys.length === 1 ? 'category' : 'categories'} for ${selectedMatch.receipt.vendor_name}.`,
-      });
 
       setShowMatchModal(false);
       setSelectedMatch(null);
       setSelectedProject('');
       setExpenseType('product');
+      setAssignmentType('project');
       
       // Refresh both lists
       await fetchPendingReceipts();
@@ -1105,13 +1168,13 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                             value={editableCategories[idx] || item.suggested_category || 'misc'}
                             onValueChange={(value) => setEditableCategories(prev => ({ ...prev, [idx]: value }))}
                           >
-                            <SelectTrigger className="w-[130px] h-7 text-xs">
-                              <SelectValue>{getCategoryLabel(editableCategories[idx] || item.suggested_category || 'misc')}</SelectValue>
+                            <SelectTrigger className="w-[140px] h-7 text-xs">
+                              <SelectValue>{getCategoryLabelDynamic(editableCategories[idx] || item.suggested_category || 'misc')}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                               {categoryOptions.map((cat) => (
                                 <SelectItem key={cat} value={cat} className="text-xs">
-                                  {getCategoryLabel(cat)}
+                                  {getCategoryLabelDynamic(cat)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1179,37 +1242,61 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 </div>
               )}
 
-              {/* Project Selection & Type Toggle */}
+              {/* Assignment Type & Project Selection */}
               <div className="space-y-4 pt-4 border-t border-border">
-                <h4 className="text-sm font-medium">Assign to Project</h4>
+                <h4 className="text-sm font-medium">Assign to</h4>
                 
-                <div className="space-y-3">
-                  <ProjectAutocomplete
-                    projects={projects}
-                    value={selectedProject}
-                    onSelect={setSelectedProject}
-                    placeholder="Search projects..."
-                  />
+                <ToggleGroup
+                  type="single"
+                  value={assignmentType}
+                  onValueChange={(value) => value && setAssignmentType(value as 'project' | 'business')}
+                  className="justify-start"
+                >
+                  <ToggleGroupItem value="project" size="sm" className="gap-1">
+                    <Home className="h-3 w-3" />
+                    Project
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="business" size="sm" className="gap-1">
+                    <Building2 className="h-3 w-3" />
+                    {companyName}
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                
+                {assignmentType === 'project' && (
+                  <div className="space-y-3">
+                    <ProjectAutocomplete
+                      projects={projects}
+                      value={selectedProject}
+                      onSelect={setSelectedProject}
+                      placeholder="Search projects..."
+                    />
 
-                  <div className="flex items-center gap-3">
-                    <Label className="text-sm text-muted-foreground">Type:</Label>
-                    <ToggleGroup
-                      type="single"
-                      value={expenseType}
-                      onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')}
-                      className="justify-start"
-                    >
-                      <ToggleGroupItem value="product" size="sm" className="gap-1">
-                        <Package className="h-3 w-3" />
-                        Product
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="labor" size="sm" className="gap-1">
-                        <Wrench className="h-3 w-3" />
-                        Labor
-                      </ToggleGroupItem>
-                    </ToggleGroup>
+                    <div className="flex items-center gap-3">
+                      <Label className="text-sm text-muted-foreground">Type:</Label>
+                      <ToggleGroup
+                        type="single"
+                        value={expenseType}
+                        onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')}
+                        className="justify-start"
+                      >
+                        <ToggleGroupItem value="product" size="sm" className="gap-1">
+                          <Package className="h-3 w-3" />
+                          Product
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="labor" size="sm" className="gap-1">
+                          <Wrench className="h-3 w-3" />
+                          Labor
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                    </div>
                   </div>
-                </div>
+                )}
+                
+                {assignmentType === 'business' && (
+                  <div className="text-sm text-muted-foreground p-3 rounded-md bg-muted/30">
+                    Expense will be added to <span className="font-medium text-foreground">{companyName}</span> business expenses
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1220,7 +1307,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
             </Button>
             <Button 
               onClick={finalizeImport} 
-              disabled={!selectedProject || isImporting}
+              disabled={(assignmentType === 'project' && !selectedProject) || isImporting}
               className="gap-2"
             >
               {isImporting ? (
@@ -1228,7 +1315,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
               ) : (
                 <Check className="h-4 w-4" />
               )}
-              Match & Import
+              {assignmentType === 'business' ? 'Import to Business' : 'Match & Import'}
             </Button>
           </DialogFooter>
         </DialogContent>
