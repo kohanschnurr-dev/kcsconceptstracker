@@ -5,13 +5,14 @@ import {
   Zap, Droplets, PaintBucket, 
   Home, Trees, Package,
   ChevronRight, ChevronsUpDown, ChevronsDownUp,
-  Settings
+  Settings, X, Plus
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 interface CategoryPreset {
@@ -76,6 +77,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
   const [presets, setPresets] = useState<CategoryPreset[]>(DEFAULT_CATEGORY_PRESETS);
   const [editingPresets, setEditingPresets] = useState<CategoryPreset[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [newCategoryValue, setNewCategoryValue] = useState<string>('');
   const prevSqftRef = useRef<string>(sqft);
 
   const allGroupNames = CATEGORY_GROUPS.map(g => g.name);
@@ -123,6 +125,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
 
   const handleOpenEditDialog = () => {
     setEditingPresets([...presets]);
+    setNewCategoryValue('');
     setIsEditDialogOpen(true);
   };
 
@@ -141,6 +144,30 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
     setEditingPresets(prev => prev.map((p, i) => 
       i === index ? { ...p, pricePerSqft: value } : p
     ));
+  };
+
+  const removePreset = (index: number) => {
+    setEditingPresets(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addPreset = () => {
+    if (!newCategoryValue) return;
+    
+    // Check if already exists
+    if (editingPresets.some(p => p.category === newCategoryValue)) {
+      toast.error('Category already in presets');
+      return;
+    }
+    
+    const catInfo = BUDGET_CATEGORIES.find(c => c.value === newCategoryValue);
+    if (!catInfo) return;
+    
+    setEditingPresets(prev => [...prev, {
+      category: newCategoryValue,
+      label: catInfo.label,
+      pricePerSqft: 5.00, // Default rate
+    }]);
+    setNewCategoryValue('');
   };
 
   const getCategoryLabel = (categoryValue: string) => {
@@ -173,6 +200,11 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
 
   const sqftNum = parseFloat(sqft) || 0;
 
+  // Categories available to add (not already in presets)
+  const availableCategories = BUDGET_CATEGORIES.filter(
+    cat => !editingPresets.some(p => p.category === cat.value)
+  ).sort((a, b) => a.label.localeCompare(b.label));
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2 gap-4">
@@ -199,30 +231,33 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-4"
           >
             <Settings className="h-3.5 w-3.5" />
-            Edit Rates
+            Edit Presets
           </button>
         </div>
       </div>
 
       {/* Edit Presets Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Category Presets</DialogTitle>
             <DialogDescription>
-              Customize your $/sqft rates for quick budget calculations
+              Customize your $/sqft rates for quick budget calculations. Add or remove categories as needed.
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-[1fr,100px] gap-2 text-sm font-medium text-muted-foreground">
+            {/* Column headers */}
+            <div className="grid grid-cols-[1fr,100px,40px] gap-2 text-sm font-medium text-muted-foreground">
               <span>Category</span>
               <span>$/sqft</span>
+              <span></span>
             </div>
             
+            {/* Preset rows */}
             {editingPresets.map((preset, index) => (
-              <div key={preset.category} className="grid grid-cols-[1fr,100px] gap-2">
-                <span className="text-sm flex items-center">{preset.label}</span>
+              <div key={preset.category} className="grid grid-cols-[1fr,100px,40px] gap-2 items-center">
+                <span className="text-sm">{preset.label}</span>
                 <Input
                   type="number"
                   step="0.01"
@@ -231,8 +266,51 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
                   placeholder="$/sqft"
                   className="h-8"
                 />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => removePreset(index)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             ))}
+
+            {editingPresets.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No presets configured. Add categories below.
+              </p>
+            )}
+            
+            {/* Add new category */}
+            <div className="pt-2 border-t border-border/30">
+              <p className="text-sm font-medium text-muted-foreground mb-2">Add Category</p>
+              <div className="flex gap-2">
+                <Select value={newCategoryValue} onValueChange={setNewCategoryValue}>
+                  <SelectTrigger className="flex-1 h-9">
+                    <SelectValue placeholder="Select category..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[250px]">
+                    {availableCategories.map(cat => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={addPreset}
+                  disabled={!newCategoryValue}
+                  className="h-9"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+            </div>
           </div>
           
           <DialogFooter className="flex justify-between sm:justify-between">
