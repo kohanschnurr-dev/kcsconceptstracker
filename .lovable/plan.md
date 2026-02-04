@@ -1,156 +1,79 @@
 
 
-## Plan: Add Type-to-Search for Category Selection
+## Plan: Fix Calendar Card Click Events (Drag Blocking Issue)
 
-### Overview
-Replace the current standard `Select` dropdown for categories with a searchable `Command`+`Popover` component (same pattern as `ProjectAutocomplete`). This allows the user to type to filter categories instead of scrolling through the full list.
-
----
-
-### Current Behavior
-- Category dropdown is a standard Select with grouped options
-- User must scroll through all categories to find the one they want
-- No search/filter functionality
-
-### New Behavior
-- Category selector has a search input at the top
-- Typing filters categories in real-time (e.g., typing "dry" shows "Drywall")
-- Categories remain grouped by workflow phase
-- Color-coded dots and group labels are preserved
+### Problem
+When clicking on calendar event cards (like "Garage Install" or "For Lease Sign"), the click doesn't register because the drag-and-drop listeners (`{...listeners} {...attributes}`) are spread on the entire card wrapper. These listeners capture all pointer events for drag detection, which blocks the `onClick` from reaching the inner `DealCard` button.
 
 ---
 
-### UI Preview
+### Solution
+Use **dnd-kit's activator approach** with `useSensor` and `PointerSensor`. This requires a minimum drag distance (e.g., 8 pixels) before a drag starts. Simple clicks (no movement) will be allowed through to trigger `onClick`.
 
-```text
-┌──────────────────────────────────────┐
-│ 🔍 Type to search categories...      │
-├──────────────────────────────────────┤
-│ Acquisition/Admin (blue)             │
-│   ● Due Diligence                    │
-│   ● Underwriting                     │
-│   ...                                │
-│ Structural/Exterior (red)            │
-│   ● Demo                             │
-│   ● Foundation/Piers                 │
-│   ...                                │
-└──────────────────────────────────────┘
+This is the standard pattern for making click and drag work together with dnd-kit.
 
-User types "dry" →
+---
 
-┌──────────────────────────────────────┐
-│ 🔍 dry                               │
-├──────────────────────────────────────┤
-│ Interior Finishes (green)            │
-│   ✓ Drywall                          │
-└──────────────────────────────────────┘
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/calendar/MonthlyView.tsx` | Add `useSensors` with `PointerSensor` distance activation |
+| `src/components/calendar/WeeklyView.tsx` | Add `useSensors` with `PointerSensor` distance activation |
+
+---
+
+### Technical Implementation
+
+**1. Import `useSensor`, `useSensors`, and `PointerSensor` from dnd-kit:**
+
+```typescript
+import { 
+  DndContext, 
+  DragEndEvent, 
+  DragOverlay, 
+  useDraggable, 
+  useDroppable,
+  useSensor,
+  useSensors,
+  PointerSensor,
+} from '@dnd-kit/core';
+```
+
+**2. Configure sensors with activation distance in the view component:**
+
+```typescript
+const sensors = useSensors(
+  useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: 8, // Drag starts only after 8px movement
+    },
+  })
+);
+```
+
+**3. Pass sensors to DndContext:**
+
+```tsx
+<DndContext 
+  sensors={sensors}
+  onDragStart={handleDragStart} 
+  onDragEnd={handleDragEnd}
+>
 ```
 
 ---
 
-### File Changes
+### How It Works
 
-| File | Changes |
-|------|---------|
-| `src/components/calendar/NewEventModal.tsx` | Replace Select with Command+Popover searchable dropdown |
-
----
-
-### Technical Details
-
-**Key changes to NewEventModal.tsx:**
-
-1. **Add new imports:**
-   - `Check`, `ChevronsUpDown` from lucide-react
-   - `Command`, `CommandEmpty`, `CommandGroup`, `CommandInput`, `CommandItem`, `CommandList` from ui/command
-
-2. **Add search state:**
-   ```typescript
-   const [categoryOpen, setCategoryOpen] = useState(false);
-   const [categorySearch, setCategorySearch] = useState('');
-   ```
-
-3. **Add filter logic:**
-   ```typescript
-   const filteredCategories = useMemo(() => {
-     if (!categorySearch.trim()) {
-       return CALENDAR_CATEGORIES;
-     }
-     const query = categorySearch.toLowerCase().trim();
-     return CALENDAR_CATEGORIES.filter(cat =>
-       cat.label.toLowerCase().includes(query) ||
-       cat.groupLabel.toLowerCase().includes(query)
-     );
-   }, [categorySearch]);
-   
-   // Group the filtered categories
-   const filteredGrouped = useMemo(() => {
-     return filteredCategories.reduce((acc, cat) => {
-       if (!acc[cat.group]) acc[cat.group] = [];
-       acc[cat.group].push(cat);
-       return acc;
-     }, {} as Record<CategoryGroup, CalendarCategory[]>);
-   }, [filteredCategories]);
-   ```
-
-4. **Replace Select with Popover+Command:**
-   ```tsx
-   <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
-     <PopoverTrigger asChild>
-       <Button variant="outline" role="combobox" className="...">
-         {category ? getCategoryLabel(category) : 'Select category'}
-         <ChevronsUpDown className="ml-2 h-4 w-4" />
-       </Button>
-     </PopoverTrigger>
-     <PopoverContent className="... max-h-[300px]">
-       <Command shouldFilter={false}>
-         <CommandInput
-           placeholder="Type to search categories..."
-           value={categorySearch}
-           onValueChange={setCategorySearch}
-         />
-         <CommandList>
-           <CommandEmpty>No categories found</CommandEmpty>
-           {Object.entries(filteredGrouped).map(([groupKey, cats]) => (
-             <CommandGroup key={groupKey} heading={CATEGORY_GROUPS[groupKey].label}>
-               {cats.map((cat) => (
-                 <CommandItem
-                   key={cat.value}
-                   onSelect={() => {
-                     setCategory(cat.value);
-                     setCategoryOpen(false);
-                     setCategorySearch('');
-                   }}
-                 >
-                   <Check className={cn('mr-2', category === cat.value ? 'opacity-100' : 'opacity-0')} />
-                   <span className="w-2 h-2 rounded-full" style={{ ... }} />
-                   {cat.label}
-                 </CommandItem>
-               ))}
-             </CommandGroup>
-           ))}
-         </CommandList>
-       </Command>
-     </PopoverContent>
-   </Popover>
-   ```
+| User Action | Before (Broken) | After (Fixed) |
+|-------------|-----------------|---------------|
+| Click card | Drag listeners block click, nothing happens | Click fires, opens task detail panel |
+| Drag card | Drag starts immediately | Drag starts after 8px movement |
+| Tap on mobile | Same as click - blocked | Click fires normally |
 
 ---
 
-### Preserved Features
-- ✅ Color-coded dots for each category
-- ✅ Group headings (Acquisition/Admin, Structural/Exterior, etc.)
-- ✅ Color-coded group labels
-- ✅ Selected state border styling
-- ✅ Group label displayed under the dropdown when selected
-
----
-
-### Result
-
-| Before | After |
-|--------|-------|
-| Scroll through all ~30 categories | Type "tile" → instantly find "Tile" |
-| No filtering | Fuzzy match on category name AND group name |
-| Standard Select UI | Combobox with search input |
+### Why This Works
+The `activationConstraint: { distance: 8 }` tells dnd-kit to wait until the pointer moves 8 pixels before initiating a drag. If the user clicks and releases without moving (or moves less than 8px), it's treated as a click and the `onClick` handler fires normally.
 
