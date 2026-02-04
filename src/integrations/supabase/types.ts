@@ -284,6 +284,7 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          parent_id: string | null
           project_id: string
           updated_at: string | null
         }
@@ -292,6 +293,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          parent_id?: string | null
           project_id: string
           updated_at?: string | null
         }
@@ -300,10 +302,18 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          parent_id?: string | null
           project_id?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "document_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "document_folders_project_id_fkey"
             columns: ["project_id"]

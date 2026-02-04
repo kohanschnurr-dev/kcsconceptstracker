@@ -18,6 +18,7 @@ interface CreateFolderModalProps {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   onFolderCreated: () => void;
+  parentFolderId?: string | null;
 }
 
 export function CreateFolderModal({
@@ -25,6 +26,7 @@ export function CreateFolderModal({
   onOpenChange,
   projectId,
   onFolderCreated,
+  parentFolderId = null,
 }: CreateFolderModalProps) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,6 +43,7 @@ export function CreateFolderModal({
       .insert({
         project_id: projectId,
         name: name.trim(),
+        parent_id: parentFolderId,
       });
 
     if (error) {

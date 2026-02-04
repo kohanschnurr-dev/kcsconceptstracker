@@ -8,12 +8,14 @@ import {
   ArrowLeft,
   FolderPlus,
   Folder,
-  Upload
+  Upload,
+  ChevronRight
 } from 'lucide-react';
 import { 
   DndContext, 
   DragEndEvent, 
   DragOverlay, 
+  DragStartEvent,
   closestCenter,
   useSensor,
   useSensors,
@@ -46,9 +48,17 @@ import { DocumentUploadModal } from './DocumentUploadModal';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
 import { CreateFolderModal } from './CreateFolderModal';
 import { DraggableDocumentCard } from './DraggableDocumentCard';
-import { DroppableFolder } from './DroppableFolder';
+import { DraggableDroppableFolder } from './DraggableDroppableFolder';
 import { RootDropZone } from './RootDropZone';
 import { FolderTargetBar } from './FolderTargetBar';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 
 const ACCEPTED_FILE_TYPES = [
   'application/pdf',
@@ -91,6 +101,7 @@ interface DocumentFolder {
   project_id: string;
   name: string;
   color: string | null;
+  parent_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -115,6 +126,9 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
   const [selectedDocument, setSelectedDocument] = useState<ProjectDocument | null>(null);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [activeDragType, setActiveDragType] = useState<'document' | 'folder' | null>(null);
+  const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
+  const [folderPath, setFolderPath] = useState<DocumentFolder[]>([]);
   
   // Folder management states
   const [deleteFolderDialog, setDeleteFolderDialog] = useState<DocumentFolder | null>(null);
@@ -129,7 +143,7 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
     folders.find(f => f.id === currentFolderId) || null
   , [folders, currentFolderId]);
 
-  // Get document counts per folder
+  // Get document counts per folder (including subfolder counts)
   const folderDocumentCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     allDocuments.forEach(doc => {
@@ -137,8 +151,37 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
         counts[doc.folder_id] = (counts[doc.folder_id] || 0) + 1;
       }
     });
+    // Also count child folders
+    folders.forEach(folder => {
+      if (folder.parent_id) {
+        counts[folder.parent_id] = (counts[folder.parent_id] || 0) + 1;
+      }
+    });
     return counts;
-  }, [allDocuments]);
+  }, [allDocuments, folders]);
+  
+  // Build folder path for breadcrumb navigation
+  const buildFolderPath = useCallback((folderId: string | null): DocumentFolder[] => {
+    if (!folderId) return [];
+    const path: DocumentFolder[] = [];
+    let currentId: string | null = folderId;
+    
+    while (currentId) {
+      const folder = folders.find(f => f.id === currentId);
+      if (folder) {
+        path.unshift(folder);
+        currentId = folder.parent_id;
+      } else {
+        break;
+      }
+    }
+    return path;
+  }, [folders]);
+  
+  // Update folder path when currentFolderId changes
+  useEffect(() => {
+    setFolderPath(buildFolderPath(currentFolderId));
+  }, [currentFolderId, buildFolderPath]);
 
   // Get unique custom categories from all documents
   const customCategories = useMemo(() => {
@@ -265,18 +308,80 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
     }
   };
 
-  const handleDragStart = (event: any) => {
-    setActiveDragId(event.active.id);
+  const handleDragStart = (event: DragStartEvent) => {
+    const activeId = event.active.id as string;
+    setActiveDragId(activeId);
+    
+    // Determine if we're dragging a document or folder
+    if (activeId.startsWith('drag-folder-')) {
+      setActiveDragType('folder');
+      setDraggedFolderId(activeId.replace('drag-folder-', ''));
+    } else {
+      setActiveDragType('document');
+      setDraggedFolderId(null);
+    }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    setActiveDragId(null);
     const { active, over } = event;
+    
+    // Reset drag states
+    setActiveDragId(null);
+    setActiveDragType(null);
+    setDraggedFolderId(null);
     
     if (!over || active.id === over.id) return;
 
-    const documentId = active.id as string;
+    const activeId = active.id as string;
     const overId = over.id as string;
+    
+    // === DRAGGING A FOLDER ===
+    if (activeId.startsWith('drag-folder-')) {
+      const folderId = activeId.replace('drag-folder-', '');
+      
+      // Dropped on another folder - nest it
+      if (overId.startsWith('folder-')) {
+        const targetFolderId = overId.replace('folder-', '');
+        
+        // Prevent dropping folder into itself
+        if (folderId === targetFolderId) {
+          toast.error("Can't move folder into itself");
+          return;
+        }
+        
+        const { error } = await supabase
+          .from('document_folders')
+          .update({ parent_id: targetFolderId })
+          .eq('id', folderId);
+
+        if (error) {
+          toast.error('Failed to move folder');
+        } else {
+          toast.success('Folder moved');
+          fetchFolders();
+        }
+      }
+      
+      // Dropped on root zone - move to root
+      if (overId === 'root-drop-zone') {
+        const { error } = await supabase
+          .from('document_folders')
+          .update({ parent_id: null })
+          .eq('id', folderId);
+
+        if (error) {
+          toast.error('Failed to move folder');
+        } else {
+          toast.success('Folder moved to root');
+          fetchFolders();
+        }
+      }
+      
+      return;
+    }
+    
+    // === DRAGGING A DOCUMENT ===
+    const documentId = activeId;
 
     // Dropped on a folder
     if (overId.startsWith('folder-')) {
@@ -360,13 +465,22 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
     })
   );
 
-  const activeDragDocument = activeDragId 
+  const activeDragDocument = activeDragId && !activeDragId.startsWith('drag-folder-')
     ? allDocuments.find(d => d.id === activeDragId) 
     : null;
-
+    
+  const activeDragFolder = draggedFolderId 
+    ? folders.find(f => f.id === draggedFolderId)
+    : null;
+  
+  // Count items visible in current view
+  const visibleFolders = currentFolderId 
+    ? folders.filter(f => f.parent_id === currentFolderId)
+    : folders.filter(f => !f.parent_id);
+    
   const totalCount = currentFolderId 
-    ? documents.length 
-    : allDocuments.filter(d => !d.folder_id).length + folders.length;
+    ? documents.length + visibleFolders.length
+    : allDocuments.filter(d => !d.folder_id).length + visibleFolders.length;
 
   // Desktop drag-and-drop handlers (native HTML5, separate from dnd-kit)
   const handleDesktopDragOver = useCallback((e: React.DragEvent) => {
@@ -461,20 +575,55 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
       <Card className="glass-card">
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
           {currentFolder ? (
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setCurrentFolderId(null)}
-                className="gap-1"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Folder className="h-5 w-5 text-amber-500" />
-                {currentFolder.name} ({documents.length})
-              </CardTitle>
+            <div className="flex flex-col gap-2">
+              {/* Breadcrumb Navigation */}
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink 
+                      className="cursor-pointer hover:text-primary"
+                      onClick={() => setCurrentFolderId(null)}
+                    >
+                      Documents
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  {folderPath.map((folder, index) => (
+                    <span key={folder.id} className="contents">
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem>
+                        {index === folderPath.length - 1 ? (
+                          <BreadcrumbPage className="flex items-center gap-1">
+                            <Folder className="h-3.5 w-3.5 text-amber-500" />
+                            {folder.name}
+                          </BreadcrumbPage>
+                        ) : (
+                          <BreadcrumbLink 
+                            className="cursor-pointer hover:text-primary"
+                            onClick={() => setCurrentFolderId(folder.id)}
+                          >
+                            {folder.name}
+                          </BreadcrumbLink>
+                        )}
+                      </BreadcrumbItem>
+                    </span>
+                  ))}
+                </BreadcrumbList>
+              </Breadcrumb>
+              
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setCurrentFolderId(currentFolder.parent_id)}
+                  className="gap-1"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {documents.length} {documents.length === 1 ? 'item' : 'items'}
+                </span>
+              </div>
             </div>
           ) : (
             <CardTitle className="text-lg flex items-center gap-2">
@@ -520,12 +669,10 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
                 )}
               </SelectContent>
             </Select>
-            {!currentFolderId && (
-              <Button size="sm" variant="outline" onClick={() => setFolderModalOpen(true)}>
-                <FolderPlus className="h-4 w-4 mr-1" />
-                Folder
-              </Button>
-            )}
+            <Button size="sm" variant="outline" onClick={() => setFolderModalOpen(true)}>
+              <FolderPlus className="h-4 w-4 mr-1" />
+              Folder
+            </Button>
             <Button size="sm" onClick={() => setUploadModalOpen(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Add
@@ -558,11 +705,13 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
             </div>
           )}
 
-          {/* Folder target bar - shows when dragging a document inside a folder */}
+          {/* Folder target bar - shows when dragging */}
           <FolderTargetBar 
             folders={folders} 
             currentFolderId={currentFolderId} 
-            activeDragId={activeDragId} 
+            activeDragId={activeDragId}
+            activeDragType={activeDragType}
+            draggedFolderId={draggedFolderId}
           />
 
           {/* Root drop zone when inside a folder (only shows when NOT dragging to avoid duplication) */}
@@ -572,7 +721,7 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : (documents.length === 0 && folders.length === 0) || (currentFolderId && documents.length === 0) ? (
+          ) : (documents.length === 0 && visibleFolders.length === 0) ? (
             <div className="text-center py-12 text-muted-foreground">
               <FolderOpen className="h-16 w-16 mx-auto mb-4 opacity-30" />
               <p className="font-medium">
@@ -586,9 +735,24 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {/* Show folders only at root level */}
-              {!currentFolderId && folders.map((folder) => (
-                <DroppableFolder
+              {/* Show folders at root level (filter by parent_id for nested support) */}
+              {!currentFolderId && folders.filter(f => !f.parent_id).map((folder) => (
+                <DraggableDroppableFolder
+                  key={folder.id}
+                  folder={folder}
+                  documentCount={folderDocumentCounts[folder.id] || 0}
+                  onClick={() => setCurrentFolderId(folder.id)}
+                  onDelete={() => setDeleteFolderDialog(folder)}
+                  onRename={() => {
+                    setRenameFolderDialog(folder);
+                    setNewFolderName(folder.name);
+                  }}
+                />
+              ))}
+              
+              {/* Show child folders when inside a folder */}
+              {currentFolderId && folders.filter(f => f.parent_id === currentFolderId).map((folder) => (
+                <DraggableDroppableFolder
                   key={folder.id}
                   folder={folder}
                   documentCount={folderDocumentCounts[folder.id] || 0}
@@ -619,12 +783,23 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
       {/* Drag Overlay */}
       <DragOverlay>
         {activeDragDocument && (
-          <div className="opacity-80 rotate-3 scale-105">
+          <div className="opacity-90 rotate-2 scale-105 shadow-2xl">
             <DraggableDocumentCard
               doc={activeDragDocument}
               onSelect={() => {}}
               onDownload={() => {}}
               getCategoryLabel={getCategoryLabel}
+            />
+          </div>
+        )}
+        {activeDragFolder && (
+          <div className="opacity-90 rotate-2 scale-105 shadow-2xl">
+            <DraggableDroppableFolder
+              folder={activeDragFolder}
+              documentCount={folderDocumentCounts[activeDragFolder.id] || 0}
+              onClick={() => {}}
+              onDelete={() => {}}
+              onRename={() => {}}
             />
           </div>
         )}
@@ -643,6 +818,7 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
         open={folderModalOpen}
         onOpenChange={setFolderModalOpen}
         projectId={projectId}
+        parentFolderId={currentFolderId}
         onFolderCreated={() => {
           fetchFolders();
           fetchDocuments();
