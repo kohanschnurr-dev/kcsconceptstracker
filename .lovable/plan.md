@@ -1,170 +1,184 @@
 
 
-## Plan: Add Documents Tab to Project Detail
+## Plan: Add "Other" Category Option with Edit/Delete for Document Categories
 
 ### Overview
-Add a new "Documents" tab between "Photos" and "Logs" in the project detail page. This will allow users to upload and manage project-related documents (PDFs, contracts, permits, invoices, etc.) with a similar UI pattern to the Photo Gallery.
+Add the ability to:
+1. Select "Other" in the category dropdown and type a custom category name
+2. Custom categories are stored as plain text in the `category` column (already supports this)
+3. Display custom categories in the filter dropdown alongside default ones
+4. Allow editing/deleting custom categories (by updating the document's category value)
 
 ---
 
-### Changes Required
+### How It Will Work
 
-**1. Database Migration**
-Create a `project_documents` table to store document metadata:
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | uuid | Primary key |
-| `project_id` | uuid (FK) | Reference to projects table |
-| `file_path` | text | Storage path in bucket |
-| `file_name` | text | Original filename for display |
-| `file_size` | bigint | File size in bytes |
-| `category` | text | Document category (permit, contract, invoice, etc.) |
-| `notes` | text | Optional notes/description |
-| `document_date` | date | Date associated with document |
-| `created_at` | timestamp | Upload timestamp |
-
-**2. Storage Bucket**
-Create a `project-documents` storage bucket for file storage.
-
-**3. New Components**
-
-| Component | Purpose |
-|-----------|---------|
-| `src/components/project/DocumentsGallery.tsx` | Main gallery view with list of documents |
-| `src/components/project/DocumentUploadModal.tsx` | Modal for uploading documents |
-| `src/components/project/DocumentPreviewModal.tsx` | Modal for viewing/editing document details |
-
-**4. Update ProjectDetail.tsx**
-- Add "Documents" tab trigger between "Photos" and "Logs"
-- Add `TabsContent` for documents with `DocumentsGallery` component
-
----
-
-### Document Categories
-
-```typescript
-const DOCUMENT_CATEGORIES = [
-  { value: 'permit', label: 'Permit' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'invoice', label: 'Invoice' },
-  { value: 'inspection', label: 'Inspection' },
-  { value: 'insurance', label: 'Insurance' },
-  { value: 'lien_waiver', label: 'Lien Waiver' },
-  { value: 'general', label: 'General' },
-];
-```
-
----
-
-### UI Layout
-
-**Documents Gallery:**
+**When uploading a document:**
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│ 📄 Documents (5)                      [Category ▾] [+ Add]   │
-├──────────────────────────────────────────────────────────────┤
-│ ┌────────────────────────────────────────────────────────┐   │
-│ │ 📄 Building_Permit.pdf                                 │   │
-│ │ Permit • Jan 15, 2026 • 2.4 MB                         │   │
-│ └────────────────────────────────────────────────────────┘   │
-│ ┌────────────────────────────────────────────────────────┐   │
-│ │ 📄 Contractor_Agreement.pdf                            │   │
-│ │ Contract • Jan 10, 2026 • 1.1 MB                       │   │
-│ └────────────────────────────────────────────────────────┘   │
-│ ...                                                          │
-└──────────────────────────────────────────────────────────────┘
+Category: [▾ Select category     ]
+          ┌─────────────────────┐
+          │ Permit              │
+          │ Contract            │
+          │ Invoice             │
+          │ ...                 │
+          │ General             │
+          │─────────────────────│
+          │ + Other (custom)... │
+          └─────────────────────┘
+
+User selects "Other" →
+
+Category: [▾ Other              ]
+Custom:   [________________     ]  ← Input appears for custom name
 ```
 
-**Upload Modal:**
-- Drag-and-drop zone for file upload
-- Category selector
-- Document date picker
-- Notes field
-- Support for multiple file types (PDF, DOC, DOCX, XLS, XLSX, etc.)
+**In the filter dropdown:**
+- Show all default categories
+- Also show any unique custom categories found in the project's documents
+- Custom categories appear below "General" with a distinct style
 
 ---
 
-### Technical Details
+### UI Changes
 
-**Tab Order (updated):**
-```tsx
-<TabsList className="flex-wrap h-auto">
-  <TabsTrigger value="schedule">Schedule</TabsTrigger>
-  <TabsTrigger value="tasks">Tasks</TabsTrigger>
-  <TabsTrigger value="financials">Financials</TabsTrigger>
-  {!isRental && <TabsTrigger value="loan">Loan</TabsTrigger>}
-  <TabsTrigger value="team">Team</TabsTrigger>
-  <TabsTrigger value="photos">Photos</TabsTrigger>
-  <TabsTrigger value="documents">Documents</TabsTrigger>  {/* NEW */}
-  <TabsTrigger value="logs">Logs ({dailyLogs.length})</TabsTrigger>
-</TabsList>
-```
+**Upload/Preview Modals:**
+| Element | Change |
+|---------|--------|
+| Category dropdown | Add "Other (custom)..." option at bottom |
+| Custom input field | Show when "Other" is selected, allows typing custom category |
+| Validation | Require custom category name if "Other" is selected |
 
-**Accepted File Types:**
-- PDF (.pdf)
-- Word (.doc, .docx)
-- Excel (.xls, .xlsx)
-- Images (.jpg, .png, .gif) - for scanned documents
-- Text (.txt)
-
-**File Size Formatting:**
-```typescript
-const formatFileSize = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-```
+**Filter Dropdown (DocumentsGallery):**
+| Element | Change |
+|---------|--------|
+| Category list | Dynamically include custom categories from documents |
+| Custom categories | Show with "(custom)" suffix and italic style |
 
 ---
-
-### Files to Create
-
-| File | Description |
-|------|-------------|
-| `src/components/project/DocumentsGallery.tsx` | Main document list/gallery component |
-| `src/components/project/DocumentUploadModal.tsx` | Upload modal with drag-drop support |
-| `src/components/project/DocumentPreviewModal.tsx` | View/edit document details modal |
 
 ### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/ProjectDetail.tsx` | Add Documents tab and TabsContent |
-
-### Database Changes
-
-| Action | Details |
-|--------|---------|
-| Create table | `project_documents` with RLS policies |
-| Create bucket | `project-documents` storage bucket |
+| `src/components/project/DocumentsGallery.tsx` | Fetch unique categories from documents; merge with defaults for filter |
+| `src/components/project/DocumentUploadModal.tsx` | Add "Other" option; show text input for custom category name |
+| `src/components/project/DocumentPreviewModal.tsx` | Add "Other" option; allow changing to/from custom category |
 
 ---
 
-### RLS Policies
+### Technical Implementation
 
-```sql
--- Users can only see their own project documents
-CREATE POLICY "Users can view their project documents" 
-ON project_documents FOR SELECT 
-USING (project_id IN (
-  SELECT id FROM projects WHERE id = project_documents.project_id
-));
+**1. Upload Modal - Add "Other" option:**
 
--- Users can insert documents to their projects
-CREATE POLICY "Users can insert project documents"
-ON project_documents FOR INSERT
-WITH CHECK (true);
+```typescript
+const [isCustomCategory, setIsCustomCategory] = useState(false);
+const [customCategoryName, setCustomCategoryName] = useState('');
 
--- Users can update their project documents
-CREATE POLICY "Users can update their project documents"
-ON project_documents FOR UPDATE
-USING (true);
+// Category selection handler
+const handleCategoryChange = (value: string) => {
+  if (value === 'other') {
+    setIsCustomCategory(true);
+    setCategory('');
+  } else {
+    setIsCustomCategory(false);
+    setCategory(value);
+  }
+};
 
--- Users can delete their project documents
-CREATE POLICY "Users can delete their project documents"
-ON project_documents FOR DELETE
-USING (true);
+// Final category value for saving
+const finalCategory = isCustomCategory ? customCategoryName.trim() : category;
 ```
+
+**2. Upload Modal - UI for custom input:**
+
+```tsx
+<Select value={isCustomCategory ? 'other' : category} onValueChange={handleCategoryChange}>
+  <SelectTrigger>
+    <SelectValue placeholder="Select category" />
+  </SelectTrigger>
+  <SelectContent>
+    {DOCUMENT_CATEGORIES.map((cat) => (
+      <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+    ))}
+    <SelectItem value="other" className="border-t mt-1 pt-1">
+      + Other (custom)...
+    </SelectItem>
+  </SelectContent>
+</Select>
+
+{isCustomCategory && (
+  <div className="space-y-2 mt-2">
+    <Label>Custom Category Name</Label>
+    <Input
+      placeholder="e.g., Warranty, Change Order, Quote..."
+      value={customCategoryName}
+      onChange={(e) => setCustomCategoryName(e.target.value)}
+    />
+  </div>
+)}
+```
+
+**3. Gallery Filter - Include custom categories:**
+
+```typescript
+// Get unique categories from documents that aren't in the default list
+const customCategories = useMemo(() => {
+  const defaultValues = DOCUMENT_CATEGORIES.map(c => c.value);
+  const uniqueCategories = [...new Set(documents.map(d => d.category))];
+  return uniqueCategories.filter(cat => !defaultValues.includes(cat));
+}, [documents]);
+
+// In the Select component
+<SelectContent>
+  <SelectItem value="all">All</SelectItem>
+  {DOCUMENT_CATEGORIES.map((cat) => (
+    <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+  ))}
+  {customCategories.length > 0 && (
+    <>
+      <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1">
+        Custom
+      </div>
+      {customCategories.map((cat) => (
+        <SelectItem key={cat} value={cat}>
+          {cat}
+        </SelectItem>
+      ))}
+    </>
+  )}
+</SelectContent>
+```
+
+**4. Preview Modal - Support editing custom categories:**
+
+Same pattern as upload modal - detect if current category is custom (not in defaults), allow switching between default and custom.
+
+---
+
+### Editing/Deleting Custom Categories
+
+- **Edit**: Change the document's category in the preview modal (already supported - just select a different category or type a new custom name)
+- **Delete**: When no documents use a custom category, it automatically disappears from the filter dropdown (dynamic lookup)
+
+No separate category management UI needed - categories are derived from document data.
+
+---
+
+### Validation
+
+| Rule | Behavior |
+|------|----------|
+| Empty custom name | Disable upload/save button |
+| Duplicate check | Not needed (duplicates just group documents) |
+| Trim whitespace | Apply on save |
+
+---
+
+### Result
+
+| Before | After |
+|--------|-------|
+| Only 7 fixed categories | Unlimited custom categories via "Other" |
+| No way to add new types | Type any category name |
+| Static filter list | Dynamic filter includes custom categories |
 
