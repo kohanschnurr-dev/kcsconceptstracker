@@ -86,6 +86,38 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
   const [isImporting, setIsImporting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{
+    current: number;
+    total: number;
+    currentFileName: string;
+  } | null>(null);
+
+  // Process multiple files sequentially
+  const processMultipleFiles = async (files: File[]) => {
+    if (files.length === 0) return;
+    
+    setIsUploading(true);
+    setUploadProgress({ current: 0, total: files.length, currentFileName: '' });
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setUploadProgress({ 
+        current: i + 1, 
+        total: files.length, 
+        currentFileName: file.name 
+      });
+      
+      try {
+        await handleFileUpload(file);
+      } catch (error) {
+        console.error(`Failed to process ${file.name}:`, error);
+        // Continue with remaining files
+      }
+    }
+    
+    setUploadProgress(null);
+    setIsUploading(false);
+  };
 
   // Handle paste events (Ctrl+V)
   const handlePaste = useCallback((e: ClipboardEvent) => {
@@ -385,19 +417,33 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileUpload(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files).filter(
+        file => file.type.startsWith('image/') || file.type === 'application/pdf'
+      );
+      if (files.length === 1) {
+        handleFileUpload(files[0]);
+      } else if (files.length > 1) {
+        await processMultipleFiles(files);
+      }
     }
   }, []);
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileUpload(e.target.files[0]);
+  const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      if (files.length === 1) {
+        handleFileUpload(files[0]);
+      } else {
+        await processMultipleFiles(files);
+      }
+      // Reset input so the same files can be selected again
+      e.target.value = '';
     }
   };
 
@@ -789,16 +835,27 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
               >
-                <input
+              <input
                   type="file"
                   accept="image/*,.pdf"
+                  multiple
                   onChange={handleFileInput}
                   className="hidden"
                   id="receipt-upload"
                   disabled={isUploading}
                 />
                 <label htmlFor="receipt-upload" className="cursor-pointer">
-                  {isParsing ? (
+                  {uploadProgress && uploadProgress.total > 1 ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-sm font-medium">
+                        Parsing receipt {uploadProgress.current} of {uploadProgress.total}...
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                        {uploadProgress.currentFileName}
+                      </p>
+                    </div>
+                  ) : isParsing ? (
                     <div className="flex flex-col items-center gap-2">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       <p className="text-sm font-medium">Parsing receipt with AI...</p>
@@ -808,10 +865,10 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                       <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
                         <Upload className="h-6 w-6 text-muted-foreground" />
                       </div>
-                      <p className="text-sm font-medium">Drop receipt here or click to upload</p>
+                      <p className="text-sm font-medium">Drop receipts here or click to upload</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clipboard className="h-3 w-3" />
-                        Tip: Paste with Ctrl+V • Supports images and PDFs
+                        Tip: Paste with Ctrl+V • Select multiple files
                       </p>
                     </div>
                   )}
