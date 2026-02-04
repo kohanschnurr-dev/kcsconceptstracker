@@ -31,6 +31,7 @@ interface ProjectDocument {
   notes: string | null;
   document_date: string | null;
   created_at: string;
+  title: string | null;
 }
 
 interface DocumentPreviewModalProps {
@@ -66,6 +67,7 @@ export function DocumentPreviewModal({
   const defaultCategoryValues = DOCUMENT_CATEGORIES.map(c => c.value);
   const isInitiallyCustom = !defaultCategoryValues.includes(document.category);
   
+  const [title, setTitle] = useState(document.title || '');
   const [category, setCategory] = useState(isInitiallyCustom ? '' : document.category);
   const [isCustomCategory, setIsCustomCategory] = useState(isInitiallyCustom);
   const [customCategoryName, setCustomCategoryName] = useState(isInitiallyCustom ? document.category : '');
@@ -88,6 +90,7 @@ export function DocumentPreviewModal({
   const finalCategory = isCustomCategory ? customCategoryName.trim() : category;
 
   const hasChanges =
+    title !== (document.title || '') ||
     finalCategory !== document.category ||
     documentDate !== document.document_date ||
     notes !== (document.notes || '');
@@ -100,6 +103,7 @@ export function DocumentPreviewModal({
     const { error } = await supabase
       .from('project_documents')
       .update({
+        title: title.trim() || null,
         category: finalCategory,
         document_date: documentDate,
         notes: notes || null,
@@ -166,9 +170,9 @@ export function DocumentPreviewModal({
         <div className="space-y-4">
           {/* File info */}
           <div className="p-4 rounded-lg bg-muted/50 border border-border">
-            <p className="font-medium truncate mb-1">{document.file_name}</p>
+            <p className="font-medium truncate mb-1">{document.title || document.file_name}</p>
             <p className="text-sm text-muted-foreground">
-              {formatFileSize(document.file_size)} • Uploaded {formatDate(document.created_at)}
+              📎 {document.file_name} • {formatFileSize(document.file_size)}
             </p>
           </div>
 
@@ -182,6 +186,16 @@ export function DocumentPreviewModal({
               <Download className="h-4 w-4 mr-2" />
               Download
             </Button>
+          </div>
+
+          {/* Title */}
+          <div className="space-y-2">
+            <Label>Title (optional)</Label>
+            <Input
+              placeholder="e.g., Foundation Warranty, Final Invoice..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </div>
 
           {/* Category */}

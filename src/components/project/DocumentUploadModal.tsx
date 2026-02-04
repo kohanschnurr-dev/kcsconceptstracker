@@ -51,6 +51,7 @@ export function DocumentUploadModal({
   defaultFolderId,
 }: DocumentUploadModalProps) {
   const [files, setFiles] = useState<File[]>([]);
+  const [title, setTitle] = useState('');
   const [category, setCategory] = useState('general');
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [customCategoryName, setCustomCategoryName] = useState('');
@@ -133,6 +134,7 @@ export function DocumentUploadModal({
           file_path: fileName,
           file_name: file.name,
           file_size: file.size,
+          title: title.trim() || null,
           category: finalCategory,
           document_date: documentDate,
           notes: notes || null,
@@ -159,6 +161,7 @@ export function DocumentUploadModal({
 
   const resetForm = () => {
     setFiles([]);
+    setTitle('');
     setCategory('general');
     setIsCustomCategory(false);
     setCustomCategoryName('');
@@ -236,6 +239,17 @@ export function DocumentUploadModal({
               </div>
             </div>
           )}
+
+          {/* Title */}
+          <div className="space-y-2">
+            <Label>Title (optional)</Label>
+            <Input
+              placeholder="e.g., Foundation Warranty, Final Invoice..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Leave empty to use file name as title</p>
+          </div>
 
           {/* Category */}
           <div className="space-y-2">
