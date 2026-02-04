@@ -123,7 +123,7 @@ export function BusinessExpensesDashboard({
         </div>
       </div>
 
-      {/* Category Pills Card */}
+      {/* Category Cubes Card */}
       <div className="glass-card p-4 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">Category Breakdown</p>
@@ -137,25 +137,30 @@ export function BusinessExpensesDashboard({
           )}
         </div>
         
-        <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto">
-          {categoryData.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No expenses yet</p>
-          ) : (
-            categoryData.map((cat) => (
-              <Badge
+        {categoryData.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No expenses yet</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
+            {categoryData.map((cat) => (
+              <button
                 key={cat.categoryKey}
-                variant={selectedCategory === cat.categoryKey ? "default" : "secondary"}
-                className="cursor-pointer hover:bg-primary/20 transition-colors gap-1.5"
                 onClick={() => onCategoryClick(cat.categoryKey === selectedCategory ? 'all' : cat.categoryKey)}
+                className={`flex flex-col justify-between p-3 rounded-lg border min-h-[70px] text-left transition-all hover:border-primary/50 hover:bg-primary/5 ${
+                  selectedCategory === cat.categoryKey 
+                    ? 'border-primary bg-primary/10' 
+                    : 'border-border/30 bg-muted/20'
+                }`}
               >
-                <span className="truncate max-w-[100px]">{cat.label}</span>
-                <span className="font-mono text-xs opacity-80">
-                  {formatCompactCurrency(cat.amount)}
+                <span className="text-xs text-muted-foreground line-clamp-2">
+                  {cat.label}
                 </span>
-              </Badge>
-            ))
-          )}
-        </div>
+                <span className="text-sm font-semibold font-mono text-foreground">
+                  {formatCurrency(cat.amount)}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
