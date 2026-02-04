@@ -688,6 +688,50 @@ export type Database = {
           },
         ]
       }
+      project_documents: {
+        Row: {
+          category: string
+          created_at: string
+          document_date: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          notes: string | null
+          project_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          document_date?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number
+          id?: string
+          notes?: string | null
+          project_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          document_date?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          notes?: string | null
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_milestones: {
         Row: {
           completed_at: string | null

@@ -40,6 +40,7 @@ import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotoGallery } from '@/components/project/PhotoGallery';
+import { DocumentsGallery } from '@/components/project/DocumentsGallery';
 
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { CashFlowCalculator } from '@/components/project/CashFlowCalculator';
@@ -548,6 +549,7 @@ export default function ProjectDetail() {
             {!isRental && <TabsTrigger value="loan">Loan</TabsTrigger>}
             <TabsTrigger value="team">Team</TabsTrigger>
             <TabsTrigger value="photos">Photos</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="logs">Logs ({dailyLogs.length})</TabsTrigger>
           </TabsList>
 
@@ -631,6 +633,10 @@ export default function ProjectDetail() {
 
           <TabsContent value="photos">
             <PhotoGallery projectId={id!} />
+          </TabsContent>
+
+          <TabsContent value="documents">
+            <DocumentsGallery projectId={id!} />
           </TabsContent>
 
           <TabsContent value="logs">
