@@ -1,115 +1,111 @@
 
 
-## Plan: Restructure Tasks Due Today Banner into Two-Box Layout
+## Plan: Redesign Category Breakdown into Visual Cube Grid
 
 ### Overview
-Transform the current single-row TasksDueTodayBanner into a two-box grid layout, removing the task badges on the right side and creating a cleaner, more balanced visual design.
+Transform the current flat category pills into a visually appealing cube/card-style grid layout. Each category will be displayed as a small card showing both the category name and the spent amount with clear visual hierarchy.
 
 ---
 
-### Current Layout
+### Current State
 ```text
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│ [Icon] Today  2 Items                    [Electrical...] [Painting] [Calendar btn] │
-│        📅 2 events today                                                            │
-└─────────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Category Breakdown                                       [Clear filter] │
+│                                                                          │
+│ [Online Course...$1k] [Continuing Ed...$747] [Subscriptions $737] ...   │
+│ [Gas and Miles...$58] [Cloud Storage...$8]                               │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### New Layout
+**Problem:** Pills are cramped, text gets truncated, amounts are hard to read
+
+---
+
+### New Design - Category Cubes
+
 ```text
-┌────────────────────────────────────────────────────────────────────────────────────┐
-│ [Icon] Today's Agenda                                         [View Calendar →]   │
-├─────────────────────────────────┬──────────────────────────────────────────────────┤
-│  Tasks                          │  Events                                          │
-│  ┌───────────────────────────┐  │  ┌───────────────────────────────────────────┐   │
-│  │ 2 tasks due today         │  │  │ Electrical for Condensor                  │   │
-│  │ 1 overdue                 │  │  │ Painting                                  │   │
-│  └───────────────────────────┘  │  └───────────────────────────────────────────┘   │
-│  [View Tasks →]                 │                                                  │
-└─────────────────────────────────┴──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Category Breakdown                                       [Clear filter] │
+├──────────────────────────────────────────────────────────────────────────┤
+│ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ │
+│ │ Online        │ │ Continuing    │ │ Subscriptions │ │ Licensing &   │ │
+│ │ Courses       │ │ Education     │ │               │ │ Fees          │ │
+│ │               │ │               │ │               │ │               │ │
+│ │     $1,000    │ │      $747     │ │      $737     │ │      $259     │ │
+│ └───────────────┘ └───────────────┘ └───────────────┘ └───────────────┘ │
+│ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ │
+│ │ CRM or        │ │ Misc          │ │ Gas & Mileage │ │ Cloud Storage │ │
+│ │ Business      │ │               │ │               │ │               │ │
+│ │               │ │               │ │               │ │               │ │
+│ │      $152     │ │       $89     │ │       $58     │ │        $8     │ │
+│ └───────────────┘ └───────────────┘ └───────────────┘ └───────────────┘ │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ### Technical Changes
 
-**File: `src/components/dashboard/TasksDueTodayBanner.tsx`**
+**File: `src/components/dashboard/BusinessExpensesDashboard.tsx`**
 
-1. **Replace single-row layout with two-box grid:**
-   - Remove the horizontal flex layout with badges on the right
-   - Add a `grid grid-cols-2 gap-3` container like CalendarGlanceWidget
-   - Both boxes share same minimum height for balance
+1. **Replace badge-based pills with a cube grid:**
+   - Use `grid grid-cols-4 gap-2` for desktop, `grid-cols-2` for smaller screens
+   - Each cube is a clickable card with category name on top and amount below
+   
+2. **Cube card styling:**
+   - Fixed minimum height for visual consistency
+   - Subtle border with hover effect
+   - Category label at top (with text wrapping allowed)
+   - Amount prominently displayed at bottom in monospace font
+   - Selected state with primary border/background highlight
 
-2. **Left Box - Tasks:**
-   - Show tasks due today count
-   - Show overdue count (if any, highlighted in destructive color)
-   - "View Tasks" button at bottom
-
-3. **Right Box - Events:**
-   - Show today's calendar events as a list (up to 3)
-   - "+X more" indicator if more than 3 events
-   - Events styled with category colors
-
-4. **Header changes:**
-   - Keep icon + "Today's Agenda" title
-   - Move "Calendar" button to header right side
-   - Remove task/event badges from header area
+3. **Responsive adjustments:**
+   - 4 columns on larger screens, 2 columns on smaller
+   - Scrollable area with max-height if many categories
 
 ---
 
 ### Component Structure
 
 ```tsx
-<div className="glass-card p-4">
-  {/* Header Row */}
-  <div className="flex items-center justify-between mb-3">
-    <div className="flex items-center gap-2">
-      <ListChecks icon />
-      <h3>Today's Agenda</h3>
-      <Badge>{totalActionable} Items</Badge>
-    </div>
-    <Button>View Calendar</Button>
-  </div>
-
-  {/* Two-Box Grid */}
-  <div className="grid grid-cols-2 gap-3">
-    {/* Left Box - Tasks */}
-    <div className="bg-muted/30 rounded-lg p-3 border min-h-[100px]">
-      <Badge>Tasks</Badge>
-      <div>
-        {tasksDueToday.length} due today
-        {overdueCount} overdue
-      </div>
-      <Button>View Tasks</Button>
-    </div>
-
-    {/* Right Box - Events */}
-    <div className="bg-muted/30 rounded-lg p-3 border min-h-[100px]">
-      <Badge>Events</Badge>
-      {todayEvents.map(event => <EventRow />)}
-    </div>
-  </div>
+{/* Category Cubes Grid */}
+<div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
+  {categoryData.map((cat) => (
+    <button
+      key={cat.categoryKey}
+      onClick={() => onCategoryClick(cat.categoryKey)}
+      className={cn(
+        "flex flex-col justify-between p-3 rounded-lg border min-h-[70px] text-left transition-all",
+        "hover:border-primary/50 hover:bg-primary/5",
+        selectedCategory === cat.categoryKey 
+          ? "border-primary bg-primary/10" 
+          : "border-border/30 bg-muted/20"
+      )}
+    >
+      <span className="text-xs text-muted-foreground line-clamp-2">
+        {cat.label}
+      </span>
+      <span className="text-sm font-semibold font-mono text-foreground">
+        {formatCurrency(cat.amount)}
+      </span>
+    </button>
+  ))}
 </div>
 ```
 
 ---
 
-### Visual Result
+### Visual Styling Details
 
-```text
-┌────────────────────────────────────────────────────────────────────────────────────┐
-│ ☑ Today's Agenda  [3 Items]                               [📅 View Calendar →]    │
-├─────────────────────────────────┬──────────────────────────────────────────────────┤
-│  TASKS                          │  EVENTS                                          │
-│  ─────────────────────────────  │  ─────────────────────────────────────────────   │
-│  📋 2 tasks due today           │  ┌─────────────────────────────────────────────┐ │
-│  ⚠️ 1 overdue                   │  │ Electrical for Condensor                   │ │
-│                                 │  └─────────────────────────────────────────────┘ │
-│                                 │  ┌─────────────────────────────────────────────┐ │
-│  [View Tasks →]                 │  │ Painting                                    │ │
-│                                 │  └─────────────────────────────────────────────┘ │
-└─────────────────────────────────┴──────────────────────────────────────────────────┘
-```
+| Element | Style |
+|---------|-------|
+| Cube container | `border-border/30 bg-muted/20 rounded-lg` |
+| Cube size | `min-h-[70px] p-3` for comfortable touch targets |
+| Category text | `text-xs text-muted-foreground line-clamp-2` (allows 2 lines) |
+| Amount text | `text-sm font-semibold font-mono` (prominent, monospace) |
+| Hover state | `border-primary/50 bg-primary/5` |
+| Selected state | `border-primary bg-primary/10` (matching existing patterns) |
+| Grid | `grid-cols-2 md:grid-cols-4 gap-2` |
 
 ---
 
@@ -117,14 +113,14 @@ Transform the current single-row TasksDueTodayBanner into a two-box grid layout,
 
 | File | Changes |
 |------|---------|
-| `src/components/dashboard/TasksDueTodayBanner.tsx` | Restructure from single row to two-box grid layout |
+| `src/components/dashboard/BusinessExpensesDashboard.tsx` | Replace badge pills with cube grid layout |
 
 ---
 
-### Key Styling Details
-- Match CalendarGlanceWidget styling: `bg-muted/30`, `border-border/30`, `min-h-[100px]`
-- Tasks box shows counts with appropriate colors (warning for due, destructive for overdue)
-- Events box lists actual event titles with category color coding
-- Both boxes equal height for visual balance
-- Maintains responsive behavior (banner already hidden on smaller screens via parent)
+### Expected Result
+- Categories displayed as clean, equal-sized cubes in a grid
+- Full category names visible (up to 2 lines)
+- Amounts prominently displayed and easy to read
+- Clickable for filtering with clear selected state
+- Visually balanced and professional dark mode aesthetic
 
