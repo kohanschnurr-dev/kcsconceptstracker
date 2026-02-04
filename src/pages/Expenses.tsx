@@ -234,17 +234,21 @@ export default function Expenses() {
     e.stopPropagation();
     
     try {
-      // Extract the file path from the full URL
-      // URL format: https://skbkqngjvbvaswijavor.supabase.co/storage/v1/object/public/expense-receipts/user-id/filename.ext
       const urlParts = receiptUrl.split('/storage/v1/object/public/');
       if (urlParts.length !== 2) {
-        // Fallback for unexpected URL format
-        window.open(receiptUrl, '_blank');
+        // Fallback - trigger download via anchor
+        const link = document.createElement('a');
+        link.href = receiptUrl;
+        link.download = 'receipt';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         return;
       }
       
       const [bucketName, ...pathParts] = urlParts[1].split('/');
       const filePath = pathParts.join('/');
+      const fileName = pathParts[pathParts.length - 1] || 'receipt';
       
       // Use Supabase SDK to download the file (bypasses ad blockers)
       const { data, error } = await supabase.storage
@@ -253,21 +257,22 @@ export default function Expenses() {
       
       if (error || !data) {
         console.error('Failed to download receipt:', error);
-        // Fallback to direct URL
-        window.open(receiptUrl, '_blank');
         return;
       }
       
-      // Create a blob URL and open it
+      // Create blob URL and trigger download
       const blobUrl = URL.createObjectURL(data);
-      window.open(blobUrl, '_blank');
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
-      // Clean up the blob URL after a delay
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      // Clean up blob URL
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (error) {
-      console.error('Failed to open receipt:', error);
-      // Fallback to direct URL if everything fails
-      window.open(receiptUrl, '_blank');
+      console.error('Failed to download receipt:', error);
     }
   };
 
