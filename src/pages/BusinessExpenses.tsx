@@ -50,7 +50,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { BusinessQuickBooksIntegration } from '@/components/BusinessQuickBooksIntegration';
-import { BusinessExpenseTrendChart } from '@/components/dashboard/BusinessExpenseTrendChart';
+import { BusinessExpensesDashboard } from '@/components/dashboard/BusinessExpensesDashboard';
 import { BusinessExpenseDetailModal } from '@/components/BusinessExpenseDetailModal';
 import { formatDisplayDate, formatDateString } from '@/lib/dateUtils';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -468,13 +468,13 @@ export default function BusinessExpenses() {
         {/* QuickBooks Integration */}
         <BusinessQuickBooksIntegration onExpenseImported={fetchData} projects={projects} />
 
-        {/* Expense Trend Chart */}
-        {expenses.length > 0 && (
-          <BusinessExpenseTrendChart 
-            expenses={expenses} 
-            getCategoryLabel={getCategoryLabel} 
-          />
-        )}
+        {/* Compact Dashboard with Sparkline and Category Pills */}
+        <BusinessExpensesDashboard 
+          expenses={expenses} 
+          getCategoryLabel={getCategoryLabel}
+          onCategoryClick={setCategoryFilter}
+          selectedCategory={categoryFilter}
+        />
 
         {/* Filters */}
         <div className="flex flex-wrap gap-4">
@@ -538,27 +538,16 @@ export default function BusinessExpenses() {
           </Popover>
         </div>
 
-        {/* Summary */}
-        <div className="glass-card p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Briefcase className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">
-                {filteredExpenses.length} expenses
-              </p>
-              <p className="text-xl font-semibold font-mono">
-                {formatCurrency(totalExpenses)}
-              </p>
-            </div>
-          </div>
-          <div className="text-right text-sm text-muted-foreground">
-            <p>TX Sales Tax (8.25%)</p>
-            <p className="font-mono text-foreground">
-              {formatCurrency(filteredExpenses.filter(e => e.includes_tax).reduce((sum, e) => sum + (e.tax_amount || 0), 0))}
-            </p>
-          </div>
+        {/* Summary Badge */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Badge variant="outline" className="font-mono">
+            {filteredExpenses.length} expenses • {formatCurrency(totalExpenses)}
+          </Badge>
+          {filteredExpenses.filter(e => e.includes_tax).length > 0 && (
+            <Badge variant="outline" className="font-mono text-xs">
+              +{formatCurrency(filteredExpenses.filter(e => e.includes_tax).reduce((sum, e) => sum + (e.tax_amount || 0), 0))} tax
+            </Badge>
+          )}
         </div>
 
         {/* Expenses Table */}
