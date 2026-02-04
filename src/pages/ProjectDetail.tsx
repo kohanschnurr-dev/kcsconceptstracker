@@ -545,12 +545,12 @@ export default function ProjectDetail() {
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="photos">Photos</TabsTrigger>
+            <TabsTrigger value="logs">Logs ({dailyLogs.length})</TabsTrigger>
             <TabsTrigger value="financials">Financials</TabsTrigger>
             {!isRental && <TabsTrigger value="loan">Loan</TabsTrigger>}
             <TabsTrigger value="team">Team</TabsTrigger>
-            <TabsTrigger value="photos">Photos</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="logs">Logs ({dailyLogs.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
