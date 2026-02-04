@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   FolderOpen,
   Plus, 
@@ -7,7 +7,8 @@ import {
   Clock,
   ArrowLeft,
   FolderPlus,
-  Folder
+  Folder,
+  Upload
 } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, pointerWithin } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
@@ -32,12 +33,26 @@ import {
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { DocumentUploadModal } from './DocumentUploadModal';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
 import { CreateFolderModal } from './CreateFolderModal';
 import { DraggableDocumentCard } from './DraggableDocumentCard';
 import { DroppableFolder } from './DroppableFolder';
 import { RootDropZone } from './RootDropZone';
+import { FolderTargetBar } from './FolderTargetBar';
+
+const ACCEPTED_FILE_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'text/plain',
+];
 
 export const DOCUMENT_CATEGORIES = [
   { value: 'permit', label: 'Permit' },
@@ -96,6 +111,10 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
   const [deleteFolderDialog, setDeleteFolderDialog] = useState<DocumentFolder | null>(null);
   const [renameFolderDialog, setRenameFolderDialog] = useState<DocumentFolder | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
+  
+  // Desktop drag-and-drop states
+  const [desktopDragActive, setDesktopDragActive] = useState(false);
+  const [uploadingDesktopFiles, setUploadingDesktopFiles] = useState(false);
 
   const currentFolder = useMemo(() => 
     folders.find(f => f.id === currentFolderId) || null
@@ -330,6 +349,88 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
     ? documents.length 
     : allDocuments.filter(d => !d.folder_id).length + folders.length;
 
+  // Desktop drag-and-drop handlers (native HTML5, separate from dnd-kit)
+  const handleDesktopDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only activate for actual file drops from desktop
+    if (e.dataTransfer.types.includes('Files')) {
+      setDesktopDragActive(true);
+    }
+  }, []);
+
+  const handleDesktopDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only deactivate if leaving the drop zone entirely
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setDesktopDragActive(false);
+    }
+  }, []);
+
+  const handleDesktopDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDesktopDragActive(false);
+    
+    const files = Array.from(e.dataTransfer.files).filter(f => 
+      ACCEPTED_FILE_TYPES.includes(f.type)
+    );
+    
+    if (files.length === 0) {
+      toast.error('No supported files found');
+      return;
+    }
+    
+    setUploadingDesktopFiles(true);
+    
+    try {
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${projectId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        // Upload to storage
+        const { error: uploadError } = await supabase.storage
+          .from('project-documents')
+          .upload(fileName, file);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          toast.error(`Failed to upload ${file.name}`);
+          continue;
+        }
+
+        // Insert record with defaults
+        const { error: dbError } = await supabase.from('project_documents').insert({
+          project_id: projectId,
+          file_path: fileName,
+          file_name: file.name,
+          file_size: file.size,
+          category: 'general',
+          document_date: new Date().toISOString().split('T')[0],
+          notes: null,
+          folder_id: currentFolderId || null,
+        });
+
+        if (dbError) {
+          console.error('DB error:', dbError);
+          toast.error(`Failed to save ${file.name}`);
+        }
+      }
+
+      toast.success(`${files.length} file(s) uploaded`);
+      fetchDocuments();
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Upload failed');
+    } finally {
+      setUploadingDesktopFiles(false);
+    }
+  }, [projectId, currentFolderId]);
+
   return (
     <DndContext 
       onDragStart={handleDragStart}
@@ -410,9 +511,41 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          {/* Root drop zone when inside a folder */}
-          {currentFolderId && <div className="mb-4"><RootDropZone /></div>}
+        <CardContent 
+          onDragOver={handleDesktopDragOver}
+          onDragLeave={handleDesktopDragLeave}
+          onDrop={handleDesktopDrop}
+          className="relative"
+        >
+          {/* Desktop drop zone overlay */}
+          {(desktopDragActive || uploadingDesktopFiles) && (
+            <div className="absolute inset-0 z-20 bg-primary/5 border-2 border-dashed border-primary rounded-lg flex items-center justify-center backdrop-blur-sm">
+              <div className="text-center">
+                {uploadingDesktopFiles ? (
+                  <>
+                    <Loader2 className="h-12 w-12 mx-auto mb-3 text-primary animate-spin" />
+                    <p className="text-lg font-medium text-primary">Uploading...</p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-12 w-12 mx-auto mb-3 text-primary" />
+                    <p className="text-lg font-medium text-primary">Drop files to upload</p>
+                    <p className="text-sm text-muted-foreground">PDF, Word, Excel, Images, Text</p>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Folder target bar - shows when dragging a document inside a folder */}
+          <FolderTargetBar 
+            folders={folders} 
+            currentFolderId={currentFolderId} 
+            activeDragId={activeDragId} 
+          />
+
+          {/* Root drop zone when inside a folder (only shows when NOT dragging to avoid duplication) */}
+          {currentFolderId && !activeDragId && <div className="mb-4"><RootDropZone /></div>}
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -426,8 +559,8 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
               </p>
               <p className="text-sm mt-1">
                 {currentFolderId 
-                  ? 'Drag documents here or upload new ones' 
-                  : 'Upload permits, contracts, invoices, and more'}
+                  ? 'Drag documents here or drop files from your desktop' 
+                  : 'Drop files here or click Add to upload'}
               </p>
             </div>
           ) : (
