@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -89,6 +90,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
   const [isImporting, setIsImporting] = useState(false);
   const [assignmentType, setAssignmentType] = useState<'project' | 'business'>('project');
+  const [includeTax, setIncludeTax] = useState(true);
   const [uploadProgress, setUploadProgress] = useState<{
     current: number;
     total: number;
@@ -539,6 +541,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       initialQuantities[idx] = item.quantity || 1;
     });
     setEditableCategories(initialCategories);
+    setIncludeTax(true); // Reset tax toggle when opening modal
     setEditableQuantities(initialQuantities);
     setShowMatchModal(true);
   };
@@ -1186,17 +1189,37 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                     
                     {/* Tax Line Item */}
                     {selectedMatch.receipt.tax_amount > 0 && (
-                      <div className="flex items-center gap-3 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-sm">
+                      <div className={cn(
+                        "flex items-center gap-3 p-2 rounded border text-sm transition-opacity",
+                        includeTax 
+                          ? "bg-amber-500/10 border-amber-500/20" 
+                          : "bg-muted/20 border-muted opacity-50"
+                      )}>
                         <div className="flex-1">
-                          <p className="font-medium">Sales Tax</p>
-                          <p className="text-xs text-muted-foreground">
-                            Applied to purchase
-                          </p>
+                          <p className={cn("font-medium", !includeTax && "line-through")}>Sales Tax</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>Include in total</span>
+                            <Switch
+                              checked={includeTax}
+                              onCheckedChange={setIncludeTax}
+                              className="scale-75 origin-left"
+                            />
+                          </div>
                         </div>
-                        <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-400 border-amber-500/30">
+                        <Badge 
+                          variant="secondary" 
+                          className={cn(
+                            "text-xs",
+                            includeTax 
+                              ? "bg-amber-500/20 text-amber-400 border-amber-500/30" 
+                              : "bg-muted/50 text-muted-foreground line-through"
+                          )}
+                        >
                           Tax
                         </Badge>
-                        <span className="font-mono">{formatCurrency(selectedMatch.receipt.tax_amount)}</span>
+                        <span className={cn("font-mono", !includeTax && "line-through text-muted-foreground")}>
+                          {formatCurrency(selectedMatch.receipt.tax_amount)}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1207,7 +1230,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                       const qty = editableQuantities[idx] ?? item.quantity ?? 1;
                       return sum + (qty * item.unit_price);
                     }, 0);
-                    const splitTotal = lineItemsTotal + (selectedMatch.receipt.tax_amount || 0);
+                    const splitTotal = lineItemsTotal + (includeTax ? (selectedMatch.receipt.tax_amount || 0) : 0);
                     const transactionAmount = selectedMatch.qbExpense.amount;
                     const difference = Math.abs(splitTotal - transactionAmount);
                     const hasMismatch = difference > 0.01;
