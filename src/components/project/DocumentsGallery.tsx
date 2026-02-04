@@ -9,14 +9,16 @@ import {
   FolderPlus,
   Folder,
   Upload,
-  ChevronRight
+  ChevronRight,
+  Search,
+  X
 } from 'lucide-react';
 import { 
   DndContext, 
   DragEndEvent, 
   DragOverlay, 
   DragStartEvent,
-  rectIntersection,
+  pointerWithin,
   useSensor,
   useSensors,
   PointerSensor
@@ -138,6 +140,9 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
   // Desktop drag-and-drop states
   const [desktopDragActive, setDesktopDragActive] = useState(false);
   const [uploadingDesktopFiles, setUploadingDesktopFiles] = useState(false);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
 
   const currentFolder = useMemo(() => 
     folders.find(f => f.id === currentFolderId) || null
@@ -189,6 +194,19 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
     const uniqueCategories = [...new Set(allDocuments.map(d => d.category))];
     return uniqueCategories.filter(cat => !defaultValues.includes(cat)).sort();
   }, [allDocuments]);
+
+  // Search filter - searches across ALL documents in the project
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    
+    const query = searchQuery.toLowerCase();
+    return allDocuments.filter(doc => 
+      doc.file_name.toLowerCase().includes(query) ||
+      doc.title?.toLowerCase().includes(query) ||
+      doc.notes?.toLowerCase().includes(query) ||
+      doc.category.toLowerCase().includes(query)
+    );
+  }, [allDocuments, searchQuery]);
 
   const fetchFolders = async () => {
     const { data, error } = await supabase
@@ -570,7 +588,7 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      collisionDetection={rectIntersection}
+      collisionDetection={pointerWithin}
     >
       <Card className="glass-card">
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
@@ -632,6 +650,24 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
             </CardTitle>
           )}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search documents..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-8 w-[180px]"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
             <Select value={filterDate} onValueChange={setFilterDate}>
               <SelectTrigger className="w-[130px]">
                 <Clock className="h-4 w-4 mr-2" />
@@ -721,6 +757,32 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
+          ) : searchQuery && searchResults ? (
+            /* Search Results View */
+            searchResults.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Search className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                <p className="font-medium">No documents found</p>
+                <p className="text-sm mt-1">Try a different search term</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Found {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'} for "{searchQuery}"
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {searchResults.map((doc) => (
+                    <DraggableDocumentCard
+                      key={doc.id}
+                      doc={doc}
+                      onSelect={() => setSelectedDocument(doc)}
+                      onDownload={(e) => handleDownload(doc, e)}
+                      getCategoryLabel={getCategoryLabel}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
           ) : (documents.length === 0 && visibleFolders.length === 0) ? (
             <div className="text-center py-12 text-muted-foreground">
               <FolderOpen className="h-16 w-16 mx-auto mb-4 opacity-30" />
