@@ -1,76 +1,92 @@
 
-## Plan: Click-to-Open, Hold-and-Drag UX for Document Cards
 
-### Problem
-Currently, document cards have a separate drag handle that appears on hover. This is less intuitive than the calendar's approach where:
-- **Click** → Opens the item
-- **Hold + Move (8px)** → Starts dragging
+## Plan: Add Custom Title Field to Documents
 
-### Solution
-Apply the same `PointerSensor` with `distance` activation constraint pattern used in the calendar views. This eliminates the need for a visible drag handle and makes the entire card both clickable and draggable.
+### Overview
+Add a `title` field to documents so users can give them descriptive names like "Isias Foundation Warranty" while preserving the original file name (e.g., "IJ warranty.pdf") visible in the detail modal.
 
 ---
 
-### Technical Changes
+### UI Changes
 
-**1. Add PointerSensor to DocumentsGallery.tsx**
-
-```typescript
-import { 
-  DndContext, 
-  DragEndEvent, 
-  DragOverlay, 
-  pointerWithin,
-  useSensor,      // Add
-  useSensors,     // Add
-  PointerSensor   // Add
-} from '@dnd-kit/core';
-
-// Inside component:
-const sensors = useSensors(
-  useSensor(PointerSensor, {
-    activationConstraint: {
-      distance: 8, // 8px movement before drag activates
-    },
-  })
-);
-
-// Add to DndContext:
-<DndContext 
-  sensors={sensors}  // Add this
-  onDragStart={handleDragStart}
-  onDragEnd={handleDragEnd}
-  collisionDetection={pointerWithin}
->
+**Document Card Display:**
+```text
+┌──────────────┐        ┌──────────────┐
+│    📄 PDF    │        │    📄 PDF    │
+├──────────────┤        ├──────────────┤
+│ IJ warranty  │   →    │ Isias        │  ← Now shows title
+│              │        │ Foundation   │
+│              │        │ Warranty     │
+│ General      │        │ General      │
+└──────────────┘        └──────────────┘
 ```
 
-**2. Simplify DraggableDocumentCard.tsx**
-
-- Remove the separate `GripVertical` drag handle div
-- Apply drag listeners to the entire card instead of just the handle
-- Keep click handler working via dnd-kit's activation constraint
-
-```typescript
-// Before: Listeners only on drag handle
-<div {...listeners} {...attributes} className="...">
-  <GripVertical />
-</div>
-
-// After: Listeners on entire card, click still works due to distance constraint
-<div
-  ref={setNodeRef}
-  style={style}
-  {...listeners}
-  {...attributes}
-  onClick={(e) => {
-    // Only trigger if not dragging
-    if (!isDragging) {
-      onSelect();
-    }
-  }}
-  className={cn(...)}
->
+**Document Preview Modal (when clicked):**
+```text
+┌─────────────────────────────────────────┐
+│ 📄 Document Details                     │
+├─────────────────────────────────────────┤
+│ ┌─────────────────────────────────────┐ │
+│ │ Isias Foundation Warranty           │ │ ← Title (editable)
+│ │ 📎 IJ warranty.pdf • 430.9 KB       │ │ ← Original file name shown
+│ └─────────────────────────────────────┘ │
+│                                         │
+│ [Open]  [Download]                      │
+│                                         │
+│ Title: [Isias Foundation Warranty    ]  │ ← New editable field
+│ Category: [Permit ▾]                    │
+│ Date: [Feb 3, 2026]                     │
+│ Notes: [________________]               │
+└─────────────────────────────────────────┘
 ```
+
+**Upload Modal:**
+- Add optional "Title" input field above category
+- If left empty, defaults to showing file name
+
+---
+
+### Database Changes
+
+**Add column to `project_documents`:**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| title | text (nullable) | Custom display title, defaults to null (shows file_name if null) |
+
+---
+
+### Technical Implementation
+
+**1. Database Migration:**
+
+```sql
+-- Add title column to project_documents
+ALTER TABLE public.project_documents
+ADD COLUMN title TEXT DEFAULT NULL;
+```
+
+**2. Update DraggableDocumentCard.tsx:**
+
+- Display `doc.title || doc.file_name` as the main text
+- If title exists, truncate nicely; if not, show file_name as before
+
+**3. Update DocumentPreviewModal.tsx:**
+
+- Show title as editable field
+- Display original file name below it (read-only info)
+- Add title to the update mutation
+
+**4. Update DocumentUploadModal.tsx:**
+
+- Add optional "Title" input field
+- Placeholder: "e.g., Foundation Warranty, Final Invoice..."
+- Include title in the insert
+
+**5. Update DocumentsGallery.tsx:**
+
+- Update ProjectDocument interface to include `title: string | null`
+- Update desktop drop handler to set title as null (uses file_name by default)
 
 ---
 
@@ -78,25 +94,18 @@ const sensors = useSensors(
 
 | File | Changes |
 |------|---------|
-| `src/components/project/DocumentsGallery.tsx` | Import and configure `useSensor`, `useSensors`, `PointerSensor` with 8px distance constraint |
-| `src/components/project/DraggableDocumentCard.tsx` | Remove drag handle, apply listeners to full card, add conditional click handler |
+| Database migration | Add `title` column |
+| `DraggableDocumentCard.tsx` | Display title over file_name, update interface |
+| `DocumentPreviewModal.tsx` | Add title input, show file name as secondary info |
+| `DocumentUploadModal.tsx` | Add optional title input field |
+| `DocumentsGallery.tsx` | Update interface to include title |
 
 ---
 
-### How It Works
+### User Flow
 
-| User Action | Result |
-|-------------|--------|
-| Quick click on card | Opens document preview modal |
-| Click + hold + move 8px | Starts drag operation |
-| Release while dragging | Drops into folder/root |
+1. **Upload with title**: User uploads a file, optionally types "Isias Foundation Warranty" → Title saved
+2. **Upload without title**: User uploads without title → Card shows file name as before
+3. **Edit title later**: Click document → Edit title field → Save
+4. **View original file name**: Always visible in the detail modal header
 
-This matches the calendar's drag-and-drop behavior and provides a more intuitive experience.
-
----
-
-### Result
-- More intuitive UX - no need to hunt for a drag handle
-- Consistent with calendar views
-- Cleaner card design without visible grip icons
-- Single click still opens documents reliably
