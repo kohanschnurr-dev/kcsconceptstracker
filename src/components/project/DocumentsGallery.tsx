@@ -52,7 +52,6 @@ import { CreateFolderModal } from './CreateFolderModal';
 import { DraggableDocumentCard } from './DraggableDocumentCard';
 import { DraggableDroppableFolder } from './DraggableDroppableFolder';
 import { RootDropZone } from './RootDropZone';
-import { FolderTargetBar } from './FolderTargetBar';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -741,17 +740,8 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
             </div>
           )}
 
-          {/* Folder target bar - shows when dragging */}
-          <FolderTargetBar 
-            folders={folders} 
-            currentFolderId={currentFolderId} 
-            activeDragId={activeDragId}
-            activeDragType={activeDragType}
-            draggedFolderId={draggedFolderId}
-          />
-
-          {/* Root drop zone when inside a folder (only shows when NOT dragging to avoid duplication) */}
-          {currentFolderId && !activeDragId && <div className="mb-4"><RootDropZone /></div>}
+          {/* Root drop zone - only shows when inside a folder AND actively dragging */}
+          {currentFolderId && activeDragId && <div className="mb-4"><RootDropZone /></div>}
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
