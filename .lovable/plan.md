@@ -1,58 +1,50 @@
 
 
-## Plan: Add "Other" Category Option with Edit/Delete for Document Categories
+## Plan: Enable Multi-File Receipt Upload
 
 ### Overview
-Add the ability to:
-1. Select "Other" in the category dropdown and type a custom category name
-2. Custom categories are stored as plain text in the `category` column (already supports this)
-3. Display custom categories in the filter dropdown alongside default ones
-4. Allow editing/deleting custom categories (by updating the document's category value)
+Add the ability to select and upload multiple receipt files at once in the Smart Receipt Upload component. Each file will be processed sequentially (to avoid overwhelming the AI parsing), and users will see progress as files are parsed.
 
 ---
 
-### How It Will Work
+### Current Behavior
+- File input accepts only one file at a time
+- Drag-and-drop only processes the first dropped file
+- Clipboard paste only processes the first image
 
-**When uploading a document:**
-```text
-Category: [▾ Select category     ]
-          ┌─────────────────────┐
-          │ Permit              │
-          │ Contract            │
-          │ Invoice             │
-          │ ...                 │
-          │ General             │
-          │─────────────────────│
-          │ + Other (custom)... │
-          └─────────────────────┘
-
-User selects "Other" →
-
-Category: [▾ Other              ]
-Custom:   [________________     ]  ← Input appears for custom name
-```
-
-**In the filter dropdown:**
-- Show all default categories
-- Also show any unique custom categories found in the project's documents
-- Custom categories appear below "General" with a distinct style
+### New Behavior
+- File picker allows selecting multiple files
+- Drag-and-drop processes all dropped files
+- Each file is uploaded and parsed sequentially
+- Progress indicator shows "Parsing 2 of 5..." status
+- All receipts appear in the pending list after processing
 
 ---
 
 ### UI Changes
 
-**Upload/Preview Modals:**
-| Element | Change |
-|---------|--------|
-| Category dropdown | Add "Other (custom)..." option at bottom |
-| Custom input field | Show when "Other" is selected, allows typing custom category |
-| Validation | Require custom category name if "Other" is selected |
+**Upload area during multi-file processing:**
+```text
+┌─────────────────────────────────────────────────────┐
+│                                                     │
+│           🔄 Parsing receipt 2 of 5...              │
+│                                                     │
+│              Home_Depot_receipt.jpg                 │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
 
-**Filter Dropdown (DocumentsGallery):**
-| Element | Change |
-|---------|--------|
-| Category list | Dynamically include custom categories from documents |
-| Custom categories | Show with "(custom)" suffix and italic style |
+---
+
+### Technical Changes
+
+| Location | Change |
+|----------|--------|
+| File input element | Add `multiple` attribute |
+| `handleFileInput` function | Loop through all selected files |
+| `handleDrop` function | Loop through all dropped files |
+| State management | Track upload progress (current/total) |
+| UI feedback | Show which file is being processed |
 
 ---
 
@@ -60,117 +52,123 @@ Custom:   [________________     ]  ← Input appears for custom name
 
 | File | Changes |
 |------|---------|
-| `src/components/project/DocumentsGallery.tsx` | Fetch unique categories from documents; merge with defaults for filter |
-| `src/components/project/DocumentUploadModal.tsx` | Add "Other" option; show text input for custom category name |
-| `src/components/project/DocumentPreviewModal.tsx` | Add "Other" option; allow changing to/from custom category |
+| `src/components/SmartSplitReceiptUpload.tsx` | Add multi-file support to input, drag-drop, and upload functions |
 
 ---
 
-### Technical Implementation
+### Implementation Details
 
-**1. Upload Modal - Add "Other" option:**
+**1. Add state for tracking multi-file progress:**
 
 ```typescript
-const [isCustomCategory, setIsCustomCategory] = useState(false);
-const [customCategoryName, setCustomCategoryName] = useState('');
-
-// Category selection handler
-const handleCategoryChange = (value: string) => {
-  if (value === 'other') {
-    setIsCustomCategory(true);
-    setCategory('');
-  } else {
-    setIsCustomCategory(false);
-    setCategory(value);
-  }
-};
-
-// Final category value for saving
-const finalCategory = isCustomCategory ? customCategoryName.trim() : category;
+const [uploadProgress, setUploadProgress] = useState<{
+  current: number;
+  total: number;
+  currentFileName: string;
+} | null>(null);
 ```
 
-**2. Upload Modal - UI for custom input:**
+**2. Update file input to accept multiple:**
 
 ```tsx
-<Select value={isCustomCategory ? 'other' : category} onValueChange={handleCategoryChange}>
-  <SelectTrigger>
-    <SelectValue placeholder="Select category" />
-  </SelectTrigger>
-  <SelectContent>
-    {DOCUMENT_CATEGORIES.map((cat) => (
-      <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-    ))}
-    <SelectItem value="other" className="border-t mt-1 pt-1">
-      + Other (custom)...
-    </SelectItem>
-  </SelectContent>
-</Select>
+<input
+  type="file"
+  accept="image/*,.pdf"
+  multiple  // ← Add this
+  onChange={handleFileInput}
+  className="hidden"
+  id="receipt-upload"
+  disabled={isUploading}
+/>
+```
 
-{isCustomCategory && (
-  <div className="space-y-2 mt-2">
-    <Label>Custom Category Name</Label>
-    <Input
-      placeholder="e.g., Warranty, Change Order, Quote..."
-      value={customCategoryName}
-      onChange={(e) => setCustomCategoryName(e.target.value)}
-    />
+**3. Update `handleFileInput` to process all files:**
+
+```typescript
+const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  if (e.target.files && e.target.files.length > 0) {
+    const files = Array.from(e.target.files);
+    await processMultipleFiles(files);
+  }
+};
+```
+
+**4. Update `handleDrop` to process all dropped files:**
+
+```typescript
+const handleDrop = useCallback(async (e: React.DragEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  setDragActive(false);
+  
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    const files = Array.from(e.dataTransfer.files).filter(
+      file => file.type.startsWith('image/') || file.type === 'application/pdf'
+    );
+    await processMultipleFiles(files);
+  }
+}, []);
+```
+
+**5. Create new `processMultipleFiles` function:**
+
+```typescript
+const processMultipleFiles = async (files: File[]) => {
+  if (files.length === 0) return;
+  
+  setIsUploading(true);
+  setUploadProgress({ current: 0, total: files.length, currentFileName: '' });
+  
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    setUploadProgress({ 
+      current: i + 1, 
+      total: files.length, 
+      currentFileName: file.name 
+    });
+    
+    try {
+      await handleFileUpload(file);
+    } catch (error) {
+      console.error(`Failed to process ${file.name}:`, error);
+      // Continue with remaining files
+    }
+  }
+  
+  setUploadProgress(null);
+  setIsUploading(false);
+};
+```
+
+**6. Update upload area UI to show multi-file progress:**
+
+```tsx
+{uploadProgress && uploadProgress.total > 1 ? (
+  <div className="flex flex-col items-center gap-2">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <p className="text-sm font-medium">
+      Parsing receipt {uploadProgress.current} of {uploadProgress.total}...
+    </p>
+    <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+      {uploadProgress.currentFileName}
+    </p>
   </div>
+) : isParsing ? (
+  // Single file parsing (existing behavior)
+  ...
 )}
 ```
 
-**3. Gallery Filter - Include custom categories:**
-
-```typescript
-// Get unique categories from documents that aren't in the default list
-const customCategories = useMemo(() => {
-  const defaultValues = DOCUMENT_CATEGORIES.map(c => c.value);
-  const uniqueCategories = [...new Set(documents.map(d => d.category))];
-  return uniqueCategories.filter(cat => !defaultValues.includes(cat));
-}, [documents]);
-
-// In the Select component
-<SelectContent>
-  <SelectItem value="all">All</SelectItem>
-  {DOCUMENT_CATEGORIES.map((cat) => (
-    <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-  ))}
-  {customCategories.length > 0 && (
-    <>
-      <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1">
-        Custom
-      </div>
-      {customCategories.map((cat) => (
-        <SelectItem key={cat} value={cat}>
-          {cat}
-        </SelectItem>
-      ))}
-    </>
-  )}
-</SelectContent>
-```
-
-**4. Preview Modal - Support editing custom categories:**
-
-Same pattern as upload modal - detect if current category is custom (not in defaults), allow switching between default and custom.
-
 ---
 
-### Editing/Deleting Custom Categories
+### Edge Cases Handled
 
-- **Edit**: Change the document's category in the preview modal (already supported - just select a different category or type a new custom name)
-- **Delete**: When no documents use a custom category, it automatically disappears from the filter dropdown (dynamic lookup)
-
-No separate category management UI needed - categories are derived from document data.
-
----
-
-### Validation
-
-| Rule | Behavior |
+| Case | Behavior |
 |------|----------|
-| Empty custom name | Disable upload/save button |
-| Duplicate check | Not needed (duplicates just group documents) |
-| Trim whitespace | Apply on save |
+| Mixed valid/invalid files | Invalid files (non-images, non-PDFs) are filtered out |
+| One file fails to parse | Error toast shown, continue with remaining files |
+| User selects 0 files | No action taken |
+| Large batch (10+ files) | All processed sequentially with progress |
 
 ---
 
@@ -178,7 +176,7 @@ No separate category management UI needed - categories are derived from document
 
 | Before | After |
 |--------|-------|
-| Only 7 fixed categories | Unlimited custom categories via "Other" |
-| No way to add new types | Type any category name |
-| Static filter list | Dynamic filter includes custom categories |
+| Select one file at a time | Select multiple files at once |
+| Re-open picker for each receipt | Upload entire batch from folder |
+| No progress for single file | Progress indicator for batches |
 
