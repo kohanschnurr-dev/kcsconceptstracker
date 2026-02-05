@@ -55,7 +55,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { BusinessQuickBooksIntegration } from '@/components/BusinessQuickBooksIntegration';
-import { BusinessExpensesDashboard } from '@/components/dashboard/BusinessExpensesDashboard';
+ import { CompactDashboardWidgets } from '@/components/ops/CompactDashboardWidgets';
 import { BusinessExpenseDetailModal } from '@/components/BusinessExpenseDetailModal';
 import { BusinessReceiptUpload } from '@/components/BusinessReceiptUpload';
 import { formatDisplayDate, formatDateString } from '@/lib/dateUtils';
@@ -92,6 +92,8 @@ export default function BusinessExpenses() {
   const [expensesTableOpen, setExpensesTableOpen] = useState(true);
   const { toast } = useToast();
   const { companyName } = useCompanySettings();
+   const [goals, setGoals] = useState<{id: string; title: string; target_value: number; current_value: number | null; category: string | null}[]>([]);
+   const [rules, setRules] = useState<{id: string; title: string; category: string | null; is_completed: boolean | null}[]>([]);
   // Form state for new expense
   const [formData, setFormData] = useState({
     amount: '',
@@ -148,7 +150,13 @@ export default function BusinessExpenses() {
 
   const fetchData = async () => {
     try {
-      const [expensesRes, projectsRes] = await Promise.all([
+       const { data: { user } } = await supabase.auth.getUser();
+       if (!user) {
+         setIsLoading(false);
+         return;
+       }
+ 
+       const [expensesRes, projectsRes, goalsRes, rulesRes] = await Promise.all([
         supabase
           .from('business_expenses')
           .select('*')
@@ -156,13 +164,52 @@ export default function BusinessExpenses() {
         supabase
           .from('projects')
           .select('id, name, address')
-          .order('name')
+           .order('name'),
+         supabase
+           .from('quarterly_goals')
+           .select('id, title, target_value, current_value, category')
+           .eq('user_id', user.id)
+           .eq('quarter', 'Q1 2026'),
+         supabase
+           .from('operation_codes')
+           .select('id, title, category, is_completed')
+           .eq('user_id', user.id)
+           .order('order_index')
       ]);
 
       if (expensesRes.error) throw expensesRes.error;
 
       setExpenses(expensesRes.data || []);
       setProjects(projectsRes.data || []);
+       
+       // Seed default goals if empty
+       let goalsData = goalsRes.data || [];
+       if (goalsData.length === 0) {
+         const defaultGoals = [
+           { user_id: user.id, title: 'Generate $50K profit', target_value: 50000, current_value: 0, category: 'financial', quarter: 'Q1 2026' },
+           { user_id: user.id, title: 'Close 3 Flips', target_value: 3, current_value: 0, category: 'task_completion', quarter: 'Q1 2026' },
+           { user_id: user.id, title: 'Underwrite 10 Deals', target_value: 10, current_value: 0, category: 'task_completion', quarter: 'Q1 2026' },
+         ];
+         const { data: insertedGoals } = await supabase.from('quarterly_goals').insert(defaultGoals).select();
+         goalsData = insertedGoals || [];
+       }
+       setGoals(goalsData);
+       
+       // Seed default rules if empty
+       let rulesData = rulesRes.data || [];
+       if (rulesData.length === 0) {
+         const defaultRules = [
+           { user_id: user.id, title: 'Foundation First', category: 'order_of_operations', order_index: 1, is_completed: false },
+           { user_id: user.id, title: 'Structural Complete Before Finish', category: 'order_of_operations', order_index: 2, is_completed: false },
+           { user_id: user.id, title: 'Pre-Sheetrock HVAC Inspection', category: 'order_of_operations', order_index: 3, is_completed: false },
+           { user_id: user.id, title: 'Electrical Before Drywall', category: 'order_of_operations', order_index: 4, is_completed: false },
+           { user_id: user.id, title: 'Must Have Insurance', category: 'vendor_requirements', order_index: 5, is_completed: false },
+           { user_id: user.id, title: 'COI Required', category: 'vendor_requirements', order_index: 6, is_completed: false },
+         ];
+         const { data: insertedRules } = await supabase.from('operation_codes').insert(defaultRules).select();
+         rulesData = insertedRules || [];
+       }
+       setRules(rulesData);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -538,13 +585,15 @@ export default function BusinessExpenses() {
           onReceiptAttached={fetchData} 
         />
 
-        {/* Compact Dashboard with Sparkline and Category Pills */}
-        <BusinessExpensesDashboard 
-          expenses={expenses} 
-          getCategoryLabel={getCategoryLabel}
-          onCategoryClick={setCategoryFilter}
-          selectedCategory={categoryFilter}
-        />
+         {/* Compact Command Center Widgets */}
+         <CompactDashboardWidgets 
+           expenses={expenses}
+           goals={goals}
+           rules={rules}
+           getCategoryLabel={getCategoryLabel}
+           onCategoryClick={setCategoryFilter}
+           selectedCategory={categoryFilter}
+         />
 
         {/* Expenses Table */}
         <Collapsible open={expensesTableOpen} onOpenChange={setExpensesTableOpen}>
