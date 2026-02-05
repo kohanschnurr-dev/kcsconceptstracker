@@ -8,7 +8,6 @@ import { SpendingDonutChart } from '@/components/dashboard/SpendingDonutChart';
 import { SpendingTrendChart } from '@/components/dashboard/SpendingTrendChart';
 import { QuickTaskInput } from '@/components/dashboard/QuickTaskInput';
 import { TasksDueTodayBanner } from '@/components/dashboard/TasksDueTodayBanner';
-import { CalendarGlanceWidget } from '@/components/dashboard/CalendarGlanceWidget';
 import { QuickActionButton } from '@/components/QuickActionButton';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { NewProjectModal } from '@/components/NewProjectModal';
@@ -311,13 +310,6 @@ export default function Index() {
               <SpendingTrendChart expenses={chartExpenses} days={7} />
             </div>
           )}
-        </div>
-
-        {/* Right Sidebar - Urgent Tasks & Calendar */}
-        <div className="hidden lg:block w-72 flex-shrink-0">
-          <div className="sticky top-6">
-            <CalendarGlanceWidget refreshKey={taskRefreshKey} />
-          </div>
         </div>
       </div>
 
