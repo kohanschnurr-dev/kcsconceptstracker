@@ -437,6 +437,45 @@ export type Database = {
         }
         Relationships: []
       }
+      operation_codes: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_completed: boolean | null
+          is_pinned: boolean | null
+          order_index: number
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_completed?: boolean | null
+          is_pinned?: boolean | null
+          order_index?: number
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_completed?: boolean | null
+          is_pinned?: boolean | null
+          order_index?: number
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       pending_receipts: {
         Row: {
           created_at: string
@@ -1087,6 +1126,42 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vacancy_rate?: number | null
+        }
+        Relationships: []
+      }
+      quarterly_goals: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          current_value: number | null
+          id: string
+          quarter: string
+          target_value: number
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          current_value?: number | null
+          id?: string
+          quarter: string
+          target_value: number
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          current_value?: number | null
+          id?: string
+          quarter?: string
+          target_value?: number
+          title?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
