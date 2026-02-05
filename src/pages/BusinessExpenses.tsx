@@ -55,13 +55,11 @@ import { useToast } from '@/hooks/use-toast';
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { BusinessQuickBooksIntegration } from '@/components/BusinessQuickBooksIntegration';
+import { BusinessExpensesDashboard } from '@/components/dashboard/BusinessExpensesDashboard';
 import { BusinessExpenseDetailModal } from '@/components/BusinessExpenseDetailModal';
 import { BusinessReceiptUpload } from '@/components/BusinessReceiptUpload';
 import { formatDisplayDate, formatDateString } from '@/lib/dateUtils';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { OperationCodesPanel } from '@/components/ops/OperationCodesPanel';
-import { QuarterlyGoalsCard } from '@/components/ops/QuarterlyGoalsCard';
-import { CashFlowWidget } from '@/components/ops/CashFlowWidget';
 const BACKUP_KEY = 'dfw_project_expenses_backup';
 
 interface DBBusinessExpense {
@@ -500,8 +498,8 @@ export default function BusinessExpenses() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">{companyName} Command Center</h1>
-            <p className="text-muted-foreground mt-1">Project & Operations Dashboard</p>
+            <h1 className="text-2xl font-semibold">{companyName}</h1>
+            <p className="text-muted-foreground mt-1">Track business expenses</p>
           </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -531,215 +529,198 @@ export default function BusinessExpenses() {
           </div>
         </div>
 
-        {/* 2-Column Command Center Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
-          {/* Left Sidebar */}
-          <div className="space-y-4">
-            {/* Operation Codes Panel */}
-            <OperationCodesPanel />
-            
-            {/* QuickBooks Integration - Condensed */}
-            <BusinessQuickBooksIntegration onExpenseImported={fetchData} projects={projects} />
-          </div>
+        {/* QuickBooks Integration */}
+        <BusinessQuickBooksIntegration onExpenseImported={fetchData} projects={projects} />
 
-          {/* Main Content */}
-          <div className="space-y-4">
-            {/* Operations Dashboard - Cash Flow + Goals */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <CashFlowWidget
-                expenses={expenses}
-                getCategoryLabel={getCategoryLabel}
-                onCategoryClick={setCategoryFilter}
-                selectedCategory={categoryFilter}
-              />
-              <QuarterlyGoalsCard />
-            </div>
+        {/* Receipt Upload + Matching */}
+        <BusinessReceiptUpload 
+          expenses={expenses} 
+          onReceiptAttached={fetchData} 
+        />
 
-            {/* Receipt Upload + Matching */}
-            <BusinessReceiptUpload 
-              expenses={expenses} 
-              onReceiptAttached={fetchData} 
-            />
+        {/* Compact Dashboard with Sparkline and Category Pills */}
+        <BusinessExpensesDashboard 
+          expenses={expenses} 
+          getCategoryLabel={getCategoryLabel}
+          onCategoryClick={setCategoryFilter}
+          selectedCategory={categoryFilter}
+        />
 
-            {/* Expenses Table */}
-            <Collapsible open={expensesTableOpen} onOpenChange={setExpensesTableOpen}>
-              <div className="glass-card overflow-hidden">
-                <div className="flex flex-wrap items-center gap-3 p-4 border-b border-border/30">
-                  {/* Toggle */}
-                  <CollapsibleTrigger asChild>
-                    <div className="flex items-center gap-2 cursor-pointer hover:text-foreground/80 transition-colors">
-                      <ChevronDown className={`h-4 w-4 transition-transform ${expensesTableOpen ? '' : '-rotate-90'}`} />
-                    </div>
-                  </CollapsibleTrigger>
-                  
-                  {/* Filters - prevent toggle on click */}
-                  <div className="flex flex-wrap items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
-                    <div className="relative min-w-[180px] max-w-[240px]">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9 h-9"
-                      />
-                    </div>
-                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                      <SelectTrigger className="w-[160px] h-9">
-                        <SelectValue placeholder="All Categories" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        {BUSINESS_EXPENSE_CATEGORIES.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-2 h-9">
-                          <Calendar className="h-4 w-4" />
-                          {dateRange?.from ? (
-                            dateRange.to ? (
-                              <span>{format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}</span>
-                            ) : (
-                              <span>{format(dateRange.from, 'MMM d')}</span>
-                            )
-                          ) : (
-                            <span>Date Range</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="range"
-                          selected={dateRange}
-                          onSelect={setDateRange}
-                          numberOfMonths={1}
-                        />
-                        {dateRange && (
-                          <div className="p-2 border-t">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="w-full"
-                              onClick={() => setDateRange(undefined)}
-                            >
-                              Clear dates
-                            </Button>
-                          </div>
-                        )}
-                      </PopoverContent>
-                    </Popover>
-                    {hasActiveFilters && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={resetFilters}
-                        className="h-9 text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Reset
-                      </Button>
-                    )}
-                  </div>
-                  
-                  {/* Summary */}
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-                    <span>{filteredExpenses.length} expenses</span>
-                    <span>•</span>
-                    <span className="font-mono font-medium">{formatCurrency(totalExpenses)}</span>
-                  </div>
+        {/* Expenses Table */}
+        <Collapsible open={expensesTableOpen} onOpenChange={setExpensesTableOpen}>
+          <div className="glass-card overflow-hidden">
+            <div className="flex flex-wrap items-center gap-3 p-4 border-b border-border/30">
+              {/* Toggle */}
+              <CollapsibleTrigger asChild>
+                <div className="flex items-center gap-2 cursor-pointer hover:text-foreground/80 transition-colors">
+                  <ChevronDown className={`h-4 w-4 transition-transform ${expensesTableOpen ? '' : '-rotate-90'}`} />
                 </div>
-                
-                <CollapsibleContent>
-                  <div className="overflow-x-auto">
-                    <table className="data-table">
-                      <thead>
-                        <tr className="bg-muted/30">
-                          <th>Date</th>
-                          <th>Vendor</th>
-                          <th className="!text-center">Category</th>
-                          <th className="!text-center">Payment</th>
-                          <th className="!text-center">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {isLoading ? (
-                          <tr>
-                            <td colSpan={5} className="text-center py-8 text-muted-foreground">
-                              Loading...
-                            </td>
-                          </tr>
-                        ) : filteredExpenses.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="text-center py-8 text-muted-foreground">
-                              <Receipt className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                              <p>No business expenses found</p>
-                            </td>
-                          </tr>
+              </CollapsibleTrigger>
+              
+              {/* Filters - prevent toggle on click */}
+              <div className="flex flex-wrap items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
+                <div className="relative min-w-[180px] max-w-[240px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-[160px] h-9">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {BUSINESS_EXPENSE_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 h-9">
+                      <Calendar className="h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <span>{format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}</span>
                         ) : (
-                          filteredExpenses.map((expense) => (
-                            <tr 
-                              key={expense.id} 
-                              className="hover:bg-muted/20 transition-colors cursor-pointer"
-                              onClick={() => {
-                                setSelectedExpense(expense);
-                                setDetailModalOpen(true);
-                              }}
-                            >
-                              <td className="whitespace-nowrap">{formatDate(expense.date)}</td>
-                              <td>
-                                <div>
-                                  <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
-                                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                    {expense.description}
-                                  </p>
-                                  {expense.notes && (
-                                    <p className="text-xs text-muted-foreground/70 italic truncate max-w-[200px] mt-0.5">
-                                      Note: {expense.notes}
-                                    </p>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="text-center">
-                                <Badge variant="secondary" className="text-xs">
-                                  {getCategoryLabel(expense.category)}
-                                </Badge>
-                              </td>
-                              <td className="text-center capitalize">{expense.payment_method}</td>
-                              <td className="text-center">
-                                <div className="flex items-center justify-center gap-2">
-                                  {expense.receipt_url && (
-                                    <button
-                                      onClick={(e) => handleViewReceipt(expense.receipt_url!, e)}
-                                      className="text-primary hover:text-primary/80"
-                                    >
-                                      <Paperclip className="h-4 w-4" />
-                                    </button>
-                                  )}
-                                  <span className="font-mono">
-                                    {formatCurrency(expense.amount)}
-                                    {expense.includes_tax && (
-                                      <span className="text-xs text-muted-foreground ml-1">+tax</span>
-                                    )}
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </CollapsibleContent>
+                          <span>{format(dateRange.from, 'MMM d')}</span>
+                        )
+                      ) : (
+                        <span>Date Range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={1}
+                    />
+                    {dateRange && (
+                      <div className="p-2 border-t">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => setDateRange(undefined)}
+                        >
+                          Clear dates
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+                {hasActiveFilters && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={resetFilters}
+                    className="h-9 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Reset
+                  </Button>
+                )}
               </div>
-            </Collapsible>
+              
+              {/* Summary */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                <span>{filteredExpenses.length} expenses</span>
+                <span>•</span>
+                <span className="font-mono font-medium">{formatCurrency(totalExpenses)}</span>
+              </div>
+            </div>
+            
+            <CollapsibleContent>
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr className="bg-muted/30">
+                      <th>Date</th>
+                      <th>Vendor</th>
+                      <th className="!text-center">Category</th>
+                      <th className="!text-center">Payment</th>
+                      <th className="!text-center">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                          Loading...
+                        </td>
+                      </tr>
+                    ) : filteredExpenses.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <Receipt className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                          <p>No business expenses found</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredExpenses.map((expense) => (
+                        <tr 
+                          key={expense.id} 
+                          className="hover:bg-muted/20 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedExpense(expense);
+                            setDetailModalOpen(true);
+                          }}
+                        >
+                          <td className="whitespace-nowrap">{formatDate(expense.date)}</td>
+                          <td>
+                            <div>
+                              <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
+                              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                {expense.description}
+                              </p>
+                              {expense.notes && (
+                                <p className="text-xs text-muted-foreground/70 italic truncate max-w-[200px] mt-0.5">
+                                  Note: {expense.notes}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="text-center">
+                            <Badge variant="secondary" className="text-xs">
+                              {getCategoryLabel(expense.category)}
+                            </Badge>
+                          </td>
+                          <td className="text-center capitalize">{expense.payment_method}</td>
+                          <td className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {expense.receipt_url && (
+                                <button
+                                  onClick={(e) => handleViewReceipt(expense.receipt_url!, e)}
+                                  className="text-primary hover:text-primary/80"
+                                >
+                                  <Paperclip className="h-4 w-4" />
+                                </button>
+                              )}
+                              <span className="font-mono">
+                                {formatCurrency(expense.amount)}
+                                {expense.includes_tax && (
+                                  <span className="text-xs text-muted-foreground ml-1">+tax</span>
+                                )}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CollapsibleContent>
           </div>
-          {/* End Main Content */}
-        </div>
-        {/* End 2-Column Grid */}
+        </Collapsible>
       </div>
 
       {/* Add Expense Modal */}
