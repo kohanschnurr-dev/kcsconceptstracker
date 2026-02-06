@@ -171,7 +171,7 @@ export function DealSidebar({
                   </h4>
                   <div className="flex items-center gap-2">
                     <Label htmlFor="sell-closing-toggle" className="text-xs text-muted-foreground">
-                      Sell Closing
+                      Include Exit Costs
                     </Label>
                     <Switch
                       id="sell-closing-toggle"
