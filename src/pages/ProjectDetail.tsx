@@ -554,7 +554,7 @@ export default function ProjectDetail() {
           </TabsList>
 
           <TabsContent value="tasks">
-            <ProjectTasks projectId={id!} />
+            <ProjectTasks projectId={id!} projectName={project.name} />
           </TabsContent>
 
           <TabsContent value="schedule">

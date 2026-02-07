@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TASK_PRIORITY_COLORS, TASK_PRIORITY_LABELS } from '@/types/task';
 import type { TaskStatus, TaskPriority } from '@/types/task';
-import { Link } from 'react-router-dom';
+import { AddTaskModal } from './AddTaskModal';
 
 interface ProjectTask {
   id: string;
@@ -21,12 +21,14 @@ interface ProjectTask {
 
 interface ProjectTasksProps {
   projectId: string;
+  projectName: string;
 }
 
-export function ProjectTasks({ projectId }: ProjectTasksProps) {
+export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
   const { toast } = useToast();
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -99,11 +101,9 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
           <ListTodo className="h-5 w-5" />
           Pipeline Tasks ({tasks.length})
         </CardTitle>
-        <Button size="sm" variant="outline" asChild>
-          <Link to="/logs">
-            <Plus className="h-4 w-4 mr-1" />
-            Add Task
-          </Link>
+        <Button size="sm" variant="outline" onClick={() => setIsAddModalOpen(true)}>
+          <Plus className="h-4 w-4 mr-1" />
+          Add Task
         </Button>
       </CardHeader>
       <CardContent>
@@ -115,7 +115,7 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
           </div>
         ) : tasks.length === 0 ? (
           <p className="text-center text-muted-foreground py-6">
-            No tasks linked to this project yet. Add them from the Daily Logs page!
+            No tasks linked to this project yet. Click 'Add Task' to create one!
           </p>
         ) : (
           <div className="space-y-2">
@@ -151,6 +151,14 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
           </div>
         )}
       </CardContent>
+
+      <AddTaskModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        projectId={projectId}
+        projectName={projectName}
+        onTaskCreated={fetchTasks}
+      />
     </Card>
   );
 }
