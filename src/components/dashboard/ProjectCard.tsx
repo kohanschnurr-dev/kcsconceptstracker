@@ -60,7 +60,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
     >
       {/* Cover Photo */}
       {coverPhotoUrl && (
-        <div className="aspect-video w-full overflow-hidden">
+        <div className="h-32 w-full overflow-hidden">
           <img 
             src={coverPhotoUrl} 
             alt={project.name}
