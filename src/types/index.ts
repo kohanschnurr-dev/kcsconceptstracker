@@ -116,6 +116,7 @@ export interface Project {
   status: ProjectStatus;
   projectType: ProjectType;
   categories: CategoryBudget[];
+  coverPhotoPath?: string;
 }
 
 export interface CategoryBudget {

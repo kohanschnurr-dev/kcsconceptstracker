@@ -120,6 +120,7 @@ export default function Index() {
           status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
           projectType: p.project_type as 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling',
           categories: projectCategories,
+          coverPhotoPath: p.cover_photo_path || undefined,
         };
       });
 

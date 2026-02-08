@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Image, Loader2, Calendar } from 'lucide-react';
+import { Plus, Image, Loader2, Calendar, ImageIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,6 +7,7 @@ import { formatDisplayDateLong, parseDateString } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotoUploadModal } from './PhotoUploadModal';
 import { PhotoPreviewModal } from './PhotoPreviewModal';
+import { useToast } from '@/hooks/use-toast';
 
 interface Photo {
   id: string;
@@ -37,12 +38,14 @@ const DATE_FILTERS = [
 ];
 
 export function PhotoGallery({ projectId }: PhotoGalleryProps) {
+  const { toast } = useToast();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterDate, setFilterDate] = useState<string>('all');
+  const [coverPhotoPath, setCoverPhotoPath] = useState<string | null>(null);
 
   const fetchPhotos = async () => {
     const { data, error } = await supabase
@@ -59,9 +62,43 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
     setLoading(false);
   };
 
+  const fetchCoverPhoto = async () => {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('cover_photo_path')
+      .eq('id', projectId)
+      .single();
+    
+    if (!error && data) {
+      setCoverPhotoPath(data.cover_photo_path);
+    }
+  };
+
   useEffect(() => {
     fetchPhotos();
+    fetchCoverPhoto();
   }, [projectId]);
+
+  const setAsCoverPhoto = async (photo: Photo) => {
+    const { error } = await supabase
+      .from('projects')
+      .update({ cover_photo_path: photo.file_path })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to set cover photo',
+        variant: 'destructive',
+      });
+    } else {
+      setCoverPhotoPath(photo.file_path);
+      toast({
+        title: 'Cover photo updated',
+        description: 'This photo will now appear on the project card.',
+      });
+    }
+  };
 
   const getPhotoUrl = (filePath: string) => {
     const { data } = supabase.storage
@@ -202,30 +239,55 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
                 
                 {/* Photos Grid for this date */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {group.photos.map(photo => (
-                    <div 
-                      key={photo.id} 
-                      className="relative group cursor-pointer aspect-square rounded-lg overflow-hidden bg-muted"
-                      onClick={() => setSelectedPhoto(photo)}
-                    >
-                      <img 
-                        src={getPhotoUrl(photo.file_path)} 
-                        alt={photo.caption || 'Project photo'}
-                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="absolute top-2 left-2">
-                        <span className="text-xs px-2 py-0.5 rounded bg-background/80 text-foreground capitalize">
-                          {photo.category}
-                        </span>
-                      </div>
-                      {photo.caption && (
-                        <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <p className="text-xs text-white truncate">{photo.caption}</p>
+                  {group.photos.map(photo => {
+                    const isCover = photo.file_path === coverPhotoPath;
+                    return (
+                      <div 
+                        key={photo.id} 
+                        className="relative group cursor-pointer aspect-square rounded-lg overflow-hidden bg-muted"
+                        onClick={() => setSelectedPhoto(photo)}
+                      >
+                        <img 
+                          src={getPhotoUrl(photo.file_path)} 
+                          alt={photo.caption || 'Project photo'}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        
+                        {/* Category Badge */}
+                        <div className="absolute top-2 left-2 flex items-center gap-1">
+                          <span className="text-xs px-2 py-0.5 rounded bg-background/80 text-foreground capitalize">
+                            {photo.category}
+                          </span>
+                          {isCover && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-primary text-primary-foreground flex items-center gap-1">
+                              <ImageIcon className="h-3 w-3" />
+                              Cover
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        
+                        {/* Set as Cover Button - appears on hover */}
+                        {!isCover && (
+                          <button
+                            className="absolute top-2 right-2 text-xs px-2 py-1 rounded bg-background/90 text-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-primary-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAsCoverPhoto(photo);
+                            }}
+                          >
+                            Set as Cover
+                          </button>
+                        )}
+                        
+                        {photo.caption && (
+                          <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <p className="text-xs text-white truncate">{photo.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}

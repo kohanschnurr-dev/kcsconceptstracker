@@ -94,6 +94,7 @@ export default function Projects() {
           status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
           projectType: (p.project_type || 'fix_flip') as ProjectType,
           categories: projectCategories,
+          coverPhotoPath: p.cover_photo_path || undefined,
         };
       });
 
