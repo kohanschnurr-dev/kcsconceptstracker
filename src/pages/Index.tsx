@@ -4,8 +4,6 @@ import { DollarSign, FolderKanban, Plus, TrendingUp } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
-import { SpendingDonutChart } from '@/components/dashboard/SpendingDonutChart';
-import { SpendingTrendChart } from '@/components/dashboard/SpendingTrendChart';
 import { QuickTaskInput } from '@/components/dashboard/QuickTaskInput';
 import { TasksDueTodayBanner } from '@/components/dashboard/TasksDueTodayBanner';
 import { QuickActionButton } from '@/components/QuickActionButton';
@@ -194,15 +192,6 @@ export default function Index() {
   });
   const thisMonthTotal = thisMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
 
-  // Get all categories from all projects for chart
-  const allCategories = projects.flatMap(p => p.categories);
-  
-  // Transform expenses for charts
-  const chartExpenses = expenses.map(e => ({
-    categoryId: e.categoryId,
-    amount: e.amount,
-    date: e.date,
-  }));
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -300,16 +289,6 @@ export default function Index() {
             )}
           </div>
 
-          {/* Charts Section */}
-          {expenses.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <SpendingDonutChart 
-                expenses={chartExpenses} 
-                categories={allCategories.map(c => ({ id: c.id, category: c.category }))}
-              />
-              <SpendingTrendChart expenses={chartExpenses} days={7} />
-            </div>
-          )}
         </div>
       </div>
 
