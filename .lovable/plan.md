@@ -1,68 +1,142 @@
 
 
-## Plan: Make Cover Photo More Compact
+## Plan: Auto-Match Receipts to QuickBooks Transactions
 
 ### Overview
-Reduce the cover photo aspect ratio from `3:2` to `16:9` (widescreen) to create a more compact banner-style photo that allows 3 cards to fit comfortably in a row without excessive vertical scrolling.
+Add automatic receipt-to-transaction matching that runs:
+1. When the SmartSplitReceiptUpload component loads (on mount)
+2. After a new receipt is uploaded and parsed
+3. After QB expenses are synced
+
+This eliminates the need to manually click "Find Matches" while still keeping the button as a fallback.
 
 ---
 
-### Aspect Ratio Comparison
+### Current Flow vs. Proposed Flow
 
-| Ratio | Height vs Width | Description |
-|-------|-----------------|-------------|
-| `4:3` | 75% of width | Tall, boxed |
-| `3:2` (current) | 67% of width | Standard photo |
-| `16:9` (proposed) | 56% of width | Widescreen, compact |
-
-Going from `3:2` to `16:9` reduces the photo height by about 16%, making cards noticeably more compact while still showing the house exterior in a cinematic format.
+| Scenario | Current | Proposed |
+|----------|---------|----------|
+| Component loads | User must click "Find Matches" | Auto-runs matching silently |
+| After receipt upload | User must click "Find Matches" | Auto-runs matching after upload |
+| After QB sync | User must click "Find Matches" | Auto-runs matching after sync |
 
 ---
 
-### Change
+### Changes
 
-**File: `src/components/dashboard/ProjectCard.tsx`**
+#### 1. SmartSplitReceiptUpload Component
 
-Line 63 - Change from:
+**File: `src/components/SmartSplitReceiptUpload.tsx`**
+
+**a) Add silent auto-match function**
+
+Create a new `runAutoMatching` function that:
+- Runs the same matching logic as `runMatching`
+- Does NOT show toast for "no matches found" (silent when nothing to match)
+- Only shows toast when matches ARE found
+- Doesn't set loading state to avoid UI flickering
+
 ```tsx
-<div className="aspect-[3/2] w-full overflow-hidden">
+// Silent auto-match - only shows toast on success
+const runAutoMatching = async () => {
+  if (isMatching) return; // Prevent concurrent runs
+  
+  try {
+    const { data, error } = await supabase.functions.invoke('match-receipts');
+    
+    if (error) {
+      console.log('Auto-match error:', error);
+      return;
+    }
+    
+    if (data.matches && data.matches.length > 0) {
+      toast({
+        title: 'Matches found!',
+        description: `Auto-matched ${data.matches.length} receipt(s) to bank transactions`,
+      });
+      await fetchPendingReceipts();
+    }
+  } catch (error) {
+    console.log('Auto-match failed silently:', error);
+  }
+};
 ```
 
-To:
+**b) Trigger auto-match on component mount**
+
+Add a useEffect that runs once when the component mounts and there are pending receipts:
+
 ```tsx
-<div className="aspect-video w-full overflow-hidden">
+// Auto-match on mount when there are pending receipts
+useEffect(() => {
+  const pendingToMatch = pendingReceipts.filter(r => r.status === 'pending');
+  if (pendingToMatch.length > 0 && pendingQBExpenses.length > 0) {
+    runAutoMatching();
+  }
+}, [pendingReceipts.length, pendingQBExpenses.length]);
 ```
 
-Note: `aspect-video` is Tailwind's built-in class for `16:9` ratio.
+**c) Trigger auto-match after receipt upload**
+
+In the `handleFileUpload` function, after `await fetchPendingReceipts()`:
+
+```tsx
+// After successful upload
+await fetchPendingReceipts();
+onReceiptProcessed?.();
+
+// Auto-match the newly uploaded receipt
+if (pendingQBExpenses.length > 0) {
+  setTimeout(() => runAutoMatching(), 500); // Small delay to ensure data is fresh
+}
+```
 
 ---
 
-### Visual Comparison
+### Matching Trigger Points
 
 ```text
-Current (3:2):
-┌───────────────────────┐
-│                       │
-│     Cover Photo       │  67% height ratio
-│                       │
-├───────────────────────┤
-│ Project Content       │
-└───────────────────────┘
-
-Proposed (16:9):
-┌───────────────────────┐
-│     Cover Photo       │  56% height ratio
-├───────────────────────┤
-│ Project Content       │
-└───────────────────────┘
+┌──────────────────────┐
+│  Component Mounts    │──→ Check if pending receipts + QB expenses exist
+└──────────────────────┘    If yes → runAutoMatching()
+            │
+            ▼
+┌──────────────────────┐
+│  Receipt Uploaded    │──→ After parse complete
+└──────────────────────┘    If QB expenses exist → runAutoMatching()
+            │
+            ▼
+┌──────────────────────┐
+│  "Find Matches" Btn  │──→ Manual trigger (kept as fallback)
+└──────────────────────┘
 ```
 
 ---
 
-### Result
+### Behavior Summary
 
-With 3 cards per row on desktop (`xl:grid-cols-3`), this more compact ratio will:
-- Show more cards above the fold
-- Reduce vertical scrolling
-- Still display house exteriors in a cinematic widescreen format
+| Condition | Action |
+|-----------|--------|
+| No pending receipts | Do nothing (silent) |
+| No QB expenses | Do nothing (silent) |
+| Receipts + QB exist, no matches | Do nothing (silent) |
+| Receipts + QB exist, matches found | Show toast + update UI |
+| Manual button click | Always show result (even "no matches") |
+
+---
+
+### Technical Details
+
+**Files to modify:**
+- `src/components/SmartSplitReceiptUpload.tsx`
+
+**New function:**
+- `runAutoMatching()` - Silent version of matching
+
+**Modified areas:**
+- Add useEffect for mount-time matching
+- Modify `handleFileUpload` to trigger auto-match after upload
+- Keep existing `runMatching()` for manual "Find Matches" button
+
+**No backend changes needed** - The existing `match-receipts` edge function handles the matching logic.
 
