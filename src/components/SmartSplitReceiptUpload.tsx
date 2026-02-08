@@ -411,6 +411,11 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       await fetchPendingReceipts();
       onReceiptProcessed?.();
 
+      // Auto-match the newly uploaded receipt after a small delay
+      if (pendingQBExpenses.length > 0) {
+        setTimeout(() => runAutoMatching(), 500);
+      }
+
     } catch (error: any) {
       console.error('Error processing receipt:', error);
       toast({
@@ -465,7 +470,39 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     }
   };
 
-  // Run matching
+  // Silent auto-match - only shows toast on success
+  const runAutoMatching = async () => {
+    if (isMatching) return; // Prevent concurrent runs
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('match-receipts');
+      
+      if (error) {
+        console.log('Auto-match error:', error);
+        return;
+      }
+      
+      if (data.matches && data.matches.length > 0) {
+        toast({
+          title: 'Matches found!',
+          description: `Auto-matched ${data.matches.length} receipt(s) to bank transactions`,
+        });
+        await fetchPendingReceipts();
+      }
+    } catch (error) {
+      console.log('Auto-match failed silently:', error);
+    }
+  };
+
+  // Auto-match on mount/data change when there are pending receipts and QB expenses
+  useEffect(() => {
+    const pendingToMatch = pendingReceipts.filter(r => r.status === 'pending');
+    if (pendingToMatch.length > 0 && pendingQBExpenses.length > 0) {
+      runAutoMatching();
+    }
+  }, [pendingReceipts.length, pendingQBExpenses.length]);
+
+  // Run matching (manual button - always shows result)
   const runMatching = async () => {
     setIsMatching(true);
     try {
