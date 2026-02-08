@@ -1,9 +1,9 @@
 
 
-## Plan: Reduce Cover Photo Size on Project Cards
+## Plan: Adjust Cover Photo to Squarer Aspect Ratio
 
 ### Overview
-The cover photo currently takes up too much space on the project card. This change will reduce the photo height to create a more balanced card layout.
+Change the cover photo from a thin banner (`h-32` = 128px) to a more square-like aspect ratio that shows more of the house exterior.
 
 ---
 
@@ -11,8 +11,8 @@ The cover photo currently takes up too much space on the project card. This chan
 
 | Aspect | Current | Proposed |
 |--------|---------|----------|
-| Photo Height | `aspect-video` (16:9 ratio) | Fixed height of `h-32` (128px) |
-| Visual Balance | Photo dominates the card | Photo serves as a subtle header |
+| Photo Height | `h-32` (128px) - thin banner | `aspect-[4/3]` (4:3 ratio) |
+| Visual Result | Wide crop, cuts off top/bottom | More boxed, shows full exterior |
 
 ---
 
@@ -22,35 +22,40 @@ The cover photo currently takes up too much space on the project card. This chan
 
 Line 63 - Change from:
 ```tsx
-<div className="aspect-video w-full overflow-hidden">
+<div className="h-32 w-full overflow-hidden">
 ```
 
 To:
 ```tsx
-<div className="h-32 w-full overflow-hidden">
+<div className="aspect-[4/3] w-full overflow-hidden">
 ```
 
-This changes the photo container from a 16:9 aspect ratio to a fixed height of 128px, making it more like a compact banner rather than a hero image.
+The `aspect-[4/3]` ratio creates a more boxed shape that's ideal for showing house exteriors - tall enough to capture the full facade while still being compact.
 
 ---
 
-### Visual Result
+### Visual Comparison
 
 ```text
+Current (h-32 - thin banner):
 ┌─────────────────────────────────────────┐
-│ [Cover Photo - compact 128px height]    │
+│▓▓▓▓▓ Cover Photo (128px) ▓▓▓▓▓▓▓▓▓▓▓▓▓▓│  ← Crops off roof/yard
 ├─────────────────────────────────────────┤
-│ 🔨 Wales Rental               [active]  │
-│ 📍 5441 Wales Ave.                      │
+
+Proposed (aspect-[4/3] - boxed):
+┌─────────────────────────────────────────┐
 │                                         │
-│ Budget Progress                  97.9%  │
-│ ████████████████████░░░░░░░░░░░░░░░░░░ │
-│ $59,319 spent           $60,586 total  │
-│ ─────────────────────────────────────  │
-│ Remaining           Start Date          │
-│ $1,267              📅 Jan 15, 2026    │
-└─────────────────────────────────────────┘
+│      Cover Photo (4:3 ratio)            │  ← Shows full exterior
+│                                         │
+├─────────────────────────────────────────┤
 ```
 
-The card content will now be more prominent while still showing the cover photo as a visual accent at the top.
+---
+
+### Why 4:3?
+
+- **Better for exteriors**: Shows roof, facade, and front yard
+- **Classic photo ratio**: Matches typical real estate photo composition  
+- **Balanced**: Not as tall as a square (1:1), not as wide as video (16:9)
+- **Responsive**: Scales proportionally with card width
 
