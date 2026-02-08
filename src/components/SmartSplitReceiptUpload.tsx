@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2 } from 'lucide-react';
+import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { Button } from '@/components/ui/button';
@@ -567,6 +567,57 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     }
   };
 
+  // Download receipt image
+  const downloadReceipt = async (receiptImageUrl: string, vendorName: string) => {
+    if (!receiptImageUrl) return;
+    
+    try {
+      const urlParts = receiptImageUrl.split('/storage/v1/object/public/');
+      if (urlParts.length !== 2) {
+        // Fallback: direct download
+        const link = document.createElement('a');
+        link.href = receiptImageUrl;
+        link.download = `receipt-${vendorName}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+      
+      const [bucketName, ...pathParts] = urlParts[1].split('/');
+      const filePath = pathParts.join('/');
+      
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .download(filePath);
+      
+      if (error || !data) {
+        console.error('Failed to download receipt:', error);
+        toast({
+          title: 'Download failed',
+          description: 'Could not download receipt image',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      const blobUrl = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filePath.split('/').pop() || `receipt-${vendorName}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (error) {
+      console.error('Failed to download receipt:', error);
+      toast({
+        title: 'Download failed',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Accept match and open split modal
   const acceptMatch = (match: MatchedExpense) => {
     setSelectedMatch(match);
@@ -1095,14 +1146,27 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                               </div>
                             )}
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteReceipt(receipt.id)}
-                            className="text-muted-foreground hover:text-destructive shrink-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {receipt.receipt_image_url && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => downloadReceipt(receipt.receipt_image_url!, receipt.vendor_name)}
+                                className="text-muted-foreground hover:text-primary"
+                                title="Download receipt"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => deleteReceipt(receipt.id)}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
