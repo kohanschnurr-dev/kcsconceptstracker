@@ -950,15 +950,19 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
             type="file"
             accept="image/*"
             capture="environment"
-            multiple
-            onChange={(e) => {
+            onChange={async (e) => {
               const files = Array.from(e.target.files || []);
-              if (files.length > 0) {
-                processMultipleFiles(files);
-                // Auto-expand to show progress
-                setIsExpanded(true);
+              if (files.length === 0) return;
+              
+              // Auto-expand to show progress
+              setIsExpanded(true);
+              
+              if (files.length === 1) {
+                await handleFileUpload(files[0]);
+              } else {
+                await processMultipleFiles(files);
               }
-              // Reset input
+              // Reset input so the same file can be selected again
               e.target.value = '';
             }}
             className="hidden"
