@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download } from 'lucide-react';
+import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download, Camera } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,7 @@ interface SmartSplitReceiptUploadProps {
 
 export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [], onReceiptProcessed, onRefreshQBExpenses }: SmartSplitReceiptUploadProps) {
   const { companyName } = useCompanySettings();
+  const isMobile = useIsMobile();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
@@ -84,6 +86,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const uploadZoneRef = useRef<HTMLDivElement>(null);
+  const mobileScanInputRef = useRef<HTMLInputElement>(null);
   const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
   const [editableQuantities, setEditableQuantities] = useState<Record<number, number>>({});
   const [selectedProject, setSelectedProject] = useState<string>('');
@@ -933,8 +936,54 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const pendingCount = pendingReceipts.filter(r => r.status === 'pending').length;
   const matchedCount = matchedReceipts.length;
 
+  // Mobile scan - opens camera directly
+  const handleMobileScan = () => {
+    mobileScanInputRef.current?.click();
+  };
+
   return (
     <>
+      {/* Mobile Quick Scan Button - visible only on mobile, outside collapsible */}
+      {isMobile && (
+        <>
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              if (files.length > 0) {
+                processMultipleFiles(files);
+                // Auto-expand to show progress
+                setIsExpanded(true);
+              }
+              // Reset input
+              e.target.value = '';
+            }}
+            className="hidden"
+            ref={mobileScanInputRef}
+          />
+          <Button
+            className="w-full gap-2 h-12 text-base mb-4"
+            onClick={handleMobileScan}
+            disabled={isUploading || isParsing}
+          >
+            {isUploading || isParsing ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                {uploadProgress ? `Processing ${uploadProgress.current}/${uploadProgress.total}...` : 'Processing...'}
+              </>
+            ) : (
+              <>
+                <Camera className="h-5 w-5" />
+                Scan Receipt
+              </>
+            )}
+          </Button>
+        </>
+      )}
+
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <div className="glass-card overflow-hidden border-2 border-dashed border-primary/20">
           <CollapsibleTrigger asChild>
