@@ -1,18 +1,19 @@
 
 
-## Plan: Add Download Button for Pending Receipts
+## Plan: Add Mobile-Only "Scan Receipt" Quick Action
 
 ### Overview
-Add a download button to receipts in the "Awaiting Bank Transaction" state so you can save the receipt images locally for backup purposes. This ensures you have a copy even if you leave for a week and don't remember what was uploaded.
+Add a prominent "Scan Receipt" button that appears **only on mobile** at the top of the SmartSplit section. This allows you to quickly upload receipt photos without needing to expand the collapsible panel first.
 
 ---
 
-### Current State vs. Proposed
+### Current vs. Proposed Mobile Flow
 
-| State | Current Actions | Proposed Actions |
-|-------|----------------|------------------|
-| Awaiting Bank Transaction | Delete only | **Download** + Delete |
-| Matched receipts | Import, Delete | (unchanged) |
+| Current | Proposed |
+|---------|----------|
+| Tap to expand SmartSplit | **Scan button visible immediately** |
+| Find upload zone inside | Tap "Scan" to open camera |
+| Upload photo | Same upload flow |
 
 ---
 
@@ -20,133 +21,123 @@ Add a download button to receipts in the "Awaiting Bank Transaction" state so yo
 
 **File: `src/components/SmartSplitReceiptUpload.tsx`**
 
-#### 1. Add Download icon to imports (Line 2)
+#### 1. Add Camera icon and useIsMobile hook imports
 
-Add `Download` to the lucide-react import:
 ```tsx
-import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download } from 'lucide-react';
+import { Camera } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 ```
 
-#### 2. Add download receipt handler function (after deleteReceipt function, around line 550)
+#### 2. Add mobile hook and hidden file input ref
+
+Inside the component, add:
+```tsx
+const isMobile = useIsMobile();
+const mobileScanInputRef = useRef<HTMLInputElement>(null);
+```
+
+#### 3. Add mobile scan handler
 
 ```tsx
-// Download receipt image
-const downloadReceipt = async (receiptImageUrl: string, vendorName: string) => {
-  if (!receiptImageUrl) return;
-  
-  try {
-    const urlParts = receiptImageUrl.split('/storage/v1/object/public/');
-    if (urlParts.length !== 2) {
-      // Fallback: direct download
-      const link = document.createElement('a');
-      link.href = receiptImageUrl;
-      link.download = `receipt-${vendorName}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
-    }
-    
-    const [bucketName, ...pathParts] = urlParts[1].split('/');
-    const filePath = pathParts.join('/');
-    
-    const { data, error } = await supabase.storage
-      .from(bucketName)
-      .download(filePath);
-    
-    if (error || !data) {
-      console.error('Failed to download receipt:', error);
-      toast({
-        title: 'Download failed',
-        description: 'Could not download receipt image',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    const blobUrl = URL.createObjectURL(data);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = filePath.split('/').pop() || `receipt-${vendorName}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-  } catch (error) {
-    console.error('Failed to download receipt:', error);
-    toast({
-      title: 'Download failed',
-      variant: 'destructive',
-    });
-  }
+// Mobile scan - opens camera directly
+const handleMobileScan = () => {
+  mobileScanInputRef.current?.click();
 };
 ```
 
-#### 3. Add Download button next to Trash button (around line 1098-1106)
+#### 4. Add Mobile Scan Button above the Collapsible
 
-Change from:
-```tsx
-<Button
-  size="sm"
-  variant="ghost"
-  onClick={() => deleteReceipt(receipt.id)}
-  className="text-muted-foreground hover:text-destructive shrink-0"
->
-  <Trash2 className="h-4 w-4" />
-</Button>
-```
+Right after the `return (` and before `<>`, add a mobile-only scan section:
 
-To:
 ```tsx
-<div className="flex items-center gap-1 shrink-0">
-  {receipt.receipt_image_url && (
-    <Button
-      size="sm"
-      variant="ghost"
-      onClick={() => downloadReceipt(receipt.receipt_image_url!, receipt.vendor_name)}
-      className="text-muted-foreground hover:text-primary"
-      title="Download receipt"
-    >
-      <Download className="h-4 w-4" />
-    </Button>
-  )}
-  <Button
-    size="sm"
-    variant="ghost"
-    onClick={() => deleteReceipt(receipt.id)}
-    className="text-muted-foreground hover:text-destructive"
-  >
-    <Trash2 className="h-4 w-4" />
-  </Button>
-</div>
+return (
+  <>
+    {/* Mobile Quick Scan Button - visible only on mobile, outside collapsible */}
+    {isMobile && (
+      <>
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          multiple
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            if (files.length > 0) {
+              processMultipleFiles(files);
+              // Auto-expand to show progress
+              setIsExpanded(true);
+            }
+          }}
+          className="hidden"
+          ref={mobileScanInputRef}
+        />
+        <Button
+          className="w-full gap-2 h-12 text-base"
+          onClick={handleMobileScan}
+          disabled={isUploading || isParsing}
+        >
+          {isUploading || isParsing ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              {uploadProgress ? `Processing ${uploadProgress.current}/${uploadProgress.total}...` : 'Processing...'}
+            </>
+          ) : (
+            <>
+              <Camera className="h-5 w-5" />
+              Scan Receipt
+            </>
+          )}
+        </Button>
+      </>
+    )}
+
+    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+      {/* ... existing code ... */}
+    </Collapsible>
+  </>
+);
 ```
 
 ---
 
-### Visual Result
+### Visual Result (Mobile Only)
 
 ```text
-Before:
-┌─────────────────────────────────────────────────┐
-│ 🖼️ Amazon                                   🗑️ │
-│ $16.23 • Feb 7, 2026 • 1 items parsed          │
-│ [Link Transaction...]                           │
-└─────────────────────────────────────────────────┘
-
-After:
-┌─────────────────────────────────────────────────┐
-│ 🖼️ Amazon                               ⬇️ 🗑️ │
-│ $16.23 • Feb 7, 2026 • 1 items parsed          │
-│ [Link Transaction...]                           │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────┐
+│  📷  Scan Receipt                   │  ← NEW: Always visible on mobile
+└─────────────────────────────────────┘
+┌─────────────────────────────────────┐
+│ ✨ SmartSplit Receipt Matching      │
+│    3 waiting  2 matched!        ▼   │
+└─────────────────────────────────────┘
 ```
 
 ---
 
-### Behavior
+### Behavior Summary
 
-- Download button appears only if `receipt_image_url` exists
-- Uses the existing programmatic blob-download pattern (per project standards)
-- Downloads as a file to the user's device (not opening in new tab)
-- Filename includes vendor name for easy identification
+| Feature | Description |
+|---------|-------------|
+| Mobile only | Button hidden on desktop (uses existing upload zone) |
+| Opens camera | Uses `capture="environment"` to open rear camera |
+| Multi-file support | Supports selecting multiple photos |
+| Auto-expands | Opens the collapsible to show parsing progress |
+| Shows progress | Displays "Processing 1/3..." during batch uploads |
+| Disabled during upload | Prevents double-taps while processing |
+
+---
+
+### Technical Details
+
+**Files to modify:**
+- `src/components/SmartSplitReceiptUpload.tsx`
+
+**New imports:**
+- `Camera` from lucide-react
+- `useIsMobile` from hooks
+
+**Key attributes:**
+- `capture="environment"` - Opens device camera (rear camera preferred)
+- `accept="image/*"` - Only images
+- `multiple` - Allow batch selection
 
