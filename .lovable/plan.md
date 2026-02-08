@@ -1,142 +1,152 @@
 
 
-## Plan: Auto-Match Receipts to QuickBooks Transactions
+## Plan: Add Download Button for Pending Receipts
 
 ### Overview
-Add automatic receipt-to-transaction matching that runs:
-1. When the SmartSplitReceiptUpload component loads (on mount)
-2. After a new receipt is uploaded and parsed
-3. After QB expenses are synced
-
-This eliminates the need to manually click "Find Matches" while still keeping the button as a fallback.
+Add a download button to receipts in the "Awaiting Bank Transaction" state so you can save the receipt images locally for backup purposes. This ensures you have a copy even if you leave for a week and don't remember what was uploaded.
 
 ---
 
-### Current Flow vs. Proposed Flow
+### Current State vs. Proposed
 
-| Scenario | Current | Proposed |
-|----------|---------|----------|
-| Component loads | User must click "Find Matches" | Auto-runs matching silently |
-| After receipt upload | User must click "Find Matches" | Auto-runs matching after upload |
-| After QB sync | User must click "Find Matches" | Auto-runs matching after sync |
+| State | Current Actions | Proposed Actions |
+|-------|----------------|------------------|
+| Awaiting Bank Transaction | Delete only | **Download** + Delete |
+| Matched receipts | Import, Delete | (unchanged) |
 
 ---
 
 ### Changes
 
-#### 1. SmartSplitReceiptUpload Component
-
 **File: `src/components/SmartSplitReceiptUpload.tsx`**
 
-**a) Add silent auto-match function**
+#### 1. Add Download icon to imports (Line 2)
 
-Create a new `runAutoMatching` function that:
-- Runs the same matching logic as `runMatching`
-- Does NOT show toast for "no matches found" (silent when nothing to match)
-- Only shows toast when matches ARE found
-- Doesn't set loading state to avoid UI flickering
+Add `Download` to the lucide-react import:
+```tsx
+import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download } from 'lucide-react';
+```
+
+#### 2. Add download receipt handler function (after deleteReceipt function, around line 550)
 
 ```tsx
-// Silent auto-match - only shows toast on success
-const runAutoMatching = async () => {
-  if (isMatching) return; // Prevent concurrent runs
+// Download receipt image
+const downloadReceipt = async (receiptImageUrl: string, vendorName: string) => {
+  if (!receiptImageUrl) return;
   
   try {
-    const { data, error } = await supabase.functions.invoke('match-receipts');
-    
-    if (error) {
-      console.log('Auto-match error:', error);
+    const urlParts = receiptImageUrl.split('/storage/v1/object/public/');
+    if (urlParts.length !== 2) {
+      // Fallback: direct download
+      const link = document.createElement('a');
+      link.href = receiptImageUrl;
+      link.download = `receipt-${vendorName}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       return;
     }
     
-    if (data.matches && data.matches.length > 0) {
+    const [bucketName, ...pathParts] = urlParts[1].split('/');
+    const filePath = pathParts.join('/');
+    
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .download(filePath);
+    
+    if (error || !data) {
+      console.error('Failed to download receipt:', error);
       toast({
-        title: 'Matches found!',
-        description: `Auto-matched ${data.matches.length} receipt(s) to bank transactions`,
+        title: 'Download failed',
+        description: 'Could not download receipt image',
+        variant: 'destructive',
       });
-      await fetchPendingReceipts();
+      return;
     }
+    
+    const blobUrl = URL.createObjectURL(data);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filePath.split('/').pop() || `receipt-${vendorName}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
   } catch (error) {
-    console.log('Auto-match failed silently:', error);
+    console.error('Failed to download receipt:', error);
+    toast({
+      title: 'Download failed',
+      variant: 'destructive',
+    });
   }
 };
 ```
 
-**b) Trigger auto-match on component mount**
+#### 3. Add Download button next to Trash button (around line 1098-1106)
 
-Add a useEffect that runs once when the component mounts and there are pending receipts:
-
+Change from:
 ```tsx
-// Auto-match on mount when there are pending receipts
-useEffect(() => {
-  const pendingToMatch = pendingReceipts.filter(r => r.status === 'pending');
-  if (pendingToMatch.length > 0 && pendingQBExpenses.length > 0) {
-    runAutoMatching();
-  }
-}, [pendingReceipts.length, pendingQBExpenses.length]);
+<Button
+  size="sm"
+  variant="ghost"
+  onClick={() => deleteReceipt(receipt.id)}
+  className="text-muted-foreground hover:text-destructive shrink-0"
+>
+  <Trash2 className="h-4 w-4" />
+</Button>
 ```
 
-**c) Trigger auto-match after receipt upload**
-
-In the `handleFileUpload` function, after `await fetchPendingReceipts()`:
-
+To:
 ```tsx
-// After successful upload
-await fetchPendingReceipts();
-onReceiptProcessed?.();
-
-// Auto-match the newly uploaded receipt
-if (pendingQBExpenses.length > 0) {
-  setTimeout(() => runAutoMatching(), 500); // Small delay to ensure data is fresh
-}
+<div className="flex items-center gap-1 shrink-0">
+  {receipt.receipt_image_url && (
+    <Button
+      size="sm"
+      variant="ghost"
+      onClick={() => downloadReceipt(receipt.receipt_image_url!, receipt.vendor_name)}
+      className="text-muted-foreground hover:text-primary"
+      title="Download receipt"
+    >
+      <Download className="h-4 w-4" />
+    </Button>
+  )}
+  <Button
+    size="sm"
+    variant="ghost"
+    onClick={() => deleteReceipt(receipt.id)}
+    className="text-muted-foreground hover:text-destructive"
+  >
+    <Trash2 className="h-4 w-4" />
+  </Button>
+</div>
 ```
 
 ---
 
-### Matching Trigger Points
+### Visual Result
 
 ```text
-┌──────────────────────┐
-│  Component Mounts    │──→ Check if pending receipts + QB expenses exist
-└──────────────────────┘    If yes → runAutoMatching()
-            │
-            ▼
-┌──────────────────────┐
-│  Receipt Uploaded    │──→ After parse complete
-└──────────────────────┘    If QB expenses exist → runAutoMatching()
-            │
-            ▼
-┌──────────────────────┐
-│  "Find Matches" Btn  │──→ Manual trigger (kept as fallback)
-└──────────────────────┘
+Before:
+┌─────────────────────────────────────────────────┐
+│ 🖼️ Amazon                                   🗑️ │
+│ $16.23 • Feb 7, 2026 • 1 items parsed          │
+│ [Link Transaction...]                           │
+└─────────────────────────────────────────────────┘
+
+After:
+┌─────────────────────────────────────────────────┐
+│ 🖼️ Amazon                               ⬇️ 🗑️ │
+│ $16.23 • Feb 7, 2026 • 1 items parsed          │
+│ [Link Transaction...]                           │
+└─────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Behavior Summary
+### Behavior
 
-| Condition | Action |
-|-----------|--------|
-| No pending receipts | Do nothing (silent) |
-| No QB expenses | Do nothing (silent) |
-| Receipts + QB exist, no matches | Do nothing (silent) |
-| Receipts + QB exist, matches found | Show toast + update UI |
-| Manual button click | Always show result (even "no matches") |
-
----
-
-### Technical Details
-
-**Files to modify:**
-- `src/components/SmartSplitReceiptUpload.tsx`
-
-**New function:**
-- `runAutoMatching()` - Silent version of matching
-
-**Modified areas:**
-- Add useEffect for mount-time matching
-- Modify `handleFileUpload` to trigger auto-match after upload
-- Keep existing `runMatching()` for manual "Find Matches" button
-
-**No backend changes needed** - The existing `match-receipts` edge function handles the matching logic.
+- Download button appears only if `receipt_image_url` exists
+- Uses the existing programmatic blob-download pattern (per project standards)
+- Downloads as a file to the user's device (not opening in new tab)
+- Filename includes vendor name for easy identification
 
