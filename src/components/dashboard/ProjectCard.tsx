@@ -3,6 +3,7 @@ import { Project } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { formatDisplayDate } from '@/lib/dateUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectCardProps {
   project: Project;
@@ -26,6 +27,16 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
     return 'bg-success';
   };
 
+  const getCoverPhotoUrl = () => {
+    if (!project.coverPhotoPath) return null;
+    const { data } = supabase.storage
+      .from('project-photos')
+      .getPublicUrl(project.coverPhotoPath);
+    return data.publicUrl;
+  };
+
+  const coverPhotoUrl = getCoverPhotoUrl();
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -42,9 +53,24 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
   return (
     <div
       onClick={onClick}
-      className="glass-card p-5 cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 animate-slide-up"
+      className={cn(
+        "glass-card cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 animate-slide-up overflow-hidden",
+        !coverPhotoUrl && "p-5"
+      )}
     >
-      <div className="flex items-start justify-between mb-4">
+      {/* Cover Photo */}
+      {coverPhotoUrl && (
+        <div className="aspect-video w-full overflow-hidden">
+          <img 
+            src={coverPhotoUrl} 
+            alt={project.name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+      
+      <div className={cn("space-y-4", coverPhotoUrl && "p-5")}>
+      <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
             {isNewConstruction ? (
@@ -127,7 +153,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
           </div>
         </div>
       </div>
-
+      </div>
     </div>
   );
 }

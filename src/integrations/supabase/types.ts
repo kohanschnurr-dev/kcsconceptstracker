@@ -1043,6 +1043,7 @@ export type Database = {
           annual_insurance: number | null
           annual_property_taxes: number | null
           arv: number | null
+          cover_photo_path: string | null
           created_at: string
           hm_closing_costs: number | null
           hm_interest_only: boolean | null
@@ -1073,6 +1074,7 @@ export type Database = {
           annual_insurance?: number | null
           annual_property_taxes?: number | null
           arv?: number | null
+          cover_photo_path?: string | null
           created_at?: string
           hm_closing_costs?: number | null
           hm_interest_only?: boolean | null
@@ -1103,6 +1105,7 @@ export type Database = {
           annual_insurance?: number | null
           annual_property_taxes?: number | null
           arv?: number | null
+          cover_photo_path?: string | null
           created_at?: string
           hm_closing_costs?: number | null
           hm_interest_only?: boolean | null
