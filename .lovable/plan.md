@@ -1,21 +1,21 @@
 
 
-## Plan: Reduce Cover Photo Aspect Ratio
+## Plan: Make Cover Photo More Compact
 
 ### Overview
-Decrease the cover photo height from the current `4:3` ratio to a slightly more compact `3:2` ratio. This gives a bit more breathing room while still showing the house exterior nicely.
+Reduce the cover photo aspect ratio from `3:2` to `16:9` (widescreen) to create a more compact banner-style photo that allows 3 cards to fit comfortably in a row without excessive vertical scrolling.
 
 ---
 
-### Aspect Ratio Options
+### Aspect Ratio Comparison
 
-| Ratio | Description | Use Case |
-|-------|-------------|----------|
-| `4:3` (current) | Tall, boxed | Full portraits |
-| `3:2` (proposed) | Balanced | Real estate standard |
-| `16:9` | Wide banner | Video thumbnails |
+| Ratio | Height vs Width | Description |
+|-------|-----------------|-------------|
+| `4:3` | 75% of width | Tall, boxed |
+| `3:2` (current) | 67% of width | Standard photo |
+| `16:9` (proposed) | 56% of width | Widescreen, compact |
 
-The `3:2` ratio is actually the standard for real estate photography - it's what most listing photos use. It's slightly wider than 4:3, making it a bit more compact on the card.
+Going from `3:2` to `16:9` reduces the photo height by about 16%, making cards noticeably more compact while still showing the house exterior in a cinematic format.
 
 ---
 
@@ -25,32 +25,44 @@ The `3:2` ratio is actually the standard for real estate photography - it's what
 
 Line 63 - Change from:
 ```tsx
-<div className="aspect-[4/3] w-full overflow-hidden">
+<div className="aspect-[3/2] w-full overflow-hidden">
 ```
 
 To:
 ```tsx
-<div className="aspect-[3/2] w-full overflow-hidden">
+<div className="aspect-video w-full overflow-hidden">
 ```
+
+Note: `aspect-video` is Tailwind's built-in class for `16:9` ratio.
 
 ---
 
 ### Visual Comparison
 
 ```text
-Current (4:3 - taller):
-┌─────────────────────────┐
-│                         │
-│    Cover Photo          │  ~75% of width as height
-│                         │
-├─────────────────────────┤
+Current (3:2):
+┌───────────────────────┐
+│                       │
+│     Cover Photo       │  67% height ratio
+│                       │
+├───────────────────────┤
+│ Project Content       │
+└───────────────────────┘
 
-Proposed (3:2 - slightly shorter):
-┌─────────────────────────┐
-│                         │
-│    Cover Photo          │  ~67% of width as height
-├─────────────────────────┤
+Proposed (16:9):
+┌───────────────────────┐
+│     Cover Photo       │  56% height ratio
+├───────────────────────┤
+│ Project Content       │
+└───────────────────────┘
 ```
 
-This creates a photo that's about 10% shorter while still maintaining a balanced, boxed look that shows the house exterior well.
+---
+
+### Result
+
+With 3 cards per row on desktop (`xl:grid-cols-3`), this more compact ratio will:
+- Show more cards above the fold
+- Reduce vertical scrolling
+- Still display house exteriors in a cinematic widescreen format
 
