@@ -1,18 +1,21 @@
 
 
-## Plan: Adjust Cover Photo to Squarer Aspect Ratio
+## Plan: Reduce Cover Photo Aspect Ratio
 
 ### Overview
-Change the cover photo from a thin banner (`h-32` = 128px) to a more square-like aspect ratio that shows more of the house exterior.
+Decrease the cover photo height from the current `4:3` ratio to a slightly more compact `3:2` ratio. This gives a bit more breathing room while still showing the house exterior nicely.
 
 ---
 
-### Current vs. Proposed
+### Aspect Ratio Options
 
-| Aspect | Current | Proposed |
-|--------|---------|----------|
-| Photo Height | `h-32` (128px) - thin banner | `aspect-[4/3]` (4:3 ratio) |
-| Visual Result | Wide crop, cuts off top/bottom | More boxed, shows full exterior |
+| Ratio | Description | Use Case |
+|-------|-------------|----------|
+| `4:3` (current) | Tall, boxed | Full portraits |
+| `3:2` (proposed) | Balanced | Real estate standard |
+| `16:9` | Wide banner | Video thumbnails |
+
+The `3:2` ratio is actually the standard for real estate photography - it's what most listing photos use. It's slightly wider than 4:3, making it a bit more compact on the card.
 
 ---
 
@@ -22,40 +25,32 @@ Change the cover photo from a thin banner (`h-32` = 128px) to a more square-like
 
 Line 63 - Change from:
 ```tsx
-<div className="h-32 w-full overflow-hidden">
+<div className="aspect-[4/3] w-full overflow-hidden">
 ```
 
 To:
 ```tsx
-<div className="aspect-[4/3] w-full overflow-hidden">
+<div className="aspect-[3/2] w-full overflow-hidden">
 ```
-
-The `aspect-[4/3]` ratio creates a more boxed shape that's ideal for showing house exteriors - tall enough to capture the full facade while still being compact.
 
 ---
 
 ### Visual Comparison
 
 ```text
-Current (h-32 - thin banner):
-┌─────────────────────────────────────────┐
-│▓▓▓▓▓ Cover Photo (128px) ▓▓▓▓▓▓▓▓▓▓▓▓▓▓│  ← Crops off roof/yard
-├─────────────────────────────────────────┤
+Current (4:3 - taller):
+┌─────────────────────────┐
+│                         │
+│    Cover Photo          │  ~75% of width as height
+│                         │
+├─────────────────────────┤
 
-Proposed (aspect-[4/3] - boxed):
-┌─────────────────────────────────────────┐
-│                                         │
-│      Cover Photo (4:3 ratio)            │  ← Shows full exterior
-│                                         │
-├─────────────────────────────────────────┤
+Proposed (3:2 - slightly shorter):
+┌─────────────────────────┐
+│                         │
+│    Cover Photo          │  ~67% of width as height
+├─────────────────────────┤
 ```
 
----
-
-### Why 4:3?
-
-- **Better for exteriors**: Shows roof, facade, and front yard
-- **Classic photo ratio**: Matches typical real estate photo composition  
-- **Balanced**: Not as tall as a square (1:1), not as wide as video (16:9)
-- **Responsive**: Scales proportionally with card width
+This creates a photo that's about 10% shorter while still maintaining a balanced, boxed look that shows the house exterior well.
 
