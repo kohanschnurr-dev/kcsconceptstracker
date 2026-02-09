@@ -89,8 +89,8 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     );
   }, [pendingExpenses]);
 
-  const handleCategorize = async (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor' | 'loan', notes?: string) => {
-    if (!projectId || !categoryValue) return;
+  const handleCategorize = async (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor' | 'loan' | 'utilities', notes?: string) => {
+    if (!projectId || (!categoryValue && expenseType !== 'loan')) return;
 
     const success = await categorizeExpense(expenseId, projectId, categoryValue, expenseType, notes);
     if (success && onExpenseImported) {

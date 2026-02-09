@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { formatDisplayDate } from '@/lib/dateUtils';
-import { ChevronDown, ChevronUp, Check, Trash2, Receipt, Package, Wrench, StickyNote, Split, Landmark } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, Trash2, Receipt, Package, Wrench, StickyNote, Split, Landmark, MoreHorizontal, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import {
   ToggleGroupItem,
 } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ALL_CATEGORIES, BUDGET_CATEGORIES } from '@/types';
 import type { Project } from '@/types';
 
@@ -52,7 +53,7 @@ interface PendingExpense {
 interface GroupedPendingExpenseCardProps {
   expenses: PendingExpense[];
   projects: Project[];
-  onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor' | 'loan', notes?: string) => Promise<void>;
+  onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor' | 'loan' | 'utilities', notes?: string) => Promise<void>;
   onDelete: (expenseId: string) => Promise<void>;
   onImportAll: (expenseIds: string[], projectId: string) => Promise<void>;
   onOpenSplitModal?: (expense: PendingExpense) => void;
@@ -72,7 +73,8 @@ export function GroupedPendingExpenseCard({
   const [isSingleExpanded, setIsSingleExpanded] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedExpenseType, setSelectedExpenseType] = useState<'product' | 'labor' | 'loan'>('product');
+  const [selectedExpenseType, setSelectedExpenseType] = useState<'product' | 'labor' | 'loan' | 'utilities'>('product');
+  const [morePopoverOpen, setMorePopoverOpen] = useState(false);
   const [expenseNotes, setExpenseNotes] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
 
@@ -252,22 +254,53 @@ export function GroupedPendingExpenseCard({
             </div>
           </div>
            <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedExpenseType(selectedExpenseType === 'loan' ? 'product' : 'loan');
-              }}
-              className={cn(
-                "gap-1 px-2 text-xs h-8",
-                selectedExpenseType === 'loan' 
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50" 
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Landmark className="h-3.5 w-3.5" />
-              Loan
-            </Button>
+            <Popover open={morePopoverOpen} onOpenChange={setMorePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-8 w-8 shrink-0",
+                    (selectedExpenseType === 'loan' || selectedExpenseType === 'utilities')
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-40 p-1" align="start" sideOffset={4}>
+                <button
+                  className={cn(
+                    "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md hover:bg-accent",
+                    selectedExpenseType === 'loan' && "bg-emerald-500/20 text-emerald-400"
+                  )}
+                  onClick={() => {
+                    setSelectedExpenseType('loan');
+                    setMorePopoverOpen(false);
+                  }}
+                >
+                  <Landmark className="h-4 w-4" />
+                  Loan
+                </button>
+                <button
+                  className={cn(
+                    "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md hover:bg-accent",
+                    selectedExpenseType === 'utilities' && "bg-yellow-500/20 text-yellow-400"
+                  )}
+                  onClick={() => {
+                    setSelectedExpenseType('utilities');
+                    setMorePopoverOpen(false);
+                  }}
+                >
+                  <Zap className="h-4 w-4" />
+                  Utilities
+                </button>
+              </PopoverContent>
+            </Popover>
+            {(selectedExpenseType === 'loan' || selectedExpenseType === 'utilities') && (
+              <span className="text-xs text-muted-foreground capitalize">{selectedExpenseType}</span>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -280,7 +313,7 @@ export function GroupedPendingExpenseCard({
             {selectedExpenseType !== 'loan' && (
               <ToggleGroup 
                 type="single" 
-                value={selectedExpenseType}
+                value={(selectedExpenseType === 'utilities') ? '' : selectedExpenseType}
                 onValueChange={(value) => {
                   if (value) {
                     setSelectedExpenseType(value as 'product' | 'labor');
