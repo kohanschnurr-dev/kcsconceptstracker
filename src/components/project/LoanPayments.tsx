@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Landmark, Trash2 } from 'lucide-react';
+import { Plus, Landmark, Trash2, Undo2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,7 @@ interface LoanPayment {
   payment_type: string;
   source: string;
   notes: string | null;
+  expense_id: string | null;
 }
 
 interface LoanPaymentsProps {
@@ -131,6 +132,32 @@ export function LoanPayments({ projectId }: LoanPaymentsProps) {
       setPayments(prev => prev.filter(p => p.id !== id));
       toast({ title: 'Removed', description: 'Payment deleted' });
     }
+  };
+
+  const handleSendBack = async (payment: LoanPayment) => {
+    // 1. Delete loan_payments record
+    const { error: deleteError } = await supabase.from('loan_payments').delete().eq('id', payment.id);
+    if (deleteError) {
+      toast({ title: 'Error', description: 'Failed to remove payment', variant: 'destructive' });
+      return;
+    }
+
+    if (payment.expense_id) {
+      // 2. Delete the corresponding expenses record
+      await supabase.from('expenses').delete()
+        .eq('project_id', projectId)
+        .eq('description', payment.description || '')
+        .eq('amount', payment.amount);
+
+      // 3. Un-import the QB expense
+      await supabase.from('quickbooks_expenses')
+        .update({ is_imported: false, expense_type: null })
+        .eq('id', payment.expense_id);
+    }
+
+    // 4. Refresh and notify
+    setPayments(prev => prev.filter(p => p.id !== payment.id));
+    toast({ title: 'Sent Back', description: 'Payment returned to pending queue' });
   };
 
   const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
@@ -229,9 +256,16 @@ export function LoanPayments({ projectId }: LoanPaymentsProps) {
                       </TableCell>
                       <TableCell className="text-right font-mono font-medium">{formatCurrency(Number(p.amount))}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(p.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          {p.source === 'quickbooks' && p.expense_id && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-amber-500" onClick={() => handleSendBack(p)} title="Send back to pending queue">
+                              <Undo2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(p.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

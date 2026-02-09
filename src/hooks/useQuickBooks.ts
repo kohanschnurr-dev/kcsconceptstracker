@@ -529,6 +529,37 @@ export function useQuickBooks() {
     }
 
     try {
+      // Find the expense data before marking as imported
+      const expense = pendingExpenses.find(e => e.id === expenseId);
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Insert into expenses table (mirrors demo-mode behavior)
+      if (expense && user) {
+        const { error: insertError } = await supabase.from('expenses').insert({
+          project_id: projectId,
+          category_id: categoryId,
+          amount: expense.amount,
+          date: expense.date,
+          vendor_name: expense.vendor_name,
+          description: expense.description,
+          payment_method: 'transfer' as const,
+          status: 'actual' as const,
+          includes_tax: false,
+          expense_type: expenseType,
+          notes: notes || null,
+        });
+
+        if (insertError) {
+          console.error('Error inserting expense:', insertError);
+          toast({
+            title: 'Error',
+            description: 'Failed to create expense record',
+            variant: 'destructive',
+          });
+          return false;
+        }
+      }
+
       const { error } = await supabase
         .from('quickbooks_expenses')
         .update({ 
@@ -550,23 +581,19 @@ export function useQuickBooks() {
       }
 
       // If loan type, also insert into loan_payments
-      if (expenseType === 'loan') {
-        const expense = pendingExpenses.find(e => e.id === expenseId);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user && expense) {
-          await supabase.from('loan_payments').insert({
-            project_id: projectId,
-            user_id: user.id,
-            amount: expense.amount,
-            date: expense.date,
-            description: expense.description,
-            vendor_name: expense.vendor_name,
-            payment_type: 'other',
-            source: 'quickbooks',
-            expense_id: expenseId,
-            notes: notes || null,
-          });
-        }
+      if (expenseType === 'loan' && user && expense) {
+        await supabase.from('loan_payments').insert({
+          project_id: projectId,
+          user_id: user.id,
+          amount: expense.amount,
+          date: expense.date,
+          description: expense.description,
+          vendor_name: expense.vendor_name,
+          payment_type: 'other',
+          source: 'quickbooks',
+          expense_id: expenseId,
+          notes: notes || null,
+        });
       }
 
       // Refresh pending expenses
