@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles } from 'lucide-react';
+import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles, Package, Wrench } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Drawer,
@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ALL_CATEGORIES, BUDGET_CATEGORIES, TEXAS_SALES_TAX, Project, PaymentMethod, BudgetCategory } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,6 +55,7 @@ function ExpenseForm({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [includeTax, setIncludeTax] = useState(false);
+  const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
@@ -227,6 +229,7 @@ function ExpenseForm({
           tax_amount: includeTax ? calculateTax() : null,
           date: date,
           receipt_url: receiptUrl,
+          expense_type: expenseType,
         });
 
       if (error) throw error;
@@ -338,8 +341,28 @@ function ExpenseForm({
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
+        </Select>
         </div>
+      </div>
+
+      {/* Expense Type Toggle */}
+      <div className="flex items-center gap-3">
+        <Label className="text-sm">Type:</Label>
+        <ToggleGroup
+          type="single"
+          value={expenseType}
+          onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')}
+          className="justify-start"
+        >
+          <ToggleGroupItem value="product" size="sm" className="gap-1">
+            <Package className="h-3 w-3" />
+            Product
+          </ToggleGroupItem>
+          <ToggleGroupItem value="labor" size="sm" className="gap-1">
+            <Wrench className="h-3 w-3" />
+            Labor
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
