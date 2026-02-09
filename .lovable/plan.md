@@ -1,85 +1,60 @@
 
 
-## Add Monthly Costs Section to Project Detail Page
+## Add "To Date" Button + Configurable Loan Term Slots
 
 ### Overview
 
-Add a new "Monthly Costs" card/section to the project detail page that aggregates and displays all expenses with `expense_type = 'monthly'` for that project. This gives users a clear view of recurring holding costs like water, gas, insurance, HOA, property tax, etc.
+Add a "To Date" button to the Loan Term selector that dynamically calculates months elapsed from the project's start date to today. Also add a small settings gear to let users customize which 4 term preset slots are shown, supporting months, years, and decimal values (e.g., 1.5 = 6 weeks).
 
-### Placement
+### Changes
 
-The section will be added as a new collapsible card between the Budget Progress bar and the Tabs section on the project detail page. It will show a summary of total monthly costs and a breakdown by category (water, gas, insurance, etc.).
+**1. `src/components/project/HardMoneyLoanCalculator.tsx`**
 
-### UI Design
+- Add a new prop: `projectStartDate?: string` to receive the project's start date
+- Replace the hardcoded `termOptions = [6, 12, 18, 360]` with user-configurable term slots stored in `localStorage` (key: `loan-term-presets`)
+- Default slots: `[6, 12, 18, 360]` (same as current)
+- Support decimal/fraction values in the custom term input and settings (e.g., `1.5` months = ~6 weeks)
+- Add a **"To Date"** button next to the term options that:
+  - Calculates the difference in months (with decimals) between `projectStartDate` and `new Date()` (today)
+  - Updates `loanTermMonths` to that value
+  - Refreshes every time the component mounts / tab is viewed (uses current date)
+  - Shows the calculated value on hover or as a label (e.g., "To Date (7.2)")
+  - Disabled / hidden if no `projectStartDate` is available
+- Add a small **Settings (gear) icon button** that opens a popover/dialog to configure the 4 term slots:
+  - 4 input fields, each accepting a number (months) or a year value
+  - A toggle or label to indicate months vs years (values over 24 stored as months internally)
+  - Save to `localStorage` so it persists across sessions
+  - Reset to defaults option
 
-A compact card with:
-- Header: "Monthly Costs" with a calendar/repeat icon and total monthly spend
-- A grid of category pills showing each monthly cost type and its total amount
-- Collapsible detail rows showing individual expenses per category
-- If no monthly expenses exist, the section is hidden entirely (no empty state clutter)
+**2. `src/pages/ProjectDetail.tsx`**
+
+- Pass `projectStartDate={project.start_date}` as a new prop to `HardMoneyLoanCalculator`
+
+### UI Layout (Loan Term row)
 
 ```text
-+----------------------------------------------------------+
-| Monthly Costs                          Total: $1,245.00   |
-|----------------------------------------------------------|
-| [Water $85] [Gas $120] [Insurance $450] [HOA $200] ...   |
-|                                                          |
-| > Expand to see individual transactions                  |
-+----------------------------------------------------------+
+Loan Term (Months)
+[ 6 ] [ 12 ] [ 18 ] [ 30yr ] [ Custom ] [ To Date (7.2) ] [gear icon]
 ```
 
-### Technical Changes
+- "To Date" button: highlighted style, shows calculated months from project start to today
+- Gear icon: opens a small popover with 4 inputs to customize the preset slots
+- All term values support decimals (e.g., 1.5 for 6 weeks)
 
-**1. `src/pages/ProjectDetail.tsx`**
+### Settings Popover Layout
 
-- Query expenses with `expense_type = 'monthly'` for this project from the `expenses` table
-- These are already fetched in the existing `expensesRes` query -- just filter by `expense_type`
-- Create a new `MonthlyExpenses` component (or inline section) that:
-  - Groups monthly expenses by their category value (water, gas, insurance, etc.)
-  - Shows total per category and overall total
-  - Uses the same `MONTHLY_COST_CATEGORIES` constant from `GroupedPendingExpenseCard.tsx` (will extract to a shared location)
-  - Collapsible to show/hide individual line items
-
-**2. New file: `src/components/project/MonthlyExpenses.tsx`**
-
-- Accepts `projectId` as prop
-- Fetches expenses where `expense_type = 'monthly'` for the project
-- Groups by category label
-- Renders a compact card with category breakdown
-- Each category row shows: icon, label, total amount, and expandable transaction list
-- Supports deleting / sending back individual monthly expenses
-
-**3. `src/lib/monthlyCategories.ts` (new shared constant file)**
-
-Extract the `MONTHLY_COST_CATEGORIES` array from `GroupedPendingExpenseCard.tsx` into a shared file so both the QB import card and the project detail section can reference it:
-
-```
-export const MONTHLY_COST_CATEGORIES = [
-  { value: 'water', label: 'Water' },
-  { value: 'gas', label: 'Gas' },
-  { value: 'electric', label: 'Electric' },
-  { value: 'insurance', label: 'Insurance' },
-  { value: 'hoa', label: 'HOA' },
-  { value: 'property_tax', label: 'Property Tax' },
-  { value: 'lawn_care', label: 'Lawn Care' },
-  { value: 'pool_maintenance', label: 'Pool Maintenance' },
-  { value: 'pest_control', label: 'Pest Control' },
-  { value: 'internet_cable', label: 'Internet / Cable' },
-  { value: 'trash_recycling', label: 'Trash / Recycling' },
-  { value: 'security_alarm', label: 'Security / Alarm' },
-];
+```text
+Term Presets          [Reset]
+Slot 1: [  6  ] months
+Slot 2: [ 12  ] months  
+Slot 3: [ 18  ] months
+Slot 4: [ 360 ] months (= 30yr)
 ```
 
-**4. Update `src/components/quickbooks/GroupedPendingExpenseCard.tsx`**
+### Technical Details
 
-Import `MONTHLY_COST_CATEGORIES` from the shared file instead of defining it locally.
-
-### Data Flow
-
-- Monthly expenses are stored in the `expenses` table with `expense_type = 'monthly'`
-- The category value (e.g., `water`, `insurance`) is stored in the `category_id` field, which references a `project_categories` row auto-created during QB import
-- The `MonthlyExpenses` component queries expenses + joins category data to display human-readable labels
-- No new database tables or columns needed
-
-### No database changes required
-All data already exists in the `expenses` table via the `expense_type` column.
+- `loanTermMonths` state changes from `number` (integer) to `number` (float-capable) -- all calculations already use it as a number so no formula changes needed
+- "To Date" calculation: `differenceInMonths` from `date-fns` won't give decimals, so we'll compute manually: `(today - startDate) / (1000 * 60 * 60 * 24 * 30.44)` rounded to 1 decimal
+- localStorage key: `loan-term-presets`, storing `number[]` of length 4
+- The Payoff Timeline comparison already filters by `<= loanTermMonths`, so decimal terms work naturally
+- The Custom popover input will accept `step="0.5"` for fractional months
