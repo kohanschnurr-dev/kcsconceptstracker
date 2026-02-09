@@ -247,9 +247,12 @@ export function BundleModal({ open, onOpenChange, bundle, projects, onSave }: Pr
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__unassigned__">Unassigned</SelectItem>
-                {projects.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
+                {projects
+                  .filter(p => (p as any).status !== 'complete')
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

@@ -46,12 +46,16 @@ export function MentionTextarea({
 
   // Filter projects based on mention query (exclude email-like patterns)
   const filteredProjects = useMemo(() => {
+    const activeProjects = projects
+      .filter(p => (p as any).status !== 'complete')
+      .sort((a, b) => a.name.localeCompare(b.name));
+
     if (!mentionQuery.trim()) {
-      return projects.slice(0, 8); // Show first 8 when no query
+      return activeProjects.slice(0, 8);
     }
 
     const query = mentionQuery.toLowerCase().trim();
-    return projects.filter(project => {
+    return activeProjects.filter(project => {
       const nameMatch = project.name.toLowerCase().includes(query);
       const addressMatch = project.address?.toLowerCase().includes(query);
       return nameMatch || addressMatch;

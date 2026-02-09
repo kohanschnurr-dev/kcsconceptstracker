@@ -234,7 +234,10 @@ export function SplitExpenseModal({
                         <SelectValue placeholder="Select Project" />
                       </SelectTrigger>
                       <SelectContent className="pointer-events-auto">
-                        {projects.map((p) => (
+                      {projects
+                        .filter(p => p.status !== 'complete')
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((p) => (
                           <SelectItem key={p.id} value={p.id}>
                             {p.name}
                           </SelectItem>

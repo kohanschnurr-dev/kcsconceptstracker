@@ -210,11 +210,14 @@ export function GroupedPendingExpenseCard({
                 <SelectValue placeholder="Select Project" />
               </SelectTrigger>
               <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
+                {projects
+                  .filter(p => p.status !== 'complete')
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             <Select
@@ -392,11 +395,14 @@ export function GroupedPendingExpenseCard({
                   <SelectValue placeholder="Select Project" />
                 </SelectTrigger>
                 <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
+                  {projects
+                    .filter(p => p.status !== 'complete')
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <Button
