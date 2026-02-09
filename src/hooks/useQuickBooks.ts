@@ -399,7 +399,7 @@ export function useQuickBooks() {
     expenseId: string, 
     projectId: string, 
     categoryValue: string, // Now accepts category value like "plumbing" instead of UUID
-    expenseType: 'product' | 'labor' | 'loan' | 'utilities' = 'product',
+    expenseType: 'product' | 'labor' | 'loan' | 'monthly' = 'product',
     notes?: string
   ) => {
     if (!categoryValue && expenseType !== 'loan') {

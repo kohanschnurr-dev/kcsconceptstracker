@@ -50,10 +50,25 @@ interface PendingExpense {
   notes?: string | null;
 }
 
+const MONTHLY_COST_CATEGORIES = [
+  { value: 'water', label: 'Water' },
+  { value: 'gas', label: 'Gas' },
+  { value: 'electric', label: 'Electric' },
+  { value: 'insurance', label: 'Insurance' },
+  { value: 'hoa', label: 'HOA' },
+  { value: 'property_tax', label: 'Property Tax' },
+  { value: 'lawn_care', label: 'Lawn Care' },
+  { value: 'pool_maintenance', label: 'Pool Maintenance' },
+  { value: 'pest_control', label: 'Pest Control' },
+  { value: 'internet_cable', label: 'Internet / Cable' },
+  { value: 'trash_recycling', label: 'Trash / Recycling' },
+  { value: 'security_alarm', label: 'Security / Alarm' },
+];
+
 interface GroupedPendingExpenseCardProps {
   expenses: PendingExpense[];
   projects: Project[];
-  onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor' | 'loan' | 'utilities', notes?: string) => Promise<void>;
+  onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor' | 'loan' | 'monthly', notes?: string) => Promise<void>;
   onDelete: (expenseId: string) => Promise<void>;
   onImportAll: (expenseIds: string[], projectId: string) => Promise<void>;
   onOpenSplitModal?: (expense: PendingExpense) => void;
@@ -73,7 +88,7 @@ export function GroupedPendingExpenseCard({
   const [isSingleExpanded, setIsSingleExpanded] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedExpenseType, setSelectedExpenseType] = useState<'product' | 'labor' | 'loan' | 'utilities'>('product');
+  const [selectedExpenseType, setSelectedExpenseType] = useState<'product' | 'labor' | 'loan' | 'monthly'>('product');
   const [morePopoverOpen, setMorePopoverOpen] = useState(false);
   const [expenseNotes, setExpenseNotes] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
@@ -229,17 +244,23 @@ export function GroupedPendingExpenseCard({
                 disabled={!selectedProject}
               >
                 <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select Category" />
+                  <SelectValue placeholder={selectedExpenseType === 'monthly' ? "Select Monthly Cost" : "Select Category"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {selectedProject &&
-                    getCategoriesForProject(
-                      projects.find(p => p.id === selectedProject)?.name || ''
-                    ).map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </SelectItem>
-                    ))}
+                  {selectedProject && selectedExpenseType === 'monthly'
+                    ? MONTHLY_COST_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))
+                    : selectedProject &&
+                      getCategoriesForProject(
+                        projects.find(p => p.id === selectedProject)?.name || ''
+                      ).map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
             )}
@@ -261,7 +282,7 @@ export function GroupedPendingExpenseCard({
                   size="icon"
                   className={cn(
                     "h-8 w-8 shrink-0",
-                    (selectedExpenseType === 'loan' || selectedExpenseType === 'utilities')
+                    (selectedExpenseType === 'loan' || selectedExpenseType === 'monthly')
                       ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50"
                       : "text-muted-foreground hover:text-foreground"
                   )}
@@ -286,20 +307,21 @@ export function GroupedPendingExpenseCard({
                 <button
                   className={cn(
                     "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md hover:bg-accent",
-                    selectedExpenseType === 'utilities' && "bg-yellow-500/20 text-yellow-400"
+                    selectedExpenseType === 'monthly' && "bg-yellow-500/20 text-yellow-400"
                   )}
                   onClick={() => {
-                    setSelectedExpenseType('utilities');
+                    setSelectedExpenseType('monthly');
+                    setSelectedCategory('');
                     setMorePopoverOpen(false);
                   }}
                 >
                   <Zap className="h-4 w-4" />
-                  Utilities
+                  Monthly
                 </button>
               </PopoverContent>
             </Popover>
-            {(selectedExpenseType === 'loan' || selectedExpenseType === 'utilities') && (
-              <span className="text-xs text-muted-foreground capitalize">{selectedExpenseType}</span>
+            {(selectedExpenseType === 'loan' || selectedExpenseType === 'monthly') && (
+              <span className="text-xs text-muted-foreground">{selectedExpenseType === 'monthly' ? 'Monthly' : 'Loan'}</span>
             )}
             <Button
               variant="outline"
@@ -313,10 +335,11 @@ export function GroupedPendingExpenseCard({
             {selectedExpenseType !== 'loan' && (
               <ToggleGroup 
                 type="single" 
-                value={(selectedExpenseType === 'utilities') ? '' : selectedExpenseType}
+                value={(selectedExpenseType === 'monthly') ? '' : selectedExpenseType}
                 onValueChange={(value) => {
                   if (value) {
                     setSelectedExpenseType(value as 'product' | 'labor');
+                    setSelectedCategory('');
                   }
                 }}
                 className="shrink-0"
