@@ -94,13 +94,15 @@
                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                    ))}
                  </Pie>
-                 <Tooltip 
-                   formatter={(value: number) => formatCurrency(value)}
-                   contentStyle={{ 
-                     backgroundColor: 'hsl(var(--card))', 
-                     border: '1px solid hsl(var(--border))' 
-                   }}
-                 />
+                <Tooltip 
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))', 
+                    border: '1px solid hsl(var(--border))' 
+                  }}
+                  itemStyle={{ color: '#FFFFFF' }}
+                  labelStyle={{ color: '#FFFFFF' }}
+                />
                </PieChart>
              </ResponsiveContainer>
            </div>
@@ -118,10 +120,10 @@
                        className="w-3 h-3 rounded-full" 
                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
                      />
-                     <span className="text-sm">{cat.name}</span>
+                     <span className="text-sm text-white">{cat.name}</span>
                    </div>
                    <div className="text-right">
-                     <span className="text-sm font-mono font-medium">{formatCurrency(cat.value)}</span>
+                     <span className="text-sm font-mono font-medium text-white">{formatCurrency(cat.value)}</span>
                      <span className="text-xs text-muted-foreground ml-2">
                        ({((cat.value / total) * 100).toFixed(0)}%)
                      </span>
