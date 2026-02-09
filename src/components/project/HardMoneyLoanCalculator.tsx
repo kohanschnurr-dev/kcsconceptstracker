@@ -431,14 +431,20 @@ export function HardMoneyLoanCalculator({
   // Calculations
   const calculations = useMemo(() => {
     const monthlyRate = interestRate / 100 / 12;
+    const dailyRate = interestRate / 100 / 365;
+    const dailyInterest = loanAmount * dailyRate;
     
-    // Monthly Payment
+    // Monthly Payment (what one full month costs - unchanged)
     let monthlyPayment: number;
     let totalInterest: number;
     
+    // Convert term to days for precise daily accrual
+    const termDays = Math.round(loanTermMonths * 30.44);
+    
     if (interestOnly) {
       monthlyPayment = (loanAmount * (interestRate / 100)) / 12;
-      totalInterest = monthlyPayment * loanTermMonths;
+      // Use daily accrual for total interest
+      totalInterest = dailyInterest * termDays;
     } else {
       // Amortizing payment formula
       if (monthlyRate > 0 && loanTermMonths > 0) {
@@ -464,6 +470,7 @@ export function HardMoneyLoanCalculator({
     
     return {
       monthlyPayment,
+      dailyInterest,
       totalInterest,
       pointsCost,
       totalLoanCost,
@@ -474,11 +481,12 @@ export function HardMoneyLoanCalculator({
   // Rate sensitivity analysis
   const rateSensitivity = useMemo(() => {
     const sellingCosts = arv * 0.06; // 6% selling costs
+    const termDays = Math.round(loanTermMonths * 30.44);
     
     return [0, 1, 2].map(bump => {
       const adjustedRate = interestRate + bump;
-      const monthlyInt = (loanAmount * (adjustedRate / 100)) / 12;
-      const adjustedInterest = monthlyInt * loanTermMonths;
+      const dailyInt = loanAmount * (adjustedRate / 100 / 365);
+      const adjustedInterest = dailyInt * termDays;
       const pointsCost = loanAmount * (points / 100);
       const adjustedProfit = arv - editablePurchasePrice - totalBudget - adjustedInterest - pointsCost - closingCosts - sellingCosts;
       
@@ -492,14 +500,25 @@ export function HardMoneyLoanCalculator({
 
   // Payoff timeline comparison - only show terms up to current loan term
   const payoffComparison = useMemo(() => {
-    const monthlyInt = (loanAmount * (interestRate / 100)) / 12;
+    const dailyInt = loanAmount * (interestRate / 100 / 365);
     const allowedMonths = [4, 6, 12, 18].filter(m => m <= loanTermMonths);
     
-    return allowedMonths.map(months => ({
-      months,
-      interest: monthlyInt * months,
-      savings: months < loanTermMonths ? (loanTermMonths - months) * monthlyInt : 0,
-    }));
+    // Include the current fractional term if it's from "To Date"
+    const isFractional = loanTermMonths % 1 !== 0;
+    if (isFractional && !allowedMonths.includes(loanTermMonths)) {
+      allowedMonths.push(loanTermMonths);
+      allowedMonths.sort((a, b) => a - b);
+    }
+    
+    return allowedMonths.map(months => {
+      const days = Math.round(months * 30.44);
+      return {
+        months,
+        interest: dailyInt * days,
+        savings: months < loanTermMonths ? dailyInt * (Math.round(loanTermMonths * 30.44) - days) : 0,
+        isCurrent: months === loanTermMonths,
+      };
+    });
   }, [loanAmount, interestRate, loanTermMonths]);
 
   const formatCurrency = (amount: number) => {
@@ -990,6 +1009,14 @@ export function HardMoneyLoanCalculator({
                 </div>
               </div>
 
+              {/* Daily Interest */}
+              <div className="flex items-center justify-between p-3 rounded-sm bg-primary/5 border border-primary/20">
+                <span className="text-sm text-muted-foreground">Daily Interest</span>
+                <span className="text-sm font-bold font-mono text-primary">
+                  {formatCurrency(calculations.dailyInterest)} / day
+                </span>
+              </div>
+
               {/* Total Loan Cost Breakdown */}
               <div className="p-4 rounded-sm bg-muted/50 border border-border">
                 <div className="flex items-center justify-between mb-2">
@@ -1059,14 +1086,19 @@ export function HardMoneyLoanCalculator({
                       key={row.months} 
                       className={cn(
                         "flex items-center justify-between p-2 rounded-sm border",
-                        row.months === loanTermMonths 
-                          ? "bg-muted/50 border-border" 
-                          : "bg-success/5 border-success/20"
+                        row.isCurrent 
+                          ? "bg-primary/10 border-primary/30" 
+                          : row.months < loanTermMonths
+                            ? "bg-success/5 border-success/20"
+                            : "bg-muted/50 border-border"
                       )}
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-sm">
-                          If sold at <span className="font-mono font-medium">{row.months} mo</span>:
+                          If sold at <span className="font-mono font-medium">{row.months % 1 !== 0 ? row.months.toFixed(1) : row.months} mo</span>:
+                          {row.isCurrent && row.months % 1 !== 0 && (
+                            <span className="text-xs text-primary ml-1">(current)</span>
+                          )}
                         </span>
                       </div>
                       <span className="font-mono text-sm">{formatCurrency(row.interest)} int</span>
