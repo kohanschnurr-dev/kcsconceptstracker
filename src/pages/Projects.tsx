@@ -1,14 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, FolderKanban, Home, Hammer, Building2, Handshake } from 'lucide-react';
+import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, horizontalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { NewProjectModal } from '@/components/NewProjectModal';
+import { SortableTab } from '@/components/projects/SortableTab';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useProfile } from '@/hooks/useProfile';
 import type { Project, CategoryBudget, ProjectType } from '@/types';
 
 interface DBCategory {
@@ -18,15 +22,39 @@ interface DBCategory {
   estimated_budget: number;
 }
 
+const DEFAULT_TAB_ORDER: ProjectType[] = ['fix_flip', 'rental', 'new_construction', 'wholesaling'];
+
+const TAB_CONFIG: Record<string, { label: string; icon: typeof Hammer; createLabel: string }> = {
+  fix_flip: { label: 'Fix & Flips', icon: Hammer, createLabel: 'Flip' },
+  rental: { label: 'Rentals', icon: Home, createLabel: 'Rental' },
+  new_construction: { label: 'New Builds', icon: Building2, createLabel: 'Build' },
+  wholesaling: { label: 'Wholesaling', icon: Handshake, createLabel: 'Deal' },
+};
+
 export default function Projects() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile, updateTabOrder } = useProfile();
   const [search, setSearch] = useState('');
-  const [mainTab, setMainTab] = useState<'fix_flip' | 'rental' | 'new_construction' | 'wholesaling'>('fix_flip');
   const [statusTab, setStatusTab] = useState('all');
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+
+  const tabOrder = useMemo<ProjectType[]>(() => {
+    const saved = profile?.project_tab_order as string[] | null;
+    if (saved && Array.isArray(saved) && saved.length === 4) {
+      return saved as ProjectType[];
+    }
+    return DEFAULT_TAB_ORDER;
+  }, [profile?.project_tab_order]);
+
+  const [mainTab, setMainTab] = useState<ProjectType>(tabOrder[0]);
+
+  // Update mainTab when tabOrder loads from profile
+  useEffect(() => {
+    setMainTab(tabOrder[0]);
+  }, [tabOrder]);
 
   useEffect(() => {
     fetchProjects();
@@ -47,7 +75,6 @@ export default function Projects() {
 
       if (categoriesError) throw categoriesError;
 
-      // Get expenses to calculate actual spent (from both regular expenses and QuickBooks)
       const { data: expensesData } = await supabase
         .from('expenses')
         .select('category_id, amount');
@@ -61,7 +88,6 @@ export default function Projects() {
       (expensesData || []).forEach(e => {
         expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
       });
-      // Include QuickBooks imported expenses
       (qbExpensesData || []).forEach(e => {
         if (e.category_id) {
           expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
@@ -79,7 +105,6 @@ export default function Projects() {
             actualSpent: expensesByCategory[c.id] || 0,
           }));
 
-        // Calculate total budget from sum of category estimated budgets
         const calculatedTotalBudget = projectCategories.reduce(
           (sum, cat) => sum + cat.estimatedBudget,
           0
@@ -122,11 +147,6 @@ export default function Projects() {
     });
   };
 
-  const fixFlipProjects = getFilteredProjects('fix_flip');
-  const rentalProjects = getFilteredProjects('rental');
-  const newConstructionProjects = getFilteredProjects('new_construction');
-  const wholesalingProjects = getFilteredProjects('wholesaling');
-
   const getStatusCounts = (type: ProjectType) => {
     const typeProjects = projects.filter(p => p.projectType === type);
     return {
@@ -136,19 +156,24 @@ export default function Projects() {
     };
   };
 
-  const fixFlipCounts = getStatusCounts('fix_flip');
-  const rentalCounts = getStatusCounts('rental');
-  const newConstructionCounts = getStatusCounts('new_construction');
-  const wholesalingCounts = getStatusCounts('wholesaling');
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  const renderProjectGrid = (filteredProjects: Project[], type: ProjectType) => {
-    const counts = type === 'fix_flip' ? fixFlipCounts : type === 'rental' ? rentalCounts : type === 'new_construction' ? newConstructionCounts : wholesalingCounts;
-    const typeLabel = type === 'fix_flip' ? 'fix & flip' : type === 'rental' ? 'rental' : type === 'new_construction' ? 'new construction' : 'wholesaling';
-    const createLabel = type === 'fix_flip' ? 'Flip' : type === 'rental' ? 'Rental' : type === 'new_construction' ? 'Build' : 'Deal';
+    const oldIndex = tabOrder.indexOf(active.id as ProjectType);
+    const newIndex = tabOrder.indexOf(over.id as ProjectType);
+    const newOrder = arrayMove(tabOrder, oldIndex, newIndex);
+
+    updateTabOrder.mutate(newOrder);
+  };
+
+  const renderProjectGrid = (type: ProjectType) => {
+    const filteredProjects = getFilteredProjects(type);
+    const counts = getStatusCounts(type);
+    const config = TAB_CONFIG[type];
     
     return (
       <div className="space-y-4">
-        {/* Status Filter Tabs */}
         <Tabs value={statusTab} onValueChange={setStatusTab}>
           <TabsList>
             <TabsTrigger value="all">All ({counts.total})</TabsTrigger>
@@ -157,7 +182,6 @@ export default function Projects() {
           </TabsList>
         </Tabs>
 
-        {/* Loading State */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
@@ -171,7 +195,6 @@ export default function Projects() {
           </div>
         ) : (
           <>
-            {/* Projects Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredProjects.map((project) => (
                 <ProjectCard 
@@ -187,13 +210,13 @@ export default function Projects() {
                 <FolderKanban className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                 <p className="text-muted-foreground mb-4">
                   {counts.total === 0 
-                    ? `No ${typeLabel} projects yet` 
+                    ? `No ${config.label.toLowerCase()} projects yet` 
                     : 'No projects match your search'}
                 </p>
                 {counts.total === 0 && (
                   <Button onClick={() => setModalOpen(true)} className="gap-2">
                     <Plus className="h-4 w-4" />
-                    Create Your First {createLabel}
+                    Create Your First {config.createLabel}
                   </Button>
                 )}
               </div>
@@ -207,7 +230,6 @@ export default function Projects() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold">Projects</h1>
@@ -219,7 +241,6 @@ export default function Projects() {
           </Button>
         </div>
 
-        {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -230,42 +251,33 @@ export default function Projects() {
           />
         </div>
 
-        {/* Main Type Tabs */}
-        <Tabs value={mainTab} onValueChange={(v) => { setMainTab(v as 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling'); setStatusTab('all'); }}>
-          <TabsList className="grid w-full max-w-2xl grid-cols-4">
-            <TabsTrigger value="fix_flip" className="gap-2">
-              <Hammer className="h-4 w-4" />
-              Fix & Flips ({fixFlipCounts.total})
-            </TabsTrigger>
-            <TabsTrigger value="rental" className="gap-2">
-              <Home className="h-4 w-4" />
-              Rentals ({rentalCounts.total})
-            </TabsTrigger>
-            <TabsTrigger value="new_construction" className="gap-2">
-              <Building2 className="h-4 w-4" />
-              New Builds ({newConstructionCounts.total})
-            </TabsTrigger>
-            <TabsTrigger value="wholesaling" className="gap-2">
-              <Handshake className="h-4 w-4" />
-              Wholesaling ({wholesalingCounts.total})
-            </TabsTrigger>
-          </TabsList>
+        <Tabs value={mainTab} onValueChange={(v) => { setMainTab(v as ProjectType); setStatusTab('all'); }}>
+          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={tabOrder} strategy={horizontalListSortingStrategy}>
+              <TabsList className="w-full max-w-2xl flex">
+                {tabOrder.map((type) => {
+                  const config = TAB_CONFIG[type];
+                  const counts = getStatusCounts(type);
+                  return (
+                    <SortableTab
+                      key={type}
+                      id={type}
+                      value={type}
+                      label={config.label}
+                      icon={config.icon}
+                      count={counts.total}
+                    />
+                  );
+                })}
+              </TabsList>
+            </SortableContext>
+          </DndContext>
 
-          <TabsContent value="fix_flip" className="mt-6">
-            {renderProjectGrid(fixFlipProjects, 'fix_flip')}
-          </TabsContent>
-
-          <TabsContent value="rental" className="mt-6">
-            {renderProjectGrid(rentalProjects, 'rental')}
-          </TabsContent>
-
-          <TabsContent value="new_construction" className="mt-6">
-            {renderProjectGrid(newConstructionProjects, 'new_construction')}
-          </TabsContent>
-
-          <TabsContent value="wholesaling" className="mt-6">
-            {renderProjectGrid(wholesalingProjects, 'wholesaling')}
-          </TabsContent>
+          {tabOrder.map((type) => (
+            <TabsContent key={type} value={type} className="mt-6">
+              {renderProjectGrid(type)}
+            </TabsContent>
+          ))}
         </Tabs>
       </div>
 
