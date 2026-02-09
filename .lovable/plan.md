@@ -1,102 +1,260 @@
 
-
-## Plan: Add Product/Labor Toggle to Quick Log Expense Modal
+## Plan: Add Multi-Select with Bulk Delete to Photo Gallery
 
 ### Overview
 
-Add an expense type toggle (Product vs Labor) to the Quick Log Expense modal, matching the existing pattern used in SmartSplit and QuickBooks components. The `expense_type` field already exists in the database.
+Add the ability to select multiple photos in the gallery and delete them in bulk. This will include:
+- A "Select" mode toggle in the header
+- Checkboxes on each photo when in selection mode
+- A floating action bar showing selected count with Delete button
+- Select All / Deselect All options
+
+---
+
+### User Experience
+
+1. **Normal Mode**: Gallery works as before - clicking a photo opens the preview modal
+2. **Selection Mode**: 
+   - Click "Select" button in header to enter selection mode
+   - Checkboxes appear on all photos
+   - Click photos to toggle selection
+   - Floating action bar appears at bottom with:
+     - Selected count (e.g., "3 selected")
+     - Delete button
+     - Cancel button to exit selection mode
+   - "Select All" / "Clear" quick actions in header
 
 ---
 
 ### Technical Changes
 
-**File: `src/components/QuickExpenseModal.tsx`**
+**File: `src/components/project/PhotoGallery.tsx`**
 
-#### Change 1: Add Import for Icons and ToggleGroup (Lines 1-31)
-
-Add `Package` and `Wrench` icons from lucide-react, and import `ToggleGroup` and `ToggleGroupItem` components:
+#### 1. Add New Imports
 
 ```typescript
-import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles, Package, Wrench } from 'lucide-react';
+import { Plus, Image, Loader2, Calendar, ImageIcon, CheckSquare, Square, Trash2, X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 ```
 
-And add:
+#### 2. Add Selection State
+
 ```typescript
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+const [isSelectionMode, setIsSelectionMode] = useState(false);
+const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+const [isDeleting, setIsDeleting] = useState(false);
 ```
 
-#### Change 2: Add Expense Type State (Around Line 56)
-
-Add state for expense type after the existing state declarations:
+#### 3. Add Selection Helper Functions
 
 ```typescript
-const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
+const togglePhotoSelection = (photoId: string) => {
+  setSelectedIds(prev => {
+    const next = new Set(prev);
+    if (next.has(photoId)) {
+      next.delete(photoId);
+    } else {
+      next.add(photoId);
+    }
+    return next;
+  });
+};
+
+const handleSelectAll = () => {
+  const allIds = filteredPhotos.map(p => p.id);
+  setSelectedIds(new Set(allIds));
+};
+
+const handleDeselectAll = () => {
+  setSelectedIds(new Set());
+};
+
+const exitSelectionMode = () => {
+  setIsSelectionMode(false);
+  setSelectedIds(new Set());
+};
 ```
 
-#### Change 3: Add Toggle UI (After Category Select, Around Lines 340-343)
-
-Add a Product/Labor toggle group below the Project and Category row, styled consistently with the rest of the form:
+#### 4. Add Bulk Delete Function
 
 ```typescript
-{/* Expense Type Toggle */}
-<div className="flex items-center gap-3">
-  <Label className="text-sm">Type:</Label>
-  <ToggleGroup
-    type="single"
-    value={expenseType}
-    onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')}
-    className="justify-start"
-  >
-    <ToggleGroupItem value="product" size="sm" className="gap-1">
-      <Package className="h-3 w-3" />
-      Product
-    </ToggleGroupItem>
-    <ToggleGroupItem value="labor" size="sm" className="gap-1">
-      <Wrench className="h-3 w-3" />
-      Labor
-    </ToggleGroupItem>
-  </ToggleGroup>
+const handleBulkDelete = async () => {
+  if (selectedIds.size === 0) return;
+  
+  setIsDeleting(true);
+  
+  // Get file paths for selected photos
+  const selectedPhotos = photos.filter(p => selectedIds.has(p.id));
+  const filePaths = selectedPhotos.map(p => p.file_path);
+  
+  // Delete from storage
+  const { error: storageError } = await supabase.storage
+    .from('project-photos')
+    .remove(filePaths);
+  
+  if (storageError) {
+    console.error('Storage delete error:', storageError);
+  }
+  
+  // Delete from database
+  const { error } = await supabase
+    .from('project_photos')
+    .delete()
+    .in('id', Array.from(selectedIds));
+  
+  if (error) {
+    toast({
+      title: 'Error',
+      description: 'Failed to delete some photos',
+      variant: 'destructive',
+    });
+  } else {
+    toast({
+      title: 'Photos deleted',
+      description: `Successfully deleted ${selectedIds.size} photo(s)`,
+    });
+    exitSelectionMode();
+    fetchPhotos();
+  }
+  
+  setIsDeleting(false);
+};
+```
+
+#### 5. Update Header UI
+
+Add Select mode toggle button in header:
+
+```typescript
+<div className="flex items-center gap-2 flex-wrap">
+  {/* Filter dropdowns... */}
+  
+  {isSelectionMode ? (
+    <>
+      <Button variant="outline" size="sm" onClick={handleSelectAll}>
+        <CheckSquare className="h-4 w-4 mr-1" />
+        Select All
+      </Button>
+      <Button variant="ghost" size="sm" onClick={handleDeselectAll}>
+        <X className="h-4 w-4 mr-1" />
+        Clear
+      </Button>
+      <Button variant="ghost" size="sm" onClick={exitSelectionMode}>
+        Cancel
+      </Button>
+    </>
+  ) : (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(true)}>
+        <CheckSquare className="h-4 w-4 mr-1" />
+        Select
+      </Button>
+      <Button size="sm" onClick={() => setIsUploadOpen(true)}>
+        <Plus className="h-4 w-4 mr-1" />
+        Add Photos
+      </Button>
+    </>
+  )}
 </div>
 ```
 
-#### Change 4: Include expense_type in Database Insert (Lines 216-230)
+#### 6. Update Photo Card UI
 
-Update the expense insert to include the `expense_type` field:
+Modify photo card to show checkbox and handle selection:
 
 ```typescript
-const { error } = await supabase
-  .from('expenses')
-  .insert({
-    project_id: selectedProject,
-    category_id: categoryId,
-    amount: calculateTotal(),
-    vendor_name: vendor,
-    description: description || null,
-    payment_method: paymentMethod,
-    status: 'actual',
-    includes_tax: includeTax,
-    tax_amount: includeTax ? calculateTax() : null,
-    date: date,
-    receipt_url: receiptUrl,
-    expense_type: expenseType,  // <-- Add this line
-  });
+<div 
+  key={photo.id} 
+  className={cn(
+    "relative group cursor-pointer aspect-square rounded-lg overflow-hidden bg-muted",
+    isSelectionMode && selectedIds.has(photo.id) && "ring-2 ring-primary"
+  )}
+  onClick={() => {
+    if (isSelectionMode) {
+      togglePhotoSelection(photo.id);
+    } else {
+      setSelectedPhoto(photo);
+    }
+  }}
+>
+  <img ... />
+  
+  {/* Selection Checkbox - top right */}
+  {isSelectionMode && (
+    <div 
+      className="absolute top-2 right-2 z-10"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Checkbox 
+        checked={selectedIds.has(photo.id)}
+        onCheckedChange={() => togglePhotoSelection(photo.id)}
+        className="h-5 w-5 bg-background/80 border-2"
+      />
+    </div>
+  )}
+  
+  {/* Category Badge - existing code */}
+  ...
+</div>
+```
+
+#### 7. Add Floating Action Bar
+
+Add at bottom of CardContent when in selection mode with items selected:
+
+```typescript
+{isSelectionMode && selectedIds.size > 0 && (
+  <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-lg shadow-lg p-3 flex items-center gap-4">
+    <span className="text-sm font-medium">
+      {selectedIds.size} photo{selectedIds.size !== 1 ? 's' : ''} selected
+    </span>
+    <div className="flex gap-2">
+      <Button 
+        variant="destructive" 
+        size="sm" 
+        onClick={handleBulkDelete}
+        disabled={isDeleting}
+      >
+        <Trash2 className="h-4 w-4 mr-1" />
+        {isDeleting ? 'Deleting...' : 'Delete'}
+      </Button>
+      <Button variant="outline" size="sm" onClick={exitSelectionMode}>
+        Cancel
+      </Button>
+    </div>
+  </div>
+)}
 ```
 
 ---
 
 ### Visual Result
 
-The modal will now include a Product/Labor toggle between the Category dropdown and the Amount field:
-
+**Normal Mode:**
 ```text
-┌─────────────────────────────────────────┐
-│  Project: [Wales Rental ▼]  Category: [Painting ▼]  │
-│                                         │
-│  Type:  [📦 Product] [🔧 Labor]         │  <-- NEW
-│                                         │
-│  Amount: [$2900]         Date: [02/04]  │
-│  ...                                    │
-└─────────────────────────────────────────┘
+Photo Gallery (7)  [All ▼] [All Dates ▼] [Select] [+ Add Photos]
+```
+
+**Selection Mode:**
+```text
+Photo Gallery (7)  [All ▼] [All Dates ▼] [✓ Select All] [× Clear] [Cancel]
+```
+
+**Photos with checkboxes:**
+```text
+┌──────────────┐  ┌──────────────┐
+│ [Before]  ☑ │  │ [During]  ☐ │
+│              │  │              │
+│   [photo]    │  │   [photo]    │
+└──────────────┘  └──────────────┘
+```
+
+**Floating Action Bar (when items selected):**
+```text
+┌──────────────────────────────────────┐
+│  3 photos selected  [🗑 Delete] [Cancel] │
+└──────────────────────────────────────┘
 ```
 
 ---
@@ -105,14 +263,15 @@ The modal will now include a Product/Labor toggle between the Category dropdown 
 
 | File | Change |
 |------|--------|
-| `src/components/QuickExpenseModal.tsx` | Import Package, Wrench icons and ToggleGroup components |
-| `src/components/QuickExpenseModal.tsx` | Add `expenseType` state with 'product' default |
-| `src/components/QuickExpenseModal.tsx` | Add ToggleGroup UI for Product/Labor selection |
-| `src/components/QuickExpenseModal.tsx` | Include `expense_type` in database insert |
+| `src/components/project/PhotoGallery.tsx` | Add Checkbox, Trash2, CheckSquare, X imports |
+| `src/components/project/PhotoGallery.tsx` | Add isSelectionMode, selectedIds, isDeleting state |
+| `src/components/project/PhotoGallery.tsx` | Add togglePhotoSelection, handleSelectAll, handleDeselectAll, exitSelectionMode, handleBulkDelete functions |
+| `src/components/project/PhotoGallery.tsx` | Update header with Select mode toggle and actions |
+| `src/components/project/PhotoGallery.tsx` | Update photo cards with checkboxes and selection ring |
+| `src/components/project/PhotoGallery.tsx` | Add floating action bar for bulk actions |
 
 ---
 
 ### No Database Changes Needed
 
-The `expense_type` column already exists in the `expenses` table (nullable string), so no migration is required.
-
+All operations use existing database structure - just bulk delete on `project_photos` table and storage bucket.
