@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, FolderKanban, Plus, TrendingUp } from 'lucide-react';
+import { DollarSign, FolderKanban, Landmark, Plus, TrendingUp } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
@@ -43,6 +43,7 @@ export default function Index() {
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [totalLoanPayments, setTotalLoanPayments] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
 
@@ -80,6 +81,13 @@ export default function Index() {
         .from('quickbooks_expenses')
         .select('*')
         .eq('is_imported', true);
+
+      // Fetch loan payments for dashboard stat
+      const { data: loanPaymentsData } = await supabase
+        .from('loan_payments')
+        .select('amount');
+      const loanTotal = (loanPaymentsData || []).reduce((sum, p) => sum + Number(p.amount), 0);
+      setTotalLoanPayments(loanTotal);
       // Calculate actual spent per category (include both regular and QB expenses)
       const expensesByCategory: Record<string, number> = {};
       (expensesData || []).forEach((e: DBExpense) => {
@@ -239,7 +247,7 @@ export default function Index() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard
               title="This Month"
               value={formatCurrency(thisMonthTotal)}
@@ -253,6 +261,13 @@ export default function Index() {
               subtitle={`${formatCurrency(totalSpent)} spent`}
               icon={DollarSign}
               variant="success"
+            />
+            <StatCard
+              title="Loan Payments"
+              value={formatCurrency(totalLoanPayments)}
+              subtitle="All projects"
+              icon={Landmark}
+              variant="warning"
             />
           </div>
 
