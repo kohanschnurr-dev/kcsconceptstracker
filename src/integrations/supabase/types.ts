@@ -395,6 +395,62 @@ export type Database = {
           },
         ]
       }
+      loan_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          description: string | null
+          expense_id: string | null
+          id: string
+          notes: string | null
+          payment_type: string
+          project_id: string
+          source: string
+          updated_at: string
+          user_id: string
+          vendor_name: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          date?: string
+          description?: string | null
+          expense_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_type?: string
+          project_id: string
+          source?: string
+          updated_at?: string
+          user_id: string
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string | null
+          expense_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_type?: string
+          project_id?: string
+          source?: string
+          updated_at?: string
+          user_id?: string
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_payments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loan_presets: {
         Row: {
           closing_costs_percent: number | null
