@@ -112,7 +112,7 @@ export function GroupedPendingExpenseCard({
   };
 
   const handleSingleCategorize = async () => {
-    if (!selectedProject || !selectedCategory) return;
+    if (!selectedProject || (!selectedCategory && selectedExpenseType !== 'loan')) return;
     setIsImporting(true);
     try {
       await onCategorize(primaryExpense.id, selectedProject, selectedCategory, selectedExpenseType, expenseNotes);
@@ -220,25 +220,27 @@ export function GroupedPendingExpenseCard({
                   ))}
               </SelectContent>
             </Select>
-            <Select
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
-              disabled={!selectedProject}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Select Category" />
-              </SelectTrigger>
-              <SelectContent>
-                {selectedProject &&
-                  getCategoriesForProject(
-                    projects.find(p => p.id === selectedProject)?.name || ''
-                  ).map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            {selectedExpenseType !== 'loan' && (
+              <Select
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
+                disabled={!selectedProject}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedProject &&
+                    getCategoriesForProject(
+                      projects.find(p => p.id === selectedProject)?.name || ''
+                    ).map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
             <div className="flex items-center gap-1 flex-1 min-w-0 sm:max-w-[180px]">
               <StickyNote className="h-4 w-4 text-muted-foreground shrink-0" />
               <Input

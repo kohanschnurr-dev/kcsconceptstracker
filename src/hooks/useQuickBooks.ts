@@ -402,10 +402,7 @@ export function useQuickBooks() {
     expenseType: 'product' | 'labor' | 'loan' = 'product',
     notes?: string
   ) => {
-    // For loan type, category is optional - use a default if not provided
-    const effectiveCategoryValue = categoryValue || (expenseType === 'loan' ? 'closing_costs' : '');
-    
-    if (!effectiveCategoryValue && expenseType !== 'loan') {
+    if (!categoryValue && expenseType !== 'loan') {
       toast({
         title: 'Error',
         description: 'Please select a category',
@@ -414,16 +411,16 @@ export function useQuickBooks() {
       return false;
     }
 
-    // First, find or create the project_category
+    // First, find or create the project_category (skip for loans)
     let categoryId: string | null = null;
     
-    if (effectiveCategoryValue) {
+    if (expenseType !== 'loan' && categoryValue) {
       // Check if category already exists for this project
       const { data: existingCategory, error: findError } = await supabase
         .from('project_categories')
         .select('id')
         .eq('project_id', projectId)
-        .eq('category', effectiveCategoryValue as BudgetCategory)
+        .eq('category', categoryValue as BudgetCategory)
         .maybeSingle();
       
       if (findError) {
@@ -444,7 +441,7 @@ export function useQuickBooks() {
           .from('project_categories')
           .insert({
             project_id: projectId,
-            category: effectiveCategoryValue as BudgetCategory,
+            category: categoryValue as BudgetCategory,
             estimated_budget: 0,
           })
           .select('id')
