@@ -1,143 +1,71 @@
 
-
-## Plan: Add Mobile-Only "Scan Receipt" Quick Action
+## Plan: Make Category Breakdown Text White
 
 ### Overview
-Add a prominent "Scan Receipt" button that appears **only on mobile** at the top of the SmartSplit section. This allows you to quickly upload receipt photos without needing to expand the collapsible panel first.
+Update the Category Breakdown dialog text to be white for better visibility on the dark background, following the KCS Concepts styling guidelines (white text on dark backgrounds).
 
 ---
 
-### Current vs. Proposed Mobile Flow
+### Current vs. Proposed
 
-| Current | Proposed |
-|---------|----------|
-| Tap to expand SmartSplit | **Scan button visible immediately** |
-| Find upload zone inside | Tap "Scan" to open camera |
-| Upload photo | Same upload flow |
+| Element | Current | Proposed |
+|---------|---------|----------|
+| Category names | `text-sm` (inherits muted gray) | `text-sm text-white` |
+| Currency amounts | `text-sm font-mono font-medium` | `text-sm font-mono font-medium text-white` |
+| Tooltip text | Uses theme defaults | Explicit white text |
 
 ---
 
 ### Changes
 
-**File: `src/components/SmartSplitReceiptUpload.tsx`**
+**File: `src/components/ops/CategoriesPopout.tsx`**
 
-#### 1. Add Camera icon and useIsMobile hook imports
+#### 1. Category name text (Line 121)
 
+Change from:
 ```tsx
-import { Camera } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+<span className="text-sm">{cat.name}</span>
 ```
 
-#### 2. Add mobile hook and hidden file input ref
-
-Inside the component, add:
+To:
 ```tsx
-const isMobile = useIsMobile();
-const mobileScanInputRef = useRef<HTMLInputElement>(null);
+<span className="text-sm text-white">{cat.name}</span>
 ```
 
-#### 3. Add mobile scan handler
+#### 2. Currency amount text (Line 124)
 
+Change from:
 ```tsx
-// Mobile scan - opens camera directly
-const handleMobileScan = () => {
-  mobileScanInputRef.current?.click();
-};
+<span className="text-sm font-mono font-medium">{formatCurrency(cat.value)}</span>
 ```
 
-#### 4. Add Mobile Scan Button above the Collapsible
-
-Right after the `return (` and before `<>`, add a mobile-only scan section:
-
+To:
 ```tsx
-return (
-  <>
-    {/* Mobile Quick Scan Button - visible only on mobile, outside collapsible */}
-    {isMobile && (
-      <>
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          multiple
-          onChange={(e) => {
-            const files = Array.from(e.target.files || []);
-            if (files.length > 0) {
-              processMultipleFiles(files);
-              // Auto-expand to show progress
-              setIsExpanded(true);
-            }
-          }}
-          className="hidden"
-          ref={mobileScanInputRef}
-        />
-        <Button
-          className="w-full gap-2 h-12 text-base"
-          onClick={handleMobileScan}
-          disabled={isUploading || isParsing}
-        >
-          {isUploading || isParsing ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin" />
-              {uploadProgress ? `Processing ${uploadProgress.current}/${uploadProgress.total}...` : 'Processing...'}
-            </>
-          ) : (
-            <>
-              <Camera className="h-5 w-5" />
-              Scan Receipt
-            </>
-          )}
-        </Button>
-      </>
-    )}
+<span className="text-sm font-mono font-medium text-white">{formatCurrency(cat.value)}</span>
+```
 
-    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-      {/* ... existing code ... */}
-    </Collapsible>
-  </>
-);
+#### 3. Tooltip text styling (Lines 97-103)
+
+Add `itemStyle` and `labelStyle` for white tooltip text:
+```tsx
+<Tooltip 
+  formatter={(value: number) => formatCurrency(value)}
+  contentStyle={{ 
+    backgroundColor: 'hsl(var(--card))', 
+    border: '1px solid hsl(var(--border))' 
+  }}
+  itemStyle={{ color: '#FFFFFF' }}
+  labelStyle={{ color: '#FFFFFF' }}
+/>
 ```
 
 ---
 
-### Visual Result (Mobile Only)
+### Visual Result
 
-```text
-┌─────────────────────────────────────┐
-│  📷  Scan Receipt                   │  ← NEW: Always visible on mobile
-└─────────────────────────────────────┘
-┌─────────────────────────────────────┐
-│ ✨ SmartSplit Receipt Matching      │
-│    3 waiting  2 matched!        ▼   │
-└─────────────────────────────────────┘
-```
+The category list will now display with crisp white text:
+- **Online Course Materials** - $1,005 (32%)
+- **Continuing Education Classes** - $747 (24%)
+- etc.
 
----
-
-### Behavior Summary
-
-| Feature | Description |
-|---------|-------------|
-| Mobile only | Button hidden on desktop (uses existing upload zone) |
-| Opens camera | Uses `capture="environment"` to open rear camera |
-| Multi-file support | Supports selecting multiple photos |
-| Auto-expands | Opens the collapsible to show parsing progress |
-| Shows progress | Displays "Processing 1/3..." during batch uploads |
-| Disabled during upload | Prevents double-taps while processing |
-
----
-
-### Technical Details
-
-**Files to modify:**
-- `src/components/SmartSplitReceiptUpload.tsx`
-
-**New imports:**
-- `Camera` from lucide-react
-- `useIsMobile` from hooks
-
-**Key attributes:**
-- `capture="environment"` - Opens device camera (rear camera preferred)
-- `accept="image/*"` - Only images
-- `multiple` - Allow batch selection
-
+All text fully readable on the dark background.
