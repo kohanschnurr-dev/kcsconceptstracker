@@ -70,14 +70,14 @@ serve(async (req) => {
       });
     }
 
-    console.log("Parsing receipt with AI Vision...");
+    console.log("Parsing receipt with AI Vision (Gemini Pro)...");
 
     // Build the image content for the AI
     const imageContent = image_base64 
       ? { type: "image_url", image_url: { url: image_base64 } }
       : { type: "image_url", image_url: { url: image_url } };
 
-    // Use Lovable AI Vision to parse the receipt
+    // Use Lovable AI Vision to parse the receipt with enhanced prompts
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -85,111 +85,97 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           {
             role: "system",
-            content: `You are a precise receipt parsing expert. Extract EVERY line item with ACCURATE quantities and prices.
+            content: `You are a receipt OCR specialist. Your job is to extract EVERY line item with EXACT prices.
 
-═══════════════════════════════════════════════════════
-CRITICAL: DISCOUNT HANDLING (HOME DEPOT, LOWE'S, ETC.)
-═══════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════════
+HOME DEPOT / LOWE'S RECEIPT COLUMN LAYOUT
+═══════════════════════════════════════════════════════════════
 
-Many receipts have DISCOUNT columns. ALWAYS use the AFTER-DISCOUNT price!
+Home Depot receipts have 5-6 columns. USE THE RIGHTMOST PRICE COLUMN (before tax):
 
-HOME DEPOT RECEIPT COLUMNS:
-| Item | Qty | Unit Price | Discount | Net Unit Price | Pre Tax Amount |
-|------|-----|------------|----------|----------------|----------------|
-| Board| 1   | $6.78      | $5.29    | $1.49          | $1.49          |
+DESCRIPTION              QTY   UNIT    SAVE    NET EA    TOTAL
+──────────────────────────────────────────────────────────────
+2" PVC Coupling           2   $3.98           $1.99     $3.98
+Electrical Tape 3pk       1   $5.47                     $5.47
+──────────────────────────────────────────────────────────────
 
 EXTRACTION RULES:
-- unit_price = "Net Unit Price" or "Pre Tax Amount / Qty" (NOT the original "Unit Price")
-- total_price = "Pre Tax Amount" column (the final price AFTER discount)
-- discount = value from "Discount" column (per item, 0 if no discount)
+• quantity = QTY column (the small number, usually 1-10)
+• total_price = RIGHTMOST dollar amount on the line (TOTAL or AMOUNT column)
+• unit_price = total_price / quantity
+• If SAVE column has a value, the item was discounted - total_price is already NET
 
-If receipt shows:
-  Subtotal: $102.98
-  Discount: -$15.62 (or shown per-item)
-  Tax: $8.50
-  Total: $111.48
+COMMON MISTAKES TO AVOID:
+✗ Do NOT use unit price column when a TOTAL column exists
+✗ Do NOT confuse SKU numbers (like "042111" or "1-Gang") with prices
+✗ Do NOT read pack sizes ("3pk", "10-ct") as quantities - those are part of the item name
+✗ Hardware store items are almost NEVER under $0.50 - if you see $0.86, double-check!
 
-Then:
-- subtotal = 102.98 (the discounted subtotal, NOT the pre-discount total)
-- discount_amount = 15.62 (total of all discounts)
-- tax_amount = 8.50
-- total_amount = 111.48
-- Sum of all line item total_price values MUST equal subtotal
+═══════════════════════════════════════════════════════════════
+AMAZON RECEIPT LAYOUT  
+═══════════════════════════════════════════════════════════════
 
-═══════════════════════════════════════════════════════
-AMAZON RECEIPT QUANTITY HANDLING
-═══════════════════════════════════════════════════════
+Look for "Qty: X" or "X x $Y.YY" patterns below item names.
 
-For EACH item on Amazon receipts:
+═══════════════════════════════════════════════════════════════
+VALIDATION CHECKLIST (VERIFY BEFORE RETURNING)
+═══════════════════════════════════════════════════════════════
 
-STEP 1: Find the item name line
-STEP 2: Look at the NEXT line for "X x $Y.YY" pattern
-STEP 3: If found:
-   - X = quantity (the number BEFORE "x")
-   - $Y.YY = unit_price (the price AFTER "x")
-   - Calculate: total_price = X × Y.YY
-STEP 4: If NO "X x" pattern, set quantity = 1
+1. Sum of all line item total_price ≈ subtotal (within 5%)
+2. Each item total_price >= $0.50 (flag if lower - likely wrong column)
+3. total_price = quantity × unit_price (must be exact)
+4. subtotal + tax ≈ total_amount
 
-EXAMPLE:
-  "Bathroom Accessories Set"
-  "2 x $30.00"
-  → quantity: 2, unit_price: 30.00, total_price: 60.00
+If validation fails, RE-READ the receipt and check column alignment.
 
-═══════════════════════════════════════════════════════
-VALIDATION BEFORE RETURNING
-═══════════════════════════════════════════════════════
-
-1. For each item: total_price = quantity × unit_price
-2. Sum of all total_price values should ≈ subtotal
-3. subtotal + tax_amount should ≈ total_amount
-4. If discounts exist, use NET prices not original prices!
-
-CATEGORIES:
-plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, light_fixtures, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, misc`
+═══════════════════════════════════════════════════════════════
+CATEGORIES (use lowercase)
+═══════════════════════════════════════════════════════════════
+plumbing, electrical, hvac, flooring, painting, cabinets, countertops, 
+tile, light_fixtures, hardware, appliances, windows, doors, roofing, 
+framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, 
+garage, cleaning, misc`
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: `Parse this receipt. Extract EVERY item with CORRECT quantities and NET prices (after any discounts).
+                text: `Extract ALL items from this receipt. 
 
-DISCOUNT DETECTION CHECKLIST:
-□ Does receipt have Discount column? Use Net Unit Price, NOT Unit Price!
-□ Is there a total discount shown? Extract to discount_amount
-□ Are line item prices the NET prices (after discount)?
-□ Does sum of line item total_price = subtotal?
-□ Does subtotal + tax = total_amount?
+COLUMN DETECTION:
+1. First, identify how many columns the receipt has
+2. Find the RIGHTMOST price column (the line total)
+3. Use THAT column for total_price, then calculate unit_price = total/qty
 
-Return JSON only (no markdown):
+SANITY CHECK YOUR RESULTS:
+• Hardware store items are rarely under $1.00
+• If most items show < $2.00, you may be reading the wrong column
+• Sum of total_price values should match the receipt subtotal
+
+Return ONLY valid JSON (no markdown, no explanation):
 {
-  "vendor_name": "Store Name",
-  "total_amount": 111.48,
-  "tax_amount": 8.50,
-  "subtotal": 102.98,
-  "discount_amount": 15.62,
-  "purchase_date": "YYYY-MM-DD",
+  "vendor_name": "HOME DEPOT",
+  "total_amount": 288.22,
+  "tax_amount": 21.75,
+  "subtotal": 266.47,
+  "discount_amount": 0,
+  "purchase_date": "2026-02-03",
   "line_items": [
     {
-      "item_name": "Item description",
-      "quantity": 1,
-      "unit_price": 1.49,
-      "total_price": 1.49,
-      "discount": 5.29,
-      "suggested_category": "hardware"
+      "item_name": "2 in. PVC Coupling",
+      "quantity": 2,
+      "unit_price": 1.99,
+      "total_price": 3.98,
+      "discount": 0,
+      "suggested_category": "plumbing"
     }
   ]
-}
-
-CRITICAL VALIDATION:
-- unit_price and total_price must be NET (after discount)
-- discount field = per-item discount amount (0 if none)
-- discount_amount = total of all discounts on receipt
-- sum(total_price) MUST equal subtotal`
+}`
               },
               imageContent
             ]
@@ -306,31 +292,63 @@ CRITICAL VALIDATION:
       cleanedData.subtotal = cleanedData.total_amount - cleanedData.tax_amount;
     }
 
-    // Validation: Check if line items sum matches subtotal
+    // Calculate totals for validation
     const lineItemsTotal = cleanedData.line_items.reduce((sum, item) => sum + item.total_price, 0);
     const expectedSubtotal = cleanedData.subtotal;
-    const difference = Math.abs(lineItemsTotal - expectedSubtotal);
+    const difference = expectedSubtotal - lineItemsTotal;
+    const percentDiff = expectedSubtotal > 0 ? (difference / expectedSubtotal) * 100 : 0;
 
-    // If difference matches discount_amount, the AI may have used pre-discount prices
-    if (cleanedData.discount_amount > 0 && difference > 1 && Math.abs(difference - cleanedData.discount_amount) < 2) {
-      console.warn(`AI may have used pre-discount prices. Line items: $${lineItemsTotal.toFixed(2)}, Subtotal: $${expectedSubtotal.toFixed(2)}, Discount: $${cleanedData.discount_amount.toFixed(2)}`);
-      console.warn("Attempting to correct by scaling line items to match subtotal...");
-      
-      // Scale down line items proportionally to match the discounted subtotal
+    // Flag items with suspiciously low prices (likely wrong column)
+    const suspiciousItems = cleanedData.line_items.filter(item => 
+      item.total_price > 0 && item.total_price < 0.50
+    );
+
+    if (suspiciousItems.length > 0) {
+      const suspiciousRatio = suspiciousItems.length / cleanedData.line_items.length;
+      if (suspiciousRatio > 0.3) {
+        console.warn(`WARNING: ${suspiciousItems.length}/${cleanedData.line_items.length} items have total < $0.50. AI may be reading wrong column.`);
+        console.warn("Suspicious items:", suspiciousItems.map(i => `${i.item_name}: $${i.total_price}`).join(', '));
+      }
+    }
+
+    // Improved scaling logic
+    if (lineItemsTotal > 0 && percentDiff > 50) {
+      // If items sum to less than half the subtotal, something is very wrong
+      console.error(`CRITICAL: Line items ($${lineItemsTotal.toFixed(2)}) are ${percentDiff.toFixed(0)}% less than subtotal ($${expectedSubtotal.toFixed(2)})`);
+      console.error("Possible causes: wrong column read, missing items, or OCR failure");
+      // Don't scale - the data is too unreliable, but still return what we have
+    } else if (difference > 1 && percentDiff > 5 && percentDiff < 50) {
+      // Proportional scaling for moderate discrepancies (likely discount column issue)
+      console.warn(`Scaling items to match subtotal (${percentDiff.toFixed(1)}% difference)`);
       const scaleFactor = expectedSubtotal / lineItemsTotal;
       cleanedData.line_items = cleanedData.line_items.map(item => ({
         ...item,
         unit_price: Math.round(item.unit_price * scaleFactor * 100) / 100,
         total_price: Math.round(item.total_price * scaleFactor * 100) / 100,
       }));
-      
-      const correctedTotal = cleanedData.line_items.reduce((sum, item) => sum + item.total_price, 0);
-      console.log(`Corrected line items total: $${correctedTotal.toFixed(2)}`);
     } else if (difference > 0.10) {
-      console.warn(`VALIDATION WARNING: Line items total ($${lineItemsTotal.toFixed(2)}) differs from subtotal ($${expectedSubtotal.toFixed(2)}) by $${difference.toFixed(2)}`);
+      console.warn(`Minor discrepancy: Line items total ($${lineItemsTotal.toFixed(2)}) differs from subtotal ($${expectedSubtotal.toFixed(2)}) by $${difference.toFixed(2)}`);
     }
 
-    console.log(`Parsed receipt: ${cleanedData.vendor_name}, $${cleanedData.total_amount}, ${cleanedData.line_items.length} items, discount: $${cleanedData.discount_amount.toFixed(2)}`);
+    // Recalculate after potential scaling
+    const finalLineItemsTotal = cleanedData.line_items.reduce((sum, item) => sum + item.total_price, 0);
+    const finalDifference = expectedSubtotal - finalLineItemsTotal;
+
+    // Detailed debug logging
+    console.log("=== Receipt Parse Summary ===");
+    console.log(`Vendor: ${cleanedData.vendor_name}`);
+    console.log(`Date: ${cleanedData.purchase_date}`);
+    console.log(`Items: ${cleanedData.line_items.length}`);
+    console.log(`Line Items Total: $${finalLineItemsTotal.toFixed(2)}`);
+    console.log(`Subtotal: $${cleanedData.subtotal.toFixed(2)}`);
+    console.log(`Tax: $${cleanedData.tax_amount.toFixed(2)}`);
+    console.log(`Total: $${cleanedData.total_amount.toFixed(2)}`);
+    console.log(`Discount: $${cleanedData.discount_amount.toFixed(2)}`);
+    console.log(`Final Difference: $${finalDifference.toFixed(2)}`);
+    if (suspiciousItems.length > 0) {
+      console.log(`Suspicious low-price items: ${suspiciousItems.length}`);
+    }
+    console.log("============================");
 
     return new Response(JSON.stringify({ 
       success: true, 
