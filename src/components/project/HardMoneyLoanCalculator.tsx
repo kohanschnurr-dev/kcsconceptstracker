@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, TrendingDown, Clock, Package, Plus, Pencil, Trash2, Star, ChevronDown, ChevronUp, MoreVertical, Settings, CalendarClock, RotateCcw } from 'lucide-react';
+import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, TrendingDown, Clock, Package, Plus, Pencil, Trash2, Star, ChevronDown, ChevronUp, MoreVertical, Settings, CalendarClock, RotateCcw, CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
 import { parseDateString } from '@/lib/dateUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,10 +73,10 @@ function formatTermLabel(months: number): string {
   return `${months}`;
 }
 
-function calculateToDateMonths(startDateStr: string): number {
+function calculateToDateMonths(startDateStr: string, endDate?: Date): number {
   const start = parseDateString(startDateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - start.getTime();
+  const end = endDate || new Date();
+  const diffMs = end.getTime() - start.getTime();
   const months = diffMs / (1000 * 60 * 60 * 24 * 30.44);
   return Math.round(months * 10) / 10;
 }
@@ -138,17 +139,18 @@ export function HardMoneyLoanCalculator({
   const [editTermSlots, setEditTermSlots] = useState<string[]>(termPresets.map(String));
 
   // To Date calculation
+  const [toDateEndDate, setToDateEndDate] = useState<Date>(new Date());
+
   const toDateMonths = useMemo(() => {
     if (!projectStartDate) return null;
-    return calculateToDateMonths(projectStartDate);
-  }, [projectStartDate]);
+    return calculateToDateMonths(projectStartDate, toDateEndDate);
+  }, [projectStartDate, toDateEndDate]);
 
   const toDateDays = useMemo(() => {
     if (!projectStartDate) return null;
     const start = parseDateString(projectStartDate);
-    const now = new Date();
-    return Math.round((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-  }, [projectStartDate]);
+    return Math.round((toDateEndDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  }, [projectStartDate, toDateEndDate]);
 
 
   // Edit preset dialog
@@ -224,7 +226,7 @@ export function HardMoneyLoanCalculator({
         }
 
         // Always override term with "To Date" when available
-        const currentToDate = projectStartDate ? calculateToDateMonths(projectStartDate) : null;
+        const currentToDate = projectStartDate ? calculateToDateMonths(projectStartDate, toDateEndDate) : null;
         if (currentToDate && currentToDate > 0) {
           setLoanTermMonths(currentToDate);
         }
@@ -796,27 +798,66 @@ export function HardMoneyLoanCalculator({
                     </PopoverContent>
                   </Popover>
 
-                  {/* To Date Button */}
+                  {/* To Date Button + Date Picker */}
                   {projectStartDate && toDateMonths !== null && toDateMonths > 0 && (
-                    <TooltipProvider delayDuration={200}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
+                    <div className="flex items-center gap-0.5">
+                      <Button
+                        type="button"
+                        variant={loanTermMonths === toDateMonths ? 'default' : 'outline'}
+                        size="sm"
+                        className="rounded-sm rounded-r-none border-primary/50 min-w-[4rem]"
+                        onClick={() => setLoanTermMonths(toDateMonths)}
+                      >
+                        <CalendarClock className="h-3.5 w-3.5 mr-1" />
+                        To Date
+                      </Button>
+                      <Popover>
+                        <PopoverTrigger asChild>
                           <Button
                             type="button"
                             variant={loanTermMonths === toDateMonths ? 'default' : 'outline'}
                             size="sm"
-                            className="rounded-sm border-primary/50 min-w-[4rem]"
-                            onClick={() => setLoanTermMonths(toDateMonths)}
+                            className="rounded-sm rounded-l-none border-l-0 border-primary/50 px-1.5"
                           >
-                            <CalendarClock className="h-3.5 w-3.5 mr-1" />
-                            To Date
+                            <ChevronDown className="h-3 w-3" />
                           </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{toDateDays} days</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="end">
+                          <div className="p-3 pb-1 text-xs text-muted-foreground font-medium">
+                            {toDateDays} days from start
+                          </div>
+                          <Calendar
+                            mode="single"
+                            selected={toDateEndDate}
+                            onSelect={(date) => {
+                              if (date) {
+                                setToDateEndDate(date);
+                                const newMonths = calculateToDateMonths(projectStartDate, date);
+                                if (newMonths > 0) setLoanTermMonths(newMonths);
+                              }
+                            }}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                          <div className="px-3 pb-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-xs h-7"
+                              onClick={() => {
+                                const today = new Date();
+                                setToDateEndDate(today);
+                                const newMonths = calculateToDateMonths(projectStartDate, today);
+                                if (newMonths > 0) setLoanTermMonths(newMonths);
+                              }}
+                            >
+                              <RotateCcw className="h-3 w-3 mr-1" />
+                              Reset to Today
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   )}
 
                   {/* Term Settings Gear */}
