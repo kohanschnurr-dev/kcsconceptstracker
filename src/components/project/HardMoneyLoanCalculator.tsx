@@ -68,9 +68,7 @@ function getTermPresets(): number[] {
 }
 
 function formatTermLabel(months: number): string {
-  if (months >= 12 && months % 12 === 0) return `${months / 12}yr`;
-  if (months >= 24) return `${(months / 12).toFixed(1)}yr`;
-  return String(months);
+  return `${months}`;
 }
 
 function calculateToDateMonths(startDateStr: string): number {
