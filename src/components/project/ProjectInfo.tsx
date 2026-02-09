@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -139,7 +139,7 @@ export function ProjectInfo({ projectId }: ProjectInfoProps) {
   }
 
   return (
-    <Card className="glass-card">
+    <Card className="glass-card relative">
       <CardHeader>
         <CardTitle className="text-lg">Property Info</CardTitle>
       </CardHeader>
@@ -159,6 +159,10 @@ export function ProjectInfo({ projectId }: ProjectInfoProps) {
               />
             </div>
           ))}
+        </div>
+        <div className="flex items-center gap-1.5 justify-end mt-4 text-xs text-muted-foreground/60">
+          <Save className="h-3 w-3" />
+          <span>Auto-saves</span>
         </div>
       </CardContent>
     </Card>
