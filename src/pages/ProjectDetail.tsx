@@ -49,6 +49,7 @@ import { ProjectCalendar } from '@/components/project/ProjectCalendar';
 import { ProjectTasks } from '@/components/project/ProjectTasks';
 
 import { ProjectVendors } from '@/components/project/ProjectVendors';
+import { ProjectInfo } from '@/components/project/ProjectInfo';
 import { ExportReports } from '@/components/project/ExportReports';
 import { useToast } from '@/hooks/use-toast';
 
@@ -551,6 +552,7 @@ export default function ProjectDetail() {
             <TabsTrigger value="financials">Financials</TabsTrigger>
             {!isRental && <TabsTrigger value="loan">Loan</TabsTrigger>}
             <TabsTrigger value="team">Team</TabsTrigger>
+            <TabsTrigger value="info">Info</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
@@ -629,6 +631,10 @@ export default function ProjectDetail() {
 
           <TabsContent value="team">
             <ProjectVendors projectId={id!} />
+          </TabsContent>
+
+          <TabsContent value="info">
+            <ProjectInfo projectId={id!} />
           </TabsContent>
 
           <TabsContent value="photos">

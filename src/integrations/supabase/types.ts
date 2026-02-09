@@ -832,6 +832,71 @@ export type Database = {
           },
         ]
       }
+      project_info: {
+        Row: {
+          created_at: string
+          drain_line_material: string | null
+          electrical_status: string | null
+          foundation_status: string | null
+          gas_electric: string | null
+          hvac_condenser: string | null
+          hvac_furnace: string | null
+          hvac_year: string | null
+          id: string
+          plumbing_status: string | null
+          project_id: string
+          roof_type: string | null
+          roof_year: string | null
+          updated_at: string
+          user_id: string
+          window_status: string | null
+        }
+        Insert: {
+          created_at?: string
+          drain_line_material?: string | null
+          electrical_status?: string | null
+          foundation_status?: string | null
+          gas_electric?: string | null
+          hvac_condenser?: string | null
+          hvac_furnace?: string | null
+          hvac_year?: string | null
+          id?: string
+          plumbing_status?: string | null
+          project_id: string
+          roof_type?: string | null
+          roof_year?: string | null
+          updated_at?: string
+          user_id: string
+          window_status?: string | null
+        }
+        Update: {
+          created_at?: string
+          drain_line_material?: string | null
+          electrical_status?: string | null
+          foundation_status?: string | null
+          gas_electric?: string | null
+          hvac_condenser?: string | null
+          hvac_furnace?: string | null
+          hvac_year?: string | null
+          id?: string
+          plumbing_status?: string | null
+          project_id?: string
+          roof_type?: string | null
+          roof_year?: string | null
+          updated_at?: string
+          user_id?: string
+          window_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_info_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_milestones: {
         Row: {
           completed_at: string | null
