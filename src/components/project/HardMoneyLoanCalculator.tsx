@@ -723,7 +723,7 @@ export function HardMoneyLoanCalculator({
                       variant={loanTermMonths === term ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setLoanTermMonths(term)}
-                      className="rounded-sm"
+                      className="rounded-sm min-w-[4rem]"
                     >
                       {formatTermLabel(term)}
                     </Button>
@@ -734,7 +734,7 @@ export function HardMoneyLoanCalculator({
                         type="button"
                         variant={!termOptions.includes(loanTermMonths) && toDateMonths !== loanTermMonths ? 'default' : 'outline'}
                         size="sm"
-                        className="rounded-sm"
+                        className="rounded-sm min-w-[4rem]"
                       >
                         {!termOptions.includes(loanTermMonths) && toDateMonths !== loanTermMonths ? loanTermMonths : 'Custom'}
                       </Button>
@@ -789,11 +789,11 @@ export function HardMoneyLoanCalculator({
                       type="button"
                       variant={loanTermMonths === toDateMonths ? 'default' : 'outline'}
                       size="sm"
-                      className="rounded-sm border-primary/50"
+                      className="rounded-sm border-primary/50 min-w-[4rem]"
                       onClick={() => setLoanTermMonths(toDateMonths)}
                     >
                       <CalendarClock className="h-3.5 w-3.5 mr-1" />
-                      To Date ({toDateMonths})
+                      To Date
                     </Button>
                   )}
 
