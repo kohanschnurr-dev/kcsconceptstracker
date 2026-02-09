@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -140,6 +141,13 @@ export function HardMoneyLoanCalculator({
   const toDateMonths = useMemo(() => {
     if (!projectStartDate) return null;
     return calculateToDateMonths(projectStartDate);
+  }, [projectStartDate]);
+
+  const toDateDays = useMemo(() => {
+    if (!projectStartDate) return null;
+    const start = parseDateString(projectStartDate);
+    const now = new Date();
+    return Math.round((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   }, [projectStartDate]);
 
 
@@ -790,16 +798,25 @@ export function HardMoneyLoanCalculator({
 
                   {/* To Date Button */}
                   {projectStartDate && toDateMonths !== null && toDateMonths > 0 && (
-                    <Button
-                      type="button"
-                      variant={loanTermMonths === toDateMonths ? 'default' : 'outline'}
-                      size="sm"
-                      className="rounded-sm border-primary/50 min-w-[4rem]"
-                      onClick={() => setLoanTermMonths(toDateMonths)}
-                    >
-                      <CalendarClock className="h-3.5 w-3.5 mr-1" />
-                      To Date
-                    </Button>
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant={loanTermMonths === toDateMonths ? 'default' : 'outline'}
+                            size="sm"
+                            className="rounded-sm border-primary/50 min-w-[4rem]"
+                            onClick={() => setLoanTermMonths(toDateMonths)}
+                          >
+                            <CalendarClock className="h-3.5 w-3.5 mr-1" />
+                            To Date
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{toDateDays} days</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
 
                   {/* Term Settings Gear */}
