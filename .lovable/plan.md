@@ -1,32 +1,55 @@
 
 
-## Reorder Fields and Add Auto-Populate in New Project Modal
+## Replace Native Date Input with Calendar Picker for Start Date
 
-### Changes to `src/components/NewProjectModal.tsx`
+### Overview
 
-**1. Swap field order**: Move the Address field above the Project Name field.
+Replace the native HTML `<input type="date">` for "Start Date" in the New Project modal with a Shadcn Calendar Popover date picker for a better, more consistent UI experience.
 
-**2. Add auto-populate button**: Add a small button next to the Project Name label that copies the current address value into the project name field. This button will only appear when the address field has a value.
+### Technical Changes
 
-### Technical Details
+**File: `src/components/NewProjectModal.tsx`**
 
-- Move the Address `<div>` block (currently around lines 147-156) above the Project Name block (lines 137-146)
-- Add a clickable button/icon next to the "Project Name" label that sets `name` to the current `address` value
-- Use a small icon button (e.g., `Copy` or `ArrowUp` from lucide-react) with a tooltip or label like "Use address"
-- The button is hidden when address is empty
+1. **Add imports**: Import `Popover`, `PopoverContent`, `PopoverTrigger` from `@/components/ui/popover`, `Calendar` from `@/components/ui/calendar`, `format` from `date-fns`, and `cn` from `@/lib/utils`.
 
-### UI Result
+2. **Update state**: Change `startDate` from a string (`formatDateString(new Date())`) to a `Date` object (`new Date()`). Update the reset in `handleSubmit` accordingly.
 
+3. **Update the insert call**: Convert the Date back to a string for the database using `formatDateString(startDate)`.
+
+4. **Replace the Start Date input** with a Popover + Calendar picker:
+
+```tsx
+<Popover>
+  <PopoverTrigger asChild>
+    <Button
+      variant="outline"
+      className={cn(
+        "w-full pl-9 justify-start text-left font-normal",
+        !startDate && "text-muted-foreground"
+      )}
+    >
+      <Calendar className="absolute left-3 h-4 w-4 text-muted-foreground" />
+      {startDate ? format(startDate, "MM/dd/yyyy") : "Pick a date"}
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent className="w-auto p-0" align="start">
+    <Calendar
+      mode="single"
+      selected={startDate}
+      onSelect={(date) => date && setStartDate(date)}
+      initialFocus
+      className="p-3 pointer-events-auto"
+    />
+  </PopoverContent>
+</Popover>
 ```
-Project Type: [Fix & Flip] [Rental] [New Build] [Wholesale]
 
-Address *
-[pin] 2112 Treehouse Ln
+### Summary
 
-Project Name *                    [Use Address ->]
-Tree House Ln
-
-Total Budget *    Start Date
-...
-```
+| Area | Change |
+|------|--------|
+| Imports | Add Popover, Calendar (shadcn), format, cn |
+| State | Change `startDate` from string to Date object |
+| DB insert | Wrap with `formatDateString()` for storage |
+| UI | Replace native date input with Calendar Popover picker |
 
