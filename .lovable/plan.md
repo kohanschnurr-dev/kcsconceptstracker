@@ -1,59 +1,81 @@
 
 
-## Replace Loan Button with "More" Popover (Loan + Utilities)
+## Fix Loan Import + Add "Send Back to Queue"
 
-### Overview
+### Problem
 
-Replace the standalone "Loan" button with a small icon-only button (e.g., `MoreHorizontal` or `Ellipsis` icon) that opens a popover/dropdown containing "Loan" and "Utilities" as selectable expense types. This keeps the main row clean since these types are used less frequently than Product/Labor.
+1. **Loan import doesn't work in production mode**: The non-demo path of `categorizeExpense` in `useQuickBooks.ts` only updates `quickbooks_expenses` to `is_imported = true` but never inserts a row into the `expenses` table. The demo-mode path correctly does both. This is why clicking the check button appears to do nothing -- the QB expense gets marked as imported (disappears on next refresh) but no expense record is created.
+
+2. **No undo mechanism**: If a user accidentally imports something as a loan, there's no way to send it back to the pending queue.
 
 ### Changes
 
-**1. `src/components/quickbooks/GroupedPendingExpenseCard.tsx`**
+**1. `src/hooks/useQuickBooks.ts` -- Fix non-demo categorize to insert into expenses**
 
-- Add imports: `MoreHorizontal`, `Zap` (for utilities icon) from lucide-react, and `Popover`/`PopoverTrigger`/`PopoverContent` from radix
-- Update `selectedExpenseType` type from `'product' | 'labor' | 'loan'` to `'product' | 'labor' | 'loan' | 'utilities'`
-- Remove the standalone "Loan" `Button` (lines 255-270)
-- Add a new icon-only `Button` with `MoreHorizontal` icon that triggers a `Popover`
-- Inside the popover, show two clickable rows:
-  - **Loan** (Landmark icon) -- sets type to `'loan'`, closes popover, hides category dropdown
-  - **Utilities** (Zap icon) -- sets type to `'utilities'`, closes popover, keeps category dropdown visible
-- When either is active, show a small badge/indicator near the "more" button so the user knows a special type is selected (e.g., the button gets a colored border/background)
-- Clicking Product or Labor in the ToggleGroup clears any "more" selection back to normal
-- Hide category dropdown when type is `'loan'` (already implemented) but keep it for `'utilities'`
-- Hide the Product/Labor toggle when `'loan'` is selected (already implemented), but show it when `'utilities'` is selected
+In the non-demo `categorizeExpense` block (around line 531), add an insert into the `expenses` table before marking the QB expense as imported. This mirrors what the demo path already does:
+- Fetch the QB expense data
+- Insert into `expenses` with `category_id: null` for loans, proper category for others
+- Then mark `quickbooks_expenses` as imported
+- Then insert into `loan_payments` if loan type
 
-**2. `src/hooks/useQuickBooks.ts`**
+**2. `src/components/project/LoanPayments.tsx` -- Add "Send Back to Queue"**
 
-- Update `categorizeExpense` to accept `'utilities'` as an expense type
-- Utilities behaves like product/labor (needs category, goes into budget) -- no special loan_payments logic
-- The `expense_type` field stores `'utilities'` for reporting/filtering purposes
+For payments with `source: 'quickbooks'`, add a small "undo" / "send back" button (e.g., an Undo icon) next to the delete button. When clicked:
+- Delete the `loan_payments` record
+- Delete the corresponding `expenses` record (using `expense_id` to find the QB source)
+- Set `quickbooks_expenses.is_imported = false` for that `expense_id` to put it back in the pending queue
+- Show a toast confirming the item was sent back
 
-**3. Type updates in `onCategorize` prop**
+**3. Visual feedback on the pending card**
 
-- Update the type signature in `GroupedPendingExpenseCardProps` and `QuickBooksIntegration.tsx` to accept `'utilities'` alongside the existing types
-
-### UI Behavior
-
-The action row will look like:
-
-```
-[...] [Split] [Product] [Labor] [check]
-```
-
-Where `[...]` is a small icon button. Tapping it opens a popover:
-
-```
-+------------------+
-| Loan        (icon)|
-| Utilities   (icon)|
-+------------------+
-```
-
-When Loan or Utilities is selected, the `[...]` button gets a highlight (colored border) and the selected type name appears as a small label next to it. Clicking Product or Labor deselects the "more" option.
+No changes needed here -- the card already shows a loading spinner on the check button and removes the item on success. The fix to the insert logic will make it work correctly.
 
 ### Technical Details
 
-- Uses existing `Popover` component from `@/components/ui/popover`
-- No database changes needed -- `expense_type` column is text and already accepts any string
-- Utilities expenses follow the normal category + budget flow, unlike loans which skip category
+Non-demo categorize fix (in `useQuickBooks.ts`):
+```typescript
+// Before marking as imported, insert the actual expense
+const expense = pendingExpenses.find(e => e.id === expenseId);
+if (expense) {
+  await supabase.from('expenses').insert({
+    project_id: projectId,
+    category_id: categoryId, // null for loans
+    amount: expense.amount,
+    date: expense.date,
+    vendor_name: expense.vendor_name,
+    description: expense.description,
+    payment_method: 'transfer',
+    status: 'actual',
+    includes_tax: false,
+    expense_type: expenseType,
+    notes: notes || null,
+  });
+}
+```
 
+Send-back logic (in `LoanPayments.tsx`):
+```typescript
+const handleSendBack = async (payment: LoanPayment) => {
+  // 1. Delete loan_payments record
+  await supabase.from('loan_payments').delete().eq('id', payment.id);
+  // 2. Delete expenses record linked to this QB expense
+  if (payment.expense_id) {
+    await supabase.from('expenses').delete()
+      .eq('project_id', projectId)
+      .eq('description', payment.description)
+      .eq('amount', payment.amount);
+    // 3. Un-import the QB expense
+    await supabase.from('quickbooks_expenses')
+      .update({ is_imported: false, expense_type: null })
+      .eq('id', payment.expense_id);
+  }
+  // 4. Refresh and notify
+  await fetchPayments();
+  toast({ title: 'Sent Back', description: 'Payment returned to pending queue' });
+};
+```
+
+The `expense_id` field on `loan_payments` stores the original QB expense ID, making the reversal straightforward.
+
+### No database changes needed
+All tables and columns already exist.
