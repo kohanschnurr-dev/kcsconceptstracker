@@ -241,12 +241,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   };
 
   // Category options for the dropdown - dynamic based on assignment type
-  const projectCategoryOptions = [
-    'appliances', 'bathroom', 'cabinets', 'carpentry', 'countertops',
-    'demolition', 'doors', 'drywall', 'electrical', 'flooring',
-    'hardware', 'hvac', 'kitchen', 'landscaping', 'light_fixtures',
-    'misc', 'painting', 'plumbing', 'roofing', 'windows'
-  ];
+  const projectCategoryOptions = BUDGET_CATEGORIES.map(c => c.value);
   
   const businessCategoryOptions = BUSINESS_EXPENSE_CATEGORIES.map(c => c.value);
   
