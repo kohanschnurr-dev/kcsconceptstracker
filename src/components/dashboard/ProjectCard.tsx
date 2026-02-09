@@ -1,4 +1,4 @@
-import { MapPin, Calendar, Home, Hammer, Building2 } from 'lucide-react';
+import { MapPin, Calendar, Home, Hammer, Building2, Handshake } from 'lucide-react';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
   const totalSpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
   const isRental = project.projectType === 'rental';
   const isNewConstruction = project.projectType === 'new_construction';
+  const isWholesaling = project.projectType === 'wholesaling';
   const showBudgetProgress = !isRental; // Show budget for fix_flip and new_construction
   
   // Calculate budget metrics for fix & flips and new construction
@@ -77,6 +78,8 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
               <Building2 className="h-4 w-4 text-muted-foreground" />
             ) : isRental ? (
               <Home className="h-4 w-4 text-muted-foreground" />
+            ) : isWholesaling ? (
+              <Handshake className="h-4 w-4 text-muted-foreground" />
             ) : (
               <Hammer className="h-4 w-4 text-muted-foreground" />
             )}
