@@ -114,7 +114,7 @@ export function SplitExpenseModal({
   };
 
   const updateSplit = (id: string, field: keyof SplitLine, value: string) => {
-    setSplits(splits.map(s => 
+    setSplits(prevSplits => prevSplits.map(s => 
       s.id === id ? { ...s, [field]: value } : s
     ));
   };
@@ -233,7 +233,7 @@ export function SplitExpenseModal({
                       <SelectTrigger>
                         <SelectValue placeholder="Select Project" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="pointer-events-auto">
                         {projects.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
                             {p.name}
@@ -253,7 +253,7 @@ export function SplitExpenseModal({
                       <SelectTrigger>
                         <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="pointer-events-auto">
                         {categories.map((cat) => (
                           <SelectItem key={cat.value} value={cat.value}>
                             {cat.label}
