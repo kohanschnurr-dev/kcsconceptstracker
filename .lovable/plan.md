@@ -1,73 +1,118 @@
 
 
-## Plan: Fix Project Selection State Not Updating in Split Modal
+## Plan: Add Product/Labor Toggle to Quick Log Expense Modal
 
-### Problem Identified
+### Overview
 
-When selecting a project in the Split Expense modal, the selection doesn't visually update. The issue has two causes:
-
-1. **State Update Race Condition**: The `onValueChange` handler calls `updateSplit` twice in quick succession:
-   ```typescript
-   onValueChange={(value) => {
-     updateSplit(split.id, 'projectId', value);
-     updateSplit(split.id, 'categoryValue', ''); // Both use stale state!
-   }}
-   ```
-   Both calls read from the same stale `splits` array, so the second call overwrites the first.
-
-2. **Pointer Events Issue**: The SelectContent renders in a Portal, and when `modal={false}` is on the Dialog, the Select's Portal may still have focus/pointer conflicts.
+Add an expense type toggle (Product vs Labor) to the Quick Log Expense modal, matching the existing pattern used in SmartSplit and QuickBooks components. The `expense_type` field already exists in the database.
 
 ---
 
-### Solution
+### Technical Changes
 
-#### Fix 1: Use Functional State Update (Lines 116-120)
+**File: `src/components/QuickExpenseModal.tsx`**
 
-Change `updateSplit` to use the functional form of `setSplits` to ensure each update builds on the previous state:
+#### Change 1: Add Import for Icons and ToggleGroup (Lines 1-31)
+
+Add `Package` and `Wrench` icons from lucide-react, and import `ToggleGroup` and `ToggleGroupItem` components:
 
 ```typescript
-// Before
-const updateSplit = (id: string, field: keyof SplitLine, value: string) => {
-  setSplits(splits.map(s => 
-    s.id === id ? { ...s, [field]: value } : s
-  ));
-};
-
-// After
-const updateSplit = (id: string, field: keyof SplitLine, value: string) => {
-  setSplits(prevSplits => prevSplits.map(s => 
-    s.id === id ? { ...s, [field]: value } : s
-  ));
-};
+import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles, Package, Wrench } from 'lucide-react';
 ```
 
-#### Fix 2: Add pointer-events-auto to SelectContent (Lines 236, 256)
+And add:
+```typescript
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+```
 
-Add className to ensure pointer events work in the Portal:
+#### Change 2: Add Expense Type State (Around Line 56)
+
+Add state for expense type after the existing state declarations:
 
 ```typescript
-// Project Select
-<SelectContent className="pointer-events-auto">
+const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
+```
 
-// Category Select  
-<SelectContent className="pointer-events-auto">
+#### Change 3: Add Toggle UI (After Category Select, Around Lines 340-343)
+
+Add a Product/Labor toggle group below the Project and Category row, styled consistently with the rest of the form:
+
+```typescript
+{/* Expense Type Toggle */}
+<div className="flex items-center gap-3">
+  <Label className="text-sm">Type:</Label>
+  <ToggleGroup
+    type="single"
+    value={expenseType}
+    onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')}
+    className="justify-start"
+  >
+    <ToggleGroupItem value="product" size="sm" className="gap-1">
+      <Package className="h-3 w-3" />
+      Product
+    </ToggleGroupItem>
+    <ToggleGroupItem value="labor" size="sm" className="gap-1">
+      <Wrench className="h-3 w-3" />
+      Labor
+    </ToggleGroupItem>
+  </ToggleGroup>
+</div>
+```
+
+#### Change 4: Include expense_type in Database Insert (Lines 216-230)
+
+Update the expense insert to include the `expense_type` field:
+
+```typescript
+const { error } = await supabase
+  .from('expenses')
+  .insert({
+    project_id: selectedProject,
+    category_id: categoryId,
+    amount: calculateTotal(),
+    vendor_name: vendor,
+    description: description || null,
+    payment_method: paymentMethod,
+    status: 'actual',
+    includes_tax: includeTax,
+    tax_amount: includeTax ? calculateTax() : null,
+    date: date,
+    receipt_url: receiptUrl,
+    expense_type: expenseType,  // <-- Add this line
+  });
 ```
 
 ---
 
-### Why This Works
+### Visual Result
 
-1. **Functional Updates**: Using `prevSplits =>` ensures each state update sees the result of the previous one, preventing the race condition.
+The modal will now include a Product/Labor toggle between the Category dropdown and the Amount field:
 
-2. **Pointer Events**: When Dialog has `modal={false}`, some browsers may still have pointer-event conflicts with Portaled content. Adding `pointer-events-auto` ensures clicks register.
+```text
+┌─────────────────────────────────────────┐
+│  Project: [Wales Rental ▼]  Category: [Painting ▼]  │
+│                                         │
+│  Type:  [📦 Product] [🔧 Labor]         │  <-- NEW
+│                                         │
+│  Amount: [$2900]         Date: [02/04]  │
+│  ...                                    │
+└─────────────────────────────────────────┘
+```
 
 ---
 
-### Technical Changes Summary
+### Summary of Changes
 
-| File | Line | Change |
-|------|------|--------|
-| `src/components/SplitExpenseModal.tsx` | 116-120 | Use functional state update `prevSplits =>` |
-| `src/components/SplitExpenseModal.tsx` | 236 | Add `className="pointer-events-auto"` to Project SelectContent |
-| `src/components/SplitExpenseModal.tsx` | 256 | Add `className="pointer-events-auto"` to Category SelectContent |
+| File | Change |
+|------|--------|
+| `src/components/QuickExpenseModal.tsx` | Import Package, Wrench icons and ToggleGroup components |
+| `src/components/QuickExpenseModal.tsx` | Add `expenseType` state with 'product' default |
+| `src/components/QuickExpenseModal.tsx` | Add ToggleGroup UI for Product/Labor selection |
+| `src/components/QuickExpenseModal.tsx` | Include `expense_type` in database insert |
+
+---
+
+### No Database Changes Needed
+
+The `expense_type` column already exists in the `expenses` table (nullable string), so no migration is required.
 
