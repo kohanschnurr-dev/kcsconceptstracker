@@ -1,15 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FolderKanban, Home, Hammer, Building2, Handshake } from 'lucide-react';
-import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { Plus, Search, FolderKanban, Home, Hammer, Building2, Handshake, Settings, ArrowUp, ArrowDown } from 'lucide-react';
+import { arrayMove } from '@dnd-kit/sortable';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { NewProjectModal } from '@/components/NewProjectModal';
-import { SortableTab } from '@/components/projects/SortableTab';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
@@ -40,6 +39,7 @@ export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [reorderOpen, setReorderOpen] = useState(false);
 
   const tabOrder = useMemo<ProjectType[]>(() => {
     const saved = profile?.project_tab_order as string[] | null;
@@ -156,14 +156,9 @@ export default function Projects() {
     };
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = tabOrder.indexOf(active.id as ProjectType);
-    const newIndex = tabOrder.indexOf(over.id as ProjectType);
-    const newOrder = arrayMove(tabOrder, oldIndex, newIndex);
-
+  const moveTab = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    const newOrder = arrayMove(tabOrder, index, newIndex);
     updateTabOrder.mutate(newOrder);
   };
 
@@ -252,26 +247,52 @@ export default function Projects() {
         </div>
 
         <Tabs value={mainTab} onValueChange={(v) => { setMainTab(v as ProjectType); setStatusTab('all'); }}>
-          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={tabOrder} strategy={horizontalListSortingStrategy}>
-              <TabsList className="w-full max-w-2xl flex">
-                {tabOrder.map((type) => {
-                  const config = TAB_CONFIG[type];
-                  const counts = getStatusCounts(type);
+          <div className="flex items-center gap-2">
+            <TabsList className="w-full max-w-2xl flex">
+              {tabOrder.map((type) => {
+                const config = TAB_CONFIG[type];
+                const counts = getStatusCounts(type);
+                const Icon = config.icon;
+                return (
+                  <TabsTrigger key={type} value={type} className="gap-1.5">
+                    <Icon className="h-4 w-4" />
+                    {config.label} ({counts.total})
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+            <Popover open={reorderOpen} onOpenChange={setReorderOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="end">
+                <p className="text-xs text-muted-foreground mb-2 px-2">Tab Order</p>
+                {tabOrder.map((type, index) => {
+                  const Icon = TAB_CONFIG[type].icon;
                   return (
-                    <SortableTab
-                      key={type}
-                      id={type}
-                      value={type}
-                      label={config.label}
-                      icon={config.icon}
-                      count={counts.total}
-                    />
+                    <div key={type} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted">
+                      <span className="text-sm flex items-center gap-2">
+                        <Icon className="h-3.5 w-3.5" />
+                        {TAB_CONFIG[type].label}
+                      </span>
+                      <div className="flex gap-0.5">
+                        <Button size="icon" variant="ghost" className="h-6 w-6"
+                          disabled={index === 0} onClick={() => moveTab(index, 'up')}>
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6"
+                          disabled={index === tabOrder.length - 1} onClick={() => moveTab(index, 'down')}>
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
                   );
                 })}
-              </TabsList>
-            </SortableContext>
-          </DndContext>
+              </PopoverContent>
+            </Popover>
+          </div>
 
           {tabOrder.map((type) => (
             <TabsContent key={type} value={type} className="mt-6">
