@@ -1,45 +1,83 @@
 
-## Alphabetically Order Projects and Hide Completed Ones from Selection
+## Add "Info" Tab to Project Detail Page
 
 ### Overview
 
-Ensure that everywhere a project can be selected (dropdowns, autocomplete, mentions), the list is sorted alphabetically by name and completed projects are excluded.
+Add a new "Info" tab after "Team" in the project detail page. This tab displays key property condition data as a simple editable form with the following fields:
 
-### Changes
+- Foundation Status
+- Gas/Electric
+- Roof Year and Type
+- HVAC Year -- Condenser/Furnace
+- Drain Line Material
+- Window Status
+- Electrical Status
+- Plumbing Status
 
-**1. `src/components/ProjectAutocomplete.tsx`** (central component used in most places)
+### Database Change
 
-- Sort `filteredByStatus` alphabetically by `project.name` (case-insensitive)
-- Change the default behavior of `filterActive` -- currently defaults to `false`. Update the filtering logic so that projects with `status === 'complete'` are always excluded unless a new prop `showComplete` is explicitly set to `true`. This way all existing consumers automatically get the fix.
+Create a `project_info` table to store this data, one row per project:
 
-**2. `src/components/quickbooks/GroupedPendingExpenseCard.tsx`** (2 Select dropdowns)
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid (PK) | Default `gen_random_uuid()` |
+| `project_id` | uuid (FK to projects, unique) | One info record per project |
+| `user_id` | uuid | For RLS |
+| `foundation_status` | text | e.g. "Pier & beam, leveled", "Slab, cracked" |
+| `gas_electric` | text | e.g. "Gas", "Electric", "Both" |
+| `roof_year` | text | e.g. "2018" |
+| `roof_type` | text | e.g. "Composition shingle", "Metal" |
+| `hvac_year` | text | e.g. "2020" |
+| `hvac_condenser` | text | e.g. "Trane 3-ton" |
+| `hvac_furnace` | text | e.g. "Lennox 80k BTU" |
+| `drain_line_material` | text | e.g. "Cast iron", "PVC", "ABS" |
+| `window_status` | text | e.g. "Original single-pane", "Replaced 2022" |
+| `electrical_status` | text | e.g. "200 amp, updated panel" |
+| `plumbing_status` | text | e.g. "Copper supply, PVC waste" |
+| `created_at` / `updated_at` | timestamptz | Standard timestamps |
 
-- Sort and filter the `projects` array before rendering: `projects.filter(p => p.status !== 'complete').sort((a, b) => a.name.localeCompare(b.name))` in both `projects.map()` calls (lines ~213 and ~395)
+RLS: Users can only read/write their own rows (matching `user_id`).
 
-**3. `src/components/SplitExpenseModal.tsx`** (1 Select dropdown)
+### Frontend Changes
 
-- Same sort + filter applied to the `projects.map()` at line ~237
+**1. New component: `src/components/project/ProjectInfo.tsx`**
 
-**4. `src/components/procurement/BundleModal.tsx`** (1 Select dropdown)
+- Accepts `projectId` prop
+- Fetches from `project_info` where `project_id` matches
+- Displays a clean card with labeled fields in a 2-column grid
+- Each field is an editable text input
+- Auto-saves on blur (upsert to database)
+- Shows placeholder text when empty to guide the user
 
-- Same sort + filter at line ~250
+**2. Update `src/pages/ProjectDetail.tsx`**
 
-**5. `src/components/MentionTextarea.tsx`** (mention suggestions)
+- Add `<TabsTrigger value="info">Info</TabsTrigger>` after Team
+- Add corresponding `<TabsContent>` rendering the new `ProjectInfo` component
 
-- Sort the `filteredProjects` result alphabetically
-- Filter out completed projects in the `useMemo` block
+### UI Layout
 
-### Technical Details
+The Info tab will show a single card with fields grouped logically:
 
-The core pattern applied everywhere is:
-
-```typescript
-// Filter out complete, then sort alphabetically
-projects
-  .filter(p => p.status !== 'complete')
-  .sort((a, b) => a.name.localeCompare(b.name))
+```
++--------------------------+--------------------------+
+| Foundation Status        | Gas / Electric           |
+| [text input]             | [text input]             |
++--------------------------+--------------------------+
+| Roof Year                | Roof Type                |
+| [text input]             | [text input]             |
++--------------------------+--------------------------+
+| HVAC Year                | Condenser                |
+| [text input]             | [text input]             |
++--------------------------+--------------------------+
+| Furnace                  | Drain Line Material      |
+| [text input]             | [text input]             |
++--------------------------+--------------------------+
+| Window Status            | Electrical Status        |
+| [text input]             | [text input]             |
++--------------------------+--------------------------+
+| Plumbing Status          |                          |
+| [text input]             |                          |
++--------------------------+--------------------------+
 ```
 
-For `ProjectAutocomplete`, this is done inside the `filteredByStatus` memo so it cascades to search results too. For `MentionTextarea`, it's applied in the existing `filteredProjects` memo. For the raw `Select` components, it's applied inline.
-
-No database or backend changes needed -- this is purely frontend sorting and filtering.
+Fields save automatically when you click out of them -- no save button needed.
