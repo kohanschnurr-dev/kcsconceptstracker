@@ -1,50 +1,45 @@
 
 
-## Add Date Picker to "To Date" for Custom End Date
+## Fix Daily Interest Accrual Calculation
 
-### Overview
-Replace the simple tooltip on the "To Date" button with a popover that contains a date picker. The date picker defaults to today's date but allows the user to select a future (or past) date -- e.g., an expected sale date 3 weeks out. The "To Date" calculation will use the selected date instead of `new Date()`.
+### Problem
+The interest calculations use monthly granularity (`monthlyPayment * loanTermMonths`). When a fractional "To Date" term like 1.4 months (43 days) is selected, the total interest should accrue on a per-day basis so each day is properly accounted for. Currently it multiplies a monthly payment by a fractional month count, which can produce slightly off results and doesn't clearly show daily accrual.
 
 ### Changes in `src/components/project/HardMoneyLoanCalculator.tsx`
 
-1. **Add state for the "To Date" target date**
-   - `const [toDateEndDate, setToDateEndDate] = useState<Date>(new Date());`
-   - This defaults to today and drives both `toDateMonths` and `toDateDays`.
+**1. Add a `dailyInterest` value to the `calculations` memo**
 
-2. **Update `toDateMonths` and `toDateDays` to use `toDateEndDate` instead of `new Date()`**
-   - `toDateMonths`: compute months between `projectStartDate` and `toDateEndDate`.
-   - `toDateDays`: compute days between `projectStartDate` and `toDateEndDate`.
-   - Both recalculate whenever `toDateEndDate` changes.
+Calculate the daily interest rate from the annual rate and use it for precise accrual:
 
-3. **Update `calculateToDateMonths`** (or inline its logic) to accept an end date parameter instead of always using `now`.
-
-4. **Replace the Tooltip wrapper with a Popover containing a calendar**
-   - Clicking the "To Date" button still sets the loan term as before.
-   - A small calendar icon or dropdown arrow opens a popover with a `Calendar` date picker.
-   - Selecting a date updates `toDateEndDate`, which recalculates months/days and auto-applies the new term.
-   - The tooltip showing days will move into the popover header or remain as a small label.
-
-5. **UI layout for the "To Date" area**
-   - The button text stays "To Date".
-   - Next to it (or as a split button), a small calendar trigger opens the date picker popover.
-   - Inside the popover: a small header showing "X days from start", the `Calendar` component, and a "Reset to Today" link.
-
-### Technical Detail
-
-```
-State: toDateEndDate (Date, defaults to new Date())
-
-toDateMonths = diff(projectStartDate, toDateEndDate) in months
-toDateDays = diff(projectStartDate, toDateEndDate) in days
-
-UI:
-[To Date] [calendar icon trigger]
-            |-- Popover -----------|
-            | "X days from start"  |
-            | [  Calendar picker ] |
-            | Reset to Today       |
-            |----------------------|
+```typescript
+const dailyRate = interestRate / 100 / 365;
+const dailyInterest = loanAmount * dailyRate;
 ```
 
-When the user picks a date, `toDateEndDate` updates, `toDateMonths` recalculates, and `setLoanTermMonths(toDateMonths)` is called automatically. The preset-loading effect will also use `toDateEndDate` for its initial calculation.
+For interest-only loans, compute `totalInterest` using days instead of months:
 
+```typescript
+// Convert loanTermMonths to days for precise calculation
+const termDays = Math.round(loanTermMonths * 30.44);
+totalInterest = dailyInterest * termDays;
+```
+
+This ensures that a 1.4-month (43-day) term accrues exactly 43 days of interest, not a rounded monthly approximation.
+
+**2. Add daily interest to the results display**
+
+Add a small line in the KPI cards or summary section showing the daily interest cost (e.g., "$XX.XX / day") so the user can see the per-day accrual at a glance.
+
+**3. Update the Payoff Timeline to use daily calculation**
+
+Change the `payoffComparison` memo to also compute interest using `dailyRate * (months * 30.44)` instead of `monthlyInt * months`, keeping everything consistent with daily accrual.
+
+**4. Include the current "To Date" term in the Payoff Timeline**
+
+If `loanTermMonths` is fractional (i.e., from "To Date"), add it as an entry in the payoff timeline so the user can see the interest cost at their current/selected date alongside the standard month milestones.
+
+### Summary of Results Display Updates
+- Monthly Payment KPI: unchanged (still shows what one full month costs)
+- Total Interest: recalculated using daily accrual for the exact term
+- New: "Daily Interest" line showing per-day cost (e.g., "$32.88 / day")
+- Payoff Timeline: uses daily math, includes the current fractional term if applicable
