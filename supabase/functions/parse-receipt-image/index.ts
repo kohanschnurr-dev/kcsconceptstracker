@@ -241,13 +241,28 @@ CRITICAL VALIDATION:
     }
 
     // Validate and clean the data
+    // Fix incorrect years - receipts shouldn't be from the future or too far in the past
+    const currentYear = new Date().getFullYear();
+    let purchaseDate = receiptData.purchase_date || new Date().toISOString().split('T')[0];
+    
+    // If date was parsed, validate the year
+    if (purchaseDate) {
+      const parsedYear = parseInt(purchaseDate.split('-')[0], 10);
+      // If year is more than 1 year in the past or in the future, correct it to current year
+      if (parsedYear < currentYear - 1 || parsedYear > currentYear) {
+        const [_, month, day] = purchaseDate.split('-');
+        purchaseDate = `${currentYear}-${month}-${day}`;
+        console.log(`Corrected receipt year from ${parsedYear} to ${currentYear}: ${purchaseDate}`);
+      }
+    }
+    
     const cleanedData: ReceiptData = {
       vendor_name: receiptData.vendor_name || "Unknown Vendor",
       total_amount: parseFloat(String(receiptData.total_amount)) || 0,
       tax_amount: parseFloat(String(receiptData.tax_amount)) || 0,
       subtotal: parseFloat(String(receiptData.subtotal)) || 0,
       discount_amount: parseFloat(String(receiptData.discount_amount)) || 0,
-      purchase_date: receiptData.purchase_date || new Date().toISOString().split('T')[0],
+      purchase_date: purchaseDate,
       line_items: Array.isArray(receiptData.line_items) 
         ? receiptData.line_items.map(item => ({
             item_name: item.item_name || "Unknown Item",
