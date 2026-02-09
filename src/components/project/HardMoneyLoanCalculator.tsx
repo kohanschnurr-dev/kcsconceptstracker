@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, TrendingDown, Clock, Package, Plus, Pencil, Trash2, Star, ChevronDown, ChevronUp, MoreVertical, Settings, CalendarClock, RotateCcw } from 'lucide-react';
 import { parseDateString } from '@/lib/dateUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -141,6 +141,15 @@ export function HardMoneyLoanCalculator({
     if (!projectStartDate) return null;
     return calculateToDateMonths(projectStartDate);
   }, [projectStartDate]);
+
+  // Auto-select "To Date" on mount when available
+  const toDateAppliedRef = useRef(false);
+  useEffect(() => {
+    if (toDateMonths !== null && toDateMonths > 0 && !toDateAppliedRef.current) {
+      toDateAppliedRef.current = true;
+      setLoanTermMonths(toDateMonths);
+    }
+  }, [toDateMonths]);
 
   // Edit preset dialog
   const [editPresetOpen, setEditPresetOpen] = useState(false);
