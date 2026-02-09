@@ -173,23 +173,21 @@ export interface ChangeOrder {
   approved: boolean;
 }
 
-// Construction/Renovation categories (alphabetically sorted)
+// Construction/Renovation categories (sorted alphabetically by label)
 export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'appliances', label: 'Appliances' },
   { value: 'bathroom', label: 'Bathroom' },
-  { value: 'brick_siding_stucco', label: 'Exterior Finish' },
   { value: 'cabinets', label: 'Cabinets' },
-  { value: 'carpentry', label: 'Trims' },
   { value: 'cleaning', label: 'Cleaning' },
   { value: 'closing_costs', label: 'Closing Costs' },
+  { value: 'driveway_concrete', label: 'Concrete' },
   { value: 'countertops', label: 'Countertops' },
   { value: 'demolition', label: 'Demolition' },
   { value: 'doors', label: 'Doors' },
   { value: 'drain_line_repair', label: 'Drain Line Repair' },
-  { value: 'driveway_concrete', label: 'Concrete' },
   { value: 'drywall', label: 'Drywall' },
-  { value: 'dumpsters_trash', label: 'Trash Hauling' },
   { value: 'electrical', label: 'Electrical' },
+  { value: 'brick_siding_stucco', label: 'Exterior Finish' },
   { value: 'fencing', label: 'Fencing' },
   { value: 'final_punch', label: 'Final Punch' },
   { value: 'flooring', label: 'Flooring' },
@@ -218,6 +216,8 @@ export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'staging', label: 'Staging' },
   { value: 'taxes', label: 'Taxes' },
   { value: 'tile', label: 'Tile' },
+  { value: 'dumpsters_trash', label: 'Trash Hauling' },
+  { value: 'carpentry', label: 'Trims' },
   { value: 'utilities', label: 'Utilities' },
   { value: 'variable', label: 'Variable' },
   { value: 'water_heater', label: 'Water Heater' },
