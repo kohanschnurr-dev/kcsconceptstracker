@@ -69,6 +69,7 @@ export function GroupedPendingExpenseCard({
   formatCurrency,
 }: GroupedPendingExpenseCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSingleExpanded, setIsSingleExpanded] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedExpenseType, setSelectedExpenseType] = useState<'product' | 'labor'>('product');
@@ -131,9 +132,17 @@ export function GroupedPendingExpenseCard({
     return (
       <div className="p-3 rounded-lg border border-border bg-muted/20">
         <div className="flex items-start gap-3">
-          <div className="flex-1">
+          <div 
+            className="flex-1 cursor-pointer"
+            onClick={() => setIsSingleExpanded(!isSingleExpanded)}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
+                {isSingleExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                )}
                 <p className="font-medium">{primaryExpense.vendor_name || 'Unknown Vendor'}</p>
                 {hasReceipt && (
                   <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30 gap-1">
@@ -142,7 +151,7 @@ export function GroupedPendingExpenseCard({
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                 <p className="font-mono font-semibold">
                   {formatCurrency(primaryExpense.amount)}
                 </p>
@@ -157,9 +166,9 @@ export function GroupedPendingExpenseCard({
                 </Button>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 ml-6">
               <span>{formatDisplayDate(primaryExpense.date)}</span>
-              {primaryExpense.description && (
+              {primaryExpense.description && !isSingleExpanded && (
                 <>
                   <span>•</span>
                   <span className="truncate max-w-[200px]">
@@ -170,6 +179,27 @@ export function GroupedPendingExpenseCard({
             </div>
           </div>
         </div>
+        
+        {/* Expanded details section */}
+        {isSingleExpanded && (
+          <div className="mt-2 ml-6 p-2 rounded bg-muted/30 border border-border/50 text-sm space-y-1">
+            {primaryExpense.description && (
+              <div>
+                <span className="text-muted-foreground">Description: </span>
+                <span className="text-foreground">{primaryExpense.description}</span>
+              </div>
+            )}
+            {primaryExpense.notes && (
+              <div>
+                <span className="text-muted-foreground">Notes: </span>
+                <span className="text-foreground">{primaryExpense.notes}</span>
+              </div>
+            )}
+            {!primaryExpense.description && !primaryExpense.notes && (
+              <p className="text-muted-foreground italic">No additional details available</p>
+            )}
+          </div>
+        )}
         <div className="flex flex-col gap-2 mt-3">
           <div className="flex flex-col sm:flex-row gap-2">
             <Select
