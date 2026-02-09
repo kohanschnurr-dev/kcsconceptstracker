@@ -1,61 +1,76 @@
 
 
-## Reorderable Project Type Tabs
+## Replace Drag-and-Drop Tabs with Gear Icon Order Picker
 
 ### Overview
 
-Allow users to drag-and-drop the project type tabs (Fix & Flips, Rentals, New Builds, Wholesaling) into their preferred order. The order persists in the database so it's remembered across sessions.
+Remove the drag-and-drop tab reordering and replace it with a small gear icon next to the tabs. Clicking the gear opens a popover where users can reorder tabs using up/down arrows in a simple list.
 
-### Database Change
+### Changes
 
-Add a `project_tab_order` column to the `profiles` table to store the user's preferred tab ordering as a JSON array.
+**File: `src/pages/Projects.tsx`**
 
-- **Column**: `project_tab_order` (type `jsonb`, nullable, default `null`)
-- **Default behavior**: When null, use the current order: `['fix_flip', 'rental', 'new_construction', 'wholesaling']`
-- RLS already exists on the profiles table, so no new policies needed.
+1. **Remove DnD imports**: Remove `DndContext`, `closestCenter`, `DragEndEvent`, `SortableContext`, `horizontalListSortingStrategy`, `arrayMove` from `@dnd-kit/*`. Remove `SortableTab` import.
+2. **Add new imports**: Add `Settings` from `lucide-react`, `Popover`/`PopoverTrigger`/`PopoverContent` from `@/components/ui/popover`, `ArrowUp`/`ArrowDown` from `lucide-react`, and `arrayMove` from `@dnd-kit/sortable` (still needed for reorder logic).
+3. **Add local reorder state**: Add a `[reorderOpen, setReorderOpen]` state for the popover.
+4. **Remove `handleDragEnd`** and replace with `moveTab(index, direction)` that swaps a tab up or down and calls `updateTabOrder.mutate(newOrder)`.
+5. **Replace the DndContext/SortableContext/SortableTab block** with plain `TabsTrigger` elements plus a gear icon button:
 
-### Frontend Changes
-
-**1. Define tab config array (`src/pages/Projects.tsx`)**
-
-Create a static array of tab definitions (value, label, icon) and derive the rendered order from the user's saved preference or the default.
-
-**2. Make tabs draggable**
-
-Use `@dnd-kit/core` and `@dnd-kit/sortable` (already installed) to wrap the `TabsList` with drag-and-drop support. Each `TabsTrigger` becomes a sortable item.
-
-**3. Save order on drop**
-
-When the user finishes reordering, save the new order to `profiles.project_tab_order` via Supabase and update local state. The first tab in the order auto-selects as the default when the page loads.
-
-**4. Load saved order on mount**
-
-Fetch the user's profile on mount; if `project_tab_order` exists, use it to set both the tab rendering order and the initial active tab.
-
-### Technical Details
-
-**Tab config structure:**
-```typescript
-const TAB_CONFIG = [
-  { value: 'fix_flip', label: 'Fix & Flips', icon: Hammer },
-  { value: 'rental', label: 'Rentals', icon: Home },
-  { value: 'new_construction', label: 'New Builds', icon: Building2 },
-  { value: 'wholesaling', label: 'Wholesaling', icon: Handshake },
-];
+```tsx
+<div className="flex items-center gap-2">
+  <TabsList className="w-full max-w-2xl flex">
+    {tabOrder.map((type) => {
+      const config = TAB_CONFIG[type];
+      const counts = getStatusCounts(type);
+      return (
+        <TabsTrigger key={type} value={type} className="gap-1.5">
+          <config.icon className="h-4 w-4" />
+          {config.label} ({counts.total})
+        </TabsTrigger>
+      );
+    })}
+  </TabsList>
+  <Popover open={reorderOpen} onOpenChange={setReorderOpen}>
+    <PopoverTrigger asChild>
+      <Button variant="ghost" size="icon" className="h-8 w-8">
+        <Settings className="h-4 w-4 text-muted-foreground" />
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-56 p-2" align="end">
+      <p className="text-xs text-muted-foreground mb-2 px-2">Tab Order</p>
+      {tabOrder.map((type, index) => (
+        <div key={type} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted">
+          <span className="text-sm flex items-center gap-2">
+            <TAB_CONFIG[type].icon className="h-3.5 w-3.5" />
+            {TAB_CONFIG[type].label}
+          </span>
+          <div className="flex gap-0.5">
+            <Button size="icon" variant="ghost" className="h-6 w-6"
+              disabled={index === 0} onClick={() => moveTab(index, 'up')}>
+              <ArrowUp className="h-3 w-3" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-6 w-6"
+              disabled={index === tabOrder.length - 1} onClick={() => moveTab(index, 'down')}>
+              <ArrowDown className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      ))}
+    </PopoverContent>
+  </Popover>
+</div>
 ```
 
-**Drag-and-drop approach:**
-- Wrap `TabsList` with `DndContext` and `SortableContext` (horizontal strategy)
-- Each tab trigger uses `useSortable` for drag handles
-- On `DragEnd`, reorder the array and persist to the database
-- A subtle drag indicator (grip dots or cursor change) signals reorderability
+**File: `src/components/projects/SortableTab.tsx`**
 
-**Profile hook update (`src/hooks/useProfile.ts`):**
-- Extend the `Profile` interface to include `project_tab_order: string[] | null`
-- Extend `updateProfile` (or add a separate mutation) to save the tab order
+- Delete this file (no longer needed).
 
-**Files modified:**
-- `src/pages/Projects.tsx` -- draggable tabs, load/save order
-- `src/hooks/useProfile.ts` -- expose tab order field
-- Migration SQL -- add `project_tab_order` column to `profiles`
+### Summary
+
+| Area | Change |
+|------|--------|
+| DnD removal | Remove DndContext/SortableContext wrappers, SortableTab component |
+| Gear icon | Small Settings icon next to tabs opens a Popover |
+| Reorder UI | List of tabs with up/down arrow buttons in the popover |
+| Persistence | Same `updateTabOrder` mutation, triggered on arrow click |
 
