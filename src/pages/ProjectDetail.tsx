@@ -623,6 +623,7 @@ export default function ProjectDetail() {
                 purchasePrice={project.purchase_price || 0}
                 totalBudget={totalBudget}
                 arv={project.arv || 0}
+                projectStartDate={project.start_date}
                 initialLoanAmount={(project as any).hm_loan_amount}
                 initialInterestRate={(project as any).hm_interest_rate || 12}
                 initialLoanTermMonths={(project as any).hm_loan_term_months || 6}

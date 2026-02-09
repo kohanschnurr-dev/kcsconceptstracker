@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, TrendingDown, Clock, Package, Plus, Pencil, Trash2, Star, ChevronDown, ChevronUp, MoreVertical } from 'lucide-react';
+import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, TrendingDown, Clock, Package, Plus, Pencil, Trash2, Star, ChevronDown, ChevronUp, MoreVertical, Settings, CalendarClock, RotateCcw } from 'lucide-react';
+import { parseDateString } from '@/lib/dateUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,11 +51,42 @@ const BUILT_IN_PRESETS: LoanPreset[] = [
   { name: 'Conventional 30yr', interestRate: 7, loanTermMonths: 360, points: 1, closingCostsPercent: 2, interestOnly: false, isBuiltIn: true },
 ];
 
+const DEFAULT_TERM_PRESETS = [6, 12, 18, 360];
+const TERM_PRESETS_KEY = 'loan-term-presets';
+
+function getTermPresets(): number[] {
+  try {
+    const stored = localStorage.getItem(TERM_PRESETS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length === 4 && parsed.every((n: any) => typeof n === 'number' && n > 0)) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return DEFAULT_TERM_PRESETS;
+}
+
+function formatTermLabel(months: number): string {
+  if (months >= 12 && months % 12 === 0) return `${months / 12}yr`;
+  if (months >= 24) return `${(months / 12).toFixed(1)}yr`;
+  return String(months);
+}
+
+function calculateToDateMonths(startDateStr: string): number {
+  const start = parseDateString(startDateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - start.getTime();
+  const months = diffMs / (1000 * 60 * 60 * 24 * 30.44);
+  return Math.round(months * 10) / 10;
+}
+
 interface HardMoneyLoanCalculatorProps {
   projectId: string;
   purchasePrice: number;
   totalBudget: number;
   arv: number;
+  projectStartDate?: string;
   initialLoanAmount?: number;
   initialInterestRate?: number;
   initialLoanTermMonths?: number;
@@ -68,6 +100,7 @@ export function HardMoneyLoanCalculator({
   purchasePrice,
   totalBudget,
   arv,
+  projectStartDate,
   initialLoanAmount,
   initialInterestRate = 12,
   initialLoanTermMonths = 6,
@@ -99,6 +132,17 @@ export function HardMoneyLoanCalculator({
   // Custom term popover
   const [customTermOpen, setCustomTermOpen] = useState(false);
   const [customTermInput, setCustomTermInput] = useState('');
+
+  // Term presets settings
+  const [termPresets, setTermPresets] = useState<number[]>(getTermPresets);
+  const [termSettingsOpen, setTermSettingsOpen] = useState(false);
+  const [editTermSlots, setEditTermSlots] = useState<string[]>(termPresets.map(String));
+
+  // To Date calculation
+  const toDateMonths = useMemo(() => {
+    if (!projectStartDate) return null;
+    return calculateToDateMonths(projectStartDate);
+  }, [projectStartDate]);
 
   // Edit preset dialog
   const [editPresetOpen, setEditPresetOpen] = useState(false);
@@ -454,7 +498,25 @@ export function HardMoneyLoanCalculator({
 
   const loanToValue = editablePurchasePrice > 0 ? ((loanAmount / editablePurchasePrice) * 100) : 0;
 
-  const termOptions = [6, 12, 18, 360];
+  const handleSaveTermPresets = () => {
+    const newPresets = editTermSlots.map(s => {
+      const val = parseFloat(s);
+      return isNaN(val) || val <= 0 ? 6 : val;
+    });
+    setTermPresets(newPresets);
+    localStorage.setItem(TERM_PRESETS_KEY, JSON.stringify(newPresets));
+    setTermSettingsOpen(false);
+    toast.success('Term presets saved');
+  };
+
+  const handleResetTermPresets = () => {
+    setTermPresets(DEFAULT_TERM_PRESETS);
+    setEditTermSlots(DEFAULT_TERM_PRESETS.map(String));
+    localStorage.removeItem(TERM_PRESETS_KEY);
+    toast.success('Term presets reset to defaults');
+  };
+
+  const termOptions = termPresets;
 
   return (
     <>
@@ -653,7 +715,7 @@ export function HardMoneyLoanCalculator({
               {/* Loan Term */}
               <div className="space-y-2">
                 <Label>Loan Term (Months)</Label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {termOptions.map((term) => (
                     <Button
                       key={term}
@@ -661,20 +723,20 @@ export function HardMoneyLoanCalculator({
                       variant={loanTermMonths === term ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setLoanTermMonths(term)}
-                      className="flex-1 rounded-sm"
+                      className="rounded-sm"
                     >
-                      {term === 360 ? '30yr' : term}
+                      {formatTermLabel(term)}
                     </Button>
                   ))}
                   <Popover open={customTermOpen} onOpenChange={setCustomTermOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         type="button"
-                        variant={!termOptions.includes(loanTermMonths) ? 'default' : 'outline'}
+                        variant={!termOptions.includes(loanTermMonths) && toDateMonths !== loanTermMonths ? 'default' : 'outline'}
                         size="sm"
                         className="rounded-sm"
                       >
-                        {!termOptions.includes(loanTermMonths) ? loanTermMonths : 'Custom'}
+                        {!termOptions.includes(loanTermMonths) && toDateMonths !== loanTermMonths ? loanTermMonths : 'Custom'}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-48 p-3" align="end">
@@ -687,13 +749,14 @@ export function HardMoneyLoanCalculator({
                             value={customTermInput}
                             onChange={(e) => setCustomTermInput(e.target.value)}
                             className="h-8 rounded-sm text-sm"
-                            placeholder="e.g. 9"
-                            min={1}
-                            max={360}
+                            placeholder="e.g. 9 or 1.5"
+                            min={0.5}
+                            max={600}
+                            step={0.5}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
-                                const val = Number(customTermInput);
-                                if (val > 0 && val <= 360) {
+                                const val = parseFloat(customTermInput);
+                                if (val > 0 && val <= 600) {
                                   setLoanTermMonths(val);
                                   setCustomTermOpen(false);
                                   setCustomTermInput('');
@@ -705,8 +768,8 @@ export function HardMoneyLoanCalculator({
                             size="sm"
                             className="h-8"
                             onClick={() => {
-                              const val = Number(customTermInput);
-                              if (val > 0 && val <= 360) {
+                              const val = parseFloat(customTermInput);
+                              if (val > 0 && val <= 600) {
                                 setLoanTermMonths(val);
                                 setCustomTermOpen(false);
                                 setCustomTermInput('');
@@ -716,6 +779,74 @@ export function HardMoneyLoanCalculator({
                             Set
                           </Button>
                         </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* To Date Button */}
+                  {projectStartDate && toDateMonths !== null && toDateMonths > 0 && (
+                    <Button
+                      type="button"
+                      variant={loanTermMonths === toDateMonths ? 'default' : 'outline'}
+                      size="sm"
+                      className="rounded-sm border-primary/50"
+                      onClick={() => setLoanTermMonths(toDateMonths)}
+                    >
+                      <CalendarClock className="h-3.5 w-3.5 mr-1" />
+                      To Date ({toDateMonths})
+                    </Button>
+                  )}
+
+                  {/* Term Settings Gear */}
+                  <Popover open={termSettingsOpen} onOpenChange={(open) => {
+                    setTermSettingsOpen(open);
+                    if (open) setEditTermSlots(termPresets.map(String));
+                  }}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-sm h-9 w-9 p-0"
+                      >
+                        <Settings className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-3" align="end">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-medium">Term Presets</Label>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleResetTermPresets}>
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            Reset
+                          </Button>
+                        </div>
+                        {editTermSlots.map((slot, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground w-10">Slot {i + 1}</span>
+                            <Input
+                              type="number"
+                              value={slot}
+                              onChange={(e) => {
+                                const updated = [...editTermSlots];
+                                updated[i] = e.target.value;
+                                setEditTermSlots(updated);
+                              }}
+                              className="h-7 text-xs rounded-sm"
+                              min={0.5}
+                              max={600}
+                              step={0.5}
+                            />
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {parseFloat(slot) >= 12 && parseFloat(slot) % 12 === 0
+                                ? `= ${parseFloat(slot) / 12}yr`
+                                : 'mo'}
+                            </span>
+                          </div>
+                        ))}
+                        <Button size="sm" className="w-full h-7 text-xs" onClick={handleSaveTermPresets}>
+                          Save Presets
+                        </Button>
                       </div>
                     </PopoverContent>
                   </Popover>
