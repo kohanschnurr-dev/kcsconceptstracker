@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, MapPin, DollarSign, Calendar, Hammer, Home, Handshake } from 'lucide-react';
+import { Building2, MapPin, DollarSign, Calendar, Hammer, Home, Handshake, CopyCheck } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -153,7 +153,32 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
           </div>
 
           <div className="space-y-2">
-            <Label>Project Name *</Label>
+            <Label>Address *</Label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="1234 Main St, Dallas, TX 75208"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Project Name *</Label>
+              {address && (
+                <button
+                  type="button"
+                  onClick={() => setName(address)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <CopyCheck className="h-3 w-3" />
+                  Use Address
+                </button>
+              )}
+            </div>
             <Input
               placeholder={
                 projectType === 'new_construction' 
@@ -167,19 +192,6 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Address *</Label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="1234 Main St, Dallas, TX 75208"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="pl-9"
-              />
-            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
