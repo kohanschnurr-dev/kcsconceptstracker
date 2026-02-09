@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Building2, MapPin, DollarSign, Calendar, Hammer, Home, Handshake, CopyCheck } from 'lucide-react';
+import { Building2, MapPin, DollarSign, Calendar as CalendarIcon, Hammer, Home, Handshake, CopyCheck } from 'lucide-react';
+import { format } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { BUDGET_CATEGORIES, type ProjectType } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +30,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [totalBudget, setTotalBudget] = useState('');
-  const [startDate, setStartDate] = useState(formatDateString(new Date()));
+  const [startDate, setStartDate] = useState<Date>(new Date());
   const [projectType, setProjectType] = useState<ProjectType>(defaultProjectType);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -67,7 +71,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
           name,
           address,
           total_budget: parseFloat(totalBudget),
-          start_date: startDate,
+          start_date: formatDateString(startDate),
           user_id: user.id,
           status: 'active',
           project_type: projectType,
@@ -100,7 +104,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
       setName('');
       setAddress('');
       setTotalBudget('');
-      setStartDate(formatDateString(new Date()));
+      setStartDate(new Date());
       setProjectType(defaultProjectType);
       onOpenChange(false);
       onProjectCreated?.();
@@ -212,15 +216,30 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
 
             <div className="space-y-2">
               <Label>Start Date</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    className={cn(
+                      "w-full pl-9 justify-start text-left font-normal relative",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    {startDate ? format(startDate, "MM/dd/yyyy") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={(date) => date && setStartDate(date)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
