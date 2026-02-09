@@ -248,7 +248,7 @@ export default function Projects() {
 
         <Tabs value={mainTab} onValueChange={(v) => { setMainTab(v as ProjectType); setStatusTab('all'); }}>
           <div className="flex items-center gap-2">
-            <TabsList className="w-full max-w-2xl flex">
+            <TabsList>
               {tabOrder.map((type) => {
                 const config = TAB_CONFIG[type];
                 const counts = getStatusCounts(type);
