@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { formatDisplayDate } from '@/lib/dateUtils';
-import { ChevronDown, ChevronUp, Check, Trash2, Receipt, Package, Wrench, StickyNote, Split } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, Trash2, Receipt, Package, Wrench, StickyNote, Split, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -52,7 +52,7 @@ interface PendingExpense {
 interface GroupedPendingExpenseCardProps {
   expenses: PendingExpense[];
   projects: Project[];
-  onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor', notes?: string) => Promise<void>;
+  onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor' | 'loan', notes?: string) => Promise<void>;
   onDelete: (expenseId: string) => Promise<void>;
   onImportAll: (expenseIds: string[], projectId: string) => Promise<void>;
   onOpenSplitModal?: (expense: PendingExpense) => void;
@@ -72,7 +72,7 @@ export function GroupedPendingExpenseCard({
   const [isSingleExpanded, setIsSingleExpanded] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedExpenseType, setSelectedExpenseType] = useState<'product' | 'labor'>('product');
+  const [selectedExpenseType, setSelectedExpenseType] = useState<'product' | 'labor' | 'loan'>('product');
   const [expenseNotes, setExpenseNotes] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
 
@@ -249,7 +249,23 @@ export function GroupedPendingExpenseCard({
               />
             </div>
           </div>
-          <div className="flex items-center gap-2 justify-end">
+           <div className="flex items-center gap-2 justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelectedExpenseType(selectedExpenseType === 'loan' ? 'product' : 'loan');
+              }}
+              className={cn(
+                "gap-1 px-2 text-xs h-8",
+                selectedExpenseType === 'loan' 
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Landmark className="h-3.5 w-3.5" />
+              Loan
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -259,42 +275,44 @@ export function GroupedPendingExpenseCard({
               <Split className="h-4 w-4" />
               <span className="hidden sm:inline">Split</span>
             </Button>
-            <ToggleGroup 
-              type="single" 
-              value={selectedExpenseType}
-              onValueChange={(value) => {
-                if (value) {
-                  setSelectedExpenseType(value as 'product' | 'labor');
-                }
-              }}
-              className="shrink-0"
-            >
-              <ToggleGroupItem 
-                value="product" 
-                aria-label="Product"
-                className={cn(
-                  "gap-1 px-3",
-                  selectedExpenseType === 'product' && "bg-blue-500/20 text-blue-400 border-blue-500/50"
-                )}
+            {selectedExpenseType !== 'loan' && (
+              <ToggleGroup 
+                type="single" 
+                value={selectedExpenseType}
+                onValueChange={(value) => {
+                  if (value) {
+                    setSelectedExpenseType(value as 'product' | 'labor');
+                  }
+                }}
+                className="shrink-0"
               >
-                <Package className="h-4 w-4" />
-                <span className="hidden sm:inline text-xs">Product</span>
-              </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="labor" 
-                aria-label="Labor"
-                className={cn(
-                  "gap-1 px-3",
-                  selectedExpenseType === 'labor' && "bg-orange-500/20 text-orange-400 border-orange-500/50"
-                )}
-              >
-                <Wrench className="h-4 w-4" />
-                <span className="hidden sm:inline text-xs">Labor</span>
-              </ToggleGroupItem>
-            </ToggleGroup>
+                <ToggleGroupItem 
+                  value="product" 
+                  aria-label="Product"
+                  className={cn(
+                    "gap-1 px-3",
+                    selectedExpenseType === 'product' && "bg-blue-500/20 text-blue-400 border-blue-500/50"
+                  )}
+                >
+                  <Package className="h-4 w-4" />
+                  <span className="hidden sm:inline text-xs">Product</span>
+                </ToggleGroupItem>
+                <ToggleGroupItem 
+                  value="labor" 
+                  aria-label="Labor"
+                  className={cn(
+                    "gap-1 px-3",
+                    selectedExpenseType === 'labor' && "bg-orange-500/20 text-orange-400 border-orange-500/50"
+                  )}
+                >
+                  <Wrench className="h-4 w-4" />
+                  <span className="hidden sm:inline text-xs">Labor</span>
+                </ToggleGroupItem>
+              </ToggleGroup>
+            )}
             <Button
               size="sm"
-              disabled={!selectedProject || !selectedCategory || isImporting}
+              disabled={!selectedProject || (!selectedCategory && selectedExpenseType !== 'loan') || isImporting}
               onClick={handleSingleCategorize}
             >
               <Check className="h-4 w-4" />

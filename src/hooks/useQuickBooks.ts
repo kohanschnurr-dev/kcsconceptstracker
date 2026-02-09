@@ -399,55 +399,69 @@ export function useQuickBooks() {
     expenseId: string, 
     projectId: string, 
     categoryValue: string, // Now accepts category value like "plumbing" instead of UUID
-    expenseType: 'product' | 'labor' = 'product',
+    expenseType: 'product' | 'labor' | 'loan' = 'product',
     notes?: string
   ) => {
-    // First, find or create the project_category
-    let categoryId: string;
+    // For loan type, category is optional - use a default if not provided
+    const effectiveCategoryValue = categoryValue || (expenseType === 'loan' ? 'closing_costs' : '');
     
-    // Check if category already exists for this project
-    const { data: existingCategory, error: findError } = await supabase
-      .from('project_categories')
-      .select('id')
-      .eq('project_id', projectId)
-      .eq('category', categoryValue as BudgetCategory)
-      .maybeSingle();
-    
-    if (findError) {
-      console.error('Error finding category:', findError);
+    if (!effectiveCategoryValue && expenseType !== 'loan') {
       toast({
         title: 'Error',
-        description: 'Failed to find category',
+        description: 'Please select a category',
         variant: 'destructive',
       });
       return false;
     }
+
+    // First, find or create the project_category
+    let categoryId: string | null = null;
     
-    if (existingCategory) {
-      categoryId = existingCategory.id;
-    } else {
-      // Create new project_category
-      const { data: newCategory, error: createError } = await supabase
+    if (effectiveCategoryValue) {
+      // Check if category already exists for this project
+      const { data: existingCategory, error: findError } = await supabase
         .from('project_categories')
-        .insert({
-          project_id: projectId,
-          category: categoryValue as BudgetCategory,
-          estimated_budget: 0,
-        })
         .select('id')
-        .single();
+        .eq('project_id', projectId)
+        .eq('category', effectiveCategoryValue as BudgetCategory)
+        .maybeSingle();
       
-      if (createError || !newCategory) {
-        console.error('Error creating category:', createError);
+      if (findError) {
+        console.error('Error finding category:', findError);
         toast({
           title: 'Error',
-          description: 'Failed to create category',
+          description: 'Failed to find category',
           variant: 'destructive',
         });
         return false;
       }
       
-      categoryId = newCategory.id;
+      if (existingCategory) {
+        categoryId = existingCategory.id;
+      } else {
+        // Create new project_category
+        const { data: newCategory, error: createError } = await supabase
+          .from('project_categories')
+          .insert({
+            project_id: projectId,
+            category: effectiveCategoryValue as BudgetCategory,
+            estimated_budget: 0,
+          })
+          .select('id')
+          .single();
+        
+        if (createError || !newCategory) {
+          console.error('Error creating category:', createError);
+          toast({
+            title: 'Error',
+            description: 'Failed to create category',
+            variant: 'destructive',
+          });
+          return false;
+        }
+        
+        categoryId = newCategory.id;
+      }
     }
 
     if (isDemoMode) {
@@ -489,11 +503,30 @@ export function useQuickBooks() {
         return false;
       }
 
+      // If loan type, also insert into loan_payments
+      if (expenseType === 'loan') {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('loan_payments').insert({
+            project_id: projectId,
+            user_id: user.id,
+            amount: expense.amount,
+            date: expense.date,
+            description: expense.description,
+            vendor_name: expense.vendor_name,
+            payment_type: 'other',
+            source: 'quickbooks',
+            expense_id: expenseId,
+            notes: notes || null,
+          });
+        }
+      }
+
       // Remove from pending in demo mode
       setPendingExpenses(prev => prev.filter(e => e.id !== expenseId));
       toast({
         title: 'Imported!',
-        description: 'Expense added to your project',
+        description: expenseType === 'loan' ? 'Loan payment recorded' : 'Expense added to your project',
       });
       return true;
     }
@@ -519,12 +552,32 @@ export function useQuickBooks() {
         return false;
       }
 
+      // If loan type, also insert into loan_payments
+      if (expenseType === 'loan') {
+        const expense = pendingExpenses.find(e => e.id === expenseId);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && expense) {
+          await supabase.from('loan_payments').insert({
+            project_id: projectId,
+            user_id: user.id,
+            amount: expense.amount,
+            date: expense.date,
+            description: expense.description,
+            vendor_name: expense.vendor_name,
+            payment_type: 'other',
+            source: 'quickbooks',
+            expense_id: expenseId,
+            notes: notes || null,
+          });
+        }
+      }
+
       // Refresh pending expenses
       await fetchPendingExpenses();
       
       toast({
         title: 'Categorized',
-        description: 'Expense categorized and imported successfully',
+        description: expenseType === 'loan' ? 'Loan payment recorded' : 'Expense categorized and imported successfully',
       });
       
       return true;
