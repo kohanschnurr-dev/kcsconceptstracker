@@ -1,76 +1,53 @@
 
 
-## Loan Assignment for QuickBooks Expenses + Loan Payments Tracking
+## Loan Expenses: Skip Category + Dashboard Interest Card
 
 ### Overview
 
-Add the ability to mark a QuickBooks expense (like a wire transfer) as a "Loan" type, which then creates a loan payment record tied to the project. These payments appear in the project's Loan tab as a payment history section. Since loans are infrequent, the "Loan" option will be a subtle dropdown/select instead of a persistent toggle like Product/Labor.
+Two changes:
+1. When "Loan" is selected on a QuickBooks expense, **hide the category dropdown entirely** (loans don't affect the project budget, so no category is needed). Also skip creating/finding a `project_category` record -- the expense gets imported with `category_id = null`.
+2. Add a **"Total Interest Paid" stat card** to the dashboard that sums all loan payments across projects.
 
-### Database Changes
+### Changes
 
-**1. New `loan_payments` table**
+**1. `src/components/quickbooks/GroupedPendingExpenseCard.tsx`**
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | uuid (PK) | Default `gen_random_uuid()` |
-| `project_id` | uuid (FK to projects) | Required |
-| `user_id` | uuid | For RLS |
-| `amount` | numeric | Payment amount |
-| `date` | date | Payment date |
-| `description` | text | e.g. "DOMESTIC WIRE TRANSFER" |
-| `vendor_name` | text | Lender name |
-| `payment_type` | text | "disbursement", "interest", "payoff", "other" |
-| `source` | text | "manual" or "quickbooks" |
-| `expense_id` | text | Link back to the expense/QB expense ID |
-| `notes` | text | Optional notes |
-| `created_at` / `updated_at` | timestamptz | Standard timestamps |
+- When `selectedExpenseType === 'loan'`, hide the category `Select` dropdown completely (not just disable it)
+- Update `handleSingleCategorize` to pass empty string for category when loan is selected, since `useQuickBooks` already handles this
 
-RLS: Users can only read/write their own rows.
+**2. `src/hooks/useQuickBooks.ts`**
 
-### Frontend Changes
+- Update `categorizeExpense` so that when `expenseType === 'loan'`:
+  - Skip the category lookup/creation entirely (`categoryId` stays `null`)
+  - Insert expense with `category_id: null` 
+  - Still insert into `loan_payments` as it does now
+- Update `handleSingleCategorize` validation: already allows no category for loans (line 315), so no change needed there
 
-**1. Update `GroupedPendingExpenseCard.tsx` - Add "Loan" option**
+**3. `src/pages/Index.tsx` -- Add Interest Card to Dashboard**
 
-- Replace the Product/Labor `ToggleGroup` with a slightly richer control:
-  - Keep Product and Labor as the two main toggle buttons (unchanged look)
-  - Add a small "Loan" text button or a third toggle option styled more subtly (muted/outline style, smaller) to the left of the Split button
-  - When "Loan" is selected, the category dropdown becomes optional (auto-sets to a loan-related category or skips category requirement)
-  - On import with "Loan" type: creates the expense as normal AND inserts a record into `loan_payments`
-
-**2. Update `useQuickBooks.ts` - Handle loan type**
-
-- Modify `categorizeExpense` to accept `expense_type` of `'product' | 'labor' | 'loan'`
-- When type is "loan", also insert into `loan_payments` table after the normal expense import
-
-**3. New component: `src/components/project/LoanPayments.tsx`**
-
-- Displays a "Loan Payments" card within the Loan tab
-- Shows a table of payments: Date, Description, Type, Amount
-- Includes a manual "Add Payment" button with a simple modal
-- Shows total paid to date
-
-**4. Update `HardMoneyLoanCalculator.tsx` or Loan tab in `ProjectDetail.tsx`**
-
-- Below the existing Loan Calculator card, render the new `LoanPayments` component
-- This gives users a full picture: calculator above, actual payments below
-
-### UI Behavior
-
-The expense assignment row will look like:
-
-```
-[Select Project v] [Select Category v] [Note input]
-                          [Loan] [Split] [Product] [Labor] [check]
-```
-
-- "Loan" is a subtle outline button (not orange/blue like Product/Labor)
-- Clicking "Loan" deselects Product/Labor and vice versa
-- When Loan is active, the category select is still available but not required (defaults to a general category)
+- Fetch from `loan_payments` table on mount
+- Sum all payment amounts to get "Total Interest Paid" (or "Total Loan Payments")
+- Add a new `StatCard` to the stats grid with a `Landmark` icon showing the total
+- This gives quick visibility into how much is going toward loans across all projects
 
 ### Technical Details
 
-- `expense_type` field already exists in both `expenses` and `quickbooks_expenses` tables, so storing "loan" there requires no schema change on those tables
-- The new `loan_payments` table is specifically for tracking payments in the Loan tab context
-- The `LoanPayments` component fetches from `loan_payments` where `project_id` matches
-- Manual payments can be added directly from the Loan tab without going through QuickBooks
+Category skip in `useQuickBooks.ts`:
+```typescript
+// When loan, skip category entirely
+if (expenseType === 'loan') {
+  categoryId = null;
+  // Skip the find-or-create category block
+}
+```
 
+Dashboard fetch:
+```typescript
+const { data: loanPayments } = await supabase
+  .from('loan_payments')
+  .select('amount');
+const totalLoanPayments = (loanPayments || [])
+  .reduce((sum, p) => sum + Number(p.amount), 0);
+```
+
+No database changes needed.
