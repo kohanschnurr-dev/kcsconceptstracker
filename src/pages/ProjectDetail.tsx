@@ -52,6 +52,7 @@ import { ProjectTasks } from '@/components/project/ProjectTasks';
 import { ProjectVendors } from '@/components/project/ProjectVendors';
 import { ProjectInfo } from '@/components/project/ProjectInfo';
 import { ExportReports } from '@/components/project/ExportReports';
+import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { useToast } from '@/hooks/use-toast';
 
 interface DBProject {
@@ -541,6 +542,8 @@ export default function ProjectDetail() {
           </CardContent>
         </Card>
 
+        {/* Monthly Costs */}
+        <MonthlyExpenses projectId={id!} formatCurrency={formatCurrency} />
 
         {/* Tabs for detailed views - Schedule first (most used for active projects) */}
         <Tabs defaultValue="schedule" className="space-y-4">

@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ALL_CATEGORIES, BUDGET_CATEGORIES } from '@/types';
 import type { Project } from '@/types';
+import { MONTHLY_COST_CATEGORIES } from '@/lib/monthlyCategories';
 
 // Helper to format category values: "tech_equipment" -> "Tech Equipment"
 const formatCategoryValue = (value: string) => {
@@ -50,20 +51,6 @@ interface PendingExpense {
   notes?: string | null;
 }
 
-const MONTHLY_COST_CATEGORIES = [
-  { value: 'water', label: 'Water' },
-  { value: 'gas', label: 'Gas' },
-  { value: 'electric', label: 'Electric' },
-  { value: 'insurance', label: 'Insurance' },
-  { value: 'hoa', label: 'HOA' },
-  { value: 'property_tax', label: 'Property Tax' },
-  { value: 'lawn_care', label: 'Lawn Care' },
-  { value: 'pool_maintenance', label: 'Pool Maintenance' },
-  { value: 'pest_control', label: 'Pest Control' },
-  { value: 'internet_cable', label: 'Internet / Cable' },
-  { value: 'trash_recycling', label: 'Trash / Recycling' },
-  { value: 'security_alarm', label: 'Security / Alarm' },
-];
 
 interface GroupedPendingExpenseCardProps {
   expenses: PendingExpense[];
