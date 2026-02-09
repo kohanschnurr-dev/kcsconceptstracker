@@ -1,23 +1,26 @@
 
 
-## Clean Up Loan Term Buttons
+## Show All Term Presets in Months Only
 
-### Changes (all in `src/components/project/HardMoneyLoanCalculator.tsx`)
+### Change
 
-**1. Remove the "(0.8)" from the To Date button**
+Update the `formatTermLabel` function in `src/components/project/HardMoneyLoanCalculator.tsx` to always return the raw month number as a string, removing the year conversion logic.
 
-Line 796: Change `To Date ({toDateMonths})` to just `To Date`.
+**Current (lines 70-73):**
+```typescript
+function formatTermLabel(months: number): string {
+  if (months >= 12 && months % 12 === 0) return `${months / 12}yr`;
+  if (months >= 24) return `${(months / 12).toFixed(1)}yr`;
+  return `${months}`;
+}
+```
 
-**2. Make the term preset buttons wider**
+**New:**
+```typescript
+function formatTermLabel(months: number): string {
+  return `${months}`;
+}
+```
 
-Line 726: Add `min-w-[4rem]` to the className of each term preset button so they fill more of the available space instead of being tiny pills.
-
-Also add the same `min-w-[4rem]` to the Custom button (line 738) and the To Date button (line 792) for visual consistency.
-
-### Summary of line-level edits
-
-- **Line 726**: `className="rounded-sm"` becomes `className="rounded-sm min-w-[4rem]"`
-- **Line 738**: `className="rounded-sm"` becomes `className="rounded-sm min-w-[4rem]"`
-- **Line 792**: `className="rounded-sm border-primary/50"` becomes `className="rounded-sm border-primary/50 min-w-[4rem]"`
-- **Line 796**: `To Date ({toDateMonths})` becomes `To Date`
+This means buttons will display `6`, `12`, `18`, `360` instead of `6`, `1yr`, `18`, `30yr`. The header already says "Loan Term (Months)" so context is clear.
 
