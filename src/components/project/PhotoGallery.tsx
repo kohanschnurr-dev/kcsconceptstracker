@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Image, Loader2, Calendar, ImageIcon } from 'lucide-react';
+import { Plus, Image, Loader2, Calendar, ImageIcon, CheckSquare, Trash2, X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,6 +48,74 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterDate, setFilterDate] = useState<string>('all');
   const [coverPhotoPath, setCoverPhotoPath] = useState<string | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const togglePhotoSelection = (photoId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(photoId)) {
+        next.delete(photoId);
+      } else {
+        next.add(photoId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allIds = filteredPhotos.map(p => p.id);
+    setSelectedIds(new Set(allIds));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  const exitSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    
+    setIsDeleting(true);
+    
+    const selectedPhotos = photos.filter(p => selectedIds.has(p.id));
+    const filePaths = selectedPhotos.map(p => p.file_path);
+    
+    const { error: storageError } = await supabase.storage
+      .from('project-photos')
+      .remove(filePaths);
+    
+    if (storageError) {
+      console.error('Storage delete error:', storageError);
+    }
+    
+    const { error } = await supabase
+      .from('project_photos')
+      .delete()
+      .in('id', Array.from(selectedIds));
+    
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete some photos',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Photos deleted',
+        description: `Successfully deleted ${selectedIds.size} photo(s)`,
+      });
+      exitSelectionMode();
+      fetchPhotos();
+    }
+    
+    setIsDeleting(false);
+  };
 
   const fetchPhotos = async () => {
     const { data, error } = await supabase
@@ -208,10 +278,32 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
               ))}
             </SelectContent>
           </Select>
-          <Button size="sm" onClick={() => setIsUploadOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Photos
-          </Button>
+          {isSelectionMode ? (
+            <>
+              <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                <CheckSquare className="h-4 w-4 mr-1" />
+                Select All
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleDeselectAll}>
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+              <Button variant="ghost" size="sm" onClick={exitSelectionMode}>
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(true)}>
+                <CheckSquare className="h-4 w-4 mr-1" />
+                Select
+              </Button>
+              <Button size="sm" onClick={() => setIsUploadOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Photos
+              </Button>
+            </>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -241,11 +333,21 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {group.photos.map(photo => {
                     const isCover = photo.file_path === coverPhotoPath;
+                    const isSelected = selectedIds.has(photo.id);
                     return (
                       <div 
                         key={photo.id} 
-                        className="relative group cursor-pointer aspect-square rounded-lg overflow-hidden bg-muted"
-                        onClick={() => setSelectedPhoto(photo)}
+                        className={cn(
+                          "relative group cursor-pointer aspect-square rounded-lg overflow-hidden bg-muted",
+                          isSelectionMode && isSelected && "ring-2 ring-primary"
+                        )}
+                        onClick={() => {
+                          if (isSelectionMode) {
+                            togglePhotoSelection(photo.id);
+                          } else {
+                            setSelectedPhoto(photo);
+                          }
+                        }}
                       >
                         <img 
                           src={getPhotoUrl(photo.file_path)} 
@@ -253,6 +355,20 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
                           className="w-full h-full object-cover transition-transform group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        
+                        {/* Selection Checkbox */}
+                        {isSelectionMode && (
+                          <div 
+                            className="absolute top-2 right-2 z-10"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Checkbox 
+                              checked={isSelected}
+                              onCheckedChange={() => togglePhotoSelection(photo.id)}
+                              className="h-5 w-5 bg-background/80 border-2"
+                            />
+                          </div>
+                        )}
                         
                         {/* Category Badge */}
                         <div className="absolute top-2 left-2 flex items-center gap-1">
@@ -267,8 +383,8 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
                           )}
                         </div>
                         
-                        {/* Set as Cover Button - appears on hover */}
-                        {!isCover && (
+                        {/* Set as Cover Button - appears on hover, hidden in selection mode */}
+                        {!isCover && !isSelectionMode && (
                           <button
                             className="absolute top-2 right-2 text-xs px-2 py-1 rounded bg-background/90 text-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-primary-foreground"
                             onClick={(e) => {
@@ -309,6 +425,29 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
         onNavigate={navigatePhoto}
         getPhotoUrl={getPhotoUrl}
       />
+
+      {/* Floating Action Bar for bulk actions */}
+      {isSelectionMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-lg shadow-lg p-3 flex items-center gap-4">
+          <span className="text-sm font-medium">
+            {selectedIds.size} photo{selectedIds.size !== 1 ? 's' : ''} selected
+          </span>
+          <div className="flex gap-2">
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={exitSelectionMode}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
