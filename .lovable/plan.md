@@ -1,92 +1,73 @@
 
 
-## Plan: Fix Project Selection in Split Expense Modal
+## Plan: Fix Project Selection State Not Updating in Split Modal
 
 ### Problem Identified
 
-The Split Expense modal's Project dropdown is not responding to selections. The console shows:
+When selecting a project in the Split Expense modal, the selection doesn't visually update. The issue has two causes:
 
-```
-Warning: Function components cannot be given refs. 
-Check the render method of `SplitExpenseModal`.
-at Select
-```
+1. **State Update Race Condition**: The `onValueChange` handler calls `updateSplit` twice in quick succession:
+   ```typescript
+   onValueChange={(value) => {
+     updateSplit(split.id, 'projectId', value);
+     updateSplit(split.id, 'categoryValue', ''); // Both use stale state!
+   }}
+   ```
+   Both calls read from the same stale `splits` array, so the second call overwrites the first.
 
-This is a known Radix UI issue when **Select components are nested inside Dialog components**. Both use Portals, and the Dialog's overlay can intercept pointer events intended for the Select dropdown.
-
-### Root Cause
-
-When you click on a `SelectItem`, the click event bubbles up and gets captured by the Dialog's overlay event handler, which then closes the Select without registering the selection.
-
-### Solution
-
-Add `modal={false}` to each `Select` component inside the `SplitExpenseModal`. This prevents the Select from creating its own modal context that conflicts with the Dialog's modal context.
+2. **Pointer Events Issue**: The SelectContent renders in a Portal, and when `modal={false}` is on the Dialog, the Select's Portal may still have focus/pointer conflicts.
 
 ---
 
-### Technical Changes
+### Solution
 
-**File: `src/components/SplitExpenseModal.tsx`**
+#### Fix 1: Use Functional State Update (Lines 116-120)
 
-#### Change 1: Project Select (Lines 226-243)
-
-Add `modal={false}` to the Project Select:
+Change `updateSplit` to use the functional form of `setSplits` to ensure each update builds on the previous state:
 
 ```typescript
 // Before
-<Select
-  value={split.projectId}
-  onValueChange={(value) => {
-    updateSplit(split.id, 'projectId', value);
-    updateSplit(split.id, 'categoryValue', '');
-  }}
->
+const updateSplit = (id: string, field: keyof SplitLine, value: string) => {
+  setSplits(splits.map(s => 
+    s.id === id ? { ...s, [field]: value } : s
+  ));
+};
 
 // After
-<Select
-  value={split.projectId}
-  onValueChange={(value) => {
-    updateSplit(split.id, 'projectId', value);
-    updateSplit(split.id, 'categoryValue', '');
-  }}
-  modal={false}
->
+const updateSplit = (id: string, field: keyof SplitLine, value: string) => {
+  setSplits(prevSplits => prevSplits.map(s => 
+    s.id === id ? { ...s, [field]: value } : s
+  ));
+};
 ```
 
-#### Change 2: Category Select (Lines 248-263)
+#### Fix 2: Add pointer-events-auto to SelectContent (Lines 236, 256)
 
-Add `modal={false}` to the Category Select:
+Add className to ensure pointer events work in the Portal:
 
 ```typescript
-// Before
-<Select
-  value={split.categoryValue}
-  onValueChange={(value) => updateSplit(split.id, 'categoryValue', value)}
-  disabled={!split.projectId}
->
+// Project Select
+<SelectContent className="pointer-events-auto">
 
-// After
-<Select
-  value={split.categoryValue}
-  onValueChange={(value) => updateSplit(split.id, 'categoryValue', value)}
-  disabled={!split.projectId}
-  modal={false}
->
+// Category Select  
+<SelectContent className="pointer-events-auto">
 ```
 
 ---
 
 ### Why This Works
 
-- The `modal` prop on Radix Select controls whether the Select creates its own focus trap and modal behavior
-- When `modal={false}`, the Select allows events to propagate normally without conflicting with the parent Dialog's event handling
-- This is the standard fix for using Select inside Dialog in Radix UI
+1. **Functional Updates**: Using `prevSplits =>` ensures each state update sees the result of the previous one, preventing the race condition.
+
+2. **Pointer Events**: When Dialog has `modal={false}`, some browsers may still have pointer-event conflicts with Portaled content. Adding `pointer-events-auto` ensures clicks register.
 
 ---
 
-### Summary of Changes
+### Technical Changes Summary
 
-| File | Change |
-|------|--------|
-| `src/components/SplitExpenseModal.tsx` | Add `modal={false}` to both Project and Category Select components |
+| File | Line | Change |
+|------|------|--------|
+| `src/components/SplitExpenseModal.tsx` | 116-120 | Use functional state update `prevSplits =>` |
+| `src/components/SplitExpenseModal.tsx` | 236 | Add `className="pointer-events-auto"` to Project SelectContent |
+| `src/components/SplitExpenseModal.tsx` | 256 | Add `className="pointer-events-auto"` to Category SelectContent |
 
