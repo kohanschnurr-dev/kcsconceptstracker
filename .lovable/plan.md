@@ -1,76 +1,45 @@
 
-
-## Replace Drag-and-Drop Tabs with Gear Icon Order Picker
+## Alphabetically Order Projects and Hide Completed Ones from Selection
 
 ### Overview
 
-Remove the drag-and-drop tab reordering and replace it with a small gear icon next to the tabs. Clicking the gear opens a popover where users can reorder tabs using up/down arrows in a simple list.
+Ensure that everywhere a project can be selected (dropdowns, autocomplete, mentions), the list is sorted alphabetically by name and completed projects are excluded.
 
 ### Changes
 
-**File: `src/pages/Projects.tsx`**
+**1. `src/components/ProjectAutocomplete.tsx`** (central component used in most places)
 
-1. **Remove DnD imports**: Remove `DndContext`, `closestCenter`, `DragEndEvent`, `SortableContext`, `horizontalListSortingStrategy`, `arrayMove` from `@dnd-kit/*`. Remove `SortableTab` import.
-2. **Add new imports**: Add `Settings` from `lucide-react`, `Popover`/`PopoverTrigger`/`PopoverContent` from `@/components/ui/popover`, `ArrowUp`/`ArrowDown` from `lucide-react`, and `arrayMove` from `@dnd-kit/sortable` (still needed for reorder logic).
-3. **Add local reorder state**: Add a `[reorderOpen, setReorderOpen]` state for the popover.
-4. **Remove `handleDragEnd`** and replace with `moveTab(index, direction)` that swaps a tab up or down and calls `updateTabOrder.mutate(newOrder)`.
-5. **Replace the DndContext/SortableContext/SortableTab block** with plain `TabsTrigger` elements plus a gear icon button:
+- Sort `filteredByStatus` alphabetically by `project.name` (case-insensitive)
+- Change the default behavior of `filterActive` -- currently defaults to `false`. Update the filtering logic so that projects with `status === 'complete'` are always excluded unless a new prop `showComplete` is explicitly set to `true`. This way all existing consumers automatically get the fix.
 
-```tsx
-<div className="flex items-center gap-2">
-  <TabsList className="w-full max-w-2xl flex">
-    {tabOrder.map((type) => {
-      const config = TAB_CONFIG[type];
-      const counts = getStatusCounts(type);
-      return (
-        <TabsTrigger key={type} value={type} className="gap-1.5">
-          <config.icon className="h-4 w-4" />
-          {config.label} ({counts.total})
-        </TabsTrigger>
-      );
-    })}
-  </TabsList>
-  <Popover open={reorderOpen} onOpenChange={setReorderOpen}>
-    <PopoverTrigger asChild>
-      <Button variant="ghost" size="icon" className="h-8 w-8">
-        <Settings className="h-4 w-4 text-muted-foreground" />
-      </Button>
-    </PopoverTrigger>
-    <PopoverContent className="w-56 p-2" align="end">
-      <p className="text-xs text-muted-foreground mb-2 px-2">Tab Order</p>
-      {tabOrder.map((type, index) => (
-        <div key={type} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted">
-          <span className="text-sm flex items-center gap-2">
-            <TAB_CONFIG[type].icon className="h-3.5 w-3.5" />
-            {TAB_CONFIG[type].label}
-          </span>
-          <div className="flex gap-0.5">
-            <Button size="icon" variant="ghost" className="h-6 w-6"
-              disabled={index === 0} onClick={() => moveTab(index, 'up')}>
-              <ArrowUp className="h-3 w-3" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-6 w-6"
-              disabled={index === tabOrder.length - 1} onClick={() => moveTab(index, 'down')}>
-              <ArrowDown className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-      ))}
-    </PopoverContent>
-  </Popover>
-</div>
+**2. `src/components/quickbooks/GroupedPendingExpenseCard.tsx`** (2 Select dropdowns)
+
+- Sort and filter the `projects` array before rendering: `projects.filter(p => p.status !== 'complete').sort((a, b) => a.name.localeCompare(b.name))` in both `projects.map()` calls (lines ~213 and ~395)
+
+**3. `src/components/SplitExpenseModal.tsx`** (1 Select dropdown)
+
+- Same sort + filter applied to the `projects.map()` at line ~237
+
+**4. `src/components/procurement/BundleModal.tsx`** (1 Select dropdown)
+
+- Same sort + filter at line ~250
+
+**5. `src/components/MentionTextarea.tsx`** (mention suggestions)
+
+- Sort the `filteredProjects` result alphabetically
+- Filter out completed projects in the `useMemo` block
+
+### Technical Details
+
+The core pattern applied everywhere is:
+
+```typescript
+// Filter out complete, then sort alphabetically
+projects
+  .filter(p => p.status !== 'complete')
+  .sort((a, b) => a.name.localeCompare(b.name))
 ```
 
-**File: `src/components/projects/SortableTab.tsx`**
+For `ProjectAutocomplete`, this is done inside the `filteredByStatus` memo so it cascades to search results too. For `MentionTextarea`, it's applied in the existing `filteredProjects` memo. For the raw `Select` components, it's applied inline.
 
-- Delete this file (no longer needed).
-
-### Summary
-
-| Area | Change |
-|------|--------|
-| DnD removal | Remove DndContext/SortableContext wrappers, SortableTab component |
-| Gear icon | Small Settings icon next to tabs opens a Popover |
-| Reorder UI | List of tabs with up/down arrow buttons in the popover |
-| Persistence | Same `updateTabOrder` mutation, triggered on arrow click |
-
+No database or backend changes needed -- this is purely frontend sorting and filtering.
