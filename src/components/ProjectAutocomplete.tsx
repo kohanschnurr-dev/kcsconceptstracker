@@ -45,12 +45,12 @@ export function ProjectAutocomplete({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter projects based on active status if requested
+  // Filter out completed projects and sort alphabetically
   const filteredByStatus = useMemo(() => {
-    if (filterActive) {
-      return projects.filter(p => p.status === 'active');
-    }
-    return projects;
+    const filtered = filterActive
+      ? projects.filter(p => p.status === 'active')
+      : projects.filter(p => p.status !== 'complete');
+    return filtered.sort((a, b) => a.name.localeCompare(b.name));
   }, [projects, filterActive]);
 
   // Filter projects based on search query (supports @ mention trigger)
