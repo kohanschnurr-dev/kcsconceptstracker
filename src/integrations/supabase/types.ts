@@ -1682,6 +1682,7 @@ export type Database = {
         | "wholesale_fee"
         | "final_punch"
         | "cleaning"
+        | "rehab_filler"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
@@ -1923,6 +1924,7 @@ export const Constants = {
         "wholesale_fee",
         "final_punch",
         "cleaning",
+        "rehab_filler",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer"],
