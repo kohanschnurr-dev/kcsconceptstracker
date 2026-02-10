@@ -106,7 +106,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     const prevSqftNum = parseFloat(prevSqftRef.current) || 0;
     
     // Only auto-calculate if sqft actually changed, is > 0, and no baseline is active
-    if (sqftNum > 0 && sqft !== prevSqftRef.current && !baselineActive) {
+    if (sqftNum > 0 && sqft !== prevSqftRef.current) {
       presets.forEach(preset => {
         const calculated = sqftNum * preset.pricePerSqft;
         onCategoryChange(preset.category, calculated.toFixed(2));
