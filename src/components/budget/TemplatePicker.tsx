@@ -136,20 +136,6 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     const sqftNum = parseFloat(sqft) || 0;
     const totalBudget = sqftNum * tier.pricePerSqft;
     
-    // Read category presets from localStorage (same key used by BudgetCanvas)
-    let presets = DEFAULT_CATEGORY_PRESETS;
-    const storedPresets = localStorage.getItem('budget-category-presets');
-    if (storedPresets) {
-      try {
-        const parsed = JSON.parse(storedPresets);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          presets = parsed;
-        }
-      } catch (e) {
-        console.error('Failed to parse category presets:', e);
-      }
-    }
-
     // Place the entire baseline total into the Filler category
     const categoryBudgets: Record<string, number> = {};
     if (sqftNum > 0) {
@@ -159,7 +145,7 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     const template: BudgetTemplate = {
       id: `baseline-${tier.name.toLowerCase().replace(' ', '-')}`,
       name: tier.name,
-      description: tier.description,
+      description: `$${tier.pricePerSqft}/sqft`,
       purchase_price: 0,
       arv: 0,
       sqft: sqftNum || null,

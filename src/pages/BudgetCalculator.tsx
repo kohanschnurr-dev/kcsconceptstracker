@@ -45,6 +45,7 @@ export default function BudgetCalculator() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [sqft, setSqft] = useState<string>('');
+  const [activeBaselineRate, setActiveBaselineRate] = useState<number | null>(null);
   
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
@@ -169,6 +170,16 @@ export default function BudgetCalculator() {
       return;
     }
 
+    // Detect baseline templates and store the per-sqft rate
+    if (template.id.startsWith('baseline-')) {
+      const rateMatch = template.description?.match(/\$(\d+(?:\.\d+)?)\//);
+      if (rateMatch) {
+        setActiveBaselineRate(parseFloat(rateMatch[1]));
+      }
+    } else {
+      setActiveBaselineRate(null);
+    }
+
     // Load template values (keep deal parameters untouched)
     setBudgetName(template.name);
     setBudgetDescription(template.description || '');
@@ -191,6 +202,7 @@ export default function BudgetCalculator() {
     setArv('');
     setSqft('');
     setCurrentTemplateName('');
+    setActiveBaselineRate(null);
     
     const cleared: Record<string, string> = {};
     BUDGET_CATEGORIES.forEach(cat => {
@@ -198,6 +210,18 @@ export default function BudgetCalculator() {
     });
     setCategoryBudgets(cleared);
   };
+
+  // Recalculate Filler when sqft changes while a baseline is active
+  useEffect(() => {
+    if (activeBaselineRate !== null) {
+      const sqftNum = parseFloat(sqft) || 0;
+      const fillerValue = sqftNum > 0 ? (sqftNum * activeBaselineRate).toString() : '';
+      setCategoryBudgets(prev => ({
+        ...prev,
+        rehab_filler: fillerValue,
+      }));
+    }
+  }, [sqft, activeBaselineRate]);
 
   const getCategoryBudgetsObject = () => {
     const budgets: Record<string, number> = {};
