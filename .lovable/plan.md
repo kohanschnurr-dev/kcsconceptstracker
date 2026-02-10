@@ -1,35 +1,43 @@
 
 
-## Fix: Total Interest Not Updating Correctly for "To Date" Selection
+## Fix: Even Distribution of Baseline Budget Across Preset Categories
 
-### Root Cause
-When "To Date" is selected (e.g., 35 days from project start), the system:
-1. Correctly calculates 35 days
-2. Converts to months: 35 / 30.44 = 1.1 months (stored in `loanTermMonths`)
-3. In the calculations, converts back: `Math.round(1.1 * 30.44)` = 33 days
-
-Two days are lost in the round-trip conversion, causing the interest to be wrong ($807.55 shown vs $856.45 expected at $24.47/day x 35 days).
+### Problem
+When selecting a baseline (e.g., Overhaul at $65/sqft x 1200 sqft = $78,000), the scaling logic distributes the entire $78k proportionally by each preset's $/sqft rate. Since Tile has the highest rate ($12 vs $3.50 for Painting), it gets ~$35k -- which is unrealistic and not useful for quick underwriting.
 
 ### Solution
-Track the actual number of days separately and use it directly in interest calculations. The simplest approach: add a `termDaysOverride` state that gets set whenever "To Date" or a custom date is selected, and use it in the `calculations` and related useMemos.
+Instead of proportional scaling, distribute the tier's total budget **evenly** across all preset categories. This gives a simple, balanced starting point that users can then adjust per-category.
 
-### Technical Changes
+### Technical Change
 
-**File: `src/components/project/HardMoneyLoanCalculator.tsx`**
+**File: `src/components/budget/TemplatePicker.tsx`** -- simplify `handleBaselineSelect`
 
-1. **Add state for actual days**: Add a `termDaysOverride` state (number | null) that holds the exact day count when "To Date" is active.
+Replace the current scaling logic (lines 153-162):
+```
+// Current: proportional scaling that over-weights high-rate categories
+const rawRateSum = presets.reduce(...)
+const scaleFactor = rawRateSum > 0 ? tier.pricePerSqft / rawRateSum : 1;
+categoryBudgets[preset.category] = sqftNum * preset.pricePerSqft * scaleFactor;
+```
 
-2. **Set it when "To Date" is used**: Wherever `setLoanTermMonths(toDateMonths)` is called (initial load, button click, date picker change, reset to today), also set `termDaysOverride` to the exact day count.
+With even distribution:
+```
+// New: split total budget evenly across preset categories
+const perCategory = presets.length > 0 ? Math.round(totalBudget / presets.length * 100) / 100 : 0;
+presets.forEach(preset => {
+  if (sqftNum > 0) {
+    categoryBudgets[preset.category] = perCategory;
+  }
+});
+```
 
-3. **Clear it for preset terms**: When a fixed term button (6, 12, 18, 360) or custom month value is selected, set `termDaysOverride = null` so it falls back to the month-based calculation.
+For Overhaul (1200 sqft, $78,000 total, 5 preset categories):
+- Each category gets $15,600 instead of Tile getting $35k and Painting getting $10k
+- This serves as a quick placeholder that users refine, not a final estimate
 
-4. **Use it in calculations**: In the `calculations` useMemo, use `termDaysOverride` when available instead of `Math.round(loanTermMonths * 30.44)`:
-   ```
-   const termDays = termDaysOverride ?? Math.round(loanTermMonths * 30.44);
-   ```
+### What stays the same
+- Deal parameters (Purchase Price, ARV, Sqft) still preserved
+- Total budget still equals sqft x tier rate
+- Preset categories still sourced from localStorage / defaults
+- Saved database templates still load their own stored values
 
-5. **Use it in rateSensitivity**: Same change -- use `termDaysOverride` when available.
-
-6. **Use it in payoffComparison**: For the "current" entry that matches `loanTermMonths`, use `termDaysOverride` for accurate interest.
-
-This ensures that when you pick Feb 11 (35 days from start), the calculator uses exactly 35 days: $24.47 x 35 = $856.45. Every day you pick on the calendar updates the interest precisely.
