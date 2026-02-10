@@ -150,11 +150,14 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
       }
     }
 
-    // Build category_budgets from presets × sqft
+    // Build category_budgets from presets × sqft, scaled to match tier total
     const categoryBudgets: Record<string, number> = {};
+    const rawRateSum = presets.reduce((s: number, p: { pricePerSqft: number }) => s + p.pricePerSqft, 0);
+    const scaleFactor = rawRateSum > 0 ? tier.pricePerSqft / rawRateSum : 1;
+
     presets.forEach((preset: { category: string; pricePerSqft: number }) => {
       if (sqftNum > 0) {
-        categoryBudgets[preset.category] = Math.round(sqftNum * preset.pricePerSqft * 100) / 100;
+        categoryBudgets[preset.category] = Math.round(sqftNum * preset.pricePerSqft * scaleFactor * 100) / 100;
       }
     });
 
