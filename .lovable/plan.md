@@ -1,45 +1,29 @@
 
-
-## Fix Daily Interest Accrual Calculation
+## Keep Deal Parameters When Applying a Template
 
 ### Problem
-The interest calculations use monthly granularity (`monthlyPayment * loanTermMonths`). When a fractional "To Date" term like 1.4 months (43 days) is selected, the total interest should accrue on a per-day basis so each day is properly accounted for. Currently it multiplies a monthly payment by a fractional month count, which can produce slightly off results and doesn't clearly show daily accrual.
+When selecting a template from the Template Picker, the `handleSelectTemplate` function overwrites Purchase Price, ARV, and Square Footage with the template's saved values. This prevents the user from testing different rehab budgets against the same deal parameters.
 
-### Changes in `src/components/project/HardMoneyLoanCalculator.tsx`
+### Change in `src/pages/BudgetCalculator.tsx`
 
-**1. Add a `dailyInterest` value to the `calculations` memo**
+**Update `handleSelectTemplate` to skip deal parameter fields.**
 
-Calculate the daily interest rate from the annual rate and use it for precise accrual:
-
-```typescript
-const dailyRate = interestRate / 100 / 365;
-const dailyInterest = loanAmount * dailyRate;
+Remove these lines from the function:
+```
+setPurchasePrice(template.purchase_price?.toString() || '');
+setArv(template.arv?.toString() || '');
+setSqft(template.sqft?.toString() || '');
 ```
 
-For interest-only loans, compute `totalInterest` using days instead of months:
+Keep only:
+- `setBudgetName(template.name)` -- so the user knows which template is loaded
+- `setBudgetDescription(template.description || '')`
+- `setCurrentTemplateName(template.name)`
+- Category budgets loading (the `newBudgets` loop)
 
-```typescript
-// Convert loanTermMonths to days for precise calculation
-const termDays = Math.round(loanTermMonths * 30.44);
-totalInterest = dailyInterest * termDays;
-```
+This way, Purchase Price, ARV, and Square Footage remain whatever the user has already entered, and only the rehab category budgets swap out when picking a different template.
 
-This ensures that a 1.4-month (43-day) term accrues exactly 43 days of interest, not a rounded monthly approximation.
-
-**2. Add daily interest to the results display**
-
-Add a small line in the KPI cards or summary section showing the daily interest cost (e.g., "$XX.XX / day") so the user can see the per-day accrual at a glance.
-
-**3. Update the Payoff Timeline to use daily calculation**
-
-Change the `payoffComparison` memo to also compute interest using `dailyRate * (months * 30.44)` instead of `monthlyInt * months`, keeping everything consistent with daily accrual.
-
-**4. Include the current "To Date" term in the Payoff Timeline**
-
-If `loanTermMonths` is fractional (i.e., from "To Date"), add it as an entry in the payoff timeline so the user can see the interest cost at their current/selected date alongside the standard month milestones.
-
-### Summary of Results Display Updates
-- Monthly Payment KPI: unchanged (still shows what one full month costs)
-- Total Interest: recalculated using daily accrual for the exact term
-- New: "Daily Interest" line showing per-day cost (e.g., "$32.88 / day")
-- Payoff Timeline: uses daily math, includes the current fractional term if applicable
+### What stays the same
+- The default template auto-load on mount still populates everything (including deal params) since that's the initial state.
+- The "Clear All" button still resets everything.
+- Saving a template still captures the current deal parameters for storage.
