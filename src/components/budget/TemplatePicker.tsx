@@ -57,6 +57,14 @@ const DEFAULT_BASELINE_TIERS: BaselineTier[] = [
 
 const BASELINES_STORAGE_KEY = 'budget-baseline-tiers';
 
+const DEFAULT_CATEGORY_PRESETS = [
+  { category: 'painting', label: 'Painting', pricePerSqft: 3.50 },
+  { category: 'flooring', label: 'Flooring', pricePerSqft: 8.00 },
+  { category: 'tile', label: 'Tile', pricePerSqft: 12.00 },
+  { category: 'drywall', label: 'Drywall', pricePerSqft: 2.50 },
+  { category: 'roofing', label: 'Roofing', pricePerSqft: 5.00 },
+];
+
 export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateName, sqft, onSqftChange }: TemplatePickerProps) {
   const [savedTemplates, setSavedTemplates] = useState<BudgetTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,6 +136,28 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     const sqftNum = parseFloat(sqft) || 0;
     const totalBudget = sqftNum * tier.pricePerSqft;
     
+    // Read category presets from localStorage (same key used by BudgetCanvas)
+    let presets = DEFAULT_CATEGORY_PRESETS;
+    const storedPresets = localStorage.getItem('budget-category-presets');
+    if (storedPresets) {
+      try {
+        const parsed = JSON.parse(storedPresets);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          presets = parsed;
+        }
+      } catch (e) {
+        console.error('Failed to parse category presets:', e);
+      }
+    }
+
+    // Build category_budgets from presets × sqft
+    const categoryBudgets: Record<string, number> = {};
+    presets.forEach((preset: { category: string; pricePerSqft: number }) => {
+      if (sqftNum > 0) {
+        categoryBudgets[preset.category] = Math.round(sqftNum * preset.pricePerSqft * 100) / 100;
+      }
+    });
+
     const template: BudgetTemplate = {
       id: `baseline-${tier.name.toLowerCase().replace(' ', '-')}`,
       name: tier.name,
@@ -137,7 +167,7 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
       sqft: sqftNum || null,
       is_default: false,
       total_budget: totalBudget,
-      category_budgets: {},
+      category_budgets: categoryBudgets,
     };
     
     onSelectTemplate(template);
