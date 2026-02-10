@@ -48,6 +48,7 @@ export type BudgetCategory =
   | 'utilities'
   | 'variable'
   | 'water_heater'
+  | 'rehab_filler'
   | 'wholesale_fee'
   | 'windows'
   // Business expense categories
@@ -216,6 +217,7 @@ export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'staging', label: 'Staging' },
   { value: 'taxes', label: 'Taxes' },
   { value: 'tile', label: 'Tile' },
+  { value: 'rehab_filler', label: 'Filler' },
   { value: 'dumpsters_trash', label: 'Trash Hauling' },
   { value: 'carpentry', label: 'Trims' },
   { value: 'utilities', label: 'Utilities' },

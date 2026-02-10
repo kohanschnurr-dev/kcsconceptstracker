@@ -67,7 +67,7 @@ const CATEGORY_GROUPS = [
   {
     name: 'Other',
     icon: Package,
-    categories: ['permits_inspections', 'dumpsters_trash', 'cleaning', 'final_punch', 'staging', 'carpentry', 'pest_control', 'misc'],
+    categories: ['permits_inspections', 'dumpsters_trash', 'cleaning', 'final_punch', 'staging', 'carpentry', 'pest_control', 'misc', 'rehab_filler'],
   },
 ];
 

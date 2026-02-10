@@ -1,0 +1,1 @@
+ALTER TYPE public.budget_category ADD VALUE IF NOT EXISTS 'rehab_filler';

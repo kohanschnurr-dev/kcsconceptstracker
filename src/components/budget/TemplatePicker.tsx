@@ -150,15 +150,11 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
       }
     }
 
-    // Build category_budgets from presets × sqft, scaled to match tier total
+    // Place the entire baseline total into the Filler category
     const categoryBudgets: Record<string, number> = {};
-    const perCategory = presets.length > 0 ? Math.round(totalBudget / presets.length * 100) / 100 : 0;
-
-    presets.forEach((preset: { category: string; pricePerSqft: number }) => {
-      if (sqftNum > 0) {
-        categoryBudgets[preset.category] = perCategory;
-      }
-    });
+    if (sqftNum > 0) {
+      categoryBudgets['rehab_filler'] = totalBudget;
+    }
 
     const template: BudgetTemplate = {
       id: `baseline-${tier.name.toLowerCase().replace(' ', '-')}`,
