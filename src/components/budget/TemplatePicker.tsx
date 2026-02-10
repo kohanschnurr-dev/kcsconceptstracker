@@ -130,7 +130,7 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     
     const template: BudgetTemplate = {
       id: `baseline-${tier.name.toLowerCase().replace(' ', '-')}`,
-      name: `${tier.name} (${sqftNum.toLocaleString()} sqft)`,
+      name: tier.name,
       description: tier.description,
       purchase_price: 0,
       arv: 0,
