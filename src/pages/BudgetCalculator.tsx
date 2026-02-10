@@ -169,12 +169,9 @@ export default function BudgetCalculator() {
       return;
     }
 
-    // Load template values
+    // Load template values (keep deal parameters untouched)
     setBudgetName(template.name);
     setBudgetDescription(template.description || '');
-    setPurchasePrice(template.purchase_price?.toString() || '');
-    setArv(template.arv?.toString() || '');
-    setSqft(template.sqft?.toString() || '');
     setCurrentTemplateName(template.name);
 
     // Load category budgets
