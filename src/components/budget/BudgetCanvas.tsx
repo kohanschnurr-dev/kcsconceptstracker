@@ -35,6 +35,7 @@ interface BudgetCanvasProps {
   categoryBudgets: Record<string, string>;
   onCategoryChange: (category: string, value: string) => void;
   sqft: string;
+  baselineActive?: boolean;
 }
 
 // Category groups for organized display
@@ -72,7 +73,7 @@ const CATEGORY_GROUPS = [
 ];
 
 
-export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: BudgetCanvasProps) {
+export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive }: BudgetCanvasProps) {
   const [openGroups, setOpenGroups] = useState<string[]>(['Structure']);
   const [presets, setPresets] = useState<CategoryPreset[]>(DEFAULT_CATEGORY_PRESETS);
   const [editingPresets, setEditingPresets] = useState<CategoryPreset[]>([]);
@@ -104,8 +105,8 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft }: Budget
     const sqftNum = parseFloat(sqft) || 0;
     const prevSqftNum = parseFloat(prevSqftRef.current) || 0;
     
-    // Only auto-calculate if sqft actually changed and is > 0
-    if (sqftNum > 0 && sqft !== prevSqftRef.current) {
+    // Only auto-calculate if sqft actually changed, is > 0, and no baseline is active
+    if (sqftNum > 0 && sqft !== prevSqftRef.current && !baselineActive) {
       presets.forEach(preset => {
         const calculated = sqftNum * preset.pricePerSqft;
         onCategoryChange(preset.category, calculated.toFixed(2));
