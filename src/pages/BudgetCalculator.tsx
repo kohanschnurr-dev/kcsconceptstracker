@@ -429,6 +429,7 @@ export default function BudgetCalculator() {
                   categoryBudgets={categoryBudgets}
                   onCategoryChange={handleCategoryChange}
                   sqft={sqft}
+                  baselineActive={activeBaselineRate !== null}
                 />
 
                 {/* Profit Breakdown - Collapsible */}
