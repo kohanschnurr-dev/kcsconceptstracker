@@ -1,29 +1,21 @@
 
-## Keep Deal Parameters When Applying a Template
+
+## Remove "(X sqft)" from Template Names
 
 ### Problem
-When selecting a template from the Template Picker, the `handleSelectTemplate` function overwrites Purchase Price, ARV, and Square Footage with the template's saved values. This prevents the user from testing different rehab budgets against the same deal parameters.
+When selecting a baseline template, the name includes "(0 sqft)" or similar sqft suffix in the button display, which is redundant and looks cluttered.
 
-### Change in `src/pages/BudgetCalculator.tsx`
+### Change in `src/components/budget/TemplatePicker.tsx`
 
-**Update `handleSelectTemplate` to skip deal parameter fields.**
+Update `handleBaselineSelect` (around line 119) to use just the tier name without the sqft suffix:
 
-Remove these lines from the function:
 ```
-setPurchasePrice(template.purchase_price?.toString() || '');
-setArv(template.arv?.toString() || '');
-setSqft(template.sqft?.toString() || '');
+// Before:
+name: `${tier.name} (${sqftNum.toLocaleString()} sqft)`,
+
+// After:
+name: tier.name,
 ```
 
-Keep only:
-- `setBudgetName(template.name)` -- so the user knows which template is loaded
-- `setBudgetDescription(template.description || '')`
-- `setCurrentTemplateName(template.name)`
-- Category budgets loading (the `newBudgets` loop)
+This single-line change removes the "(0 sqft)" text from the template picker button for all baselines.
 
-This way, Purchase Price, ARV, and Square Footage remain whatever the user has already entered, and only the rehab category budgets swap out when picking a different template.
-
-### What stays the same
-- The default template auto-load on mount still populates everything (including deal params) since that's the initial state.
-- The "Clear All" button still resets everything.
-- Saving a template still captures the current deal parameters for storage.
