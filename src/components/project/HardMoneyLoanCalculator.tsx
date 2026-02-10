@@ -140,6 +140,7 @@ export function HardMoneyLoanCalculator({
 
   // To Date calculation
   const [toDateEndDate, setToDateEndDate] = useState<Date>(new Date());
+  const [termDaysOverride, setTermDaysOverride] = useState<number | null>(null);
 
   const toDateMonths = useMemo(() => {
     if (!projectStartDate) return null;
@@ -229,6 +230,10 @@ export function HardMoneyLoanCalculator({
         const currentToDate = projectStartDate ? calculateToDateMonths(projectStartDate, toDateEndDate) : null;
         if (currentToDate && currentToDate > 0) {
           setLoanTermMonths(currentToDate);
+          // Set exact day count for precise interest
+          const start = parseDateString(projectStartDate);
+          const exactDays = Math.round((toDateEndDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+          setTermDaysOverride(exactDays);
         }
       }
     };
@@ -438,8 +443,8 @@ export function HardMoneyLoanCalculator({
     let monthlyPayment: number;
     let totalInterest: number;
     
-    // Convert term to days for precise daily accrual
-    const termDays = Math.round(loanTermMonths * 30.44);
+    // Use exact day count when available (To Date), otherwise convert from months
+    const termDays = termDaysOverride ?? Math.round(loanTermMonths * 30.44);
     
     if (interestOnly) {
       monthlyPayment = (loanAmount * (interestRate / 100)) / 12;
@@ -476,12 +481,12 @@ export function HardMoneyLoanCalculator({
       totalLoanCost,
       effectiveAPR,
     };
-  }, [loanAmount, interestRate, loanTermMonths, points, closingCosts, interestOnly]);
+  }, [loanAmount, interestRate, loanTermMonths, points, closingCosts, interestOnly, termDaysOverride]);
 
   // Rate sensitivity analysis
   const rateSensitivity = useMemo(() => {
     const sellingCosts = arv * 0.06; // 6% selling costs
-    const termDays = Math.round(loanTermMonths * 30.44);
+    const termDays = termDaysOverride ?? Math.round(loanTermMonths * 30.44);
     
     return [0, 1, 2].map(bump => {
       const adjustedRate = interestRate + bump;
@@ -496,7 +501,7 @@ export function HardMoneyLoanCalculator({
         profit: adjustedProfit 
       };
     });
-  }, [loanAmount, interestRate, loanTermMonths, points, closingCosts, arv, editablePurchasePrice, totalBudget]);
+  }, [loanAmount, interestRate, loanTermMonths, points, closingCosts, arv, editablePurchasePrice, totalBudget, termDaysOverride]);
 
   // Payoff timeline comparison - only show terms up to current loan term
   const payoffComparison = useMemo(() => {
@@ -510,16 +515,18 @@ export function HardMoneyLoanCalculator({
       allowedMonths.sort((a, b) => a - b);
     }
     
+    const currentTermDays = termDaysOverride ?? Math.round(loanTermMonths * 30.44);
+    
     return allowedMonths.map(months => {
-      const days = Math.round(months * 30.44);
+      const days = months === loanTermMonths && termDaysOverride ? termDaysOverride : Math.round(months * 30.44);
       return {
         months,
         interest: dailyInt * days,
-        savings: months < loanTermMonths ? dailyInt * (Math.round(loanTermMonths * 30.44) - days) : 0,
+        savings: months < loanTermMonths ? dailyInt * (currentTermDays - days) : 0,
         isCurrent: months === loanTermMonths,
       };
     });
-  }, [loanAmount, interestRate, loanTermMonths]);
+  }, [loanAmount, interestRate, loanTermMonths, termDaysOverride]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -756,7 +763,7 @@ export function HardMoneyLoanCalculator({
                       type="button"
                       variant={loanTermMonths === term ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setLoanTermMonths(term)}
+                      onClick={() => { setLoanTermMonths(term); setTermDaysOverride(null); }}
                       className="rounded-sm min-w-[4rem]"
                     >
                       {formatTermLabel(term)}
@@ -792,6 +799,7 @@ export function HardMoneyLoanCalculator({
                                 const val = parseFloat(customTermInput);
                                 if (val > 0 && val <= 600) {
                                   setLoanTermMonths(val);
+                                  setTermDaysOverride(null);
                                   setCustomTermOpen(false);
                                   setCustomTermInput('');
                                 }
@@ -805,6 +813,7 @@ export function HardMoneyLoanCalculator({
                               const val = parseFloat(customTermInput);
                               if (val > 0 && val <= 600) {
                                 setLoanTermMonths(val);
+                                setTermDaysOverride(null);
                                 setCustomTermOpen(false);
                                 setCustomTermInput('');
                               }
@@ -825,7 +834,7 @@ export function HardMoneyLoanCalculator({
                         variant={loanTermMonths === toDateMonths ? 'default' : 'outline'}
                         size="sm"
                         className="rounded-sm rounded-r-none border-primary/50 min-w-[4rem]"
-                        onClick={() => setLoanTermMonths(toDateMonths)}
+                        onClick={() => { setLoanTermMonths(toDateMonths); if (toDateDays) setTermDaysOverride(toDateDays); }}
                       >
                         <CalendarClock className="h-3.5 w-3.5 mr-1" />
                         To Date
@@ -852,7 +861,12 @@ export function HardMoneyLoanCalculator({
                               if (date) {
                                 setToDateEndDate(date);
                                 const newMonths = calculateToDateMonths(projectStartDate, date);
-                                if (newMonths > 0) setLoanTermMonths(newMonths);
+                                if (newMonths > 0) {
+                                  setLoanTermMonths(newMonths);
+                                  const start = parseDateString(projectStartDate);
+                                  const exactDays = Math.round((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                                  setTermDaysOverride(exactDays);
+                                }
                               }
                             }}
                             initialFocus
@@ -867,7 +881,12 @@ export function HardMoneyLoanCalculator({
                                 const today = new Date();
                                 setToDateEndDate(today);
                                 const newMonths = calculateToDateMonths(projectStartDate, today);
-                                if (newMonths > 0) setLoanTermMonths(newMonths);
+                                if (newMonths > 0) {
+                                  setLoanTermMonths(newMonths);
+                                  const start = parseDateString(projectStartDate);
+                                  const exactDays = Math.round((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                                  setTermDaysOverride(exactDays);
+                                }
                               }}
                             >
                               <RotateCcw className="h-3 w-3 mr-1" />
