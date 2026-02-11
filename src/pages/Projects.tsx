@@ -197,7 +197,6 @@ export default function Projects() {
                   key={project.id} 
                   project={project} 
                   onClick={() => navigate(`/projects/${project.id}`)}
-                  onProjectUpdated={fetchProjects}
                 />
               ))}
             </div>
