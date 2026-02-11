@@ -9,6 +9,7 @@ import { formatDisplayDateLong, parseDateString } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotoUploadModal } from './PhotoUploadModal';
 import { PhotoPreviewModal } from './PhotoPreviewModal';
+import { CoverCropModal } from './CoverCropModal';
 import { useToast } from '@/hooks/use-toast';
 
 interface Photo {
@@ -51,6 +52,7 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [cropPhoto, setCropPhoto] = useState<Photo | null>(null);
 
   const togglePhotoSelection = (photoId: string) => {
     setSelectedIds(prev => {
@@ -149,10 +151,15 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
     fetchCoverPhoto();
   }, [projectId]);
 
-  const setAsCoverPhoto = async (photo: Photo) => {
+  const setAsCoverPhoto = (photo: Photo) => {
+    setCropPhoto(photo);
+  };
+
+  const handleCropSave = async (position: string) => {
+    if (!cropPhoto) return;
     const { error } = await supabase
       .from('projects')
-      .update({ cover_photo_path: photo.file_path })
+      .update({ cover_photo_path: cropPhoto.file_path, cover_photo_position: position })
       .eq('id', projectId);
 
     if (error) {
@@ -162,7 +169,8 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
         variant: 'destructive',
       });
     } else {
-      setCoverPhotoPath(photo.file_path);
+      setCoverPhotoPath(cropPhoto.file_path);
+      setCropPhoto(null);
       toast({
         title: 'Cover photo updated',
         description: 'This photo will now appear on the project card.',
@@ -424,6 +432,13 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
         onUpdate={handlePhotoUpdate}
         onNavigate={navigatePhoto}
         getPhotoUrl={getPhotoUrl}
+      />
+
+      <CoverCropModal
+        open={!!cropPhoto}
+        onOpenChange={(open) => { if (!open) setCropPhoto(null); }}
+        imageUrl={cropPhoto ? getPhotoUrl(cropPhoto.file_path) : ''}
+        onSave={handleCropSave}
       />
 
       {/* Floating Action Bar for bulk actions */}

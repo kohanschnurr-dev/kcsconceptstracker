@@ -118,6 +118,7 @@ export interface Project {
   projectType: ProjectType;
   categories: CategoryBudget[];
   coverPhotoPath?: string;
+  coverPhotoPosition?: string;
 }
 
 export interface CategoryBudget {

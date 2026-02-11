@@ -129,6 +129,7 @@ export default function Index() {
           projectType: p.project_type as 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling',
           categories: projectCategories,
           coverPhotoPath: p.cover_photo_path || undefined,
+          coverPhotoPosition: p.cover_photo_position || undefined,
         };
       });
 
