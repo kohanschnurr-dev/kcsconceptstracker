@@ -1,18 +1,24 @@
 
 
-## Make "This Month" Stat Card Clickable to Navigate to Expenses
+## Sort Category Dropdown A-Z in Expense Detail Modal
 
 ### Change
 
-**File: `src/pages/Index.tsx`**
+**File: `src/components/ExpenseDetailModal.tsx`** (around line 475)
 
-Wrap the "This Month" `StatCard` in an `onClick` handler that calls `navigate('/expenses')`. Add a `cursor-pointer` wrapper `div` so it feels interactive.
+Sort the `categories` array alphabetically by their display label before rendering the `SelectItem` list. Currently the categories render in whatever order they come from the database.
 
-Alternatively, add an `onClick` prop to the `StatCard` component itself for cleaner reuse:
+Add a `.sort()` call that resolves each category's label via `getBudgetCategories()` and compares them with `localeCompare`:
 
-1. **`src/components/dashboard/StatCard.tsx`** -- Add an optional `onClick` prop. When provided, apply `cursor-pointer` and `hover:border-primary/30` styles to the card wrapper, and attach the click handler.
+```
+categories
+  .slice()
+  .sort((a, b) => {
+    const labelA = getBudgetCategories().find(c => c.value === a.category)?.label || a.category;
+    const labelB = getBudgetCategories().find(c => c.value === b.category)?.label || b.category;
+    return labelA.localeCompare(labelB);
+  })
+  .map((cat) => { ... })
+```
 
-2. **`src/pages/Index.tsx`** -- Pass `onClick={() => navigate('/expenses')}` to the "This Month" `StatCard`.
-
-This keeps the other stat cards unchanged and makes the pattern reusable if other cards need click actions later.
-
+This is a single-line chain addition -- no new files, no new dependencies.
