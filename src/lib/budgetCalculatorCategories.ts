@@ -16,6 +16,38 @@ export const BUDGET_CALC_GROUP_DEFS: Record<string, BudgetCalcGroupDef> = {
   other: { label: 'Other', icon: Package },
 };
 
+// --- Custom trade groups (localStorage) ---
+export const CUSTOM_GROUPS_STORAGE_KEY = 'custom-trade-groups';
+
+export interface CustomGroupEntry {
+  key: string;
+  label: string;
+}
+
+export function loadCustomGroups(): Record<string, BudgetCalcGroupDef> {
+  try {
+    const raw = localStorage.getItem(CUSTOM_GROUPS_STORAGE_KEY);
+    if (!raw) return {};
+    const entries: CustomGroupEntry[] = JSON.parse(raw);
+    const result: Record<string, BudgetCalcGroupDef> = {};
+    for (const e of entries) {
+      result[e.key] = { label: e.label, icon: Package };
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+export function saveCustomGroups(entries: CustomGroupEntry[]) {
+  localStorage.setItem(CUSTOM_GROUPS_STORAGE_KEY, JSON.stringify(entries));
+}
+
+/** Returns built-in groups merged with any user-created custom groups */
+export function getAllGroupDefs(): Record<string, BudgetCalcGroupDef> {
+  return { ...BUDGET_CALC_GROUP_DEFS, ...loadCustomGroups() };
+}
+
 /** Maps category values to their trade group. Unmapped categories default to 'other'. */
 export const CATEGORY_GROUP_MAP: Record<string, string> = {
   // Structure
@@ -75,10 +107,11 @@ export function resolveTradeGroup(item: CategoryItem): string {
 
 /** Build grouped structure from expense categories for BudgetCanvas rendering */
 export function buildBudgetCalcGroups(categories: CategoryItem[]) {
-  const groupOrder = Object.keys(BUDGET_CALC_GROUP_DEFS);
+  const allDefs = getAllGroupDefs();
+  const groupOrder = Object.keys(allDefs);
   return groupOrder
     .map(groupKey => {
-      const def = BUDGET_CALC_GROUP_DEFS[groupKey];
+      const def = allDefs[groupKey];
       const cats = categories.filter(c => c.group === groupKey);
       return {
         name: def.label,
