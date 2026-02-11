@@ -362,7 +362,8 @@ export default function Vendors() {
               <Button
                 variant="outline"
                 className="w-full gap-2"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   const vendor = selectedVendor;
                   setSelectedVendor(null);
                   handleEditVendor(vendor);
