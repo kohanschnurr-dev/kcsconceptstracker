@@ -55,7 +55,32 @@ function CategorySection({
 
   // Group items if needed
   const renderItems = () => {
-    if (grouped) {
+    if (grouped || budgetCalcGrouped) {
+      // If budgetCalcGrouped, go straight to budget calc rendering
+      if (budgetCalcGrouped) {
+        const groupOrder = Object.keys(BUDGET_CALC_GROUP_DEFS);
+        return groupOrder.map(groupKey => {
+          const def = BUDGET_CALC_GROUP_DEFS[groupKey];
+          const groupItems = items.filter(i => i.group === groupKey).sort((a, b) => a.label.localeCompare(b.label));
+          if (groupItems.length === 0) return null;
+          return (
+            <div key={groupKey} className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">{def.label}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {groupItems.map(item => (
+                  <Badge key={item.value} variant="outline" className="text-xs">
+                    {item.label}
+                    <button onClick={() => onRemove(item.value)} className="ml-1.5 hover:text-destructive">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          );
+        });
+      }
+
       // Determine which group definitions to use
       const isCalendarGrouped = Object.keys(CATEGORY_GROUPS).some(k => items.some(i => i.group === k));
       
