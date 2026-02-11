@@ -1652,7 +1652,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_budget_category: { Args: { new_value: string }; Returns: undefined }
     }
     Enums: {
       budget_category:
