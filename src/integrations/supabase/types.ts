@@ -787,6 +787,7 @@ export type Database = {
           id: string
           last_name: string | null
           project_tab_order: Json | null
+          state: string | null
           updated_at: string
           user_id: string
         }
@@ -798,6 +799,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           project_tab_order?: Json | null
+          state?: string | null
           updated_at?: string
           user_id: string
         }
@@ -809,6 +811,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           project_tab_order?: Json | null
+          state?: string | null
           updated_at?: string
           user_id?: string
         }

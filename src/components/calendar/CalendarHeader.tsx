@@ -32,7 +32,7 @@ interface CalendarHeaderProps {
 
 function WeatherWidgetWithCity() {
   const { profile } = useProfile();
-  return <WeatherWidget city={(profile as any)?.city} />;
+  return <WeatherWidget city={(profile as any)?.city} state={(profile as any)?.state} />;
 }
 
 export function CalendarHeader({ 
