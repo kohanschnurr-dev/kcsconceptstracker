@@ -775,6 +775,8 @@ export default function ProjectDetail() {
                 totalSpent={totalSpent}
                 initialPurchasePrice={project.purchase_price || 0}
                 initialArv={project.arv || 0}
+                initialClosingPct={(project as any).closing_costs_pct ?? 6}
+                initialHoldingPct={(project as any).holding_costs_pct ?? 3}
               />
             )}
             

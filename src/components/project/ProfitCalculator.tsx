@@ -14,6 +14,8 @@ interface ProfitCalculatorProps {
   totalSpent: number;
   initialPurchasePrice?: number;
   initialArv?: number;
+  initialClosingPct?: number;
+  initialHoldingPct?: number;
 }
 
 export function ProfitCalculator({ 
@@ -21,26 +23,32 @@ export function ProfitCalculator({
   totalBudget, 
   totalSpent,
   initialPurchasePrice = 0,
-  initialArv = 0
+  initialArv = 0,
+  initialClosingPct = 6,
+  initialHoldingPct = 3
 }: ProfitCalculatorProps) {
   const [purchasePrice, setPurchasePrice] = useState(initialPurchasePrice);
   const [arv, setArv] = useState(initialArv);
   const [saving, setSaving] = useState(false);
   const [expandedBreakdown, setExpandedBreakdown] = useState<'estimated' | 'current' | 'roi' | null>(null);
-  const [closingPct, setClosingPct] = useState(6);
-  const [holdingPct, setHoldingPct] = useState(3);
+  const [closingPct, setClosingPct] = useState(initialClosingPct);
+  const [holdingPct, setHoldingPct] = useState(initialHoldingPct);
 
   useEffect(() => {
     setPurchasePrice(initialPurchasePrice);
     setArv(initialArv);
-  }, [initialPurchasePrice, initialArv]);
+    setClosingPct(initialClosingPct);
+    setHoldingPct(initialHoldingPct);
+  }, [initialPurchasePrice, initialArv, initialClosingPct, initialHoldingPct]);
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase
       .from('projects')
       .update({
-        purchase_price: purchasePrice,
-        arv: arv,
+      purchase_price: purchasePrice,
+      arv: arv,
+      closing_costs_pct: closingPct,
+      holding_costs_pct: holdingPct,
       })
       .eq('id', projectId);
 
