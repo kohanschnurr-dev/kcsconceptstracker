@@ -1,31 +1,25 @@
 
 
-## Fix: Procurement Item Save Failure
+## Fix Calendar Card Text Readability on Light Backgrounds
 
-### Root Cause
-The database has check constraints on the `procurement_items` table that don't match the values the code sends:
+### Problem
+The calendar event cards use light-tinted text colors (e.g., `text-blue-400`, `text-emerald-400`) which are hard to read on light/white theme backgrounds. The colored card backgrounds should stay, but text needs to be dark on light themes.
 
-**Phase constraint** allows: `demo`, `rough_in`, `drywall`, `trim_out`, `final`
-**Code sends**: `rough_in`, `trim_out`, `finish`, `punch`
+### Solution
+Update `src/lib/calendarCategories.ts` to use theme-responsive text colors. Each `textClass` will use a dark shade for light mode and the current light shade for dark mode.
 
-Mismatch: `finish` (code) vs `final` (DB), and `punch` doesn't exist in the constraint at all.
+**File: `src/lib/calendarCategories.ts`**
 
-**Status constraint** allows: `researching`, `in_cart`, `ordered`, `shipped`, `on_site`, `installed`
-**Code sends**: `researching`, `in_cart`, `ordered`, `delivered`, `installed`
+Update the `textClass` in each category group:
 
-Mismatch: `delivered` (code) vs `shipped`/`on_site` (DB).
+| Group | Current | Updated |
+|-------|---------|---------|
+| Acquisition/Admin | `text-blue-400` | `text-blue-700 dark:text-blue-400` |
+| Structural/Exterior | `text-red-400` | `text-red-700 dark:text-red-400` |
+| Rough-ins | `text-orange-400` | `text-orange-700 dark:text-orange-400` |
+| Inspections | `text-purple-400` | `text-purple-700 dark:text-purple-400` |
+| Interior Finishes | `text-emerald-400` | `text-emerald-700 dark:text-emerald-400` |
+| Milestones | `text-amber-400` | `text-amber-700 dark:text-amber-400` |
 
-Your item failed because the "Finish" stage sends `phase: 'finish'` but the database only accepts `'final'`.
+This single file change propagates to every calendar card (DealCard compact + full, legend, category pills) since they all call `getCategoryStyles()`.
 
-### Fix
-Update the database check constraints to accept the values the application actually uses. This is the safest approach since the UI labels are already user-friendly.
-
-**Database migration:**
-1. Drop the old `procurement_items_phase_check` constraint
-2. Add new constraint allowing: `demo`, `rough_in`, `drywall`, `trim_out`, `finish`, `punch`, `final`
-3. Drop the old `procurement_items_status_check` constraint
-4. Add new constraint allowing: `researching`, `in_cart`, `ordered`, `delivered`, `shipped`, `on_site`, `installed`
-
-This adds the missing values while keeping the old ones valid (so existing data isn't broken).
-
-No code changes needed -- the modal is working correctly; the database constraint was just too restrictive.
