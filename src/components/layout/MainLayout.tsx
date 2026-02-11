@@ -5,6 +5,7 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
+import { useSettingsSync } from '@/hooks/useSettingsSync';
 import type { Project, CategoryBudget } from '@/types';
 
 interface MainLayoutProps {
@@ -12,6 +13,7 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  useSettingsSync();
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
 

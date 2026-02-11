@@ -41,6 +41,7 @@ export function loadCustomGroups(): Record<string, BudgetCalcGroupDef> {
 
 export function saveCustomGroups(entries: CustomGroupEntry[]) {
   localStorage.setItem(CUSTOM_GROUPS_STORAGE_KEY, JSON.stringify(entries));
+  import('@/hooks/useSettingsSync').then(({ triggerSettingsSync }) => triggerSettingsSync()).catch(() => {});
 }
 
 /** Returns built-in groups merged with any user-created custom groups */

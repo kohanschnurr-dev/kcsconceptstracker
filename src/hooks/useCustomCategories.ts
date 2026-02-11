@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { triggerSettingsSync } from './useSettingsSync';
 
 export interface CategoryItem {
   value: string;
@@ -45,7 +46,18 @@ export function useCustomCategories(type: CategoryType, defaults: CategoryItem[]
 
   useEffect(() => {
     saveToStorage(storageKey, items);
+    triggerSettingsSync();
   }, [items, storageKey]);
+
+  // Re-read from localStorage when settings are synced from cloud
+  useEffect(() => {
+    const handleSync = () => {
+      const synced = loadFromStorage(storageKey, defaults);
+      setItems(synced.sort((a: CategoryItem, b: CategoryItem) => a.label.localeCompare(b.label)));
+    };
+    window.addEventListener('settings-synced', handleSync);
+    return () => window.removeEventListener('settings-synced', handleSync);
+  }, [storageKey, defaults]);
 
   const addItem = useCallback((label: string, group?: string) => {
     const value = label.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
