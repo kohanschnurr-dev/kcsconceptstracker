@@ -1,5 +1,6 @@
 import { CategoryItem } from '@/hooks/useCustomCategories';
 import { Zap, Droplets, PaintBucket, Home, Trees, Package, LucideIcon } from 'lucide-react';
+import { getBudgetCategories } from '@/types';
 
 export interface BudgetCalcGroupDef {
   label: string;
@@ -15,69 +16,57 @@ export const BUDGET_CALC_GROUP_DEFS: Record<string, BudgetCalcGroupDef> = {
   other: { label: 'Other', icon: Package },
 };
 
-export const DEFAULT_BUDGET_CALC_CATEGORIES: CategoryItem[] = [
+/** Maps category values to their trade group. Unmapped categories default to 'other'. */
+export const CATEGORY_GROUP_MAP: Record<string, string> = {
   // Structure
-  { value: 'demolition', label: 'Demolition', group: 'structure' },
-  { value: 'framing', label: 'Framing', group: 'structure' },
-  { value: 'foundation_repair', label: 'Foundation', group: 'structure' },
-  { value: 'roofing', label: 'Roofing', group: 'structure' },
-  { value: 'drywall', label: 'Drywall', group: 'structure' },
-  { value: 'insulation', label: 'Insulation', group: 'structure' },
+  demolition: 'structure',
+  framing: 'structure',
+  foundation_repair: 'structure',
+  roofing: 'structure',
+  drywall: 'structure',
+  insulation: 'structure',
   // MEPs
-  { value: 'electrical', label: 'Electrical', group: 'meps' },
-  { value: 'plumbing', label: 'Plumbing', group: 'meps' },
-  { value: 'hvac', label: 'HVAC', group: 'meps' },
-  { value: 'natural_gas', label: 'Gas', group: 'meps' },
-  { value: 'water_heater', label: 'Water Heater', group: 'meps' },
-  { value: 'drain_line_repair', label: 'Drain Line Repair', group: 'meps' },
+  electrical: 'meps',
+  plumbing: 'meps',
+  hvac: 'meps',
+  natural_gas: 'meps',
+  water_heater: 'meps',
+  drain_line_repair: 'meps',
   // Finishes
-  { value: 'painting', label: 'Painting', group: 'finishes' },
-  { value: 'flooring', label: 'Flooring', group: 'finishes' },
-  { value: 'tile', label: 'Tile', group: 'finishes' },
-  { value: 'doors', label: 'Doors', group: 'finishes' },
-  { value: 'windows', label: 'Windows', group: 'finishes' },
-  { value: 'hardware', label: 'Hardware', group: 'finishes' },
-  { value: 'light_fixtures', label: 'Light Fixtures', group: 'finishes' },
+  painting: 'finishes',
+  flooring: 'finishes',
+  tile: 'finishes',
+  doors: 'finishes',
+  windows: 'finishes',
+  hardware: 'finishes',
+  light_fixtures: 'finishes',
   // Kitchen & Bath
-  { value: 'kitchen', label: 'Kitchen', group: 'kitchen_bath' },
-  { value: 'bathroom', label: 'Bathroom', group: 'kitchen_bath' },
-  { value: 'main_bathroom', label: 'Main Bathroom', group: 'kitchen_bath' },
-  { value: 'cabinets', label: 'Cabinets', group: 'kitchen_bath' },
-  { value: 'countertops', label: 'Countertops', group: 'kitchen_bath' },
-  { value: 'appliances', label: 'Appliances', group: 'kitchen_bath' },
+  kitchen: 'kitchen_bath',
+  bathroom: 'kitchen_bath',
+  main_bathroom: 'kitchen_bath',
+  cabinets: 'kitchen_bath',
+  countertops: 'kitchen_bath',
+  appliances: 'kitchen_bath',
   // Exterior
-  { value: 'landscaping', label: 'Landscaping', group: 'exterior' },
-  { value: 'fencing', label: 'Fencing', group: 'exterior' },
-  { value: 'driveway_concrete', label: 'Concrete', group: 'exterior' },
-  { value: 'garage', label: 'Garage', group: 'exterior' },
-  { value: 'pool', label: 'Pool', group: 'exterior' },
-  { value: 'brick_siding_stucco', label: 'Exterior Finish', group: 'exterior' },
-  { value: 'railing', label: 'Railing', group: 'exterior' },
-  // Other
-  { value: 'permits_inspections', label: 'Permits & Inspections', group: 'other' },
-  { value: 'dumpsters_trash', label: 'Trash Hauling', group: 'other' },
-  { value: 'cleaning', label: 'Cleaning', group: 'other' },
-  { value: 'final_punch', label: 'Final Punch', group: 'other' },
-  { value: 'staging', label: 'Staging', group: 'other' },
-  { value: 'carpentry', label: 'Trims', group: 'other' },
-  { value: 'pest_control', label: 'Pest Control', group: 'other' },
-  { value: 'misc', label: 'Misc.', group: 'other' },
-  { value: 'rehab_filler', label: 'Filler', group: 'other' },
-];
+  landscaping: 'exterior',
+  fencing: 'exterior',
+  driveway_concrete: 'exterior',
+  garage: 'exterior',
+  pool: 'exterior',
+  brick_siding_stucco: 'exterior',
+  railing: 'exterior',
+};
 
-const STORAGE_KEY = 'custom-budget-calc-categories';
-
+/** Get budget calculator categories by enriching expense categories with group info */
 export function getBudgetCalcCategories(): CategoryItem[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    console.error('Error loading budget calc categories:', e);
-  }
-  return DEFAULT_BUDGET_CALC_CATEGORIES;
+  return getBudgetCategories().map(cat => ({
+    value: cat.value,
+    label: cat.label,
+    group: CATEGORY_GROUP_MAP[cat.value] || 'other',
+  }));
 }
 
-/** Build grouped structure from flat category list for BudgetCanvas rendering */
+/** Build grouped structure from expense categories for BudgetCanvas rendering */
 export function buildBudgetCalcGroups(categories: CategoryItem[]) {
   const groupOrder = Object.keys(BUDGET_CALC_GROUP_DEFS);
   return groupOrder
