@@ -207,6 +207,7 @@ export default function Settings() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">Used for weather forecasts on the Calendar</p>
+                  <p className="text-xs text-muted-foreground">Disclaimer: Weather data is sourced from third-party providers and is for informational purposes only. Please verify conditions independently before making project-critical decisions.</p>
                   <Separator />
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Email</label>
