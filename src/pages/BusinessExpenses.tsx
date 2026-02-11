@@ -593,6 +593,31 @@ export default function BusinessExpenses() {
            getCategoryLabel={getCategoryLabel}
            onCategoryClick={setCategoryFilter}
            selectedCategory={categoryFilter}
+           onAddGoal={async (goal) => {
+             const { data: { user } } = await supabase.auth.getUser();
+             if (!user) return;
+             const { data } = await supabase.from('quarterly_goals').insert({
+               user_id: user.id,
+               title: goal.title,
+               target_value: goal.target_value,
+               category: goal.category,
+               quarter: 'Q1 2026',
+               current_value: 0,
+             }).select().single();
+             if (data) setGoals(prev => [...prev, data]);
+           }}
+           onAddRule={async (rule) => {
+             const { data: { user } } = await supabase.auth.getUser();
+             if (!user) return;
+             const { data } = await supabase.from('operation_codes').insert({
+               user_id: user.id,
+               title: rule.title,
+               category: rule.category,
+               order_index: rules.length,
+               is_completed: false,
+             }).select().single();
+             if (data) setRules(prev => [...prev, data]);
+           }}
          />
 
         {/* Expenses Table */}
