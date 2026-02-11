@@ -36,7 +36,8 @@ export type BudgetCategory =
   | 'misc'
   | 'natural_gas'
   | 'painting'
-  | 'permits_inspections'
+  | 'permits'
+  | 'inspections'
   | 'pest_control'
   | 'plumbing'
   | 'pool'
@@ -84,7 +85,8 @@ export type VendorTrade =
   | 'light_fixtures'
   | 'appliances'
   | 'natural_gas'
-  | 'permits_inspections'
+  | 'permits'
+  | 'inspections'
   | 'landscaping'
   | 'dumpsters_trash'
   | 'windows'
@@ -209,7 +211,8 @@ export const BUDGET_CATEGORIES: { value: BudgetCategory; label: string }[] = [
   { value: 'main_bathroom', label: 'Main Bathroom' },
   { value: 'misc', label: 'Misc.' },
   { value: 'painting', label: 'Painting' },
-  { value: 'permits_inspections', label: 'Permits & Inspections' },
+  { value: 'inspections', label: 'Inspections' },
+  { value: 'permits', label: 'Permits' },
   { value: 'pest_control', label: 'Pest Control' },
   { value: 'plumbing', label: 'Plumbing' },
   { value: 'pool', label: 'Pool' },

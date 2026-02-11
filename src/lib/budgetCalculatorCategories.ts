@@ -55,6 +55,8 @@ export const CATEGORY_GROUP_MAP: Record<string, string> = {
   pool: 'exterior',
   brick_siding_stucco: 'exterior',
   railing: 'exterior',
+  permits: 'other',
+  inspections: 'other',
 };
 
 /** Get budget calculator categories by enriching expense categories with group info */
