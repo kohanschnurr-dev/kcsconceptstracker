@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calculator, DollarSign, TrendingUp, Save, Loader2 } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ export function ProfitCalculator({
   const [purchasePrice, setPurchasePrice] = useState(initialPurchasePrice);
   const [arv, setArv] = useState(initialArv);
   const [saving, setSaving] = useState(false);
+  const [expandedBreakdown, setExpandedBreakdown] = useState<'estimated' | 'current' | null>(null);
 
   useEffect(() => {
     setPurchasePrice(initialPurchasePrice);
@@ -128,10 +129,13 @@ export function ProfitCalculator({
 
         {/* Results */}
         <div className="grid grid-cols-3 gap-4">
-          <div className={cn(
-            "p-4 rounded-lg text-center",
-            estimatedProfit >= 0 ? "bg-success/10" : "bg-destructive/10"
-          )}>
+          <div
+            className={cn(
+              "p-4 rounded-lg text-center cursor-pointer transition-colors hover:ring-1 hover:ring-foreground/20",
+              estimatedProfit >= 0 ? "bg-success/10" : "bg-destructive/10"
+            )}
+            onClick={() => setExpandedBreakdown(expandedBreakdown === 'estimated' ? null : 'estimated')}
+          >
             <p className="text-sm text-muted-foreground mb-1">Est. Profit</p>
             <p className={cn(
               "text-2xl font-bold font-mono",
@@ -139,12 +143,18 @@ export function ProfitCalculator({
             )}>
               {formatCurrency(estimatedProfit)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">using budget</p>
+            <div className="flex items-center justify-center gap-1 mt-1">
+              <p className="text-xs text-muted-foreground">using budget</p>
+              {expandedBreakdown === 'estimated' ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+            </div>
           </div>
-          <div className={cn(
-            "p-4 rounded-lg text-center",
-            currentProfit >= 0 ? "bg-success/10" : "bg-destructive/10"
-          )}>
+          <div
+            className={cn(
+              "p-4 rounded-lg text-center cursor-pointer transition-colors hover:ring-1 hover:ring-foreground/20",
+              currentProfit >= 0 ? "bg-success/10" : "bg-destructive/10"
+            )}
+            onClick={() => setExpandedBreakdown(expandedBreakdown === 'current' ? null : 'current')}
+          >
             <p className="text-sm text-muted-foreground mb-1">Current Profit</p>
             <p className={cn(
               "text-2xl font-bold font-mono",
@@ -152,7 +162,10 @@ export function ProfitCalculator({
             )}>
               {formatCurrency(currentProfit)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">using spent</p>
+            <div className="flex items-center justify-center gap-1 mt-1">
+              <p className="text-xs text-muted-foreground">using spent</p>
+              {expandedBreakdown === 'current' ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+            </div>
           </div>
           <div className={cn(
             "p-4 rounded-lg text-center",
@@ -169,6 +182,44 @@ export function ProfitCalculator({
             <p className="text-xs text-muted-foreground mt-1">on current</p>
           </div>
         </div>
+
+        {/* Breakdown Panel */}
+        {expandedBreakdown && (
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm font-mono animate-in fade-in-0 slide-in-from-top-2 duration-200">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">ARV (Sale Price)</span>
+              <span className="font-semibold">{formatCurrency(arv)}</span>
+            </div>
+            <div className="flex justify-between text-destructive">
+              <span>− Purchase Price</span>
+              <span>{formatCurrency(purchasePrice)}</span>
+            </div>
+            <div className="flex justify-between text-destructive">
+              <span>− {expandedBreakdown === 'estimated' ? 'Rehab Budget' : 'Rehab Spent'}</span>
+              <span>{formatCurrency(expandedBreakdown === 'estimated' ? totalBudget : totalSpent)}</span>
+            </div>
+            <div className="flex justify-between text-destructive">
+              <span>− Closing Costs <span className="text-muted-foreground text-xs">(6% ARV)</span></span>
+              <span>{formatCurrency(closingCosts)}</span>
+            </div>
+            <div className="flex justify-between text-destructive">
+              <span>− Holding Costs <span className="text-muted-foreground text-xs">(3%)</span></span>
+              <span>{formatCurrency(holdingCosts)}</span>
+            </div>
+            <div className="border-t pt-2 flex justify-between font-bold">
+              <span className={cn(
+                (expandedBreakdown === 'estimated' ? estimatedProfit : currentProfit) >= 0 ? "text-success" : "text-destructive"
+              )}>
+                = {expandedBreakdown === 'estimated' ? 'Est. Profit' : 'Current Profit'}
+              </span>
+              <span className={cn(
+                (expandedBreakdown === 'estimated' ? estimatedProfit : currentProfit) >= 0 ? "text-success" : "text-destructive"
+              )}>
+                {formatCurrency(expandedBreakdown === 'estimated' ? estimatedProfit : currentProfit)}
+              </span>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
