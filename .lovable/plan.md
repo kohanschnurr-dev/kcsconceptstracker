@@ -1,22 +1,29 @@
 
 
-## Distribute Calendar Header Evenly
+## Fix Calendar Header Layout - Remove Dead Space
 
-The calendar header currently uses `justify-between` which pushes the left group (title + nav) and right group (filters + views + button) to opposite edges, leaving a large gap in the middle.
+### Problem
+The `flex-1` on both sections creates a gap in the middle. The filters and views float away from the title, and the "Add Project Event" button dropped to a second line.
 
 ### Fix
 
 **File: `src/components/calendar/CalendarHeader.tsx`**
 
-Change the outer container from `justify-between` to `justify-evenly` (or use `w-full` with spaced-out children). Specifically:
+1. **Remove `flex-1` from both sections** -- revert to simple `flex` without growing
+2. **Change the outer container** to keep `justify-between` but ensure everything sits on one row
+3. **Move all middle items (project filter, weather, view toggle) next to the title/nav** in the LEFT section so they flow naturally left-to-right with no gap
+4. **Keep only the "Add Project Event" button in the RIGHT section**, anchored to the far right
 
-1. **Line 72** - Change the outer `div` class from `justify-between` to `justify-between w-full` and make the inner sections use `flex-1` so they spread across the available space.
+### Result Layout
+```
+[Calendar Icon] Project Calendar  < February 2026 >  [All Projects v]  [Weather]  [Month|Week|Gantt]          [+ Add Project Event]
+```
 
-   More precisely:
-   - Left section (line 74): Add `flex-1` so it takes available space
-   - Right section (line 104): Add `flex-1 justify-end` so it takes the remaining space and right-aligns its content
+Everything flows left-to-right with no dead space. The button stays pinned to the top-right corner.
 
-This distributes both sections across the full width of the header bar, eliminating the large dead-space gap while keeping the left group left-aligned and the right group right-aligned.
+### Technical Details
 
-### Result
-The title/navigation will anchor to the left and the filters/views/button will anchor to the right, with both sections stretching to fill the container evenly -- no wasted space in between.
+- Line 72: Keep outer div as `flex ... justify-between`
+- Lines 74-100 (left section): Remove `flex-1`, add project filter, weather widget, and view toggle buttons into this section
+- Lines 103-145 (right section): Remove `flex-1 justify-end`, keep only `{onAddEvent && onAddEvent}`
+
