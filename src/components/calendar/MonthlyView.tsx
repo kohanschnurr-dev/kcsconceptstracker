@@ -64,9 +64,9 @@ function DroppableDay({
       className={cn(
         'min-h-[140px] p-2 rounded-lg border transition-colors',
         isCurrentMonth 
-          ? 'bg-slate-800/50 border-slate-700' 
-          : 'bg-slate-900/50 border-slate-800',
-        isToday(day) && 'ring-2 ring-emerald-500/50',
+          ? 'bg-card/50 border-border' 
+          : 'bg-background/50 border-border/50',
+        isToday(day) && 'ring-2 ring-primary/50',
         isOver && 'ring-2 ring-primary/50 bg-primary/5'
       )}
     >
@@ -80,9 +80,7 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 8 },
     })
   );
 
@@ -91,7 +89,6 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
     const monthEnd = endOfMonth(currentDate);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
-    
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentDate]);
 
@@ -119,13 +116,10 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
 
     const targetDate = new Date(over.id as string);
     const taskStartDay = startOfDay(task.startDate);
-    
-    // Don't update if dropped on the same day
     if (targetDate.getTime() === taskStartDay.getTime()) return;
 
     const duration = differenceInDays(task.endDate, task.startDate);
     const newEndDate = addDays(targetDate, duration);
-
     onTaskMove(task.id, targetDate, newEndDate);
   };
 
@@ -134,16 +128,14 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-full p-4">
-        {/* Week day headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {weekDays.map(day => (
-            <div key={day} className="text-center text-xs font-medium text-slate-500 py-2">
+            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
               {day}
             </div>
           ))}
         </div>
 
-        {/* Calendar grid */}
         <div className="grid grid-cols-7 gap-1 flex-1">
           {days.map(day => {
             const dayTasks = getTasksForDay(day);
@@ -154,10 +146,10 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
                 <div className={cn(
                   'text-sm font-medium mb-1',
                   isToday(day) 
-                    ? 'text-emerald-400' 
+                    ? 'text-primary' 
                     : isCurrentMonth 
-                      ? 'text-white' 
-                      : 'text-slate-600'
+                      ? 'text-foreground' 
+                      : 'text-muted-foreground/60'
                 )}>
                   {format(day, 'd')}
                 </div>
@@ -171,7 +163,7 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
                     />
                   ))}
                   {dayTasks.length > 3 && (
-                    <p className="text-[10px] text-slate-500 text-center">
+                    <p className="text-[10px] text-muted-foreground text-center">
                       +{dayTasks.length - 3} more
                     </p>
                   )}

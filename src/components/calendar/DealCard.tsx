@@ -1,26 +1,7 @@
 import { 
-  Hammer, 
-  Droplets, 
-  Zap, 
-  Fan, 
-  PaintBucket,
-  Wrench,
-  AlertTriangle,
-  FileText,
-  Home,
-  ClipboardCheck,
-  Calendar,
-  Sparkles,
-  Layers,
-  Grid2x2,
-  DoorOpen,
-  Trees,
-  Landmark,
-  ShieldCheck,
-  Warehouse,
-  Package,
-  Fence,
-  Square,
+  Hammer, Droplets, Zap, Fan, PaintBucket, Wrench, AlertTriangle,
+  FileText, Home, ClipboardCheck, Calendar, Sparkles, Layers, Grid2x2,
+  DoorOpen, Trees, Landmark, ShieldCheck, Warehouse, Package, Fence, Square,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarTask } from '@/pages/Calendar';
@@ -65,31 +46,18 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
   const getCategoryIcon = (category: string) => {
     const iconClass = 'h-3 w-3';
     const lower = category.toLowerCase();
-
-    // Keyword-based lookup first
     for (const entry of KEYWORD_ICON_MAP) {
-      if (entry.keywords.some(kw => lower.includes(kw))) {
-        return entry.icon;
-      }
+      if (entry.keywords.some(kw => lower.includes(kw))) return entry.icon;
     }
-
-    // Fallback to group-based defaults
     const group = getCategoryGroup(category);
     switch (group) {
-      case 'acquisition_admin':
-        return <FileText className={iconClass} />;
-      case 'structural_exterior':
-        return <Home className={iconClass} />;
-      case 'rough_ins':
-        return <Wrench className={iconClass} />;
-      case 'inspections':
-        return <ClipboardCheck className={iconClass} />;
-      case 'interior_finishes':
-        return <PaintBucket className={iconClass} />;
-      case 'milestones':
-        return <Calendar className={iconClass} />;
-      default:
-        return <Wrench className={iconClass} />;
+      case 'acquisition_admin': return <FileText className={iconClass} />;
+      case 'structural_exterior': return <Home className={iconClass} />;
+      case 'rough_ins': return <Wrench className={iconClass} />;
+      case 'inspections': return <ClipboardCheck className={iconClass} />;
+      case 'interior_finishes': return <PaintBucket className={iconClass} />;
+      case 'milestones': return <Calendar className={iconClass} />;
+      default: return <Wrench className={iconClass} />;
     }
   };
 
@@ -115,7 +83,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
         onClick={onClick}
         className={cn(
           'w-full text-left px-2 py-1 rounded text-xs truncate transition-all border',
-          'hover:ring-1 hover:ring-emerald-500/50 cursor-grab active:cursor-grabbing',
+          'hover:ring-1 hover:ring-primary/50 cursor-grab active:cursor-grabbing',
           task.isCriticalPath 
             ? 'bg-red-500/30 text-red-300 border-red-500/50' 
             : getCategoryColor(task.eventCategory || 'due_diligence')
@@ -136,10 +104,10 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
       onClick={onClick}
       className={cn(
         'w-full text-left p-3 rounded-lg border transition-all',
-        'hover:ring-2 hover:ring-emerald-500/50 cursor-grab active:cursor-grabbing',
+        'hover:ring-2 hover:ring-primary/50 cursor-grab active:cursor-grabbing',
         task.isCriticalPath
           ? 'bg-red-500/10 border-red-500/50'
-          : 'bg-slate-800/50 border-slate-700'
+          : 'bg-card/50 border-border'
       )}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
@@ -153,8 +121,8 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
             {task.isCriticalPath ? <AlertTriangle className="h-3 w-3" /> : getCategoryIcon(task.eventCategory || 'due_diligence')}
           </span>
           <div>
-            <h4 className="text-sm font-medium text-white truncate">{task.title}</h4>
-            <p className="text-xs text-slate-400 truncate">{task.projectName}</p>
+            <h4 className="text-sm font-medium text-foreground truncate">{task.title}</h4>
+            <p className="text-xs text-muted-foreground truncate">{task.projectName}</p>
           </div>
         </div>
         <span className={cn('w-3 h-3 rounded-full shrink-0', getBudgetIndicator(task.budgetHealth))} />
@@ -169,7 +137,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
         )}>
           {task.isCriticalPath ? 'Critical Path' : categoryLabel}
         </span>
-        <span className="text-[10px] text-slate-500">
+        <span className="text-[10px] text-muted-foreground">
           {task.checklist.filter(c => c.completed).length}/{task.checklist.length} tasks
         </span>
       </div>

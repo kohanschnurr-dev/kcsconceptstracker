@@ -51,8 +51,8 @@ function DroppableDay({ day, children }: { day: Date; children: React.ReactNode 
       ref={setNodeRef}
       className={cn(
         'min-h-[400px] p-3 rounded-lg border transition-colors',
-        'bg-slate-800/50 border-slate-700',
-        isToday(day) && 'ring-2 ring-emerald-500/50',
+        'bg-card/50 border-border',
+        isToday(day) && 'ring-2 ring-primary/50',
         isOver && 'ring-2 ring-primary/50 bg-primary/5'
       )}
     >
@@ -66,9 +66,7 @@ export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove }: Week
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 8 },
     })
   );
 
@@ -101,13 +99,10 @@ export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove }: Week
 
     const targetDate = new Date(over.id as string);
     const taskStartDay = startOfDay(task.startDate);
-    
-    // Don't update if dropped on the same day
     if (targetDate.getTime() === taskStartDay.getTime()) return;
 
     const duration = differenceInDays(task.endDate, task.startDate);
     const newEndDate = addDays(targetDate, duration);
-
     onTaskMove(task.id, targetDate, newEndDate);
   };
 
@@ -120,13 +115,13 @@ export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove }: Week
             
             return (
               <DroppableDay key={day.toISOString()} day={day}>
-                <div className="text-center mb-3 pb-2 border-b border-slate-700">
-                  <p className="text-xs text-slate-500 uppercase">
+                <div className="text-center mb-3 pb-2 border-b border-border">
+                  <p className="text-xs text-muted-foreground uppercase">
                     {format(day, 'EEE')}
                   </p>
                   <p className={cn(
                     'text-2xl font-bold',
-                    isToday(day) ? 'text-emerald-400' : 'text-white'
+                    isToday(day) ? 'text-primary' : 'text-foreground'
                   )}>
                     {format(day, 'd')}
                   </p>
@@ -141,7 +136,7 @@ export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove }: Week
                     />
                   ))}
                   {dayTasks.length === 0 && (
-                    <p className="text-xs text-slate-600 text-center py-4">
+                    <p className="text-xs text-muted-foreground/60 text-center py-4">
                       No tasks
                     </p>
                   )}
