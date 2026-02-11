@@ -239,6 +239,19 @@ export default function ManageSourcesCard() {
             </AccordionContent>
           </AccordionItem>
 
+          <AccordionItem value="business">
+            <AccordionTrigger className="text-sm">Business Expense Categories ({business.items.length})</AccordionTrigger>
+            <AccordionContent>
+              <CategorySection
+                items={business.items}
+                onAdd={business.addItem}
+                onRemove={business.removeItem}
+                onReset={business.resetToDefaults}
+                placeholder="New business category"
+              />
+            </AccordionContent>
+          </AccordionItem>
+
           <AccordionItem value="calendar">
             <AccordionTrigger className="text-sm">Calendar Categories ({calendar.items.length})</AccordionTrigger>
             <AccordionContent>
@@ -275,19 +288,6 @@ export default function ManageSourcesCard() {
                 onRemove={monthly.removeItem}
                 onReset={monthly.resetToDefaults}
                 placeholder="New monthly expense type"
-              />
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="business">
-            <AccordionTrigger className="text-sm">Business Expense Categories ({business.items.length})</AccordionTrigger>
-            <AccordionContent>
-              <CategorySection
-                items={business.items}
-                onAdd={business.addItem}
-                onRemove={business.removeItem}
-                onReset={business.resetToDefaults}
-                placeholder="New business category"
               />
             </AccordionContent>
           </AccordionItem>
