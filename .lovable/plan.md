@@ -1,18 +1,22 @@
 
 
-## Add Star Indicator to Active Color Palette
+## Distribute Calendar Header Evenly
 
-### What Changes
-A filled star icon will appear on the currently selected (active) palette card, giving a clear visual cue of which theme is the user's preset. The star disappears from the old card and appears on the new one when a different palette is selected. The selection already persists in localStorage, so no backend changes are needed.
+The calendar header currently uses `justify-between` which pushes the left group (title + nav) and right group (filters + views + button) to opposite edges, leaving a large gap in the middle.
 
-### Technical Details
+### Fix
 
-**File: `src/components/settings/ColorPaletteCard.tsx`**
+**File: `src/components/calendar/CalendarHeader.tsx`**
 
-1. Import `Star` from `lucide-react`
-2. Inside each palette button, add a small filled `Star` icon in the top-right corner, only rendered when `isActive` is true
-3. Position it with `absolute` inside the button (make button `relative`)
-4. Star styling: small (w-4 h-4), filled with primary color, subtle drop shadow
+Change the outer container from `justify-between` to `justify-evenly` (or use `w-full` with spaced-out children). Specifically:
 
-No other files need changes. The palette persistence logic already works via localStorage.
+1. **Line 72** - Change the outer `div` class from `justify-between` to `justify-between w-full` and make the inner sections use `flex-1` so they spread across the available space.
 
+   More precisely:
+   - Left section (line 74): Add `flex-1` so it takes available space
+   - Right section (line 104): Add `flex-1 justify-end` so it takes the remaining space and right-aligns its content
+
+This distributes both sections across the full width of the header bar, eliminating the large dead-space gap while keeping the left group left-aligned and the right group right-aligned.
+
+### Result
+The title/navigation will anchor to the left and the filters/views/button will anchor to the right, with both sections stretching to fill the container evenly -- no wasted space in between.
