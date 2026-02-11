@@ -11,9 +11,10 @@ interface StatCardProps {
     label: string;
   };
   variant?: 'default' | 'success' | 'warning' | 'danger';
+  onClick?: () => void;
 }
 
-export function StatCard({ title, value, subtitle, icon: Icon, trend, variant = 'default' }: StatCardProps) {
+export function StatCard({ title, value, subtitle, icon: Icon, trend, variant = 'default', onClick }: StatCardProps) {
   const iconVariants = {
     default: 'bg-primary/10 text-primary',
     success: 'bg-success/10 text-success',
@@ -22,7 +23,7 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, variant = 
   };
 
   return (
-    <div className="glass-card p-5 animate-slide-up">
+    <div className={cn("glass-card p-5 animate-slide-up", onClick && "cursor-pointer hover:border-primary/30 transition-colors")} onClick={onClick}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-muted-foreground">{title}</p>
