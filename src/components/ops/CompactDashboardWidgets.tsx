@@ -67,11 +67,16 @@
  
    const last30DaysTotal = sparklineData.reduce((sum, day) => sum + day.amount, 0);
  
-   // Category count
-   const categoryCount = useMemo(() => {
-     const categories = new Set(expenses.map(e => e.category));
-     return categories.size;
-   }, [expenses]);
+  // Category breakdown data
+  const categoryBreakdown = useMemo(() => {
+    const totals: Record<string, number> = {};
+    expenses.forEach(e => {
+      totals[e.category] = (totals[e.category] || 0) + e.amount;
+    });
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    const totalSpend = sorted.reduce((sum, [, amt]) => sum + amt, 0);
+    return { sorted, totalSpend, count: sorted.length };
+  }, [expenses]);
  
    // Goals summary
    const goalsSummary = useMemo(() => {
@@ -129,27 +134,32 @@
            </div>
          </button>
  
-         {/* Categories Widget */}
-         <button
-           onClick={() => setCategoriesOpen(true)}
-           className={cn(
-             "h-[100px] p-3 rounded-lg border border-border/30 bg-muted/20",
-             "flex flex-col justify-between text-left",
-             "transition-all hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
-           )}
-         >
-           <div className="flex items-center gap-2">
-             <Grid3X3 className="h-4 w-4 text-primary" />
-             <span className="text-xs text-muted-foreground uppercase tracking-wide">Categories</span>
-           </div>
-           <p className="text-xl font-semibold">{categoryCount} categories</p>
-           <div className="flex gap-1">
-             {[...Array(Math.min(categoryCount, 6))].map((_, i) => (
-               <div key={i} className="h-2 w-2 rounded-full bg-primary/60" />
-             ))}
-             {categoryCount > 6 && <span className="text-xs text-muted-foreground">+{categoryCount - 6}</span>}
-           </div>
-         </button>
+        {/* Category Breakdown Widget */}
+        <button
+          onClick={() => setCategoriesOpen(true)}
+          className={cn(
+            "h-[100px] p-3 rounded-lg border border-border/30 bg-muted/20",
+            "flex flex-col justify-between text-left",
+            "transition-all hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <Grid3X3 className="h-4 w-4 text-primary" />
+            <span className="text-xs text-muted-foreground uppercase tracking-wide">Category Breakdown</span>
+          </div>
+          <p className="text-sm font-semibold">
+            {formatCurrency(categoryBreakdown.totalSpend)} across {categoryBreakdown.count} categories
+          </p>
+          <div className="flex gap-1 h-2">
+            {categoryBreakdown.sorted.slice(0, 4).map(([cat, amt]) => (
+              <div
+                key={cat}
+                className="h-full rounded-sm bg-primary/70"
+                style={{ flexGrow: amt / (categoryBreakdown.totalSpend || 1) }}
+              />
+            ))}
+          </div>
+        </button>
  
          {/* Goals Widget */}
          <button
