@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { BudgetCategoryCard } from './BudgetCategoryCard';
-import { getBudgetCategories } from '@/types';
 import { 
   ChevronRight, ChevronsUpDown, ChevronsDownUp,
   Settings, X, Plus
@@ -181,7 +180,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
       return;
     }
     
-    const catInfo = getBudgetCategories().find(c => c.value === newCategoryValue);
+    const catInfo = getBudgetCalcCategories().find(c => c.value === newCategoryValue);
     if (!catInfo) return;
     
     setEditingPresets(prev => [...prev, {
@@ -194,7 +193,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   };
 
   const getCategoryLabel = (categoryValue: string) => {
-    const cat = getBudgetCategories().find(c => c.value === categoryValue);
+    const cat = getBudgetCalcCategories().find(c => c.value === categoryValue);
     return cat?.label || categoryValue.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
@@ -224,7 +223,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   const sqftNum = parseFloat(sqft) || 0;
 
   // Categories available to add (not already in presets)
-  const availableCategories = getBudgetCategories().filter(
+  const availableCategories = getBudgetCalcCategories().filter(
     cat => !editingPresets.some(p => p.category === cat.value)
   ).sort((a, b) => a.label.localeCompare(b.label));
 
@@ -360,9 +359,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {dynamicGroups.map((group) => {
           const GroupIcon = group.icon;
-          const groupCategories = group.categories.filter(cat => 
-            getBudgetCategories().some(bc => bc.value === cat)
-          );
+          const groupCategories = group.categories;
           const groupTotal = getGroupTotal(groupCategories);
           const isOpen = openGroups.includes(group.name);
           const hasValue = groupTotal > 0;
