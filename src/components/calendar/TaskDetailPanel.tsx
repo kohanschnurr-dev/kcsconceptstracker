@@ -8,7 +8,7 @@ import {
   FileText,
   Trash2,
   AlertTriangle,
-  DollarSign,
+  
   Calendar as CalendarIcon,
   Link2,
   Plus,
@@ -420,20 +420,6 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                 </PopoverContent>
               </Popover>
             </div>
-          </div>
-
-          {/* Budget Health Display */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card/50">
-            <DollarSign className={cn('h-4 w-4', 
-              task.budgetHealth === 'green' ? 'text-emerald-400' :
-              task.budgetHealth === 'yellow' ? 'text-amber-400' : 'text-red-400'
-            )} />
-            <span className={cn('text-sm font-medium capitalize',
-              task.budgetHealth === 'green' ? 'text-emerald-400' :
-              task.budgetHealth === 'yellow' ? 'text-amber-400' : 'text-red-400'
-            )}>
-              {task.budgetHealth} Budget
-            </span>
           </div>
 
           {/* Order of Operations Warning */}
