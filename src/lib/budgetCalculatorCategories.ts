@@ -93,10 +93,10 @@ export const CATEGORY_GROUP_MAP: Record<string, string> = {
 
 /** Get budget calculator categories by enriching expense categories with group info */
 export function getBudgetCalcCategories(): CategoryItem[] {
-  return getBudgetCategories().map(cat => ({
+  return getBudgetCategories().map((cat: any) => ({
     value: cat.value,
     label: cat.label,
-    group: CATEGORY_GROUP_MAP[cat.value] || 'other',
+    group: cat.group || CATEGORY_GROUP_MAP[cat.value] || 'other',
   }));
 }
 
