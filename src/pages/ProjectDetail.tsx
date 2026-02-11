@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { format } from 'date-fns';
 import { parseDateString, formatDisplayDate } from '@/lib/dateUtils';
 import { arrayMove, useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -72,6 +72,7 @@ import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
+import { Input } from '@/components/ui/input';
 interface DBProject {
   id: string;
   name: string;
@@ -156,7 +157,41 @@ export default function ProjectDetail() {
   const [reorderOpen, setReorderOpen] = useState(false);
   const [procurementCount, setProcurementCount] = useState(0);
   const [activeTab, setActiveTab] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  const [editingAddress, setEditingAddress] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const addressInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (editingName && nameInputRef.current) nameInputRef.current.focus();
+  }, [editingName]);
+  useEffect(() => {
+    if (editingAddress && addressInputRef.current) addressInputRef.current.focus();
+  }, [editingAddress]);
+
+  const saveField = async (field: 'name' | 'address', value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      toast({ title: `${field === 'name' ? 'Name' : 'Address'} cannot be empty`, variant: 'destructive' });
+      if (field === 'name') setEditingName(false);
+      else setEditingAddress(false);
+      return;
+    }
+    if (project && trimmed === project[field]) {
+      if (field === 'name') setEditingName(false);
+      else setEditingAddress(false);
+      return;
+    }
+    const { error } = await supabase.from('projects').update({ [field]: trimmed }).eq('id', id!);
+    if (error) {
+      toast({ title: 'Failed to update', description: error.message, variant: 'destructive' });
+    } else {
+      setProject(prev => prev ? { ...prev, [field]: trimmed } : prev);
+    }
+    if (field === 'name') setEditingName(false);
+    else setEditingAddress(false);
+  };
 
   const fetchProjectData = async (showLoading = true) => {
     if (!id) return;
@@ -411,7 +446,25 @@ export default function ProjectDetail() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-semibold">{project.name}</h1>
+                {editingName ? (
+                  <Input
+                    ref={nameInputRef}
+                    defaultValue={project.name}
+                    className="text-2xl font-semibold h-auto py-0 px-1 w-64"
+                    onBlur={(e) => saveField('name', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveField('name', (e.target as HTMLInputElement).value);
+                      if (e.key === 'Escape') setEditingName(false);
+                    }}
+                  />
+                ) : (
+                  <h1
+                    className="text-2xl font-semibold cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => setEditingName(true)}
+                  >
+                    {project.name}
+                  </h1>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild disabled={updatingStatus}>
                     <button className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-full">
@@ -468,10 +521,26 @@ export default function ProjectDetail() {
                 </DropdownMenu>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4" />
-                  {project.address}
-                </span>
+                {editingAddress ? (
+                  <Input
+                    ref={addressInputRef}
+                    defaultValue={project.address}
+                    className="text-sm h-auto py-0 px-1 w-64"
+                    onBlur={(e) => saveField('address', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveField('address', (e.target as HTMLInputElement).value);
+                      if (e.key === 'Escape') setEditingAddress(false);
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors"
+                    onClick={() => setEditingAddress(true)}
+                  >
+                    <MapPin className="h-4 w-4" />
+                    {project.address}
+                  </span>
+                )}
                 <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <button className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer">
