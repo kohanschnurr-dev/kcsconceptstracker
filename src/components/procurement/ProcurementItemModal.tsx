@@ -1278,12 +1278,9 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         {/* Product Image Section */}
         <div className="col-span-2">
           <Label className="mb-2 block">Product Image</Label>
-          <div className="flex gap-4 items-start">
-            {/* Image Preview */}
-            <div className="w-24 h-24 rounded-lg border bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-              {imageUploading ? (
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              ) : formData.image_url ? (
+          {formData.image_url ? (
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 rounded-lg border bg-muted overflow-hidden flex-shrink-0">
                 <img 
                   src={formData.image_url} 
                   alt="Product" 
@@ -1292,15 +1289,22 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
-              ) : (
-                <Package className="h-8 w-8 text-muted-foreground" />
-              )}
+              </div>
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="sm" 
+                className="text-muted-foreground hover:text-destructive"
+                onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}
+              >
+                <X className="h-3 w-3 mr-1" />
+                Remove image
+              </Button>
             </div>
-            
-            {/* Upload Drop Zone */}
+          ) : (
             <div 
               className={cn(
-                "flex-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors",
+                "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors",
                 isDraggingImage ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/50",
                 imageUploading && "pointer-events-none opacity-50"
               )}
@@ -1309,23 +1313,16 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
-              <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Drop image or click to browse</p>
-              <p className="text-xs text-muted-foreground mt-1">Ctrl+V to paste</p>
+              {imageUploading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
+              ) : (
+                <>
+                  <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Drop image or click to browse</p>
+                  <p className="text-xs text-muted-foreground mt-1">Ctrl+V to paste</p>
+                </>
+              )}
             </div>
-          </div>
-          
-          {formData.image_url && (
-            <Button 
-              type="button"
-              variant="ghost" 
-              size="sm" 
-              className="mt-2 text-muted-foreground hover:text-destructive"
-              onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}
-            >
-              <X className="h-3 w-3 mr-1" />
-              Remove image
-            </Button>
           )}
         </div>
 
