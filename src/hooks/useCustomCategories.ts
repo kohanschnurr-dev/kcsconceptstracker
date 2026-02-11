@@ -39,7 +39,7 @@ export function useCustomCategories(type: CategoryType, defaults: CategoryItem[]
   const storageKey = STORAGE_KEYS[type];
 
   const [items, setItems] = useState<CategoryItem[]>(() =>
-    loadFromStorage(storageKey, defaults)
+    loadFromStorage(storageKey, defaults).sort((a, b) => a.label.localeCompare(b.label))
   );
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export function useCustomCategories(type: CategoryType, defaults: CategoryItem[]
   const addItem = useCallback((label: string, group?: string) => {
     const value = label.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
     if (items.some(i => i.value === value)) return false;
-    setItems(prev => [...prev, { value, label, group, isCustom: true }]);
+    setItems(prev => [...prev, { value, label, group, isCustom: true }].sort((a, b) => a.label.localeCompare(b.label)));
     return true;
   }, [items]);
 

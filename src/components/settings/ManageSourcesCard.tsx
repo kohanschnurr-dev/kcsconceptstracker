@@ -53,7 +53,7 @@ function CategorySection({
     if (grouped) {
       const groups = Object.entries(CATEGORY_GROUPS) as [CategoryGroup, typeof CATEGORY_GROUPS[CategoryGroup]][];
       return groups.map(([groupKey, groupInfo]) => {
-        const groupItems = items.filter(i => i.group === groupKey);
+        const groupItems = items.filter(i => i.group === groupKey).sort((a, b) => a.label.localeCompare(b.label));
         if (groupItems.length === 0) return null;
         return (
           <div key={groupKey} className="space-y-1.5">
@@ -75,7 +75,7 @@ function CategorySection({
 
     return (
       <div className="flex flex-wrap gap-1.5">
-        {items.map(item => (
+        {[...items].sort((a, b) => a.label.localeCompare(b.label)).map(item => (
           <Badge key={item.value} variant="outline" className="text-xs">
             {item.label}
             <button onClick={() => onRemove(item.value)} className="ml-1.5 hover:text-destructive">
