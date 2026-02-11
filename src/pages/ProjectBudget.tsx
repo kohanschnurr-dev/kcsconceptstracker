@@ -1,4 +1,4 @@
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowLeft, 
@@ -103,6 +103,7 @@ type SortOrder = 'asc' | 'desc';
 export default function ProjectBudget() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Read tab from URL, default to 'budget'
@@ -236,6 +237,18 @@ export default function ProjectBudget() {
 
   useEffect(() => {
     fetchData();
+  }, [id, location.key]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchData();
+    };
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
+    };
   }, [id]);
 
   const refreshData = () => {
