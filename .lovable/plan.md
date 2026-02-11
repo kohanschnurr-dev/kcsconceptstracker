@@ -1,21 +1,18 @@
 
 
-## Fix Weather Widget Location Label
-
-### Problem
-The weather widget shows "DFW" instead of the user's saved city and state ("Scottsdale, AZ"). Two issues:
-1. The location label is pulled from the geocoding API response instead of the user's profile values
-2. The label format should be "City, ST" (e.g., "Scottsdale, AZ")
+## Make "This Month" Stat Card Clickable to Navigate to Expenses
 
 ### Change
 
-**File: `src/components/calendar/WeatherWidget.tsx`**
+**File: `src/pages/Index.tsx`**
 
-Update the label logic (around lines 34-47) so that when the user has a city saved, the label is constructed directly from the `city` and `state` props in "City, ST" format -- not from the geocoding API response. The geocoding API is only used to resolve coordinates for the weather fetch.
+Wrap the "This Month" `StatCard` in an `onClick` handler that calls `navigate('/expenses')`. Add a `cursor-pointer` wrapper `div` so it feels interactive.
 
-- If both `city` and `state` are provided: label = `"City, ST"` (e.g., "Scottsdale, AZ")
-- If only `city` is provided: label = the city name
-- If neither is set: label = `"DFW"` (default fallback)
+Alternatively, add an `onClick` prop to the `StatCard` component itself for cleaner reuse:
 
-This is a single-line change: replace `label = geoData.results[0].name` with `label = state ? \`\${city}, \${state}\` : city` (and set it before the geocoding call rather than inside the response handler).
+1. **`src/components/dashboard/StatCard.tsx`** -- Add an optional `onClick` prop. When provided, apply `cursor-pointer` and `hover:border-primary/30` styles to the card wrapper, and attach the click handler.
+
+2. **`src/pages/Index.tsx`** -- Pass `onClick={() => navigate('/expenses')}` to the "This Month" `StatCard`.
+
+This keeps the other stat cards unchanged and makes the pattern reusable if other cards need click actions later.
 
