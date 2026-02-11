@@ -641,6 +641,18 @@ export default function BusinessExpenses() {
              }).select().single();
              if (data) setRules(prev => [...prev, data]);
            }}
+            onToggleRule={async (ruleId, completed) => {
+              const { error } = await supabase.from('operation_codes').update({ is_completed: completed }).eq('id', ruleId);
+              if (!error) {
+                setRules(prev => prev.map(r => r.id === ruleId ? { ...r, is_completed: completed } : r));
+              }
+            }}
+            onDeleteRule={async (ruleId) => {
+              const { error } = await supabase.from('operation_codes').delete().eq('id', ruleId);
+              if (!error) {
+                setRules(prev => prev.filter(r => r.id !== ruleId));
+              }
+            }}
          />
 
         {/* Expenses Table */}
