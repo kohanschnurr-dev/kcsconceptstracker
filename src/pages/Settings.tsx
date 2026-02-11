@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import { User, Key, FileText, Shield, Loader2, Building2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import kcsLogo from '@/assets/kcs-logo.png';
+import ManageSourcesCard from '@/components/settings/ManageSourcesCard';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -222,6 +223,9 @@ export default function Settings() {
               )}
             </CardContent>
           </Card>
+
+          {/* Manage Sources Section */}
+          <ManageSourcesCard />
 
           {/* Account Section */}
           <Card>
