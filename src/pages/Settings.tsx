@@ -282,11 +282,11 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Color Palette Section */}
-          <ColorPaletteCard />
-
           {/* Manage Sources Section */}
           <ManageSourcesCard />
+
+          {/* Color Palette Section */}
+          <ColorPaletteCard />
 
 
           {/* Legal Section */}
