@@ -1,35 +1,28 @@
 
 
-## Add Business City to Account Settings for Weather
+## Fix Vacancy/Maintenance/Management Save + Swap Positions + Add Preset Gear
 
-### What Changes
-A new "City" field will be added to the Account section on the Settings page. The weather widget on the Calendar page currently hardcodes "DFW" coordinates. After this change, it will pull the user's saved city and geocode it to show weather for their actual location.
+### Problem
+When you set Management to 0 and save, it reloads as 10. This is because `project.management_rate || 10` treats `0` as falsy and falls back to `10`. Same issue exists for Vacancy (falls back to 8). The `value={managementRate || ''}` pattern also hides `0` in the input, making it look empty.
 
-### Steps
+### Changes
 
-**1. Add `city` column to profiles table**
-- Add a nullable `text` column called `city` to the `profiles` table via migration
-- Default: `null` (falls back to DFW behavior)
+**1. Fix the fallback bug (`src/pages/ProjectDetail.tsx`, lines 681-683)**
+- Change `project.vacancy_rate || 8` to `project.vacancy_rate ?? 8`
+- Change `project.monthly_maintenance || 0` to `project.monthly_maintenance ?? 0`
+- Change `project.management_rate || 10` to `project.management_rate ?? 10`
+- This preserves `0` as a valid saved value
 
-**2. Update profile hook and Settings page**
+**2. Fix input value display (`src/components/project/CashFlowCalculator.tsx`)**
+- For Vacancy, Maintenance, and Management inputs: change `value={x || ''}` to properly show `0` when the value is `0` (use a helper like `value={x !== null && x !== undefined ? x : ''}` or simply allow 0 to display)
 
-**File: `src/hooks/useProfile.ts`**
-- Add `city: string | null` to the `Profile` interface
-- Include `city` in the `updateProfile` mutation payload
+**3. Swap Maintenance and Vacancy positions (same file, lines 363-412)**
+- Current order: Taxes, Insurance, HOA, **Vacancy**, **Maintenance**, Management
+- New order: Taxes, Insurance, HOA, **Maintenance**, **Vacancy**, Management
 
-**File: `src/pages/Settings.tsx`**
-- Add a `city` state variable initialized from `profile.city`
-- Add a "City" input field in the Account card below the name fields (e.g., "Dallas, TX")
-- Include `city` in the save logic and dirty-check
-
-**3. Update Weather Widget to use saved city**
-
-**File: `src/components/calendar/WeatherWidget.tsx`**
-- Accept an optional `city` prop (string)
-- When a city is provided, use the Open-Meteo geocoding API (`https://geocoding-api.open-meteo.com/v1/search?name=...`) to resolve lat/lon before fetching weather
-- Fall back to hardcoded DFW coordinates if no city is set or geocoding fails
-- Display the city name (or "DFW") as the label in the widget
-
-**File: `src/pages/Calendar.tsx`** (or wherever WeatherWidget is rendered)
-- Read the user's profile and pass `profile.city` to `<WeatherWidget city={profile?.city} />`
-
+**4. Add a gear icon for preset Vacancy % and Management % (same file)**
+- Add a small gear icon next to the EXPENSES section header
+- Clicking it opens a popover with two inputs: default Vacancy % and default Management %
+- Presets are stored in localStorage (e.g., `cashflow-presets`)
+- When creating/opening a new project with no saved values, these presets auto-fill the fields
+- The gear provides a quick way to set your standard rates across projects
