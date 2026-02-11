@@ -1367,6 +1367,23 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         </div>
 
         <div>
+          <Label>Stage</Label>
+          <Select
+            value={formData.phase}
+            onValueChange={(val) => setFormData(prev => ({ ...prev, phase: val as Phase }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select stage..." />
+            </SelectTrigger>
+            <SelectContent>
+              {PHASES.map(p => (
+                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
           <Label>Finish / Color</Label>
           <Input
             value={formData.finish}
