@@ -22,7 +22,7 @@ export default function ColorPaletteCard() {
         <CardDescription>Choose a theme for the entire app</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
           {palettes.map((p) => {
             const bg = `hsl(${p.variables['--background']})`;
             const primary = `hsl(${p.variables['--primary']})`;
@@ -34,7 +34,7 @@ export default function ColorPaletteCard() {
                 key={p.key}
                 onClick={() => handleSelect(p.key)}
                 className={cn(
-                  'flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all hover:scale-105',
+                  'flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all hover:scale-105 min-w-[140px] snap-center flex-shrink-0',
                   isActive
                     ? 'border-primary ring-2 ring-primary/30'
                     : 'border-border hover:border-muted-foreground/40'
