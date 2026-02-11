@@ -1,54 +1,31 @@
 
+## Fix Calendar Header Wrapping on Standard Laptop Screens
 
-## Switch Weather Widget to National Weather Service (NWS) API
+### Problem
+The calendar header has all its controls (title, date nav, project filter, weather widget, view toggles) in a single `flex-wrap` container. On a standard laptop (~1366-1536px), this overflows and wraps to a second row, creating a "double header" look.
 
-### Why
+### Solution
+Move the view toggle buttons (Month/Week/Gantt) to the right side, next to the "Add Project Event" button, and prevent the left section from wrapping by using `overflow-hidden` with compact sizing. This distributes the content more evenly across the available width.
 
-The NWS API provides official US government forecasts -- the same data local TV meteorologists use. No API key required, no rate limits, and temperatures will closely match what you see on Weather.com and your phone.
+Specifically:
 
-### How It Works
+**File: `src/components/calendar/CalendarHeader.tsx`**
 
-The NWS API requires a two-step lookup:
+1. Change the left section from `flex-wrap` to `flex-nowrap overflow-x-auto` so items stay on one line and scroll if absolutely necessary on very small screens.
+2. Reduce the project filter width from `w-[180px]` to `w-[160px]`.
+3. Move the view toggle group out of the left section and into the right section, alongside the "Add Project Event" button.
+4. The right section becomes a flex container with the view toggles and the add button grouped together with a small gap.
 
-1. **Points endpoint**: `https://api.weather.gov/points/{lat},{lon}` -- returns a forecast URL specific to that grid location
-2. **Forecast endpoint**: The URL from step 1 returns a 7-day forecast with highs, lows, conditions, and precipitation chance
+This keeps the left side focused on: Title + Date Nav + Project Filter + Weather, and the right side on: View Toggles + Add Button -- splitting the content roughly 60/40 so it fits comfortably on a 1366px+ screen.
 
-### Changes
+### Technical Detail
 
-**File: `src/components/calendar/WeatherWidget.tsx`**
-
-- Keep the existing geocoding step (Open-Meteo geocoding) to resolve city/state to lat/lon coordinates
-- Replace the Open-Meteo forecast call with two NWS API calls:
-  1. Fetch the grid point from `api.weather.gov/points/{lat},{lon}`
-  2. Fetch the forecast from the returned `forecast` URL
-- Parse the NWS response format (periods with `temperature`, `shortForecast`, `probabilityOfPrecipitation`) into the existing `WeatherDay` structure
-- NWS returns day/night periods, so pair them to extract high and low temps
-- Map NWS `shortForecast` text (e.g., "Partly Cloudy", "Rain Showers") to weather icons using keyword matching instead of numeric codes
-- Add a `User-Agent` header (required by NWS API): `"(KCSTracker, contact@example.com)"`
-- Keep Open-Meteo as a fallback if NWS fails (e.g., for non-US locations)
-- Limit to 5 days to match current display
-
-### Technical Details
-
-NWS forecast response structure:
 ```text
-properties.periods[] = {
-  name: "Tuesday",
-  temperature: 85,
-  temperatureUnit: "F",
-  shortForecast: "Partly Cloudy",
-  detailedForecast: "...",
-  isDaytime: true,
-  probabilityOfPrecipitation: { value: 30 }
-}
+Left group (flex-nowrap):
+  [Calendar Icon] Project Calendar  [< February 2026 >]  [All Projects v]  [Weather]
+
+Right group (flex items-center gap-2):
+  [Month | Week | Gantt]  [+ Add Project Event]
 ```
 
-Icon mapping will use keyword matching on `shortForecast`:
-- Contains "Sun" or "Clear" -> Sun icon
-- Contains "Cloud" -> Cloud icon
-- Contains "Rain" or "Shower" -> CloudRain icon
-- Contains "Snow" -> CloudSnow icon
-- Contains "Thunder" -> CloudLightning icon
-- Fallback -> Wind icon
-
-No new files or dependencies needed. The UI and tooltip behavior remain identical.
+The outer container remains `flex justify-between` with `items-center`. On mobile (`lg:` breakpoint), the layout already stacks vertically via `flex-col`, which stays unchanged.
