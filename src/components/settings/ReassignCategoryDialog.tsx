@@ -8,10 +8,11 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import type { CategoryItem } from '@/hooks/useCustomCategories';
 
 interface ReassignCategoryDialogProps {
@@ -19,7 +20,7 @@ interface ReassignCategoryDialogProps {
   onOpenChange: (open: boolean) => void;
   category: { value: string; label: string } | null;
   remainingCategories: CategoryItem[];
-  onComplete: (value: string) => void; // called after reassignment to remove from master list
+  onComplete: (value: string, newCategory?: { value: string; label: string }) => void;
 }
 
 export default function ReassignCategoryDialog({
@@ -34,13 +35,16 @@ export default function ReassignCategoryDialog({
   const [expenseCount, setExpenseCount] = useState(0);
   const [categoryRows, setCategoryRows] = useState<{ id: string; project_id: string }[]>([]);
   const [targetCategory, setTargetCategory] = useState('');
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newCategoryLabel, setNewCategoryLabel] = useState('');
 
   // On open, query DB for usage
   useEffect(() => {
     if (!open || !category) return;
     setLoading(true);
     setTargetCategory('');
-
+    setIsCreatingNew(false);
+    setNewCategoryLabel('');
     (async () => {
       // Find all project_categories rows with this category value
       const { data: pcRows } = await supabase
@@ -91,9 +95,20 @@ export default function ReassignCategoryDialog({
       return;
     }
 
-    // Need a target to reassign to
-    if (!targetCategory) {
-      toast.error('Please select a category to reassign expenses to');
+    // Determine the target category value
+    const resolvedTarget = isCreatingNew
+      ? newCategoryLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+      : targetCategory;
+    const resolvedLabel = isCreatingNew ? newCategoryLabel.trim() : null;
+
+    if (!resolvedTarget || (isCreatingNew && !newCategoryLabel.trim())) {
+      toast.error('Please select or create a category to reassign expenses to');
+      return;
+    }
+
+    // Check for duplicate when creating new
+    if (isCreatingNew && remainingCategories.some(c => c.value === resolvedTarget)) {
+      toast.error('A category with that name already exists');
       return;
     }
 
@@ -108,7 +123,7 @@ export default function ReassignCategoryDialog({
           .from('project_categories')
           .select('id')
           .eq('project_id', projectId)
-          .eq('category', targetCategory as any)
+          .eq('category', resolvedTarget as any)
           .maybeSingle();
 
         let newCategoryId: string;
@@ -119,7 +134,7 @@ export default function ReassignCategoryDialog({
           // Create the new category row with 0 budget
           const { data: inserted, error } = await supabase
             .from('project_categories')
-            .insert({ project_id: projectId, category: targetCategory as any, estimated_budget: 0 })
+            .insert({ project_id: projectId, category: resolvedTarget as any, estimated_budget: 0 })
             .select('id')
             .single();
 
@@ -148,7 +163,10 @@ export default function ReassignCategoryDialog({
       const oldIds = categoryRows.map(r => r.id);
       await supabase.from('project_categories').delete().in('id', oldIds);
 
-      onComplete(category.value);
+      const newCatInfo = isCreatingNew && resolvedLabel
+        ? { value: resolvedTarget, label: resolvedLabel }
+        : undefined;
+      onComplete(category.value, newCatInfo);
       onOpenChange(false);
       toast.success(`Reassigned ${expenseCount} expense(s) and removed "${category.label}"`);
     } catch (err) {
@@ -182,18 +200,44 @@ export default function ReassignCategoryDialog({
         ) : (
           <>
             {expenseCount > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <label className="text-sm font-medium">Reassign expenses to:</label>
-                <Select value={targetCategory} onValueChange={setTargetCategory}>
+                <Select
+                  value={isCreatingNew ? '__create_new__' : targetCategory}
+                  onValueChange={(v) => {
+                    if (v === '__create_new__') {
+                      setIsCreatingNew(true);
+                      setTargetCategory('');
+                    } else {
+                      setIsCreatingNew(false);
+                      setNewCategoryLabel('');
+                      setTargetCategory(v);
+                    }
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__create_new__">
+                      <span className="flex items-center gap-1.5">
+                        <Plus className="h-3.5 w-3.5" />
+                        Create new category
+                      </span>
+                    </SelectItem>
                     {selectableCategories.map(c => (
                       <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {isCreatingNew && (
+                  <Input
+                    value={newCategoryLabel}
+                    onChange={e => setNewCategoryLabel(e.target.value)}
+                    placeholder="New category name (e.g. Foundation Repair)"
+                    autoFocus
+                  />
+                )}
               </div>
             )}
 
@@ -204,7 +248,7 @@ export default function ReassignCategoryDialog({
               <Button
                 variant="destructive"
                 onClick={handleConfirm}
-                disabled={saving || (expenseCount > 0 && !targetCategory)}
+                disabled={saving || (expenseCount > 0 && !targetCategory && !(isCreatingNew && newCategoryLabel.trim()))}
               >
                 {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
                 {expenseCount > 0 ? 'Reassign & Remove' : 'Remove'}
