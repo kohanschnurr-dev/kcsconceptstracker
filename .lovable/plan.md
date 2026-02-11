@@ -1,34 +1,25 @@
 
 
-## Fix: Don't Reset Category When Switching Product/Labor
+## Fix: Mouse Scroll Not Working in Category Dropdown
 
 ### Problem
-In `src/components/quickbooks/GroupedPendingExpenseCard.tsx`, line 329, the `onValueChange` handler for the Product/Labor toggle group explicitly calls `setSelectedCategory('')` every time the toggle changes. This clears the user's already-chosen category, which is frustrating since the category is typically selected first.
+The `cmdk` library (v1.x) applies `overflow: hidden` as an inline style on its `CommandList` element, which overrides the Tailwind `overflow-y-auto` class. This prevents mouse wheel scrolling in the category dropdown inside the "New Project Event" modal.
 
 ### Solution
-Remove `setSelectedCategory('')` from the toggle handler (line 329). The category list is the same regardless of product vs labor type, so there is no reason to reset it.
+Override the inline style on the `CommandList` in `NewEventModal.tsx` by adding an explicit `style` prop with `overflowY: 'auto'`. Inline styles take equal specificity, but our explicit `style` prop applied via React will take precedence over cmdk's internal styling.
 
 ### Technical Change
 
-**File: `src/components/quickbooks/GroupedPendingExpenseCard.tsx` (line 326-331)**
+**File: `src/components/calendar/NewEventModal.tsx` (line 241)**
 
-Before:
-```typescript
-onValueChange={(value) => {
-  if (value) {
-    setSelectedExpenseType(value as 'product' | 'labor');
-    setSelectedCategory('');
-  }
-}}
+Add a `style` override to the `CommandList`:
+
+```tsx
+// Before
+<CommandList className="max-h-[300px]">
+
+// After
+<CommandList className="max-h-[300px]" style={{ overflowY: 'auto' }}>
 ```
 
-After:
-```typescript
-onValueChange={(value) => {
-  if (value) {
-    setSelectedExpenseType(value as 'product' | 'labor');
-  }
-}}
-```
-
-One line removed. Category selection persists across Product/Labor switches.
+One prop added. Mouse wheel scroll will work in the category list.
