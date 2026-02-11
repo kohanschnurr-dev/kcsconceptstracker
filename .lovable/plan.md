@@ -1,25 +1,15 @@
 
 
-## Add Due Date Option to Quick Task Input
+## Remove Quick Log Expense FAB from Dashboard
 
-Add a date picker button next to the text input in the `QuickTaskInput` component so users can optionally set a due date when quick-adding tasks.
+Remove the floating "+" button (QuickActionButton) from the bottom-right corner of the dashboard page.
 
-### UI Design
-The current layout is: `[+ input field] [Add button]`
-The new layout will be: `[+ input field] [calendar icon button] [Add button]`
+### Changes
 
-- A small calendar icon button sits between the input and the Add button
-- Clicking it opens a popover with a date picker
-- When a date is selected, the button shows the short date (e.g., "Feb 12") instead of just the icon
-- Clicking the date text clears it back to no date
+**File: `src/pages/Index.tsx`**
+- Remove the `<QuickActionButton>` component and its `onClick` handler
+- Remove the `QuickExpenseModal` component and related state (`expenseModalOpen`, `setExpenseModalOpen`)
+- Remove unused imports: `QuickActionButton`, `QuickExpenseModal`
 
-### Technical Changes
+No other files are affected. The `QuickActionButton` component file itself can stay in the codebase in case it's used elsewhere.
 
-**File: `src/components/dashboard/QuickTaskInput.tsx`**
-- Add `dueDate` state (`Date | undefined`)
-- Add a `Popover` with a `Calendar` component (using existing shadcn components with `pointer-events-auto`)
-- Pass `due_date` to the Supabase insert (formatted as `yyyy-MM-dd` using `format` from `date-fns`)
-- Reset `dueDate` on successful submit
-- Style: small outline button with `CalendarIcon`, showing selected date text when set
-
-No other files need changes.
