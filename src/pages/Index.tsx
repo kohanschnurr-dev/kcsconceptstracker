@@ -292,7 +292,6 @@ export default function Index() {
                     key={project.id}
                     project={project}
                     onClick={() => navigate(`/projects/${project.id}`)}
-                    onProjectUpdated={fetchData}
                   />
                 ))}
               </div>

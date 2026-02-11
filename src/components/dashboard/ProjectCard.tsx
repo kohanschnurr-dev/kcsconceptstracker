@@ -1,28 +1,16 @@
-import { useState, useRef, useEffect } from 'react';
-import { MapPin, Calendar, Home, Hammer, Building2, Handshake, Pencil } from 'lucide-react';
+import { MapPin, Calendar, Home, Hammer, Building2, Handshake } from 'lucide-react';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 
 interface ProjectCardProps {
   project: Project;
   onClick?: () => void;
-  onProjectUpdated?: () => void;
 }
 
-export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [nameValue, setNameValue] = useState(project.name);
-  const [addressValue, setAddressValue] = useState(project.address);
-  const nameInputRef = useRef<HTMLInputElement>(null);
-  const addressInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { if (isEditing) nameInputRef.current?.focus(); }, [isEditing]);
-
+export function ProjectCard({ project, onClick }: ProjectCardProps) {
   const totalSpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
   const isRental = project.projectType === 'rental';
   const isNewConstruction = project.projectType === 'new_construction';
@@ -50,39 +38,11 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
 
   const formatDate = (date: string) => formatDisplayDate(date);
 
-  const saveField = async (field: 'name' | 'address', value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      toast({ title: `${field === 'name' ? 'Name' : 'Address'} cannot be empty`, variant: 'destructive' });
-      if (field === 'name') setNameValue(project.name);
-      else setAddressValue(project.address);
-      return;
-    }
-    if ((field === 'name' && trimmed === project.name) || (field === 'address' && trimmed === project.address)) return;
-    const { error } = await supabase.from('projects').update({ [field]: trimmed }).eq('id', project.id);
-    if (error) {
-      toast({ title: 'Failed to update', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: `${field === 'name' ? 'Name' : 'Address'} updated` });
-      onProjectUpdated?.();
-    }
-  };
-
-  const handleBlur = (field: 'name' | 'address') => {
-    saveField(field, field === 'name' ? nameValue : addressValue);
-    // Check if both fields have blurred
-    setTimeout(() => {
-      if (!nameInputRef.current?.matches(':focus') && !addressInputRef.current?.matches(':focus')) {
-        setIsEditing(false);
-      }
-    }, 0);
-  };
-
   return (
     <div
       onClick={onClick}
       className={cn(
-        "glass-card cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 animate-slide-up overflow-hidden relative",
+        "glass-card cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 animate-slide-up overflow-hidden",
         !coverPhotoUrl && "p-5"
       )}
     >
@@ -110,46 +70,12 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
               ) : (
                 <Hammer className="h-4 w-4 text-muted-foreground shrink-0" />
               )}
-              {isEditing ? (
-                <Input
-                  ref={nameInputRef}
-                  value={nameValue}
-                  onChange={(e) => setNameValue(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  onBlur={() => handleBlur('name')}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === 'Enter') { saveField('name', nameValue); addressInputRef.current?.focus(); }
-                    if (e.key === 'Escape') { setNameValue(project.name); setAddressValue(project.address); setIsEditing(false); }
-                  }}
-                  className="h-7 text-lg font-semibold py-0"
-                />
-              ) : (
-                <h3 className="font-semibold text-lg truncate">{project.name}</h3>
-              )}
+              <h3 className="font-semibold text-lg truncate">{project.name}</h3>
             </div>
-            {isEditing ? (
-              <div className="flex items-center gap-1.5 mt-1" onClick={(e) => e.stopPropagation()}>
-                <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <Input
-                  ref={addressInputRef}
-                  value={addressValue}
-                  onChange={(e) => setAddressValue(e.target.value)}
-                  onBlur={() => handleBlur('address')}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === 'Enter') { saveField('address', addressValue); setIsEditing(false); }
-                    if (e.key === 'Escape') { setNameValue(project.name); setAddressValue(project.address); setIsEditing(false); }
-                  }}
-                  className="h-6 text-sm py-0"
-                />
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5" />
-                <span className="truncate">{project.address}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5" />
+              <span className="truncate">{project.address}</span>
+            </div>
           </div>
           <Badge
             variant={project.status === 'complete' ? 'default' : 'secondary'}
@@ -212,16 +138,6 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Edit button */}
-      <div className="absolute bottom-3 right-3" onClick={(e) => e.stopPropagation()}>
-        <button
-          className="p-1 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-          onClick={() => { setNameValue(project.name); setAddressValue(project.address); setIsEditing(true); }}
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
       </div>
     </div>
   );
