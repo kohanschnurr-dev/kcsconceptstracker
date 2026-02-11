@@ -234,335 +234,424 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
           Add Project Event
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl bg-background border-border">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-background border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">New Project Event</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-            {/* ===== LEFT COLUMN ===== */}
-            <div className="space-y-4">
-              {/* Project Selector */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">Project *</Label>
-                <ProjectAutocomplete
-                  projects={projects}
-                  value={projectId}
-                  onSelect={setProjectId}
-                  placeholder="Search projects..."
-                  triggerClassName="bg-card border-border text-foreground hover:bg-secondary"
-                />
-              </div>
+          {/* Project Selector */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">Project *</Label>
+            <ProjectAutocomplete
+              projects={projects}
+              value={projectId}
+              onSelect={setProjectId}
+              placeholder="Search projects..."
+              triggerClassName="bg-card border-border text-foreground hover:bg-secondary"
+            />
+          </div>
 
-              {/* Category */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">Category *</Label>
-                <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={categoryOpen}
-                      className={cn(
-                        "w-full justify-between bg-card border-border text-foreground hover:bg-secondary",
-                        selectedCategoryStyles && `${selectedCategoryStyles.borderClass} border-2`,
-                        !category && "text-muted-foreground"
-                      )}
-                    >
-                      {category ? (
-                        <div className="flex items-center gap-2">
-                          <span 
-                            className="w-2 h-2 rounded-full" 
-                            style={{ backgroundColor: selectedCategoryStyles ? `var(--${selectedCategoryStyles.color}-500, ${selectedCategoryStyles.color})` : undefined }} 
-                          />
-                          {getCategoryLabel(category)}
-                        </div>
-                      ) : (
-                        "Select category..."
-                      )}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-card border-border" align="start">
-                    <Command shouldFilter={false} className="bg-card">
-                      <CommandInput
-                        placeholder="Type to search categories..."
-                        value={categorySearch}
-                        onValueChange={setCategorySearch}
-                        className="text-foreground"
+          {/* Category - Searchable selector */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">Category *</Label>
+            <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={categoryOpen}
+                  className={cn(
+                    "w-full justify-between bg-card border-border text-foreground hover:bg-secondary",
+                    selectedCategoryStyles && `${selectedCategoryStyles.borderClass} border-2`,
+                    !category && "text-muted-foreground"
+                  )}
+                >
+                  {category ? (
+                    <div className="flex items-center gap-2">
+                      <span 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: selectedCategoryStyles ? `var(--${selectedCategoryStyles.color}-500, ${selectedCategoryStyles.color})` : undefined }} 
                       />
-                      <div style={{ overflowY: 'auto', maxHeight: 300, overscrollBehavior: 'contain' }} onWheel={(e) => e.stopPropagation()}>
-                      <CommandList className="overflow-visible [&_[cmdk-list-sizer]]:overflow-visible">
-                        <CommandEmpty className="text-muted-foreground py-6 text-center text-sm">
-                          No categories found
-                        </CommandEmpty>
-                        {(Object.entries(filteredGrouped) as [CategoryGroup, CalendarCategory[]][]).map(([groupKey, cats]) => (
-                          <CommandGroup 
-                            key={groupKey} 
-                            heading={
-                              <span className={cn("text-xs font-semibold", CATEGORY_GROUPS[groupKey].textClass)}>
-                                {CATEGORY_GROUPS[groupKey].label}
-                              </span>
-                            }
-                          >
-                            {cats.map((cat) => (
-                              <CommandItem
-                                key={cat.value}
-                                value={cat.value}
-                                onSelect={() => {
-                                  setCategory(cat.value);
-                                  setCategoryOpen(false);
-                                  setCategorySearch('');
-                                }}
-                                className="text-foreground cursor-pointer aria-selected:bg-secondary"
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    category === cat.value ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <span 
-                                  className="w-2 h-2 rounded-full mr-2" 
-                                  style={{ backgroundColor: `var(--${CATEGORY_GROUPS[groupKey].color}-500, ${CATEGORY_GROUPS[groupKey].color})` }} 
-                                />
-                                {cat.label}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        ))}
-                      </CommandList>
-                      </div>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                {selectedCategoryStyles && (
-                  <p className={cn("text-xs", selectedCategoryStyles.textClass)}>
-                    {CATEGORY_GROUPS[Object.entries(CATEGORY_GROUPS).find(([_, v]) => v === selectedCategoryStyles)?.[0] as CategoryGroup]?.label || 'Category'}
-                  </p>
-                )}
-              </div>
-
-              {/* Event Title */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">Event Title *</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g., Foundation Inspection"
-                    className="bg-card border-border text-foreground flex-1"
+                      {getCategoryLabel(category)}
+                    </div>
+                  ) : (
+                    "Select category..."
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-card border-border" align="start">
+                <Command shouldFilter={false} className="bg-card">
+                  <CommandInput
+                    placeholder="Type to search categories..."
+                    value={categorySearch}
+                    onValueChange={setCategorySearch}
+                    className="text-foreground"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      if (category) {
-                        setTitle(getCategoryLabel(category));
-                      }
-                    }}
-                    disabled={!category}
-                    className={cn(
-                      "border-border shrink-0",
-                      category 
-                        ? "text-primary hover:text-primary/90 hover:bg-primary/10 hover:border-primary/30" 
-                        : "text-muted-foreground"
-                    )}
-                    title={category ? `Fill with "${getCategoryLabel(category)}"` : "Select a category first"}
-                  >
-                    <Zap className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Dates */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground">Date *</Label>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="multiDay"
-                      checked={isMultiDay}
-                      onCheckedChange={(checked) => {
-                        setIsMultiDay(checked === true);
-                        if (!checked && startDate) {
-                          setEndDate(startDate);
+                  <div style={{ overflowY: 'auto', maxHeight: 300, overscrollBehavior: 'contain' }} onWheel={(e) => e.stopPropagation()}>
+                  <CommandList className="overflow-visible [&_[cmdk-list-sizer]]:overflow-visible">
+                    <CommandEmpty className="text-muted-foreground py-6 text-center text-sm">
+                      No categories found
+                    </CommandEmpty>
+                    {(Object.entries(filteredGrouped) as [CategoryGroup, CalendarCategory[]][]).map(([groupKey, cats]) => (
+                      <CommandGroup 
+                        key={groupKey} 
+                        heading={
+                          <span className={cn("text-xs font-semibold", CATEGORY_GROUPS[groupKey].textClass)}>
+                            {CATEGORY_GROUPS[groupKey].label}
+                          </span>
                         }
-                      }}
-                      className="border-muted-foreground data-[state=checked]:bg-muted-foreground"
-                    />
-                    <label
-                      htmlFor="multiDay"
-                      className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
-                    >
-                      <CalendarRange className="h-3 w-3" />
-                      Multi-day event
-                    </label>
+                      >
+                        {cats.map((cat) => (
+                          <CommandItem
+                            key={cat.value}
+                            value={cat.value}
+                            onSelect={() => {
+                              setCategory(cat.value);
+                              setCategoryOpen(false);
+                              setCategorySearch('');
+                            }}
+                            className="text-foreground cursor-pointer aria-selected:bg-secondary"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                category === cat.value ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span 
+                              className="w-2 h-2 rounded-full mr-2" 
+                              style={{ backgroundColor: `var(--${CATEGORY_GROUPS[groupKey].color}-500, ${CATEGORY_GROUPS[groupKey].color})` }} 
+                            />
+                            {cat.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    ))}
+                  </CommandList>
                   </div>
-                </div>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {selectedCategoryStyles && (
+              <p className={cn("text-xs", selectedCategoryStyles.textClass)}>
+                {CATEGORY_GROUPS[Object.entries(CATEGORY_GROUPS).find(([_, v]) => v === selectedCategoryStyles)?.[0] as CategoryGroup]?.label || 'Category'}
+              </p>
+            )}
+          </div>
 
-                {isMultiDay ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-muted-foreground text-xs">Start Date</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className={cn('w-full justify-start text-left font-normal bg-card border-border', !startDate && 'text-muted-foreground')}>
-                            {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick a date'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 bg-card border-border">
-                          <Calendar mode="single" selected={startDate} onSelect={handleStartDateChange} className="pointer-events-auto" />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-muted-foreground text-xs">End Date</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className={cn('w-full justify-start text-left font-normal bg-card border-border', !endDate && 'text-muted-foreground')}>
-                            {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick a date'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 bg-card border-border">
-                          <Calendar mode="single" selected={endDate} onSelect={setEndDate} disabled={(date) => startDate ? date < startDate : false} className="pointer-events-auto" />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                ) : (
+          {/* Event Title */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">Event Title *</Label>
+            <div className="flex gap-2">
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Foundation Inspection"
+                className="bg-card border-border text-foreground flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (category) {
+                    setTitle(getCategoryLabel(category));
+                  }
+                }}
+                disabled={!category}
+                className={cn(
+                  "border-border shrink-0",
+                  category 
+                    ? "text-primary hover:text-primary/90 hover:bg-primary/10 hover:border-primary/30" 
+                    : "text-muted-foreground"
+                )}
+                title={category ? `Fill with "${getCategoryLabel(category)}"` : "Select a category first"}
+              >
+                <Zap className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="space-y-3">
+            {/* Multi-day toggle */}
+            <div className="flex items-center justify-between">
+              <Label className="text-muted-foreground">Date *</Label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="multiDay"
+                  checked={isMultiDay}
+                  onCheckedChange={(checked) => {
+                    setIsMultiDay(checked === true);
+                    if (!checked && startDate) {
+                      setEndDate(startDate);
+                    }
+                  }}
+                  className="border-muted-foreground data-[state=checked]:bg-muted-foreground"
+                />
+                <label
+                  htmlFor="multiDay"
+                  className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
+                >
+                  <CalendarRange className="h-3 w-3" />
+                  Multi-day event
+                </label>
+              </div>
+            </div>
+
+            {isMultiDay ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs">Start Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn('w-full justify-start text-left font-normal bg-card border-border', !startDate && 'text-muted-foreground')}>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start text-left font-normal bg-card border-border',
+                          !startDate && 'text-muted-foreground'
+                        )}
+                      >
                         {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick a date'}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 bg-card border-border">
-                      <Calendar mode="single" selected={startDate} onSelect={handleStartDateChange} className="pointer-events-auto" />
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={handleStartDateChange}
+                        className="pointer-events-auto"
+                      />
                     </PopoverContent>
                   </Popover>
-                )}
-              </div>
-            </div>
-
-            {/* ===== RIGHT COLUMN ===== */}
-            <div className="space-y-4">
-              {/* Recurring Event */}
-              <div className="space-y-3 p-3 rounded-lg bg-card/50 border border-border">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="recurring" className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-2">
-                    <Repeat className="h-4 w-4 text-muted-foreground" />
-                    Recurring event
-                  </label>
-                  <Switch id="recurring" checked={isRecurring} onCheckedChange={setIsRecurring} />
                 </div>
-                {isRecurring && (
-                  <div className="space-y-3 pt-2 border-t border-border">
-                    <div className="space-y-2">
-                      <Label className="text-muted-foreground text-xs">Frequency</Label>
-                      <select
-                        value={recurrenceFrequency}
-                        onChange={(e) => setRecurrenceFrequency(e.target.value as any)}
-                        className="w-full rounded-md border border-border bg-card text-foreground px-3 py-2 text-sm"
-                      >
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
-                        <option value="yearly">Yearly</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-muted-foreground text-xs">Until when?</Label>
-                      <div className="flex gap-2">
-                        <Button type="button" variant={recurrenceUntilType === 'indefinite' ? 'default' : 'outline'} size="sm" onClick={() => setRecurrenceUntilType('indefinite')} className="flex-1">
-                          Indefinitely
-                        </Button>
-                        <Button type="button" variant={recurrenceUntilType === 'date' ? 'default' : 'outline'} size="sm" onClick={() => setRecurrenceUntilType('date')} className="flex-1">
-                          Until date
-                        </Button>
-                      </div>
-                      {recurrenceUntilType === 'date' && (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className={cn('w-full justify-start text-left font-normal bg-card border-border', !recurrenceUntilDate && 'text-muted-foreground')}>
-                              {recurrenceUntilDate ? format(recurrenceUntilDate, 'MMM d, yyyy') : 'Pick end date'}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 bg-card border-border">
-                            <Calendar mode="single" selected={recurrenceUntilDate} onSelect={setRecurrenceUntilDate} disabled={(date) => startDate ? date < startDate : false} className="pointer-events-auto" />
-                          </PopoverContent>
-                        </Popover>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {recurrenceUntilType === 'indefinite' 
-                          ? `Will create up to ${recurrenceFrequency === 'monthly' ? '24' : recurrenceFrequency === 'quarterly' ? '8' : '5'} events (${recurrenceFrequency === 'yearly' ? '5' : '2'} years)`
-                          : recurrenceUntilDate ? `Events from ${startDate ? format(startDate, 'MMM d, yyyy') : '...'} to ${format(recurrenceUntilDate, 'MMM d, yyyy')}` : 'Select an end date'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
 
-              {/* Lead Time */}
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">Lead Time (days)</Label>
-                  <Input type="number" min="0" value={leadTimeDays} onChange={(e) => setLeadTimeDays(e.target.value)} placeholder="0" className="bg-card border-border text-foreground" />
-                  <p className="text-xs text-muted-foreground">e.g., City inspection delay</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Expected Date</Label>
+                  <Label className="text-muted-foreground text-xs">End Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn('w-full justify-start text-left font-normal bg-card border-border', !expectedDate && 'text-muted-foreground')}>
-                        {expectedDate ? format(expectedDate, 'MMM d, yyyy') : 'Optional'}
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start text-left font-normal bg-card border-border',
+                          !endDate && 'text-muted-foreground'
+                        )}
+                      >
+                        {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick a date'}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 bg-card border-border">
-                      <Calendar mode="single" selected={expectedDate} onSelect={setExpectedDate} className="pointer-events-auto" />
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        disabled={(date) => startDate ? date < startDate : false}
+                        className="pointer-events-auto"
+                      />
                     </PopoverContent>
                   </Popover>
                 </div>
               </div>
+            ) : (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal bg-card border-border',
+                      !startDate && 'text-muted-foreground'
+                    )}
+                  >
+                    {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-card border-border">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={handleStartDateChange}
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
 
-              {/* Critical Path */}
-              <div className="flex items-center space-x-3 p-3 rounded-lg bg-card/50 border border-border">
-                <Checkbox
-                  id="criticalPath"
-                  checked={isCriticalPath}
-                  onCheckedChange={(checked) => setIsCriticalPath(checked === true)}
-                  className="border-muted-foreground data-[state=checked]:bg-muted-foreground"
-                />
-                <div className="flex-1">
-                  <label htmlFor="criticalPath" className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                    Critical Path
-                  </label>
-                  <p className="text-xs text-muted-foreground">Highlight this event in red on the calendar</p>
+          {/* Recurring Event */}
+          <div className="space-y-3 p-3 rounded-lg bg-card/50 border border-border">
+            <div className="flex items-center justify-between">
+              <label htmlFor="recurring" className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-2">
+                <Repeat className="h-4 w-4 text-muted-foreground" />
+                Recurring event
+              </label>
+              <Switch
+                id="recurring"
+                checked={isRecurring}
+                onCheckedChange={setIsRecurring}
+              />
+            </div>
+            {isRecurring && (
+              <div className="space-y-3 pt-2 border-t border-border">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs">Frequency</Label>
+                  <select
+                    value={recurrenceFrequency}
+                    onChange={(e) => setRecurrenceFrequency(e.target.value as any)}
+                    className="w-full rounded-md border border-border bg-card text-foreground px-3 py-2 text-sm"
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs">Until when?</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={recurrenceUntilType === 'indefinite' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRecurrenceUntilType('indefinite')}
+                      className="flex-1"
+                    >
+                      Indefinitely
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={recurrenceUntilType === 'date' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRecurrenceUntilType('date')}
+                      className="flex-1"
+                    >
+                      Until date
+                    </Button>
+                  </div>
+                  {recurrenceUntilType === 'date' && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'w-full justify-start text-left font-normal bg-card border-border',
+                            !recurrenceUntilDate && 'text-muted-foreground'
+                          )}
+                        >
+                          {recurrenceUntilDate ? format(recurrenceUntilDate, 'MMM d, yyyy') : 'Pick end date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-card border-border">
+                        <Calendar
+                          mode="single"
+                          selected={recurrenceUntilDate}
+                          onSelect={setRecurrenceUntilDate}
+                          disabled={(date) => startDate ? date < startDate : false}
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {recurrenceUntilType === 'indefinite' 
+                      ? `Will create up to ${recurrenceFrequency === 'monthly' ? '24' : recurrenceFrequency === 'quarterly' ? '8' : '5'} events (${recurrenceFrequency === 'yearly' ? '5' : '2'} years)`
+                      : recurrenceUntilDate ? `Events from ${startDate ? format(startDate, 'MMM d, yyyy') : '...'} to ${format(recurrenceUntilDate, 'MMM d, yyyy')}` : 'Select an end date'
+                    }
+                  </p>
                 </div>
               </div>
+            )}
+          </div>
 
-              {/* Notes */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">Notes</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="DFW-specific details: HVAC serial numbers, foundation depth, contractor names..."
-                  className="bg-card border-border text-foreground min-h-[60px]"
-                />
-              </div>
+          {/* Lead Time (for tracking delays) */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Lead Time (days)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={leadTimeDays}
+                onChange={(e) => setLeadTimeDays(e.target.value)}
+                placeholder="0"
+                className="bg-card border-border text-foreground"
+              />
+              <p className="text-xs text-muted-foreground">e.g., City inspection delay</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Expected Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal bg-card border-border',
+                      !expectedDate && 'text-muted-foreground'
+                    )}
+                  >
+                    {expectedDate ? format(expectedDate, 'MMM d, yyyy') : 'Optional'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-card border-border">
+                  <Calendar
+                    mode="single"
+                    selected={expectedDate}
+                    onSelect={setExpectedDate}
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
+          {/* Critical Path Checkbox */}
+          <div className="flex items-center space-x-3 p-3 rounded-lg bg-card/50 border border-border">
+            <Checkbox
+              id="criticalPath"
+              checked={isCriticalPath}
+              onCheckedChange={(checked) => setIsCriticalPath(checked === true)}
+              className="border-muted-foreground data-[state=checked]:bg-muted-foreground"
+            />
+            <div className="flex-1">
+              <label
+                htmlFor="criticalPath"
+                className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-2"
+              >
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                Critical Path
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Highlight this event in red on the calendar
+              </p>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">Notes</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="DFW-specific details: HVAC serial numbers, foundation depth, contractor names..."
+              className="bg-card border-border text-foreground min-h-[80px]"
+            />
+          </div>
+
           {/* Submit */}
-          <div className="flex justify-end gap-2 pt-4 border-t border-border">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="border-border text-muted-foreground">
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              className="border-border text-muted-foreground"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-primary hover:bg-primary/90"
+            >
               {loading ? 'Creating...' : 'Create Event'}
             </Button>
           </div>
