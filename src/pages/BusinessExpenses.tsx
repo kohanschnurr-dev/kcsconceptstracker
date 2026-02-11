@@ -617,6 +617,12 @@ export default function BusinessExpenses() {
                 setGoals(prev => prev.map(g => g.id === goalId ? { ...g, completed_at: now } : g));
               }
             }}
+            onUncompleteGoal={async (goalId) => {
+              const { error } = await supabase.from('quarterly_goals').update({ completed_at: null }).eq('id', goalId);
+              if (!error) {
+                setGoals(prev => prev.map(g => g.id === goalId ? { ...g, completed_at: null } : g));
+              }
+            }}
            onAddRule={async (rule) => {
              const { data: { user } } = await supabase.auth.getUser();
              if (!user) return;
