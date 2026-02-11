@@ -1251,19 +1251,28 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           )}
         </div>
 
-        {/* Category-specific fields */}
-        {selectedCategory && selectedCategory.fields.length > 0 && (
-          <div className="col-span-2 p-3 bg-muted/50 rounded-lg space-y-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {selectedCategory.label} Specifications
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              {selectedCategory.fields.map(field => 
-                renderSpecField(field, selectedCategory.placeholders?.[field])
-              )}
-            </div>
-          </div>
-        )}
+        {/* Category */}
+        <div className="col-span-2">
+          <Label>Category</Label>
+          <Select 
+            value={formData.category} 
+            onValueChange={(v) => setFormData(prev => ({ ...prev, category: v as ProcurementCategory }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              {PROCUREMENT_CATEGORIES.map(cat => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  <div className="flex items-center gap-2">
+                    <cat.icon className="h-4 w-4" />
+                    {cat.label}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Bundle Assignment - Dropdown Multi-select */}
         <div className="col-span-2">
@@ -1382,29 +1391,6 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           </div>
         </div>
 
-        {/* Category */}
-        <div>
-          <Label>Category</Label>
-          <Select 
-            value={formData.category} 
-            onValueChange={(v) => setFormData(prev => ({ ...prev, category: v as ProcurementCategory }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px]">
-              {PROCUREMENT_CATEGORIES.map(cat => (
-                <SelectItem key={cat.value} value={cat.value}>
-                  <div className="flex items-center gap-2">
-                    <cat.icon className="h-4 w-4" />
-                    {cat.label}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         <div>
           <Label>{formData.is_pack_price ? 'Units in Pack' : 'Quantity'}</Label>
           <Input
@@ -1419,6 +1405,20 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
             </p>
           )}
         </div>
+
+        {/* Category-specific fields */}
+        {selectedCategory && selectedCategory.fields.length > 0 && (
+          <div className="col-span-2 p-3 bg-muted/50 rounded-lg space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {selectedCategory.label} Specifications
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {selectedCategory.fields.map(field => 
+                renderSpecField(field, selectedCategory.placeholders?.[field])
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="col-span-2">
           <Label>Notes</Label>
@@ -1485,7 +1485,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{getDialogTitle()}</DialogTitle>
           </DialogHeader>
