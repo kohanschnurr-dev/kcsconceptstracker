@@ -238,48 +238,46 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                     onValueChange={setCategorySearch}
                     className="text-white"
                   />
-                  <div className="max-h-[300px]" style={{ overflowY: 'scroll', overscrollBehavior: 'contain' }}>
-                    <CommandList>
-                      <CommandEmpty className="text-slate-400 py-6 text-center text-sm">
-                        No categories found
-                      </CommandEmpty>
-                      {(Object.entries(filteredGrouped) as [CategoryGroup, CalendarCategory[]][]).map(([groupKey, cats]) => (
-                        <CommandGroup 
-                          key={groupKey} 
-                          heading={
-                            <span className={cn("text-xs font-semibold", CATEGORY_GROUPS[groupKey].textClass)}>
-                              {CATEGORY_GROUPS[groupKey].label}
-                            </span>
-                          }
-                        >
-                          {cats.map((cat) => (
-                            <CommandItem
-                              key={cat.value}
-                              value={cat.value}
-                              onSelect={() => {
-                                setCategory(cat.value);
-                                setCategoryOpen(false);
-                                setCategorySearch('');
-                              }}
-                              className="text-white cursor-pointer aria-selected:bg-slate-700"
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  category === cat.value ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              <span 
-                                className="w-2 h-2 rounded-full mr-2" 
-                                style={{ backgroundColor: `var(--${CATEGORY_GROUPS[groupKey].color}-500, ${CATEGORY_GROUPS[groupKey].color})` }} 
-                              />
-                              {cat.label}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      ))}
-                    </CommandList>
-                  </div>
+                  <CommandList className="max-h-[300px]" style={{ overflowY: 'auto' }}>
+                    <CommandEmpty className="text-slate-400 py-6 text-center text-sm">
+                      No categories found
+                    </CommandEmpty>
+                    {(Object.entries(filteredGrouped) as [CategoryGroup, CalendarCategory[]][]).map(([groupKey, cats]) => (
+                      <CommandGroup 
+                        key={groupKey} 
+                        heading={
+                          <span className={cn("text-xs font-semibold", CATEGORY_GROUPS[groupKey].textClass)}>
+                            {CATEGORY_GROUPS[groupKey].label}
+                          </span>
+                        }
+                      >
+                        {cats.map((cat) => (
+                          <CommandItem
+                            key={cat.value}
+                            value={cat.value}
+                            onSelect={() => {
+                              setCategory(cat.value);
+                              setCategoryOpen(false);
+                              setCategorySearch('');
+                            }}
+                            className="text-white cursor-pointer aria-selected:bg-slate-700"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                category === cat.value ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span 
+                              className="w-2 h-2 rounded-full mr-2" 
+                              style={{ backgroundColor: `var(--${CATEGORY_GROUPS[groupKey].color}-500, ${CATEGORY_GROUPS[groupKey].color})` }} 
+                            />
+                            {cat.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    ))}
+                  </CommandList>
                 </Command>
               </PopoverContent>
             </Popover>
