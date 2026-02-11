@@ -1,30 +1,35 @@
 
 
-## Fix Cash Flow Calculator Save Issues
+## Add Business City to Account Settings for Weather
 
-### Problem
-Two issues are happening:
+### What Changes
+A new "City" field will be added to the Account section on the Settings page. The weather widget on the Calendar page currently hardcodes "DFW" coordinates. After this change, it will pull the user's saved city and geocode it to show weather for their actual location.
 
-1. **Placeholders look like real values** -- Fields like "Interest Rate" show "7.0" and "Loan Term" shows "30" as gray placeholder text. These look like actual entered values but are not -- they're just hints. When you hit Save, the actual values (which are 0 or empty) get saved instead.
+### Steps
 
-2. **Data doesn't refresh after saving** -- The save writes to the database successfully (confirmed -- your rent, taxes, insurance, HOA values ARE saved), but the parent page doesn't re-fetch the data. So if the component re-renders, it may reset to old values.
+**1. Add `city` column to profiles table**
+- Add a nullable `text` column called `city` to the `profiles` table via migration
+- Default: `null` (falls back to DFW behavior)
 
-### What Will Change
+**2. Update profile hook and Settings page**
 
-**File: `src/components/project/CashFlowCalculator.tsx`**
+**File: `src/hooks/useProfile.ts`**
+- Add `city: string | null` to the `Profile` interface
+- Include `city` in the `updateProfile` mutation payload
 
-1. **Remove misleading placeholders** -- Change default prop values so Interest Rate defaults to 7.0, Loan Term defaults to 30, Vacancy defaults to 8, and Management defaults to 10 (instead of 0 with placeholder text). This way these values are real from the start and will be saved.
+**File: `src/pages/Settings.tsx`**
+- Add a `city` state variable initialized from `profile.city`
+- Add a "City" input field in the Account card below the name fields (e.g., "Dallas, TX")
+- Include `city` in the save logic and dirty-check
 
-2. **Refetch project data after save** -- After the save succeeds, call a callback (e.g., `onSaved`) passed from the parent to trigger a data refresh, so the parent page stays in sync with what was just saved.
+**3. Update Weather Widget to use saved city**
 
-**File: `src/pages/ProjectDetail.tsx`**
+**File: `src/components/calendar/WeatherWidget.tsx`**
+- Accept an optional `city` prop (string)
+- When a city is provided, use the Open-Meteo geocoding API (`https://geocoding-api.open-meteo.com/v1/search?name=...`) to resolve lat/lon before fetching weather
+- Fall back to hardcoded DFW coordinates if no city is set or geocoding fails
+- Display the city name (or "DFW") as the label in the widget
 
-3. **Add refresh callback** -- Extract the project fetch logic into a reusable function and pass it as `onSaved` to the CashFlowCalculator so saving triggers a fresh data load.
+**File: `src/pages/Calendar.tsx`** (or wherever WeatherWidget is rendered)
+- Read the user's profile and pass `profile.city` to `<WeatherWidget city={profile?.city} />`
 
-### Technical Details
-
-- In `CashFlowCalculator`, change default prop values: `initialInterestRate = 7`, `initialLoanTermYears = 30`, `initialVacancyRate = 8`, `initialManagementRate = 10` -- these match the current placeholder text but now they'll be real values
-- Change `placeholder` attributes to `"0"` for those fields (since the default state covers the common case)
-- Add an `onSaved?: () => void` prop to `CashFlowCalculatorProps`
-- Call `onSaved?.()` after a successful save
-- In `ProjectDetail.tsx`, extract `fetchProjectData` so it can be called from `onSaved`, and pass it to the `CashFlowCalculator`
