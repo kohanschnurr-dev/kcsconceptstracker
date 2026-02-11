@@ -1,68 +1,20 @@
 
 
-## Goals Enhancement: History, Dates, and Active-Only Dashboard
+## Allow Uncompleting Goals
 
-### 1. Database Changes
+### Change
 
-Add columns to `quarterly_goals` table:
-- `start_date` (date, nullable) -- when the goal starts
-- `due_date` (date, nullable) -- target completion date
-- `completed_at` (timestamptz, nullable) -- when goal was marked complete (null = active)
+**File: `src/components/ops/GoalsPopout.tsx`**
 
-A goal is "active" when `completed_at IS NULL` and "completed" when it has a value.
+Add an "Uncomplete" button to each completed goal card in the history section. Clicking it sets `completed_at` back to `null`, moving the goal back to the active list.
 
-### 2. Dashboard Widget (CompactDashboardWidgets.tsx)
+**File: `src/pages/BusinessExpenses.tsx`**
 
-Filter goals passed to the widget to only show **active** goals (where `completed_at` is null). The count will reflect only active goals, so with 1 active goal it shows "1 goal".
-
-### 3. Goals Popout (GoalsPopout.tsx)
-
-**Active Goals Section** (shown by default):
-- Show only goals where `completed_at` is null
-- Display start/due dates beneath each goal title
-- Add a "Complete" button (checkmark) on each goal card to mark it done
-
-**Completed Goals History** (collapsible section at bottom):
-- Show goals where `completed_at` is not null
-- Display completion date
-- Collapsed by default with a toggle like "View Completed (3)"
-
-**Add Goal Form Updates**:
-- Add optional start date and due date fields (date pickers)
-
-### 4. Data Flow (BusinessExpenses.tsx)
-
-- Fetch all goals (both active and completed) from the database
-- Pass all goals to `GoalsPopout` (it handles filtering internally)
-- Pass only active goals to `CompactDashboardWidgets`
-- Add `onCompleteGoal` callback to set `completed_at = now()` in the database
-- Include `start_date`, `due_date`, `completed_at` in the select query
+Update the `handleCompleteGoal` function (or add a new `handleUncompleteGoal`) to set `completed_at = null` on the `quarterly_goals` row. Pass this as a new `onUncompleteGoal` prop through `CompactDashboardWidgets` to `GoalsPopout`.
 
 ### Technical Details
 
-**Migration SQL**:
-```sql
-ALTER TABLE quarterly_goals
-  ADD COLUMN start_date date,
-  ADD COLUMN due_date date,
-  ADD COLUMN completed_at timestamptz;
-```
+- **GoalsPopout**: In the completed goals section (`renderGoalCard` when `isCompleted = true`), add an undo/reopen button (e.g., `RotateCcw` icon) that calls `onUncompleteGoal(goal.id)`.
+- **BusinessExpenses.tsx**: Add handler that runs `supabase.from('quarterly_goals').update({ completed_at: null }).eq('id', goalId)` and refreshes the goals list.
+- **CompactDashboardWidgets**: Pass through the new `onUncompleteGoal` prop to `GoalsPopout`.
 
-**Files modified**:
-- `src/components/ops/GoalsPopout.tsx` -- add history section, date display, complete button, date inputs in form
-- `src/components/ops/CompactDashboardWidgets.tsx` -- filter to active goals only for count and progress bars
-- `src/pages/BusinessExpenses.tsx` -- update query to include new columns, filter active goals for widget, add onCompleteGoal handler
-
-**Goal interface update**:
-```typescript
-interface Goal {
-  id: string;
-  title: string;
-  target_value: number;
-  current_value: number | null;
-  category: string | null;
-  start_date: string | null;
-  due_date: string | null;
-  completed_at: string | null;
-}
-```
