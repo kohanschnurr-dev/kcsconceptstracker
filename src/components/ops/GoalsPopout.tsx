@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X, Pencil, Check, Minus, ChevronDown, CheckCircle2, Calendar } from 'lucide-react';
+import { Plus, X, Pencil, Check, Minus, ChevronDown, CheckCircle2, Calendar, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -42,9 +42,10 @@ interface GoalsPopoutProps {
   onAddGoal?: (goal: { title: string; target_value: number; category: string; start_date?: string; due_date?: string }) => Promise<void>;
   onUpdateGoal?: (goalId: string, newValue: number) => Promise<void>;
   onCompleteGoal?: (goalId: string) => Promise<void>;
+  onUncompleteGoal?: (goalId: string) => Promise<void>;
 }
 
-export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal, onCompleteGoal }: GoalsPopoutProps) {
+export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal, onCompleteGoal, onUncompleteGoal }: GoalsPopoutProps) {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [targetValue, setTargetValue] = useState('');
@@ -207,9 +208,16 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
               )}
             </div>
           ) : (
-            <span className="text-xs text-muted-foreground">
-              {isTask ? `${current} / ${goal.target_value}` : `${formatValue(current, goal.category)} / ${formatValue(goal.target_value, goal.category)}`}
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">
+                {isTask ? `${current} / ${goal.target_value}` : `${formatValue(current, goal.category)} / ${formatValue(goal.target_value, goal.category)}`}
+              </span>
+              {onUncompleteGoal && (
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => onUncompleteGoal(goal.id)} title="Reopen goal">
+                  <RotateCcw className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
           )}
         </div>
         <div className="relative">

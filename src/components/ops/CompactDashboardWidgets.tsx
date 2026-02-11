@@ -44,6 +44,7 @@ interface CompactDashboardWidgetsProps {
   onAddGoal?: (goal: { title: string; target_value: number; category: string; start_date?: string; due_date?: string }) => Promise<void>;
   onUpdateGoal?: (goalId: string, newValue: number) => Promise<void>;
   onCompleteGoal?: (goalId: string) => Promise<void>;
+  onUncompleteGoal?: (goalId: string) => Promise<void>;
   onAddRule?: (rule: { title: string; category: string }) => Promise<void>;
 }
  
@@ -58,6 +59,7 @@ export function CompactDashboardWidgets({
   onAddGoal,
   onUpdateGoal,
   onCompleteGoal,
+  onUncompleteGoal,
   onAddRule,
 }: CompactDashboardWidgetsProps) {
    const [spendingOpen, setSpendingOpen] = useState(false);
@@ -256,8 +258,9 @@ export function CompactDashboardWidgets({
           goals={allGoals || goals}
           onAddGoal={onAddGoal}
           onUpdateGoal={onUpdateGoal}
-          onCompleteGoal={onCompleteGoal}
-        />
+           onCompleteGoal={onCompleteGoal}
+           onUncompleteGoal={onUncompleteGoal}
+         />
         <RulesPopout 
           open={rulesOpen} 
           onOpenChange={setRulesOpen} 
