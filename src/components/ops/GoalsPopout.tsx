@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X, Pencil, Check, Minus, ChevronDown, CheckCircle2, Calendar, RotateCcw } from 'lucide-react';
+import { Plus, X, Pencil, Check, Minus, ChevronDown, CheckCircle2, Calendar, RotateCcw, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -43,9 +43,10 @@ interface GoalsPopoutProps {
   onUpdateGoal?: (goalId: string, newValue: number) => Promise<void>;
   onCompleteGoal?: (goalId: string) => Promise<void>;
   onUncompleteGoal?: (goalId: string) => Promise<void>;
+  onDeleteGoal?: (goalId: string) => Promise<void>;
 }
 
-export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal, onCompleteGoal, onUncompleteGoal }: GoalsPopoutProps) {
+export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal, onCompleteGoal, onUncompleteGoal, onDeleteGoal }: GoalsPopoutProps) {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [targetValue, setTargetValue] = useState('');
@@ -204,6 +205,11 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
               {onCompleteGoal && (
                 <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-500 hover:text-emerald-400" onClick={() => onCompleteGoal(goal.id)}>
                   <CheckCircle2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              {onDeleteGoal && (
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80" onClick={() => onDeleteGoal(goal.id)}>
+                  <Trash2 className="h-3 w-3" />
                 </Button>
               )}
             </div>

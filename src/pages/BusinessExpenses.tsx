@@ -622,8 +622,14 @@ export default function BusinessExpenses() {
               if (!error) {
                 setGoals(prev => prev.map(g => g.id === goalId ? { ...g, completed_at: null } : g));
               }
-            }}
-           onAddRule={async (rule) => {
+             }}
+             onDeleteGoal={async (goalId) => {
+               const { error } = await supabase.from('quarterly_goals').delete().eq('id', goalId);
+               if (!error) {
+                 setGoals(prev => prev.filter(g => g.id !== goalId));
+               }
+             }}
+            onAddRule={async (rule) => {
              const { data: { user } } = await supabase.auth.getUser();
              if (!user) return;
              const { data } = await supabase.from('operation_codes').insert({
