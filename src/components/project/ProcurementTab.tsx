@@ -127,9 +127,8 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterPhase, setFilterPhase] = useState<string>('all');
-  const [filterFinish, setFilterFinish] = useState<string>('all');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('name_asc');
   
   // View toggles
   const [showByPhase, setShowByPhase] = useState(false);
@@ -207,25 +206,46 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
     return 'Uncategorized';
   };
 
-  // Get unique finishes for filter
-  const uniqueFinishes = useMemo(() => {
-    const finishes = new Set(items.map(i => i.finish).filter(Boolean));
-    return Array.from(finishes) as string[];
-  }, [items]);
+  // Get unique categories for filter
+  const uniqueCategories = useMemo(() => {
+    const cats = new Map<string, string>();
+    items.forEach(item => {
+      const label = getCategoryName(item);
+      const key = item.category_id || item.category || 'uncategorized';
+      if (!cats.has(key)) cats.set(key, label);
+    });
+    return Array.from(cats.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [items, categories]);
 
   // Filter items
   const filteredItems = useMemo(() => {
-    return items.filter(item => {
+    let result = items.filter(item => {
       if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
           !item.model_number?.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
       }
-      if (filterStatus !== 'all' && item.status !== filterStatus) return false;
-      if (filterPhase !== 'all' && item.phase !== filterPhase) return false;
-      if (filterFinish !== 'all' && item.finish !== filterFinish) return false;
+      if (filterCategory !== 'all') {
+        const itemCatKey = item.category_id || item.category || 'uncategorized';
+        if (itemCatKey !== filterCategory) return false;
+      }
       return true;
     });
-  }, [items, searchQuery, filterStatus, filterPhase, filterFinish]);
+
+    // Sort
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'name_desc': return b.name.localeCompare(a.name);
+        case 'price_asc': return a.unit_price - b.unit_price;
+        case 'price_desc': return b.unit_price - a.unit_price;
+        case 'name_asc':
+        default: return a.name.localeCompare(b.name);
+      }
+    });
+
+    return result;
+  }, [items, searchQuery, filterCategory, sortBy]);
 
   // Group by phase
   const itemsByPhase = useMemo(() => {
@@ -507,41 +527,28 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
             className="pl-9"
           />
         </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Status" />
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            {STATUSES.map(s => (
-              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+            <SelectItem value="all">All Categories</SelectItem>
+            {uniqueCategories.map(c => (
+              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select value={filterPhase} onValueChange={setFilterPhase}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Phase" />
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Sort" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Phases</SelectItem>
-            {PHASES.map(p => (
-              <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-            ))}
+            <SelectItem value="name_asc">A → Z</SelectItem>
+            <SelectItem value="name_desc">Z → A</SelectItem>
+            <SelectItem value="price_asc">Price: Low to High</SelectItem>
+            <SelectItem value="price_desc">Price: High to Low</SelectItem>
           </SelectContent>
         </Select>
-        {uniqueFinishes.length > 0 && (
-          <Select value={filterFinish} onValueChange={setFilterFinish}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Finish" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Finishes</SelectItem>
-              {uniqueFinishes.map(f => (
-                <SelectItem key={f} value={f}>{f}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
         <Button onClick={() => setPickerOpen(true)}>
           <Library className="h-4 w-4 mr-2" />
           Add from Library
