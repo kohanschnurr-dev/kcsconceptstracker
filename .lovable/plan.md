@@ -1,46 +1,30 @@
 
 
-## Extend Yr/Mo Toggle to Insurance & Maintenance + Improve Toggle Style
+## Fix Cash Flow Calculator Save Issues
 
-### What Changes
-1. Add the same month/year toggle to **Insurance** and **Maintenance** fields (currently they're fixed to /yr and /mo respectively)
-2. Restyle all four toggles (Property Taxes, Insurance, HOA, Maintenance) from the current `/yr` pill to a segmented **Yr / Mo** toggle where the active option is visually highlighted, making it obvious users can switch
+### Problem
+Two issues are happening:
 
-### Technical Details
+1. **Placeholders look like real values** -- Fields like "Interest Rate" show "7.0" and "Loan Term" shows "30" as gray placeholder text. These look like actual entered values but are not -- they're just hints. When you hit Save, the actual values (which are 0 or empty) get saved instead.
+
+2. **Data doesn't refresh after saving** -- The save writes to the database successfully (confirmed -- your rent, taxes, insurance, HOA values ARE saved), but the parent page doesn't re-fetch the data. So if the component re-renders, it may reset to old values.
+
+### What Will Change
 
 **File: `src/components/project/CashFlowCalculator.tsx`**
 
-**1. Add state for new toggles (lines ~59-60)**
-- Add `insurancePeriod: 'month' | 'year'` (default `'year'`)
-- Add `maintenancePeriod: 'month' | 'year'` (default `'month'`)
+1. **Remove misleading placeholders** -- Change default prop values so Interest Rate defaults to 7.0, Loan Term defaults to 30, Vacancy defaults to 8, and Management defaults to 10 (instead of 0 with placeholder text). This way these values are real from the start and will be saved.
 
-**2. Create a reusable inline toggle component**
-Replace the current single-pill button with a two-segment toggle showing "Yr" and "Mo" side by side. The active segment gets a highlighted background (e.g., `bg-primary/20 text-primary`), the inactive one stays muted. Example markup:
+2. **Refetch project data after save** -- After the save succeeds, call a callback (e.g., `onSaved`) passed from the parent to trigger a data refresh, so the parent page stays in sync with what was just saved.
 
-```text
-Property Taxes  [Yr | Mo]
-```
+**File: `src/pages/ProjectDetail.tsx`**
 
-Where the active side is visually distinct. Implemented as a small inline component or repeated markup for each of the 4 fields.
+3. **Add refresh callback** -- Extract the project fetch logic into a reusable function and pass it as `onSaved` to the CashFlowCalculator so saving triggers a fresh data load.
 
-**3. Update Insurance field (lines ~299-311)**
-- Replace `<Label>Insurance/yr</Label>` with the label "Insurance" + the Yr/Mo toggle
-- Add display/input conversion logic: when monthly mode, show `annualInsurance / 12`; on input, multiply by 12
+### Technical Details
 
-**4. Update Maintenance field (lines ~354-366)**
-- Replace `<Label>Maintenance/mo</Label>` with "Maintenance" + the Yr/Mo toggle
-- Maintenance currently stores as monthly (`monthlyMaintenance`). When yearly mode is selected, display `monthlyMaintenance * 12`; on input, divide by 12
-
-**5. Restyle existing Property Taxes and HOA toggles (lines ~274-282, 314-322)**
-- Replace the current single `/yr` or `/mo` pill with the same two-segment Yr/Mo toggle style
-
-### Toggle Style
-Each toggle is a small inline element next to the label:
-
-```text
-[Yr | Mo]     -- "Yr" highlighted when yearly is active
-[Yr | Mo]     -- "Mo" highlighted when monthly is active
-```
-
-Both segments are always visible. The active one uses `bg-primary/20 text-primary font-bold` and the inactive one uses `text-muted-foreground`.
-
+- In `CashFlowCalculator`, change default prop values: `initialInterestRate = 7`, `initialLoanTermYears = 30`, `initialVacancyRate = 8`, `initialManagementRate = 10` -- these match the current placeholder text but now they'll be real values
+- Change `placeholder` attributes to `"0"` for those fields (since the default state covers the common case)
+- Add an `onSaved?: () => void` prop to `CashFlowCalculatorProps`
+- Call `onSaved?.()` after a successful save
+- In `ProjectDetail.tsx`, extract `fetchProjectData` so it can be called from `onSaved`, and pass it to the `CashFlowCalculator`
