@@ -167,6 +167,7 @@ export default function DailyLogs() {
       const { data, error } = await supabase
         .from('projects')
         .select('id, name')
+        .neq('status', 'complete')
         .order('name');
 
       if (error) throw error;
