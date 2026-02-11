@@ -58,6 +58,33 @@ export function CashFlowCalculator({
   const [saving, setSaving] = useState(false);
   const [taxPeriod, setTaxPeriod] = useState<'month' | 'year'>('year');
   const [hoaPeriod, setHoaPeriod] = useState<'month' | 'year'>('year');
+  const [insurancePeriod, setInsurancePeriod] = useState<'month' | 'year'>('year');
+  const [maintenancePeriod, setMaintenancePeriod] = useState<'month' | 'year'>('month');
+
+  const PeriodToggle = ({ value, onChange }: { value: 'month' | 'year'; onChange: (v: 'month' | 'year') => void }) => (
+    <span className="inline-flex rounded-full border border-border overflow-hidden text-[10px] font-semibold leading-none">
+      <button
+        type="button"
+        onClick={() => onChange('year')}
+        className={cn(
+          "px-1.5 py-0.5 transition-colors",
+          value === 'year' ? "bg-primary/20 text-primary font-bold" : "text-muted-foreground hover:bg-muted/80"
+        )}
+      >
+        Yr
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('month')}
+        className={cn(
+          "px-1.5 py-0.5 transition-colors",
+          value === 'month' ? "bg-primary/20 text-primary font-bold" : "text-muted-foreground hover:bg-muted/80"
+        )}
+      >
+        Mo
+      </button>
+    </span>
+  );
 
   useEffect(() => {
     setPurchasePrice(initialPurchasePrice);
@@ -273,13 +300,7 @@ export function CashFlowCalculator({
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <Label htmlFor="annual-taxes" className="mb-0">Property Taxes</Label>
-                <button
-                  type="button"
-                  onClick={() => setTaxPeriod(p => p === 'year' ? 'month' : 'year')}
-                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
-                >
-                  {taxPeriod === 'year' ? '/yr' : '/mo'}
-                </button>
+                <PeriodToggle value={taxPeriod} onChange={setTaxPeriod} />
               </div>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -297,14 +318,20 @@ export function CashFlowCalculator({
               </div>
             </div>
             <div>
-              <Label htmlFor="annual-insurance">Insurance/yr</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label htmlFor="annual-insurance" className="mb-0">Insurance</Label>
+                <PeriodToggle value={insurancePeriod} onChange={setInsurancePeriod} />
+              </div>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="annual-insurance"
                   type="number"
-                  value={annualInsurance || ''}
-                  onChange={(e) => setAnnualInsurance(Number(e.target.value))}
+                  value={insurancePeriod === 'year' ? (annualInsurance || '') : (annualInsurance ? Math.round(annualInsurance / 12) : '')}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setAnnualInsurance(insurancePeriod === 'month' ? val * 12 : val);
+                  }}
                   className="pl-9"
                   placeholder="0"
                 />
@@ -313,13 +340,7 @@ export function CashFlowCalculator({
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <Label htmlFor="annual-hoa" className="mb-0">HOA</Label>
-                <button
-                  type="button"
-                  onClick={() => setHoaPeriod(p => p === 'year' ? 'month' : 'year')}
-                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
-                >
-                  {hoaPeriod === 'year' ? '/yr' : '/mo'}
-                </button>
+                <PeriodToggle value={hoaPeriod} onChange={setHoaPeriod} />
               </div>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -352,14 +373,20 @@ export function CashFlowCalculator({
               </div>
             </div>
             <div>
-              <Label htmlFor="monthly-maintenance">Maintenance/mo</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label htmlFor="monthly-maintenance" className="mb-0">Maintenance</Label>
+                <PeriodToggle value={maintenancePeriod} onChange={setMaintenancePeriod} />
+              </div>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="monthly-maintenance"
                   type="number"
-                  value={monthlyMaintenance || ''}
-                  onChange={(e) => setMonthlyMaintenance(Number(e.target.value))}
+                  value={maintenancePeriod === 'month' ? (monthlyMaintenance || '') : (monthlyMaintenance ? Math.round(monthlyMaintenance * 12) : '')}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setMonthlyMaintenance(maintenancePeriod === 'year' ? val / 12 : val);
+                  }}
                   className="pl-9"
                   placeholder="0"
                 />
