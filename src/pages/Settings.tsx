@@ -23,6 +23,7 @@ export default function Settings() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -33,6 +34,7 @@ export default function Settings() {
       setFirstName(profile.first_name || '');
       setLastName(profile.last_name || '');
       setCity((profile as any).city || '');
+      setState((profile as any).state || '');
     }
   }, [profile]);
 
@@ -115,7 +117,8 @@ export default function Settings() {
   const initialFirstName = profile?.first_name || '';
   const initialLastName = profile?.last_name || '';
   const initialCity = (profile as any)?.city || '';
-  const hasProfileChangesCalc = firstName !== initialFirstName || lastName !== initialLastName || city !== initialCity;
+  const initialState = (profile as any)?.state || '';
+  const hasProfileChangesCalc = firstName !== initialFirstName || lastName !== initialLastName || city !== initialCity || state !== initialState;
 
   const hasAnyChanges = hasProfileChangesCalc || hasCompanyChanges;
 
@@ -127,7 +130,7 @@ export default function Settings() {
         promises.push(updateSettings.mutateAsync({ companyName }));
       }
       if (hasProfileChangesCalc) {
-        promises.push(updateProfile.mutateAsync({ firstName, lastName, city }));
+        promises.push(updateProfile.mutateAsync({ firstName, lastName, city, state }));
       }
       await Promise.all(promises);
       toast.success('Settings saved successfully');
@@ -183,16 +186,27 @@ export default function Settings() {
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="city">Business City</Label>
-                    <Input
-                      id="city"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      placeholder="e.g. Dallas, TX"
-                    />
-                    <p className="text-xs text-muted-foreground">Used for weather forecasts on the Calendar</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">Business City</Label>
+                      <Input
+                        id="city"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="e.g. Dallas"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State</Label>
+                      <Input
+                        id="state"
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        placeholder="e.g. TX"
+                      />
+                    </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">Used for weather forecasts on the Calendar</p>
                   <Separator />
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Email</label>

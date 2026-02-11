@@ -15,16 +15,17 @@ const DFW_LON = -96.7970;
 
 interface WeatherWidgetProps {
   city?: string | null;
+  state?: string | null;
 }
 
-export function WeatherWidget({ city }: WeatherWidgetProps) {
+export function WeatherWidget({ city, state }: WeatherWidgetProps) {
   const [forecast, setForecast] = useState<WeatherDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [locationLabel, setLocationLabel] = useState('DFW');
 
   useEffect(() => {
     fetchWeather();
-  }, [city]);
+  }, [city, state]);
 
   const fetchWeather = async () => {
     setLoading(true);
@@ -34,8 +35,9 @@ export function WeatherWidget({ city }: WeatherWidgetProps) {
 
     if (city) {
       try {
+        const searchQuery = state ? `${city}, ${state}` : city;
         const geoRes = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(searchQuery)}&count=1`
         );
         const geoData = await geoRes.json();
         if (geoData.results?.[0]) {
