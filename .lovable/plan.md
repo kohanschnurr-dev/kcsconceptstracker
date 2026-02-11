@@ -1,43 +1,25 @@
 
 
-## Replace Sage, Bronze, and Charcoal with 3 New Professional Palettes
+## Add "Stage" Dropdown to Procurement Item Modal
 
 ### What's changing
-Remove **Sage**, **Bronze**, and **Charcoal** and replace them with:
+The `phase` field already exists in the database (`procurement_items.phase`) and in the form state, but it's not visible in the modal UI. This change adds a "Stage" dropdown to the modal so users can select a construction phase (Rough-In, Trim Out, Finish, Punch List) for each item.
 
-| Name | Primary Accent | Vibe |
-|------|---------------|------|
-| **Ivory** | Warm neutral gold on light background | Clean, light/white professional theme |
-| **Titanium** | Cool silver-white accent on mid-dark gray | Industrial, modern, neutral |
-| **Midnight** | Deep navy with crisp teal accent | Premium dark corporate |
+### Placement
+The Stage dropdown will be added between **Source URL** and **Finish / Color**, sitting on the same row as Finish / Color in the 2-column grid layout:
 
-### Design Details
-
-**Ivory (the "white" palette)**
-- Light backgrounds (90-95% lightness) with dark text
-- Subtle warm gold accent (low saturation)
-- Foreground/text colors inverted to dark tones for readability on white
-- Cards slightly off-white for depth
-
-**Titanium**
-- Medium-dark neutral gray backgrounds (no color tint)
-- Silver/steel accent with minimal saturation
-- Very clean, monochrome feel
-
-**Midnight**
-- Very dark navy-blue backgrounds
-- Crisp but desaturated teal-cyan accent
-- Deep, premium feel
+1. Source Store | Source URL
+2. **Stage** | Finish / Color
+3. Unit Price | Quantity
 
 ### Technical Changes
 
-**File: `src/lib/colorPalettes.ts`**
-- Update `PaletteKey` type: replace `'sage' | 'bronze' | 'charcoal'` with `'ivory' | 'titanium' | 'midnight'`
-- Replace the three palette objects with new definitions
-- Ivory will need its own foreground/text overrides (dark text on light bg) rather than using the shared dark-mode defaults
-- Update `OLD_KEY_MAP` to map `sage -> ivory`, `bronze -> titanium`, `charcoal -> midnight` (plus keep existing `crimson -> midnight`, `teal -> ivory`, `copper -> titanium` mappings)
+**File: `src/components/procurement/ProcurementItemModal.tsx`**
+- Add a Stage `<Select>` dropdown between the Source URL field and the Finish / Color field (around line 1368)
+- Uses the existing `PHASES` array (`Rough-In`, `Trim Out`, `Finish`, `Punch List`) already defined in the file
+- Binds to the existing `formData.phase` state -- no new state needed
+- Include a "None" option so the field is optional
+- The phase value already saves to the database via the existing auto-save logic -- no backend changes needed
 
-**File: `src/index.css`** -- No changes needed (CSS vars are set dynamically)
-
-**File: `src/components/settings/ColorPaletteCard.tsx`** -- No changes needed (reads palettes array dynamically)
+The phase is stored on the item itself and travels with it when assigned to bundles/projects, so it naturally relates to whichever project the item is associated with.
 
