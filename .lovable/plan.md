@@ -1,20 +1,23 @@
 
 
-## Fix Rain Warning Emoji Threshold
-
-### Problem
-The tooltip shows the rain warning emoji for any precipitation above 0%. It should only display the warning emoji when precipitation exceeds 35%.
+## Remove "Tomorrow" Label from Weather Widget
 
 ### Change
 
-**File: `src/components/calendar/WeatherWidget.tsx`** (line 227-229)
+**File: `src/components/calendar/WeatherWidget.tsx`**
 
-- Change the condition from `day.precipitation > 0` to `day.precipitation > 35`
-- This aligns the tooltip warning with the `hasRainWarning` highlight logic already in place
+In the `formatDay` function, remove the "Tomorrow" check so that all days except "Today" display their weekday abbreviation (Mon, Tue, Wed, etc.).
 
 ```text
-Before:  {day.precipitation > 0 && ( <p>⚠️ ...precipitation</p> )}
-After:   {day.precipitation > 35 && ( <p>⚠️ ...precipitation</p> )}
+Before:
+  if (date === today) return 'Today';
+  if (date === tomorrow) return 'Tomorrow';
+  return weekday;
+
+After:
+  if (date === today) return 'Today';
+  return weekday;
 ```
 
-One line change, no other files affected.
+One small change, no other files affected.
+
