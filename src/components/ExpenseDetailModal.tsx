@@ -472,7 +472,11 @@ export function ExpenseDetailModal({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((cat) => {
+                  {categories.slice().sort((a, b) => {
+                        const labelA = getBudgetCategories().find(c => c.value === a.category)?.label || a.category;
+                        const labelB = getBudgetCategories().find(c => c.value === b.category)?.label || b.category;
+                        return labelA.localeCompare(labelB);
+                      }).map((cat) => {
                         const label = getBudgetCategories().find(b => b.value === cat.category)?.label || cat.category;
                         return (
                           <SelectItem key={cat.id} value={cat.id}>
