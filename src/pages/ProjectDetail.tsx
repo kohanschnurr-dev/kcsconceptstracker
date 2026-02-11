@@ -2,7 +2,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { parseDateString, formatDisplayDate } from '@/lib/dateUtils';
-import { arrayMove } from '@dnd-kit/sortable';
+import { arrayMove, useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -18,9 +20,19 @@ import {
   Loader2,
   ChevronDown,
   Settings,
-  ArrowUp,
-  ArrowDown
+  GripVertical
 } from 'lucide-react';
+
+function SortableTabItem({ id, label }: { id: string; label: string }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted">
+      <GripVertical {...attributes} {...listeners} className="h-3.5 w-3.5 text-muted-foreground cursor-grab" />
+      <span className="text-sm">{label}</span>
+    </div>
+  );
+}
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -338,6 +350,26 @@ export default function ProjectDetail() {
     }
     updateDetailTabOrder.mutate({ projectType: project.project_type, tabOrder: newOrder });
   };
+
+  const tabSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleTabDragEnd = (event: DragEndEvent) => {
+    if (!project) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = effectiveTabOrder.indexOf(active.id as string);
+    const newIndex = effectiveTabOrder.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const fullOrder = getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
+    const filtered = project.project_type === 'rental' ? fullOrder.filter(t => t !== 'loan') : fullOrder;
+    const newOrder = arrayMove(filtered, oldIndex, newIndex);
+    if (project.project_type === 'rental') {
+      const loanIdx = fullOrder.indexOf('loan');
+      if (loanIdx >= 0) newOrder.splice(loanIdx, 0, 'loan');
+    }
+    updateDetailTabOrder.mutate({ projectType: project.project_type, tabOrder: newOrder });
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -610,21 +642,13 @@ export default function ProjectDetail() {
               </PopoverTrigger>
               <PopoverContent className="w-56 p-2" align="end">
                 <p className="text-xs text-muted-foreground mb-2 px-2">Tab Order</p>
-                {effectiveTabOrder.map((tab, index) => (
-                  <div key={tab} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted">
-                    <span className="text-sm">{TAB_LABELS[tab]}</span>
-                    <div className="flex gap-0.5">
-                      <Button size="icon" variant="ghost" className="h-6 w-6"
-                        disabled={index === 0} onClick={() => moveDetailTab(index, 'up')}>
-                        <ArrowUp className="h-3 w-3" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-6 w-6"
-                        disabled={index === effectiveTabOrder.length - 1} onClick={() => moveDetailTab(index, 'down')}>
-                        <ArrowDown className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                <DndContext sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
+                  <SortableContext items={effectiveTabOrder} strategy={verticalListSortingStrategy}>
+                    {effectiveTabOrder.map((tab) => (
+                      <SortableTabItem key={tab} id={tab} label={TAB_LABELS[tab]} />
+                    ))}
+                  </SortableContext>
+                </DndContext>
               </PopoverContent>
             </Popover>
           </div>
