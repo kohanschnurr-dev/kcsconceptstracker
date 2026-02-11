@@ -1,23 +1,28 @@
 
 
-## Fix: Goals and Rules Keep Coming Back After Deletion
+## Reorder Color Palettes: Light Themes Last
 
-### Root Cause
+### Change
 
-The code in `BusinessExpenses.tsx` has a **seeding mechanism** that automatically re-creates default goals and rules whenever it finds zero records. So even after you delete them all, refreshing the page brings them right back.
+Reorder the `palettes` array in `src/lib/colorPalettes.ts` so the three light-background palettes -- **Ivory**, **Pearl**, and **Linen** -- appear at the end of the list.
 
-### Solution
+### New Order
 
-Remove the automatic seeding logic for both goals and rules. When you have 0 goals, it should show "0 goals" -- not silently re-create defaults.
+1. Ember
+2. Graphite
+3. Slate
+4. Onyx
+5. Titanium
+6. Midnight
+7. Cobalt
+8. Ivory
+9. Pearl
+10. Linen
 
 ### Technical Details
 
-**File: `src/pages/BusinessExpenses.tsx`**
+**File: `src/lib/colorPalettes.ts`**
 
-1. Remove the "Seed default goals if empty" block (lines ~187-195) that inserts 3 default goals when none exist
-2. Remove the "Seed default rules if empty" block (lines ~199-onward) that inserts 6 default rules when none exist
-3. Simply set the state directly from the query results:
-   - `setGoals(goalsRes.data || []);`
-   - `setRules(rulesRes.data || []);`
+- Move the Ivory, Pearl, and Linen palette objects to positions 8-10 in the `palettes` array
+- No other changes needed -- the grid layout and selection logic remain the same
 
-After this fix, you can open the Goals and Rules popouts, delete the unwanted entries using the trash buttons, and they will stay deleted.
