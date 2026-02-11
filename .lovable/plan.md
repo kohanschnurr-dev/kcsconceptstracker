@@ -1,27 +1,23 @@
 
 
-## Filter Out Completed Projects from Daily Logs & Tasks
+## Fix: "Change Category" Group Not Reflected in Budget Calculator
 
 ### Problem
-The project selection dropdown in the Daily Logs page shows all projects, including ones with "complete" status. Per the existing convention (used in Calendar, New Daily Log Modal, etc.), completed projects should be excluded.
+When you change a category's trade group in Settings (e.g., moving Foundation from Other to Structure), the change is saved to localStorage with the correct `group` field. However, `getBudgetCalcCategories()` in `budgetCalculatorCategories.ts` ignores the stored group and always falls back to the hardcoded `CATEGORY_GROUP_MAP`, which still maps `foundation_repair` to `'other'`.
 
-### Change
+### Fix
 
-**File: `src/pages/DailyLogs.tsx`** (1 line change)
+**File: `src/lib/budgetCalculatorCategories.ts`** (1 line change)
 
-In the `fetchProjects` function (line 169), add `.neq('status', 'complete')` to the query:
+Update line 99 in `getBudgetCalcCategories()` to prioritize the stored group from localStorage over the static map:
 
 ```typescript
-const { data, error } = await supabase
-  .from('projects')
-  .select('id, name')
-  .neq('status', 'complete')   // <-- add this line
-  .order('name');
+// Before (always uses static map):
+group: CATEGORY_GROUP_MAP[cat.value] || 'other',
+
+// After (respects user's saved group first):
+group: cat.group || CATEGORY_GROUP_MAP[cat.value] || 'other',
 ```
 
-This single filter ensures completed projects won't appear in:
-- The project dropdown when creating a new task (Master Pipeline)
-- The project list shown on task rows
-
-This matches the existing pattern used in `NewDailyLogModal` (which filters `.eq('status', 'active')`) and the `ProjectAutocomplete` component (which filters out `complete` status).
+Since `getBudgetCategories()` already loads from localStorage (which includes the `group` field set by the "Change Category" action), `cat.group` will contain the user's chosen group. The static map only serves as the default for categories that haven't been reassigned.
 
