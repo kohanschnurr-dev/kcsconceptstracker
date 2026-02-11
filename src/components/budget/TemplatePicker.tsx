@@ -352,8 +352,8 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
                 />
                 <Input
                   type="number"
-                  value={tier.pricePerSqft}
-                  onChange={(e) => updateEditingTier(index, 'pricePerSqft', parseInt(e.target.value) || 0)}
+                  value={tier.pricePerSqft || ''}
+                  onChange={(e) => updateEditingTier(index, 'pricePerSqft', parseFloat(e.target.value) || 0)}
                   placeholder="$/sqft"
                 />
               </div>
