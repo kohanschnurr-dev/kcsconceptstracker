@@ -248,7 +248,9 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                       {pv.vendor?.trades && pv.vendor.trades.length > 0 && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Wrench className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                            <span className="inline-flex cursor-help">
+                              <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                            </span>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-xs">
                             <p className="text-sm">{pv.vendor.trades.map(formatTrade).join(', ')}</p>
