@@ -13,7 +13,7 @@ import { MONTHLY_COST_CATEGORIES } from '@/lib/monthlyCategories';
 import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES } from '@/types';
 import { DEFAULT_STORES } from '@/hooks/useCustomStores';
 import { DEFAULT_PROPERTY_FIELDS } from '@/components/project/ProjectInfo';
-import { DEFAULT_BUDGET_CALC_CATEGORIES, BUDGET_CALC_GROUP_DEFS } from '@/lib/budgetCalculatorCategories';
+import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP } from '@/lib/budgetCalculatorCategories';
 
 function CategorySection({
   items,
@@ -22,7 +22,7 @@ function CategorySection({
   onReset,
   placeholder,
   grouped,
-  budgetCalcGrouped,
+  tradeGrouped,
 }: {
   items: CategoryItem[];
   onAdd: (label: string, group?: string) => boolean;
@@ -30,16 +30,16 @@ function CategorySection({
   onReset: () => void;
   placeholder: string;
   grouped?: boolean;
-  budgetCalcGrouped?: boolean;
+  tradeGrouped?: boolean;
 }) {
   const [newLabel, setNewLabel] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<string>('acquisition_admin');
-  const [selectedBudgetCalcGroup, setSelectedBudgetCalcGroup] = useState<string>('');
+  const [selectedTradeGroup, setSelectedTradeGroup] = useState<string>('other');
 
   const handleAdd = () => {
     const trimmed = newLabel.trim();
     if (!trimmed) return;
-    const success = onAdd(trimmed, grouped ? selectedGroup : budgetCalcGrouped ? selectedBudgetCalcGroup : undefined);
+    const success = onAdd(trimmed, grouped ? selectedGroup : undefined);
     if (success) {
       setNewLabel('');
       toast.success(`Added "${trimmed}"`);
@@ -53,82 +53,54 @@ function CategorySection({
     toast.success('Reset to defaults');
   };
 
-  // Group items if needed
   const renderItems = () => {
-    if (grouped || budgetCalcGrouped) {
-      // If budgetCalcGrouped, go straight to budget calc rendering
-      if (budgetCalcGrouped) {
-        const groupOrder = Object.keys(BUDGET_CALC_GROUP_DEFS);
-        return groupOrder.map(groupKey => {
-          const def = BUDGET_CALC_GROUP_DEFS[groupKey];
-          const groupItems = items.filter(i => i.group === groupKey).sort((a, b) => a.label.localeCompare(b.label));
-          if (groupItems.length === 0) return null;
-          return (
-            <div key={groupKey} className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">{def.label}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {groupItems.map(item => (
-                  <Badge key={item.value} variant="outline" className="text-xs">
-                    {item.label}
-                    <button onClick={() => onRemove(item.value)} className="ml-1.5 hover:text-destructive">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
+    if (grouped) {
+      const groups = Object.entries(CATEGORY_GROUPS) as [CategoryGroup, typeof CATEGORY_GROUPS[CategoryGroup]][];
+      return groups.map(([groupKey, groupInfo]) => {
+        const groupItems = items.filter(i => i.group === groupKey).sort((a, b) => a.label.localeCompare(b.label));
+        if (groupItems.length === 0) return null;
+        return (
+          <div key={groupKey} className="space-y-1.5">
+            <p className={`text-xs font-medium ${groupInfo.textClass}`}>{groupInfo.label}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {groupItems.map(item => (
+                <Badge key={item.value} variant="outline" className={`text-xs ${groupInfo.borderClass} ${groupInfo.textClass}`}>
+                  {item.label}
+                  <button onClick={() => onRemove(item.value)} className="ml-1.5 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
             </div>
-          );
-        });
-      }
+          </div>
+        );
+      });
+    }
 
-      // Determine which group definitions to use
-      const isCalendarGrouped = Object.keys(CATEGORY_GROUPS).some(k => items.some(i => i.group === k));
-      
-      if (isCalendarGrouped) {
-        const groups = Object.entries(CATEGORY_GROUPS) as [CategoryGroup, typeof CATEGORY_GROUPS[CategoryGroup]][];
-        return groups.map(([groupKey, groupInfo]) => {
-          const groupItems = items.filter(i => i.group === groupKey).sort((a, b) => a.label.localeCompare(b.label));
-          if (groupItems.length === 0) return null;
-          return (
-            <div key={groupKey} className="space-y-1.5">
-              <p className={`text-xs font-medium ${groupInfo.textClass}`}>{groupInfo.label}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {groupItems.map(item => (
-                  <Badge key={item.value} variant="outline" className={`text-xs ${groupInfo.borderClass} ${groupInfo.textClass}`}>
-                    {item.label}
-                    <button onClick={() => onRemove(item.value)} className="ml-1.5 hover:text-destructive">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
+    if (tradeGrouped) {
+      const groupOrder = Object.keys(BUDGET_CALC_GROUP_DEFS);
+      return groupOrder.map(groupKey => {
+        const def = BUDGET_CALC_GROUP_DEFS[groupKey];
+        const groupItems = items
+          .filter(i => (CATEGORY_GROUP_MAP[i.value] || 'other') === groupKey)
+          .sort((a, b) => a.label.localeCompare(b.label));
+        if (groupItems.length === 0) return null;
+        return (
+          <div key={groupKey} className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">{def.label}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {groupItems.map(item => (
+                <Badge key={item.value} variant="outline" className="text-xs">
+                  {item.label}
+                  <button onClick={() => onRemove(item.value)} className="ml-1.5 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
             </div>
-          );
-        });
-      } else {
-        // Budget calc groups
-        const groupOrder = Object.keys(BUDGET_CALC_GROUP_DEFS);
-        return groupOrder.map(groupKey => {
-          const def = BUDGET_CALC_GROUP_DEFS[groupKey];
-          const groupItems = items.filter(i => i.group === groupKey).sort((a, b) => a.label.localeCompare(b.label));
-          if (groupItems.length === 0) return null;
-          return (
-            <div key={groupKey} className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">{def.label}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {groupItems.map(item => (
-                  <Badge key={item.value} variant="outline" className="text-xs">
-                    {item.label}
-                    <button onClick={() => onRemove(item.value)} className="ml-1.5 hover:text-destructive">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          );
-        });
-      }
+          </div>
+        );
+      });
     }
 
     return (
@@ -157,18 +129,6 @@ function CategorySection({
             <SelectContent>
               {(Object.entries(CATEGORY_GROUPS) as [CategoryGroup, typeof CATEGORY_GROUPS[CategoryGroup]][]).map(([key, info]) => (
                 <SelectItem key={key} value={key}>{info.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {budgetCalcGrouped && (
-          <Select value={selectedBudgetCalcGroup} onValueChange={setSelectedBudgetCalcGroup}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Select group..." />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(BUDGET_CALC_GROUP_DEFS).map(([key, def]) => (
-                <SelectItem key={key} value={key}>{def.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -212,7 +172,6 @@ export default function ManageSourcesCard() {
   const business = useCustomCategories('business', businessDefaults);
   const stores = useCustomCategories('stores', storeDefaults);
   const propertyInfo = useCustomCategories('propertyInfo', propertyInfoDefaults);
-  const budgetCalc = useCustomCategories('budgetCalc', DEFAULT_BUDGET_CALC_CATEGORIES);
 
   return (
     <Card>
@@ -225,20 +184,6 @@ export default function ManageSourcesCard() {
       </CardHeader>
       <CardContent>
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="budgetCalc">
-            <AccordionTrigger className="text-sm">Budget Calculator Categories ({budgetCalc.items.length})</AccordionTrigger>
-            <AccordionContent>
-              <CategorySection
-                items={budgetCalc.items}
-                onAdd={budgetCalc.addItem}
-                onRemove={budgetCalc.removeItem}
-                onReset={budgetCalc.resetToDefaults}
-                placeholder="New budget category"
-                budgetCalcGrouped
-              />
-            </AccordionContent>
-          </AccordionItem>
-
           <AccordionItem value="business">
             <AccordionTrigger className="text-sm">Business Expense Categories ({business.items.length})</AccordionTrigger>
             <AccordionContent>
@@ -274,7 +219,8 @@ export default function ManageSourcesCard() {
                 onAdd={budget.addItem}
                 onRemove={budget.removeItem}
                 onReset={budget.resetToDefaults}
-                placeholder="New budget category"
+                placeholder="New expense category"
+                tradeGrouped
               />
             </AccordionContent>
           </AccordionItem>
