@@ -388,4 +388,6 @@ export function applyPalette(key: PaletteKey) {
   try {
     localStorage.setItem(STORAGE_KEY, key);
   } catch {}
+  // Sync to cloud
+  import('@/hooks/useSettingsSync').then(({ triggerSettingsSync }) => triggerSettingsSync()).catch(() => {});
 }
