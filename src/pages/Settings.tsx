@@ -211,15 +211,6 @@ export default function Settings() {
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="city">Business City</Label>
-                      <Input
-                        id="city"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        placeholder="e.g. Dallas"
-                      />
-                    </div>
-                    <div className="space-y-2">
                       <Label>State</Label>
                       <Popover>
                         <PopoverTrigger asChild>
@@ -265,6 +256,15 @@ export default function Settings() {
                           </Command>
                         </PopoverContent>
                       </Popover>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="city">Business City</Label>
+                      <Input
+                        id="city"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="e.g. Dallas"
+                      />
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">Used for weather forecasts on the Calendar</p>
