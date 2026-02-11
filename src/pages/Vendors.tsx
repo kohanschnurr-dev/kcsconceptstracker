@@ -21,6 +21,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { BUDGET_CATEGORIES } from '@/types';
@@ -47,6 +53,7 @@ export default function Vendors() {
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
+  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
 
   useEffect(() => {
     fetchVendors();
@@ -166,102 +173,95 @@ export default function Vendors() {
           <>
             {/* Vendors Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filteredVendors.map((vendor) => {
-                const hasComplianceIssues = !vendor.has_w9;
-
-                return (
-                  <div
-                    key={vendor.id}
-                    className={cn(
-                      'glass-card p-5 hover:border-primary/50 transition-all cursor-pointer animate-slide-up'
-                    )}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1 min-w-0 pr-2">
-                        <h3 className="font-semibold">{vendor.name}</h3>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {vendor.trades.slice(0, 5).map((trade) => (
-                            <Badge key={trade} variant="secondary" className="text-xs">
-                              {getTradeLabel(trade)}
-                            </Badge>
-                          ))}
-                          {vendor.trades.length > 5 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{vendor.trades.length - 5} more
-                            </Badge>
-                          )}
-                          {vendor.trades.length === 0 && (
-                            <Badge variant="outline" className="text-xs text-muted-foreground">
-                              No trades
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-0.5">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={cn(
-                                'h-4 w-4',
-                                i < (vendor.reliability_rating || 0)
-                                  ? 'fill-primary text-primary'
-                                  : 'text-muted-foreground/30'
-                              )}
-                            />
-                          ))}
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditVendor(vendor)}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => {
-                                setVendorToDelete(vendor);
-                                setDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+              {filteredVendors.map((vendor) => (
+                <div
+                  key={vendor.id}
+                  className="glass-card p-5 hover:border-primary/50 transition-all cursor-pointer animate-slide-up"
+                  onClick={() => setSelectedVendor(vendor)}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1 min-w-0 pr-2">
+                      <h3 className="font-semibold">{vendor.name}</h3>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {vendor.trades.slice(0, 5).map((trade) => (
+                          <Badge key={trade} variant="secondary" className="text-xs">
+                            {getTradeLabel(trade)}
+                          </Badge>
+                        ))}
+                        {vendor.trades.length > 5 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{vendor.trades.length - 5} more
+                          </Badge>
+                        )}
+                        {vendor.trades.length === 0 && (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            No trades
+                          </Badge>
+                        )}
                       </div>
                     </div>
-
-                    <div className="space-y-2 mb-4">
-                      {vendor.phone && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Phone className="h-4 w-4" />
-                          <span>{vendor.phone}</span>
-                        </div>
-                      )}
-                      {vendor.email && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Mail className="h-4 w-4" />
-                          <span className="truncate">{vendor.email}</span>
-                        </div>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={cn(
+                              'h-4 w-4',
+                              i < (vendor.reliability_rating || 0)
+                                ? 'fill-primary text-primary'
+                                : 'text-muted-foreground/30'
+                            )}
+                          />
+                        ))}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEditVendor(vendor)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              setVendorToDelete(vendor);
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
-                      <Badge variant="outline" className="text-xs">
-                        {vendor.pricing_model === 'flat' ? 'Flat Rate' : vendor.pricing_model === 'hourly' ? 'Hourly' : 'Not set'}
-                      </Badge>
-                    </div>
-
-
                   </div>
-                );
-              })}
+
+                  <div className="space-y-2 mb-4">
+                    {vendor.phone && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Phone className="h-4 w-4" />
+                        <span>{vendor.phone}</span>
+                      </div>
+                    )}
+                    {vendor.email && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Mail className="h-4 w-4" />
+                        <span className="truncate">{vendor.email}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+                    <Badge variant="outline" className="text-xs">
+                      {vendor.pricing_model === 'flat' ? 'Flat Rate' : vendor.pricing_model === 'hourly' ? 'Hourly' : 'Not set'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {filteredVendors.length === 0 && (
@@ -288,6 +288,93 @@ export default function Vendors() {
         onVendorCreated={fetchVendors}
         vendor={editingVendor}
       />
+
+      {/* Vendor Contact Card Dialog */}
+      <Dialog open={!!selectedVendor} onOpenChange={(open) => !open && setSelectedVendor(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedVendor?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedVendor && (
+            <div className="space-y-4">
+              {/* Star Rating */}
+              <div className="flex items-center gap-0.5">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={cn(
+                      'h-4 w-4',
+                      i < (selectedVendor.reliability_rating || 0)
+                        ? 'fill-primary text-primary'
+                        : 'text-muted-foreground/30'
+                    )}
+                  />
+                ))}
+              </div>
+
+              {/* Contact Info */}
+              <div className="space-y-2">
+                {selectedVendor.phone && (
+                  <a href={`tel:${selectedVendor.phone}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
+                    <Phone className="h-4 w-4" />
+                    {selectedVendor.phone}
+                  </a>
+                )}
+                {selectedVendor.email && (
+                  <a href={`mailto:${selectedVendor.email}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
+                    <Mail className="h-4 w-4" />
+                    {selectedVendor.email}
+                  </a>
+                )}
+              </div>
+
+              {/* Trades */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Trades</p>
+                <div className="flex flex-wrap gap-1">
+                  {selectedVendor.trades.length > 0 ? selectedVendor.trades.map((trade) => (
+                    <Badge key={trade} variant="secondary" className="text-xs">
+                      {getTradeLabel(trade)}
+                    </Badge>
+                  )) : (
+                    <span className="text-sm text-muted-foreground">None</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Pricing Model */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Pricing</p>
+                <Badge variant="outline" className="text-xs">
+                  {selectedVendor.pricing_model === 'flat' ? 'Flat Rate' : selectedVendor.pricing_model === 'hourly' ? 'Hourly' : 'Not set'}
+                </Badge>
+              </div>
+
+              {/* Notes */}
+              {selectedVendor.notes && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                  <p className="text-sm whitespace-pre-wrap">{selectedVendor.notes}</p>
+                </div>
+              )}
+
+              {/* Edit Button */}
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => {
+                  const vendor = selectedVendor;
+                  setSelectedVendor(null);
+                  handleEditVendor(vendor);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Vendor
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
