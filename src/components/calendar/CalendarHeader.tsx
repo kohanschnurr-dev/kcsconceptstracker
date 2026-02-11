@@ -71,7 +71,7 @@ export function CalendarHeader({
   return (
     <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-card rounded-xl p-4 border border-border">
       {/* Left section: Title + Navigation */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 flex-1">
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
           <h1 className="text-lg font-bold text-foreground whitespace-nowrap">Project Calendar</h1>
@@ -101,7 +101,7 @@ export function CalendarHeader({
       </div>
 
       {/* Right section: Filters + Views + Add Button */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 flex-1 justify-end">
         {/* Project Filter */}
         {onProjectFilterChange && projects.length > 0 && (
           <ProjectAutocomplete
