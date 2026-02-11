@@ -56,6 +56,16 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { BUDGET_CATEGORIES } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PhotoGallery } from '@/components/project/PhotoGallery';
 import { DocumentsGallery } from '@/components/project/DocumentsGallery';
 
@@ -159,6 +169,7 @@ export default function ProjectDetail() {
   const [procurementCount, setProcurementCount] = useState(0);
   const [activeTab, setActiveTab] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [nameValue, setNameValue] = useState('');
   const [addressValue, setAddressValue] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -361,7 +372,7 @@ export default function ProjectDetail() {
       setProject({ ...project, project_type: 'rental', status: 'active' });
       toast({
         title: 'Converted to Rental',
-        description: 'This project is now a rental property',
+        description: 'Head to the Financials tab to set up your rental income details.',
       });
     }
   };
@@ -440,6 +451,22 @@ export default function ProjectDetail() {
   return (
     <MainLayout>
       <div className="space-y-6">
+        <AlertDialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Convert to Rental Property</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will convert <strong>{project.name}</strong> to a rental property. The Financials tab will switch to the Cash Flow calculator, and the Loan tab will be hidden. This can't be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConvertToRental}>
+                Convert to Rental
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {/* Header */}
         <div className="flex flex-col gap-4">
           <Button 
@@ -525,7 +552,7 @@ export default function ProjectDetail() {
                     {!isRental && project.status === 'complete' && (
                       <>
                         <div className="my-1 border-t border-border" />
-                        <DropdownMenuItem onClick={handleConvertToRental}>
+                        <DropdownMenuItem onClick={() => setShowConvertDialog(true)}>
                           <Home className="h-4 w-4 mr-2 text-blue-500" />
                           Convert to Rental
                         </DropdownMenuItem>
