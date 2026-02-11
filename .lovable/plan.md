@@ -1,42 +1,25 @@
 
 
-## Reorganize Procurement Item Modal Layout
+## Collapse All Categories by Default, Auto-Expand on Template Selection
 
-### Changes
+### What changes
+1. Categories start **all collapsed** when the Budget Calculator loads (currently "Structure" is open by default).
+2. When a template or baseline is selected, **all category groups auto-expand** and the **Profit Breakdown** section also opens automatically.
 
-**1. Move Category above Assign to Bundles (full width)**
-- Currently Category is a half-width field next to Quantity (lines 1385-1406)
-- Move it to appear right after the Product Image section, before Assign to Bundles
-- Make it full width (`col-span-2`) to match Assign to Bundles width
+### Steps
 
-**2. Move Specifications above Notes**
-- Currently Specifications appear right after Product Image (lines 1254-1266), before Assign to Bundles
-- Move them to appear just before Notes (currently at line 1423), after Quantity
-- This groups the core purchasing fields (Source, Price, Quantity) together, then specs, then notes
+**File: `src/components/budget/BudgetCanvas.tsx`**
+- Change the initial `openGroups` state from `['Structure']` to `[]` (empty array -- all collapsed).
+- Add a new optional prop `expandAll?: boolean` that, when toggled to `true`, sets `openGroups` to all group names.
+- Add a `useEffect` that watches `expandAll` and opens all groups when it becomes `true`.
 
-**3. Widen the popup**
-- Change `max-w-2xl` to `max-w-4xl` on the DialogContent (line 1488) to eliminate the side scrollbar
+**File: `src/pages/BudgetCalculator.tsx`**
+- Add a state `const [templateJustApplied, setTemplateJustApplied] = useState(false)`.
+- In `handleSelectTemplate`, set `templateJustApplied` to `true` and also set `profitBreakdownOpen` to `true`.
+- Pass `expandAll={templateJustApplied}` to `BudgetCanvas`.
+- After the canvas processes the expansion, reset `templateJustApplied` back to `false` (via a callback prop or effect).
 
-### New field order in the details step
-1. Item Name (full width)
-2. Product Image (full width)
-3. Category (full width - moved up)
-4. Assign to Bundles (full width)
-5. Source Store / Source URL (two columns)
-6. Finish-Color / Unit Price (two columns)
-7. Quantity (half width, standalone since Category moved)
-8. Specifications (full width - moved down)
-9. Notes (full width)
-10. Pack price / Includes tax toggles
-
-### Technical Details
-
-**File: `src/components/budget/BudgetCanvas.tsx`** -- no changes needed
-
-**File: `src/components/procurement/ProcurementItemModal.tsx`**
-- Line 1488: change `max-w-2xl` to `max-w-4xl`
-- Lines 1254-1266 (Specifications block): remove from current position
-- Lines 1385-1406 (Category block): remove from current position, place as `col-span-2` after Product Image and before Assign to Bundles
-- Insert Specifications block between Quantity and Notes
-- Quantity field remains half-width on its own row
-
+### Technical Detail
+- `BudgetCanvas` gets a new prop: `expandAll?: boolean`
+- A `useEffect` in BudgetCanvas reacts: when `expandAll` transitions to `true`, it sets `openGroups` to all group names, then calls an optional `onExpandHandled?.()` callback so the parent can reset the flag.
+- This avoids permanently locking all groups open -- it's a one-shot trigger per template selection.
