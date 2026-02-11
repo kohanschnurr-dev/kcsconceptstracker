@@ -1,34 +1,24 @@
 
 
-## More Palettes + Fix Hover Glitch
+## Keep All Category Lists Sorted A-Z
 
-### 1. Fix the hover glitch
+### Problem
+When new categories are added, they append to the end of their group. The user wants all lists to always display in alphabetical order by label.
 
-The `hover:scale-105` on palette buttons causes layout jitter inside the scrollable flex container -- scaling pushes siblings around and triggers scroll reflow. Fix by removing the scale transform and using a subtler hover effect instead (border color change + slight shadow lift).
+### Solution
+Sort items alphabetically at the display level in `ManageSourcesCard.tsx` and in the `useCustomCategories` hook so every consumer gets sorted data.
 
-**File: `src/components/settings/ColorPaletteCard.tsx`**
-- Remove `hover:scale-105` from the button className
-- Replace with `hover:shadow-md hover:shadow-primary/10` for a clean lift effect without layout shift
-- Add `transition-all duration-150` for smooth feel
+### Technical Details
 
-### 2. Add more palettes
+**File: `src/hooks/useCustomCategories.ts`**
+- In the `addItem` callback, after adding the new item, sort the resulting array by `label` (case-insensitive) using `localeCompare`
+- Update the initial state loader to also sort items when loading from localStorage
+- This ensures all consumers of the hook (not just the settings UI) always receive A-Z sorted items
 
-Add 4 new professional dark-mode themes to `src/lib/colorPalettes.ts`:
+**File: `src/components/settings/ManageSourcesCard.tsx`**
+- In `renderItems()`, sort `groupItems` alphabetically by label before mapping to badges (for the grouped calendar view)
+- In the ungrouped branch, sort `items` alphabetically by label before mapping
 
-| Name | Primary Color | Vibe |
-|------|--------------|------|
-| **Crimson** | Red 0 85% 50% | Bold, warm red accent |
-| **Teal** | Cyan-teal 180 70% 40% | Fresh, modern teal |
-| **Copper** | Warm brown 25 70% 45% | Earthy, sophisticated |
-| **Midnight** | Deep indigo 235 60% 55% | Rich, deep blue-violet |
-
-**File: `src/lib/colorPalettes.ts`**
-- Add `'crimson' | 'teal' | 'copper' | 'midnight'` to the `PaletteKey` type
-- Add 4 new palette objects following the same structure as existing ones (background, card, primary, secondary, muted, accent, border, input, ring, chart colors, sidebar variants)
-- Each palette keeps the shared foreground/status colors for consistency
-
-### Files changed
-
-- `src/lib/colorPalettes.ts` -- add 4 palettes, update type
-- `src/components/settings/ColorPaletteCard.tsx` -- fix hover effect
-
+This two-layer approach ensures:
+1. Data is stored sorted (via the hook)
+2. Display is always sorted even if older unsorted data exists in localStorage
