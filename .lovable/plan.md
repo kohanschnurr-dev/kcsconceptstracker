@@ -1,41 +1,37 @@
 
 
-## Cover Photo Crop/Position Editor
+## Make Project Name and Address Editable Inline
 
 ### What Changes
 
-When you click "Set as Cover" on a photo, a modal will appear showing a preview of how the image will look in the 16:9 card format. You'll be able to drag the image to reposition it within the frame, then confirm. The position offset is saved to the database and applied on the dashboard card.
+The project name and address on the project detail page header will become click-to-edit fields. Clicking on either will turn it into a text input; pressing Enter or clicking away saves the change to the database. The status dropdown and start date picker are already editable.
 
 ### How It Works
 
-- Clicking "Set as Cover" opens a new `CoverCropModal` instead of immediately saving
-- The modal shows the photo in a 16:9 preview frame (matching the dashboard card)
-- You drag the image up/down (and left/right) to position it within the frame
-- Clicking "Save" stores both the cover photo path and a `cover_photo_position` (e.g. `"50% 30%"`) in the `projects` table
-- The dashboard ProjectCard uses that `object-position` value when rendering the cover
+- Click the project name to edit it inline -- it becomes a text input
+- Click the address to edit it inline -- same behavior
+- Press Enter or click away (blur) to save
+- Press Escape to cancel without saving
+- Empty values are rejected (name and address are required)
 
 ### Technical Details
 
-**1. Database migration**
-- Add `cover_photo_position text default '50% 50%'` column to `projects`
+**File: `src/pages/ProjectDetail.tsx`**
 
-**2. New component: `src/components/project/CoverCropModal.tsx`**
-- A Dialog showing the image inside a fixed `aspect-video` container with `overflow-hidden`
-- The image is rendered larger than the container (e.g. `w-full h-auto min-h-full`) so it can be repositioned
-- Mouse/touch drag events update `object-position` in real-time as a preview
-- "Save" button calls the parent callback with the chosen position string
-- "Cancel" closes without saving
+1. Add two new state variables:
+   - `editingName: boolean` (default false)
+   - `editingAddress: boolean` (default false)
 
-**3. `src/components/project/PhotoGallery.tsx`**
-- `setAsCoverPhoto` no longer saves directly -- instead it opens `CoverCropModal` with the selected photo
-- On confirm from the modal, save both `cover_photo_path` and `cover_photo_position` to the `projects` table
-- Pass `getPhotoUrl` to the modal
+2. Replace the static `<h1>{project.name}</h1>` (line 414) with a conditional:
+   - When `editingName` is false: render the name in an `<h1>` with `cursor-pointer hover:text-primary` and `onClick` to enable editing
+   - When `editingName` is true: render an `<Input>` pre-filled with the name, auto-focused, that saves on blur/Enter and cancels on Escape
 
-**4. `src/types/index.ts`**
-- Add `coverPhotoPosition?: string` to the `Project` interface
+3. Replace the static address `<span>{project.address}</span>` (lines 471-474) with the same pattern:
+   - Click to toggle `editingAddress`
+   - Show an `<Input>` when editing, save on blur/Enter
 
-**5. `src/components/dashboard/ProjectCard.tsx`**
-- Apply `style={{ objectPosition: project.coverPhotoPosition || '50% 50%' }}` to the cover `<img>` tag
-
-**6. `src/pages/Index.tsx` and `src/pages/Projects.tsx`**
-- Map `cover_photo_position` from the DB query to `coverPhotoPosition` in the Project object
+4. Both save handlers will:
+   - Trim the value and reject empty strings
+   - Call `supabase.from('projects').update(...)` 
+   - Update local `project` state on success
+   - Show a toast on error
