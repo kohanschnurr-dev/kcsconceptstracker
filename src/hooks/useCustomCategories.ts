@@ -58,11 +58,24 @@ export function useCustomCategories(type: CategoryType, defaults: CategoryItem[]
     setItems(prev => prev.filter(i => i.value !== value));
   }, []);
 
+  const renameItem = useCallback((oldValue: string, newLabel: string, newGroup?: string) => {
+    const newValue = newLabel.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    if (items.some(i => i.value === newValue && i.value !== oldValue)) return false;
+    setItems(prev =>
+      prev.map(i =>
+        i.value === oldValue
+          ? { ...i, value: newValue, label: newLabel, group: newGroup ?? i.group }
+          : i
+      ).sort((a, b) => a.label.localeCompare(b.label))
+    );
+    return true;
+  }, [items]);
+
   const resetToDefaults = useCallback(() => {
     setItems(defaults);
   }, [defaults]);
 
-  return { items, addItem, removeItem, resetToDefaults };
+  return { items, addItem, removeItem, renameItem, resetToDefaults };
 }
 
 // Static getters for components that don't need reactivity

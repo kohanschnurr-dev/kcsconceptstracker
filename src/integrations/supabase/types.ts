@@ -1725,6 +1725,7 @@ export type Database = {
         | "permits"
         | "inspections"
         | "test"
+        | "foundation"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
@@ -1972,6 +1973,7 @@ export const Constants = {
         "permits",
         "inspections",
         "test",
+        "foundation",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer"],
