@@ -1,9 +1,13 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, CalendarIcon, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface QuickTaskInputProps {
   onTaskCreated?: () => void;
@@ -11,6 +15,7 @@ interface QuickTaskInputProps {
 
 export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
   const [title, setTitle] = useState('');
+  const [dueDate, setDueDate] = useState<Date | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -30,11 +35,13 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
           title: title.trim(),
           status: 'pending',
           priority_level: 'medium',
+          due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
         });
 
       if (error) throw error;
 
       setTitle('');
+      setDueDate(undefined);
       toast({
         title: 'Task added',
         description: 'Your task has been added to the checklist.',
@@ -65,6 +72,44 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
           disabled={isSubmitting}
         />
       </div>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(
+              "shrink-0 gap-1",
+              dueDate && "text-primary"
+            )}
+          >
+            <CalendarIcon className="h-4 w-4" />
+            {dueDate && <span className="text-xs">{format(dueDate, 'MMM d')}</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar
+            mode="single"
+            selected={dueDate}
+            onSelect={setDueDate}
+            initialFocus
+            className="p-3 pointer-events-auto"
+          />
+          {dueDate && (
+            <div className="px-3 pb-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs"
+                onClick={() => setDueDate(undefined)}
+              >
+                <X className="h-3 w-3 mr-1" /> Clear date
+              </Button>
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
       <Button type="submit" disabled={!title.trim() || isSubmitting} size="sm">
         Add
       </Button>
