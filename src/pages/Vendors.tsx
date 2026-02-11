@@ -295,7 +295,7 @@ export default function Vendors() {
 
       {/* Vendor Contact Card Dialog */}
       <Dialog open={!!selectedVendor} onOpenChange={(open) => !open && setSelectedVendor(null)}>
-        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{selectedVendor?.name}</DialogTitle>
           </DialogHeader>
