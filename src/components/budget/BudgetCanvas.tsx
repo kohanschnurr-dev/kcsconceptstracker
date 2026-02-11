@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { BudgetCategoryCard } from './BudgetCategoryCard';
 import { getBudgetCategories } from '@/types';
 import { 
-  Zap, Droplets, PaintBucket, 
-  Home, Trees, Package,
   ChevronRight, ChevronsUpDown, ChevronsDownUp,
   Settings, X, Plus
 } from 'lucide-react';
+import { getBudgetCalcCategories, buildBudgetCalcGroups } from '@/lib/budgetCalculatorCategories';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -28,39 +27,6 @@ interface BudgetCanvasProps {
   onExpandHandled?: () => void;
 }
 
-// Category groups for organized display
-const CATEGORY_GROUPS = [
-  {
-    name: 'Structure',
-    icon: Home,
-    categories: ['demolition', 'framing', 'foundation_repair', 'roofing', 'drywall', 'insulation'],
-  },
-  {
-    name: 'MEPs',
-    icon: Zap,
-    categories: ['electrical', 'plumbing', 'hvac', 'natural_gas', 'water_heater', 'drain_line_repair'],
-  },
-  {
-    name: 'Finishes',
-    icon: PaintBucket,
-    categories: ['painting', 'flooring', 'tile', 'doors', 'windows', 'hardware', 'light_fixtures'],
-  },
-  {
-    name: 'Kitchen & Bath',
-    icon: Droplets,
-    categories: ['kitchen', 'bathroom', 'main_bathroom', 'cabinets', 'countertops', 'appliances'],
-  },
-  {
-    name: 'Exterior',
-    icon: Trees,
-    categories: ['landscaping', 'fencing', 'driveway_concrete', 'garage', 'pool', 'brick_siding_stucco', 'railing'],
-  },
-  {
-    name: 'Other',
-    icon: Package,
-    categories: ['permits_inspections', 'dumpsters_trash', 'cleaning', 'final_punch', 'staging', 'carpentry', 'pest_control', 'misc', 'rehab_filler'],
-  },
-];
 
 
 export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled }: BudgetCanvasProps) {
@@ -73,7 +39,8 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   const prevSqftRef = useRef<string>(sqft);
   const dbLoadedRef = useRef(false);
 
-  const allGroupNames = CATEGORY_GROUPS.map(g => g.name);
+  const dynamicGroups = useMemo(() => buildBudgetCalcGroups(getBudgetCalcCategories()), []);
+  const allGroupNames = dynamicGroups.map(g => g.name);
   const allExpanded = allGroupNames.every(name => openGroups.includes(name));
   const presetCategories = new Set(presets.map(p => p.category));
 
@@ -391,7 +358,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
       </Dialog>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {CATEGORY_GROUPS.map((group) => {
+        {dynamicGroups.map((group) => {
           const GroupIcon = group.icon;
           const groupCategories = group.categories.filter(cat => 
             getBudgetCategories().some(bc => bc.value === cat)
