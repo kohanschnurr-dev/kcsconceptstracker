@@ -1,34 +1,37 @@
 
-
-## Add Month/Year Toggle for Property Taxes and HOA
+## Add Category Change to Expense Details Modal
 
 ### What Changes
-Replace the labels "Property Taxes/yr" and "HOA/yr" with just "Property Taxes" and "HOA", each with a small month/year toggle button. Users can independently choose whether they're entering a monthly or yearly amount for each field. The stored value in the database remains annual -- if the user enters a monthly amount, it gets multiplied by 12 before saving and calculating.
+In the Expense Details modal, the category badge (currently read-only) becomes a dropdown selector so you can reassign the expense to a different category (e.g., change from "Misc." to "Foundation"). Clicking "Save" persists the new category along with notes and receipt changes.
 
 ### Technical Details
 
-**File: `src/components/project/CashFlowCalculator.tsx`**
+**1. Update `ExpenseDetailModal` props and state**
 
-1. **Add two state variables** for the toggle mode:
-   - `taxPeriod: 'month' | 'year'` (default `'year'`)
-   - `hoaPeriod: 'month' | 'year'` (default `'year'`)
+**File: `src/components/ExpenseDetailModal.tsx`**
+- Add `categories: { id: string; category: string }[]` prop to receive available project categories
+- Add `categoryId` state variable initialized from `expense.category_id`
+- Import `Select, SelectContent, SelectItem, SelectTrigger, SelectValue` from the UI library
+- Import `BUDGET_CATEGORIES` (or `getBudgetCategories`) for label lookups
 
-2. **Update labels** from "Property Taxes/yr" and "HOA/yr" to just "Property Taxes" and "HOA"
+**2. Replace the static category Badge with a Select dropdown**
 
-3. **Add a small toggle button** next to each label showing "/mo" or "/yr" that switches on click -- styled as a compact pill or inline button
+**File: `src/components/ExpenseDetailModal.tsx`**
+- In the badges row, replace the static `<Badge>{categoryLabel}</Badge>` with a `<Select>` dropdown populated from the `categories` prop
+- Style it compact so it fits naturally among the other badges
 
-4. **Adjust display values**: When toggled to monthly, display `annualPropertyTaxes / 12` in the input; when yearly, display the raw annual value
+**3. Include `category_id` in the save handler**
 
-5. **Adjust input handling**: When the user types a value in monthly mode, store `value * 12` into the annual state variable so all downstream calculations remain unchanged
+**File: `src/components/ExpenseDetailModal.tsx`**
+- In `handleSave`, add `category_id: categoryId` to the `updateData` object so the new category is persisted to the database
 
-6. **No database changes needed** -- the stored values stay as annual amounts, the toggle is purely a UI convenience
+**4. Pass categories from the parent pages**
 
-### UI Layout (per field)
+**File: `src/pages/ProjectBudget.tsx`**
+- Pass the existing `categories` array to `<ExpenseDetailModal categories={categories} />`
 
-```text
-Property Taxes  [/yr]      HOA  [/mo]
-[$  0         ]            [$  380    ]
-```
+**File: `src/pages/Expenses.tsx`**
+- Check how categories are available and pass them similarly (may already have them from project data)
 
-The toggle is a small clickable badge/button right next to the label text.
-
+**File: `src/pages/BusinessExpenses.tsx`** (if applicable)
+- Same treatment for the `BusinessExpenseDetailModal` if needed
