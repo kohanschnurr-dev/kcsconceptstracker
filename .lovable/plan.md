@@ -1,35 +1,41 @@
 
 
-## Customizable Property Info Fields via Manage Sources
+## Cover Photo Crop/Position Editor
 
 ### What Changes
 
-You'll be able to add, remove, and reset the Property Info fields that appear on each project's Info tab -- all from **Settings > Manage Sources**. Custom fields beyond the built-in 11 will be stored in a new `custom_fields` JSON column in the database.
+When you click "Set as Cover" on a photo, a modal will appear showing a preview of how the image will look in the 16:9 card format. You'll be able to drag the image to reposition it within the frame, then confirm. The position offset is saved to the database and applied on the dashboard card.
 
 ### How It Works
 
-- The 11 existing fields (Foundation Status, Roof Year, etc.) are the defaults
-- You can remove fields you don't need, add new custom ones (e.g. "Lot Size", "Sewer Type"), and reset to defaults at any time
-- Built-in fields save to their dedicated database columns as before
-- Custom-added fields save to a new `custom_fields` JSONB column on the same `project_info` table
+- Clicking "Set as Cover" opens a new `CoverCropModal` instead of immediately saving
+- The modal shows the photo in a 16:9 preview frame (matching the dashboard card)
+- You drag the image up/down (and left/right) to position it within the frame
+- Clicking "Save" stores both the cover photo path and a `cover_photo_position` (e.g. `"50% 30%"`) in the `projects` table
+- The dashboard ProjectCard uses that `object-position` value when rendering the cover
 
 ### Technical Details
 
 **1. Database migration**
-- Add `custom_fields jsonb default '{}' not null` column to `project_info`
+- Add `cover_photo_position text default '50% 50%'` column to `projects`
 
-**2. `src/hooks/useCustomCategories.ts`**
-- Add `'propertyInfo'` to the `CategoryType` union
-- Add `propertyInfo: 'custom-property-info-fields'` to `STORAGE_KEYS`
+**2. New component: `src/components/project/CoverCropModal.tsx`**
+- A Dialog showing the image inside a fixed `aspect-video` container with `overflow-hidden`
+- The image is rendered larger than the container (e.g. `w-full h-auto min-h-full`) so it can be repositioned
+- Mouse/touch drag events update `object-position` in real-time as a preview
+- "Save" button calls the parent callback with the chosen position string
+- "Cancel" closes without saving
 
-**3. `src/components/project/ProjectInfo.tsx`**
-- Export the default fields list as `DEFAULT_PROPERTY_FIELDS`
-- Replace hardcoded `FIELD_CONFIG` with dynamic list from `getCustomItems('propertyInfo', DEFAULT_PROPERTY_FIELDS)`
-- Change `InfoFields` from a fixed interface to `Record<string, string>`
-- On load: read both dedicated columns and `custom_fields` JSONB
-- On blur/save: write built-in keys to their columns, custom keys to `custom_fields` JSONB
+**3. `src/components/project/PhotoGallery.tsx`**
+- `setAsCoverPhoto` no longer saves directly -- instead it opens `CoverCropModal` with the selected photo
+- On confirm from the modal, save both `cover_photo_path` and `cover_photo_position` to the `projects` table
+- Pass `getPhotoUrl` to the modal
 
-**4. `src/components/settings/ManageSourcesCard.tsx`**
-- Import `DEFAULT_PROPERTY_FIELDS` and wire up a new `useCustomCategories('propertyInfo', ...)` hook
-- Add a "Property Info Fields" accordion section with the same add/remove/reset pattern as the other sections
+**4. `src/types/index.ts`**
+- Add `coverPhotoPosition?: string` to the `Project` interface
 
+**5. `src/components/dashboard/ProjectCard.tsx`**
+- Apply `style={{ objectPosition: project.coverPhotoPosition || '50% 50%' }}` to the cover `<img>` tag
+
+**6. `src/pages/Index.tsx` and `src/pages/Projects.tsx`**
+- Map `cover_photo_position` from the DB query to `coverPhotoPosition` in the Project object
