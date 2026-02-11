@@ -1,30 +1,49 @@
 
 
-## Fix: New Budget Calculator Categories Not Appearing
+## Unify Budget Calculator with Expense Categories
 
-### Root Cause
-In `BudgetCanvas.tsx` (line 363-364), the rendered categories are filtered against `getBudgetCategories()` from `@/types` -- which is the **project budget** category list (stored under `custom-budget-categories`). This is a different list from the **budget calculator** categories (stored under `custom-budget-calc-categories`).
+### Problem
+The Budget Calculator and Expense Categories are two separate lists. If a category exists in the calculator but not in expenses, budgets won't transfer cleanly to projects. They should be the same master list -- the Budget Calculator just needs to visually organize them into trade groups.
 
-So when you add "Inspections" and "Permits" in Settings under Budget Calculator Categories, `getBudgetCalcCategories()` returns them correctly, but then the filter on line 363 throws them out because they don't exist in the separate project budget list.
+### Approach
+Instead of maintaining a separate "Budget Calculator Categories" list, the Budget Calculator will pull from the Expense Categories (`custom-budget-categories` / `BUDGET_CATEGORIES`) and use a static group mapping to organize them into trade groups (Structure, MEPs, Finishes, etc.). Categories not in the mapping default to "Other".
 
-### Fix
+### Changes
 
-**File: `src/components/budget/BudgetCanvas.tsx`**
+**1. `src/lib/budgetCalculatorCategories.ts`** -- Rework to be a mapping file
+- Keep `BUDGET_CALC_GROUP_DEFS` (group labels and icons) as-is
+- Replace `DEFAULT_BUDGET_CALC_CATEGORIES` with a static `CATEGORY_GROUP_MAP: Record<string, string>` that maps category values to group keys (e.g., `demolition -> structure`, `electrical -> meps`)
+- Update `getBudgetCalcCategories()` to call `getBudgetCategories()` from `@/types`, then enrich each category with its group from the map (unmapped categories get `group: 'other'`)
+- Update `buildBudgetCalcGroups()` accordingly
 
-Remove the filtering on lines 363-365. The `dynamicGroups` are already built from `getBudgetCalcCategories()`, so every category in them is valid by definition. The extra filter against `getBudgetCategories()` is unnecessary and actively blocks custom categories.
+**2. `src/components/settings/ManageSourcesCard.tsx`** -- Remove the Budget Calculator Categories section
+- Remove the `budgetCalc` accordion item (lines 228-240)
+- Remove the `budgetCalcGrouped` prop/logic from `CategorySection` since it's no longer needed
+- Remove related imports (`DEFAULT_BUDGET_CALC_CATEGORIES`, `BUDGET_CALC_GROUP_DEFS`)
+- Remove the `budgetCalc` `useCustomCategories` hook call
+- The "Expense Categories" section becomes the single source of truth; display it grouped by trade groups (using the same group mapping) so users can see how their categories will be organized in the calculator
 
-Change:
-```typescript
-const groupCategories = group.categories.filter(cat => 
-  getBudgetCategories().some(bc => bc.value === cat)
-);
-```
+**3. `src/components/budget/BudgetCanvas.tsx`** -- No structural changes needed
+- The existing calls to `getBudgetCalcCategories()` and `buildBudgetCalcGroups()` will continue to work since those functions are being updated to pull from expense categories internally
 
-To:
-```typescript
-const groupCategories = group.categories;
-```
+**4. `src/hooks/useCustomCategories.ts`** -- Clean up
+- Remove `budgetCalc` from `CategoryType` and `STORAGE_KEYS` since it's no longer a separate category type
 
-Also remove the unused `getBudgetCategories` import from `@/types` on line 3 (if nothing else in the file uses it -- the preset dialog's `availableCategories` also uses it on line 227, so we need to check that too and switch it to use `getBudgetCalcCategories` instead).
+**5. Expense Categories display in Settings** -- Add trade group visualization
+- Update the Expense Categories section to use grouped rendering (similar to what Budget Calculator Categories had) so users can see their categories organized by Structure, MEPs, Finishes, etc.
+- When adding a new category, include the group selector so it gets assigned to the right trade group
+- This replaces the flat badge list with the grouped view
 
-**Additional cleanup (line 227):** The "Edit Presets" dialog's available categories dropdown also uses `getBudgetCategories()`. This should use `getBudgetCalcCategories()` so presets align with the budget calculator's actual category list. Map the result to match the expected format.
+### Group Mapping (built into `budgetCalculatorCategories.ts`)
+- **Structure**: demolition, framing, foundation_repair, roofing, drywall, insulation
+- **MEPs**: electrical, plumbing, hvac, natural_gas, water_heater, drain_line_repair
+- **Finishes**: painting, flooring, tile, doors, windows, hardware, light_fixtures
+- **Kitchen & Bath**: kitchen, bathroom, main_bathroom, cabinets, countertops, appliances
+- **Exterior**: landscaping, fencing, driveway_concrete, garage, pool, brick_siding_stucco, railing
+- **Other**: everything else (permits_inspections, dumpsters_trash, cleaning, final_punch, staging, carpentry, pest_control, misc, rehab_filler, closing_costs, food, hoa, insurance_project, taxes, utilities, variable, wholesale_fee, and any custom categories)
+
+### Result
+- One category list to manage (Expense Categories)
+- Budget Calculator automatically reflects any changes to expense categories
+- Categories are visually grouped in both Settings and the Calculator
+- Budgets created in the calculator will always map 1:1 to project expense categories
