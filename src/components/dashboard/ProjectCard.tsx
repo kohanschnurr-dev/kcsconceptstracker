@@ -23,7 +23,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
 
 
   const getProgressColor = () => {
-    if (percentSpent > 100) return 'bg-destructive';
+    if (percentSpent > 100) return 'bg-primary';
     if (percentSpent > 90) return 'bg-warning';
     return 'bg-success';
   };
