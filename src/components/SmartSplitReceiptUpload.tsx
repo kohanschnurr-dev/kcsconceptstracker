@@ -994,9 +994,6 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 <div>
                   <h3 className="font-medium flex items-center gap-2">
                     SmartSplit Receipt Matching
-                    <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
-                      Beta
-                    </Badge>
                   </h3>
                   <div className="flex items-center gap-2">
                     {pendingCount > 0 && (
