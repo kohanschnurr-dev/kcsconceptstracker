@@ -1,20 +1,36 @@
 
 
-## Change Loan Term from Weeks to Months
+## Persist Budget Category Presets to the Database
+
+### Problem
+
+Currently, budget category presets (the $/sqft rates you customize in the Edit Presets dialog) are saved only in your browser's local storage. This means they can be lost if you clear your browser data, switch devices, or use a different browser.
+
+### Solution
+
+Save presets to the database tied to your user account so they persist permanently across sessions, devices, and browsers.
 
 ### What Changes
 
-Switch the loan term unit from weeks to months. Default becomes 360 months (30 years). Rename all internal state from `loanTermWeeks` to `loanTermMonths`.
+1. **Database**: Add a `budget_presets` JSONB column to the `profiles` table to store your preset configurations
+2. **BudgetCanvas**: Update the Edit Presets dialog to load/save presets from the database instead of localStorage, falling back to localStorage if no database record exists (one-time migration of your current presets)
+3. **TemplatePicker and BudgetCalculator**: Update the two other files that read presets from localStorage to instead accept presets as a prop from BudgetCanvas (or read from the same database source)
 
 ### Technical Details
 
-**File: `src/components/project/CashFlowCalculator.tsx`**
+**Database Migration:**
+- Add `budget_presets` (JSONB, nullable) column to `profiles` table
 
-1. Rename `loanTermWeeks` state to `loanTermMonths` throughout (all 26 references)
-2. Line 56: Change init from `Math.round((initialLoanTermYears ?? 30) * 52.143)` to `Math.round((initialLoanTermYears ?? 30) * 12)` -- default 360
-3. Line 103: Same change in the sync effect
-4. Line 129: Save conversion: `loan_term_years: loanTermMonths / 12` (instead of `/52.143`)
-5. Line 157: Amortization simplifies: `numberOfPayments = loanTermMonths` (no conversion needed -- already in months)
-6. Line 297: Label changes from "Loan Term (weeks)" to "Loan Term (months)"
-7. Line 303: Placeholder changes from "1560" to "360"
+**File: `src/components/budget/BudgetCanvas.tsx`**
+1. On mount, fetch presets from the `profiles` table for the current user. If null, check localStorage for existing presets (migration) and save those to the database. If neither exists, use defaults.
+2. Update `handleSavePresets` to write to the `profiles.budget_presets` column instead of (or in addition to) localStorage
+3. Keep localStorage as a write-through cache so TemplatePicker and BudgetCalculator can still read from it without refactoring
 
+**Files: `src/components/budget/TemplatePicker.tsx` and `src/pages/BudgetCalculator.tsx`**
+- No changes needed -- they read from localStorage which will stay in sync as a cache
+
+**Flow:**
+1. User opens Budget Calculator -- BudgetCanvas loads presets from database
+2. Also writes them to localStorage (cache for other components)
+3. User edits presets and clicks Save -- writes to both database and localStorage
+4. Days later, user returns -- presets load from database, always up to date
