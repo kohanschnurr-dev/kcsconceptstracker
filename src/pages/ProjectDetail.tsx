@@ -581,10 +581,7 @@ export default function ProjectDetail() {
               </div>
               <div className="progress-bar h-3">
                 <div
-                  className={cn(
-                    'progress-fill',
-                    percentSpent > 100 ? 'bg-destructive' : percentSpent > 90 ? 'bg-warning' : 'bg-success'
-                  )}
+                  className="progress-fill bg-primary"
                   style={{ width: `${Math.min(percentSpent, 100)}%` }}
                 />
               </div>
