@@ -34,6 +34,7 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
     let label = 'DFW';
 
     if (city) {
+      label = state ? `${city}, ${state}` : city;
       try {
         const searchQuery = state ? `${city}, ${state}` : city;
         const geoRes = await fetch(
@@ -43,7 +44,6 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
         if (geoData.results?.[0]) {
           lat = geoData.results[0].latitude;
           lon = geoData.results[0].longitude;
-          label = geoData.results[0].name;
         }
       } catch {
         // fall back to DFW
