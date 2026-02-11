@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Plus, RotateCcw, List } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, Plus, RotateCcw, List, Pencil, Trash2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCustomCategories, type CategoryItem } from '@/hooks/useCustomCategories';
 import { CALENDAR_CATEGORIES, CATEGORY_GROUPS, type CategoryGroup } from '@/lib/calendarCategories';
@@ -13,15 +14,96 @@ import { MONTHLY_COST_CATEGORIES } from '@/lib/monthlyCategories';
 import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES } from '@/types';
 import { DEFAULT_STORES } from '@/hooks/useCustomStores';
 import { DEFAULT_PROPERTY_FIELDS } from '@/components/project/ProjectInfo';
-import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP } from '@/lib/budgetCalculatorCategories';
+import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP, resolveTradeGroup } from '@/lib/budgetCalculatorCategories';
+import { supabase } from '@/integrations/supabase/client';
+import { reassignBudgetCategory, reassignGenericColumn } from '@/lib/reassignCategory';
 import ReassignCategoryDialog from './ReassignCategoryDialog';
 import GenericReassignDialog from './GenericReassignDialog';
+
+function CategoryBadge({
+  item,
+  onDelete,
+  onRename,
+  className,
+}: {
+  item: CategoryItem;
+  onDelete: () => void;
+  onRename?: (newLabel: string) => void;
+  className?: string;
+}) {
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(item.label);
+
+  const handleStartRename = () => {
+    setRenameValue(item.label);
+    setRenaming(true);
+  };
+
+  const handleConfirmRename = () => {
+    const trimmed = renameValue.trim();
+    if (!trimmed || trimmed === item.label) {
+      setRenaming(false);
+      return;
+    }
+    onRename?.(trimmed);
+    setRenaming(false);
+  };
+
+  if (renaming) {
+    return (
+      <Badge variant="outline" className={`text-xs px-1 py-0.5 gap-1 ${className ?? ''}`}>
+        <Input
+          value={renameValue}
+          onChange={e => setRenameValue(e.target.value)}
+          className="h-5 text-xs w-24 px-1 py-0"
+          autoFocus
+          onKeyDown={e => {
+            if (e.key === 'Enter') handleConfirmRename();
+            if (e.key === 'Escape') setRenaming(false);
+          }}
+        />
+        <button onClick={handleConfirmRename} className="hover:text-primary">
+          <Check className="h-3 w-3" />
+        </button>
+        <button onClick={() => setRenaming(false)} className="hover:text-destructive">
+          <X className="h-3 w-3" />
+        </button>
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="outline" className={`text-xs ${className ?? ''}`}>
+      {item.label}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="ml-1.5 hover:text-foreground text-muted-foreground">
+            <MoreHorizontal className="h-3 w-3" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[120px]">
+          {onRename && (
+            <DropdownMenuItem onClick={handleStartRename}>
+              <Pencil className="h-3.5 w-3.5 mr-2" />
+              Rename
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+            <Trash2 className="h-3.5 w-3.5 mr-2" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </Badge>
+  );
+}
 
 function CategorySection({
   items,
   onAdd,
   onRemove,
   onBeforeRemove,
+  onRename,
   onReset,
   placeholder,
   grouped,
@@ -31,6 +113,7 @@ function CategorySection({
   onAdd: (label: string, group?: string) => boolean;
   onRemove: (value: string) => void;
   onBeforeRemove?: (value: string, label: string) => void;
+  onRename?: (oldValue: string, newLabel: string) => void;
   onReset: () => void;
   placeholder: string;
   grouped?: boolean;
@@ -43,7 +126,8 @@ function CategorySection({
   const handleAdd = () => {
     const trimmed = newLabel.trim();
     if (!trimmed) return;
-    const success = onAdd(trimmed, grouped ? selectedGroup : undefined);
+    const group = grouped ? selectedGroup : tradeGrouped ? selectedTradeGroup : undefined;
+    const success = onAdd(trimmed, group);
     if (success) {
       setNewLabel('');
       toast.success(`Added "${trimmed}"`);
@@ -65,6 +149,16 @@ function CategorySection({
     }
   };
 
+  const renderBadge = (item: CategoryItem, badgeClassName?: string) => (
+    <CategoryBadge
+      key={item.value}
+      item={item}
+      onDelete={() => handleRemove(item.value, item.label)}
+      onRename={onRename ? (newLabel) => onRename(item.value, newLabel) : undefined}
+      className={badgeClassName}
+    />
+  );
+
   const renderItems = () => {
     if (grouped) {
       const groups = Object.entries(CATEGORY_GROUPS) as [CategoryGroup, typeof CATEGORY_GROUPS[CategoryGroup]][];
@@ -75,14 +169,7 @@ function CategorySection({
           <div key={groupKey} className="space-y-1.5">
             <p className={`text-xs font-medium ${groupInfo.textClass}`}>{groupInfo.label}</p>
             <div className="flex flex-wrap gap-1.5">
-              {groupItems.map(item => (
-                <Badge key={item.value} variant="outline" className={`text-xs ${groupInfo.borderClass} ${groupInfo.textClass}`}>
-                  {item.label}
-                  <button onClick={() => handleRemove(item.value, item.label)} className="ml-1.5 hover:text-destructive">
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
+              {groupItems.map(item => renderBadge(item, `${groupInfo.borderClass} ${groupInfo.textClass}`))}
             </div>
           </div>
         );
@@ -94,21 +181,14 @@ function CategorySection({
       return groupOrder.map(groupKey => {
         const def = BUDGET_CALC_GROUP_DEFS[groupKey];
         const groupItems = items
-          .filter(i => (CATEGORY_GROUP_MAP[i.value] || 'other') === groupKey)
+          .filter(i => resolveTradeGroup(i) === groupKey)
           .sort((a, b) => a.label.localeCompare(b.label));
         if (groupItems.length === 0) return null;
         return (
           <div key={groupKey} className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">{def.label}</p>
             <div className="flex flex-wrap gap-1.5">
-              {groupItems.map(item => (
-                <Badge key={item.value} variant="outline" className="text-xs">
-                  {item.label}
-                  <button onClick={() => handleRemove(item.value, item.label)} className="ml-1.5 hover:text-destructive">
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
+              {groupItems.map(item => renderBadge(item))}
             </div>
           </div>
         );
@@ -117,14 +197,7 @@ function CategorySection({
 
     return (
       <div className="flex flex-wrap gap-1.5">
-        {[...items].sort((a, b) => a.label.localeCompare(b.label)).map(item => (
-          <Badge key={item.value} variant="outline" className="text-xs">
-            {item.label}
-            <button onClick={() => handleRemove(item.value, item.label)} className="ml-1.5 hover:text-destructive">
-              <X className="h-3 w-3" />
-            </button>
-          </Badge>
-        ))}
+        {[...items].sort((a, b) => a.label.localeCompare(b.label)).map(item => renderBadge(item))}
       </div>
     );
   };
@@ -141,6 +214,18 @@ function CategorySection({
             <SelectContent>
               {(Object.entries(CATEGORY_GROUPS) as [CategoryGroup, typeof CATEGORY_GROUPS[CategoryGroup]][]).map(([key, info]) => (
                 <SelectItem key={key} value={key}>{info.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {tradeGrouped && (
+          <Select value={selectedTradeGroup} onValueChange={setSelectedTradeGroup}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(BUDGET_CALC_GROUP_DEFS).map(([key, def]) => (
+                <SelectItem key={key} value={key}>{def.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -226,6 +311,50 @@ export default function ManageSourcesCard() {
     setPendingDelete(null);
   }, [budget]);
 
+  // Rename handler for Expense Categories (tradeGrouped)
+  const handleRenameBudgetCategory = useCallback(async (oldValue: string, newLabel: string) => {
+    const newValue = newLabel.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    if (budget.items.some(i => i.value === newValue && i.value !== oldValue)) {
+      toast.error('A category with that name already exists');
+      return;
+    }
+    try {
+      // Register new enum value
+      await supabase.rpc('add_budget_category', { new_value: newValue });
+      // Reassign all expenses/budgets in DB
+      await reassignBudgetCategory(oldValue, newValue);
+      // Update localStorage
+      budget.renameItem(oldValue, newLabel);
+      toast.success(`Renamed to "${newLabel}"`);
+    } catch (err) {
+      console.error('Rename error:', err);
+      toast.error('Failed to rename category');
+    }
+  }, [budget]);
+
+  // Rename handler for generic sections
+  const handleRenameGeneric = useCallback((section: SectionKey) => {
+    return async (oldValue: string, newLabel: string) => {
+      const hook = sectionHooks[section];
+      const newValue = newLabel.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+      if (hook.items.some(i => i.value === newValue && i.value !== oldValue)) {
+        toast.error('An item with that name already exists');
+        return;
+      }
+      try {
+        const dbConfig = SECTION_DB_CONFIG[section];
+        if (dbConfig) {
+          await reassignGenericColumn(dbConfig.tableName, dbConfig.columnName, oldValue, newValue);
+        }
+        hook.renameItem(oldValue, newLabel);
+        toast.success(`Renamed to "${newLabel}"`);
+      } catch (err) {
+        console.error('Rename error:', err);
+        toast.error('Failed to rename');
+      }
+    };
+  }, [business, calendar, monthly, stores, propertyInfo]);
+
   const makeBeforeRemove = useCallback((section: SectionKey) => {
     return (value: string, label: string) => {
       setGenericPending({ value, label });
@@ -249,6 +378,12 @@ export default function ManageSourcesCard() {
     setGenericSection(null);
   }, [genericSection, business, calendar, monthly, stores, propertyInfo]);
 
+  // Handle adding budget categories with group
+  const handleAddBudgetCategory = useCallback((label: string, group?: string) => {
+    const success = budget.addItem(label, group);
+    return success;
+  }, [budget]);
+
   return (
     <>
     <Card>
@@ -269,6 +404,7 @@ export default function ManageSourcesCard() {
                 onAdd={business.addItem}
                 onRemove={business.removeItem}
                 onBeforeRemove={makeBeforeRemove('business')}
+                onRename={handleRenameGeneric('business')}
                 onReset={business.resetToDefaults}
                 placeholder="New business category"
               />
@@ -283,6 +419,7 @@ export default function ManageSourcesCard() {
                 onAdd={calendar.addItem}
                 onRemove={calendar.removeItem}
                 onBeforeRemove={makeBeforeRemove('calendar')}
+                onRename={handleRenameGeneric('calendar')}
                 onReset={calendar.resetToDefaults}
                 placeholder="New category name"
                 grouped
@@ -295,9 +432,10 @@ export default function ManageSourcesCard() {
             <AccordionContent>
               <CategorySection
                 items={budget.items}
-                onAdd={budget.addItem}
+                onAdd={handleAddBudgetCategory}
                 onRemove={budget.removeItem}
                 onBeforeRemove={handleBeforeRemoveBudget}
+                onRename={handleRenameBudgetCategory}
                 onReset={budget.resetToDefaults}
                 placeholder="New expense category"
                 tradeGrouped
@@ -313,6 +451,7 @@ export default function ManageSourcesCard() {
                 onAdd={monthly.addItem}
                 onRemove={monthly.removeItem}
                 onBeforeRemove={makeBeforeRemove('monthly')}
+                onRename={handleRenameGeneric('monthly')}
                 onReset={monthly.resetToDefaults}
                 placeholder="New monthly expense type"
               />
@@ -327,6 +466,7 @@ export default function ManageSourcesCard() {
                 onAdd={stores.addItem}
                 onRemove={stores.removeItem}
                 onBeforeRemove={makeBeforeRemove('stores')}
+                onRename={handleRenameGeneric('stores')}
                 onReset={stores.resetToDefaults}
                 placeholder="New store name"
               />
@@ -341,6 +481,7 @@ export default function ManageSourcesCard() {
                 onAdd={propertyInfo.addItem}
                 onRemove={propertyInfo.removeItem}
                 onBeforeRemove={makeBeforeRemove('propertyInfo')}
+                onRename={handleRenameGeneric('propertyInfo')}
                 onReset={propertyInfo.resetToDefaults}
                 placeholder="New property field"
               />
