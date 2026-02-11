@@ -59,6 +59,7 @@ export function CashFlowCalculator({
   const [monthlyMaintenance, setMonthlyMaintenance] = useState(initialMonthlyMaintenance);
   const [managementRate, setManagementRate] = useState(initialManagementRate);
   const [saving, setSaving] = useState(false);
+  const [expandedCard, setExpandedCard] = useState<'monthly' | 'annual' | 'roi' | null>(null);
   const [taxPeriod, setTaxPeriod] = useState<'month' | 'year'>('year');
   const [hoaPeriod, setHoaPeriod] = useState<'month' | 'year'>('year');
   const [insurancePeriod, setInsurancePeriod] = useState<'month' | 'year'>('year');
@@ -461,10 +462,14 @@ export function CashFlowCalculator({
 
         {/* Results */}
         <div className="grid grid-cols-3 gap-4">
-          <div className={cn(
-            "p-4 rounded-lg text-center",
-            monthlyCashFlow >= 0 ? "bg-success/10" : "bg-destructive/10"
-          )}>
+          <div
+            className={cn(
+              "p-4 rounded-lg text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30",
+              monthlyCashFlow >= 0 ? "bg-success/10" : "bg-destructive/10",
+              expandedCard === 'monthly' && "ring-2 ring-primary/50"
+            )}
+            onClick={() => setExpandedCard(expandedCard === 'monthly' ? null : 'monthly')}
+          >
             <p className="text-sm text-muted-foreground mb-1">Monthly Cash Flow</p>
             <p className={cn(
               "text-2xl font-bold font-mono",
@@ -472,12 +477,16 @@ export function CashFlowCalculator({
             )}>
               {formatCurrency(monthlyCashFlow)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">after all expenses</p>
+            <p className="text-xs text-muted-foreground mt-1">click for breakdown</p>
           </div>
-          <div className={cn(
-            "p-4 rounded-lg text-center",
-            annualCashFlow >= 0 ? "bg-success/10" : "bg-destructive/10"
-          )}>
+          <div
+            className={cn(
+              "p-4 rounded-lg text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30",
+              annualCashFlow >= 0 ? "bg-success/10" : "bg-destructive/10",
+              expandedCard === 'annual' && "ring-2 ring-primary/50"
+            )}
+            onClick={() => setExpandedCard(expandedCard === 'annual' ? null : 'annual')}
+          >
             <p className="text-sm text-muted-foreground mb-1">Annual Cash Flow</p>
             <p className={cn(
               "text-2xl font-bold font-mono",
@@ -485,12 +494,16 @@ export function CashFlowCalculator({
             )}>
               {formatCurrency(annualCashFlow)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">per year</p>
+            <p className="text-xs text-muted-foreground mt-1">click for breakdown</p>
           </div>
-          <div className={cn(
-            "p-4 rounded-lg text-center",
-            cashOnCashROI >= 0 ? "bg-primary/10" : "bg-destructive/10"
-          )}>
+          <div
+            className={cn(
+              "p-4 rounded-lg text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30",
+              cashOnCashROI >= 0 ? "bg-primary/10" : "bg-destructive/10",
+              expandedCard === 'roi' && "ring-2 ring-primary/50"
+            )}
+            onClick={() => setExpandedCard(expandedCard === 'roi' ? null : 'roi')}
+          >
             <p className="text-sm text-muted-foreground mb-1">Cash-on-Cash ROI</p>
             <p className={cn(
               "text-2xl font-bold font-mono flex items-center justify-center gap-1",
@@ -499,9 +512,62 @@ export function CashFlowCalculator({
               <TrendingUp className="h-5 w-5" />
               {cashOnCashROI.toFixed(1)}%
             </p>
-            <p className="text-xs text-muted-foreground mt-1">return on cash invested</p>
+            <p className="text-xs text-muted-foreground mt-1">click for breakdown</p>
           </div>
         </div>
+
+        {/* Breakdown Panel */}
+        {expandedCard === 'monthly' && (
+          <div className="p-4 rounded-lg bg-muted/30 border border-border space-y-1 text-sm">
+            <p className="font-semibold text-muted-foreground mb-2">MONTHLY CASH FLOW BREAKDOWN</p>
+            <div className="flex justify-between"><span>Gross Rent</span><span className="font-mono">{formatCurrency(monthlyRent)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Vacancy ({vacancyRate}%)</span><span className="font-mono">-{formatCurrency(vacancyAllowance)}</span></div>
+            <div className="flex justify-between font-medium border-t border-border pt-1 mt-1"><span>Effective Income</span><span className="font-mono">{formatCurrency(grossMonthlyIncome)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Mortgage P&I</span><span className="font-mono">-{formatCurrency(monthlyMortgage)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Property Taxes</span><span className="font-mono">-{formatCurrency(monthlyTaxes)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Insurance</span><span className="font-mono">-{formatCurrency(monthlyInsurance)}</span></div>
+            <div className="flex justify-between text-destructive"><span>HOA</span><span className="font-mono">-{formatCurrency(monthlyHoa)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Maintenance</span><span className="font-mono">-{formatCurrency(monthlyMaintenance)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Management ({managementRate}%)</span><span className="font-mono">-{formatCurrency(managementFee)}</span></div>
+            <div className={cn("flex justify-between font-bold border-t border-border pt-2 mt-2", monthlyCashFlow >= 0 ? "text-success" : "text-destructive")}>
+              <span>Monthly Cash Flow</span><span className="font-mono">{formatCurrency(monthlyCashFlow)}</span>
+            </div>
+          </div>
+        )}
+
+        {expandedCard === 'annual' && (
+          <div className="p-4 rounded-lg bg-muted/30 border border-border space-y-1 text-sm">
+            <p className="font-semibold text-muted-foreground mb-2">ANNUAL CASH FLOW BREAKDOWN</p>
+            <div className="flex justify-between"><span>Gross Rent (x12)</span><span className="font-mono">{formatCurrency(monthlyRent * 12)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Vacancy ({vacancyRate}%)</span><span className="font-mono">-{formatCurrency(vacancyAllowance * 12)}</span></div>
+            <div className="flex justify-between font-medium border-t border-border pt-1 mt-1"><span>Effective Income</span><span className="font-mono">{formatCurrency(grossMonthlyIncome * 12)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Mortgage P&I</span><span className="font-mono">-{formatCurrency(monthlyMortgage * 12)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Property Taxes</span><span className="font-mono">-{formatCurrency(annualPropertyTaxes)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Insurance</span><span className="font-mono">-{formatCurrency(annualInsurance)}</span></div>
+            <div className="flex justify-between text-destructive"><span>HOA</span><span className="font-mono">-{formatCurrency(annualHoa)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Maintenance</span><span className="font-mono">-{formatCurrency(monthlyMaintenance * 12)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Management ({managementRate}%)</span><span className="font-mono">-{formatCurrency(managementFee * 12)}</span></div>
+            <div className={cn("flex justify-between font-bold border-t border-border pt-2 mt-2", annualCashFlow >= 0 ? "text-success" : "text-destructive")}>
+              <span>Annual Cash Flow</span><span className="font-mono">{formatCurrency(annualCashFlow)}</span>
+            </div>
+          </div>
+        )}
+
+        {expandedCard === 'roi' && (
+          <div className="p-4 rounded-lg bg-muted/30 border border-border space-y-1 text-sm">
+            <p className="font-semibold text-muted-foreground mb-2">CASH-ON-CASH ROI BREAKDOWN</p>
+            <div className="flex justify-between"><span>Annual Cash Flow</span><span className="font-mono">{formatCurrency(annualCashFlow)}</span></div>
+            <div className="flex justify-between border-t border-border pt-1 mt-1"><span>Purchase Price</span><span className="font-mono">{formatCurrency(purchasePrice)}</span></div>
+            <div className="flex justify-between"><span>Rehab Spent</span><span className="font-mono">{formatCurrency(totalSpent)}</span></div>
+            <div className="flex justify-between font-medium"><span>Total Investment</span><span className="font-mono">{formatCurrency(totalInvestment)}</span></div>
+            <div className="flex justify-between text-destructive"><span>Refi Loan Amount</span><span className="font-mono">-{formatCurrency(effectiveLoanAmount)}</span></div>
+            <div className="flex justify-between font-medium border-t border-border pt-1 mt-1"><span>Cash Left in Deal</span><span className="font-mono">{formatCurrency(Math.max(0, cashInvested))}</span></div>
+            <div className={cn("flex justify-between font-bold border-t border-border pt-2 mt-2", cashOnCashROI >= 0 ? "text-primary" : "text-destructive")}>
+              <span>Cash-on-Cash ROI</span><span className="font-mono">{cashOnCashROI.toFixed(1)}%</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Annual Cash Flow ÷ Cash Left in Deal = ROI</p>
+          </div>
+        )}
 
         {/* Refi Analysis */}
         <div>
