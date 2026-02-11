@@ -38,6 +38,7 @@ interface CompactDashboardWidgetsProps {
   onCategoryClick: (category: string) => void;
   selectedCategory: string;
   onAddGoal?: (goal: { title: string; target_value: number; category: string }) => Promise<void>;
+  onUpdateGoal?: (goalId: string, newValue: number) => Promise<void>;
   onAddRule?: (rule: { title: string; category: string }) => Promise<void>;
 }
  
@@ -49,6 +50,7 @@ export function CompactDashboardWidgets({
   onCategoryClick,
   selectedCategory,
   onAddGoal,
+  onUpdateGoal,
   onAddRule,
 }: CompactDashboardWidgetsProps) {
    const [spendingOpen, setSpendingOpen] = useState(false);
@@ -246,6 +248,7 @@ export function CompactDashboardWidgets({
           onOpenChange={setGoalsOpen} 
           goals={goals}
           onAddGoal={onAddGoal}
+          onUpdateGoal={onUpdateGoal}
         />
         <RulesPopout 
           open={rulesOpen} 

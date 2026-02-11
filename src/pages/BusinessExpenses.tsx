@@ -605,7 +605,13 @@ export default function BusinessExpenses() {
                current_value: 0,
              }).select().single();
              if (data) setGoals(prev => [...prev, data]);
-           }}
+            }}
+            onUpdateGoal={async (goalId, newValue) => {
+              const { error } = await supabase.from('quarterly_goals').update({ current_value: newValue }).eq('id', goalId);
+              if (!error) {
+                setGoals(prev => prev.map(g => g.id === goalId ? { ...g, current_value: newValue } : g));
+              }
+            }}
            onAddRule={async (rule) => {
              const { data: { user } } = await supabase.auth.getUser();
              if (!user) return;
