@@ -57,7 +57,7 @@ import { DateRange } from 'react-day-picker';
 import { BusinessQuickBooksIntegration } from '@/components/BusinessQuickBooksIntegration';
  import { CompactDashboardWidgets } from '@/components/ops/CompactDashboardWidgets';
 import { BusinessExpenseDetailModal } from '@/components/BusinessExpenseDetailModal';
-import { BusinessReceiptUpload } from '@/components/BusinessReceiptUpload';
+
 import { formatDisplayDate, formatDateString } from '@/lib/dateUtils';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 const BACKUP_KEY = 'dfw_project_expenses_backup';
@@ -579,11 +579,6 @@ export default function BusinessExpenses() {
         {/* QuickBooks Integration */}
         <BusinessQuickBooksIntegration onExpenseImported={fetchData} projects={projects} />
 
-        {/* Receipt Upload + Matching */}
-        <BusinessReceiptUpload 
-          expenses={expenses} 
-          onReceiptAttached={fetchData} 
-        />
 
          {/* Compact Command Center Widgets */}
          <CompactDashboardWidgets 
