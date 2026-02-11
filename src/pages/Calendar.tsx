@@ -249,7 +249,7 @@ export default function Calendar() {
         />
 
         {/* Category Legend */}
-        <div className="bg-background rounded-lg p-3 border border-border">
+        <div className="bg-background rounded-lg p-4 border border-border">
           <CalendarLegend />
         </div>
 
