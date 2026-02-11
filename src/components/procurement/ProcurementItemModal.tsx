@@ -60,7 +60,7 @@ import { useCustomStores, DEFAULT_STORES } from '@/hooks/useCustomStores';
 
 // Types
 type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'delivered' | 'installed';
-type Phase = 'rough_in' | 'trim_out' | 'finish' | 'punch';
+type Phase = 'demo' | 'rough_in' | 'drywall' | 'trim_out' | 'finish' | 'punch' | 'final';
 type SourceStore = string;
 
 interface ProcurementItem {

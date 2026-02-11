@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
-type Phase = 'rough_in' | 'trim_out' | 'finish' | 'punch';
+type Phase = 'demo' | 'rough_in' | 'drywall' | 'trim_out' | 'finish' | 'punch' | 'final';
 type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'other';
 type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'delivered' | 'installed';
 

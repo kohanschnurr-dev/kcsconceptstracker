@@ -32,7 +32,7 @@ import { BundleModal } from '@/components/procurement/BundleModal';
 import { useCustomStores } from '@/hooks/useCustomStores';
 
 type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'delivered' | 'installed';
-type Phase = 'rough_in' | 'trim_out' | 'finish' | 'punch';
+type Phase = 'demo' | 'rough_in' | 'drywall' | 'trim_out' | 'finish' | 'punch' | 'final';
 type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'custom' | 'other' | string;
 
 interface ProcurementItem {
@@ -79,10 +79,13 @@ interface Project {
 }
 
 const PHASES: { value: Phase; label: string }[] = [
+  { value: 'demo', label: 'Demo' },
   { value: 'rough_in', label: 'Rough-In' },
+  { value: 'drywall', label: 'Drywall' },
   { value: 'trim_out', label: 'Trim Out' },
   { value: 'finish', label: 'Finish' },
   { value: 'punch', label: 'Punch List' },
+  { value: 'final', label: 'Final' },
 ];
 
 const STATUSES: { value: ItemStatus; label: string; icon: typeof Package; color: string }[] = [
