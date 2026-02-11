@@ -1,49 +1,60 @@
 
 
-## Unify Budget Calculator with Expense Categories
+## Split "Permits & Inspections" into Separate Categories
 
 ### Problem
-The Budget Calculator and Expense Categories are two separate lists. If a category exists in the calculator but not in expenses, budgets won't transfer cleanly to projects. They should be the same master list -- the Budget Calculator just needs to visually organize them into trade groups.
-
-### Approach
-Instead of maintaining a separate "Budget Calculator Categories" list, the Budget Calculator will pull from the Expense Categories (`custom-budget-categories` / `BUDGET_CATEGORIES`) and use a static group mapping to organize them into trade groups (Structure, MEPs, Finishes, etc.). Categories not in the mapping default to "Other".
+"Permits & Inspections" exists as a single combined category (`permits_inspections`) everywhere: the database enum, the hardcoded types, the group mapping, and existing project records. You added them as separate items in Settings (localStorage), but changes there don't propagate to:
+- The database `budget_category` enum (which constrains `project_categories.category`)
+- The hardcoded `BUDGET_CATEGORIES` array and `BudgetCategory` type in `src/types/index.ts`
+- The trade group mapping in `budgetCalculatorCategories.ts`
+- Existing project category records that reference `permits_inspections`
 
 ### Changes
 
-**1. `src/lib/budgetCalculatorCategories.ts`** -- Rework to be a mapping file
-- Keep `BUDGET_CALC_GROUP_DEFS` (group labels and icons) as-is
-- Replace `DEFAULT_BUDGET_CALC_CATEGORIES` with a static `CATEGORY_GROUP_MAP: Record<string, string>` that maps category values to group keys (e.g., `demolition -> structure`, `electrical -> meps`)
-- Update `getBudgetCalcCategories()` to call `getBudgetCategories()` from `@/types`, then enrich each category with its group from the map (unmapped categories get `group: 'other'`)
-- Update `buildBudgetCalcGroups()` accordingly
+**1. Database migration** -- Add new enum values and migrate existing data
+```sql
+-- Add new enum values
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'permits';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'inspections';
 
-**2. `src/components/settings/ManageSourcesCard.tsx`** -- Remove the Budget Calculator Categories section
-- Remove the `budgetCalc` accordion item (lines 228-240)
-- Remove the `budgetCalcGrouped` prop/logic from `CategorySection` since it's no longer needed
-- Remove related imports (`DEFAULT_BUDGET_CALC_CATEGORIES`, `BUDGET_CALC_GROUP_DEFS`)
-- Remove the `budgetCalc` `useCustomCategories` hook call
-- The "Expense Categories" section becomes the single source of truth; display it grouped by trade groups (using the same group mapping) so users can see how their categories will be organized in the calculator
+-- Migrate existing project_categories rows from old to new
+-- (Split each permits_inspections row into two: permits + inspections)
+-- We'll update the existing row to 'permits' and insert a new 'inspections' row
+-- with a zero budget so no data is lost
+```
 
-**3. `src/components/budget/BudgetCanvas.tsx`** -- No structural changes needed
-- The existing calls to `getBudgetCalcCategories()` and `buildBudgetCalcGroups()` will continue to work since those functions are being updated to pull from expense categories internally
+A second migration (must be separate since new enum values aren't visible in the same transaction):
+```sql
+-- Update existing permits_inspections rows to permits
+UPDATE project_categories SET category = 'permits' WHERE category = 'permits_inspections';
 
-**4. `src/hooks/useCustomCategories.ts`** -- Clean up
-- Remove `budgetCalc` from `CategoryType` and `STORAGE_KEYS` since it's no longer a separate category type
+-- Insert corresponding inspections rows for each project that had permits_inspections
+INSERT INTO project_categories (project_id, category, estimated_budget, user_id)
+SELECT project_id, 'inspections', 0, user_id
+FROM project_categories WHERE category = 'permits'
+AND NOT EXISTS (
+  SELECT 1 FROM project_categories pc2 
+  WHERE pc2.project_id = project_categories.project_id 
+  AND pc2.category = 'inspections'
+);
+```
 
-**5. Expense Categories display in Settings** -- Add trade group visualization
-- Update the Expense Categories section to use grouped rendering (similar to what Budget Calculator Categories had) so users can see their categories organized by Structure, MEPs, Finishes, etc.
-- When adding a new category, include the group selector so it gets assigned to the right trade group
-- This replaces the flat badge list with the grouped view
+**2. `src/types/index.ts`**
+- In `BudgetCategory` type: remove `permits_inspections`, add `permits` and `inspections`
+- In `BUDGET_CATEGORIES` array: replace `{ value: 'permits_inspections', label: 'Permits & Inspections' }` with `{ value: 'inspections', label: 'Inspections' }` and `{ value: 'permits', label: 'Permits' }` (alphabetically placed)
+- In `VendorTrade` type: replace `permits_inspections` with `permits` and `inspections`
 
-### Group Mapping (built into `budgetCalculatorCategories.ts`)
-- **Structure**: demolition, framing, foundation_repair, roofing, drywall, insulation
-- **MEPs**: electrical, plumbing, hvac, natural_gas, water_heater, drain_line_repair
-- **Finishes**: painting, flooring, tile, doors, windows, hardware, light_fixtures
-- **Kitchen & Bath**: kitchen, bathroom, main_bathroom, cabinets, countertops, appliances
-- **Exterior**: landscaping, fencing, driveway_concrete, garage, pool, brick_siding_stucco, railing
-- **Other**: everything else (permits_inspections, dumpsters_trash, cleaning, final_punch, staging, carpentry, pest_control, misc, rehab_filler, closing_costs, food, hoa, insurance_project, taxes, utilities, variable, wholesale_fee, and any custom categories)
+**3. `src/lib/budgetCalculatorCategories.ts`**
+- Add `permits: 'other'` and `inspections: 'other'` to `CATEGORY_GROUP_MAP`
+- Remove `permits_inspections` if present
 
-### Result
-- One category list to manage (Expense Categories)
-- Budget Calculator automatically reflects any changes to expense categories
-- Categories are visually grouped in both Settings and the Calculator
-- Budgets created in the calculator will always map 1:1 to project expense categories
+**4. No other file changes needed**
+- The Expense Detail modal's category dropdown pulls from project categories in the database, which will be migrated
+- `getBudgetCategories()` reads from localStorage first; if the user already added separate entries there, those will be used. The hardcoded fallback is updated as backup
+- `getBudgetCalcCategories()` derives from `getBudgetCategories()`, so it picks up changes automatically
+
+### Technical Details
+
+- Two separate migrations are required because PostgreSQL doesn't allow using newly added enum values in the same transaction
+- Existing expenses linked to `permits_inspections` category rows via `category_id` (foreign key to `project_categories.id`) will automatically point to the updated "permits" category -- no expense records need changing
+- The user can then reassign specific expenses to "inspections" using the category dropdown in the Expense Detail modal
