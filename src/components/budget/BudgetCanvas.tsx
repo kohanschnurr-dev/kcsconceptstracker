@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CategoryPreset {
   category: string;
@@ -77,12 +79,14 @@ const CATEGORY_GROUPS = [
 
 
 export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled }: BudgetCanvasProps) {
+  const { user } = useAuth();
   const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [presets, setPresets] = useState<CategoryPreset[]>(DEFAULT_CATEGORY_PRESETS);
   const [editingPresets, setEditingPresets] = useState<CategoryPreset[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [newCategoryValue, setNewCategoryValue] = useState<string>('');
   const prevSqftRef = useRef<string>(sqft);
+  const dbLoadedRef = useRef(false);
 
   const allGroupNames = CATEGORY_GROUPS.map(g => g.name);
   const allExpanded = allGroupNames.every(name => openGroups.includes(name));
@@ -96,20 +100,52 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     }
   }, [expandAll]);
 
-  // Load presets from localStorage on mount
+  // Load presets from database on mount, fall back to localStorage for migration
   useEffect(() => {
-    const stored = localStorage.getItem(PRESETS_STORAGE_KEY);
-    if (stored) {
+    if (!user || dbLoadedRef.current) return;
+    
+    const loadPresets = async () => {
       try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setPresets(parsed.map((p: any) => ({ ...p, mode: p.mode || 'psf' })));
+        const { data } = await supabase
+          .from('profiles')
+          .select('budget_presets')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        const dbPresets = data?.budget_presets as unknown as CategoryPreset[] | null;
+        
+        if (dbPresets && Array.isArray(dbPresets) && dbPresets.length > 0) {
+          const normalized = dbPresets.map((p: any) => ({ ...p, mode: p.mode || 'psf' }));
+          setPresets(normalized);
+          localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(normalized));
+        } else {
+          // Migration: check localStorage for existing presets
+          const stored = localStorage.getItem(PRESETS_STORAGE_KEY);
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                const normalized = parsed.map((p: any) => ({ ...p, mode: p.mode || 'psf' }));
+                setPresets(normalized);
+                // Migrate to database
+                await supabase
+                  .from('profiles')
+                  .update({ budget_presets: normalized } as any)
+                  .eq('user_id', user.id);
+              }
+            } catch (e) {
+              console.error('Failed to parse stored presets:', e);
+            }
+          }
         }
       } catch (e) {
-        console.error('Failed to parse stored presets:', e);
+        console.error('Failed to load presets from database:', e);
       }
-    }
-  }, []);
+      dbLoadedRef.current = true;
+    };
+    
+    loadPresets();
+  }, [user]);
 
   // Auto-calculate presets when sqft changes
   useEffect(() => {
@@ -143,11 +179,25 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     setIsEditDialogOpen(true);
   };
 
-  const handleSavePresets = () => {
+  const handleSavePresets = async () => {
     setPresets(editingPresets);
     localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(editingPresets));
     setIsEditDialogOpen(false);
-    toast.success('Presets saved');
+    
+    if (user) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ budget_presets: editingPresets as any } as any)
+          .eq('user_id', user.id);
+        toast.success('Presets saved');
+      } catch (e) {
+        console.error('Failed to save presets to database:', e);
+        toast.error('Presets saved locally but failed to sync');
+      }
+    } else {
+      toast.success('Presets saved');
+    }
   };
 
   const handleResetDefaults = () => {

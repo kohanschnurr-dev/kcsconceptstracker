@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN budget_presets JSONB DEFAULT NULL;
