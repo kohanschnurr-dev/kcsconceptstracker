@@ -1,32 +1,37 @@
 
-## Add "Create New Category" Option to Reassignment Dialog
+## Fix: Allow Creating New Categories During Reassignment
 
-When deleting a category like "Foundation," you'll be able to type a brand-new category name (e.g., "Foundation Repair") directly in the reassignment dialog instead of only picking from existing ones.
+### The Problem
 
-### How It Will Work
+The `project_categories.category` column uses a Postgres enum (`budget_category`). When you type "Test" in the new category input, the code tries to insert `category: 'test'` into the table -- but Postgres rejects it because "test" isn't a valid enum value. That's the "Failed to reassign expenses" error.
 
-1. The "Reassign expenses to" dropdown will have a **"+ Create new category"** option at the top
-2. Selecting it reveals a text input where you type the new name (e.g., "Foundation Repair")
-3. Clicking "Reassign & Remove" will:
-   - Add "Foundation Repair" to your master category list (localStorage)
-   - Create `project_categories` rows for it in each affected project
-   - Move all expenses (regular + QuickBooks) from Foundation to Foundation Repair
-   - Delete the old Foundation category
+### The Solution
 
-### Technical Details
+Two changes are needed:
 
-**File: `src/components/settings/ReassignCategoryDialog.tsx`**
+**1. New database function (migration)**
 
-- Add a `createNew` boolean state and a `newCategoryLabel` string state
-- Add a special `SelectItem` with value `__create_new__` labeled "+ Create new category"
-- When selected, show an `Input` field below the dropdown for the new name
-- On confirm, derive the value slug from the label (same logic as `useCustomCategories.addItem`), check for duplicates, then:
-  - Call `onComplete` with both the old value to remove AND pass the new category info back
-- Update the `onComplete` callback signature to optionally accept a new category `{ value, label }` to add to the master list
+Create a Postgres function `add_budget_category(text)` that runs `ALTER TYPE budget_category ADD VALUE IF NOT EXISTS ...`. This function will use `SECURITY DEFINER` so it can modify the enum type even when called from the client.
 
-**File: `src/components/settings/ManageSourcesCard.tsx`**
+```text
+CREATE OR REPLACE FUNCTION public.add_budget_category(new_value text)
+RETURNS void AS $$
+BEGIN
+  EXECUTE format('ALTER TYPE public.budget_category ADD VALUE IF NOT EXISTS %L', new_value);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public';
+```
 
-- Update `handleReassignComplete` to also call `budget.addItem(label)` when a new category was created during reassignment
-- Pass the `addItem` function (or a callback) to the dialog so it can register the new category in localStorage
+**2. Update ReassignCategoryDialog.tsx**
 
-This keeps the flow seamless -- delete Foundation, create Foundation Repair, and reassign all in one action.
+Before inserting the new `project_categories` row, call the DB function to register the enum value first:
+
+```typescript
+if (isCreatingNew) {
+  await supabase.rpc('add_budget_category', { new_value: resolvedTarget });
+}
+```
+
+This single RPC call adds the value to the enum (or does nothing if it already exists), then the existing insert logic works as-is.
+
+No other files need changes. The localStorage side (adding to the custom categories list) already works -- it's only the Postgres enum that was blocking.
