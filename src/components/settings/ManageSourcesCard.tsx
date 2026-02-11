@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
@@ -14,11 +14,13 @@ import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES } from '@/types';
 import { DEFAULT_STORES } from '@/hooks/useCustomStores';
 import { DEFAULT_PROPERTY_FIELDS } from '@/components/project/ProjectInfo';
 import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP } from '@/lib/budgetCalculatorCategories';
+import ReassignCategoryDialog from './ReassignCategoryDialog';
 
 function CategorySection({
   items,
   onAdd,
   onRemove,
+  onBeforeRemove,
   onReset,
   placeholder,
   grouped,
@@ -27,6 +29,7 @@ function CategorySection({
   items: CategoryItem[];
   onAdd: (label: string, group?: string) => boolean;
   onRemove: (value: string) => void;
+  onBeforeRemove?: (value: string, label: string) => void;
   onReset: () => void;
   placeholder: string;
   grouped?: boolean;
@@ -53,6 +56,14 @@ function CategorySection({
     toast.success('Reset to defaults');
   };
 
+  const handleRemove = (value: string, label: string) => {
+    if (onBeforeRemove) {
+      onBeforeRemove(value, label);
+    } else {
+      onRemove(value);
+    }
+  };
+
   const renderItems = () => {
     if (grouped) {
       const groups = Object.entries(CATEGORY_GROUPS) as [CategoryGroup, typeof CATEGORY_GROUPS[CategoryGroup]][];
@@ -66,7 +77,7 @@ function CategorySection({
               {groupItems.map(item => (
                 <Badge key={item.value} variant="outline" className={`text-xs ${groupInfo.borderClass} ${groupInfo.textClass}`}>
                   {item.label}
-                  <button onClick={() => onRemove(item.value)} className="ml-1.5 hover:text-destructive">
+                  <button onClick={() => handleRemove(item.value, item.label)} className="ml-1.5 hover:text-destructive">
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
@@ -92,7 +103,7 @@ function CategorySection({
               {groupItems.map(item => (
                 <Badge key={item.value} variant="outline" className="text-xs">
                   {item.label}
-                  <button onClick={() => onRemove(item.value)} className="ml-1.5 hover:text-destructive">
+                  <button onClick={() => handleRemove(item.value, item.label)} className="ml-1.5 hover:text-destructive">
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
@@ -108,7 +119,7 @@ function CategorySection({
         {[...items].sort((a, b) => a.label.localeCompare(b.label)).map(item => (
           <Badge key={item.value} variant="outline" className="text-xs">
             {item.label}
-            <button onClick={() => onRemove(item.value)} className="ml-1.5 hover:text-destructive">
+            <button onClick={() => handleRemove(item.value, item.label)} className="ml-1.5 hover:text-destructive">
               <X className="h-3 w-3" />
             </button>
           </Badge>
@@ -173,7 +184,21 @@ export default function ManageSourcesCard() {
   const stores = useCustomCategories('stores', storeDefaults);
   const propertyInfo = useCustomCategories('propertyInfo', propertyInfoDefaults);
 
+  const [pendingDelete, setPendingDelete] = useState<{ value: string; label: string } | null>(null);
+  const [reassignOpen, setReassignOpen] = useState(false);
+
+  const handleBeforeRemoveBudget = useCallback((value: string, label: string) => {
+    setPendingDelete({ value, label });
+    setReassignOpen(true);
+  }, []);
+
+  const handleReassignComplete = useCallback((value: string) => {
+    budget.removeItem(value);
+    setPendingDelete(null);
+  }, [budget]);
+
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -218,6 +243,7 @@ export default function ManageSourcesCard() {
                 items={budget.items}
                 onAdd={budget.addItem}
                 onRemove={budget.removeItem}
+                onBeforeRemove={handleBeforeRemoveBudget}
                 onReset={budget.resetToDefaults}
                 placeholder="New expense category"
                 tradeGrouped
@@ -266,5 +292,14 @@ export default function ManageSourcesCard() {
         </Accordion>
       </CardContent>
     </Card>
+
+    <ReassignCategoryDialog
+      open={reassignOpen}
+      onOpenChange={setReassignOpen}
+      category={pendingDelete}
+      remainingCategories={budget.items}
+      onComplete={handleReassignComplete}
+    />
+    </>
   );
 }
