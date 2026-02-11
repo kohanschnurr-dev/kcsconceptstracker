@@ -1,37 +1,25 @@
 
 
-## Replace Current Palettes with Sleek, Professional Themes
+## Move Product Image Section Below Assign to Bundles
 
-### What changes
-Replace the existing 8 palettes with refined, muted, professional color schemes. The current ones use highly saturated primary colors (bright orange, blue, red, purple) that feel playful. The new set will use desaturated, sophisticated tones with subtle accent colors -- think executive dashboard, not candy store.
+### Change
+Move the entire "Product Image" block (lines 1200-1252) to appear after the "Assign to Bundles" section (after ~line 1335), so the field order becomes:
 
-### New Palette Lineup
+1. Item Name
+2. Category
+3. Assign to Bundles
+4. **Product Image** (moved down)
+5. Source Store / Source URL
+6. Finish-Color / Unit Price
+7. Quantity
+8. Specifications
+9. Notes
+10. Pack price / Tax toggles
 
-| Name | Primary Accent | Vibe |
-|------|---------------|------|
-| **Ember** (keep, refined) | Warm amber, slightly desaturated | Original default, toned down |
-| **Graphite** (replaces Steel) | Cool neutral gray-blue | Minimal, monochrome pro |
-| **Slate** (replaces Ocean) | Muted steel-blue | Corporate calm |
-| **Onyx** (replaces Midnight) | Deep indigo, low sat | Near-black elegance |
-| **Sage** (replaces Teal) | Muted olive-green | Earthy, grounded |
-| **Bronze** (replaces Copper) | Dark warm bronze | Luxury feel |
-| **Charcoal** (replaces Crimson) | Warm dark gray with subtle rose | Understated warmth |
-| **Cobalt** (replaces Amethyst) | Deep desaturated blue | Classic professional |
+### Technical Detail
 
-### Key Design Principles
-- Primary colors at 30-50% saturation (current ones are 70-95%)
-- Backgrounds stay very dark (8-11% lightness) for the app's dark-mode aesthetic
-- Accent colors are muted but still distinguishable
-- No bright reds, purples, or candy-colored tones
-
-### Technical Details
-
-**File: `src/lib/colorPalettes.ts`**
-- Update the `PaletteKey` type to: `'ember' | 'graphite' | 'slate' | 'onyx' | 'sage' | 'bronze' | 'charcoal' | 'cobalt'`
-- Replace palette definitions with new desaturated HSL values
-- Add migration in `getActivePalette()` to map old keys to `'ember'` fallback
-- Each palette keeps the same variable structure, just with refined HSL values
-
-**File: `src/components/settings/ColorPaletteCard.tsx`**
-- No structural changes needed -- it reads from the palettes array dynamically
+**File: `src/components/procurement/ProcurementItemModal.tsx`**
+- Cut the Product Image block (lines 1200-1252) from its current position between Item Name and Category.
+- Paste it immediately after the Assign to Bundles section (after the bundle tags/chips closing div, around line 1335).
+- No other changes needed -- all state and handlers remain the same.
 
