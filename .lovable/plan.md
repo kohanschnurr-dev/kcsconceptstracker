@@ -1,27 +1,32 @@
 
-## Fix: Include QuickBooks Expenses in Category Reassignment Check
+## Add "Create New Category" Option to Reassignment Dialog
 
-### The Problem
+When deleting a category like "Foundation," you'll be able to type a brand-new category name (e.g., "Foundation Repair") directly in the reassignment dialog instead of only picking from existing ones.
 
-The "Remove Category" dialog only checks the `expenses` table for linked records. But your Foundation expenses are stored in the `quickbooks_expenses` table (imported bank transactions). So the dialog reports "0 expenses" even though there are 2 Foundation transactions totaling $5,000.
+### How It Will Work
 
-### The Fix
+1. The "Reassign expenses to" dropdown will have a **"+ Create new category"** option at the top
+2. Selecting it reveals a text input where you type the new name (e.g., "Foundation Repair")
+3. Clicking "Reassign & Remove" will:
+   - Add "Foundation Repair" to your master category list (localStorage)
+   - Create `project_categories` rows for it in each affected project
+   - Move all expenses (regular + QuickBooks) from Foundation to Foundation Repair
+   - Delete the old Foundation category
+
+### Technical Details
 
 **File: `src/components/settings/ReassignCategoryDialog.tsx`**
 
-Update the database check logic to also query `quickbooks_expenses` by `category_id`, and include those in the reassignment flow:
+- Add a `createNew` boolean state and a `newCategoryLabel` string state
+- Add a special `SelectItem` with value `__create_new__` labeled "+ Create new category"
+- When selected, show an `Input` field below the dropdown for the new name
+- On confirm, derive the value slug from the label (same logic as `useCustomCategories.addItem`), check for duplicates, then:
+  - Call `onComplete` with both the old value to remove AND pass the new category info back
+- Update the `onComplete` callback signature to optionally accept a new category `{ value, label }` to add to the master list
 
-1. **Count phase**: After counting rows in `expenses`, also count rows in `quickbooks_expenses` that share the same `category_id` values. Display the combined total.
-2. **Reassignment phase**: When moving expenses to a new category, also update `quickbooks_expenses.category_id` from the old project_category ID to the new one.
-3. **Display**: Show a combined count (e.g., "7 expense(s) are assigned to this category") so the user sees the full picture.
+**File: `src/components/settings/ManageSourcesCard.tsx`**
 
-### Specific Changes
+- Update `handleReassignComplete` to also call `budget.addItem(label)` when a new category was created during reassignment
+- Pass the `addItem` function (or a callback) to the dialog so it can register the new category in localStorage
 
-In the `useEffect` that runs on dialog open:
-- After counting `expenses` with `.in('category_id', ids)`, add a second query: count `quickbooks_expenses` with `.in('category_id', ids)`
-- Sum both counts into `expenseCount`
-
-In `handleConfirm`:
-- After the line that updates `expenses.category_id`, add a matching update for `quickbooks_expenses.category_id` using the same old-to-new ID mapping
-
-No new files, no schema changes -- just two additional Supabase queries in the existing dialog component.
+This keeps the flow seamless -- delete Foundation, create Foundation Repair, and reassign all in one action.
