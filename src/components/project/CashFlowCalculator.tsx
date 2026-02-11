@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-
 interface CashFlowCalculatorProps {
   projectId: string;
   totalBudget: number;
@@ -25,6 +25,7 @@ interface CashFlowCalculatorProps {
   initialVacancyRate?: number;
   initialMonthlyMaintenance?: number;
   initialManagementRate?: number;
+  initialRehabOverride?: number | null;
   onSaved?: () => void;
 }
 
@@ -44,6 +45,7 @@ export function CashFlowCalculator({
   initialVacancyRate = 8,
   initialMonthlyMaintenance = 0,
   initialManagementRate = 10,
+  initialRehabOverride,
   onSaved,
 }: CashFlowCalculatorProps) {
   const [purchasePrice, setPurchasePrice] = useState(initialPurchasePrice);
@@ -51,7 +53,9 @@ export function CashFlowCalculator({
   const [monthlyRent, setMonthlyRent] = useState(initialMonthlyRent);
   const [loanAmount, setLoanAmount] = useState(initialLoanAmount);
   const [interestRate, setInterestRate] = useState(initialInterestRate);
-  const [loanTermYears, setLoanTermYears] = useState(initialLoanTermYears);
+  const [loanTermWeeks, setLoanTermWeeks] = useState(Math.round((initialLoanTermYears ?? 30) * 52.143));
+  const [useManualRehab, setUseManualRehab] = useState(initialRehabOverride != null);
+  const [rehabOverride, setRehabOverride] = useState(initialRehabOverride ?? totalBudget);
   const [annualPropertyTaxes, setAnnualPropertyTaxes] = useState(initialAnnualPropertyTaxes);
   const [annualInsurance, setAnnualInsurance] = useState(initialAnnualInsurance);
   const [annualHoa, setAnnualHoa] = useState(initialAnnualHoa);
@@ -96,7 +100,9 @@ export function CashFlowCalculator({
     setMonthlyRent(initialMonthlyRent);
     setLoanAmount(initialLoanAmount);
     setInterestRate(initialInterestRate);
-    setLoanTermYears(initialLoanTermYears);
+    setLoanTermWeeks(Math.round((initialLoanTermYears ?? 30) * 52.143));
+    setUseManualRehab(initialRehabOverride != null);
+    setRehabOverride(initialRehabOverride ?? totalBudget);
     setAnnualPropertyTaxes(initialAnnualPropertyTaxes);
     setAnnualInsurance(initialAnnualInsurance);
     setAnnualHoa(initialAnnualHoa);
@@ -120,14 +126,15 @@ export function CashFlowCalculator({
         monthly_rent: monthlyRent,
         loan_amount: loanAmount,
         interest_rate: interestRate,
-        loan_term_years: loanTermYears,
+        loan_term_years: loanTermWeeks / 52.143,
         annual_property_taxes: annualPropertyTaxes,
         annual_insurance: annualInsurance,
         annual_hoa: annualHoa,
         vacancy_rate: vacancyRate,
         monthly_maintenance: monthlyMaintenance,
         management_rate: managementRate,
-      })
+        cashflow_rehab_override: useManualRehab ? rehabOverride : null,
+      } as any)
       .eq('id', projectId);
 
     if (error) {
@@ -147,7 +154,7 @@ export function CashFlowCalculator({
 
   // Monthly mortgage payment (P&I) using amortization formula
   const monthlyInterestRate = (interestRate / 100) / 12;
-  const numberOfPayments = loanTermYears * 12;
+  const numberOfPayments = Math.round(loanTermWeeks / 4.333);
   let monthlyMortgage = 0;
   if (effectiveLoanAmount > 0 && monthlyInterestRate > 0 && numberOfPayments > 0) {
     monthlyMortgage = effectiveLoanAmount * 
@@ -170,8 +177,11 @@ export function CashFlowCalculator({
   const monthlyCashFlow = grossMonthlyIncome - monthlyMortgage - totalMonthlyExpenses;
   const annualCashFlow = monthlyCashFlow * 12;
 
+  // Rehab budget: use manual override or project totalBudget
+  const activeRehabBudget = useManualRehab ? (rehabOverride || 0) : totalBudget;
+
   // Cash invested = Purchase + Rehab - Loan Amount (money left in deal after refi)
-  const totalInvestment = purchasePrice + totalSpent;
+  const totalInvestment = purchasePrice + activeRehabBudget;
   const cashInvested = totalInvestment - effectiveLoanAmount;
   const cashOnCashROI = cashInvested > 0 ? (annualCashFlow / cashInvested) * 100 : 0;
 
@@ -284,16 +294,53 @@ export function CashFlowCalculator({
               </div>
             </div>
             <div>
-              <Label htmlFor="loan-term">Loan Term (years)</Label>
+              <Label htmlFor="loan-term">Loan Term (weeks)</Label>
               <Input
                 id="loan-term"
                 type="number"
-                value={loanTermYears || ''}
-                onChange={(e) => setLoanTermYears(Number(e.target.value))}
-                placeholder="30"
+                value={loanTermWeeks || ''}
+                onChange={(e) => setLoanTermWeeks(Number(e.target.value))}
+                placeholder="1560"
               />
             </div>
           </div>
+        </div>
+
+        {/* Rehab Budget */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+          <div className="sm:col-span-2">
+            <div className="flex items-center gap-2 mb-1">
+              <Label htmlFor="rehab-budget" className="mb-0">Rehab Budget</Label>
+              <div className="flex items-center gap-1.5">
+                <Switch
+                  id="manual-rehab"
+                  checked={useManualRehab}
+                  onCheckedChange={(checked) => {
+                    setUseManualRehab(checked);
+                    if (!checked) setRehabOverride(totalBudget);
+                  }}
+                  className="scale-75"
+                />
+                <Label htmlFor="manual-rehab" className="text-xs text-muted-foreground mb-0 cursor-pointer">Manual</Label>
+              </div>
+            </div>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="rehab-budget"
+                type="number"
+                value={useManualRehab ? (rehabOverride || '') : totalBudget}
+                onChange={(e) => setRehabOverride(Number(e.target.value))}
+                className="pl-9"
+                placeholder="0"
+                readOnly={!useManualRehab}
+                disabled={!useManualRehab}
+              />
+            </div>
+          </div>
+          {!useManualRehab && (
+            <p className="text-xs text-muted-foreground pb-2">Auto from project budget categories</p>
+          )}
         </div>
 
         {/* Expenses */}
@@ -559,7 +606,7 @@ export function CashFlowCalculator({
             <p className="font-semibold text-muted-foreground mb-2">CASH-ON-CASH ROI BREAKDOWN</p>
             <div className="flex justify-between"><span>Annual Cash Flow</span><span className="font-mono">{formatCurrency(annualCashFlow)}</span></div>
             <div className="flex justify-between border-t border-border pt-1 mt-1"><span>Purchase Price</span><span className="font-mono">{formatCurrency(purchasePrice)}</span></div>
-            <div className="flex justify-between"><span>Rehab Spent</span><span className="font-mono">{formatCurrency(totalSpent)}</span></div>
+            <div className="flex justify-between"><span>Rehab Budget</span><span className="font-mono">{formatCurrency(activeRehabBudget)}</span></div>
             <div className="flex justify-between font-medium"><span>Total Investment</span><span className="font-mono">{formatCurrency(totalInvestment)}</span></div>
             {effectiveLoanAmount > 0 ? (
               <div className="flex justify-between text-destructive"><span>Refi Loan Amount</span><span className="font-mono">-{formatCurrency(effectiveLoanAmount)}</span></div>

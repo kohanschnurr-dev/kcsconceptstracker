@@ -1188,6 +1188,7 @@ export type Database = {
           annual_insurance: number | null
           annual_property_taxes: number | null
           arv: number | null
+          cashflow_rehab_override: number | null
           cover_photo_path: string | null
           cover_photo_position: string | null
           created_at: string
@@ -1220,6 +1221,7 @@ export type Database = {
           annual_insurance?: number | null
           annual_property_taxes?: number | null
           arv?: number | null
+          cashflow_rehab_override?: number | null
           cover_photo_path?: string | null
           cover_photo_position?: string | null
           created_at?: string
@@ -1252,6 +1254,7 @@ export type Database = {
           annual_insurance?: number | null
           annual_property_taxes?: number | null
           arv?: number | null
+          cashflow_rehab_override?: number | null
           cover_photo_path?: string | null
           cover_photo_position?: string | null
           created_at?: string
