@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -165,20 +165,6 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
       .join(' ');
   };
 
-  const getTradeBadgeColor = (trade: string) => {
-    const colors: Record<string, string> = {
-      foundation: 'bg-stone-500/20 text-stone-600',
-      plumbing: 'bg-blue-500/20 text-blue-600',
-      hvac: 'bg-cyan-500/20 text-cyan-600',
-      electrical: 'bg-yellow-500/20 text-yellow-600',
-      roof: 'bg-red-500/20 text-red-600',
-      interior: 'bg-purple-500/20 text-purple-600',
-      kitchen: 'bg-orange-500/20 text-orange-600',
-      fixtures: 'bg-pink-500/20 text-pink-600',
-      general: 'bg-gray-500/20 text-gray-600',
-    };
-    return colors[trade] || colors.general;
-  };
 
   // Sort by scheduled date
   const sortedVendors = [...projectVendors].sort((a, b) => {
@@ -248,6 +234,7 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
             No vendors assigned yet. Assign vendors to track who's working on this project!
           </p>
         ) : (
+          <TooltipProvider>
           <div className="space-y-3">
             {sortedVendors.map(pv => (
               <div 
@@ -258,10 +245,16 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium">{pv.vendor?.name || 'Unknown'}</span>
-                      <Badge className={cn("text-xs", getTradeBadgeColor(pv.vendor?.trades?.[0] || 'general'))}>
-                        <Wrench className="h-3 w-3 mr-1" />
-                        {pv.vendor?.trades?.map(formatTrade).join(', ') || 'No trades'}
-                      </Badge>
+                      {pv.vendor?.trades && pv.vendor.trades.length > 0 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Wrench className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            <p className="text-sm">{pv.vendor.trades.map(formatTrade).join(', ')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
                     
                     {/* Contact buttons */}
@@ -323,6 +316,7 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
               </div>
             ))}
           </div>
+          </TooltipProvider>
         )}
       </CardContent>
     </Card>
