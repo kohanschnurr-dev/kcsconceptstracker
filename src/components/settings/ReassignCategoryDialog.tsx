@@ -61,12 +61,17 @@ export default function ReassignCategoryDialog({
 
       // Count expenses linked to these project_category ids
       const ids = rows.map(r => r.id);
-      const { count } = await supabase
+      const { count: expCount } = await supabase
         .from('expenses')
         .select('id', { count: 'exact', head: true })
         .in('category_id', ids);
 
-      setExpenseCount(count ?? 0);
+      const { count: qbCount } = await supabase
+        .from('quickbooks_expenses')
+        .select('id', { count: 'exact', head: true })
+        .in('category_id', ids);
+
+      setExpenseCount((expCount ?? 0) + (qbCount ?? 0));
       setLoading(false);
     })();
   }, [open, category]);
@@ -129,6 +134,12 @@ export default function ReassignCategoryDialog({
         // Move expenses from old to new
         await supabase
           .from('expenses')
+          .update({ category_id: newCategoryId })
+          .eq('category_id', oldRow.id);
+
+        // Also move quickbooks_expenses
+        await supabase
+          .from('quickbooks_expenses')
           .update({ category_id: newCategoryId })
           .eq('category_id', oldRow.id);
       }
