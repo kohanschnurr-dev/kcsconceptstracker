@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapPin, Calendar, Home, Hammer, Building2, Handshake, MoreVertical, Pencil, CheckCircle, PauseCircle, Play, Trash2 } from 'lucide-react';
+import { MapPin, Calendar, Home, Hammer, Building2, Handshake, Pencil } from 'lucide-react';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -7,16 +7,6 @@ import { Input } from '@/components/ui/input';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 interface ProjectCardProps {
   project: Project;
@@ -25,15 +15,13 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardProps) {
-  const [editingName, setEditingName] = useState(false);
-  const [editingAddress, setEditingAddress] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [nameValue, setNameValue] = useState(project.name);
   const [addressValue, setAddressValue] = useState(project.address);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const addressInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { if (editingName) nameInputRef.current?.focus(); }, [editingName]);
-  useEffect(() => { if (editingAddress) addressInputRef.current?.focus(); }, [editingAddress]);
+  useEffect(() => { if (isEditing) nameInputRef.current?.focus(); }, [isEditing]);
 
   const totalSpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
   const isRental = project.projectType === 'rental';
@@ -66,10 +54,11 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
     const trimmed = value.trim();
     if (!trimmed) {
       toast({ title: `${field === 'name' ? 'Name' : 'Address'} cannot be empty`, variant: 'destructive' });
-      if (field === 'name') { setNameValue(project.name); setEditingName(false); }
-      else { setAddressValue(project.address); setEditingAddress(false); }
+      if (field === 'name') setNameValue(project.name);
+      else setAddressValue(project.address);
       return;
     }
+    if ((field === 'name' && trimmed === project.name) || (field === 'address' && trimmed === project.address)) return;
     const { error } = await supabase.from('projects').update({ [field]: trimmed }).eq('id', project.id);
     if (error) {
       toast({ title: 'Failed to update', description: error.message, variant: 'destructive' });
@@ -77,20 +66,16 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
       toast({ title: `${field === 'name' ? 'Name' : 'Address'} updated` });
       onProjectUpdated?.();
     }
-    if (field === 'name') setEditingName(false);
-    else setEditingAddress(false);
   };
 
-  const updateStatus = async (status: 'active' | 'complete' | 'on_hold') => {
-    const { error } = await supabase.from('projects').update({ status }).eq('id', project.id);
-    if (error) toast({ title: 'Failed to update status', variant: 'destructive' });
-    else { toast({ title: `Status changed to ${status.replace('_', ' ')}` }); onProjectUpdated?.(); }
-  };
-
-  const deleteProject = async () => {
-    const { error } = await supabase.from('projects').delete().eq('id', project.id);
-    if (error) toast({ title: 'Failed to delete project', variant: 'destructive' });
-    else { toast({ title: 'Project deleted' }); onProjectUpdated?.(); }
+  const handleBlur = (field: 'name' | 'address') => {
+    saveField(field, field === 'name' ? nameValue : addressValue);
+    // Check if both fields have blurred
+    setTimeout(() => {
+      if (!nameInputRef.current?.matches(':focus') && !addressInputRef.current?.matches(':focus')) {
+        setIsEditing(false);
+      }
+    }, 0);
   };
 
   return (
@@ -101,7 +86,6 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
         !coverPhotoUrl && "p-5"
       )}
     >
-      {/* Cover Photo */}
       {coverPhotoUrl && (
         <div className="aspect-video w-full overflow-hidden">
           <img 
@@ -126,17 +110,17 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
               ) : (
                 <Hammer className="h-4 w-4 text-muted-foreground shrink-0" />
               )}
-              {editingName ? (
+              {isEditing ? (
                 <Input
                   ref={nameInputRef}
                   value={nameValue}
                   onChange={(e) => setNameValue(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
-                  onBlur={() => saveField('name', nameValue)}
+                  onBlur={() => handleBlur('name')}
                   onKeyDown={(e) => {
                     e.stopPropagation();
-                    if (e.key === 'Enter') saveField('name', nameValue);
-                    if (e.key === 'Escape') { setNameValue(project.name); setEditingName(false); }
+                    if (e.key === 'Enter') { saveField('name', nameValue); addressInputRef.current?.focus(); }
+                    if (e.key === 'Escape') { setNameValue(project.name); setAddressValue(project.address); setIsEditing(false); }
                   }}
                   className="h-7 text-lg font-semibold py-0"
                 />
@@ -144,18 +128,18 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
                 <h3 className="font-semibold text-lg truncate">{project.name}</h3>
               )}
             </div>
-            {editingAddress ? (
+            {isEditing ? (
               <div className="flex items-center gap-1.5 mt-1" onClick={(e) => e.stopPropagation()}>
                 <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 <Input
                   ref={addressInputRef}
                   value={addressValue}
                   onChange={(e) => setAddressValue(e.target.value)}
-                  onBlur={() => saveField('address', addressValue)}
+                  onBlur={() => handleBlur('address')}
                   onKeyDown={(e) => {
                     e.stopPropagation();
-                    if (e.key === 'Enter') saveField('address', addressValue);
-                    if (e.key === 'Escape') { setAddressValue(project.address); setEditingAddress(false); }
+                    if (e.key === 'Enter') { saveField('address', addressValue); setIsEditing(false); }
+                    if (e.key === 'Escape') { setNameValue(project.name); setAddressValue(project.address); setIsEditing(false); }
                   }}
                   className="h-6 text-sm py-0"
                 />
@@ -180,7 +164,6 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
           </Badge>
         </div>
 
-        {/* Budget Progress */}
         {showBudgetProgress && (
           <div className="space-y-2 mb-4">
             <div className="flex items-center justify-between text-sm">
@@ -200,7 +183,6 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
           </div>
         )}
 
-        {/* Rental expenses */}
         {isRental && (
           <div className="mb-4 p-3 rounded-lg bg-muted/50">
             <p className="text-xs text-muted-foreground">Total Expenses</p>
@@ -208,7 +190,6 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
           </div>
         )}
 
-        {/* Stats Row */}
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
           {showBudgetProgress ? (
             <div>
@@ -233,41 +214,14 @@ export function ProjectCard({ project, onClick, onProjectUpdated }: ProjectCardP
         </div>
       </div>
 
-      {/* 3-dot menu */}
+      {/* Edit button */}
       <div className="absolute bottom-3 right-3" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="p-1 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors">
-              <MoreVertical className="h-4 w-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => { setNameValue(project.name); setEditingName(true); }}>
-              <Pencil className="h-4 w-4 mr-2" /> Edit Name
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { setAddressValue(project.address); setEditingAddress(true); }}>
-              <Pencil className="h-4 w-4 mr-2" /> Edit Address
-            </DropdownMenuItem>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem onClick={() => updateStatus('active')}>
-                  <Play className="h-4 w-4 mr-2" /> Active
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateStatus('on_hold')}>
-                  <PauseCircle className="h-4 w-4 mr-2" /> On Hold
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateStatus('complete')}>
-                  <CheckCircle className="h-4 w-4 mr-2" /> Complete
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={deleteProject}>
-              <Trash2 className="h-4 w-4 mr-2" /> Delete Project
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <button
+          className="p-1 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => { setNameValue(project.name); setAddressValue(project.address); setIsEditing(true); }}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   );
