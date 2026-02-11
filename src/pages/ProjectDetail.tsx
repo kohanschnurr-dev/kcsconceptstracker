@@ -20,7 +20,8 @@ import {
   Loader2,
   ChevronDown,
   Settings,
-  GripVertical
+  GripVertical,
+  Pencil
 } from 'lucide-react';
 
 function SortableTabItem({ id, label }: { id: string; label: string }) {
@@ -157,40 +158,47 @@ export default function ProjectDetail() {
   const [reorderOpen, setReorderOpen] = useState(false);
   const [procurementCount, setProcurementCount] = useState(0);
   const [activeTab, setActiveTab] = useState('');
-  const [editingName, setEditingName] = useState(false);
-  const [editingAddress, setEditingAddress] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [nameValue, setNameValue] = useState('');
+  const [addressValue, setAddressValue] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
   const addressInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (editingName && nameInputRef.current) nameInputRef.current.focus();
-  }, [editingName]);
-  useEffect(() => {
-    if (editingAddress && addressInputRef.current) addressInputRef.current.focus();
-  }, [editingAddress]);
+    if (isEditing) nameInputRef.current?.focus();
+  }, [isEditing]);
 
   const saveField = async (field: 'name' | 'address', value: string) => {
     const trimmed = value.trim();
     if (!trimmed) {
       toast({ title: `${field === 'name' ? 'Name' : 'Address'} cannot be empty`, variant: 'destructive' });
-      if (field === 'name') setEditingName(false);
-      else setEditingAddress(false);
       return;
     }
-    if (project && trimmed === project[field]) {
-      if (field === 'name') setEditingName(false);
-      else setEditingAddress(false);
-      return;
-    }
+    if (project && trimmed === project[field]) return;
     const { error } = await supabase.from('projects').update({ [field]: trimmed }).eq('id', id!);
     if (error) {
       toast({ title: 'Failed to update', description: error.message, variant: 'destructive' });
     } else {
       setProject(prev => prev ? { ...prev, [field]: trimmed } : prev);
     }
-    if (field === 'name') setEditingName(false);
-    else setEditingAddress(false);
+  };
+
+  const handleEditBlur = (field: 'name' | 'address') => {
+    saveField(field, field === 'name' ? nameValue : addressValue);
+    setTimeout(() => {
+      if (!nameInputRef.current?.matches(':focus') && !addressInputRef.current?.matches(':focus')) {
+        setIsEditing(false);
+      }
+    }, 0);
+  };
+
+  const startEditing = () => {
+    if (project) {
+      setNameValue(project.name);
+      setAddressValue(project.address);
+      setIsEditing(true);
+    }
   };
 
   const fetchProjectData = async (showLoading = true) => {
@@ -446,24 +454,30 @@ export default function ProjectDetail() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                {editingName ? (
+                {isEditing ? (
                   <Input
                     ref={nameInputRef}
-                    defaultValue={project.name}
+                    value={nameValue}
+                    onChange={(e) => setNameValue(e.target.value)}
                     className="text-2xl font-semibold h-auto py-0 px-1 w-64"
-                    onBlur={(e) => saveField('name', e.target.value)}
+                    onBlur={() => handleEditBlur('name')}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveField('name', (e.target as HTMLInputElement).value);
-                      if (e.key === 'Escape') setEditingName(false);
+                      if (e.key === 'Enter') { saveField('name', nameValue); addressInputRef.current?.focus(); }
+                      if (e.key === 'Escape') { setNameValue(project.name); setAddressValue(project.address); setIsEditing(false); }
                     }}
                   />
                 ) : (
-                  <h1
-                    className="text-2xl font-semibold cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => setEditingName(true)}
-                  >
+                  <h1 className="text-2xl font-semibold">
                     {project.name}
                   </h1>
+                )}
+                {!isEditing && (
+                  <button
+                    className="p-1 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={startEditing}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
                 )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild disabled={updatingStatus}>
@@ -521,22 +535,23 @@ export default function ProjectDetail() {
                 </DropdownMenu>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                {editingAddress ? (
-                  <Input
-                    ref={addressInputRef}
-                    defaultValue={project.address}
-                    className="text-sm h-auto py-0 px-1 w-64"
-                    onBlur={(e) => saveField('address', e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveField('address', (e.target as HTMLInputElement).value);
-                      if (e.key === 'Escape') setEditingAddress(false);
-                    }}
-                  />
+                {isEditing ? (
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Input
+                      ref={addressInputRef}
+                      value={addressValue}
+                      onChange={(e) => setAddressValue(e.target.value)}
+                      className="text-sm h-auto py-0 px-1 w-64"
+                      onBlur={() => handleEditBlur('address')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { saveField('address', addressValue); setIsEditing(false); }
+                        if (e.key === 'Escape') { setNameValue(project.name); setAddressValue(project.address); setIsEditing(false); }
+                      }}
+                    />
+                  </div>
                 ) : (
-                  <span
-                    className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors"
-                    onClick={() => setEditingAddress(true)}
-                  >
+                  <span className="flex items-center gap-1.5">
                     <MapPin className="h-4 w-4" />
                     {project.address}
                   </span>
