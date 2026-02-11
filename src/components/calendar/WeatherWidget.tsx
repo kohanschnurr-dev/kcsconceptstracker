@@ -191,8 +191,7 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
   };
 
   const hasRainWarning = (day: WeatherDay) => {
-    const lower = day.shortForecast.toLowerCase();
-    return day.precipitation > 10 || lower.includes('rain') || lower.includes('shower') || lower.includes('thunder');
+    return day.precipitation > 35;
   };
 
   if (loading) {
@@ -226,9 +225,6 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
               <p className="text-muted-foreground">High: {day.tempHigh}°F / Low: {day.tempLow}°F</p>
               {day.precipitation > 0 && (
                 <p className="text-amber-400">⚠️ {day.precipitation}% chance of precipitation</p>
-              )}
-              {hasRainWarning(day) && (
-                <p className="text-amber-500 mt-1 font-medium">Delay concrete/roofing</p>
               )}
             </div>
           </TooltipContent>
