@@ -1,20 +1,23 @@
 
 
-## Reorganize Color Palette Layout
+## Fix: Goals and Rules Keep Coming Back After Deletion
 
-### Problem
-All 10 color palettes are in a single horizontally-scrolling row, making it feel stretched and requiring scrolling to see all options.
+### Root Cause
+
+The code in `BusinessExpenses.tsx` has a **seeding mechanism** that automatically re-creates default goals and rules whenever it finds zero records. So even after you delete them all, refreshing the page brings them right back.
 
 ### Solution
-Switch from a horizontal scroll to a responsive **grid layout** -- 5 columns on desktop, 3 on smaller screens. Each palette swatch becomes more compact (smaller color preview, tighter padding). This eliminates scrolling and shows all palettes at a glance.
+
+Remove the automatic seeding logic for both goals and rules. When you have 0 goals, it should show "0 goals" -- not silently re-create defaults.
 
 ### Technical Details
 
-**File: `src/components/settings/ColorPaletteCard.tsx`**
+**File: `src/pages/BusinessExpenses.tsx`**
 
-- Replace the `flex gap-3 overflow-x-auto` container with a `grid grid-cols-5 gap-2` layout (with `grid-cols-3` on small screens)
-- Remove `min-w-[140px]`, `snap-center`, `flex-shrink-0`, and all horizontal scroll styling
-- Reduce padding from `p-3` to `p-2` and color preview height from `h-10` to `h-8`
-- Keep all existing selection logic and styling (border highlight, ring)
+1. Remove the "Seed default goals if empty" block (lines ~187-195) that inserts 3 default goals when none exist
+2. Remove the "Seed default rules if empty" block (lines ~199-onward) that inserts 6 default rules when none exist
+3. Simply set the state directly from the query results:
+   - `setGoals(goalsRes.data || []);`
+   - `setRules(rulesRes.data || []);`
 
-The result: a compact 2-row grid (5 per row) that fits entirely on screen without any scrolling.
+After this fix, you can open the Goals and Rules popouts, delete the unwanted entries using the trash buttons, and they will stay deleted.
