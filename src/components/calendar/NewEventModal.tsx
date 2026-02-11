@@ -65,8 +65,6 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [isMultiDay, setIsMultiDay] = useState(false);
   const [isCriticalPath, setIsCriticalPath] = useState(false);
-  const [leadTimeDays, setLeadTimeDays] = useState('0');
-  const [expectedDate, setExpectedDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
@@ -102,8 +100,6 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
     setEndDate(new Date());
     setIsMultiDay(false);
     setIsCriticalPath(false);
-    setLeadTimeDays('0');
-    setExpectedDate(undefined);
     setNotes('');
     setIsRecurring(false);
     setRecurrenceFrequency('monthly');
@@ -152,8 +148,6 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
       event_category: category,
       trade: null as string | null,
       is_critical_path: isCriticalPath,
-      lead_time_days: parseInt(leadTimeDays) || 0,
-      expected_date: expectedDate ? format(expectedDate, 'yyyy-MM-dd') : null,
       notes: notes || null,
     };
 
@@ -563,46 +557,6 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
             )}
           </div>
 
-          {/* Lead Time (for tracking delays) */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">Lead Time (days)</Label>
-              <Input
-                type="number"
-                min="0"
-                value={leadTimeDays}
-                onChange={(e) => setLeadTimeDays(e.target.value)}
-                placeholder="0"
-                className="bg-card border-border text-foreground"
-              />
-              <p className="text-xs text-muted-foreground">e.g., City inspection delay</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">Expected Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal bg-card border-border',
-                      !expectedDate && 'text-muted-foreground'
-                    )}
-                  >
-                    {expectedDate ? format(expectedDate, 'MMM d, yyyy') : 'Optional'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-card border-border">
-                  <Calendar
-                    mode="single"
-                    selected={expectedDate}
-                    onSelect={setExpectedDate}
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
 
           {/* Critical Path Checkbox */}
           <div className="flex items-center space-x-3 p-3 rounded-lg bg-card/50 border border-border">
