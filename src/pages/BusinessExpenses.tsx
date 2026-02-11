@@ -92,7 +92,7 @@ export default function BusinessExpenses() {
   const [expensesTableOpen, setExpensesTableOpen] = useState(true);
   const { toast } = useToast();
   const { companyName } = useCompanySettings();
-   const [goals, setGoals] = useState<{id: string; title: string; target_value: number; current_value: number | null; category: string | null}[]>([]);
+   const [goals, setGoals] = useState<{id: string; title: string; target_value: number; current_value: number | null; category: string | null; start_date: string | null; due_date: string | null; completed_at: string | null}[]>([]);
    const [rules, setRules] = useState<{id: string; title: string; category: string | null; is_completed: boolean | null}[]>([]);
   // Form state for new expense
   const [formData, setFormData] = useState({
@@ -167,7 +167,7 @@ export default function BusinessExpenses() {
            .order('name'),
          supabase
            .from('quarterly_goals')
-           .select('id, title, target_value, current_value, category')
+           .select('id, title, target_value, current_value, category, start_date, due_date, completed_at')
            .eq('user_id', user.id)
            .eq('quarter', 'Q1 2026'),
          supabase
@@ -583,12 +583,13 @@ export default function BusinessExpenses() {
          {/* Compact Command Center Widgets */}
          <CompactDashboardWidgets 
            expenses={expenses}
-           goals={goals}
+           goals={goals.filter(g => !g.completed_at)}
            rules={rules}
            getCategoryLabel={getCategoryLabel}
            onCategoryClick={setCategoryFilter}
            selectedCategory={categoryFilter}
-           onAddGoal={async (goal) => {
+            allGoals={goals}
+            onAddGoal={async (goal) => {
              const { data: { user } } = await supabase.auth.getUser();
              if (!user) return;
              const { data } = await supabase.from('quarterly_goals').insert({
@@ -598,6 +599,8 @@ export default function BusinessExpenses() {
                category: goal.category,
                quarter: 'Q1 2026',
                current_value: 0,
+               start_date: goal.start_date || null,
+               due_date: goal.due_date || null,
              }).select().single();
              if (data) setGoals(prev => [...prev, data]);
             }}
@@ -605,6 +608,13 @@ export default function BusinessExpenses() {
               const { error } = await supabase.from('quarterly_goals').update({ current_value: newValue }).eq('id', goalId);
               if (!error) {
                 setGoals(prev => prev.map(g => g.id === goalId ? { ...g, current_value: newValue } : g));
+              }
+            }}
+            onCompleteGoal={async (goalId) => {
+              const now = new Date().toISOString();
+              const { error } = await supabase.from('quarterly_goals').update({ completed_at: now }).eq('id', goalId);
+              if (!error) {
+                setGoals(prev => prev.map(g => g.id === goalId ? { ...g, completed_at: now } : g));
               }
             }}
            onAddRule={async (rule) => {

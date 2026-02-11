@@ -15,13 +15,16 @@
    category: string;
  }
  
- interface Goal {
-   id: string;
-   title: string;
-   target_value: number;
-   current_value: number | null;
-   category: string | null;
- }
+interface Goal {
+  id: string;
+  title: string;
+  target_value: number;
+  current_value: number | null;
+  category: string | null;
+  start_date: string | null;
+  due_date: string | null;
+  completed_at: string | null;
+}
  
  interface OperationCode {
    id: string;
@@ -33,24 +36,28 @@
 interface CompactDashboardWidgetsProps {
   expenses: BusinessExpense[];
   goals: Goal[];
+  allGoals?: Goal[];
   rules: OperationCode[];
   getCategoryLabel: (category: string) => string;
   onCategoryClick: (category: string) => void;
   selectedCategory: string;
-  onAddGoal?: (goal: { title: string; target_value: number; category: string }) => Promise<void>;
+  onAddGoal?: (goal: { title: string; target_value: number; category: string; start_date?: string; due_date?: string }) => Promise<void>;
   onUpdateGoal?: (goalId: string, newValue: number) => Promise<void>;
+  onCompleteGoal?: (goalId: string) => Promise<void>;
   onAddRule?: (rule: { title: string; category: string }) => Promise<void>;
 }
  
 export function CompactDashboardWidgets({ 
   expenses, 
   goals,
+  allGoals,
   rules,
   getCategoryLabel, 
   onCategoryClick,
   selectedCategory,
   onAddGoal,
   onUpdateGoal,
+  onCompleteGoal,
   onAddRule,
 }: CompactDashboardWidgetsProps) {
    const [spendingOpen, setSpendingOpen] = useState(false);
@@ -246,9 +253,10 @@ export function CompactDashboardWidgets({
         <GoalsPopout 
           open={goalsOpen} 
           onOpenChange={setGoalsOpen} 
-          goals={goals}
+          goals={allGoals || goals}
           onAddGoal={onAddGoal}
           onUpdateGoal={onUpdateGoal}
+          onCompleteGoal={onCompleteGoal}
         />
         <RulesPopout 
           open={rulesOpen} 

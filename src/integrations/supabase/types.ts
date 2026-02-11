@@ -1277,10 +1277,13 @@ export type Database = {
       quarterly_goals: {
         Row: {
           category: string | null
+          completed_at: string | null
           created_at: string | null
           current_value: number | null
+          due_date: string | null
           id: string
           quarter: string
+          start_date: string | null
           target_value: number
           title: string
           updated_at: string | null
@@ -1288,10 +1291,13 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          completed_at?: string | null
           created_at?: string | null
           current_value?: number | null
+          due_date?: string | null
           id?: string
           quarter: string
+          start_date?: string | null
           target_value: number
           title: string
           updated_at?: string | null
@@ -1299,10 +1305,13 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          completed_at?: string | null
           created_at?: string | null
           current_value?: number | null
+          due_date?: string | null
           id?: string
           quarter?: string
+          start_date?: string | null
           target_value?: number
           title?: string
           updated_at?: string | null
