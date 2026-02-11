@@ -772,6 +772,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          detail_tab_order: Json | null
           first_name: string | null
           id: string
           last_name: string | null
@@ -781,6 +782,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          detail_tab_order?: Json | null
           first_name?: string | null
           id?: string
           last_name?: string | null
@@ -790,6 +792,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          detail_tab_order?: Json | null
           first_name?: string | null
           id?: string
           last_name?: string | null

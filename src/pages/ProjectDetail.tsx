@@ -1,7 +1,8 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { parseDateString, formatDisplayDate } from '@/lib/dateUtils';
+import { arrayMove } from '@dnd-kit/sortable';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -15,7 +16,10 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
-  ChevronDown
+  ChevronDown,
+  Settings,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Home } from 'lucide-react';
@@ -54,7 +58,7 @@ import { ProjectInfo } from '@/components/project/ProjectInfo';
 import { ExportReports } from '@/components/project/ExportReports';
 import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { useToast } from '@/hooks/use-toast';
-
+import { useProfile } from '@/hooks/useProfile';
 interface DBProject {
   id: string;
   name: string;
@@ -108,9 +112,24 @@ interface DBDailyLog {
   contractors_on_site: string[] | null;
 }
 
+const DEFAULT_DETAIL_TAB_ORDER = ['schedule', 'tasks', 'documents', 'photos', 'logs', 'financials', 'loan', 'team', 'info'];
+
+const TAB_LABELS: Record<string, string> = {
+  schedule: 'Schedule',
+  tasks: 'Tasks',
+  documents: 'Documents',
+  photos: 'Photos',
+  logs: 'Logs',
+  financials: 'Financials',
+  loan: 'Loan',
+  team: 'Team',
+  info: 'Info',
+};
+
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { profile, updateDetailTabOrder, getDetailTabOrder } = useProfile();
   
   const [project, setProject] = useState<DBProject | null>(null);
   const [categories, setCategories] = useState<(DBCategory & { actualSpent: number })[]>([]);
@@ -120,6 +139,7 @@ export default function ProjectDetail() {
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+  const [reorderOpen, setReorderOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -288,6 +308,29 @@ export default function ProjectDetail() {
 
   const isRental = project?.project_type === 'rental';
 
+  const effectiveTabOrder = useMemo(() => {
+    if (!project) return DEFAULT_DETAIL_TAB_ORDER;
+    const order = getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
+    // Filter out loan for rentals
+    if (project.project_type === 'rental') {
+      return order.filter(t => t !== 'loan');
+    }
+    return order;
+  }, [project?.project_type, profile?.detail_tab_order]);
+
+  const moveDetailTab = (index: number, direction: 'up' | 'down') => {
+    if (!project) return;
+    const fullOrder = getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
+    // Work on the full order (including loan even for rentals) so it's preserved
+    const filtered = project.project_type === 'rental' ? fullOrder.filter(t => t !== 'loan') : fullOrder;
+    const newOrder = arrayMove(filtered, index, direction === 'up' ? index - 1 : index + 1);
+    // For rentals, re-insert loan in its original position for storage
+    if (project.project_type === 'rental') {
+      const loanIdx = fullOrder.indexOf('loan');
+      if (loanIdx >= 0) newOrder.splice(loanIdx, 0, 'loan');
+    }
+    updateDetailTabOrder.mutate({ projectType: project.project_type, tabOrder: newOrder });
+  };
   if (loading) {
     return (
       <MainLayout>
@@ -546,18 +589,41 @@ export default function ProjectDetail() {
         <MonthlyExpenses projectId={id!} formatCurrency={formatCurrency} />
 
         {/* Tabs for detailed views - Schedule first (most used for active projects) */}
-        <Tabs defaultValue="schedule" className="space-y-4">
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="tasks">Tasks</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="photos">Photos</TabsTrigger>
-            <TabsTrigger value="logs">Logs ({dailyLogs.length})</TabsTrigger>
-            <TabsTrigger value="financials">Financials</TabsTrigger>
-            {!isRental && <TabsTrigger value="loan">Loan</TabsTrigger>}
-            <TabsTrigger value="team">Team</TabsTrigger>
-            <TabsTrigger value="info">Info</TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue={effectiveTabOrder[0]} className="space-y-4">
+          <div className="flex items-center gap-2">
+            <TabsList className="flex-wrap h-auto">
+              {effectiveTabOrder.map((tab) => (
+                <TabsTrigger key={tab} value={tab}>
+                  {tab === 'logs' ? `Logs (${dailyLogs.length})` : TAB_LABELS[tab]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <Popover open={reorderOpen} onOpenChange={setReorderOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="end">
+                <p className="text-xs text-muted-foreground mb-2 px-2">Tab Order</p>
+                {effectiveTabOrder.map((tab, index) => (
+                  <div key={tab} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted">
+                    <span className="text-sm">{TAB_LABELS[tab]}</span>
+                    <div className="flex gap-0.5">
+                      <Button size="icon" variant="ghost" className="h-6 w-6"
+                        disabled={index === 0} onClick={() => moveDetailTab(index, 'up')}>
+                        <ArrowUp className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6"
+                        disabled={index === effectiveTabOrder.length - 1} onClick={() => moveDetailTab(index, 'down')}>
+                        <ArrowDown className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </PopoverContent>
+            </Popover>
+          </div>
 
           <TabsContent value="tasks">
             <ProjectTasks projectId={id!} projectName={project.name} />
