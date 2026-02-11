@@ -24,7 +24,7 @@ export interface CalendarTask {
   endDate: Date;
   status: 'permitting' | 'demo' | 'rough-in' | 'finish' | 'complete';
   budgetHealth: 'green' | 'yellow' | 'red';
-  category: string; // Now using category instead of trade
+  category: string;
   dependsOn?: string[];
   checklist: { id: string; label: string; completed: boolean }[];
   notes: string;
@@ -52,24 +52,20 @@ export default function Calendar() {
   const [panelOpen, setPanelOpen] = useState(false);
   const { toast } = useToast();
 
-  // Get project filter from URL
   const selectedProjectId = searchParams.get('project');
 
-  // Handle project filter change with URL sync
   const handleProjectFilterChange = (projectId: string | null) => {
     if (projectId) {
       setSearchParams({ project: projectId });
     } else {
       setSearchParams({});
     }
-    // Close the side panel if a different project is selected
     if (selectedTask && projectId && selectedTask.projectId !== projectId) {
       setPanelOpen(false);
       setSelectedTask(null);
     }
   };
 
-  // Filter tasks based on selected project
   const filteredTasks = useMemo(() => {
     if (!selectedProjectId) return tasks;
     return tasks.filter(task => task.projectId === selectedProjectId);
@@ -80,11 +76,9 @@ export default function Calendar() {
   }, []);
 
   const fetchData = async () => {
-    // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Fetch active projects for the dropdown
     const { data: projectsData } = await supabase
       .from('projects')
       .select('id, name, address, project_type')
@@ -93,7 +87,6 @@ export default function Calendar() {
       .order('created_at', { ascending: false });
 
     if (projectsData) {
-      // Sort: Fix & Flip first, then Rentals (fix_flip projects need more active management)
       const sortedProjects = projectsData
         .map(p => ({ ...p, projectType: p.project_type as 'fix_flip' | 'rental' }))
         .sort((a, b) => {
@@ -105,13 +98,11 @@ export default function Calendar() {
       setAllProjects(sortedProjects);
     }
 
-    // Fetch all projects for task names
     const { data: allProjectsData } = await supabase
       .from('projects')
       .select('id, name, total_budget')
       .eq('user_id', user.id);
 
-    // Fetch calendar events from the database for current user
     const { data: eventsData, error } = await supabase
       .from('calendar_events')
       .select('*')
@@ -123,7 +114,6 @@ export default function Calendar() {
       return;
     }
 
-    // Fetch expense data for budget health calculation
     const { data: expensesData } = await supabase
       .from('expenses')
       .select('project_id, amount');
@@ -132,7 +122,6 @@ export default function Calendar() {
       .from('project_categories')
       .select('project_id, estimated_budget');
 
-    // Calculate budget health per project
     const projectBudgetHealth: Record<string, 'green' | 'yellow' | 'red'> = {};
     
     if (allProjectsData) {
@@ -150,7 +139,6 @@ export default function Calendar() {
       });
     }
 
-    // Transform database events to CalendarTask format
     const calendarTasks: CalendarTask[] = (eventsData || []).map((event: any) => {
       const project = allProjectsData?.find(p => p.id === event.project_id);
       
@@ -179,20 +167,13 @@ export default function Calendar() {
   const getStatusFromCategory = (category: string): CalendarTask['status'] => {
     const group = getCategoryGroup(category);
     switch (group) {
-      case 'acquisition_admin':
-        return 'permitting';
-      case 'structural_exterior':
-        return 'demo';
-      case 'rough_ins':
-        return 'rough-in';
-      case 'inspections':
-        return 'permitting';
-      case 'interior_finishes':
-        return 'finish';
-      case 'milestones':
-        return 'complete';
-      default:
-        return 'rough-in';
+      case 'acquisition_admin': return 'permitting';
+      case 'structural_exterior': return 'demo';
+      case 'rough_ins': return 'rough-in';
+      case 'inspections': return 'permitting';
+      case 'interior_finishes': return 'finish';
+      case 'milestones': return 'complete';
+      default: return 'rough-in';
     }
   };
 
@@ -202,7 +183,6 @@ export default function Calendar() {
   };
 
   const handleTaskUpdate = async (updatedTask: CalendarTask) => {
-    // Update in database
     const { error } = await supabase
       .from('calendar_events')
       .update({
@@ -213,11 +193,7 @@ export default function Calendar() {
 
     if (error) {
       console.error('Error updating event:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update event',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to update event', variant: 'destructive' });
       return;
     }
 
@@ -229,7 +205,6 @@ export default function Calendar() {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // Update in database
     const { error } = await supabase
       .from('calendar_events')
       .update({
@@ -240,25 +215,17 @@ export default function Calendar() {
 
     if (error) {
       console.error('Error moving event:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to move event',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to move event', variant: 'destructive' });
       return;
     }
 
-    // Update local state
     setTasks(prev =>
       prev.map(t =>
         t.id === taskId ? { ...t, startDate: newStartDate, endDate: newEndDate } : t
       )
     );
 
-    toast({
-      title: 'Event Updated',
-      description: `Moved "${task.title}" to new dates.`,
-    });
+    toast({ title: 'Event Updated', description: `Moved "${task.title}" to new dates.` });
   };
 
   return (
@@ -282,11 +249,11 @@ export default function Calendar() {
         />
 
         {/* Category Legend */}
-        <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
+        <div className="bg-background rounded-lg p-3 border border-border">
           <CalendarLegend />
         </div>
 
-        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex-1 flex flex-col">
+        <div className="bg-background rounded-xl border border-border overflow-hidden flex-1 flex flex-col">
           {view === 'monthly' && (
             <MonthlyView
               currentDate={currentDate}
@@ -314,11 +281,11 @@ export default function Calendar() {
         </div>
 
         {filteredTasks.length === 0 && (
-          <div className="text-center py-12 bg-slate-900/50 rounded-xl border border-slate-800">
-            <p className="text-slate-400 mb-2">
+          <div className="text-center py-12 bg-background/50 rounded-xl border border-border">
+            <p className="text-muted-foreground mb-2">
               {selectedProjectId ? 'No events for this project' : 'No events scheduled'}
             </p>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               Click "Add Project Event" to create your first calendar entry
             </p>
           </div>

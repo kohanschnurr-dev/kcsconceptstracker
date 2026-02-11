@@ -8,19 +8,8 @@ import {
   addWeeks
 } from 'date-fns';
 import { 
-  Hammer, 
-  Pipette, 
-  Zap, 
-  Landmark, 
-  Fan, 
-  PaintBucket,
-  Wrench,
-  AlertTriangle,
-  FileText,
-  ClipboardCheck,
-  Calendar,
-  Home,
-  Sparkles,
+  Hammer, Pipette, Zap, Landmark, Fan, PaintBucket,
+  Wrench, AlertTriangle, FileText, ClipboardCheck, Calendar, Home, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -38,7 +27,6 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Show 4 weeks starting from the beginning of current week
   const startDate = startOfWeek(currentDate);
   const days = useMemo(() => {
     return Array.from({ length: 28 }, (_, i) => addDays(startDate, i));
@@ -47,12 +35,9 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
   const getCategoryIcon = (category: string) => {
     const iconClass = 'h-3 w-3';
     const group = getCategoryGroup(category);
-    
     switch (group) {
-      case 'acquisition_admin':
-        return <FileText className={iconClass} />;
-      case 'structural_exterior':
-        return <Landmark className={iconClass} />;
+      case 'acquisition_admin': return <FileText className={iconClass} />;
+      case 'structural_exterior': return <Landmark className={iconClass} />;
       case 'rough_ins':
         switch (category) {
           case 'plumbing_rough': return <Pipette className={iconClass} />;
@@ -61,10 +46,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
           case 'framing': return <Hammer className={iconClass} />;
           default: return <Wrench className={iconClass} />;
         }
-      case 'inspections':
-        return <ClipboardCheck className={iconClass} />;
-      case 'interior_finishes':
-        return <PaintBucket className={iconClass} />;
+      case 'inspections': return <ClipboardCheck className={iconClass} />;
+      case 'interior_finishes': return <PaintBucket className={iconClass} />;
       case 'milestones':
         switch (category) {
           case 'listing_date': return <Calendar className={iconClass} />;
@@ -72,8 +55,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
           case 'stage_clean': return <Sparkles className={iconClass} />;
           default: return <Calendar className={iconClass} />;
         }
-      default:
-        return <Wrench className={iconClass} />;
+      default: return <Wrench className={iconClass} />;
     }
   };
 
@@ -90,15 +72,11 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
     const taskStart = new Date(task.startDate);
     const taskEnd = new Date(task.endDate);
     const endDate = addDays(startDate, 27);
-    
-    // Check if task is visible in this range
     if (taskEnd < startDate || taskStart > endDate) return null;
-
     const startOffset = Math.max(0, differenceInDays(taskStart, startDate));
     const duration = differenceInDays(taskEnd, taskStart) + 1;
     const adjustedStart = taskStart < startDate ? 0 : startOffset;
     const adjustedDuration = Math.min(28 - adjustedStart, duration);
-
     return {
       left: `${(adjustedStart / 28) * 100}%`,
       width: `${(adjustedDuration / 28) * 100}%`,
@@ -110,9 +88,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
     for (const depId of task.dependsOn) {
       const depTask = tasks.find(t => t.id === depId);
       if (depTask && depTask.status !== 'complete') {
-        if (new Date(task.startDate) < new Date(depTask.endDate)) {
-          return true;
-        }
+        if (new Date(task.startDate) < new Date(depTask.endDate)) return true;
       }
     }
     return false;
@@ -125,29 +101,22 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
 
   const handleDragEnd = (e: React.DragEvent) => {
     if (!draggedTask || !containerRef.current) return;
-
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const dayIndex = Math.floor((x / rect.width) * 28);
-    
     const task = tasks.find(t => t.id === draggedTask);
     if (!task) return;
-
     const duration = differenceInDays(new Date(task.endDate), new Date(task.startDate));
     const newStart = addDays(startDate, Math.max(0, Math.min(27 - duration, dayIndex)));
     const newEnd = addDays(newStart, duration);
-
     onTaskMove(draggedTask, newStart, newEnd);
     setDraggedTask(null);
   };
 
-  // Group tasks by project
   const groupedTasks = useMemo(() => {
     const groups: Record<string, CalendarTask[]> = {};
     tasks.forEach(task => {
-      if (!groups[task.projectName]) {
-        groups[task.projectName] = [];
-      }
+      if (!groups[task.projectName]) groups[task.projectName] = [];
       groups[task.projectName].push(task);
     });
     return groups;
@@ -156,8 +125,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
   return (
     <div className="p-4">
       {/* Header with days */}
-      <div className="flex border-b border-slate-700 pb-2 mb-4">
-        <div className="w-48 shrink-0 text-xs font-medium text-slate-400">
+      <div className="flex border-b border-border pb-2 mb-4">
+        <div className="w-48 shrink-0 text-xs font-medium text-muted-foreground">
           Project / Task
         </div>
         <div className="flex-1 flex">
@@ -166,13 +135,13 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
               key={i} 
               className={cn(
                 'flex-1 text-center text-[10px]',
-                isToday(day) ? 'text-emerald-400 font-bold' : 'text-slate-500'
+                isToday(day) ? 'text-primary font-bold' : 'text-muted-foreground'
               )}
             >
               <div>{format(day, 'EEE')}</div>
               <div className={cn(
                 'font-medium',
-                isToday(day) ? 'text-emerald-400' : 'text-slate-400'
+                isToday(day) ? 'text-primary' : 'text-muted-foreground'
               )}>
                 {format(day, 'd')}
               </div>
@@ -185,15 +154,13 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
       <div className="space-y-1">
         {Object.entries(groupedTasks).map(([projectName, projectTasks]) => (
           <div key={projectName}>
-            {/* Project header */}
-            <div className="flex items-center py-2 border-b border-slate-800">
+            <div className="flex items-center py-2 border-b border-border">
               <div className="w-48 shrink-0">
-                <span className="text-sm font-semibold text-white">{projectName}</span>
+                <span className="text-sm font-semibold text-foreground">{projectName}</span>
               </div>
-              <div className="flex-1 h-px bg-slate-800" />
+              <div className="flex-1 h-px bg-border" />
             </div>
 
-            {/* Tasks */}
             {projectTasks.map(task => {
               const position = getTaskPosition(task);
               if (!position) return null;
@@ -203,7 +170,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                   <div className="w-48 shrink-0 pr-2">
                     <button
                       onClick={() => onTaskClick(task)}
-                      className="flex items-center gap-2 text-xs text-slate-300 hover:text-white transition-colors"
+                      className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {getCategoryIcon(task.eventCategory || 'due_diligence')}
                       <span className="truncate">{task.title}</span>
@@ -226,20 +193,18 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={handleDragEnd}
                   >
-                    {/* Grid lines */}
                     <div className="absolute inset-0 flex">
                       {days.map((day, i) => (
                         <div 
                           key={i} 
                           className={cn(
-                            'flex-1 border-l border-slate-800/50',
-                            isToday(day) && 'bg-emerald-500/5'
+                            'flex-1 border-l border-border/50',
+                            isToday(day) && 'bg-primary/5'
                           )}
                         />
                       ))}
                     </div>
 
-                    {/* Task bar */}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div
@@ -254,7 +219,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                           )}
                           style={position}
                         >
-                        <div className="flex items-center h-full px-2 gap-1">
+                          <div className="flex items-center h-full px-2 gap-1">
                             {getCategoryIcon(task.eventCategory || 'due_diligence')}
                             <span className="text-[10px] text-white font-medium truncate">
                               {task.title}
@@ -262,13 +227,13 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                           </div>
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent className="bg-slate-800 border-slate-700">
+                      <TooltipContent className="bg-card border-border">
                         <div className="text-xs">
-                          <p className="font-medium text-white">{task.title}</p>
-                          <p className="text-slate-400">
+                          <p className="font-medium text-foreground">{task.title}</p>
+                          <p className="text-muted-foreground">
                             {format(new Date(task.startDate), 'MMM d')} - {format(new Date(task.endDate), 'MMM d')}
                           </p>
-                          <p className="text-slate-400">
+                          <p className="text-muted-foreground">
                             {task.checklist.filter(c => c.completed).length}/{task.checklist.length} tasks complete
                           </p>
                         </div>
@@ -281,7 +246,6 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
           </div>
         ))}
       </div>
-
     </div>
   );
 }

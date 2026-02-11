@@ -69,12 +69,12 @@ export function CalendarHeader({
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
-    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-slate-900 rounded-xl p-4 border border-slate-800">
+    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-card rounded-xl p-4 border border-border">
       {/* Left section: Title + Navigation */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-emerald-500" />
-          <h1 className="text-lg font-bold text-white whitespace-nowrap">Project Calendar</h1>
+          <Calendar className="h-5 w-5 text-primary" />
+          <h1 className="text-lg font-bold text-foreground whitespace-nowrap">Project Calendar</h1>
         </div>
         
         <div className="flex items-center gap-1">
@@ -82,18 +82,18 @@ export function CalendarHeader({
             variant="ghost"
             size="sm"
             onClick={handlePrev}
-            className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-700"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-base font-semibold text-white min-w-[140px] text-center">
+          <span className="text-base font-semibold text-foreground min-w-[140px] text-center">
             {getDateLabel()}
           </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleNext}
-            className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-700"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -109,21 +109,21 @@ export function CalendarHeader({
             value={selectedProjectId || 'all'}
             onSelect={(value) => onProjectFilterChange(value === 'all' ? null : value)}
             placeholder="All Projects"
-            triggerClassName="h-9 w-[180px] bg-slate-800 border-slate-700 text-white hover:bg-slate-700"
-            className="bg-slate-800 border-slate-700"
+            triggerClassName="h-9 w-[180px] bg-card border-border text-foreground hover:bg-secondary"
+            className="bg-card border-border"
           />
         )}
 
         <WeatherWidget />
         
-        <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
           <Button
             variant={view === 'monthly' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onViewChange('monthly')}
             className={view === 'monthly' 
-              ? 'h-8 bg-emerald-600 hover:bg-emerald-700 text-white' 
-              : 'h-8 text-slate-400 hover:text-white hover:bg-slate-700'}
+              ? 'h-8 bg-primary hover:bg-primary/90 text-primary-foreground' 
+              : 'h-8 text-muted-foreground hover:text-foreground hover:bg-secondary'}
           >
             <LayoutGrid className="h-4 w-4 mr-1" />
             Month
@@ -133,8 +133,8 @@ export function CalendarHeader({
             size="sm"
             onClick={() => onViewChange('weekly')}
             className={view === 'weekly' 
-              ? 'h-8 bg-emerald-600 hover:bg-emerald-700 text-white' 
-              : 'h-8 text-slate-400 hover:text-white hover:bg-slate-700'}
+              ? 'h-8 bg-primary hover:bg-primary/90 text-primary-foreground' 
+              : 'h-8 text-muted-foreground hover:text-foreground hover:bg-secondary'}
           >
             <List className="h-4 w-4 mr-1" />
             Week
@@ -144,8 +144,8 @@ export function CalendarHeader({
             size="sm"
             onClick={() => onViewChange('gantt')}
             className={view === 'gantt' 
-              ? 'h-8 bg-emerald-600 hover:bg-emerald-700 text-white' 
-              : 'h-8 text-slate-400 hover:text-white hover:bg-slate-700'}
+              ? 'h-8 bg-primary hover:bg-primary/90 text-primary-foreground' 
+              : 'h-8 text-muted-foreground hover:text-foreground hover:bg-secondary'}
           >
             <GanttChart className="h-4 w-4 mr-1" />
             Gantt
