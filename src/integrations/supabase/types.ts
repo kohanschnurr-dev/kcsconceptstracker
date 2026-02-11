@@ -780,6 +780,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          city: string | null
           created_at: string
           detail_tab_order: Json | null
           first_name: string | null
@@ -790,6 +791,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          city?: string | null
           created_at?: string
           detail_tab_order?: Json | null
           first_name?: string | null
@@ -800,6 +802,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          city?: string | null
           created_at?: string
           detail_tab_order?: Json | null
           first_name?: string | null

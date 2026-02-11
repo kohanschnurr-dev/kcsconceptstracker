@@ -11,6 +11,7 @@ import {
 import { format, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import type { CalendarView } from '@/pages/Calendar';
 import { WeatherWidget } from './WeatherWidget';
+import { useProfile } from '@/hooks/useProfile';
 
 interface Project {
   id: string;
@@ -27,6 +28,11 @@ interface CalendarHeaderProps {
   selectedProjectId?: string | null;
   onProjectFilterChange?: (projectId: string | null) => void;
   onAddEvent?: React.ReactNode;
+}
+
+function WeatherWidgetWithCity() {
+  const { profile } = useProfile();
+  return <WeatherWidget city={(profile as any)?.city} />;
 }
 
 export function CalendarHeader({ 
@@ -110,7 +116,7 @@ export function CalendarHeader({
           />
         )}
 
-        <WeatherWidget />
+        <WeatherWidgetWithCity />
 
         <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
           <Button

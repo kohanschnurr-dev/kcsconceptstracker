@@ -7,6 +7,7 @@ interface Profile {
   user_id: string;
   first_name: string | null;
   last_name: string | null;
+  city: string | null;
   project_tab_order: string[] | null;
   detail_tab_order: Record<string, string[]> | null;
   created_at: string;
@@ -48,12 +49,15 @@ export function useProfile() {
   });
 
   const updateProfile = useMutation({
-    mutationFn: async ({ firstName, lastName }: { firstName: string; lastName: string }) => {
+    mutationFn: async ({ firstName, lastName, city }: { firstName: string; lastName: string; city?: string }) => {
       if (!user) throw new Error('Not authenticated');
       
+      const payload: Record<string, unknown> = { first_name: firstName, last_name: lastName };
+      if (city !== undefined) payload.city = city;
+
       const { data, error } = await supabase
         .from('profiles')
-        .update({ first_name: firstName, last_name: lastName })
+        .update(payload)
         .eq('user_id', user.id)
         .select()
         .single();
