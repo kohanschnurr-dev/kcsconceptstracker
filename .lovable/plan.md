@@ -1,37 +1,46 @@
 
-## Add Category Change to Expense Details Modal
+
+## Extend Yr/Mo Toggle to Insurance & Maintenance + Improve Toggle Style
 
 ### What Changes
-In the Expense Details modal, the category badge (currently read-only) becomes a dropdown selector so you can reassign the expense to a different category (e.g., change from "Misc." to "Foundation"). Clicking "Save" persists the new category along with notes and receipt changes.
+1. Add the same month/year toggle to **Insurance** and **Maintenance** fields (currently they're fixed to /yr and /mo respectively)
+2. Restyle all four toggles (Property Taxes, Insurance, HOA, Maintenance) from the current `/yr` pill to a segmented **Yr / Mo** toggle where the active option is visually highlighted, making it obvious users can switch
 
 ### Technical Details
 
-**1. Update `ExpenseDetailModal` props and state**
+**File: `src/components/project/CashFlowCalculator.tsx`**
 
-**File: `src/components/ExpenseDetailModal.tsx`**
-- Add `categories: { id: string; category: string }[]` prop to receive available project categories
-- Add `categoryId` state variable initialized from `expense.category_id`
-- Import `Select, SelectContent, SelectItem, SelectTrigger, SelectValue` from the UI library
-- Import `BUDGET_CATEGORIES` (or `getBudgetCategories`) for label lookups
+**1. Add state for new toggles (lines ~59-60)**
+- Add `insurancePeriod: 'month' | 'year'` (default `'year'`)
+- Add `maintenancePeriod: 'month' | 'year'` (default `'month'`)
 
-**2. Replace the static category Badge with a Select dropdown**
+**2. Create a reusable inline toggle component**
+Replace the current single-pill button with a two-segment toggle showing "Yr" and "Mo" side by side. The active segment gets a highlighted background (e.g., `bg-primary/20 text-primary`), the inactive one stays muted. Example markup:
 
-**File: `src/components/ExpenseDetailModal.tsx`**
-- In the badges row, replace the static `<Badge>{categoryLabel}</Badge>` with a `<Select>` dropdown populated from the `categories` prop
-- Style it compact so it fits naturally among the other badges
+```text
+Property Taxes  [Yr | Mo]
+```
 
-**3. Include `category_id` in the save handler**
+Where the active side is visually distinct. Implemented as a small inline component or repeated markup for each of the 4 fields.
 
-**File: `src/components/ExpenseDetailModal.tsx`**
-- In `handleSave`, add `category_id: categoryId` to the `updateData` object so the new category is persisted to the database
+**3. Update Insurance field (lines ~299-311)**
+- Replace `<Label>Insurance/yr</Label>` with the label "Insurance" + the Yr/Mo toggle
+- Add display/input conversion logic: when monthly mode, show `annualInsurance / 12`; on input, multiply by 12
 
-**4. Pass categories from the parent pages**
+**4. Update Maintenance field (lines ~354-366)**
+- Replace `<Label>Maintenance/mo</Label>` with "Maintenance" + the Yr/Mo toggle
+- Maintenance currently stores as monthly (`monthlyMaintenance`). When yearly mode is selected, display `monthlyMaintenance * 12`; on input, divide by 12
 
-**File: `src/pages/ProjectBudget.tsx`**
-- Pass the existing `categories` array to `<ExpenseDetailModal categories={categories} />`
+**5. Restyle existing Property Taxes and HOA toggles (lines ~274-282, 314-322)**
+- Replace the current single `/yr` or `/mo` pill with the same two-segment Yr/Mo toggle style
 
-**File: `src/pages/Expenses.tsx`**
-- Check how categories are available and pass them similarly (may already have them from project data)
+### Toggle Style
+Each toggle is a small inline element next to the label:
 
-**File: `src/pages/BusinessExpenses.tsx`** (if applicable)
-- Same treatment for the `BusinessExpenseDetailModal` if needed
+```text
+[Yr | Mo]     -- "Yr" highlighted when yearly is active
+[Yr | Mo]     -- "Mo" highlighted when monthly is active
+```
+
+Both segments are always visible. The active one uses `bg-primary/20 text-primary font-bold` and the inactive one uses `text-muted-foreground`.
+
