@@ -206,7 +206,7 @@ export function ProfitCalculator({
               <span className="flex items-center gap-1">− Closing Costs <span className="text-muted-foreground text-xs">(</span>
                 <input
                   type="number"
-                  value={closingPct}
+                  value={closingPct || ''}
                   onChange={(e) => setClosingPct(Number(e.target.value))}
                   className="w-10 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
                   onClick={(e) => e.stopPropagation()}
@@ -219,7 +219,7 @@ export function ProfitCalculator({
               <span className="flex items-center gap-1">− Holding Costs <span className="text-muted-foreground text-xs">(</span>
                 <input
                   type="number"
-                  value={holdingPct}
+                  value={holdingPct || ''}
                   onChange={(e) => setHoldingPct(Number(e.target.value))}
                   className="w-10 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
                   onClick={(e) => e.stopPropagation()}
