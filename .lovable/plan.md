@@ -1,37 +1,42 @@
 
 
-## Rename "Budget Categories" to "Expense Categories" and Add Budget Calculator Presets Section
+## Add "Budget Categories" to Manage Sources
+
+### Problem
+The budget calculator categories (Demolition, Framing, Tile, etc. grouped into Structure, MEPs, Finishes, Kitchen & Bath, Exterior, Other) are hardcoded in BudgetCanvas. You want to add/remove these categories and control which group they belong to from the Settings page.
 
 ### What Changes
 
-1. **Rename**: The existing "Budget Categories" accordion item in Manage Sources becomes "Expense Categories" (since those categories are used for expense tracking)
-2. **New Section**: Add a "Budget Categories" accordion item that embeds the budget calculator preset editor (the same Edit Presets dialog from BudgetCanvas, but inline)
+1. **Replace BudgetPresetsSection** in the "Budget Categories" accordion with a new grouped category editor that manages the budget calculator's category list
+2. **Extract CATEGORY_GROUPS** from BudgetCanvas into a shared location so both BudgetCanvas and Settings can use/customize them
+3. **Add a new `useCustomCategories` type** for budget calculator categories with group support
 
 ### Technical Details
 
+**New file: `src/lib/budgetCalculatorCategories.ts`**
+- Export the default `BUDGET_CALC_CATEGORY_GROUPS` (Structure, MEPs, Finishes, Kitchen & Bath, Exterior, Other) and their default categories
+- Export a flat default list as `CategoryItem[]` with group assignments
+- Export a `getBudgetCalcCategories()` function that reads from localStorage (same pattern as other category types)
+
+**File: `src/hooks/useCustomCategories.ts`**
+- Add `'budgetCalc'` to the `CategoryType` union
+- Add a storage key entry for it (e.g., `'custom-budget-calc-categories'`)
+
 **File: `src/components/settings/ManageSourcesCard.tsx`**
-
-1. Rename the accordion trigger text from `Budget Categories ({budget.items.length})` to `Expense Categories ({budget.items.length})`
-2. Add a new `AccordionItem` for "Budget Categories" that contains an inline version of the preset editor (category list with $/sqft rates, mode selector, add/remove, reset to defaults)
-3. Import `supabase`, `useAuth`, and the preset types/defaults from BudgetCanvas
-4. Add state management for presets (load from database on mount, save to both database and localStorage)
-
-**New component or inline section**: `BudgetPresetsSection`
-- Reuses the same preset editing logic currently in BudgetCanvas's Edit Presets dialog
-- Loads presets from the `profiles.budget_presets` column (same source as BudgetCanvas)
-- On save, persists to both database and localStorage (same pattern as BudgetCanvas)
-- Shows the category list with mode ($/sqft or Flat $), amount input, and remove button
-- Includes "Add Category" dropdown and "Reset to Defaults" button
+- Remove the `BudgetPresetsSection` import and replace the "Budget Categories" accordion content with a `CategorySection` using the new `budgetCalc` hook -- with `grouped` mode enabled so categories display under their group headers (Structure, MEPs, etc.)
+- Users can add new categories to any group, remove categories, or reset to defaults
 
 **File: `src/components/budget/BudgetCanvas.tsx`**
-- Extract the preset types (`CategoryPreset`, `DEFAULT_CATEGORY_PRESETS`, `PRESETS_STORAGE_KEY`) into a shared file so both BudgetCanvas and ManageSourcesCard can use them
-- No functional changes to BudgetCanvas itself
+- Replace the hardcoded `CATEGORY_GROUPS` with a dynamic version that reads from the customized category list (via `getBudgetCalcCategories()` or localStorage)
+- Group the loaded categories by their `group` field to build the same grouped layout
 
-**New File: `src/lib/budgetPresets.ts`**
-- Export `CategoryPreset` interface, `DEFAULT_CATEGORY_PRESETS`, and `PRESETS_STORAGE_KEY`
-- Both BudgetCanvas and ManageSourcesCard import from here
+**Shared group definitions** (in `budgetCalculatorCategories.ts`):
+- Structure, MEPs, Finishes, Kitchen & Bath, Exterior, Other
+- Each with a label, icon reference, and color classes (similar to calendar category groups)
 
-### Summary
-- Rename "Budget Categories" label to "Expense Categories" (1 line change)
-- Extract preset constants to shared file
-- Add inline preset editor in a new "Budget Categories" accordion section in Manage Sources
+### Flow
+1. User opens Settings > Manage Sources > Budget Categories
+2. Sees all current categories grouped by Structure, MEPs, Finishes, etc.
+3. Can add a new category to any group, remove existing ones, or reset to defaults
+4. Changes persist via localStorage (same as all other category sources)
+5. Budget Calculator reads the updated category list and renders accordingly
