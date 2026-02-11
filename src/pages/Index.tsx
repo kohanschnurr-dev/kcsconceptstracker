@@ -6,8 +6,6 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { QuickTaskInput } from '@/components/dashboard/QuickTaskInput';
 import { TasksDueTodayBanner } from '@/components/dashboard/TasksDueTodayBanner';
-import { QuickActionButton } from '@/components/QuickActionButton';
-import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { NewProjectModal } from '@/components/NewProjectModal';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,7 +37,7 @@ interface DBExpense {
 export default function Index() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+  
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -310,17 +308,6 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Quick Action FAB */}
-      <QuickActionButton onClick={() => setExpenseModalOpen(true)} />
-
-      {/* Modals */}
-      <QuickExpenseModal
-        open={expenseModalOpen}
-        onOpenChange={setExpenseModalOpen}
-        projects={projects}
-        onExpenseCreated={fetchData}
-      />
-      
       <NewProjectModal
         open={projectModalOpen}
         onOpenChange={setProjectModalOpen}
