@@ -114,6 +114,11 @@ export default function ReassignCategoryDialog({
 
     setSaving(true);
     try {
+      // Register the new enum value in Postgres before inserting
+      if (isCreatingNew) {
+        await supabase.rpc('add_budget_category', { new_value: resolvedTarget });
+      }
+
       // For each project that has the old category, ensure a project_categories row exists for the new category
       const projectIds = [...new Set(categoryRows.map(r => r.project_id))];
 
