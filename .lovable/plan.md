@@ -1,37 +1,46 @@
 
 
-## Make Project Name and Address Editable Inline
+## Add 3-Dot Menu to Project Cards for Quick Editing
 
 ### What Changes
 
-The project name and address on the project detail page header will become click-to-edit fields. Clicking on either will turn it into a text input; pressing Enter or clicking away saves the change to the database. The status dropdown and start date picker are already editable.
+A small 3-dot (ellipsis) menu button will appear in the bottom-right corner of each project card on the dashboard. Clicking it opens a dropdown with options to edit the project name, address, budget, status, and start date -- all inline without navigating away.
 
 ### How It Works
 
-- Click the project name to edit it inline -- it becomes a text input
-- Click the address to edit it inline -- same behavior
-- Press Enter or click away (blur) to save
-- Press Escape to cancel without saving
-- Empty values are rejected (name and address are required)
+- A subtle "..." button sits in the bottom-right corner of each card
+- Clicking it opens a dropdown menu with options: Edit Name, Edit Address, Change Status, and Delete Project
+- Selecting "Edit Name" or "Edit Address" replaces the respective text with an inline input field (same pattern as the ProjectDetail page)
+- "Change Status" opens a sub-menu with Active / On Hold / Complete options
+- Changes save to the database immediately
+- The card data refreshes after any edit
+- Clicking the 3-dot button stops event propagation so it doesn't navigate to the project
 
 ### Technical Details
 
-**File: `src/pages/ProjectDetail.tsx`**
+**File: `src/components/dashboard/ProjectCard.tsx`**
 
-1. Add two new state variables:
-   - `editingName: boolean` (default false)
-   - `editingAddress: boolean` (default false)
+1. Add state for `editingName`, `editingAddress`
+2. Add a `DropdownMenu` (from radix) with a `MoreVertical` trigger button positioned absolutely in the bottom-right
+3. Menu items: "Edit Name", "Edit Address", "Change Status" (submenu with 3 options), separator, "Delete" (with confirmation)
+4. When "Edit Name" is selected, replace the `<h3>` with an `<Input>`, auto-focus, save on blur/Enter, cancel on Escape
+5. Same pattern for address
+6. Status change calls `supabase.from('projects').update({ status })` directly
 
-2. Replace the static `<h1>{project.name}</h1>` (line 414) with a conditional:
-   - When `editingName` is false: render the name in an `<h1>` with `cursor-pointer hover:text-primary` and `onClick` to enable editing
-   - When `editingName` is true: render an `<Input>` pre-filled with the name, auto-focused, that saves on blur/Enter and cancels on Escape
+**Props changes:**
+- Add `onProjectUpdated?: () => void` callback prop to trigger data refresh in the parent
+- Both `Index.tsx` and `Projects.tsx` pass `fetchData` as `onProjectUpdated`
 
-3. Replace the static address `<span>{project.address}</span>` (lines 471-474) with the same pattern:
-   - Click to toggle `editingAddress`
-   - Show an `<Input>` when editing, save on blur/Enter
+**File: `src/pages/Index.tsx`**
+- Pass `onProjectUpdated={fetchData}` to each `ProjectCard`
 
-4. Both save handlers will:
-   - Trim the value and reject empty strings
-   - Call `supabase.from('projects').update(...)` 
-   - Update local `project` state on success
-   - Show a toast on error
+**File: `src/pages/Projects.tsx`**
+- Pass `onProjectUpdated={fetchProjects}` to each `ProjectCard`
+
+**New imports in ProjectCard:**
+- `MoreVertical` from lucide-react
+- `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSub`, `DropdownMenuSubTrigger`, `DropdownMenuSubContent`, `DropdownMenuSeparator` from radix
+- `Input` from ui
+- `useState`, `useRef`, `useEffect` from React
+- `useToast` from hooks
+
