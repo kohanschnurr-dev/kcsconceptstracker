@@ -1,43 +1,42 @@
 
-## Add Flat Cost vs $/sqft Pricing Mode to Category Presets
 
-### What changes
-Each preset category currently only supports a $/sqft rate. This update adds a pricing mode toggle so categories like HVAC can use a flat dollar amount that stays constant regardless of square footage.
+## Reorganize Procurement Item Modal Layout
 
-### How it works
-- Each preset gets a new `mode` field: either `"psf"` (per sqft, the default) or `"flat"`
-- In the Edit Presets dialog, a new column header shows "Mode" with a toggle/select for each row
-  - `psf` mode: shows "$/sqft" column, calculates `sqft x rate`
-  - `flat` mode: shows "Flat $" column, uses the value as-is regardless of sqft
-- Column headers update to: **Category | Mode | Amount | X**
-- The auto-calculation logic updates so flat-mode presets always set their fixed amount when sqft changes (or on initial load), while psf presets multiply as before
+### Changes
+
+**1. Move Category above Assign to Bundles (full width)**
+- Currently Category is a half-width field next to Quantity (lines 1385-1406)
+- Move it to appear right after the Product Image section, before Assign to Bundles
+- Make it full width (`col-span-2`) to match Assign to Bundles width
+
+**2. Move Specifications above Notes**
+- Currently Specifications appear right after Product Image (lines 1254-1266), before Assign to Bundles
+- Move them to appear just before Notes (currently at line 1423), after Quantity
+- This groups the core purchasing fields (Source, Price, Quantity) together, then specs, then notes
+
+**3. Widen the popup**
+- Change `max-w-2xl` to `max-w-4xl` on the DialogContent (line 1488) to eliminate the side scrollbar
+
+### New field order in the details step
+1. Item Name (full width)
+2. Product Image (full width)
+3. Category (full width - moved up)
+4. Assign to Bundles (full width)
+5. Source Store / Source URL (two columns)
+6. Finish-Color / Unit Price (two columns)
+7. Quantity (half width, standalone since Category moved)
+8. Specifications (full width - moved down)
+9. Notes (full width)
+10. Pack price / Includes tax toggles
 
 ### Technical Details
 
-**File: `src/components/budget/BudgetCanvas.tsx`**
+**File: `src/components/budget/BudgetCanvas.tsx`** -- no changes needed
 
-1. Update the `CategoryPreset` interface:
-   ```typescript
-   interface CategoryPreset {
-     category: string;
-     label: string;
-     pricePerSqft: number;
-     mode: 'psf' | 'flat'; // new field
-   }
-   ```
+**File: `src/components/procurement/ProcurementItemModal.tsx`**
+- Line 1488: change `max-w-2xl` to `max-w-4xl`
+- Lines 1254-1266 (Specifications block): remove from current position
+- Lines 1385-1406 (Category block): remove from current position, place as `col-span-2` after Product Image and before Assign to Bundles
+- Insert Specifications block between Quantity and Notes
+- Quantity field remains half-width on its own row
 
-2. Update `DEFAULT_CATEGORY_PRESETS` to include `mode: 'psf'` on existing entries
-
-3. In the sqft-change `useEffect` (line 104-117), update calculation logic:
-   - `psf` mode: `sqftNum * preset.pricePerSqft` (existing behavior)
-   - `flat` mode: `preset.pricePerSqft` directly (the value IS the flat cost)
-
-4. Handle backward compatibility: when loading from localStorage, default missing `mode` to `'psf'`
-
-5. Update the Edit Presets dialog:
-   - Add a compact mode selector (Select dropdown or toggle) per row between Category and Amount columns
-   - Column header changes from just "$/sqft" to show "Mode" and "Amount"
-   - When mode is `flat`, the input placeholder shows "$" instead of "$/sqft"
-   - New presets default to `psf` mode
-
-6. Update the `addPreset` function to include `mode: 'psf'` as default
