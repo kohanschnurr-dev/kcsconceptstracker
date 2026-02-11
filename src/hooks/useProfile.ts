@@ -8,6 +8,7 @@ interface Profile {
   first_name: string | null;
   last_name: string | null;
   project_tab_order: string[] | null;
+  detail_tab_order: Record<string, string[]> | null;
   created_at: string;
   updated_at: string;
 }
@@ -81,6 +82,31 @@ export function useProfile() {
     },
   });
 
+  const updateDetailTabOrder = useMutation({
+    mutationFn: async ({ projectType, tabOrder }: { projectType: string; tabOrder: string[] }) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const current = (profile?.detail_tab_order || {}) as Record<string, string[]>;
+      const updated = { ...current, [projectType]: tabOrder };
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ detail_tab_order: updated } as any)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+    },
+  });
+
+  const getDetailTabOrder = (projectType: string, defaultOrder: string[]): string[] => {
+    const saved = (profile?.detail_tab_order as Record<string, string[]> | null)?.[projectType];
+    if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+    return defaultOrder;
+  };
+
   const displayName = profile?.first_name && profile?.last_name
     ? `${profile.first_name} ${profile.last_name}`
     : null;
@@ -90,6 +116,8 @@ export function useProfile() {
     isLoading,
     updateProfile,
     updateTabOrder,
+    updateDetailTabOrder,
+    getDetailTabOrder,
     displayName,
   };
 }
