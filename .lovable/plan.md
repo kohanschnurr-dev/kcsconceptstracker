@@ -1,24 +1,46 @@
 
 
-## Carry Over Budgets During Category Reassignment
+## Add Trade Group Selector and 3-Dot Menu (Rename/Delete) to Expense Categories
 
-When reassigning from "Foundation" to "Foundation Repair," the $5,000 budget attached to Foundation was lost because the code creates new category rows with a $0 budget. This fix will carry over the budget amounts.
+### What's Changing
 
-### Changes
+1. **Trade group selector when adding new categories** -- When adding a new Expense Category, a dropdown appears letting you pick which group it belongs to (Structure, MEPs, Finishes, Kitchen and Bath, Exterior, Other). Currently new items always land in "Other" because there's no way to assign them.
+
+2. **Replace X button with 3-dot menu** -- Each category badge currently shows an "X" to delete. This will become a small 3-dot (...) icon that opens a dropdown with two options:
+   - **Rename** -- Opens an inline input to type a corrected name. Under the hood this creates the new name, reassigns all expenses/budgets (same logic as the existing reassign dialog), and removes the old one.
+   - **Delete** -- Opens the existing reassign/delete dialog (no behavior change).
+
+### Technical Details
+
+**File: `src/hooks/useCustomCategories.ts`**
+- Add a `renameItem(oldValue, newLabel, newGroup?)` method that updates the item in-place (new value derived from new label, preserves group).
+- Return `renameItem` from the hook.
+
+**File: `src/lib/budgetCalculatorCategories.ts`**
+- Update `CATEGORY_GROUP_MAP` lookups in rendering to also check `item.group` as a fallback, so custom categories with a group assignment are rendered in the correct trade section.
+
+**File: `src/components/settings/ManageSourcesCard.tsx`**
+- **Trade group selector**: When `tradeGrouped` is true, show a trade group `Select` dropdown (Structure, MEPs, Finishes, etc.) next to the new category input. Pass the selected group to `onAdd`.
+- **3-dot menu**: Replace the `<button><X /></button>` on each badge with a `DropdownMenu` (from Radix) containing "Rename" and "Delete" items.
+- **Rename flow**: When "Rename" is clicked, show an inline input (replacing the badge text) with save/cancel. On save:
+  - For Expense Categories (`tradeGrouped`): call `add_budget_category` RPC to register the new enum value, then run the same reassign logic from `ReassignCategoryDialog` (move expenses, carry over budgets), then update localStorage via the hook.
+  - For other sections: update the DB column value directly, then update localStorage.
+- **Delete flow**: Same as current -- triggers the existing `onBeforeRemove` callback.
+- Add `onRename` callback prop to `CategorySection`.
 
 **File: `src/components/settings/ReassignCategoryDialog.tsx`**
+- Export the core reassign logic as a reusable function (or add a `mode: 'rename'` prop) so the rename flow can reuse the DB migration logic without opening a full dialog.
 
-1. **Fetch budget amounts** -- Update the `project_categories` query (line 52) to also select `estimated_budget`:
-   ```
-   .select('id, project_id, estimated_budget')
-   ```
-   Update the `categoryRows` state type to include `estimated_budget: number`.
+### UI Layout for Add Row (Expense Categories)
 
-2. **Carry over budget to new category** -- When creating a new `project_categories` row (line 140), use the old row's budget instead of 0:
-   ```
-   estimated_budget: oldRow.estimated_budget ?? 0
-   ```
+```text
+[Trade Group Dropdown] [Category Name Input] [+ Button]
+```
 
-3. **Merge budget if target already exists** -- When the target category already exists for a project (line 136), add the old budget to the existing one via an update query so no budget value is lost.
+### UI for Each Badge
 
-These three small changes ensure that budget allocations transfer seamlessly when categories are renamed or merged.
+```text
+[Category Name] [...] 
+                 |-- Rename
+                 |-- Delete
+```
