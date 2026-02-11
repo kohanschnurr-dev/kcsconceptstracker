@@ -182,34 +182,8 @@ export default function BusinessExpenses() {
       setExpenses(expensesRes.data || []);
       setProjects(projectsRes.data || []);
        
-       // Seed default goals if empty
-       let goalsData = goalsRes.data || [];
-       if (goalsData.length === 0) {
-         const defaultGoals = [
-           { user_id: user.id, title: 'Generate $50K profit', target_value: 50000, current_value: 0, category: 'financial', quarter: 'Q1 2026' },
-           { user_id: user.id, title: 'Close 3 Flips', target_value: 3, current_value: 0, category: 'task_completion', quarter: 'Q1 2026' },
-           { user_id: user.id, title: 'Underwrite 10 Deals', target_value: 10, current_value: 0, category: 'task_completion', quarter: 'Q1 2026' },
-         ];
-         const { data: insertedGoals } = await supabase.from('quarterly_goals').insert(defaultGoals).select();
-         goalsData = insertedGoals || [];
-       }
-       setGoals(goalsData);
-       
-       // Seed default rules if empty
-       let rulesData = rulesRes.data || [];
-       if (rulesData.length === 0) {
-         const defaultRules = [
-           { user_id: user.id, title: 'Foundation First', category: 'order_of_operations', order_index: 1, is_completed: false },
-           { user_id: user.id, title: 'Structural Complete Before Finish', category: 'order_of_operations', order_index: 2, is_completed: false },
-           { user_id: user.id, title: 'Pre-Sheetrock HVAC Inspection', category: 'order_of_operations', order_index: 3, is_completed: false },
-           { user_id: user.id, title: 'Electrical Before Drywall', category: 'order_of_operations', order_index: 4, is_completed: false },
-           { user_id: user.id, title: 'Must Have Insurance', category: 'vendor_requirements', order_index: 5, is_completed: false },
-           { user_id: user.id, title: 'COI Required', category: 'vendor_requirements', order_index: 6, is_completed: false },
-         ];
-         const { data: insertedRules } = await supabase.from('operation_codes').insert(defaultRules).select();
-         rulesData = insertedRules || [];
-       }
-       setRules(rulesData);
+       setGoals(goalsRes.data || []);
+       setRules(rulesRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
