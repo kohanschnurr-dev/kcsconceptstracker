@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, CalendarPlus, X, ListTodo, Target } from 'lucide-react';
+import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, CalendarPlus, X, ListTodo, Target, CalendarIcon } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { NewDailyLogModal } from '@/components/NewDailyLogModal';
@@ -69,6 +72,7 @@ export default function DailyLogs() {
   const [editingTitle, setEditingTitle] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskProjectId, setNewTaskProjectId] = useState<string>('');
+  const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>();
   const [isCreating, setIsCreating] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -240,12 +244,14 @@ export default function DailyLogs() {
           is_daily: isDaily,
           scheduled_date: isDaily ? todayStr : null,
           project_id: newTaskProjectId === 'none' || newTaskProjectId === '' ? null : newTaskProjectId,
+          due_date: newTaskDueDate ? format(newTaskDueDate, 'yyyy-MM-dd') : null,
         });
 
       if (error) throw error;
 
       setNewTaskTitle('');
       setNewTaskProjectId('');
+      setNewTaskDueDate(undefined);
       toast({ 
         title: 'Task created', 
         description: isDaily ? 'Added to today\'s sprint' : 'Added to master pipeline' 
@@ -602,6 +608,46 @@ export default function DailyLogs() {
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+              {checklistTab === 'master' && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "shrink-0 gap-1 h-11 sm:h-10",
+                        newTaskDueDate && "text-primary"
+                      )}
+                    >
+                      <CalendarIcon className="h-4 w-4" />
+                      {newTaskDueDate && <span className="text-xs">{format(newTaskDueDate, 'MMM d')}</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <CalendarPicker
+                      mode="single"
+                      selected={newTaskDueDate}
+                      onSelect={setNewTaskDueDate}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                    {newTaskDueDate && (
+                      <div className="px-3 pb-3">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-xs"
+                          onClick={() => setNewTaskDueDate(undefined)}
+                        >
+                          <X className="h-3 w-3 mr-1" /> Clear date
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
               )}
               <Button 
                 type="submit" 
