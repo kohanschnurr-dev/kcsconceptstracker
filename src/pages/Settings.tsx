@@ -22,6 +22,7 @@ export default function Settings() {
   
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [city, setCity] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -31,6 +32,7 @@ export default function Settings() {
     if (profile) {
       setFirstName(profile.first_name || '');
       setLastName(profile.last_name || '');
+      setCity((profile as any).city || '');
     }
   }, [profile]);
 
@@ -112,7 +114,8 @@ export default function Settings() {
   // Check if profile has changed from initial values
   const initialFirstName = profile?.first_name || '';
   const initialLastName = profile?.last_name || '';
-  const hasProfileChangesCalc = firstName !== initialFirstName || lastName !== initialLastName;
+  const initialCity = (profile as any)?.city || '';
+  const hasProfileChangesCalc = firstName !== initialFirstName || lastName !== initialLastName || city !== initialCity;
 
   const hasAnyChanges = hasProfileChangesCalc || hasCompanyChanges;
 
@@ -124,7 +127,7 @@ export default function Settings() {
         promises.push(updateSettings.mutateAsync({ companyName }));
       }
       if (hasProfileChangesCalc) {
-        promises.push(updateProfile.mutateAsync({ firstName, lastName }));
+        promises.push(updateProfile.mutateAsync({ firstName, lastName, city }));
       }
       await Promise.all(promises);
       toast.success('Settings saved successfully');
@@ -179,6 +182,16 @@ export default function Settings() {
                         placeholder="Enter last name"
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Business City</Label>
+                    <Input
+                      id="city"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="e.g. Dallas, TX"
+                    />
+                    <p className="text-xs text-muted-foreground">Used for weather forecasts on the Calendar</p>
                   </div>
                   <Separator />
                   <div>

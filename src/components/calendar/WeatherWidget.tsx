@@ -13,18 +13,46 @@ interface WeatherDay {
 const DFW_LAT = 32.7767;
 const DFW_LON = -96.7970;
 
-export function WeatherWidget() {
+interface WeatherWidgetProps {
+  city?: string | null;
+}
+
+export function WeatherWidget({ city }: WeatherWidgetProps) {
   const [forecast, setForecast] = useState<WeatherDay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [locationLabel, setLocationLabel] = useState('DFW');
 
   useEffect(() => {
     fetchWeather();
-  }, []);
+  }, [city]);
 
   const fetchWeather = async () => {
+    setLoading(true);
+    let lat = DFW_LAT;
+    let lon = DFW_LON;
+    let label = 'DFW';
+
+    if (city) {
+      try {
+        const geoRes = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
+        );
+        const geoData = await geoRes.json();
+        if (geoData.results?.[0]) {
+          lat = geoData.results[0].latitude;
+          lon = geoData.results[0].longitude;
+          label = geoData.results[0].name;
+        }
+      } catch {
+        // fall back to DFW
+      }
+    }
+
+    setLocationLabel(label);
+
     try {
       const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${DFW_LAT}&longitude=${DFW_LON}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&temperature_unit=fahrenheit&timezone=America/Chicago&forecast_days=5`
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&temperature_unit=fahrenheit&timezone=auto&forecast_days=5`
       );
       const data = await response.json();
       
@@ -92,14 +120,14 @@ export function WeatherWidget() {
     return (
       <div className="flex items-center gap-2 bg-card rounded-lg px-3 py-2">
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        <span className="text-xs text-muted-foreground">Loading DFW weather...</span>
+        <span className="text-xs text-muted-foreground">Loading weather...</span>
       </div>
     );
   }
 
   return (
     <div className="flex items-center gap-1 bg-card rounded-lg px-2 py-1.5">
-      <span className="text-xs text-muted-foreground mr-1 hidden lg:block">DFW</span>
+      <span className="text-xs text-muted-foreground mr-1 hidden lg:block">{locationLabel}</span>
       {forecast.map((day, i) => (
         <Tooltip key={day.date}>
           <TooltipTrigger asChild>
