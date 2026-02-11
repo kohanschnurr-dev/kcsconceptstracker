@@ -15,6 +15,7 @@ import { DEFAULT_STORES } from '@/hooks/useCustomStores';
 import { DEFAULT_PROPERTY_FIELDS } from '@/components/project/ProjectInfo';
 import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP } from '@/lib/budgetCalculatorCategories';
 import ReassignCategoryDialog from './ReassignCategoryDialog';
+import GenericReassignDialog from './GenericReassignDialog';
 
 function CategorySection({
   items,
@@ -176,6 +177,25 @@ const businessDefaults: CategoryItem[] = BUSINESS_EXPENSE_CATEGORIES.map(c => ({
 const storeDefaults: CategoryItem[] = DEFAULT_STORES.map(s => ({ value: s.value, label: s.label }));
 const propertyInfoDefaults: CategoryItem[] = DEFAULT_PROPERTY_FIELDS.map(f => ({ value: f.value, label: f.label }));
 
+// Section configs for GenericReassignDialog
+type SectionKey = 'business' | 'calendar' | 'monthly' | 'stores' | 'propertyInfo';
+
+const SECTION_DB_CONFIG: Record<SectionKey, { tableName: 'business_expenses' | 'calendar_events' | 'procurement_items'; columnName: string } | null> = {
+  business: { tableName: 'business_expenses', columnName: 'category' },
+  calendar: { tableName: 'calendar_events', columnName: 'event_category' },
+  monthly: null,
+  stores: { tableName: 'procurement_items', columnName: 'source_store' },
+  propertyInfo: null,
+};
+
+const SECTION_LABELS: Record<SectionKey, string> = {
+  business: 'category',
+  calendar: 'category',
+  monthly: 'expense type',
+  stores: 'store',
+  propertyInfo: 'field',
+};
+
 export default function ManageSourcesCard() {
   const calendar = useCustomCategories('calendar', calendarDefaults);
   const budget = useCustomCategories('budget', budgetDefaults);
@@ -184,8 +204,14 @@ export default function ManageSourcesCard() {
   const stores = useCustomCategories('stores', storeDefaults);
   const propertyInfo = useCustomCategories('propertyInfo', propertyInfoDefaults);
 
+  // Expense Categories — existing specialized dialog
   const [pendingDelete, setPendingDelete] = useState<{ value: string; label: string } | null>(null);
   const [reassignOpen, setReassignOpen] = useState(false);
+
+  // Generic dialog state for all other sections
+  const [genericPending, setGenericPending] = useState<{ value: string; label: string } | null>(null);
+  const [genericSection, setGenericSection] = useState<SectionKey | null>(null);
+  const [genericOpen, setGenericOpen] = useState(false);
 
   const handleBeforeRemoveBudget = useCallback((value: string, label: string) => {
     setPendingDelete({ value, label });
@@ -196,6 +222,29 @@ export default function ManageSourcesCard() {
     budget.removeItem(value);
     setPendingDelete(null);
   }, [budget]);
+
+  const makeBeforeRemove = useCallback((section: SectionKey) => {
+    return (value: string, label: string) => {
+      setGenericPending({ value, label });
+      setGenericSection(section);
+      setGenericOpen(true);
+    };
+  }, []);
+
+  const sectionHooks: Record<SectionKey, typeof business> = {
+    business,
+    calendar,
+    monthly,
+    stores,
+    propertyInfo,
+  };
+
+  const handleGenericComplete = useCallback((value: string) => {
+    if (!genericSection) return;
+    sectionHooks[genericSection].removeItem(value);
+    setGenericPending(null);
+    setGenericSection(null);
+  }, [genericSection, business, calendar, monthly, stores, propertyInfo]);
 
   return (
     <>
@@ -216,6 +265,7 @@ export default function ManageSourcesCard() {
                 items={business.items}
                 onAdd={business.addItem}
                 onRemove={business.removeItem}
+                onBeforeRemove={makeBeforeRemove('business')}
                 onReset={business.resetToDefaults}
                 placeholder="New business category"
               />
@@ -229,6 +279,7 @@ export default function ManageSourcesCard() {
                 items={calendar.items}
                 onAdd={calendar.addItem}
                 onRemove={calendar.removeItem}
+                onBeforeRemove={makeBeforeRemove('calendar')}
                 onReset={calendar.resetToDefaults}
                 placeholder="New category name"
                 grouped
@@ -258,6 +309,7 @@ export default function ManageSourcesCard() {
                 items={monthly.items}
                 onAdd={monthly.addItem}
                 onRemove={monthly.removeItem}
+                onBeforeRemove={makeBeforeRemove('monthly')}
                 onReset={monthly.resetToDefaults}
                 placeholder="New monthly expense type"
               />
@@ -271,6 +323,7 @@ export default function ManageSourcesCard() {
                 items={stores.items}
                 onAdd={stores.addItem}
                 onRemove={stores.removeItem}
+                onBeforeRemove={makeBeforeRemove('stores')}
                 onReset={stores.resetToDefaults}
                 placeholder="New store name"
               />
@@ -284,6 +337,7 @@ export default function ManageSourcesCard() {
                 items={propertyInfo.items}
                 onAdd={propertyInfo.addItem}
                 onRemove={propertyInfo.removeItem}
+                onBeforeRemove={makeBeforeRemove('propertyInfo')}
                 onReset={propertyInfo.resetToDefaults}
                 placeholder="New property field"
               />
@@ -293,12 +347,24 @@ export default function ManageSourcesCard() {
       </CardContent>
     </Card>
 
+    {/* Existing specialized dialog for Expense Categories */}
     <ReassignCategoryDialog
       open={reassignOpen}
       onOpenChange={setReassignOpen}
       category={pendingDelete}
       remainingCategories={budget.items}
       onComplete={handleReassignComplete}
+    />
+
+    {/* Generic dialog for all other sections */}
+    <GenericReassignDialog
+      open={genericOpen}
+      onOpenChange={setGenericOpen}
+      category={genericPending}
+      remainingItems={genericSection ? sectionHooks[genericSection].items : []}
+      onComplete={handleGenericComplete}
+      dbConfig={genericSection ? SECTION_DB_CONFIG[genericSection] : null}
+      sectionLabel={genericSection ? SECTION_LABELS[genericSection] : 'item'}
     />
     </>
   );
