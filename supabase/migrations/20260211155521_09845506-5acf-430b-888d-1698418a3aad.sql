@@ -1,0 +1,1 @@
+ALTER TABLE public.projects ADD COLUMN cashflow_rehab_override numeric NULL;

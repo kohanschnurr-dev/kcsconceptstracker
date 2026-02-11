@@ -765,6 +765,7 @@ export default function ProjectDetail() {
                 initialVacancyRate={project.vacancy_rate ?? 8}
                 initialMonthlyMaintenance={project.monthly_maintenance ?? 0}
                 initialManagementRate={project.management_rate ?? 10}
+                initialRehabOverride={(project as any).cashflow_rehab_override ?? null}
                 onSaved={() => fetchProjectData(false)}
               />
             ) : (
