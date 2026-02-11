@@ -53,7 +53,7 @@ export function CashFlowCalculator({
   const [monthlyRent, setMonthlyRent] = useState(initialMonthlyRent);
   const [loanAmount, setLoanAmount] = useState(initialLoanAmount);
   const [interestRate, setInterestRate] = useState(initialInterestRate);
-  const [loanTermWeeks, setLoanTermWeeks] = useState(Math.round((initialLoanTermYears ?? 30) * 52.143));
+  const [loanTermMonths, setLoanTermMonths] = useState(Math.round((initialLoanTermYears ?? 30) * 12));
   const [useManualRehab, setUseManualRehab] = useState(initialRehabOverride != null);
   const [rehabOverride, setRehabOverride] = useState(initialRehabOverride ?? totalBudget);
   const [annualPropertyTaxes, setAnnualPropertyTaxes] = useState(initialAnnualPropertyTaxes);
@@ -100,7 +100,7 @@ export function CashFlowCalculator({
     setMonthlyRent(initialMonthlyRent);
     setLoanAmount(initialLoanAmount);
     setInterestRate(initialInterestRate);
-    setLoanTermWeeks(Math.round((initialLoanTermYears ?? 30) * 52.143));
+    setLoanTermMonths(Math.round((initialLoanTermYears ?? 30) * 12));
     setUseManualRehab(initialRehabOverride != null);
     setRehabOverride(initialRehabOverride ?? totalBudget);
     setAnnualPropertyTaxes(initialAnnualPropertyTaxes);
@@ -126,7 +126,7 @@ export function CashFlowCalculator({
         monthly_rent: monthlyRent,
         loan_amount: loanAmount,
         interest_rate: interestRate,
-        loan_term_years: loanTermWeeks / 52.143,
+        loan_term_years: loanTermMonths / 12,
         annual_property_taxes: annualPropertyTaxes,
         annual_insurance: annualInsurance,
         annual_hoa: annualHoa,
@@ -154,7 +154,7 @@ export function CashFlowCalculator({
 
   // Monthly mortgage payment (P&I) using amortization formula
   const monthlyInterestRate = (interestRate / 100) / 12;
-  const numberOfPayments = Math.round(loanTermWeeks / 4.333);
+  const numberOfPayments = loanTermMonths;
   let monthlyMortgage = 0;
   if (effectiveLoanAmount > 0 && monthlyInterestRate > 0 && numberOfPayments > 0) {
     monthlyMortgage = effectiveLoanAmount * 
@@ -294,13 +294,13 @@ export function CashFlowCalculator({
               </div>
             </div>
             <div>
-              <Label htmlFor="loan-term">Loan Term (weeks)</Label>
+              <Label htmlFor="loan-term">Loan Term (months)</Label>
               <Input
                 id="loan-term"
                 type="number"
-                value={loanTermWeeks || ''}
-                onChange={(e) => setLoanTermWeeks(Number(e.target.value))}
-                placeholder="1560"
+                value={loanTermMonths || ''}
+                onChange={(e) => setLoanTermMonths(Number(e.target.value))}
+                placeholder="360"
               />
             </div>
           </div>
