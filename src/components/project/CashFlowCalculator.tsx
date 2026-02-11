@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calculator, DollarSign, TrendingUp, Save, Loader2, Home, Percent, Building } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, Save, Loader2, Home, Percent, Building, Settings2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -295,10 +296,55 @@ export function CashFlowCalculator({
 
         {/* Expenses */}
         <div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-            <Calculator className="h-4 w-4" />
-            EXPENSES
-          </h3>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Calculator className="h-4 w-4" />
+              EXPENSES
+            </h3>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+                  <Settings2 className="h-3.5 w-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56" align="start">
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground">DEFAULT PRESETS</p>
+                  <div>
+                    <Label className="text-xs">Vacancy %</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={(() => { try { return JSON.parse(localStorage.getItem('cashflow-presets') || '{}').vacancy ?? ''; } catch { return ''; } })()}
+                      onChange={(e) => {
+                        const presets = (() => { try { return JSON.parse(localStorage.getItem('cashflow-presets') || '{}'); } catch { return {}; } })();
+                        presets.vacancy = e.target.value ? Number(e.target.value) : undefined;
+                        localStorage.setItem('cashflow-presets', JSON.stringify(presets));
+                      }}
+                      placeholder="8"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Management %</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={(() => { try { return JSON.parse(localStorage.getItem('cashflow-presets') || '{}').management ?? ''; } catch { return ''; } })()}
+                      onChange={(e) => {
+                        const presets = (() => { try { return JSON.parse(localStorage.getItem('cashflow-presets') || '{}'); } catch { return {}; } })();
+                        presets.management = e.target.value ? Number(e.target.value) : undefined;
+                        localStorage.setItem('cashflow-presets', JSON.stringify(presets));
+                      }}
+                      placeholder="10"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Used as defaults for new projects without saved values.</p>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <div>
               <div className="flex items-center gap-1.5 mb-1">
@@ -361,21 +407,6 @@ export function CashFlowCalculator({
               </div>
             </div>
             <div>
-              <Label htmlFor="vacancy-rate">Vacancy %</Label>
-              <div className="relative">
-                <Percent className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="vacancy-rate"
-                  type="number"
-                  step="1"
-                  value={vacancyRate || ''}
-                  onChange={(e) => setVacancyRate(Number(e.target.value))}
-                  className="pl-9"
-                  placeholder="8"
-                />
-              </div>
-            </div>
-            <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <Label htmlFor="monthly-maintenance" className="mb-0">Maintenance</Label>
                 <PeriodToggle value={maintenancePeriod} onChange={setMaintenancePeriod} />
@@ -385,13 +416,28 @@ export function CashFlowCalculator({
                 <Input
                   id="monthly-maintenance"
                   type="number"
-                  value={maintenancePeriod === 'month' ? (monthlyMaintenance || '') : (monthlyMaintenance ? Math.round(monthlyMaintenance * 12) : '')}
+                  value={maintenancePeriod === 'month' ? (monthlyMaintenance !== null && monthlyMaintenance !== undefined ? monthlyMaintenance : '') : (monthlyMaintenance ? Math.round(monthlyMaintenance * 12) : '')}
                   onChange={(e) => {
                     const val = Number(e.target.value);
                     setMonthlyMaintenance(maintenancePeriod === 'year' ? val / 12 : val);
                   }}
                   className="pl-9"
                   placeholder="0"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="vacancy-rate">Vacancy %</Label>
+              <div className="relative">
+                <Percent className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="vacancy-rate"
+                  type="number"
+                  step="1"
+                  value={vacancyRate !== null && vacancyRate !== undefined ? vacancyRate : ''}
+                  onChange={(e) => setVacancyRate(Number(e.target.value))}
+                  className="pl-9"
+                  placeholder="8"
                 />
               </div>
             </div>
@@ -403,7 +449,7 @@ export function CashFlowCalculator({
                   id="management-rate"
                   type="number"
                   step="1"
-                  value={managementRate || ''}
+                  value={managementRate !== null && managementRate !== undefined ? managementRate : ''}
                   onChange={(e) => setManagementRate(Number(e.target.value))}
                   className="pl-9"
                   placeholder="10"
