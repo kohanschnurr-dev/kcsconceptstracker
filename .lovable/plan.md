@@ -1,51 +1,27 @@
 
-## Add Confirmation Prompts for All Manage Sources Sections
+## Fix: Include QuickBooks Expenses in Category Reassignment Check
 
-Currently, only "Expense Categories" prompts before deletion. This will extend a similar confirmation dialog to all six sections, checking the database for usage before removing.
+### The Problem
 
-### How It Will Work
+The "Remove Category" dialog only checks the `expenses` table for linked records. But your Foundation expenses are stored in the `quickbooks_expenses` table (imported bank transactions). So the dialog reports "0 expenses" even though there are 2 Foundation transactions totaling $5,000.
 
-When you click X on any item in any section, a dialog will appear:
+### The Fix
 
-1. **Business Expense Categories** -- Checks `business_expenses` table for rows using that category value. Shows count and offers reassignment if any exist.
-2. **Calendar Categories** -- Checks `calendar_events` table for rows where `event_category` matches. Shows count and offers reassignment.
-3. **Expense Categories** -- Already implemented (keeps existing behavior).
-4. **Monthly Expense Types** -- These are localStorage-only with no DB column storing this value, so a simple "Are you sure?" confirmation will be shown.
-5. **Procurement Stores** -- Checks `procurement_items.source_store` for rows using that store value. Shows count and offers reassignment.
-6. **Property Info Fields** -- Default fields map to dedicated DB columns and custom fields use a JSONB column. A simple confirmation will be shown since removing a field definition doesn't delete stored data.
+**File: `src/components/settings/ReassignCategoryDialog.tsx`**
 
-### Technical Details
+Update the database check logic to also query `quickbooks_expenses` by `category_id`, and include those in the reassignment flow:
 
-**New Component: `src/components/settings/GenericReassignDialog.tsx`**
-- A reusable dialog that accepts:
-  - `categoryLabel` / `categoryValue` -- the item being removed
-  - `tableName` / `columnName` -- which DB table and column to check for usage
-  - `remainingItems` -- the list of alternatives for reassignment
-  - `onComplete` callback
-- On open, queries the specified table/column for a count of matching rows
-- If rows exist: shows count + reassignment dropdown, then updates the DB column from old value to new value on confirm
-- If no rows: shows a simple "Are you sure you want to remove [item]?" confirmation
-- Reuses the same visual pattern as the existing `ReassignCategoryDialog`
+1. **Count phase**: After counting rows in `expenses`, also count rows in `quickbooks_expenses` that share the same `category_id` values. Display the combined total.
+2. **Reassignment phase**: When moving expenses to a new category, also update `quickbooks_expenses.category_id` from the old project_category ID to the new one.
+3. **Display**: Show a combined count (e.g., "7 expense(s) are assigned to this category") so the user sees the full picture.
 
-**Modified: `src/components/settings/ManageSourcesCard.tsx`**
-- Add state to track which section is triggering the dialog (`pendingSection`) along with existing `pendingDelete`
-- Wire each section's `onBeforeRemove` to open the `GenericReassignDialog` with the appropriate table/column config:
-  - Business: `business_expenses` / `category`
-  - Calendar: `calendar_events` / `event_category`
-  - Monthly: no DB check, simple confirm
-  - Stores: `procurement_items` / `source_store`
-  - Property Info: no DB check, simple confirm
-- Expense Categories keeps its existing specialized `ReassignCategoryDialog` (since it has the more complex project_categories logic)
+### Specific Changes
 
-**Existing `ReassignCategoryDialog` stays unchanged** -- it handles the unique expense category flow with `project_categories` and `expenses` table joins.
+In the `useEffect` that runs on dialog open:
+- After counting `expenses` with `.in('category_id', ids)`, add a second query: count `quickbooks_expenses` with `.in('category_id', ids)`
+- Sum both counts into `expenseCount`
 
-### Section-by-Section Config
+In `handleConfirm`:
+- After the line that updates `expenses.category_id`, add a matching update for `quickbooks_expenses.category_id` using the same old-to-new ID mapping
 
-| Section | DB Table | DB Column | Reassignment? |
-|---|---|---|---|
-| Business Expense Categories | `business_expenses` | `category` | Yes -- update matching rows |
-| Calendar Categories | `calendar_events` | `event_category` | Yes -- update matching rows |
-| Expense Categories | (existing dialog) | (existing logic) | Yes -- existing flow |
-| Monthly Expense Types | none | none | Simple confirm only |
-| Procurement Stores | `procurement_items` | `source_store` | Yes -- update matching rows |
-| Property Info Fields | none | none | Simple confirm only |
+No new files, no schema changes -- just two additional Supabase queries in the existing dialog component.
