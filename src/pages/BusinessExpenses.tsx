@@ -48,7 +48,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { BUSINESS_EXPENSE_CATEGORIES, TEXAS_SALES_TAX } from '@/types';
+import { getBusinessExpenseCategories, TEXAS_SALES_TAX } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -370,7 +370,7 @@ export default function BusinessExpenses() {
   };
 
   const getCategoryLabel = useCallback((category: string) => {
-    return BUSINESS_EXPENSE_CATEGORIES.find(b => b.value === category)?.label || 
+    return getBusinessExpenseCategories().find(b => b.value === category)?.label || 
       category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }, []);
 
@@ -623,7 +623,7 @@ export default function BusinessExpenses() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {BUSINESS_EXPENSE_CATEGORIES.map((cat) => (
+                    {getBusinessExpenseCategories().map((cat) => (
                       <SelectItem key={cat.value} value={cat.value}>
                         {cat.label}
                       </SelectItem>
@@ -811,7 +811,7 @@ export default function BusinessExpenses() {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BUSINESS_EXPENSE_CATEGORIES.map((cat) => (
+                  {getBusinessExpenseCategories().map((cat) => (
                     <SelectItem key={cat.value} value={cat.value}>
                       {cat.label}
                     </SelectItem>

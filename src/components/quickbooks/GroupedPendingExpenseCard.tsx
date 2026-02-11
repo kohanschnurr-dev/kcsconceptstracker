@@ -17,9 +17,9 @@ import {
 } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ALL_CATEGORIES, BUDGET_CATEGORIES } from '@/types';
+import { getAllCategories, getBudgetCategories } from '@/types';
 import type { Project } from '@/types';
-import { MONTHLY_COST_CATEGORIES } from '@/lib/monthlyCategories';
+import { getMonthlyCategories } from '@/lib/monthlyCategories';
 
 // Helper to format category values: "tech_equipment" -> "Tech Equipment"
 const formatCategoryValue = (value: string) => {
@@ -32,9 +32,9 @@ const formatCategoryValue = (value: string) => {
 // Get appropriate categories based on project type
 const getCategoriesForProject = (projectName: string) => {
   if (projectName === 'KCS Concepts') {
-    return ALL_CATEGORIES;
+    return getAllCategories();
   }
-  return BUDGET_CATEGORIES;
+  return getBudgetCategories();
 };
 
 interface PendingExpense {
@@ -235,7 +235,7 @@ export function GroupedPendingExpenseCard({
                 </SelectTrigger>
                 <SelectContent>
                   {selectedProject && selectedExpenseType === 'monthly'
-                    ? MONTHLY_COST_CATEGORIES.map((cat) => (
+                    ? getMonthlyCategories().map((cat) => (
                         <SelectItem key={cat.value} value={cat.value}>
                           {cat.label}
                         </SelectItem>

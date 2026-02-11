@@ -39,7 +39,7 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -257,11 +257,11 @@ export default function ProjectBudget() {
   const getCategoryLabel = (categoryId: string) => {
     const cat = categories.find(c => c.id === categoryId);
     if (!cat) return 'Unknown';
-    return BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label || cat.category;
+    return getBudgetCategories().find(b => b.value === cat.category)?.label || cat.category;
   };
 
   const getCategoryName = (categoryValue: string) => {
-    return BUDGET_CATEGORIES.find(b => b.value === categoryValue)?.label || categoryValue;
+    return getBudgetCategories().find(b => b.value === categoryValue)?.label || categoryValue;
   };
 
   // Calculate budget status with color gradient based on percentage over budget

@@ -15,7 +15,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES, type BudgetCategory } from '@/types';
+import { getBudgetCategories, getBusinessExpenseCategories, type BudgetCategory } from '@/types';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 
 interface SimpleProject {
@@ -236,22 +236,22 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
   // Get category label from BUDGET_CATEGORIES
   const getCategoryLabel = (category: string) => {
-    const found = BUDGET_CATEGORIES.find(c => c.value === category);
+    const found = getBudgetCategories().find(c => c.value === category);
     return found?.label || category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ');
   };
 
   // Category options for the dropdown - dynamic based on assignment type
-  const projectCategoryOptions = BUDGET_CATEGORIES.map(c => c.value);
+  const projectCategoryOptions = getBudgetCategories().map(c => c.value);
   
-  const businessCategoryOptions = BUSINESS_EXPENSE_CATEGORIES.map(c => c.value);
+  const businessCategoryOptions = getBusinessExpenseCategories().map(c => c.value);
   
   const categoryOptions = assignmentType === 'project' ? projectCategoryOptions : businessCategoryOptions;
   
   // Get category label - check both project and business categories
   const getCategoryLabelDynamic = (category: string) => {
-    const projectCat = BUDGET_CATEGORIES.find(c => c.value === category);
+    const projectCat = getBudgetCategories().find(c => c.value === category);
     if (projectCat) return projectCat.label;
-    const businessCat = BUSINESS_EXPENSE_CATEGORIES.find(c => c.value === category);
+    const businessCat = getBusinessExpenseCategories().find(c => c.value === category);
     if (businessCat) return businessCat.label;
     return category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ');
   };

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { BudgetCategoryCard } from './BudgetCategoryCard';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 import { 
   Zap, Droplets, PaintBucket, 
   Home, Trees, Package,
@@ -160,7 +160,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
       return;
     }
     
-    const catInfo = BUDGET_CATEGORIES.find(c => c.value === newCategoryValue);
+    const catInfo = getBudgetCategories().find(c => c.value === newCategoryValue);
     if (!catInfo) return;
     
     setEditingPresets(prev => [...prev, {
@@ -172,7 +172,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   };
 
   const getCategoryLabel = (categoryValue: string) => {
-    const cat = BUDGET_CATEGORIES.find(c => c.value === categoryValue);
+    const cat = getBudgetCategories().find(c => c.value === categoryValue);
     return cat?.label || categoryValue.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
@@ -202,7 +202,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   const sqftNum = parseFloat(sqft) || 0;
 
   // Categories available to add (not already in presets)
-  const availableCategories = BUDGET_CATEGORIES.filter(
+  const availableCategories = getBudgetCategories().filter(
     cat => !editingPresets.some(p => p.category === cat.value)
   ).sort((a, b) => a.label.localeCompare(b.label));
 
@@ -329,7 +329,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
         {CATEGORY_GROUPS.map((group) => {
           const GroupIcon = group.icon;
           const groupCategories = group.categories.filter(cat => 
-            BUDGET_CATEGORIES.some(bc => bc.value === cat)
+            getBudgetCategories().some(bc => bc.value === cat)
           );
           const groupTotal = getGroupTotal(groupCategories);
           const isOpen = openGroups.includes(group.name);

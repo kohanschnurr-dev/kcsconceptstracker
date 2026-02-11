@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/toggle-group';
 import { Package, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ALL_CATEGORIES, BUDGET_CATEGORIES } from '@/types';
+import { getAllCategories, getBudgetCategories } from '@/types';
 import type { Project } from '@/types';
 
 interface SplitLine {
@@ -86,9 +86,9 @@ export function SplitExpenseModal({
 
   const getCategoriesForProject = (projectName: string) => {
     if (projectName === 'KCS Concepts') {
-      return ALL_CATEGORIES;
+      return getAllCategories();
     }
-    return BUDGET_CATEGORIES;
+    return getBudgetCategories();
   };
 
   const totalSplit = splits.reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0);

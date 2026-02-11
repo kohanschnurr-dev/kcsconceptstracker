@@ -33,7 +33,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { 
   CATEGORY_GROUPS, 
-  CALENDAR_CATEGORIES,
+  getCalendarCategories,
   getCategoryStyles,
   getCategoryLabel,
   type CategoryGroup,
@@ -73,10 +73,10 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
   // Filter categories based on search
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) {
-      return CALENDAR_CATEGORIES;
+      return getCalendarCategories();
     }
     const query = categorySearch.toLowerCase().trim();
-    return CALENDAR_CATEGORIES.filter(cat =>
+    return getCalendarCategories().filter(cat =>
       cat.label.toLowerCase().includes(query) ||
       cat.groupLabel.toLowerCase().includes(query)
     );

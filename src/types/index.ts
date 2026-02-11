@@ -257,3 +257,33 @@ export const BUSINESS_EXPENSE_CATEGORIES: { value: BudgetCategory; label: string
 export const ALL_CATEGORIES = [...BUDGET_CATEGORIES, ...BUSINESS_EXPENSE_CATEGORIES];
 
 export const TEXAS_SALES_TAX = 0.0825;
+
+// Dynamic getters that check localStorage first, falling back to hardcoded defaults
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) return JSON.parse(saved);
+  } catch (e) {
+    console.error(`Error loading ${key} from localStorage:`, e);
+  }
+  return fallback;
+}
+
+export function getBudgetCategories(): typeof BUDGET_CATEGORIES {
+  return loadFromStorage('custom-budget-categories', BUDGET_CATEGORIES);
+}
+
+export function getBusinessExpenseCategories(): typeof BUSINESS_EXPENSE_CATEGORIES {
+  return loadFromStorage('custom-business-categories', BUSINESS_EXPENSE_CATEGORIES);
+}
+
+export function getAllCategories() {
+  return [...getBudgetCategories(), ...getBusinessExpenseCategories()];
+}
+
+export function getVendorTrades(): typeof VENDOR_TRADES {
+  return [
+    ...getBudgetCategories().map(c => ({ value: c.value as VendorTrade, label: c.label })),
+    { value: 'general' as VendorTrade, label: 'General' },
+  ];
+}
