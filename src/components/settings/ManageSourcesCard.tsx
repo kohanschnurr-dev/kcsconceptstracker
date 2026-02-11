@@ -218,7 +218,10 @@ export default function ManageSourcesCard() {
     setReassignOpen(true);
   }, []);
 
-  const handleReassignComplete = useCallback((value: string) => {
+  const handleReassignComplete = useCallback((value: string, newCategory?: { value: string; label: string }) => {
+    if (newCategory) {
+      budget.addItem(newCategory.label);
+    }
     budget.removeItem(value);
     setPendingDelete(null);
   }, [budget]);
