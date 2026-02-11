@@ -342,7 +342,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
                 <Input
                   type="number"
                   step="0.01"
-                  value={preset.pricePerSqft}
+                  value={preset.pricePerSqft || ''}
                   onChange={(e) => updatePresetRate(index, parseFloat(e.target.value) || 0)}
                   placeholder={preset.mode === 'flat' ? '$' : '$/sqft'}
                   className="h-8"
