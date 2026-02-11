@@ -47,6 +47,7 @@ interface ProcurementItem {
   id: string;
   project_id: string | null;
   category_id: string | null;
+  category: string | null;
   name: string;
   source_url: string | null;
   source_store: SourceStore | null;
@@ -189,12 +190,19 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
   // Format helpers
   const formatCurrency = (value: number) => `${currency}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const getCategoryName = (catId: string | null) => {
-    if (!catId) return 'Uncategorized';
-    const cat = categories.find(c => c.id === catId);
-    if (!cat) return 'Unknown';
-    const budgetCat = BUDGET_CATEGORIES.find(bc => bc.value === cat.category);
-    return budgetCat?.label || cat.category;
+  const getCategoryName = (item: ProcurementItem) => {
+    if (item.category_id) {
+      const cat = categories.find(c => c.id === item.category_id);
+      if (cat) {
+        const budgetCat = BUDGET_CATEGORIES.find(bc => bc.value === cat.category);
+        return budgetCat?.label || cat.category;
+      }
+    }
+    if (item.category) {
+      const budgetCat = BUDGET_CATEGORIES.find(bc => bc.value === item.category);
+      return budgetCat?.label || item.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+    return 'Uncategorized';
   };
 
   // Get unique finishes for filter
@@ -381,7 +389,7 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
         </TableCell>
         <TableCell>
           <Badge variant="secondary" className="text-xs">
-            {getCategoryName(item.category_id)}
+            {getCategoryName(item)}
           </Badge>
         </TableCell>
         <TableCell>
