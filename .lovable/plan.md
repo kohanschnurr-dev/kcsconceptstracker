@@ -1,28 +1,41 @@
 
 
-## Fix Vacancy/Maintenance/Management Save + Swap Positions + Add Preset Gear
+## Make Cash Flow Result Cards Clickable with Breakdown
 
-### Problem
-When you set Management to 0 and save, it reloads as 10. This is because `project.management_rate || 10` treats `0` as falsy and falls back to `10`. Same issue exists for Vacancy (falls back to 8). The `value={managementRate || ''}` pattern also hides `0` in the input, making it look empty.
+### What Changes
+The three result cards -- Monthly Cash Flow, Annual Cash Flow, and Cash-on-Cash ROI -- will become clickable. Clicking any of them will expand/toggle a breakdown panel showing the line-by-line math behind that number.
 
-### Changes
+### Breakdown Content
 
-**1. Fix the fallback bug (`src/pages/ProjectDetail.tsx`, lines 681-683)**
-- Change `project.vacancy_rate || 8` to `project.vacancy_rate ?? 8`
-- Change `project.monthly_maintenance || 0` to `project.monthly_maintenance ?? 0`
-- Change `project.management_rate || 10` to `project.management_rate ?? 10`
-- This preserves `0` as a valid saved value
+**Monthly Cash Flow breakdown:**
+- Gross Rent: (monthly rent amount)
+- Vacancy Allowance: -(vacancy % of rent)
+- Effective Income: (rent minus vacancy)
+- Mortgage P&I: -(monthly mortgage)
+- Property Taxes: -(annual / 12)
+- Insurance: -(annual / 12)
+- HOA: -(annual / 12)
+- Maintenance: -(monthly amount)
+- Management Fee: -(management % of rent)
+- **= Monthly Cash Flow**
 
-**2. Fix input value display (`src/components/project/CashFlowCalculator.tsx`)**
-- For Vacancy, Maintenance, and Management inputs: change `value={x || ''}` to properly show `0` when the value is `0` (use a helper like `value={x !== null && x !== undefined ? x : ''}` or simply allow 0 to display)
+**Annual Cash Flow breakdown:**
+- Monthly Cash Flow x 12
+- Shows the same items annualized
 
-**3. Swap Maintenance and Vacancy positions (same file, lines 363-412)**
-- Current order: Taxes, Insurance, HOA, **Vacancy**, **Maintenance**, Management
-- New order: Taxes, Insurance, HOA, **Maintenance**, **Vacancy**, Management
+**Cash-on-Cash ROI breakdown:**
+- Annual Cash Flow: (amount)
+- Total Investment: Purchase Price + Rehab Spent
+- Loan Amount: -(refi amount)
+- Cash Left in Deal: (total investment minus loan)
+- **= Annual Cash Flow / Cash in Deal**
 
-**4. Add a gear icon for preset Vacancy % and Management % (same file)**
-- Add a small gear icon next to the EXPENSES section header
-- Clicking it opens a popover with two inputs: default Vacancy % and default Management %
-- Presets are stored in localStorage (e.g., `cashflow-presets`)
-- When creating/opening a new project with no saved values, these presets auto-fill the fields
-- The gear provides a quick way to set your standard rates across projects
+### Technical Details
+
+**File: `src/components/project/CashFlowCalculator.tsx`**
+
+1. Add a state variable `expandedCard` (`'monthly' | 'annual' | 'roi' | null`) to track which card's breakdown is visible
+2. Make each of the three result card `div`s clickable with `cursor-pointer` and an `onClick` that toggles `expandedCard`
+3. Add a `Collapsible`-style panel below each card (or below the row) that renders when that card is selected, showing the itemized math in a clean two-column layout (label on left, amount on right)
+4. Use existing calculated values (`monthlyTaxes`, `monthlyInsurance`, `monthlyHoa`, `managementFee`, `vacancyAllowance`, `monthlyMortgage`, `grossMonthlyIncome`, `cashInvested`, etc.) -- no new calculations needed
+5. Style the breakdown with the same `bg-muted/30` treatment used in the Summary section, with a subtle border to connect it to the clicked card
