@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { format } from 'date-fns';
 import { parseDateString, formatDisplayDate } from '@/lib/dateUtils';
 import { arrayMove, useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -20,7 +20,8 @@ import {
   Loader2,
   ChevronDown,
   Settings,
-  GripVertical
+  GripVertical,
+  Pencil
 } from 'lucide-react';
 
 function SortableTabItem({ id, label }: { id: string; label: string }) {
@@ -72,7 +73,7 @@ import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
-
+import { Input } from '@/components/ui/input';
 interface DBProject {
   id: string;
   name: string;
@@ -157,7 +158,48 @@ export default function ProjectDetail() {
   const [reorderOpen, setReorderOpen] = useState(false);
   const [procurementCount, setProcurementCount] = useState(0);
   const [activeTab, setActiveTab] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [nameValue, setNameValue] = useState('');
+  const [addressValue, setAddressValue] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const addressInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isEditing) nameInputRef.current?.focus();
+  }, [isEditing]);
+
+  const saveField = async (field: 'name' | 'address', value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      toast({ title: `${field === 'name' ? 'Name' : 'Address'} cannot be empty`, variant: 'destructive' });
+      return;
+    }
+    if (project && trimmed === project[field]) return;
+    const { error } = await supabase.from('projects').update({ [field]: trimmed }).eq('id', id!);
+    if (error) {
+      toast({ title: 'Failed to update', description: error.message, variant: 'destructive' });
+    } else {
+      setProject(prev => prev ? { ...prev, [field]: trimmed } : prev);
+    }
+  };
+
+  const handleEditBlur = (field: 'name' | 'address') => {
+    saveField(field, field === 'name' ? nameValue : addressValue);
+    setTimeout(() => {
+      if (!nameInputRef.current?.matches(':focus') && !addressInputRef.current?.matches(':focus')) {
+        setIsEditing(false);
+      }
+    }, 0);
+  };
+
+  const startEditing = () => {
+    if (project) {
+      setNameValue(project.name);
+      setAddressValue(project.address);
+      setIsEditing(true);
+    }
+  };
 
   const fetchProjectData = async (showLoading = true) => {
     if (!id) return;
@@ -412,18 +454,108 @@ export default function ProjectDetail() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-semibold">
-                  {project.name}
-                </h1>
+                {isEditing ? (
+                  <Input
+                    ref={nameInputRef}
+                    value={nameValue}
+                    onChange={(e) => setNameValue(e.target.value)}
+                    className="text-2xl font-semibold h-auto py-0 px-1 w-64"
+                    onBlur={() => handleEditBlur('name')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { saveField('name', nameValue); addressInputRef.current?.focus(); }
+                      if (e.key === 'Escape') { setNameValue(project.name); setAddressValue(project.address); setIsEditing(false); }
+                    }}
+                  />
+                ) : (
+                  <h1 className="text-2xl font-semibold">
+                    {project.name}
+                  </h1>
+                )}
+                {!isEditing && (
+                  <button
+                    className="p-1 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={startEditing}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
                 <DropdownMenu>
-...
+                  <DropdownMenuTrigger asChild disabled={updatingStatus}>
+                    <button className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-full">
+                      <Badge
+                        className={cn(
+                          'gap-1 cursor-pointer hover:opacity-80 transition-opacity',
+                          project.status === 'active' && 'bg-success/20 text-success border-success/30',
+                          project.status === 'complete' && 'bg-primary/20 text-primary border-primary/30',
+                          project.status === 'on_hold' && 'bg-warning/20 text-warning border-warning/30'
+                        )}
+                      >
+                        {updatingStatus ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          getStatusIcon(project.status)
+                        )}
+                        {project.status.replace('_', ' ')}
+                        <ChevronDown className="h-3 w-3 ml-1" />
+                      </Badge>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem 
+                      onClick={() => handleStatusChange('active')}
+                      className={cn(project.status === 'active' && 'bg-muted')}
+                    >
+                      <Clock className="h-4 w-4 mr-2 text-success" />
+                      Active
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleStatusChange('complete')}
+                      className={cn(project.status === 'complete' && 'bg-muted')}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2 text-primary" />
+                      Complete
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleStatusChange('on_hold')}
+                      className={cn(project.status === 'on_hold' && 'bg-muted')}
+                    >
+                      <AlertTriangle className="h-4 w-4 mr-2 text-warning" />
+                      On Hold
+                    </DropdownMenuItem>
+                    {!isRental && project.status === 'complete' && (
+                      <>
+                        <div className="my-1 border-t border-border" />
+                        <DropdownMenuItem onClick={handleConvertToRental}>
+                          <Home className="h-4 w-4 mr-2 text-blue-500" />
+                          Convert to Rental
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
                 </DropdownMenu>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4" />
-                  {project.address}
-                </span>
+                {isEditing ? (
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Input
+                      ref={addressInputRef}
+                      value={addressValue}
+                      onChange={(e) => setAddressValue(e.target.value)}
+                      className="text-sm h-auto py-0 px-1 w-64"
+                      onBlur={() => handleEditBlur('address')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { saveField('address', addressValue); setIsEditing(false); }
+                        if (e.key === 'Escape') { setNameValue(project.name); setAddressValue(project.address); setIsEditing(false); }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4" />
+                    {project.address}
+                  </span>
+                )}
                 <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <button className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer">
