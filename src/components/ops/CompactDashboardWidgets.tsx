@@ -122,7 +122,7 @@ export function CompactDashboardWidgets({
          >
            <div className="flex items-center gap-2">
              <DollarSign className="h-4 w-4 text-primary" />
-             <span className="text-xs text-muted-foreground uppercase tracking-wide">Spending</span>
+             <span className="text-xs text-muted-foreground uppercase tracking-wide">30 Day Spending</span>
            </div>
            <p className="text-xl font-semibold font-mono">{formatCurrency(last30DaysTotal)}</p>
            <div className="h-[20px] -mx-1">
@@ -180,9 +180,9 @@ export function CompactDashboardWidgets({
              <Target className="h-4 w-4 text-primary" />
              <span className="text-xs text-muted-foreground uppercase tracking-wide">Goals</span>
            </div>
-           <p className="text-xl font-semibold">
-             {goalsSummary.active}/{goalsSummary.total} active
-           </p>
+            <p className="text-xl font-semibold">
+              {goals.length} {goals.length === 1 ? 'goal' : 'goals'}
+            </p>
            <div className="flex gap-1">
              {goals.slice(0, 4).map((goal) => {
                const percent = ((goal.current_value || 0) / goal.target_value) * 100;
@@ -214,9 +214,9 @@ export function CompactDashboardWidgets({
              <ListChecks className="h-4 w-4 text-primary" />
              <span className="text-xs text-muted-foreground uppercase tracking-wide">Rules</span>
            </div>
-           <p className="text-xl font-semibold">
-             {rulesSummary.completed}/{rulesSummary.total} complete
-           </p>
+            <p className="text-xl font-semibold">
+              {rules.length} {rules.length === 1 ? 'rule' : 'rules'}
+            </p>
            <div className="flex gap-1">
              {rules.slice(0, 6).map((rule) => (
                <div 
