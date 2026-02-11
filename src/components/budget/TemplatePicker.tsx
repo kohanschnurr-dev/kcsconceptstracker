@@ -136,10 +136,18 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     const sqftNum = parseFloat(sqft) || 0;
     const totalBudget = sqftNum * tier.pricePerSqft;
     
-    // Place the entire baseline total into the Filler category
+    // Pre-populate preset categories and put remainder into Filler
     const categoryBudgets: Record<string, number> = {};
     if (sqftNum > 0) {
-      categoryBudgets['rehab_filler'] = totalBudget;
+      const stored = localStorage.getItem('budget-category-presets');
+      const presets: { category: string; pricePerSqft: number; mode?: string }[] = stored ? JSON.parse(stored) : [];
+      let presetsTotal = 0;
+      presets.forEach(p => {
+        const amt = p.mode === 'flat' ? p.pricePerSqft : sqftNum * p.pricePerSqft;
+        categoryBudgets[p.category] = amt;
+        presetsTotal += amt;
+      });
+      categoryBudgets['rehab_filler'] = Math.max(0, totalBudget - presetsTotal);
     }
 
     const template: BudgetTemplate = {

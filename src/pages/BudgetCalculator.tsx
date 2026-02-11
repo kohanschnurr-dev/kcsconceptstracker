@@ -218,10 +218,21 @@ export default function BudgetCalculator() {
   useEffect(() => {
     if (activeBaselineRate !== null) {
       const sqftNum = parseFloat(sqft) || 0;
-      const fillerValue = sqftNum > 0 ? (sqftNum * activeBaselineRate).toString() : '';
+      if (sqftNum <= 0) {
+        setCategoryBudgets(prev => ({ ...prev, rehab_filler: '' }));
+        return;
+      }
+      const baselineTotal = sqftNum * activeBaselineRate;
+      // Read presets and subtract their amounts from the baseline total
+      const stored = localStorage.getItem('budget-category-presets');
+      const presets: { category: string; pricePerSqft: number; mode?: string }[] = stored ? JSON.parse(stored) : [];
+      const presetsTotal = presets.reduce((sum, p) => {
+        return sum + (p.mode === 'flat' ? p.pricePerSqft : sqftNum * p.pricePerSqft);
+      }, 0);
+      const fillerValue = Math.max(0, baselineTotal - presetsTotal);
       setCategoryBudgets(prev => ({
         ...prev,
-        rehab_filler: fillerValue,
+        rehab_filler: fillerValue.toString(),
       }));
     }
   }, [sqft, activeBaselineRate]);
