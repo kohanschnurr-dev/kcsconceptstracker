@@ -238,7 +238,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                     onValueChange={setCategorySearch}
                     className="text-white"
                   />
-                  <div style={{ overflowY: 'scroll', maxHeight: 300, overscrollBehavior: 'contain' }}>
+                  <div style={{ overflowY: 'auto', maxHeight: 300, overscrollBehavior: 'contain' }} onWheel={(e) => e.stopPropagation()}>
                   <CommandList className="overflow-visible [&_[cmdk-list-sizer]]:overflow-visible">
                     <CommandEmpty className="text-slate-400 py-6 text-center text-sm">
                       No categories found
