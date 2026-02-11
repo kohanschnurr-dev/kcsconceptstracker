@@ -70,8 +70,8 @@ export function CalendarHeader({
 
   return (
     <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-card rounded-xl p-4 border border-border">
-      {/* Left section: Title + Navigation */}
-      <div className="flex flex-wrap items-center gap-3 flex-1">
+      {/* Left section: Title + Navigation + Filters + Views */}
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
           <h1 className="text-lg font-bold text-foreground whitespace-nowrap">Project Calendar</h1>
@@ -98,11 +98,7 @@ export function CalendarHeader({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-      </div>
 
-      {/* Right section: Filters + Views + Add Button */}
-      <div className="flex flex-wrap items-center gap-3 flex-1 justify-end">
-        {/* Project Filter */}
         {onProjectFilterChange && projects.length > 0 && (
           <ProjectAutocomplete
             projects={[{ id: 'all', name: 'All Projects', address: '' }, ...projects]}
@@ -115,7 +111,7 @@ export function CalendarHeader({
         )}
 
         <WeatherWidget />
-        
+
         <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
           <Button
             variant={view === 'monthly' ? 'default' : 'ghost'}
@@ -151,9 +147,10 @@ export function CalendarHeader({
             Gantt
           </Button>
         </div>
-
-        {onAddEvent && onAddEvent}
       </div>
+
+      {/* Right section: Add Button only */}
+      {onAddEvent && <div className="flex-shrink-0">{onAddEvent}</div>}
     </div>
   );
 }
