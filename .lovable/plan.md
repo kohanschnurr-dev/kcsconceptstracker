@@ -1,28 +1,23 @@
 
 
-## Add State Field for Accurate Weather Geocoding
+## Add Weather Disclaimer Note on Settings Page
 
-### What Changes
-Add a "Business State" field next to "Business City" on the Settings page. The state will be stored in the database and combined with the city when geocoding for weather, ensuring the correct location is resolved (e.g., "Eugene, Oregon" instead of a Eugene in another country).
+Add a small disclaimer note below the existing "Used for weather forecasts on the Calendar" helper text in `src/pages/Settings.tsx`.
 
-### Steps
+### Change
 
-**1. Database migration** -- Add a `state` column (text, nullable) to the `profiles` table.
+**File: `src/pages/Settings.tsx`** -- Update the helper text line (around line 206 after previous edits) to append a second line with a corporate-style disclaimer:
 
-**2. Update profile hook (`src/hooks/useProfile.ts`)**
-- Add `state: string | null` to the `Profile` interface
-- Include `state` in the `updateProfile` mutation payload
+Current:
+```
+Used for weather forecasts on the Calendar
+```
 
-**3. Update Settings page (`src/pages/Settings.tsx`)**
-- Add a `state` local state variable initialized from `profile.state`
-- Replace the single city input with a side-by-side row: City + State (using the existing `grid gap-4 sm:grid-cols-2` pattern)
-- Update placeholder to "e.g. Dallas" for city and "e.g. TX" for state
-- Include `state` in the dirty-check and save logic
+New:
+```
+Used for weather forecasts on the Calendar
+Disclaimer: Weather data is sourced from third-party providers and is for informational purposes only. Please verify conditions independently before making project-critical decisions.
+```
 
-**4. Update Weather Widget (`src/components/calendar/WeatherWidget.tsx`)**
-- Accept an optional `state` prop
-- When geocoding, combine city and state into the search query: `"${city}, ${state}"` for more precise results
-
-**5. Update Calendar Header (`src/components/calendar/CalendarHeader.tsx`)**
-- Pass `profile.state` to the `WeatherWidget` alongside `profile.city`
+The disclaimer will be styled as a second `<p>` tag with the same `text-xs text-muted-foreground` styling, keeping it subtle but visible.
 
