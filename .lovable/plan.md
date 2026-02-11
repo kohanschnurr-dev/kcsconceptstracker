@@ -1,20 +1,30 @@
 
 
-## Allow Uncompleting Goals
+## Fix Points/Origination and Closing Costs Not Persisting
 
-### Change
+### Root Cause
 
-**File: `src/components/ops/GoalsPopout.tsx`**
+In `src/pages/ProjectDetail.tsx` (lines 721-724), the `||` operator is used for fallback values. Since `0` is falsy in JavaScript, when you save points as `0`, the expression `hm_points || 3` evaluates to `3` on the next load. Same issue affects all the numeric loan fields.
 
-Add an "Uncomplete" button to each completed goal card in the history section. Clicking it sets `completed_at` back to `null`, moving the goal back to the active list.
+### Fix
 
-**File: `src/pages/BusinessExpenses.tsx`**
+**File: `src/pages/ProjectDetail.tsx`** (lines 721-724)
 
-Update the `handleCompleteGoal` function (or add a new `handleUncompleteGoal`) to set `completed_at = null` on the `quarterly_goals` row. Pass this as a new `onUncompleteGoal` prop through `CompactDashboardWidgets` to `GoalsPopout`.
+Replace `||` with `??` (nullish coalescing) so that `0` values are preserved and only `null`/`undefined` trigger the fallback:
 
-### Technical Details
+```
+Before:
+  initialInterestRate={(project as any).hm_interest_rate || 12}
+  initialLoanTermMonths={(project as any).hm_loan_term_months || 6}
+  initialPoints={(project as any).hm_points || 3}
+  initialClosingCosts={(project as any).hm_closing_costs || 0}
 
-- **GoalsPopout**: In the completed goals section (`renderGoalCard` when `isCompleted = true`), add an undo/reopen button (e.g., `RotateCcw` icon) that calls `onUncompleteGoal(goal.id)`.
-- **BusinessExpenses.tsx**: Add handler that runs `supabase.from('quarterly_goals').update({ completed_at: null }).eq('id', goalId)` and refreshes the goals list.
-- **CompactDashboardWidgets**: Pass through the new `onUncompleteGoal` prop to `GoalsPopout`.
+After:
+  initialInterestRate={(project as any).hm_interest_rate ?? 12}
+  initialLoanTermMonths={(project as any).hm_loan_term_months ?? 6}
+  initialPoints={(project as any).hm_points ?? 3}
+  initialClosingCosts={(project as any).hm_closing_costs ?? 0}
+```
+
+This is a one-file, four-line fix. The save logic already works correctly -- it's only the reload that was discarding `0` values.
 
