@@ -13,6 +13,7 @@ import { User, Key, FileText, Shield, Loader2, Building2, Upload, X } from 'luci
 import { toast } from 'sonner';
 import kcsLogo from '@/assets/kcs-logo.png';
 import ManageSourcesCard from '@/components/settings/ManageSourcesCard';
+import ColorPaletteCard from '@/components/settings/ColorPaletteCard';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -280,6 +281,9 @@ export default function Settings() {
               )}
             </CardContent>
           </Card>
+
+          {/* Color Palette Section */}
+          <ColorPaletteCard />
 
           {/* Manage Sources Section */}
           <ManageSourcesCard />
