@@ -19,14 +19,15 @@ interface CategoryPreset {
   category: string;
   label: string;
   pricePerSqft: number;
+  mode: 'psf' | 'flat';
 }
 
 const DEFAULT_CATEGORY_PRESETS: CategoryPreset[] = [
-  { category: 'painting', label: 'Painting', pricePerSqft: 3.50 },
-  { category: 'flooring', label: 'Flooring', pricePerSqft: 8.00 },
-  { category: 'tile', label: 'Tile', pricePerSqft: 12.00 },
-  { category: 'drywall', label: 'Drywall', pricePerSqft: 2.50 },
-  { category: 'roofing', label: 'Roofing', pricePerSqft: 5.00 },
+  { category: 'painting', label: 'Painting', pricePerSqft: 3.50, mode: 'psf' },
+  { category: 'flooring', label: 'Flooring', pricePerSqft: 8.00, mode: 'psf' },
+  { category: 'tile', label: 'Tile', pricePerSqft: 12.00, mode: 'psf' },
+  { category: 'drywall', label: 'Drywall', pricePerSqft: 2.50, mode: 'psf' },
+  { category: 'roofing', label: 'Roofing', pricePerSqft: 5.00, mode: 'psf' },
 ];
 
 const PRESETS_STORAGE_KEY = 'budget-category-presets';
@@ -92,7 +93,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
       try {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          setPresets(parsed);
+          setPresets(parsed.map((p: any) => ({ ...p, mode: p.mode || 'psf' })));
         }
       } catch (e) {
         console.error('Failed to parse stored presets:', e);
@@ -108,7 +109,9 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     // Only auto-calculate if sqft actually changed, is > 0, and no baseline is active
     if (sqftNum > 0 && sqft !== prevSqftRef.current) {
       presets.forEach(preset => {
-        const calculated = sqftNum * preset.pricePerSqft;
+        const calculated = preset.mode === 'flat' 
+          ? preset.pricePerSqft 
+          : sqftNum * preset.pricePerSqft;
         onCategoryChange(preset.category, calculated.toFixed(2));
       });
     }
@@ -147,6 +150,12 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     ));
   };
 
+  const updatePresetMode = (index: number, mode: 'psf' | 'flat') => {
+    setEditingPresets(prev => prev.map((p, i) => 
+      i === index ? { ...p, mode } : p
+    ));
+  };
+
   const removePreset = (index: number) => {
     setEditingPresets(prev => prev.filter((_, i) => i !== index));
   };
@@ -166,7 +175,8 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     setEditingPresets(prev => [...prev, {
       category: newCategoryValue,
       label: catInfo.label,
-      pricePerSqft: 5.00, // Default rate
+      pricePerSqft: 5.00,
+      mode: 'psf' as const,
     }]);
     setNewCategoryValue('');
   };
@@ -249,22 +259,32 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           
           <div className="space-y-4 py-4">
             {/* Column headers */}
-            <div className="grid grid-cols-[1fr,100px,40px] gap-2 text-sm font-medium text-muted-foreground">
+            <div className="grid grid-cols-[1fr,80px,100px,40px] gap-2 text-sm font-medium text-muted-foreground">
               <span>Category</span>
-              <span>$/sqft</span>
+              <span>Mode</span>
+              <span>Amount</span>
               <span></span>
             </div>
             
             {/* Preset rows */}
             {editingPresets.map((preset, index) => (
-              <div key={preset.category} className="grid grid-cols-[1fr,100px,40px] gap-2 items-center">
+              <div key={preset.category} className="grid grid-cols-[1fr,80px,100px,40px] gap-2 items-center">
                 <span className="text-sm">{preset.label}</span>
+                <Select value={preset.mode} onValueChange={(v) => updatePresetMode(index, v as 'psf' | 'flat')}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="psf">$/sqft</SelectItem>
+                    <SelectItem value="flat">Flat $</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Input
                   type="number"
                   step="0.01"
                   value={preset.pricePerSqft}
                   onChange={(e) => updatePresetRate(index, parseFloat(e.target.value) || 0)}
-                  placeholder="$/sqft"
+                  placeholder={preset.mode === 'flat' ? '$' : '$/sqft'}
                   className="h-8"
                 />
                 <Button
