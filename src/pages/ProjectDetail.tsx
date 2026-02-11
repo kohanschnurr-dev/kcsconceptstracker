@@ -10,7 +10,7 @@ import {
   TrendingUp, 
   TrendingDown,
   DollarSign,
-  Receipt,
+  ShoppingCart,
   ClipboardList,
   AlertTriangle,
   CheckCircle2,
@@ -57,6 +57,7 @@ import { ProjectVendors } from '@/components/project/ProjectVendors';
 import { ProjectInfo } from '@/components/project/ProjectInfo';
 import { ExportReports } from '@/components/project/ExportReports';
 import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
+import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
 interface DBProject {
@@ -112,7 +113,7 @@ interface DBDailyLog {
   contractors_on_site: string[] | null;
 }
 
-const DEFAULT_DETAIL_TAB_ORDER = ['schedule', 'tasks', 'documents', 'photos', 'logs', 'financials', 'loan', 'team', 'info'];
+const DEFAULT_DETAIL_TAB_ORDER = ['schedule', 'tasks', 'documents', 'photos', 'logs', 'financials', 'loan', 'team', 'info', 'procurement'];
 
 const TAB_LABELS: Record<string, string> = {
   schedule: 'Schedule',
@@ -124,6 +125,7 @@ const TAB_LABELS: Record<string, string> = {
   loan: 'Loan',
   team: 'Team',
   info: 'Info',
+  procurement: 'Procurement',
 };
 
 export default function ProjectDetail() {
@@ -140,6 +142,8 @@ export default function ProjectDetail() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [reorderOpen, setReorderOpen] = useState(false);
+  const [procurementCount, setProcurementCount] = useState(0);
+  const [activeTab, setActiveTab] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -167,12 +171,15 @@ export default function ProjectDetail() {
       
       setProject(projectData);
       
-      const [categoriesRes, expensesRes, qbExpensesRes, logsRes] = await Promise.all([
+    const [categoriesRes, expensesRes, qbExpensesRes, logsRes, procurementRes] = await Promise.all([
         supabase.from('project_categories').select('*').eq('project_id', id),
         supabase.from('expenses').select('*').eq('project_id', id).order('date', { ascending: false }),
         supabase.from('quickbooks_expenses').select('*').eq('project_id', id).eq('is_imported', true).order('date', { ascending: false }),
-        supabase.from('daily_logs').select('*').eq('project_id', id).order('date', { ascending: false })
+        supabase.from('daily_logs').select('*').eq('project_id', id).order('date', { ascending: false }),
+        supabase.from('project_procurement_items').select('id', { count: 'exact', head: true }).eq('project_id', id)
       ]);
+      
+      setProcurementCount(procurementRes.count || 0);
       
       const categoriesData = categoriesRes.data || [];
       const expensesData = expensesRes.data || [];
@@ -545,16 +552,16 @@ export default function ProjectDetail() {
 
           <Card 
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-muted-foreground/50"
-            onClick={() => navigate(`/projects/${id}/budget`)}
+            onClick={() => setActiveTab('procurement')}
           >
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                  <Receipt className="h-5 w-5 text-muted-foreground" />
+                  <ShoppingCart className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Expenses</p>
-                  <p className="text-xl font-semibold">{allExpensesForExport.length}</p>
+                  <p className="text-sm text-muted-foreground">Procurement</p>
+                  <p className="text-xl font-semibold">{procurementCount}</p>
                 </div>
               </div>
             </CardContent>
@@ -589,7 +596,7 @@ export default function ProjectDetail() {
         <MonthlyExpenses projectId={id!} formatCurrency={formatCurrency} />
 
         {/* Tabs for detailed views - Schedule first (most used for active projects) */}
-        <Tabs defaultValue={effectiveTabOrder[0]} className="space-y-4">
+        <Tabs value={activeTab || effectiveTabOrder[0]} onValueChange={setActiveTab} className="space-y-4">
           <div className="flex items-center gap-2">
             <TabsList className="flex-wrap h-auto">
               {effectiveTabOrder.map((tab) => (
@@ -756,6 +763,10 @@ export default function ProjectDetail() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="procurement">
+            <ProcurementTab projectId={id!} categories={categories} />
           </TabsContent>
         </Tabs>
       </div>
