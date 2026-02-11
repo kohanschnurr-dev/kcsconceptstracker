@@ -24,15 +24,21 @@ function CategoryBadge({
   item,
   onDelete,
   onRename,
+  onChangeGroup,
+  groupOptions,
   className,
 }: {
   item: CategoryItem;
   onDelete: () => void;
   onRename?: (newLabel: string) => void;
+  onChangeGroup?: (newGroup: string) => void;
+  groupOptions?: { value: string; label: string }[];
   className?: string;
 }) {
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(item.label);
+  const [changingGroup, setChangingGroup] = useState(false);
+  const [tempGroup, setTempGroup] = useState(item.group ?? '');
 
   const handleStartRename = () => {
     setRenameValue(item.label);
@@ -47,6 +53,18 @@ function CategoryBadge({
     }
     onRename?.(trimmed);
     setRenaming(false);
+  };
+
+  const handleStartChangeGroup = () => {
+    setTempGroup(item.group ?? '');
+    setChangingGroup(true);
+  };
+
+  const handleConfirmChangeGroup = () => {
+    if (tempGroup && tempGroup !== item.group) {
+      onChangeGroup?.(tempGroup);
+    }
+    setChangingGroup(false);
   };
 
   if (renaming) {
@@ -72,6 +90,29 @@ function CategoryBadge({
     );
   }
 
+  if (changingGroup && groupOptions) {
+    return (
+      <Badge variant="outline" className={`text-xs px-1 py-0.5 gap-1 ${className ?? ''}`}>
+        <Select value={tempGroup} onValueChange={setTempGroup}>
+          <SelectTrigger className="h-5 text-xs w-28 px-1 py-0 border-0 shadow-none">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {groupOptions.map(opt => (
+              <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <button onClick={handleConfirmChangeGroup} className="hover:text-primary">
+          <Check className="h-3 w-3" />
+        </button>
+        <button onClick={() => setChangingGroup(false)} className="hover:text-destructive">
+          <X className="h-3 w-3" />
+        </button>
+      </Badge>
+    );
+  }
+
   return (
     <Badge variant="outline" className={`text-xs ${className ?? ''}`}>
       {item.label}
@@ -86,6 +127,12 @@ function CategoryBadge({
             <DropdownMenuItem onClick={handleStartRename}>
               <Pencil className="h-3.5 w-3.5 mr-2" />
               Rename
+            </DropdownMenuItem>
+          )}
+          {onChangeGroup && groupOptions && (
+            <DropdownMenuItem onClick={handleStartChangeGroup}>
+              <List className="h-3.5 w-3.5 mr-2" />
+              Change Category
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
@@ -104,6 +151,7 @@ function CategorySection({
   onRemove,
   onBeforeRemove,
   onRename,
+  onChangeGroup,
   onReset,
   placeholder,
   grouped,
@@ -114,6 +162,7 @@ function CategorySection({
   onRemove: (value: string) => void;
   onBeforeRemove?: (value: string, label: string) => void;
   onRename?: (oldValue: string, newLabel: string) => void;
+  onChangeGroup?: (value: string, newGroup: string) => void;
   onReset: () => void;
   placeholder: string;
   grouped?: boolean;
@@ -122,6 +171,12 @@ function CategorySection({
   const [newLabel, setNewLabel] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<string>('acquisition_admin');
   const [selectedTradeGroup, setSelectedTradeGroup] = useState<string>('other');
+
+  const groupOptionsList = grouped
+    ? (Object.entries(CATEGORY_GROUPS) as [CategoryGroup, typeof CATEGORY_GROUPS[CategoryGroup]][]).map(([key, info]) => ({ value: key, label: info.label }))
+    : tradeGrouped
+    ? Object.entries(BUDGET_CALC_GROUP_DEFS).map(([key, def]) => ({ value: key, label: def.label }))
+    : undefined;
 
   const handleAdd = () => {
     const trimmed = newLabel.trim();
@@ -155,6 +210,8 @@ function CategorySection({
       item={item}
       onDelete={() => handleRemove(item.value, item.label)}
       onRename={onRename ? (newLabel) => onRename(item.value, newLabel) : undefined}
+      onChangeGroup={onChangeGroup ? (newGroup) => onChangeGroup(item.value, newGroup) : undefined}
+      groupOptions={groupOptionsList}
       className={badgeClassName}
     />
   );
@@ -384,6 +441,22 @@ export default function ManageSourcesCard() {
     return success;
   }, [budget]);
 
+  // Handle changing trade group for budget categories
+  const handleChangeGroupBudget = useCallback((value: string, newGroup: string) => {
+    const item = budget.items.find(i => i.value === value);
+    if (!item) return;
+    budget.renameItem(value, item.label, newGroup);
+    toast.success(`Moved "${item.label}" to new group`);
+  }, [budget]);
+
+  // Handle changing group for calendar categories
+  const handleChangeGroupCalendar = useCallback((value: string, newGroup: string) => {
+    const item = calendar.items.find(i => i.value === value);
+    if (!item) return;
+    calendar.renameItem(value, item.label, newGroup);
+    toast.success(`Moved "${item.label}" to new group`);
+  }, [calendar]);
+
   return (
     <>
     <Card>
@@ -420,6 +493,7 @@ export default function ManageSourcesCard() {
                 onRemove={calendar.removeItem}
                 onBeforeRemove={makeBeforeRemove('calendar')}
                 onRename={handleRenameGeneric('calendar')}
+                onChangeGroup={handleChangeGroupCalendar}
                 onReset={calendar.resetToDefaults}
                 placeholder="New category name"
                 grouped
@@ -436,6 +510,7 @@ export default function ManageSourcesCard() {
                 onRemove={budget.removeItem}
                 onBeforeRemove={handleBeforeRemoveBudget}
                 onRename={handleRenameBudgetCategory}
+                onChangeGroup={handleChangeGroupBudget}
                 onReset={budget.resetToDefaults}
                 placeholder="New expense category"
                 tradeGrouped
