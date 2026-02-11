@@ -32,6 +32,7 @@ export interface CalendarTask {
   eventCategory?: string;
   leadTimeDays?: number;
   expectedDate?: Date;
+  recurrenceGroupId?: string | null;
 }
 
 interface Project {
@@ -158,6 +159,7 @@ export default function Calendar() {
         eventCategory: event.event_category,
         leadTimeDays: event.lead_time_days,
         expectedDate: event.expected_date ? parseDateString(event.expected_date) : undefined,
+        recurrenceGroupId: event.recurrence_group_id,
       };
     });
 
@@ -297,8 +299,8 @@ export default function Calendar() {
         open={panelOpen}
         onOpenChange={setPanelOpen}
         onTaskUpdate={handleTaskUpdate}
-        onTaskDelete={(taskId) => {
-          setTasks(prev => prev.filter(t => t.id !== taskId));
+        onTaskDelete={(deletedIds) => {
+          setTasks(prev => prev.filter(t => !deletedIds.includes(t.id)));
           setSelectedTask(null);
         }}
         allTasks={filteredTasks}

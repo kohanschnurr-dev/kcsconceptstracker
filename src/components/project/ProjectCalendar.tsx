@@ -54,6 +54,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
       eventCategory: event.event_category,
       leadTimeDays: event.lead_time_days,
       expectedDate: event.expected_date ? parseDateString(event.expected_date) : undefined,
+      recurrenceGroupId: event.recurrence_group_id,
     }));
 
     setTasks(calendarTasks);
@@ -105,8 +106,8 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
     setSelectedTask(updatedTask);
   };
 
-  const handleTaskDelete = (taskId: string) => {
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+  const handleTaskDelete = (taskIds: string[]) => {
+    setTasks(prev => prev.filter(t => !taskIds.includes(t.id)));
     setSelectedTask(null);
   };
 

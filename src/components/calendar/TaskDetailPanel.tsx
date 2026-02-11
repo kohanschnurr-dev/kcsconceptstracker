@@ -37,6 +37,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -65,7 +73,7 @@ interface TaskDetailPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTaskUpdate: (task: CalendarTask) => void;
-  onTaskDelete?: (taskId: string) => void;
+  onTaskDelete?: (taskIds: string[]) => void;
   allTasks: CalendarTask[];
 }
 
@@ -83,6 +91,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   
   const groupedCategories = getGroupedCategories();
@@ -215,7 +224,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteSingle = async () => {
     setDeleting(true);
 
     const { error } = await supabase
@@ -227,18 +236,37 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
 
     if (error) {
       console.error('Error deleting event:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete event',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to delete event', variant: 'destructive' });
     } else {
-      toast({
-        title: 'Event deleted',
-        description: `"${task.title}" has been removed`,
-      });
+      toast({ title: 'Event deleted', description: `"${task.title}" has been removed` });
+      setDeleteDialogOpen(false);
       onOpenChange(false);
-      onTaskDelete?.(task.id);
+      onTaskDelete?.([task.id]);
+    }
+  };
+
+  const handleDeleteSeries = async () => {
+    if (!task.recurrenceGroupId) return;
+    setDeleting(true);
+
+    const { error } = await supabase
+      .from('calendar_events')
+      .delete()
+      .eq('recurrence_group_id', task.recurrenceGroupId);
+
+    setDeleting(false);
+
+    if (error) {
+      console.error('Error deleting series:', error);
+      toast({ title: 'Error', description: 'Failed to delete event series', variant: 'destructive' });
+    } else {
+      const seriesIds = allTasks
+        .filter(t => t.recurrenceGroupId === task.recurrenceGroupId)
+        .map(t => t.id);
+      toast({ title: 'Series deleted', description: `All "${task.title}" events have been removed` });
+      setDeleteDialogOpen(false);
+      onOpenChange(false);
+      onTaskDelete?.(seriesIds);
     }
   };
 
@@ -288,6 +316,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   const hasOrderWarning = dependencies.some(dep => dep.status !== 'complete');
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg bg-background border-border overflow-y-auto">
         <SheetHeader className="pb-4 border-b border-border">
@@ -301,37 +330,14 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
               />
               <p className="text-sm text-muted-foreground mt-1">{task.projectName}</p>
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 mr-4 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="bg-background border-border">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="text-foreground">Delete Event</AlertDialogTitle>
-                  <AlertDialogDescription className="text-muted-foreground">
-                    Are you sure you want to delete "{task.title}"? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="bg-card border-border text-muted-foreground hover:bg-secondary">
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    {deleting ? 'Deleting...' : 'Delete'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDeleteDialogOpen(true)}
+              className="h-8 w-8 mr-4 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </SheetHeader>
 
@@ -621,5 +627,74 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
         </div>
       </SheetContent>
     </Sheet>
+
+    {/* Delete Dialog */}
+    <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <DialogContent className="bg-background border-border sm:max-w-md">
+        {task.recurrenceGroupId ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-foreground">Delete Recurring Event</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                "{task.title}" is part of a recurring series. What would you like to delete?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleDeleteSingle}
+                disabled={deleting}
+                className="justify-start border-border text-foreground hover:bg-secondary"
+              >
+                {deleting ? 'Deleting...' : 'Delete This Event Only'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDeleteSeries}
+                disabled={deleting}
+                className="justify-start border-destructive text-destructive hover:bg-destructive/10"
+              >
+                {deleting ? 'Deleting...' : 'Delete All Events in Series'}
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="ghost"
+                onClick={() => setDeleteDialogOpen(false)}
+                className="text-muted-foreground"
+              >
+                Cancel
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-foreground">Delete Event</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Are you sure you want to delete "{task.title}"? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="ghost"
+                onClick={() => setDeleteDialogOpen(false)}
+                className="text-muted-foreground"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteSingle}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
