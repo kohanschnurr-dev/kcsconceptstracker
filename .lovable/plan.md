@@ -1,30 +1,50 @@
 
 
-## Update Categories Widget to "Category Breakdown"
+## Add Goals and Rules Directly from Dashboard Cards
 
-### Change
-Replace the current Categories widget (dots + count) with a cleaner "Category Breakdown" label and a more useful mini-visualization showing the top spending categories as small proportional bars instead of uniform dots.
+### What Changes
+Add inline "Add" functionality to both the Goals and Rules popout dialogs so you can create new goals and rules without leaving the Business Expenses page.
 
-### File: `src/components/ops/CompactDashboardWidgets.tsx`
+### Goals Popout Changes
+- Add a "+" button in the dialog header next to the title
+- Clicking it reveals an inline form at the top with:
+  - Title input
+  - Target value input
+  - Category dropdown (Financial / Task Completion)
+- Submitting inserts into the database and refreshes the list
+- Form collapses after adding
 
-**Lines 132-152** -- Replace the Categories widget content:
+### Rules Popout Changes
+- Add a "+" button in the dialog header next to the title
+- Clicking it reveals an inline form with:
+  - Title input
+  - Category dropdown (Order of Operations / Vendor Requirements)
+- Submitting inserts into the database and refreshes the list
 
-1. Change header label from "Categories" to "Category Breakdown"
-2. Replace the count text ("8 categories") with a summary like the top category name and spend, or just a cleaner "X active" count
-3. Replace the dots row with small horizontal proportional bars showing top 3-4 category spend ratios -- gives actual information at a glance instead of meaningless dots
-4. Keep the click-to-open CategoriesPopout behavior
-
-Updated widget will look something like:
-
-```text
-[grid icon] CATEGORY BREAKDOWN
-$X,XXX across Y categories
-[====] [===] [==] [=]   (proportional mini-bars for top categories)
-```
+### Data Flow
+- Both popouts will receive an `onAdd` callback prop from the parent (`BusinessExpenses.tsx`)
+- The parent already manages goals/rules state and has the Supabase insert logic pattern
+- New items get inserted with the current user's ID, then the local state is updated immediately
 
 ### Technical Details
 
-- Add a `useMemo` to compute top category spending amounts (reuse the category aggregation logic already partially present)
-- Render 3-4 small `div` bars with `flex-grow` proportional to each category's spend
-- Keep the same 100px height, padding, and click handler
+**Files modified:**
 
+1. **`src/components/ops/GoalsPopout.tsx`**
+   - Add `onAddGoal` prop: `(goal: { title: string; target_value: number; category: string }) => Promise<void>`
+   - Add local state for showing the add form and form fields
+   - Render inline form with Input, Select, and Button components
+   - Call `onAddGoal` on submit
+
+2. **`src/components/ops/RulesPopout.tsx`**
+   - Add `onAddRule` prop: `(rule: { title: string; category: string }) => Promise<void>`
+   - Add local state for the add form
+   - Render inline form with Input, Select, and Button
+
+3. **`src/pages/BusinessExpenses.tsx`**
+   - Add `handleAddGoal` function that inserts into `quarterly_goals` and appends to state
+   - Add `handleAddRule` function that inserts into `operation_codes` and appends to state
+   - Pass these as props to the popout components via `CompactDashboardWidgets`
+
+4. **`src/components/ops/CompactDashboardWidgets.tsx`**
+   - Pass through the new `onAddGoal` and `onAddRule` props to the respective popouts
