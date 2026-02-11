@@ -1,24 +1,18 @@
 
 
-## Fix: +/- Buttons Should Update the Input Value Immediately
+## Remove "Attach Receipt to Expense" and "Beta" Badge
 
-### Problem
-When clicking the `-` or `+` buttons in the goal editor, the input field stays at its old value because `handleStepValue` calls `onUpdateGoal` (a database update) but never updates the local `editValue` state that controls the input.
+### Changes
 
-### Change
+**1. Remove "Attach Receipt to Expense" from Business Expenses page**
+- **File: `src/pages/BusinessExpenses.tsx`** (~lines 582-585): Remove the `<BusinessReceiptUpload>` component usage and its import.
 
-**File: `src/components/ops/GoalsPopout.tsx`**
+**2. Remove the `BusinessReceiptUpload` component file**
+- **File: `src/components/BusinessReceiptUpload.tsx`**: Delete this file entirely since it's no longer used anywhere.
 
-Update `handleStepValue` to also set the local `editValue` state so the input reflects the new number immediately:
+**3. Remove "Beta" badge from SmartSplit on Business Expenses page**
+- **File: `src/components/SmartSplitReceiptUpload.tsx`** (lines 997-999): Remove the `<Badge>Beta</Badge>` element from the SmartSplit header.
 
-```typescript
-const handleStepValue = async (goal: Goal, delta: number) => {
-  if (!onUpdateGoal) return;
-  const newVal = Math.max(0, (goal.current_value || 0) + delta);
-  setEditValue(String(newVal));
-  await onUpdateGoal(goal.id, newVal);
-};
-```
-
-One line addition, no other files affected.
+**4. Remove "Beta" badge from SmartSplit on Expenses page**
+- Same file handles both pages, so change #3 covers the Expenses page as well since `SmartSplitReceiptUpload` is shared by both `QuickBooksIntegration.tsx` and `BusinessQuickBooksIntegration.tsx`.
 
