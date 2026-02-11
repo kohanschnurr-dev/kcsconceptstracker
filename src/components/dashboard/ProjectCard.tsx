@@ -66,6 +66,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
             src={coverPhotoUrl} 
             alt={project.name}
             className="w-full h-full object-cover"
+            style={{ objectPosition: project.coverPhotoPosition || '50% 50%' }}
           />
         </div>
       )}

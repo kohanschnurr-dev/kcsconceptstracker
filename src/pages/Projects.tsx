@@ -120,6 +120,7 @@ export default function Projects() {
           projectType: (p.project_type || 'fix_flip') as ProjectType,
           categories: projectCategories,
           coverPhotoPath: p.cover_photo_path || undefined,
+          coverPhotoPosition: p.cover_photo_position || undefined,
         };
       });
 

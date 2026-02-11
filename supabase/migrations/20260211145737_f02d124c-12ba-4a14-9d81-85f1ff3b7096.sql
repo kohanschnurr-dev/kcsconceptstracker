@@ -1,0 +1,1 @@
+ALTER TABLE public.projects ADD COLUMN cover_photo_position text DEFAULT '50% 50%';
