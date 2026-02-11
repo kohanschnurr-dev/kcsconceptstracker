@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import BudgetPresetsSection from '@/components/settings/BudgetPresetsSection';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
@@ -156,29 +155,8 @@ export default function ManageSourcesCard() {
       </CardHeader>
       <CardContent>
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="budgetPresets">
-            <AccordionTrigger className="text-sm">Budget Categories</AccordionTrigger>
-            <AccordionContent>
-              <BudgetPresetsSection />
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="calendar">
-            <AccordionTrigger className="text-sm">Calendar Categories ({calendar.items.length})</AccordionTrigger>
-            <AccordionContent>
-              <CategorySection
-                items={calendar.items}
-                onAdd={calendar.addItem}
-                onRemove={calendar.removeItem}
-                onReset={calendar.resetToDefaults}
-                placeholder="New category name"
-                grouped
-              />
-            </AccordionContent>
-          </AccordionItem>
-
           <AccordionItem value="budget">
-            <AccordionTrigger className="text-sm">Expense Categories ({budget.items.length})</AccordionTrigger>
+            <AccordionTrigger className="text-sm">Budget Categories ({budget.items.length})</AccordionTrigger>
             <AccordionContent>
               <CategorySection
                 items={budget.items}
