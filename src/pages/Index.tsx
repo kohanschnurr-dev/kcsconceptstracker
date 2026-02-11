@@ -254,6 +254,7 @@ export default function Index() {
               subtitle={`${thisMonthExpenses.length} transactions`}
               icon={TrendingUp}
               variant="default"
+              onClick={() => navigate('/expenses')}
             />
             <StatCard
               title="Total Budget"
