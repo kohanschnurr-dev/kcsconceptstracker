@@ -27,12 +27,13 @@ export function ProfitCalculator({
   const [arv, setArv] = useState(initialArv);
   const [saving, setSaving] = useState(false);
   const [expandedBreakdown, setExpandedBreakdown] = useState<'estimated' | 'current' | 'roi' | null>(null);
+  const [closingPct, setClosingPct] = useState(6);
+  const [holdingPct, setHoldingPct] = useState(3);
 
   useEffect(() => {
     setPurchasePrice(initialPurchasePrice);
     setArv(initialArv);
   }, [initialPurchasePrice, initialArv]);
-
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase
@@ -52,11 +53,8 @@ export function ProfitCalculator({
     setSaving(false);
   };
 
-  // Estimated closing costs (6% of ARV for selling)
-  const closingCosts = arv * 0.06;
-  
-  // Holding costs estimate (assume 3 months at 1% of purchase per month)
-  const holdingCosts = purchasePrice * 0.03;
+  const closingCosts = arv * (closingPct / 100);
+  const holdingCosts = purchasePrice * (holdingPct / 100);
 
   // Estimated profit (based on allocated budget)
   const estimatedInvestment = purchasePrice + totalBudget;
@@ -204,12 +202,30 @@ export function ProfitCalculator({
               <span>− {expandedBreakdown === 'estimated' ? 'Rehab Budget' : 'Rehab Spent'}</span>
               <span>{formatCurrency(expandedBreakdown === 'estimated' ? totalBudget : totalSpent)}</span>
             </div>
-            <div className="flex justify-between text-destructive">
-              <span>− Closing Costs <span className="text-muted-foreground text-xs">(6% ARV)</span></span>
+            <div className="flex justify-between text-destructive items-center">
+              <span className="flex items-center gap-1">− Closing Costs <span className="text-muted-foreground text-xs">(</span>
+                <input
+                  type="number"
+                  value={closingPct}
+                  onChange={(e) => setClosingPct(Number(e.target.value))}
+                  className="w-10 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span className="text-muted-foreground text-xs">% ARV)</span>
+              </span>
               <span>{formatCurrency(closingCosts)}</span>
             </div>
-            <div className="flex justify-between text-destructive">
-              <span>− Holding Costs <span className="text-muted-foreground text-xs">(3%)</span></span>
+            <div className="flex justify-between text-destructive items-center">
+              <span className="flex items-center gap-1">− Holding Costs <span className="text-muted-foreground text-xs">(</span>
+                <input
+                  type="number"
+                  value={holdingPct}
+                  onChange={(e) => setHoldingPct(Number(e.target.value))}
+                  className="w-10 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span className="text-muted-foreground text-xs">% PP)</span>
+              </span>
               <span>{formatCurrency(holdingCosts)}</span>
             </div>
             <div className="border-t pt-2 flex justify-between font-bold">
