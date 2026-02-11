@@ -1,40 +1,55 @@
 
 
-## Add "Change Category" to 3-Dot Menu
+## Allow Custom Trade Group Headers for Expense Categories
 
-Add a third option to the existing 3-dot dropdown on each category badge that lets users reassign which trade group (Structure, MEPs, Finishes, etc.) the item belongs to.
+### What's Changing
 
-### Changes
+Right now the trade groups (Structure, MEPs, Finishes, Kitchen & Bath, Exterior, Other) are hardcoded. You'll be able to create your own groups like "Closing", "Pre-Close", or anything else, so you can assign categories to them.
+
+A new "Manage Groups" button will appear in the Expense Categories section of Settings. It opens a small inline area where you can:
+- **Add** a new group name (e.g., "Closing", "Pre-Close")
+- **Remove** a custom group (categories in it move back to "Other")
+
+Custom groups will appear alongside the built-in ones in every dropdown and in the Budget Calculator canvas.
+
+### Technical Details
+
+**File: `src/lib/budgetCalculatorCategories.ts`**
+- Add a `CUSTOM_GROUPS_STORAGE_KEY` constant (`'custom-trade-groups'`).
+- Add `loadCustomGroups(): Record<string, BudgetCalcGroupDef>` that reads custom groups from localStorage.
+- Add `saveCustomGroups(groups)` to persist.
+- Add `getAllGroupDefs(): Record<string, BudgetCalcGroupDef>` that merges the hardcoded `BUDGET_CALC_GROUP_DEFS` with any custom groups (custom groups use the `Package` icon by default).
+- Update `buildBudgetCalcGroups` to use `getAllGroupDefs()` instead of the hardcoded object.
 
 **File: `src/components/settings/ManageSourcesCard.tsx`**
+- Replace all references to `BUDGET_CALC_GROUP_DEFS` with the new `getAllGroupDefs()` function so custom groups appear in:
+  - The trade group dropdown when adding a new category
+  - The "Change Category" inline selector
+  - The group headers when rendering categories
+- Add a small "Manage Groups" section below the Expense Categories list:
+  - Input + Add button to create a new group
+  - List of custom groups with a delete button (built-in groups cannot be deleted)
+  - Deleting a custom group reassigns its categories back to "Other"
 
-1. **Add `onChangeGroup` prop to `CategoryBadge`** -- A new optional callback `onChangeGroup?: (newGroup: string) => void` that fires when a user picks a new trade group.
+**File: `src/components/budget/BudgetCanvas.tsx`**
+- Update the import to use `getAllGroupDefs` so the Budget Calculator canvas renders custom groups as collapsible sections alongside the built-in ones.
 
-2. **Add "Change Category" menu item** -- Insert a third `DropdownMenuItem` between Rename and Delete. When clicked, it toggles an inline trade group selector (similar to the rename inline input) showing a `Select` dropdown with the trade group options. User picks a new group and confirms.
+**File: `src/components/settings/BudgetPresetsSection.tsx`**
+- No changes needed (it uses categories, not groups).
 
-3. **Inline group selector UI** -- When "Change Category" is clicked, the badge enters a "changing group" mode showing a compact `Select` with trade group options and confirm/cancel buttons (reusing the same inline pattern as rename).
+### Storage
 
-4. **Wire up in `CategorySection`** -- Pass `onChangeGroup` through from `CategorySection` to `CategoryBadge`. The callback will:
-   - For Expense Categories (`tradeGrouped`): call `budget.renameItem(value, item.label, newGroup)` to update the group in localStorage while keeping the same label/value.
-   - For Calendar Categories (`grouped`): call `calendar.renameItem(value, item.label, newGroup)`.
-   - For non-grouped sections: the menu item simply won't appear.
+Custom groups are stored in localStorage under key `'custom-trade-groups'` as an array of `{ key: string; label: string }`. The key is derived from the label (lowercased, underscored). They all use the generic `Package` icon.
 
-5. **Add `onChangeGroup` prop to `CategorySection`** -- Optional callback `onChangeGroup?: (value: string, newGroup: string) => void`. Only rendered when `grouped` or `tradeGrouped` is true.
-
-### Menu Layout (after change)
-
-```text
-[Category Name] [...]
-                 |-- Rename
-                 |-- Change Category
-                 |-- Delete
-```
-
-### Inline Group Change UI
+### UI in Settings (Expense Categories section)
 
 ```text
-[Trade Group Dropdown ▼] [✓] [✗]
-```
+-- Existing category badges grouped by headers --
 
-This reuses the existing `renameItem` hook method (which already supports updating the group) and requires no DB changes since the trade group is stored in localStorage only.
+[Manage Groups]
+  Custom groups:
+  [Closing] [x]    [Pre-Close] [x]
+
+  [New group name input] [+ Add]
+```
 
