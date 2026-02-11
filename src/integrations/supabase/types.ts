@@ -1195,6 +1195,7 @@ export type Database = {
           annual_property_taxes: number | null
           arv: number | null
           cashflow_rehab_override: number | null
+          closing_costs_pct: number | null
           cover_photo_path: string | null
           cover_photo_position: string | null
           created_at: string
@@ -1204,6 +1205,7 @@ export type Database = {
           hm_loan_amount: number | null
           hm_loan_term_months: number | null
           hm_points: number | null
+          holding_costs_pct: number | null
           id: string
           interest_rate: number | null
           loan_amount: number | null
@@ -1228,6 +1230,7 @@ export type Database = {
           annual_property_taxes?: number | null
           arv?: number | null
           cashflow_rehab_override?: number | null
+          closing_costs_pct?: number | null
           cover_photo_path?: string | null
           cover_photo_position?: string | null
           created_at?: string
@@ -1237,6 +1240,7 @@ export type Database = {
           hm_loan_amount?: number | null
           hm_loan_term_months?: number | null
           hm_points?: number | null
+          holding_costs_pct?: number | null
           id?: string
           interest_rate?: number | null
           loan_amount?: number | null
@@ -1261,6 +1265,7 @@ export type Database = {
           annual_property_taxes?: number | null
           arv?: number | null
           cashflow_rehab_override?: number | null
+          closing_costs_pct?: number | null
           cover_photo_path?: string | null
           cover_photo_position?: string | null
           created_at?: string
@@ -1270,6 +1275,7 @@ export type Database = {
           hm_loan_amount?: number | null
           hm_loan_term_months?: number | null
           hm_points?: number | null
+          holding_costs_pct?: number | null
           id?: string
           interest_rate?: number | null
           loan_amount?: number | null
