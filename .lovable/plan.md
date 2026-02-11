@@ -1,63 +1,34 @@
 
 
-## Add "Delete This or All" Prompt for Recurring Events
+## Add Month/Year Toggle for Property Taxes and HOA
 
 ### What Changes
-When you delete a calendar event that belongs to a recurring series, instead of the current simple "Are you sure?" dialog, you'll see a choice:
-- **Delete this event only** -- removes just that single occurrence
-- **Delete all events in this series** -- removes every event sharing the same recurrence group
-
-Non-recurring events keep the current simple delete behavior.
+Replace the labels "Property Taxes/yr" and "HOA/yr" with just "Property Taxes" and "HOA", each with a small month/year toggle button. Users can independently choose whether they're entering a monthly or yearly amount for each field. The stored value in the database remains annual -- if the user enters a monthly amount, it gets multiplied by 12 before saving and calculating.
 
 ### Technical Details
 
-**1. Pass recurrence data through to the UI**
+**File: `src/components/project/CashFlowCalculator.tsx`**
 
-**File: `src/pages/Calendar.tsx`**
-- In the `fetchData` function where events are mapped to `CalendarTask` objects, add `recurrenceGroupId: event.recurrence_group_id` to the mapped object.
+1. **Add two state variables** for the toggle mode:
+   - `taxPeriod: 'month' | 'year'` (default `'year'`)
+   - `hoaPeriod: 'month' | 'year'` (default `'year'`)
 
-**File: `src/pages/Calendar.tsx` (CalendarTask interface)**
-- Add `recurrenceGroupId?: string | null` to the `CalendarTask` interface.
+2. **Update labels** from "Property Taxes/yr" and "HOA/yr" to just "Property Taxes" and "HOA"
 
-**2. Update the `onTaskDelete` callback**
+3. **Add a small toggle button** next to each label showing "/mo" or "/yr" that switches on click -- styled as a compact pill or inline button
 
-**File: `src/pages/Calendar.tsx`**
-- Change `onTaskDelete` to accept an array of deleted task IDs instead of a single one, so it can remove the full series from local state:
-  ```
-  onTaskDelete={(deletedIds) => {
-    setTasks(prev => prev.filter(t => !deletedIds.includes(t.id)));
-    setSelectedTask(null);
-  }}
-  ```
+4. **Adjust display values**: When toggled to monthly, display `annualPropertyTaxes / 12` in the input; when yearly, display the raw annual value
 
-**3. Revamp the delete dialog in TaskDetailPanel**
+5. **Adjust input handling**: When the user types a value in monthly mode, store `value * 12` into the annual state variable so all downstream calculations remain unchanged
 
-**File: `src/components/calendar/TaskDetailPanel.tsx`**
-- Update `onTaskDelete` prop type to `(taskIds: string[]) => void`
-- Replace the current `AlertDialog` with a custom `Dialog` that shows two options when the event has a `recurrenceGroupId`:
-  - "Delete This Event" button -- deletes only the single event by its ID (current behavior)
-  - "Delete All in Series" button -- deletes all events matching the `recurrence_group_id`
-- For non-recurring events (no `recurrenceGroupId`), show the current simple confirmation.
+6. **No database changes needed** -- the stored values stay as annual amounts, the toggle is purely a UI convenience
 
-**Delete handlers:**
-- `handleDeleteSingle`: deletes by `eq('id', task.id)` -- same as today. Calls `onTaskDelete([task.id])`.
-- `handleDeleteSeries`: deletes by `eq('recurrence_group_id', task.recurrenceGroupId)`. Calls `onTaskDelete` with the IDs of all matching tasks from `allTasks`.
-
-### Dialog Layout (Recurring Events)
+### UI Layout (per field)
 
 ```text
-+------------------------------------------+
-|  Delete Recurring Event                  |
-|                                          |
-|  "Collect Rent" is part of a recurring   |
-|  series. What would you like to delete?  |
-|                                          |
-|  [Delete This Event Only]                |
-|  [Delete All Events in Series]           |
-|                                          |
-|  [Cancel]                                |
-+------------------------------------------+
+Property Taxes  [/yr]      HOA  [/mo]
+[$  0         ]            [$  380    ]
 ```
 
-### Dialog Layout (Non-Recurring Events)
-Same as current -- simple "Are you sure?" with Cancel/Delete buttons.
+The toggle is a small clickable badge/button right next to the label text.
+
