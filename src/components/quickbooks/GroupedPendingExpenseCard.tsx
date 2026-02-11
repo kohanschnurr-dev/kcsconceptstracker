@@ -326,7 +326,6 @@ export function GroupedPendingExpenseCard({
                 onValueChange={(value) => {
                   if (value) {
                     setSelectedExpenseType(value as 'product' | 'labor');
-                    setSelectedCategory('');
                   }
                 }}
                 className="shrink-0"
