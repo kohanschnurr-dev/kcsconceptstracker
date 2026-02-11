@@ -19,8 +19,10 @@ import {
   Pencil,
   Trash2,
   FolderOpen,
-  Layers
+  Layers,
+  Check
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -73,6 +75,7 @@ interface Project {
   id: string;
   name: string;
   address: string;
+  status: string;
 }
 
 const PHASES: { value: Phase; label: string }[] = [
@@ -111,6 +114,7 @@ export default function Procurement() {
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [itemProjectMap, setItemProjectMap] = useState<Record<string, string[]>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBundle, setFilterBundle] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -123,7 +127,7 @@ export default function Procurement() {
   const fetchData = async () => {
     if (!user) return;
     
-    const [itemsResult, bundlesResult, projectsResult, assignmentsResult] = await Promise.all([
+    const [itemsResult, bundlesResult, projectsResult, assignmentsResult, projectItemsResult] = await Promise.all([
       supabase
         .from('procurement_items')
         .select('*')
@@ -134,11 +138,14 @@ export default function Procurement() {
         .order('name'),
       supabase
         .from('projects')
-        .select('id, name, address')
+        .select('id, name, address, status')
         .order('name'),
       supabase
         .from('procurement_item_bundles')
-        .select('item_id, bundle_id')
+        .select('item_id, bundle_id'),
+      supabase
+        .from('project_procurement_items')
+        .select('item_id, project_id')
     ]);
 
     // Create a map of item_id to bundle_ids
@@ -164,6 +171,15 @@ export default function Procurement() {
     if (projectsResult.data) {
       setProjects(projectsResult.data);
     }
+    // Build item -> project[] map
+    const ipMap: Record<string, string[]> = {};
+    if (projectItemsResult.data) {
+      projectItemsResult.data.forEach((r: { item_id: string; project_id: string }) => {
+        if (!ipMap[r.item_id]) ipMap[r.item_id] = [];
+        ipMap[r.item_id].push(r.project_id);
+      });
+    }
+    setItemProjectMap(ipMap);
     setLoading(false);
   };
 
@@ -261,6 +277,25 @@ export default function Procurement() {
       toast.error('Failed to delete item');
     } else {
       toast.success('Item deleted');
+      fetchData();
+    }
+  };
+
+  const activeProjects = projects.filter(p => p.status !== 'complete');
+
+  const handleAssignToProject = async (itemId: string, projectId: string, projectName: string) => {
+    const { error } = await supabase
+      .from('project_procurement_items')
+      .insert({ item_id: itemId, project_id: projectId, quantity: 1 });
+
+    if (error) {
+      if (error.code === '23505') {
+        toast.info(`Already assigned to ${projectName}`);
+      } else {
+        toast.error('Failed to assign item');
+      }
+    } else {
+      toast.success(`Added to ${projectName}`);
       fetchData();
     }
   };
@@ -526,6 +561,41 @@ export default function Procurement() {
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary">
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-56 p-2" align="end">
+                                <p className="text-xs font-medium text-muted-foreground px-2 pb-2">Assign to Project</p>
+                                <div className="max-h-48 overflow-y-auto space-y-0.5">
+                                  {activeProjects.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground px-2 py-1">No active projects</p>
+                                  ) : (
+                                    activeProjects.map(project => {
+                                      const isAssigned = (itemProjectMap[item.id] || []).includes(project.id);
+                                      return (
+                                        <button
+                                          key={project.id}
+                                          className={cn(
+                                            "w-full text-left text-sm px-2 py-1.5 rounded-md flex items-center justify-between",
+                                            isAssigned 
+                                              ? "text-muted-foreground cursor-default" 
+                                              : "hover:bg-accent cursor-pointer"
+                                          )}
+                                          disabled={isAssigned}
+                                          onClick={() => handleAssignToProject(item.id, project.id, project.name)}
+                                        >
+                                          <span className="truncate">{project.name}</span>
+                                          {isAssigned && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                                        </button>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                             <Button 
                               variant="ghost" 
                               size="icon" 
