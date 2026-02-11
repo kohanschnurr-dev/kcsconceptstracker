@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { format } from 'date-fns';
-import { Plus, AlertTriangle, Zap, CalendarRange, Check, ChevronsUpDown } from 'lucide-react';
+import { format, addMonths, addYears, differenceInCalendarDays } from 'date-fns';
+import { Plus, AlertTriangle, Zap, CalendarRange, Check, ChevronsUpDown, Repeat } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Dialog,
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import {
   Command,
   CommandEmpty,
@@ -69,6 +70,10 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
   const [notes, setNotes] = useState('');
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
+  const [recurrenceUntilType, setRecurrenceUntilType] = useState<'indefinite' | 'date'>('indefinite');
+  const [recurrenceUntilDate, setRecurrenceUntilDate] = useState<Date | undefined>();
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) {
@@ -100,6 +105,10 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
     setLeadTimeDays('0');
     setExpectedDate(undefined);
     setNotes('');
+    setIsRecurring(false);
+    setRecurrenceFrequency('monthly');
+    setRecurrenceUntilType('indefinite');
+    setRecurrenceUntilDate(undefined);
   };
 
   const handleStartDateChange = (date: Date | undefined) => {
@@ -136,19 +145,62 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
       return;
     }
 
-    const { error } = await supabase.from('calendar_events').insert({
+    const baseEvent = {
       user_id: userData.user.id,
       project_id: projectId,
       title,
       event_category: category,
-      trade: null,
-      start_date: format(startDate, 'yyyy-MM-dd'),
-      end_date: format(endDate, 'yyyy-MM-dd'),
+      trade: null as string | null,
       is_critical_path: isCriticalPath,
       lead_time_days: parseInt(leadTimeDays) || 0,
       expected_date: expectedDate ? format(expectedDate, 'yyyy-MM-dd') : null,
       notes: notes || null,
-    });
+    };
+
+    let eventsToInsert: any[] = [];
+
+    if (isRecurring) {
+      const groupId = crypto.randomUUID();
+      const durationDays = isMultiDay && endDate ? differenceInCalendarDays(endDate, startDate) : 0;
+      
+      const maxOccurrences = recurrenceFrequency === 'monthly' ? 24 : recurrenceFrequency === 'quarterly' ? 8 : 5;
+      const maxEndDate = recurrenceFrequency === 'yearly' 
+        ? addYears(startDate, 5) 
+        : addYears(startDate, 2);
+      const untilDate = recurrenceUntilType === 'date' && recurrenceUntilDate 
+        ? recurrenceUntilDate 
+        : maxEndDate;
+
+      let current = new Date(startDate);
+      for (let i = 0; i < maxOccurrences; i++) {
+        if (current > untilDate) break;
+        const occurrenceEnd = new Date(current);
+        if (durationDays > 0) occurrenceEnd.setDate(occurrenceEnd.getDate() + durationDays);
+        
+        eventsToInsert.push({
+          ...baseEvent,
+          start_date: format(current, 'yyyy-MM-dd'),
+          end_date: format(occurrenceEnd, 'yyyy-MM-dd'),
+          recurrence_rule: recurrenceFrequency,
+          recurrence_group_id: groupId,
+          recurrence_until: recurrenceUntilType === 'date' && recurrenceUntilDate 
+            ? format(recurrenceUntilDate, 'yyyy-MM-dd') 
+            : null,
+        });
+
+        if (recurrenceFrequency === 'monthly') current = addMonths(startDate, i + 1);
+        else if (recurrenceFrequency === 'quarterly') current = addMonths(startDate, (i + 1) * 3);
+        else current = addYears(startDate, i + 1);
+      }
+    } else {
+      eventsToInsert.push({
+        ...baseEvent,
+        start_date: format(startDate, 'yyyy-MM-dd'),
+        end_date: format(endDate, 'yyyy-MM-dd'),
+      });
+    }
+
+    const { error } = await supabase.from('calendar_events').insert(eventsToInsert as any);
 
     setLoading(false);
 
@@ -162,7 +214,9 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
     } else {
       toast({
         title: 'Event created',
-        description: `"${title}" has been added to the calendar`,
+        description: eventsToInsert.length > 1 
+          ? `${eventsToInsert.length} recurring "${title}" events added to the calendar`
+          : `"${title}" has been added to the calendar`,
       });
       resetForm();
       setOpen(false);
@@ -422,6 +476,90 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                   />
                 </PopoverContent>
               </Popover>
+            )}
+          </div>
+
+          {/* Recurring Event */}
+          <div className="space-y-3 p-3 rounded-lg bg-card/50 border border-border">
+            <div className="flex items-center justify-between">
+              <label htmlFor="recurring" className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-2">
+                <Repeat className="h-4 w-4 text-muted-foreground" />
+                Recurring event
+              </label>
+              <Switch
+                id="recurring"
+                checked={isRecurring}
+                onCheckedChange={setIsRecurring}
+              />
+            </div>
+            {isRecurring && (
+              <div className="space-y-3 pt-2 border-t border-border">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs">Frequency</Label>
+                  <select
+                    value={recurrenceFrequency}
+                    onChange={(e) => setRecurrenceFrequency(e.target.value as any)}
+                    className="w-full rounded-md border border-border bg-card text-foreground px-3 py-2 text-sm"
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs">Until when?</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={recurrenceUntilType === 'indefinite' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRecurrenceUntilType('indefinite')}
+                      className="flex-1"
+                    >
+                      Indefinitely
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={recurrenceUntilType === 'date' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRecurrenceUntilType('date')}
+                      className="flex-1"
+                    >
+                      Until date
+                    </Button>
+                  </div>
+                  {recurrenceUntilType === 'date' && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'w-full justify-start text-left font-normal bg-card border-border',
+                            !recurrenceUntilDate && 'text-muted-foreground'
+                          )}
+                        >
+                          {recurrenceUntilDate ? format(recurrenceUntilDate, 'MMM d, yyyy') : 'Pick end date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-card border-border">
+                        <Calendar
+                          mode="single"
+                          selected={recurrenceUntilDate}
+                          onSelect={setRecurrenceUntilDate}
+                          disabled={(date) => startDate ? date < startDate : false}
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {recurrenceUntilType === 'indefinite' 
+                      ? `Will create up to ${recurrenceFrequency === 'monthly' ? '24' : recurrenceFrequency === 'quarterly' ? '8' : '5'} events (${recurrenceFrequency === 'yearly' ? '5' : '2'} years)`
+                      : recurrenceUntilDate ? `Events from ${startDate ? format(startDate, 'MMM d, yyyy') : '...'} to ${format(recurrenceUntilDate, 'MMM d, yyyy')}` : 'Select an end date'
+                    }
+                  </p>
+                </div>
+              </div>
             )}
           </div>
 
