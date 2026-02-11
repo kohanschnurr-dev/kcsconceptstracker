@@ -113,12 +113,12 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <Card className="bg-slate-900 border-slate-800">
+    <Card className="bg-background border-border">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           {/* Left: Title */}
-          <CardTitle className="flex items-center gap-2 text-white">
-            <CalendarIcon className="h-5 w-5 text-emerald-500" />
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <CalendarIcon className="h-5 w-5 text-primary" />
             Project Schedule
           </CardTitle>
           
@@ -128,18 +128,18 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
               variant="ghost"
               size="icon"
               onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-              className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm font-medium text-white min-w-[120px] text-center">
+            <span className="text-sm font-medium text-foreground min-w-[120px] text-center">
               {format(currentDate, 'MMMM yyyy')}
             </span>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-              className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -158,7 +158,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
         {/* Week day headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {weekDays.map(day => (
-            <div key={day} className="text-center text-xs font-medium text-slate-500 py-1">
+            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
               {day}
             </div>
           ))}
@@ -180,9 +180,9 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                 className={cn(
                   'min-h-[100px] p-2 rounded border transition-colors',
                   isCurrentMonth 
-                    ? 'bg-slate-800/50 border-slate-700' 
-                    : 'bg-slate-900/50 border-slate-800',
-                  isToday(day) && 'ring-1 ring-emerald-500/50',
+                    ? 'bg-card/50 border-border' 
+                    : 'bg-background/50 border-border/50',
+                  isToday(day) && 'ring-1 ring-primary/50',
                   isExpanded && 'ring-1 ring-primary/50'
                 )}
               >
@@ -195,11 +195,11 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                   className={cn(
                     'text-xs font-medium mb-1 w-7 h-7 rounded-full flex items-center justify-center transition-colors',
                     isToday(day) 
-                      ? 'text-emerald-400' 
+                      ? 'text-primary' 
                       : isCurrentMonth 
-                        ? 'text-white' 
-                        : 'text-slate-600',
-                    hasMore && 'hover:bg-slate-700 cursor-pointer',
+                        ? 'text-foreground' 
+                        : 'text-muted-foreground/60',
+                    hasMore && 'hover:bg-secondary cursor-pointer',
                     isExpanded && 'bg-primary/20 text-primary'
                   )}
                   title={hasMore ? (isExpanded ? 'Click to collapse' : `Click to see all ${dayTasks.length} events`) : undefined}
@@ -222,7 +222,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                   {hasMore && !isExpanded && (
                     <button 
                       onClick={() => setExpandedDay(dayKey)}
-                      className="text-[10px] text-slate-500 text-center w-full hover:text-slate-300 transition-colors"
+                      className="text-[10px] text-muted-foreground text-center w-full hover:text-foreground transition-colors"
                     >
                       +{dayTasks.length - 3} more
                     </button>
@@ -234,7 +234,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
         </div>
 
         {tasks.length === 0 && (
-          <div className="text-center py-6 text-slate-500 text-sm">
+          <div className="text-center py-6 text-muted-foreground text-sm">
             No events scheduled for this project
           </div>
         )}

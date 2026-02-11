@@ -70,7 +70,6 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
 
-  // Filter categories based on search
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) {
       return getCalendarCategories();
@@ -82,7 +81,6 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
     );
   }, [categorySearch]);
 
-  // Group the filtered categories
   const filteredGrouped = useMemo(() => {
     return filteredCategories.reduce((acc, cat) => {
       if (!acc[cat.group]) acc[cat.group] = [];
@@ -106,7 +104,6 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
 
   const handleStartDateChange = (date: Date | undefined) => {
     setStartDate(date);
-    // Auto-sync end date when not in multi-day mode OR when start date is after end date
     if (date) {
       if (!isMultiDay || (endDate && date > endDate)) {
         setEndDate(date);
@@ -144,7 +141,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
       project_id: projectId,
       title,
       event_category: category,
-      trade: null, // No longer using trade field
+      trade: null,
       start_date: format(startDate, 'yyyy-MM-dd'),
       end_date: format(endDate, 'yyyy-MM-dd'),
       is_critical_path: isCriticalPath,
@@ -178,32 +175,32 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+        <Button className="gap-2 bg-primary hover:bg-primary/90">
           <Plus className="h-4 w-4" />
           Add Project Event
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-background border-border">
         <DialogHeader>
-          <DialogTitle className="text-white">New Project Event</DialogTitle>
+          <DialogTitle className="text-foreground">New Project Event</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Project Selector */}
           <div className="space-y-2">
-            <Label className="text-slate-300">Project *</Label>
+            <Label className="text-muted-foreground">Project *</Label>
             <ProjectAutocomplete
               projects={projects}
               value={projectId}
               onSelect={setProjectId}
               placeholder="Search projects..."
-              triggerClassName="bg-slate-800 border-slate-700 text-white hover:bg-slate-700"
+              triggerClassName="bg-card border-border text-foreground hover:bg-secondary"
             />
           </div>
 
           {/* Category - Searchable selector */}
           <div className="space-y-2">
-            <Label className="text-slate-300">Category *</Label>
+            <Label className="text-muted-foreground">Category *</Label>
             <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -211,7 +208,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                   role="combobox"
                   aria-expanded={categoryOpen}
                   className={cn(
-                    "w-full justify-between bg-slate-800 border-slate-700 text-white hover:bg-slate-700",
+                    "w-full justify-between bg-card border-border text-foreground hover:bg-secondary",
                     selectedCategoryStyles && `${selectedCategoryStyles.borderClass} border-2`,
                     !category && "text-muted-foreground"
                   )}
@@ -230,17 +227,17 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-slate-800 border-slate-700" align="start">
-                <Command shouldFilter={false} className="bg-slate-800">
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-card border-border" align="start">
+                <Command shouldFilter={false} className="bg-card">
                   <CommandInput
                     placeholder="Type to search categories..."
                     value={categorySearch}
                     onValueChange={setCategorySearch}
-                    className="text-white"
+                    className="text-foreground"
                   />
                   <div style={{ overflowY: 'auto', maxHeight: 300, overscrollBehavior: 'contain' }} onWheel={(e) => e.stopPropagation()}>
                   <CommandList className="overflow-visible [&_[cmdk-list-sizer]]:overflow-visible">
-                    <CommandEmpty className="text-slate-400 py-6 text-center text-sm">
+                    <CommandEmpty className="text-muted-foreground py-6 text-center text-sm">
                       No categories found
                     </CommandEmpty>
                     {(Object.entries(filteredGrouped) as [CategoryGroup, CalendarCategory[]][]).map(([groupKey, cats]) => (
@@ -261,7 +258,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                               setCategoryOpen(false);
                               setCategorySearch('');
                             }}
-                            className="text-white cursor-pointer aria-selected:bg-slate-700"
+                            className="text-foreground cursor-pointer aria-selected:bg-secondary"
                           >
                             <Check
                               className={cn(
@@ -292,13 +289,13 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
 
           {/* Event Title */}
           <div className="space-y-2">
-            <Label className="text-slate-300">Event Title *</Label>
+            <Label className="text-muted-foreground">Event Title *</Label>
             <div className="flex gap-2">
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Foundation Inspection"
-                className="bg-slate-800 border-slate-700 text-white flex-1"
+                className="bg-card border-border text-foreground flex-1"
               />
               <Button
                 type="button"
@@ -311,10 +308,10 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                 }}
                 disabled={!category}
                 className={cn(
-                  "border-slate-700 shrink-0",
+                  "border-border shrink-0",
                   category 
-                    ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/30" 
-                    : "text-slate-500"
+                    ? "text-primary hover:text-primary/90 hover:bg-primary/10 hover:border-primary/30" 
+                    : "text-muted-foreground"
                 )}
                 title={category ? `Fill with "${getCategoryLabel(category)}"` : "Select a category first"}
               >
@@ -327,23 +324,22 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
           <div className="space-y-3">
             {/* Multi-day toggle */}
             <div className="flex items-center justify-between">
-              <Label className="text-slate-300">Date *</Label>
+              <Label className="text-muted-foreground">Date *</Label>
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="multiDay"
                   checked={isMultiDay}
                   onCheckedChange={(checked) => {
                     setIsMultiDay(checked === true);
-                    // Sync end date to start date when disabling multi-day
                     if (!checked && startDate) {
                       setEndDate(startDate);
                     }
                   }}
-                  className="border-slate-500 data-[state=checked]:bg-slate-600"
+                  className="border-muted-foreground data-[state=checked]:bg-muted-foreground"
                 />
                 <label
                   htmlFor="multiDay"
-                  className="text-xs text-slate-400 cursor-pointer flex items-center gap-1"
+                  className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
                 >
                   <CalendarRange className="h-3 w-3" />
                   Multi-day event
@@ -354,20 +350,20 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
             {isMultiDay ? (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-400 text-xs">Start Date</Label>
+                  <Label className="text-muted-foreground text-xs">Start Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          'w-full justify-start text-left font-normal bg-slate-800 border-slate-700',
+                          'w-full justify-start text-left font-normal bg-card border-border',
                           !startDate && 'text-muted-foreground'
                         )}
                       >
                         {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick a date'}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700">
+                    <PopoverContent className="w-auto p-0 bg-card border-border">
                       <Calendar
                         mode="single"
                         selected={startDate}
@@ -379,20 +375,20 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-slate-400 text-xs">End Date</Label>
+                  <Label className="text-muted-foreground text-xs">End Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          'w-full justify-start text-left font-normal bg-slate-800 border-slate-700',
+                          'w-full justify-start text-left font-normal bg-card border-border',
                           !endDate && 'text-muted-foreground'
                         )}
                       >
                         {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick a date'}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700">
+                    <PopoverContent className="w-auto p-0 bg-card border-border">
                       <Calendar
                         mode="single"
                         selected={endDate}
@@ -410,14 +406,14 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-start text-left font-normal bg-slate-800 border-slate-700',
+                      'w-full justify-start text-left font-normal bg-card border-border',
                       !startDate && 'text-muted-foreground'
                     )}
                   >
                     {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick a date'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700">
+                <PopoverContent className="w-auto p-0 bg-card border-border">
                   <Calendar
                     mode="single"
                     selected={startDate}
@@ -432,33 +428,33 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
           {/* Lead Time (for tracking delays) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-slate-300">Lead Time (days)</Label>
+              <Label className="text-muted-foreground">Lead Time (days)</Label>
               <Input
                 type="number"
                 min="0"
                 value={leadTimeDays}
                 onChange={(e) => setLeadTimeDays(e.target.value)}
                 placeholder="0"
-                className="bg-slate-800 border-slate-700 text-white"
+                className="bg-card border-border text-foreground"
               />
-              <p className="text-xs text-slate-500">e.g., City inspection delay</p>
+              <p className="text-xs text-muted-foreground">e.g., City inspection delay</p>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-300">Expected Date</Label>
+              <Label className="text-muted-foreground">Expected Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-start text-left font-normal bg-slate-800 border-slate-700',
+                      'w-full justify-start text-left font-normal bg-card border-border',
                       !expectedDate && 'text-muted-foreground'
                     )}
                   >
                     {expectedDate ? format(expectedDate, 'MMM d, yyyy') : 'Optional'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700">
+                <PopoverContent className="w-auto p-0 bg-card border-border">
                   <Calendar
                     mode="single"
                     selected={expectedDate}
@@ -471,22 +467,22 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
           </div>
 
           {/* Critical Path Checkbox */}
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+          <div className="flex items-center space-x-3 p-3 rounded-lg bg-card/50 border border-border">
             <Checkbox
               id="criticalPath"
               checked={isCriticalPath}
               onCheckedChange={(checked) => setIsCriticalPath(checked === true)}
-              className="border-amber-500 data-[state=checked]:bg-amber-500"
+              className="border-muted-foreground data-[state=checked]:bg-muted-foreground"
             />
             <div className="flex-1">
               <label
                 htmlFor="criticalPath"
-                className="text-sm font-medium text-slate-200 cursor-pointer flex items-center gap-2"
+                className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-2"
               >
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                 Critical Path
               </label>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Highlight this event in red on the calendar
               </p>
             </div>
@@ -494,12 +490,12 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
 
           {/* Notes */}
           <div className="space-y-2">
-            <Label className="text-slate-300">Notes</Label>
+            <Label className="text-muted-foreground">Notes</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="DFW-specific details: HVAC serial numbers, foundation depth, contractor names..."
-              className="bg-slate-800 border-slate-700 text-white min-h-[80px]"
+              className="bg-card border-border text-foreground min-h-[80px]"
             />
           </div>
 
@@ -509,14 +505,14 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
-              className="border-slate-700 text-slate-300"
+              className="border-border text-muted-foreground"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-primary hover:bg-primary/90"
             >
               {loading ? 'Creating...' : 'Create Event'}
             </Button>

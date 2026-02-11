@@ -74,7 +74,6 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  // Editable state
   const [editedTitle, setEditedTitle] = useState('');
   const [editedCategory, setEditedCategory] = useState('');
   const [editedStartDate, setEditedStartDate] = useState<Date | undefined>();
@@ -88,7 +87,6 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   
   const groupedCategories = getGroupedCategories();
 
-  // Initialize editable state when task changes
   useEffect(() => {
     if (task) {
       setEditedTitle(task.title);
@@ -123,7 +121,6 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   const handleStartDateChange = (date: Date | undefined) => {
     if (date) {
       setEditedStartDate(date);
-      // Auto-update end date if start date is after end date
       if (editedEndDate && date > editedEndDate) {
         setEditedEndDate(date);
       }
@@ -134,7 +131,6 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   const handleEndDateChange = (date: Date | undefined) => {
     if (date) {
       setEditedEndDate(date);
-      // Auto-update start date if end date is before start date
       if (editedStartDate && date < editedStartDate) {
         setEditedStartDate(date);
       }
@@ -199,7 +195,6 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
         variant: 'destructive',
       });
     } else {
-      // Update local state
       const updatedTask: CalendarTask = {
         ...task,
         title: editedTitle,
@@ -294,39 +289,37 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg bg-slate-900 border-slate-800 overflow-y-auto">
-        <SheetHeader className="pb-4 border-b border-slate-800">
+      <SheetContent className="w-full sm:max-w-lg bg-background border-border overflow-y-auto">
+        <SheetHeader className="pb-4 border-b border-border">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
-              {/* Editable Title */}
               <Input
                 value={editedTitle}
                 onChange={(e) => handleTitleChange(e.target.value)}
-                className="text-xl font-semibold bg-transparent border-transparent hover:border-slate-700 focus:border-emerald-500 text-white px-0 h-auto py-1"
+                className="text-xl font-semibold bg-transparent border-transparent hover:border-border focus:border-primary text-foreground px-0 h-auto py-1"
                 placeholder="Event title..."
               />
-              <p className="text-sm text-slate-400 mt-1">{task.projectName}</p>
+              <p className="text-sm text-muted-foreground mt-1">{task.projectName}</p>
             </div>
-            {/* Delete Button */}
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 mr-4 text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                  className="h-8 w-8 mr-4 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="bg-slate-900 border-slate-700">
+              <AlertDialogContent className="bg-background border-border">
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="text-white">Delete Event</AlertDialogTitle>
-                  <AlertDialogDescription className="text-slate-400">
+                  <AlertDialogTitle className="text-foreground">Delete Event</AlertDialogTitle>
+                  <AlertDialogDescription className="text-muted-foreground">
                     Are you sure you want to delete "{task.title}"? This action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">
+                  <AlertDialogCancel className="bg-card border-border text-muted-foreground hover:bg-secondary">
                     Cancel
                   </AlertDialogCancel>
                   <AlertDialogAction
@@ -345,15 +338,15 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
         <div className="space-y-6 mt-6">
           {/* Category Selector */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400">Category</label>
+            <label className="text-xs font-medium text-muted-foreground">Category</label>
             <Select value={editedCategory} onValueChange={handleCategoryChange}>
               <SelectTrigger className={cn(
-                "bg-slate-800 border-slate-700 text-white",
+                "bg-card border-border text-foreground",
                 `${categoryStyles.borderClass} border-2`
               )}>
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700 max-h-[300px]">
+              <SelectContent className="bg-card border-border max-h-[300px]">
                 {(Object.entries(groupedCategories) as [keyof typeof CATEGORY_GROUPS, typeof groupedCategories[keyof typeof groupedCategories]][]).map(([groupKey, categories]) => (
                   <SelectGroup key={groupKey}>
                     <SelectLabel className={cn(
@@ -366,7 +359,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                       <SelectItem 
                         key={cat.value} 
                         value={cat.value} 
-                        className="text-white cursor-pointer focus:bg-slate-700"
+                        className="text-foreground cursor-pointer focus:bg-secondary"
                       >
                         {cat.label}
                       </SelectItem>
@@ -379,19 +372,19 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
 
           {/* Editable Date Range */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400">Date Range</label>
+            <label className="text-xs font-medium text-muted-foreground">Date Range</label>
             <div className="flex items-center gap-2">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="flex-1 justify-start text-left bg-slate-800 border-slate-700 text-white hover:bg-slate-700"
+                    className="flex-1 justify-start text-left bg-card border-border text-foreground hover:bg-secondary"
                   >
-                    <CalendarIcon className="h-4 w-4 mr-2 text-slate-400" />
+                    <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
                     {editedStartDate ? format(editedStartDate, 'MMM d, yyyy') : 'Start date'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700" align="start">
+                <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
                   <Calendar
                     mode="single"
                     selected={editedStartDate}
@@ -400,18 +393,18 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                   />
                 </PopoverContent>
               </Popover>
-              <span className="text-slate-500">→</span>
+              <span className="text-muted-foreground">→</span>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="flex-1 justify-start text-left bg-slate-800 border-slate-700 text-white hover:bg-slate-700"
+                    className="flex-1 justify-start text-left bg-card border-border text-foreground hover:bg-secondary"
                   >
-                    <CalendarIcon className="h-4 w-4 mr-2 text-slate-400" />
+                    <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
                     {editedEndDate ? format(editedEndDate, 'MMM d, yyyy') : 'End date'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700" align="start">
+                <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
                   <Calendar
                     mode="single"
                     selected={editedEndDate}
@@ -424,7 +417,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
           </div>
 
           {/* Budget Health Display */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/50">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card/50">
             <DollarSign className={cn('h-4 w-4', 
               task.budgetHealth === 'green' ? 'text-emerald-400' :
               task.budgetHealth === 'yellow' ? 'text-amber-400' : 'text-red-400'
@@ -460,8 +453,8 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
           {/* Editable Checklist */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-medium text-slate-300">Checklist</h4>
-              <span className="text-xs text-slate-500">
+              <h4 className="text-sm font-medium text-muted-foreground">Checklist</h4>
+              <span className="text-xs text-muted-foreground">
                 {completedCount}/{editedChecklist.length} complete
               </span>
             </div>
@@ -474,14 +467,14 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                 onChange={(e) => setNewChecklistItem(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addChecklistItem()}
                 placeholder="Add a task..."
-                className="flex-1 bg-slate-800 border-slate-700 text-white text-sm"
+                className="flex-1 bg-card border-border text-foreground text-sm"
               />
               <Button
                 variant="outline"
                 size="icon"
                 onClick={addChecklistItem}
                 disabled={!newChecklistItem.trim()}
-                className="h-9 w-9 border-slate-700 text-slate-400 hover:text-emerald-400 hover:border-emerald-500"
+                className="h-9 w-9 border-border text-muted-foreground hover:text-primary hover:border-primary"
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -494,7 +487,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                   key={item.id}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group',
-                    item.completed ? 'bg-emerald-500/10' : 'bg-slate-800/50'
+                    item.completed ? 'bg-emerald-500/10' : 'bg-card/50'
                   )}
                 >
                   <button
@@ -504,25 +497,25 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                     {item.completed ? (
                       <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                     ) : (
-                      <Circle className="h-5 w-5 text-slate-500 hover:text-emerald-500" />
+                      <Circle className="h-5 w-5 text-muted-foreground hover:text-primary" />
                     )}
                   </button>
                   <span className={cn(
                     'flex-1 text-sm',
-                    item.completed ? 'text-slate-500 line-through' : 'text-white'
+                    item.completed ? 'text-muted-foreground line-through' : 'text-foreground'
                   )}>
                     {item.label}
                   </span>
                   <button
                     onClick={() => deleteChecklistItem(item.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-red-400"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               ))}
               {editedChecklist.length === 0 && (
-                <p className="text-sm text-slate-500 text-center py-4">
+                <p className="text-sm text-muted-foreground text-center py-4">
                   No tasks yet. Add one above!
                 </p>
               )}
@@ -531,7 +524,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
 
           {/* File Upload */}
           <div>
-            <h4 className="text-sm font-medium text-slate-300 mb-3">Attachments</h4>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Attachments</h4>
             <input
               ref={fileInputRef}
               type="file"
@@ -543,7 +536,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full border-dashed border-slate-700 text-slate-400 hover:text-white hover:border-slate-600"
+              className="w-full border-dashed border-border text-muted-foreground hover:text-foreground hover:border-border"
             >
               <Upload className="h-4 w-4 mr-2" />
               Upload Permit PDF or Photos
@@ -554,14 +547,14 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                 {files.map((file, index) => (
                   <div 
                     key={index}
-                    className="flex items-center justify-between bg-slate-800 rounded-lg px-3 py-2"
+                    className="flex items-center justify-between bg-card rounded-lg px-3 py-2"
                   >
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-slate-400" />
-                      <span className="text-sm text-white truncate max-w-[200px]">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-foreground truncate max-w-[200px]">
                         {file.name}
                       </span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-muted-foreground">
                         {(file.size / 1024).toFixed(1)} KB
                       </span>
                     </div>
@@ -569,7 +562,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                       variant="ghost"
                       size="sm"
                       onClick={() => removeFile(index)}
-                      className="h-8 w-8 p-0 text-slate-400 hover:text-red-400"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-red-400"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -581,29 +574,29 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
 
           {/* Notes */}
           <div>
-            <h4 className="text-sm font-medium text-slate-300 mb-3">Notes</h4>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Notes</h4>
             <Textarea
               value={editedNotes}
               onChange={(e) => handleNotesChange(e.target.value)}
               placeholder="Add notes: HVAC serial numbers, foundation depth, contractor names..."
-              className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 min-h-[100px]"
+              className="bg-card border-border text-foreground placeholder:text-muted-foreground min-h-[100px]"
             />
           </div>
 
           {/* Downstream Tasks */}
           {dependents.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-slate-300 mb-2">
+              <h4 className="text-sm font-medium text-muted-foreground mb-2">
                 Downstream Tasks ({dependents.length})
               </h4>
-              <p className="text-xs text-slate-500 mb-2">
+              <p className="text-xs text-muted-foreground mb-2">
                 These tasks will shift if this task is moved.
               </p>
               <div className="space-y-1">
                 {dependents.map(dep => (
                   <div 
                     key={dep.id}
-                    className="text-sm bg-slate-800 rounded px-3 py-2 text-slate-300"
+                    className="text-sm bg-card rounded px-3 py-2 text-muted-foreground"
                   >
                     {dep.title}
                   </div>
@@ -614,11 +607,11 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
 
           {/* Save Changes Button */}
           {hasChanges && (
-            <div className="sticky bottom-0 pt-4 pb-2 bg-slate-900 border-t border-slate-800 -mx-6 px-6">
+            <div className="sticky bottom-0 pt-4 pb-2 bg-background border-t border-border -mx-6 px-6">
               <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Save className="h-4 w-4 mr-2" />
                 {saving ? 'Saving...' : 'Save Changes'}
