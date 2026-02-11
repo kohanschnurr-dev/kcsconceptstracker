@@ -678,9 +678,9 @@ export default function ProjectDetail() {
                 initialAnnualPropertyTaxes={project.annual_property_taxes || 0}
                 initialAnnualInsurance={project.annual_insurance || 0}
                 initialAnnualHoa={project.annual_hoa || 0}
-                initialVacancyRate={project.vacancy_rate || 8}
-                initialMonthlyMaintenance={project.monthly_maintenance || 0}
-                initialManagementRate={project.management_rate || 10}
+                initialVacancyRate={project.vacancy_rate ?? 8}
+                initialMonthlyMaintenance={project.monthly_maintenance ?? 0}
+                initialManagementRate={project.management_rate ?? 10}
                 onSaved={() => fetchProjectData(false)}
               />
             ) : (
