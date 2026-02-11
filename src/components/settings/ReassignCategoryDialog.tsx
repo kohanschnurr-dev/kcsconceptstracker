@@ -33,7 +33,7 @@ export default function ReassignCategoryDialog({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [expenseCount, setExpenseCount] = useState(0);
-  const [categoryRows, setCategoryRows] = useState<{ id: string; project_id: string }[]>([]);
+  const [categoryRows, setCategoryRows] = useState<{ id: string; project_id: string; estimated_budget: number }[]>([]);
   const [targetCategory, setTargetCategory] = useState('');
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [newCategoryLabel, setNewCategoryLabel] = useState('');
@@ -49,7 +49,7 @@ export default function ReassignCategoryDialog({
       // Find all project_categories rows with this category value
       const { data: pcRows } = await supabase
         .from('project_categories')
-        .select('id, project_id')
+        .select('id, project_id, estimated_budget')
         .eq('category', category.value as any);
 
       const rows = pcRows ?? [];
@@ -123,6 +123,10 @@ export default function ReassignCategoryDialog({
       const projectIds = [...new Set(categoryRows.map(r => r.project_id))];
 
       for (const projectId of projectIds) {
+        // Find old category id for this project
+        const oldRow = categoryRows.find(r => r.project_id === projectId);
+        if (!oldRow) continue;
+
         // Check if new category already exists for this project
         const { data: existing } = await supabase
           .from('project_categories')
@@ -135,21 +139,30 @@ export default function ReassignCategoryDialog({
 
         if (existing) {
           newCategoryId = existing.id;
+          // Merge budget: add old budget to existing
+          const oldBudget = oldRow.estimated_budget ?? 0;
+          if (oldBudget > 0) {
+            const { data: existingRow } = await supabase
+              .from('project_categories')
+              .select('estimated_budget')
+              .eq('id', existing.id)
+              .single();
+            await supabase
+              .from('project_categories')
+              .update({ estimated_budget: (existingRow?.estimated_budget ?? 0) + oldBudget })
+              .eq('id', existing.id);
+          }
         } else {
-          // Create the new category row with 0 budget
+          // Create the new category row carrying over the old budget
           const { data: inserted, error } = await supabase
             .from('project_categories')
-            .insert({ project_id: projectId, category: resolvedTarget as any, estimated_budget: 0 })
+            .insert({ project_id: projectId, category: resolvedTarget as any, estimated_budget: oldRow.estimated_budget ?? 0 })
             .select('id')
             .single();
 
           if (error) throw error;
           newCategoryId = inserted.id;
         }
-
-        // Find old category id for this project
-        const oldRow = categoryRows.find(r => r.project_id === projectId);
-        if (!oldRow) continue;
 
         // Move expenses from old to new
         await supabase
