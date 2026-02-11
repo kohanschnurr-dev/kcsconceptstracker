@@ -1,27 +1,18 @@
 
 
-## Replace Status/Phase/Finish Filters with Sort and Category Filters
+## Add Star Indicator to Active Color Palette
 
 ### What Changes
-On the project-level Procurement tab, the current "All Status", "All Phases", and "All Finishes" filter dropdowns will be replaced with more practical controls: an A-Z / price sort dropdown and a category filter dropdown.
-
-### New Filter Bar Layout
-```
-[Search items or model #...]  [All Categories v]  [Sort: A-Z v]  [Add from Library]
-```
+A filled star icon will appear on the currently selected (active) palette card, giving a clear visual cue of which theme is the user's preset. The star disappears from the old card and appears on the new one when a different palette is selected. The selection already persists in localStorage, so no backend changes are needed.
 
 ### Technical Details
 
-**File: `src/components/project/ProcurementTab.tsx`**
+**File: `src/components/settings/ColorPaletteCard.tsx`**
 
-1. **Remove state variables**: `filterStatus`, `filterPhase`, `filterFinish`
-2. **Add new state variables**: `sortBy` (default `'name_asc'`), `filterCategory` (default `'all'`)
-3. **Build unique categories list** from current items (sorted alphabetically), using the existing `getCategoryLabel` logic or `BUDGET_CATEGORIES`
-4. **Update filtering logic** (~line 200+): Remove status/phase/finish filtering, add category filtering
-5. **Add sorting logic**: Sort by name A-Z, name Z-A, price low-high, price high-low (same options as the main Procurement page)
-6. **Replace the 3 filter dropdowns** (lines 510-544) with:
-   - A Category filter dropdown (All Categories + dynamically populated from items)
-   - A Sort dropdown (A-Z, Z-A, Price: Low to High, Price: High to Low)
-7. **Remove `uniqueFinishes`** computation since it's no longer needed for the filter
+1. Import `Star` from `lucide-react`
+2. Inside each palette button, add a small filled `Star` icon in the top-right corner, only rendered when `isActive` is true
+3. Position it with `absolute` inside the button (make button `relative`)
+4. Star styling: small (w-4 h-4), filled with primary color, subtle drop shadow
 
-Single file change. The "Group by Phase" toggle below the filters remains untouched.
+No other files need changes. The palette persistence logic already works via localStorage.
+
