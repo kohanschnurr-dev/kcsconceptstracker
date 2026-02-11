@@ -93,6 +93,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
   
   const groupedCategories = getGroupedCategories();
 
@@ -105,6 +106,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
       setEditedNotes(task.notes || '');
       setEditedChecklist([...task.checklist]);
       setHasChanges(false);
+      setIsEditingTitle(false);
     }
   }, [task]);
 
@@ -322,12 +324,24 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
         <SheetHeader className="pb-4 border-b border-border">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
-              <Input
-                value={editedTitle}
-                onChange={(e) => handleTitleChange(e.target.value)}
-                className="text-xl font-semibold bg-transparent border-transparent hover:border-border focus:border-primary text-foreground px-0 h-auto py-1"
-                placeholder="Event title..."
-              />
+              {isEditingTitle ? (
+                <Input
+                  value={editedTitle}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  onBlur={() => setIsEditingTitle(false)}
+                  onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
+                  autoFocus
+                  className="text-xl font-semibold bg-transparent border-transparent hover:border-border focus:border-primary text-foreground px-0 h-auto py-1"
+                  placeholder="Event title..."
+                />
+              ) : (
+                <h2
+                  className="text-xl font-semibold text-foreground cursor-pointer hover:text-primary transition-colors py-1"
+                  onClick={() => setIsEditingTitle(true)}
+                >
+                  {editedTitle || 'Untitled Event'}
+                </h2>
+              )}
               <p className="text-sm text-muted-foreground mt-1">{task.projectName}</p>
             </div>
             <Button
