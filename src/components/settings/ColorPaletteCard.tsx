@@ -34,7 +34,7 @@ export default function ColorPaletteCard() {
                 key={p.key}
                 onClick={() => handleSelect(p.key)}
                 className={cn(
-                  'flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all hover:scale-105 min-w-[140px] snap-center flex-shrink-0',
+                  'flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all duration-150 min-w-[140px] snap-center flex-shrink-0 hover:shadow-md hover:shadow-primary/10',
                   isActive
                     ? 'border-primary ring-2 ring-primary/30'
                     : 'border-border hover:border-muted-foreground/40'
