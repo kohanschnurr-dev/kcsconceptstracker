@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { formatDisplayDateLong } from '@/lib/dateUtils';
+import { getBudgetCategories } from '@/types';
 
 interface ExpenseDetailModalProps {
   open: boolean;
@@ -37,6 +39,7 @@ interface ExpenseDetailModalProps {
   } | null;
   projectName: string;
   categoryLabel: string;
+  categories?: { id: string; category: string }[];
   onExpenseUpdated: () => void;
 }
 
@@ -46,9 +49,11 @@ export function ExpenseDetailModal({
   expense,
   projectName,
   categoryLabel,
+  categories,
   onExpenseUpdated,
 }: ExpenseDetailModalProps) {
   const [notes, setNotes] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -63,6 +68,7 @@ export function ExpenseDetailModal({
   useEffect(() => {
     if (expense) {
       setNotes(expense.notes || '');
+      setCategoryId(expense.category_id);
       setReceiptUrl(expense.receipt_url || null);
       setReceiptFile(null);
       setShowDeleteConfirm(false);
@@ -262,6 +268,7 @@ export function ExpenseDetailModal({
       const updateData: Record<string, any> = {
         notes: notes || null,
         receipt_url: newReceiptUrl,
+        ...(categoryId && categoryId !== expense.category_id ? { category_id: categoryId } : {}),
       };
 
       const { error } = await supabase
@@ -457,9 +464,27 @@ export function ExpenseDetailModal({
                 </div>
               </div>
               
-              <div className="flex flex-wrap gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-2 items-center">
                 <Badge variant="secondary">{projectName}</Badge>
-                <Badge variant="outline">{categoryLabel}</Badge>
+                {categories && categories.length > 0 ? (
+                  <Select value={categoryId} onValueChange={setCategoryId}>
+                    <SelectTrigger className="h-7 w-auto min-w-[120px] text-xs border-border/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => {
+                        const label = getBudgetCategories().find(b => b.value === cat.category)?.label || cat.category;
+                        return (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Badge variant="outline">{categoryLabel}</Badge>
+                )}
                 <Badge variant="outline" className="capitalize">{expense.payment_method}</Badge>
                 <Badge
                   variant="outline"

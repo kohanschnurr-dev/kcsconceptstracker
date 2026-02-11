@@ -1318,6 +1318,7 @@ export default function ProjectBudget() {
         } : null}
         projectName={project?.name || ''}
         categoryLabel={selectedExpense ? getCategoryLabel(selectedExpense.category_id) : ''}
+        categories={categories}
         onExpenseUpdated={refreshData}
       />
     </MainLayout>
