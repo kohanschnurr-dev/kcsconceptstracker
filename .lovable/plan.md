@@ -1,13 +1,14 @@
 
 
-## Fix Double Dialog When Editing Vendor from Contact Card
+## Remove "Budget Health" Display from Calendar Event Side Panel
 
-When clicking "Edit Vendor" inside the contact card dialog, the click event bubbles up to the parent vendor card, which re-opens the contact card on top of the edit modal.
+The "Green Budget" indicator (lines 425-437 in `src/components/calendar/TaskDetailPanel.tsx`) will be removed from the event detail panel. This is the `$ Green Budget` text shown below the date range.
 
-### Fix
+### Changes
 
-**File: `src/pages/Vendors.tsx`**
-- Add `e.stopPropagation()` to the "Edit Vendor" button's `onClick` handler inside the contact card dialog to prevent the event from reaching the vendor card underneath.
+**File: `src/components/calendar/TaskDetailPanel.tsx`**
+- Remove the "Budget Health Display" block (the `div` containing the DollarSign icon and `{task.budgetHealth} Budget` label, approximately lines 425-437)
+- Clean up the `DollarSign` import if no longer used elsewhere in the file
 
-Single line change -- no other files affected.
+No other files are affected.
 
