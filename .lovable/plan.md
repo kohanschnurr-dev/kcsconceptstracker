@@ -1,23 +1,28 @@
 
 
-## Add Weather Disclaimer Note on Settings Page
+## State Field: Autocomplete/Combobox with All US States
 
-Add a small disclaimer note below the existing "Used for weather forecasts on the Calendar" helper text in `src/pages/Settings.tsx`.
+### What Changes
+Replace the plain text input for "State" on the Settings page with a searchable combobox (type-to-filter) that lists all 50 US states plus DC. The user can type to narrow results and select from the dropdown.
 
-### Change
+### Implementation
 
-**File: `src/pages/Settings.tsx`** -- Update the helper text line (around line 206 after previous edits) to append a second line with a corporate-style disclaimer:
+**File: `src/pages/Settings.tsx`**
 
-Current:
-```
-Used for weather forecasts on the Calendar
-```
+1. Add a constant array of all US states with their abbreviations (e.g., `{ label: "Texas", value: "TX" }`) -- 51 entries (50 states + DC)
+2. Replace the State `<Input>` with a `Popover` + `Command` (cmdk) combobox pattern already available in the project via `src/components/ui/command.tsx` and `src/components/ui/popover.tsx`
+3. The combobox will:
+   - Show the currently selected state abbreviation (or "Select state..." placeholder)
+   - Open a searchable dropdown on click
+   - Filter states as the user types
+   - Set the state value on selection and close the popover
+4. The stored value remains the two-letter abbreviation (e.g., "TX") for consistency with the weather geocoding logic
 
-New:
-```
-Used for weather forecasts on the Calendar
-Disclaimer: Weather data is sourced from third-party providers and is for informational purposes only. Please verify conditions independently before making project-critical decisions.
-```
-
-The disclaimer will be styled as a second `<p>` tag with the same `text-xs text-muted-foreground` styling, keeping it subtle but visible.
+### UI Behavior
+- Trigger button styled to match existing inputs (same height, border, font size)
+- Dropdown shows state name + abbreviation (e.g., "Texas (TX)")
+- Typing filters the list in real-time
+- Selecting a state closes the dropdown and updates the value
+- A `ChevronsUpDown` icon on the right indicates it's a dropdown
+- A checkmark appears next to the currently selected state
 
