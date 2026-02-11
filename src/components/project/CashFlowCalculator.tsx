@@ -140,9 +140,10 @@ export function CashFlowCalculator({
     setSaving(false);
   };
 
-  // Auto-calculate loan amount as 75% of ARV if not set
+  // Suggested loan amount for placeholder display only
   const suggestedLoanAmount = arv * 0.75;
-  const effectiveLoanAmount = loanAmount > 0 ? loanAmount : suggestedLoanAmount;
+  // When no loan entered, treat as all-cash deal (effectiveLoanAmount = 0)
+  const effectiveLoanAmount = loanAmount > 0 ? loanAmount : 0;
 
   // Monthly mortgage payment (P&I) using amortization formula
   const monthlyInterestRate = (interestRate / 100) / 12;
@@ -560,7 +561,11 @@ export function CashFlowCalculator({
             <div className="flex justify-between border-t border-border pt-1 mt-1"><span>Purchase Price</span><span className="font-mono">{formatCurrency(purchasePrice)}</span></div>
             <div className="flex justify-between"><span>Rehab Spent</span><span className="font-mono">{formatCurrency(totalSpent)}</span></div>
             <div className="flex justify-between font-medium"><span>Total Investment</span><span className="font-mono">{formatCurrency(totalInvestment)}</span></div>
-            <div className="flex justify-between text-destructive"><span>Refi Loan Amount</span><span className="font-mono">-{formatCurrency(effectiveLoanAmount)}</span></div>
+            {effectiveLoanAmount > 0 ? (
+              <div className="flex justify-between text-destructive"><span>Refi Loan Amount</span><span className="font-mono">-{formatCurrency(effectiveLoanAmount)}</span></div>
+            ) : (
+              <div className="flex justify-between text-muted-foreground"><span>No Loan (All Cash)</span><span className="font-mono">—</span></div>
+            )}
             <div className="flex justify-between font-medium border-t border-border pt-1 mt-1"><span>Cash Left in Deal</span><span className="font-mono">{formatCurrency(Math.max(0, cashInvested))}</span></div>
             <div className={cn("flex justify-between font-bold border-t border-border pt-2 mt-2", cashOnCashROI >= 0 ? "text-primary" : "text-destructive")}>
               <span>Cash-on-Cash ROI</span><span className="font-mono">{cashOnCashROI.toFixed(1)}%</span>
