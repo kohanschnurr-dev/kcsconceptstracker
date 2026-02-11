@@ -1722,6 +1722,8 @@ export type Database = {
         | "final_punch"
         | "cleaning"
         | "rehab_filler"
+        | "permits"
+        | "inspections"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
@@ -1770,6 +1772,8 @@ export type Database = {
         | "staging"
         | "tile"
         | "drain_line_repair"
+        | "permits"
+        | "inspections"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1964,6 +1968,8 @@ export const Constants = {
         "final_punch",
         "cleaning",
         "rehab_filler",
+        "permits",
+        "inspections",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer"],
@@ -2013,6 +2019,8 @@ export const Constants = {
         "staging",
         "tile",
         "drain_line_repair",
+        "permits",
+        "inspections",
       ],
     },
   },
