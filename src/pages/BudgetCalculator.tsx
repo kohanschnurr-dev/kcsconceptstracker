@@ -46,6 +46,7 @@ export default function BudgetCalculator() {
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [sqft, setSqft] = useState<string>('');
   const [activeBaselineRate, setActiveBaselineRate] = useState<number | null>(null);
+  const [templateJustApplied, setTemplateJustApplied] = useState(false);
   
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
@@ -192,6 +193,8 @@ export default function BudgetCalculator() {
     });
     setCategoryBudgets(newBudgets);
 
+    setTemplateJustApplied(true);
+    setProfitBreakdownOpen(true);
     toast.success(`Loaded "${template.name}" template`);
   };
 
@@ -430,6 +433,8 @@ export default function BudgetCalculator() {
                   onCategoryChange={handleCategoryChange}
                   sqft={sqft}
                   baselineActive={activeBaselineRate !== null}
+                  expandAll={templateJustApplied}
+                  onExpandHandled={() => setTemplateJustApplied(false)}
                 />
 
                 {/* Profit Breakdown - Collapsible */}

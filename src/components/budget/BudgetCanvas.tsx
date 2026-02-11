@@ -37,6 +37,8 @@ interface BudgetCanvasProps {
   onCategoryChange: (category: string, value: string) => void;
   sqft: string;
   baselineActive?: boolean;
+  expandAll?: boolean;
+  onExpandHandled?: () => void;
 }
 
 // Category groups for organized display
@@ -74,8 +76,8 @@ const CATEGORY_GROUPS = [
 ];
 
 
-export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive }: BudgetCanvasProps) {
-  const [openGroups, setOpenGroups] = useState<string[]>(['Structure']);
+export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled }: BudgetCanvasProps) {
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [presets, setPresets] = useState<CategoryPreset[]>(DEFAULT_CATEGORY_PRESETS);
   const [editingPresets, setEditingPresets] = useState<CategoryPreset[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -85,6 +87,14 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   const allGroupNames = CATEGORY_GROUPS.map(g => g.name);
   const allExpanded = allGroupNames.every(name => openGroups.includes(name));
   const presetCategories = new Set(presets.map(p => p.category));
+
+  // Auto-expand all groups when expandAll is triggered
+  useEffect(() => {
+    if (expandAll) {
+      setOpenGroups(allGroupNames);
+      onExpandHandled?.();
+    }
+  }, [expandAll]);
 
   // Load presets from localStorage on mount
   useEffect(() => {
