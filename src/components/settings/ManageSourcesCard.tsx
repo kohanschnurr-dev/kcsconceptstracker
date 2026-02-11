@@ -89,7 +89,7 @@ function CategorySection({
   };
 
   return (
-    <div className="space-y-3 px-0.5">
+    <div className="space-y-3 px-1">
       {renderItems()}
       <div className="flex gap-2">
         {grouped && (
