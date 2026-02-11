@@ -1,67 +1,20 @@
 
 
-## Bring Operation Rules UI to Match Goals UI
+## Reorganize Color Palette Layout
 
-### What Changes
+### Problem
+All 10 color palettes are in a single horizontally-scrolling row, making it feel stretched and requiring scrolling to see all options.
 
-The Rules popout currently has a minimal UI -- just checkboxes with no ability to toggle completion, delete rules, or see completed history. The Goals popout has a richer UI with edit, complete, uncomplete, and delete actions. This plan brings the same patterns over.
-
-### File Changes
-
-**1. `src/components/ops/RulesPopout.tsx`** -- Major UI overhaul:
-- Add `onToggleRule` prop to toggle `is_completed` (checkbox becomes functional)
-- Add `onDeleteRule` prop with trash icon button on each rule
-- Move the add form below the rules list with an "Add New Rule" outline button (matching Goals' layout)
-- Remove the `+`/`X` toggle from the header
-- Add a completed rules collapsible history section (matching Goals' "View Completed" pattern) using `Collapsible` + `ChevronDown`
-- Split rules into active (not completed) and completed, grouped by category
-- Add `Trash2`, `ChevronDown` icons
-- Use the same card styling (`p-3 rounded-lg bg-muted/20`) and action button layout as Goals
-- Dialog uses `max-h-[80vh] overflow-y-auto` like Goals instead of ScrollArea
-
-**2. `src/components/ops/CompactDashboardWidgets.tsx`** -- Add new props:
-- Add `onToggleRule` and `onDeleteRule` to the props interface
-- Destructure and pass them through to `RulesPopout`
-
-**3. `src/pages/BusinessExpenses.tsx`** -- Add handlers:
-- `onToggleRule`: Updates `is_completed` on the `operation_codes` table and updates local state
-- `onDeleteRule`: Deletes the row from `operation_codes` and removes from local state
+### Solution
+Switch from a horizontal scroll to a responsive **grid layout** -- 5 columns on desktop, 3 on smaller screens. Each palette swatch becomes more compact (smaller color preview, tighter padding). This eliminates scrolling and shows all palettes at a glance.
 
 ### Technical Details
 
-**RulesPopout new props:**
-```typescript
-interface RulesPopoutProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  rules: OperationCode[];
-  onAddRule?: (rule: { title: string; category: string }) => Promise<void>;
-  onToggleRule?: (ruleId: string, completed: boolean) => Promise<void>;
-  onDeleteRule?: (ruleId: string) => Promise<void>;
-}
-```
+**File: `src/components/settings/ColorPaletteCard.tsx`**
 
-**Rule card layout** (matching Goals):
-- Left: functional checkbox (calls `onToggleRule`)
-- Center: rule title (with strikethrough if completed)
-- Right: delete button (Trash2 icon, destructive color)
+- Replace the `flex gap-3 overflow-x-auto` container with a `grid grid-cols-5 gap-2` layout (with `grid-cols-3` on small screens)
+- Remove `min-w-[140px]`, `snap-center`, `flex-shrink-0`, and all horizontal scroll styling
+- Reduce padding from `p-3` to `p-2` and color preview height from `h-10` to `h-8`
+- Keep all existing selection logic and styling (border highlight, ring)
 
-**Completed history section:**
-- Active rules shown at top, grouped by category
-- Collapsible "View Completed (N)" section at bottom with completed rules
-- Completed rules show a reopen button (RotateCcw icon) to uncomplete them
-
-**BusinessExpenses handlers:**
-```typescript
-onToggleRule={async (ruleId, completed) => {
-  await supabase.from('operation_codes')
-    .update({ is_completed: completed })
-    .eq('id', ruleId);
-  setRules(prev => prev.map(r => r.id === ruleId ? { ...r, is_completed: completed } : r));
-}}
-onDeleteRule={async (ruleId) => {
-  await supabase.from('operation_codes').delete().eq('id', ruleId);
-  setRules(prev => prev.filter(r => r.id !== ruleId));
-}}
-```
-
+The result: a compact 2-row grid (5 per row) that fits entirely on screen without any scrolling.
