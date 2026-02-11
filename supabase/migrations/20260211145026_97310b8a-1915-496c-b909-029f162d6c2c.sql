@@ -1,0 +1,1 @@
+ALTER TABLE public.project_info ADD COLUMN custom_fields jsonb DEFAULT '{}' NOT NULL;

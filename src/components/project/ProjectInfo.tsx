@@ -6,60 +6,51 @@ import { Loader2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { getCustomItems, type CategoryItem } from '@/hooks/useCustomCategories';
 
 interface ProjectInfoProps {
   projectId: string;
 }
 
-interface InfoFields {
-  foundation_status: string;
-  gas_electric: string;
-  roof_year: string;
-  roof_type: string;
-  hvac_year: string;
-  hvac_condenser: string;
-  hvac_furnace: string;
-  drain_line_material: string;
-  window_status: string;
-  electrical_status: string;
-  plumbing_status: string;
-}
-
-const EMPTY_FIELDS: InfoFields = {
-  foundation_status: '',
-  gas_electric: '',
-  roof_year: '',
-  roof_type: '',
-  hvac_year: '',
-  hvac_condenser: '',
-  hvac_furnace: '',
-  drain_line_material: '',
-  window_status: '',
-  electrical_status: '',
-  plumbing_status: '',
-};
-
-const FIELD_CONFIG: { key: keyof InfoFields; label: string; placeholder: string }[] = [
-  { key: 'foundation_status', label: 'Foundation Status', placeholder: 'e.g. Pier & beam, leveled' },
-  { key: 'gas_electric', label: 'Gas / Electric', placeholder: 'e.g. Gas, Electric, Both' },
-  { key: 'roof_year', label: 'Roof Year', placeholder: 'e.g. 2018' },
-  { key: 'roof_type', label: 'Roof Type', placeholder: 'e.g. Composition shingle' },
-  { key: 'hvac_year', label: 'HVAC Year', placeholder: 'e.g. 2020' },
-  { key: 'hvac_condenser', label: 'Condenser', placeholder: 'e.g. Trane 3-ton' },
-  { key: 'hvac_furnace', label: 'Furnace', placeholder: 'e.g. Lennox 80k BTU' },
-  { key: 'drain_line_material', label: 'Drain Line Material', placeholder: 'e.g. Cast iron, PVC' },
-  { key: 'window_status', label: 'Window Status', placeholder: 'e.g. Original single-pane' },
-  { key: 'electrical_status', label: 'Electrical Status', placeholder: 'e.g. 200 amp, updated panel' },
-  { key: 'plumbing_status', label: 'Plumbing Status', placeholder: 'e.g. Copper supply, PVC waste' },
+export const DEFAULT_PROPERTY_FIELDS: CategoryItem[] = [
+  { value: 'foundation_status', label: 'Foundation Status' },
+  { value: 'gas_electric', label: 'Gas / Electric' },
+  { value: 'roof_year', label: 'Roof Year' },
+  { value: 'roof_type', label: 'Roof Type' },
+  { value: 'hvac_year', label: 'HVAC Year' },
+  { value: 'hvac_condenser', label: 'Condenser' },
+  { value: 'hvac_furnace', label: 'Furnace' },
+  { value: 'drain_line_material', label: 'Drain Line Material' },
+  { value: 'window_status', label: 'Window Status' },
+  { value: 'electrical_status', label: 'Electrical Status' },
+  { value: 'plumbing_status', label: 'Plumbing Status' },
 ];
+
+const BUILT_IN_KEYS = new Set(DEFAULT_PROPERTY_FIELDS.map(f => f.value));
+
+const PLACEHOLDER_MAP: Record<string, string> = {
+  foundation_status: 'e.g. Pier & beam, leveled',
+  gas_electric: 'e.g. Gas, Electric, Both',
+  roof_year: 'e.g. 2018',
+  roof_type: 'e.g. Composition shingle',
+  hvac_year: 'e.g. 2020',
+  hvac_condenser: 'e.g. Trane 3-ton',
+  hvac_furnace: 'e.g. Lennox 80k BTU',
+  drain_line_material: 'e.g. Cast iron, PVC',
+  window_status: 'e.g. Original single-pane',
+  electrical_status: 'e.g. 200 amp, updated panel',
+  plumbing_status: 'e.g. Copper supply, PVC waste',
+};
 
 export function ProjectInfo({ projectId }: ProjectInfoProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [fields, setFields] = useState<InfoFields>(EMPTY_FIELDS);
-  const [savedFields, setSavedFields] = useState<InfoFields>(EMPTY_FIELDS);
+  const [fields, setFields] = useState<Record<string, string>>({});
+  const [savedFields, setSavedFields] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [existingId, setExistingId] = useState<string | null>(null);
+
+  const activeFields = getCustomItems('propertyInfo', DEFAULT_PROPERTY_FIELDS);
 
   useEffect(() => {
     const fetchInfo = async () => {
@@ -72,19 +63,16 @@ export function ProjectInfo({ projectId }: ProjectInfoProps) {
       if (error) {
         console.error('Error fetching project info:', error);
       } else if (data) {
-        const loaded: InfoFields = {
-          foundation_status: data.foundation_status || '',
-          gas_electric: data.gas_electric || '',
-          roof_year: data.roof_year || '',
-          roof_type: data.roof_type || '',
-          hvac_year: data.hvac_year || '',
-          hvac_condenser: data.hvac_condenser || '',
-          hvac_furnace: data.hvac_furnace || '',
-          drain_line_material: data.drain_line_material || '',
-          window_status: data.window_status || '',
-          electrical_status: data.electrical_status || '',
-          plumbing_status: data.plumbing_status || '',
-        };
+        const loaded: Record<string, string> = {};
+        // Load built-in columns
+        for (const key of BUILT_IN_KEYS) {
+          loaded[key] = (data as any)[key] || '';
+        }
+        // Load custom fields from JSONB
+        const customFields = (data as any).custom_fields || {};
+        for (const [key, val] of Object.entries(customFields)) {
+          loaded[key] = (val as string) || '';
+        }
         setFields(loaded);
         setSavedFields(loaded);
         setExistingId(data.id);
@@ -95,30 +83,53 @@ export function ProjectInfo({ projectId }: ProjectInfoProps) {
     fetchInfo();
   }, [projectId]);
 
-  const handleBlur = async (key: keyof InfoFields) => {
+  const handleBlur = async (key: string) => {
     if (fields[key] === savedFields[key]) return;
     if (!user) return;
 
-    const updates = { [key]: fields[key] || null };
+    const isBuiltIn = BUILT_IN_KEYS.has(key);
 
     if (existingId) {
-      const { error } = await supabase
-        .from('project_info')
-        .update(updates)
-        .eq('id', existingId);
-
-      if (error) {
-        console.error('Error updating project info:', error);
-        toast({ title: 'Error', description: 'Failed to save', variant: 'destructive' });
-        return;
+      if (isBuiltIn) {
+        const { error } = await supabase
+          .from('project_info')
+          .update({ [key]: fields[key] || null } as any)
+          .eq('id', existingId);
+        if (error) {
+          console.error('Error updating project info:', error);
+          toast({ title: 'Error', description: 'Failed to save', variant: 'destructive' });
+          return;
+        }
+      } else {
+        // Update custom_fields JSONB
+        const { data: current } = await supabase
+          .from('project_info')
+          .select('custom_fields')
+          .eq('id', existingId)
+          .single();
+        const customFields = { ...((current as any)?.custom_fields || {}), [key]: fields[key] || null };
+        const { error } = await supabase
+          .from('project_info')
+          .update({ custom_fields: customFields } as any)
+          .eq('id', existingId);
+        if (error) {
+          console.error('Error updating custom field:', error);
+          toast({ title: 'Error', description: 'Failed to save', variant: 'destructive' });
+          return;
+        }
       }
     } else {
+      const insertData: any = { project_id: projectId, user_id: user.id };
+      if (isBuiltIn) {
+        insertData[key] = fields[key] || null;
+      } else {
+        insertData.custom_fields = { [key]: fields[key] || null };
+      }
       const { data, error } = await supabase
         .from('project_info')
-        .insert({ project_id: projectId, user_id: user.id, ...updates })
+        .insert(insertData)
         .select('id')
         .single();
-
       if (error) {
         console.error('Error creating project info:', error);
         toast({ title: 'Error', description: 'Failed to save', variant: 'destructive' });
@@ -145,15 +156,15 @@ export function ProjectInfo({ projectId }: ProjectInfoProps) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {FIELD_CONFIG.map(({ key, label, placeholder }) => (
+          {activeFields.map(({ value: key, label }) => (
             <div key={key} className="space-y-1.5">
               <Label htmlFor={key} className="text-xs text-muted-foreground">
                 {label}
               </Label>
               <Input
                 id={key}
-                value={fields[key]}
-                placeholder={placeholder}
+                value={fields[key] || ''}
+                placeholder={PLACEHOLDER_MAP[key] || `Enter ${label.toLowerCase()}`}
                 onChange={(e) => setFields(prev => ({ ...prev, [key]: e.target.value }))}
                 onBlur={() => handleBlur(key)}
               />

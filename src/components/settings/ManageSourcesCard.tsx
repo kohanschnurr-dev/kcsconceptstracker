@@ -12,6 +12,7 @@ import { CALENDAR_CATEGORIES, CATEGORY_GROUPS, type CategoryGroup } from '@/lib/
 import { MONTHLY_COST_CATEGORIES } from '@/lib/monthlyCategories';
 import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES } from '@/types';
 import { DEFAULT_STORES } from '@/hooks/useCustomStores';
+import { DEFAULT_PROPERTY_FIELDS } from '@/components/project/ProjectInfo';
 
 function CategorySection({
   items,
@@ -133,6 +134,7 @@ const budgetDefaults: CategoryItem[] = BUDGET_CATEGORIES.map(c => ({ value: c.va
 const monthlyDefaults: CategoryItem[] = MONTHLY_COST_CATEGORIES.map(c => ({ value: c.value, label: c.label }));
 const businessDefaults: CategoryItem[] = BUSINESS_EXPENSE_CATEGORIES.map(c => ({ value: c.value, label: c.label }));
 const storeDefaults: CategoryItem[] = DEFAULT_STORES.map(s => ({ value: s.value, label: s.label }));
+const propertyInfoDefaults: CategoryItem[] = DEFAULT_PROPERTY_FIELDS.map(f => ({ value: f.value, label: f.label }));
 
 export default function ManageSourcesCard() {
   const calendar = useCustomCategories('calendar', calendarDefaults);
@@ -140,6 +142,7 @@ export default function ManageSourcesCard() {
   const monthly = useCustomCategories('monthly', monthlyDefaults);
   const business = useCustomCategories('business', businessDefaults);
   const stores = useCustomCategories('stores', storeDefaults);
+  const propertyInfo = useCustomCategories('propertyInfo', propertyInfoDefaults);
 
   return (
     <Card>
@@ -214,6 +217,19 @@ export default function ManageSourcesCard() {
                 onRemove={stores.removeItem}
                 onReset={stores.resetToDefaults}
                 placeholder="New store name"
+              />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="propertyInfo">
+            <AccordionTrigger className="text-sm">Property Info Fields ({propertyInfo.items.length})</AccordionTrigger>
+            <AccordionContent>
+              <CategorySection
+                items={propertyInfo.items}
+                onAdd={propertyInfo.addItem}
+                onRemove={propertyInfo.removeItem}
+                onReset={propertyInfo.resetToDefaults}
+                placeholder="New property field"
               />
             </AccordionContent>
           </AccordionItem>
