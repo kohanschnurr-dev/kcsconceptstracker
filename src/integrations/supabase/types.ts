@@ -909,6 +909,7 @@ export type Database = {
       project_info: {
         Row: {
           created_at: string
+          custom_fields: Json
           drain_line_material: string | null
           electrical_status: string | null
           foundation_status: string | null
@@ -927,6 +928,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_fields?: Json
           drain_line_material?: string | null
           electrical_status?: string | null
           foundation_status?: string | null
@@ -945,6 +947,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_fields?: Json
           drain_line_material?: string | null
           electrical_status?: string | null
           foundation_status?: string | null
