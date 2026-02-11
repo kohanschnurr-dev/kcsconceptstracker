@@ -26,7 +26,7 @@ export function ProfitCalculator({
   const [purchasePrice, setPurchasePrice] = useState(initialPurchasePrice);
   const [arv, setArv] = useState(initialArv);
   const [saving, setSaving] = useState(false);
-  const [expandedBreakdown, setExpandedBreakdown] = useState<'estimated' | 'current' | null>(null);
+  const [expandedBreakdown, setExpandedBreakdown] = useState<'estimated' | 'current' | 'roi' | null>(null);
 
   useEffect(() => {
     setPurchasePrice(initialPurchasePrice);
@@ -167,10 +167,13 @@ export function ProfitCalculator({
               {expandedBreakdown === 'current' ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
             </div>
           </div>
-          <div className={cn(
-            "p-4 rounded-lg text-center",
-            roi >= 0 ? "bg-primary/10" : "bg-destructive/10"
-          )}>
+          <div
+            className={cn(
+              "p-4 rounded-lg text-center cursor-pointer transition-colors hover:ring-1 hover:ring-foreground/20",
+              roi >= 0 ? "bg-primary/10" : "bg-destructive/10"
+            )}
+            onClick={() => setExpandedBreakdown(expandedBreakdown === 'roi' ? null : 'roi')}
+          >
             <p className="text-sm text-muted-foreground mb-1">ROI</p>
             <p className={cn(
               "text-2xl font-bold font-mono flex items-center justify-center gap-1",
@@ -179,12 +182,15 @@ export function ProfitCalculator({
               <TrendingUp className="h-5 w-5" />
               {roi.toFixed(1)}%
             </p>
-            <p className="text-xs text-muted-foreground mt-1">on current</p>
+            <div className="flex items-center justify-center gap-1 mt-1">
+              <p className="text-xs text-muted-foreground">on current</p>
+              {expandedBreakdown === 'roi' ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+            </div>
           </div>
         </div>
 
         {/* Breakdown Panel */}
-        {expandedBreakdown && (
+        {(expandedBreakdown === 'estimated' || expandedBreakdown === 'current') && (
           <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm font-mono animate-in fade-in-0 slide-in-from-top-2 duration-200">
             <div className="flex justify-between">
               <span className="text-muted-foreground">ARV (Sale Price)</span>
@@ -216,6 +222,40 @@ export function ProfitCalculator({
                 (expandedBreakdown === 'estimated' ? estimatedProfit : currentProfit) >= 0 ? "text-success" : "text-destructive"
               )}>
                 {formatCurrency(expandedBreakdown === 'estimated' ? estimatedProfit : currentProfit)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ROI Breakdown Panel */}
+        {expandedBreakdown === 'roi' && (
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm font-mono animate-in fade-in-0 slide-in-from-top-2 duration-200">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Current Profit</span>
+              <span className={cn("font-semibold", currentProfit >= 0 ? "text-success" : "text-destructive")}>
+                {formatCurrency(currentProfit)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">÷ Total Investment</span>
+              <span className="font-semibold">{formatCurrency(currentInvestment)}</span>
+            </div>
+            <div className="pl-4 space-y-1 text-xs text-muted-foreground">
+              <div className="flex justify-between">
+                <span>Purchase Price</span>
+                <span>{formatCurrency(purchasePrice)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>+ Rehab Spent</span>
+                <span>{formatCurrency(totalSpent)}</span>
+              </div>
+            </div>
+            <div className="border-t pt-2 flex justify-between font-bold">
+              <span className={cn(roi >= 0 ? "text-primary" : "text-destructive")}>
+                = ROI
+              </span>
+              <span className={cn(roi >= 0 ? "text-primary" : "text-destructive")}>
+                {roi.toFixed(1)}%
               </span>
             </div>
           </div>
