@@ -718,10 +718,10 @@ export default function ProjectDetail() {
                 arv={project.arv || 0}
                 projectStartDate={project.start_date}
                 initialLoanAmount={(project as any).hm_loan_amount}
-                initialInterestRate={(project as any).hm_interest_rate || 12}
-                initialLoanTermMonths={(project as any).hm_loan_term_months || 6}
-                initialPoints={(project as any).hm_points || 3}
-                initialClosingCosts={(project as any).hm_closing_costs || 0}
+                initialInterestRate={(project as any).hm_interest_rate ?? 12}
+                initialLoanTermMonths={(project as any).hm_loan_term_months ?? 6}
+                initialPoints={(project as any).hm_points ?? 3}
+                initialClosingCosts={(project as any).hm_closing_costs ?? 0}
                 initialInterestOnly={(project as any).hm_interest_only ?? true}
               />
               <LoanPayments projectId={id!} />
