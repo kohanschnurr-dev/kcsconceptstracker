@@ -224,7 +224,7 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
             <div className="text-xs">
               <p className="font-medium text-foreground">{day.shortForecast}</p>
               <p className="text-muted-foreground">High: {day.tempHigh}°F / Low: {day.tempLow}°F</p>
-              {day.precipitation > 0 && (
+              {day.precipitation > 35 && (
                 <p className="text-amber-400">⚠️ {day.precipitation}% chance of precipitation</p>
               )}
             </div>
