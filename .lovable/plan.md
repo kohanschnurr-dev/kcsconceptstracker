@@ -1,30 +1,23 @@
 
-## Replace Trade Badges with Hover Tooltip on Project Vendors
+
+## Make Calendar Card Text Black on Light Theme
 
 ### Problem
-The inline trade badge next to each vendor name takes up too much horizontal space, especially for vendors with many trades (e.g., Jose with 15+ trades). This clutters the card layout.
+Calendar event card labels (e.g., "Drywall", "Painting") use colored text like `text-blue-700` or `text-emerald-700` on light theme. The user wants plain black text on light backgrounds for better readability.
 
 ### Solution
-Remove the visible Badge element and wrap the vendor name in a Tooltip. On hover, the tooltip will display the full list of trades. A small Wrench icon next to the name serves as a visual hint that trade info is available on hover.
+Update `src/lib/calendarCategories.ts` to change every group's `textClass` from a colored light-mode value to `text-foreground` (which resolves to black/dark on light theme), keeping the colored text for dark mode.
 
-### Technical Changes
+**File: `src/lib/calendarCategories.ts`**
 
-**File: `src/components/project/ProjectVendors.tsx`**
+| Group | Current `textClass` | Updated `textClass` |
+|-------|---------------------|---------------------|
+| acquisition_admin | `text-blue-700 dark:text-blue-400` | `text-foreground dark:text-blue-400` |
+| structural_exterior | `text-red-700 dark:text-red-400` | `text-foreground dark:text-red-400` |
+| rough_ins | `text-orange-700 dark:text-orange-400` | `text-foreground dark:text-orange-400` |
+| inspections | `text-purple-700 dark:text-purple-400` | `text-foreground dark:text-purple-400` |
+| interior_finishes | `text-emerald-700 dark:text-emerald-400` | `text-foreground dark:text-emerald-400` |
+| milestones | `text-amber-700 dark:text-amber-400` | `text-foreground dark:text-amber-400` |
 
-1. Add Tooltip imports (`Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` from `@/components/ui/tooltip`)
-2. Replace the current Badge with trades next to vendor name:
-   - Keep vendor name as-is
-   - Add a small Wrench icon (h-3.5 w-3.5, muted color) next to the name
-   - Wrap in a Tooltip that shows the comma-separated trade list on hover
-3. Wrap the vendor list in a `TooltipProvider` so tooltips work
-4. Remove the `Badge` import and `getTradeBadgeColor` helper if no longer used elsewhere
+Single file change -- propagates to all calendar cards, legend, and category pills via `getCategoryStyles()`.
 
-### Before
-```
-Jose  [wrench] Bathroom, Brick Siding Stucco, Carpentry, Demolition...
-```
-
-### After
-```
-Jose [wrench-icon]          <-- hover wrench to see trades
-```
