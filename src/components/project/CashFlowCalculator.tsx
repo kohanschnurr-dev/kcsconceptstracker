@@ -56,6 +56,8 @@ export function CashFlowCalculator({
   const [monthlyMaintenance, setMonthlyMaintenance] = useState(initialMonthlyMaintenance);
   const [managementRate, setManagementRate] = useState(initialManagementRate);
   const [saving, setSaving] = useState(false);
+  const [taxPeriod, setTaxPeriod] = useState<'month' | 'year'>('year');
+  const [hoaPeriod, setHoaPeriod] = useState<'month' | 'year'>('year');
 
   useEffect(() => {
     setPurchasePrice(initialPurchasePrice);
@@ -269,14 +271,26 @@ export function CashFlowCalculator({
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <div>
-              <Label htmlFor="annual-taxes">Property Taxes/yr</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label htmlFor="annual-taxes" className="mb-0">Property Taxes</Label>
+                <button
+                  type="button"
+                  onClick={() => setTaxPeriod(p => p === 'year' ? 'month' : 'year')}
+                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+                >
+                  {taxPeriod === 'year' ? '/yr' : '/mo'}
+                </button>
+              </div>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="annual-taxes"
                   type="number"
-                  value={annualPropertyTaxes || ''}
-                  onChange={(e) => setAnnualPropertyTaxes(Number(e.target.value))}
+                  value={taxPeriod === 'year' ? (annualPropertyTaxes || '') : (annualPropertyTaxes ? Math.round(annualPropertyTaxes / 12) : '')}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setAnnualPropertyTaxes(taxPeriod === 'month' ? val * 12 : val);
+                  }}
                   className="pl-9"
                   placeholder="0"
                 />
@@ -297,14 +311,26 @@ export function CashFlowCalculator({
               </div>
             </div>
             <div>
-              <Label htmlFor="annual-hoa">HOA/yr</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label htmlFor="annual-hoa" className="mb-0">HOA</Label>
+                <button
+                  type="button"
+                  onClick={() => setHoaPeriod(p => p === 'year' ? 'month' : 'year')}
+                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+                >
+                  {hoaPeriod === 'year' ? '/yr' : '/mo'}
+                </button>
+              </div>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="annual-hoa"
                   type="number"
-                  value={annualHoa || ''}
-                  onChange={(e) => setAnnualHoa(Number(e.target.value))}
+                  value={hoaPeriod === 'year' ? (annualHoa || '') : (annualHoa ? Math.round(annualHoa / 12) : '')}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setAnnualHoa(hoaPeriod === 'month' ? val * 12 : val);
+                  }}
                   className="pl-9"
                   placeholder="0"
                 />
