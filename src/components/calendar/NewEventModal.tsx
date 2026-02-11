@@ -238,7 +238,8 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                     onValueChange={setCategorySearch}
                     className="text-white"
                   />
-                  <CommandList className="max-h-[300px]" style={{ overflowY: 'auto' }}>
+                  <div style={{ overflowY: 'scroll', maxHeight: 300, overscrollBehavior: 'contain' }}>
+                  <CommandList className="overflow-visible [&_[cmdk-list-sizer]]:overflow-visible">
                     <CommandEmpty className="text-slate-400 py-6 text-center text-sm">
                       No categories found
                     </CommandEmpty>
@@ -278,6 +279,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                       </CommandGroup>
                     ))}
                   </CommandList>
+                  </div>
                 </Command>
               </PopoverContent>
             </Popover>
