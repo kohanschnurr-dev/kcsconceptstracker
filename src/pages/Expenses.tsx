@@ -595,6 +595,7 @@ export default function Expenses() {
         expense={selectedExpense}
         projectName={selectedExpense ? getProjectName(selectedExpense.project_id) : ''}
         categoryLabel={selectedExpense ? getCategoryLabel(selectedExpense.category_id, selectedExpense.project_id) : ''}
+        categories={selectedExpense ? projects.find(p => p.id === selectedExpense.project_id)?.categories?.map(c => ({ id: c.id, category: c.category })) : undefined}
         onExpenseUpdated={fetchData}
       />
 
