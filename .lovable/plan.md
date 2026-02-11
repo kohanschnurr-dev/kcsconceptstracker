@@ -1,25 +1,29 @@
 
 
-## Add "Stage" Dropdown to Procurement Item Modal
+## Fix Checkbox Double-Toggle in Procurement Item Picker
 
-### What's changing
-The `phase` field already exists in the database (`procurement_items.phase`) and in the form state, but it's not visible in the modal UI. This change adds a "Stage" dropdown to the modal so users can select a construction phase (Rough-In, Trim Out, Finish, Punch List) for each item.
+### Problem
+In the Item Picker modal (opened from the project Procurement tab via "Add from Library"), clicking a checkbox toggles it on and then immediately back off. This happens because both the parent `div` row and the `Checkbox` component call `toggleItem()` on click. The click event bubbles from the Checkbox up to the parent div, causing `toggleItem` to fire twice -- once to check, once to uncheck.
 
-### Placement
-The Stage dropdown will be added between **Source URL** and **Finish / Color**, sitting on the same row as Finish / Color in the 2-column grid layout:
+### Root Cause
+In `src/components/project/ProcurementTab.tsx` (around line 887-896):
 
-1. Source Store | Source URL
-2. **Stage** | Finish / Color
-3. Unit Price | Quantity
+```text
+<div onClick={() => toggleItem(item.id)}>     <-- fires toggleItem (1st call)
+  <Checkbox onCheckedChange={() => toggleItem(item.id)} />   <-- fires toggleItem (2nd call)
+</div>
+```
 
-### Technical Changes
+Two calls to `toggleItem` in rapid succession: add to Set, then remove from Set. Net result: nothing changes.
 
-**File: `src/components/procurement/ProcurementItemModal.tsx`**
-- Add a Stage `<Select>` dropdown between the Source URL field and the Finish / Color field (around line 1368)
-- Uses the existing `PHASES` array (`Rough-In`, `Trim Out`, `Finish`, `Punch List`) already defined in the file
-- Binds to the existing `formData.phase` state -- no new state needed
-- Include a "None" option so the field is optional
-- The phase value already saves to the database via the existing auto-save logic -- no backend changes needed
+### Fix
 
-The phase is stored on the item itself and travels with it when assigned to bundles/projects, so it naturally relates to whichever project the item is associated with.
+**File: `src/components/project/ProcurementTab.tsx`**
 
+Add `e.stopPropagation()` to the Checkbox's click/pointer event so it doesn't bubble up to the parent div, OR remove the `onCheckedChange` handler from the Checkbox and let the parent div handle it alone (since the Checkbox's `checked` state is controlled). The cleanest approach:
+
+- Keep the parent `div`'s `onClick` as the sole toggle trigger
+- Change the `Checkbox` to use `checked` only (no `onCheckedChange`) and add `onClick={e => e.stopPropagation()}` so clicking directly on the checkbox doesn't double-fire
+- Alternatively, remove the parent div's onClick and keep only the Checkbox's onCheckedChange, adding a click handler on the rest of the row separately
+
+The simplest fix: add `onClick={(e) => e.stopPropagation()}` to the `Checkbox` and remove its `onCheckedChange`, letting the parent div handle all toggling.
