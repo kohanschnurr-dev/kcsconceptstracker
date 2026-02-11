@@ -1,22 +1,24 @@
 
 
-## Add Due Date Picker to Pipeline Quick-Add
+## Carry Over Budgets During Category Reassignment
 
-Add a calendar date picker button between the project selector and the "Add to Pipeline" button, matching the pattern already used in `QuickTaskInput` on the dashboard.
+When reassigning from "Foundation" to "Foundation Repair," the $5,000 budget attached to Foundation was lost because the code creates new category rows with a $0 budget. This fix will carry over the budget amounts.
 
 ### Changes
 
-**File: `src/pages/DailyLogs.tsx`**
+**File: `src/components/settings/ReassignCategoryDialog.tsx`**
 
-1. Add state: `const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>();`
-2. Add imports: `Popover`, `PopoverContent`, `PopoverTrigger` from ui/popover, `Calendar` component from ui/calendar (the calendar icon is already imported), and `format` from `date-fns`, plus `cn` (if not already imported).
-3. In the quick-add form (line ~593), after the project `Select` and before the submit `Button`, add a date picker popover button (calendar icon that shows selected date as short label, with a "Clear date" option inside).
-4. In `handleCreateTask`, include `due_date: newTaskDueDate ? format(newTaskDueDate, 'yyyy-MM-dd') : null` in the insert payload.
-5. Reset `newTaskDueDate` to `undefined` after successful creation (alongside the existing title/project resets).
-6. The date picker only shows when `checklistTab === 'master'` (daily sprint tasks already have today's date context).
+1. **Fetch budget amounts** -- Update the `project_categories` query (line 52) to also select `estimated_budget`:
+   ```
+   .select('id, project_id, estimated_budget')
+   ```
+   Update the `categoryRows` state type to include `estimated_budget: number`.
 
-### UI Layout
+2. **Carry over budget to new category** -- When creating a new `project_categories` row (line 140), use the old row's budget instead of 0:
+   ```
+   estimated_budget: oldRow.estimated_budget ?? 0
+   ```
 
-The form row will be: `[Task Input] [Project Select] [Date Picker] [Add to Pipeline]`
+3. **Merge budget if target already exists** -- When the target category already exists for a project (line 136), add the old budget to the existing one via an update query so no budget value is lost.
 
-The date picker button will be compact -- just a calendar icon that turns highlighted when a date is selected, with a short label like "Feb 12" next to the icon (same style as `QuickTaskInput`).
+These three small changes ensure that budget allocations transfer seamlessly when categories are renamed or merged.
