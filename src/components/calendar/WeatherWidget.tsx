@@ -6,12 +6,13 @@ interface WeatherDay {
   date: string;
   tempHigh: number;
   tempLow: number;
-  code: number;
+  shortForecast: string;
   precipitation: number;
 }
 
 const DFW_LAT = 32.7767;
 const DFW_LON = -96.7970;
+const NWS_USER_AGENT = '(KCSTracker, contact@example.com)';
 
 interface WeatherWidgetProps {
   city?: string | null;
@@ -27,8 +28,7 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
     fetchWeather();
   }, [city, state]);
 
-  const fetchWeather = async () => {
-    setLoading(true);
+  const resolveCoordinates = async (): Promise<{ lat: number; lon: number; label: string }> => {
     let lat = DFW_LAT;
     let lon = DFW_LON;
     let label = 'DFW';
@@ -50,43 +50,84 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
       }
     }
 
-    setLocationLabel(label);
+    return { lat, lon, label };
+  };
 
+  const fetchNWS = async (lat: number, lon: number): Promise<WeatherDay[] | null> => {
     try {
-      const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&temperature_unit=fahrenheit&timezone=auto&forecast_days=5`
+      const headers = { 'User-Agent': NWS_USER_AGENT, Accept: 'application/geo+json' };
+
+      // Step 1: get grid point
+      const pointRes = await fetch(
+        `https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`,
+        { headers }
       );
-      const data = await response.json();
-      
-      if (data.daily) {
-        const days: WeatherDay[] = data.daily.time.map((date: string, i: number) => ({
-          date,
-          tempHigh: Math.round(data.daily.temperature_2m_max[i]),
-          tempLow: Math.round(data.daily.temperature_2m_min[i]),
-          code: data.daily.weather_code[i],
-          precipitation: data.daily.precipitation_sum[i] || 0,
-        }));
-        setForecast(days);
+      if (!pointRes.ok) return null;
+      const pointData = await pointRes.json();
+      const forecastUrl = pointData.properties?.forecast;
+      if (!forecastUrl) return null;
+
+      // Step 2: get forecast
+      const forecastRes = await fetch(forecastUrl, { headers });
+      if (!forecastRes.ok) return null;
+      const forecastData = await forecastRes.json();
+      const periods = forecastData.properties?.periods;
+      if (!periods || periods.length === 0) return null;
+
+      // Pair day/night periods into WeatherDay objects
+      const days: WeatherDay[] = [];
+      let i = 0;
+
+      while (i < periods.length && days.length < 5) {
+        const period = periods[i];
+
+        if (period.isDaytime) {
+          const nightPeriod = periods[i + 1]?.isDaytime === false ? periods[i + 1] : null;
+          const precip = period.probabilityOfPrecipitation?.value || 0;
+
+          // Build a date string from the period's startTime
+          const dateStr = period.startTime.split('T')[0];
+
+          days.push({
+            date: dateStr,
+            tempHigh: period.temperature,
+            tempLow: nightPeriod ? nightPeriod.temperature : period.temperature - 15,
+            shortForecast: period.shortForecast,
+            precipitation: precip,
+          });
+
+          i += nightPeriod ? 2 : 1;
+        } else {
+          // First period is a night period (partial day) — skip it
+          i += 1;
+        }
       }
-    } catch (error) {
-      console.error('Failed to fetch weather:', error);
-    } finally {
-      setLoading(false);
+
+      return days.length > 0 ? days : null;
+    } catch {
+      return null;
     }
   };
 
-  const getWeatherIcon = (code: number) => {
-    if (code === 0 || code === 1) return <Sun className="h-4 w-4 text-amber-400" />;
-    if (code >= 2 && code <= 3) return <Cloud className="h-4 w-4 text-muted-foreground" />;
-    if (code >= 45 && code <= 48) return <Cloud className="h-4 w-4 text-muted-foreground" />;
-    if (code >= 51 && code <= 67) return <CloudRain className="h-4 w-4 text-blue-400" />;
-    if (code >= 71 && code <= 77) return <CloudSnow className="h-4 w-4 text-blue-200" />;
-    if (code >= 80 && code <= 82) return <CloudRain className="h-4 w-4 text-blue-500" />;
-    if (code >= 95 && code <= 99) return <CloudLightning className="h-4 w-4 text-amber-500" />;
-    return <Wind className="h-4 w-4 text-muted-foreground" />;
+  const fetchOpenMeteoFallback = async (lat: number, lon: number): Promise<WeatherDay[]> => {
+    const response = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&temperature_unit=fahrenheit&timezone=auto&forecast_days=5`
+    );
+    const data = await response.json();
+
+    if (data.daily) {
+      return data.daily.time.map((date: string, i: number) => ({
+        date,
+        tempHigh: Math.round(data.daily.temperature_2m_max[i]),
+        tempLow: Math.round(data.daily.temperature_2m_min[i]),
+        shortForecast: getOpenMeteoLabel(data.daily.weather_code[i]),
+        precipitation: data.daily.precipitation_sum[i] || 0,
+      }));
+    }
+    return [];
   };
 
-  const getWeatherLabel = (code: number) => {
+  const getOpenMeteoLabel = (code: number): string => {
     if (code === 0) return 'Clear';
     if (code === 1) return 'Mainly Clear';
     if (code === 2) return 'Partly Cloudy';
@@ -105,6 +146,39 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
     return 'Unknown';
   };
 
+  const fetchWeather = async () => {
+    setLoading(true);
+    const { lat, lon, label } = await resolveCoordinates();
+    setLocationLabel(label);
+
+    try {
+      // Try NWS first
+      const nwsDays = await fetchNWS(lat, lon);
+      if (nwsDays) {
+        setForecast(nwsDays);
+        return;
+      }
+
+      // Fallback to Open-Meteo
+      const omDays = await fetchOpenMeteoFallback(lat, lon);
+      setForecast(omDays);
+    } catch (error) {
+      console.error('Failed to fetch weather:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getWeatherIcon = (text: string) => {
+    const lower = text.toLowerCase();
+    if (lower.includes('thunder')) return <CloudLightning className="h-4 w-4 text-amber-500" />;
+    if (lower.includes('snow') || lower.includes('sleet') || lower.includes('ice')) return <CloudSnow className="h-4 w-4 text-blue-200" />;
+    if (lower.includes('rain') || lower.includes('shower') || lower.includes('drizzle')) return <CloudRain className="h-4 w-4 text-blue-400" />;
+    if (lower.includes('sun') || lower.includes('clear')) return <Sun className="h-4 w-4 text-amber-400" />;
+    if (lower.includes('cloud') || lower.includes('overcast') || lower.includes('fog')) return <Cloud className="h-4 w-4 text-muted-foreground" />;
+    return <Wind className="h-4 w-4 text-muted-foreground" />;
+  };
+
   const formatDay = (dateStr: string) => {
     const date = new Date(dateStr + 'T12:00:00');
     const today = new Date();
@@ -116,7 +190,10 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
     return date.toLocaleDateString('en-US', { weekday: 'short' });
   };
 
-  const hasRainWarning = (day: WeatherDay) => day.precipitation > 0.1;
+  const hasRainWarning = (day: WeatherDay) => {
+    const lower = day.shortForecast.toLowerCase();
+    return day.precipitation > 10 || lower.includes('rain') || lower.includes('shower') || lower.includes('thunder');
+  };
 
   if (loading) {
     return (
@@ -130,25 +207,25 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
   return (
     <div className="flex items-center gap-1 bg-card rounded-lg px-2 py-1.5">
       <span className="text-xs text-muted-foreground mr-1 hidden lg:block">{locationLabel}</span>
-      {forecast.map((day, i) => (
+      {forecast.map((day) => (
         <Tooltip key={day.date}>
           <TooltipTrigger asChild>
-            <div 
+            <div
               className={`flex flex-col items-center px-2 py-1 rounded cursor-pointer transition-colors ${
                 hasRainWarning(day) ? 'bg-amber-500/10' : 'hover:bg-secondary'
               }`}
             >
               <span className="text-[10px] text-muted-foreground">{formatDay(day.date)}</span>
-              {getWeatherIcon(day.code)}
+              {getWeatherIcon(day.shortForecast)}
               <span className="text-xs text-foreground font-medium">{day.tempHigh}°</span>
             </div>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="bg-card border-border">
             <div className="text-xs">
-              <p className="font-medium text-foreground">{getWeatherLabel(day.code)}</p>
+              <p className="font-medium text-foreground">{day.shortForecast}</p>
               <p className="text-muted-foreground">High: {day.tempHigh}°F / Low: {day.tempLow}°F</p>
               {day.precipitation > 0 && (
-                <p className="text-amber-400">⚠️ {day.precipitation.toFixed(1)}" precipitation expected</p>
+                <p className="text-amber-400">⚠️ {day.precipitation}% chance of precipitation</p>
               )}
               {hasRainWarning(day) && (
                 <p className="text-amber-500 mt-1 font-medium">Delay concrete/roofing</p>
