@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { BUDGET_CATEGORIES, ALL_CATEGORIES, type Project, type CategoryBudget } from '@/types';
+import { getBudgetCategories, getAllCategories, type Project, type CategoryBudget } from '@/types';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { QuickBooksIntegration } from '@/components/QuickBooksIntegration';
 import { ExpenseDetailModal } from '@/components/ExpenseDetailModal';
@@ -227,7 +227,7 @@ export default function Expenses() {
     const project = projects.find(p => p.id === projectId);
     const category = project?.categories.find(c => c.id === categoryId);
     if (!category) return categoryId;
-    return ALL_CATEGORIES.find(b => b.value === category.category)?.label || category.category;
+    return getAllCategories().find(b => b.value === category.category)?.label || category.category;
   }, [projects]);
 
   const handleViewReceipt = async (receiptUrl: string, e: React.MouseEvent) => {
@@ -471,7 +471,7 @@ export default function Expenses() {
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px] overflow-y-auto">
                     <SelectItem value="all">All Categories</SelectItem>
-                    {BUDGET_CATEGORIES.map((cat) => (
+                    {getBudgetCategories().map((cat) => (
                       <SelectItem key={cat.value} value={cat.value}>
                         {cat.label}
                       </SelectItem>

@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useQuickBooks } from '@/hooks/useQuickBooks';
-import { BUSINESS_EXPENSE_CATEGORIES } from '@/types';
+import { getBusinessExpenseCategories } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { SmartSplitReceiptUpload } from './SmartSplitReceiptUpload';
@@ -334,7 +334,7 @@ export function BusinessQuickBooksIntegration({ onExpenseImported, projects = []
                                 <SelectValue placeholder="Select Category" />
                               </SelectTrigger>
                               <SelectContent>
-                                {BUSINESS_EXPENSE_CATEGORIES.map((cat) => (
+                                {getBusinessExpenseCategories().map((cat) => (
                                   <SelectItem key={cat.value} value={cat.value}>
                                     {cat.label}
                                   </SelectItem>

@@ -110,13 +110,24 @@ export const CALENDAR_CATEGORIES: CalendarCategory[] = [
   { value: 'refinancing', label: 'Refinancing', group: 'milestones', groupLabel: 'Milestones' },
 ];
 
+// Dynamic getter that checks localStorage first
+export function getCalendarCategories(): CalendarCategory[] {
+  try {
+    const saved = localStorage.getItem('custom-calendar-categories');
+    if (saved) return JSON.parse(saved);
+  } catch (e) {
+    console.error('Error loading custom calendar categories:', e);
+  }
+  return CALENDAR_CATEGORIES;
+}
+
 export function getCategoryGroup(categoryValue: string): CategoryGroup {
-  const category = CALENDAR_CATEGORIES.find(c => c.value === categoryValue);
+  const category = getCalendarCategories().find(c => c.value === categoryValue);
   return category?.group || 'acquisition_admin';
 }
 
 export function getCategoryLabel(categoryValue: string): string {
-  const category = CALENDAR_CATEGORIES.find(c => c.value === categoryValue);
+  const category = getCalendarCategories().find(c => c.value === categoryValue);
   return category?.label || categoryValue;
 }
 
@@ -127,7 +138,7 @@ export function getCategoryStyles(categoryValue: string) {
 
 // Group categories for the dropdown
 export function getGroupedCategories(): Record<CategoryGroup, CalendarCategory[]> {
-  return CALENDAR_CATEGORIES.reduce((acc, category) => {
+  return getCalendarCategories().reduce((acc, category) => {
     if (!acc[category.group]) {
       acc[category.group] = [];
     }

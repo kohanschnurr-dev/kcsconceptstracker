@@ -13,8 +13,19 @@ export const MONTHLY_COST_CATEGORIES = [
   { value: 'security_alarm', label: 'Security / Alarm' },
 ];
 
+// Dynamic getter that checks localStorage first
+export function getMonthlyCategories(): typeof MONTHLY_COST_CATEGORIES {
+  try {
+    const saved = localStorage.getItem('custom-monthly-categories');
+    if (saved) return JSON.parse(saved);
+  } catch (e) {
+    console.error('Error loading custom monthly categories:', e);
+  }
+  return MONTHLY_COST_CATEGORIES;
+}
+
 export const getMonthlyCategoryLabel = (value: string): string => {
-  const found = MONTHLY_COST_CATEGORIES.find(c => c.value === value);
+  const found = getMonthlyCategories().find(c => c.value === value);
   if (found) return found.label;
   return value
     .split('_')

@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 import { cn } from '@/lib/utils';
 import { DollarSign, TrendingUp, TrendingDown, Receipt, Calendar, CreditCard, FileText, Banknote } from 'lucide-react';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -63,11 +63,11 @@ export function StatDrilldownModal({
   const getCategoryLabel = (categoryId: string) => {
     const cat = categories.find(c => c.id === categoryId);
     if (!cat) return 'Unknown';
-    return BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label || cat.category;
+    return getBudgetCategories().find(b => b.value === cat.category)?.label || cat.category;
   };
 
   const getCategoryName = (categoryValue: string) => {
-    return BUDGET_CATEGORIES.find(b => b.value === categoryValue)?.label || categoryValue;
+    return getBudgetCategories().find(b => b.value === categoryValue)?.label || categoryValue;
   };
 
   const getPaymentIcon = (method: string | null) => {

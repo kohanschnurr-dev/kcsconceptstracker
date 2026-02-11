@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 
 interface SpendingDonutChartProps {
   expenses: Array<{
@@ -37,7 +37,7 @@ export function SpendingDonutChart({ expenses, categories }: SpendingDonutChartP
       .map(([categoryId, amount]) => {
         const category = categories.find(c => c.id === categoryId);
         const label = category 
-          ? BUDGET_CATEGORIES.find(b => b.value === category.category)?.label || category.category
+          ? getBudgetCategories().find(b => b.value === category.category)?.label || category.category
           : 'Unknown';
         return { name: label, value: amount, categoryId };
       })

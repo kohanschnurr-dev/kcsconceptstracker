@@ -26,7 +26,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ALL_CATEGORIES, BUDGET_CATEGORIES, TEXAS_SALES_TAX, Project, PaymentMethod, BudgetCategory } from '@/types';
+import { getAllCategories, getBudgetCategories, TEXAS_SALES_TAX, Project, PaymentMethod, BudgetCategory } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -335,7 +335,7 @@ function ExpenseForm({
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
-              {BUDGET_CATEGORIES.map((cat) => (
+              {getBudgetCategories().map((cat) => (
                 <SelectItem key={cat.value} value={cat.value}>
                   {cat.label}
                 </SelectItem>

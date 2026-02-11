@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, DollarSign } from 'lucide-react';
@@ -46,7 +46,7 @@ export function CategoryBudgetModal({
   }, [editingCategory, open]);
 
   // Filter out categories that already exist (except when editing)
-  const availableCategories = BUDGET_CATEGORIES.filter(cat => {
+  const availableCategories = getBudgetCategories().filter(cat => {
     if (isEditMode && cat.value === editingCategory?.category) return true;
     return !existingCategories.some(ec => ec.category === cat.value);
   });
@@ -190,7 +190,7 @@ export function DeleteCategoryDialog({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const getCategoryLabel = (value: string) => {
-    return BUDGET_CATEGORIES.find(c => c.value === value)?.label || value;
+    return getBudgetCategories().find(c => c.value === value)?.label || value;
   };
 
   const handleDelete = async () => {

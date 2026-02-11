@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatDisplayDate } from '@/lib/dateUtils';
-import { BUSINESS_EXPENSE_CATEGORIES } from '@/types';
+import { getBusinessExpenseCategories } from '@/types';
 
 interface BusinessExpense {
   id: string;
@@ -76,7 +76,7 @@ export function BusinessReceiptUpload({ expenses, onReceiptAttached }: BusinessR
   }, [isOpen]);
 
   const getCategoryLabel = (category: string) => {
-    return BUSINESS_EXPENSE_CATEGORIES.find(c => c.value === category)?.label || 
+    return getBusinessExpenseCategories().find(c => c.value === category)?.label || 
       category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 

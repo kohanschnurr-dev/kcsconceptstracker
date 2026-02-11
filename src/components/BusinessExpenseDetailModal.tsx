@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { BUSINESS_EXPENSE_CATEGORIES } from '@/types';
+import { getBusinessExpenseCategories } from '@/types';
 import { formatDisplayDateLong } from '@/lib/dateUtils';
 
 interface BusinessExpenseDetailModalProps {
@@ -73,7 +73,7 @@ export function BusinessExpenseDetailModal({
   };
 
   const getCategoryLabel = (category: string) => {
-    return BUSINESS_EXPENSE_CATEGORIES.find(b => b.value === category)?.label || 
+    return getBusinessExpenseCategories().find(b => b.value === category)?.label || 
       category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
