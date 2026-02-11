@@ -221,13 +221,17 @@ export default function Vendors() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditVendor(vendor)}>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditVendor(vendor);
+                          }}>
                             <Pencil className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="text-destructive focus:text-destructive"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setVendorToDelete(vendor);
                               setDeleteDialogOpen(true);
                             }}
@@ -291,7 +295,7 @@ export default function Vendors() {
 
       {/* Vendor Contact Card Dialog */}
       <Dialog open={!!selectedVendor} onOpenChange={(open) => !open && setSelectedVendor(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>{selectedVendor?.name}</DialogTitle>
           </DialogHeader>
