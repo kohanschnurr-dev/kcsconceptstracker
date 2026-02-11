@@ -158,87 +158,85 @@ export default function ProjectDetail() {
   const [activeTab, setActiveTab] = useState('');
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchProjectData = async () => {
-      if (!id) return;
-      
-      setLoading(true);
-      
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (projectError) {
-        console.error('Error fetching project:', projectError);
-        setLoading(false);
-        return;
-      }
-      
-      if (!projectData) {
-        setLoading(false);
-        return;
-      }
-      
-      setProject(projectData);
-      
-    const [categoriesRes, expensesRes, qbExpensesRes, logsRes, procurementRes] = await Promise.all([
-        supabase.from('project_categories').select('*').eq('project_id', id),
-        supabase.from('expenses').select('*').eq('project_id', id).order('date', { ascending: false }),
-        supabase.from('quickbooks_expenses').select('*').eq('project_id', id).eq('is_imported', true).order('date', { ascending: false }),
-        supabase.from('daily_logs').select('*').eq('project_id', id).order('date', { ascending: false }),
-        supabase.from('project_procurement_items').select('id', { count: 'exact', head: true }).eq('project_id', id)
-      ]);
-      
-      setProcurementCount(procurementRes.count || 0);
-      
-      const categoriesData = categoriesRes.data || [];
-      const expensesData = expensesRes.data || [];
-      const qbExpensesData = qbExpensesRes.data || [];
-      
-      // Combine regular expenses and QuickBooks expenses for category calculations
-      const allExpensesByCategoryId: Record<string, number> = {};
-      expensesData.forEach(e => {
-        allExpensesByCategoryId[e.category_id] = (allExpensesByCategoryId[e.category_id] || 0) + Number(e.amount);
-      });
-      qbExpensesData.forEach(e => {
-        if (e.category_id) {
-          allExpensesByCategoryId[e.category_id] = (allExpensesByCategoryId[e.category_id] || 0) + Number(e.amount);
-        }
-      });
-      
-      const categoriesWithSpent = categoriesData.map(cat => {
-        const actualSpent = allExpensesByCategoryId[cat.id] || 0;
-        return { ...cat, actualSpent };
-      });
-      
-      // Combine manual + QB expenses for export (convert QB expenses to match format)
-      const qbExpensesConverted: DBExpense[] = qbExpensesData
-        .filter(qb => qb.category_id) // Only include assigned QB expenses
-        .map(qb => ({
-          id: qb.id,
-          project_id: qb.project_id || id,
-          category_id: qb.category_id!,
-          vendor_name: qb.vendor_name,
-          description: qb.description,
-          amount: qb.amount,
-          date: qb.date,
-          payment_method: qb.payment_method,
-          includes_tax: false,
-          tax_amount: null,
-          status: 'actual',
-        }));
-      
-      const combinedExpenses = [...expensesData, ...qbExpensesConverted];
-      
-      setCategories(categoriesWithSpent);
-      setExpenses(expensesData);
-      setAllExpensesForExport(combinedExpenses);
-      setDailyLogs(logsRes.data || []);
-      setLoading(false);
-    };
+  const fetchProjectData = async (showLoading = true) => {
+    if (!id) return;
     
+    if (showLoading) setLoading(true);
+    
+    const { data: projectData, error: projectError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (projectError) {
+      console.error('Error fetching project:', projectError);
+      if (showLoading) setLoading(false);
+      return;
+    }
+    
+    if (!projectData) {
+      if (showLoading) setLoading(false);
+      return;
+    }
+    
+    setProject(projectData);
+    
+    const [categoriesRes, expensesRes, qbExpensesRes, logsRes, procurementRes] = await Promise.all([
+      supabase.from('project_categories').select('*').eq('project_id', id),
+      supabase.from('expenses').select('*').eq('project_id', id).order('date', { ascending: false }),
+      supabase.from('quickbooks_expenses').select('*').eq('project_id', id).eq('is_imported', true).order('date', { ascending: false }),
+      supabase.from('daily_logs').select('*').eq('project_id', id).order('date', { ascending: false }),
+      supabase.from('project_procurement_items').select('id', { count: 'exact', head: true }).eq('project_id', id)
+    ]);
+    
+    setProcurementCount(procurementRes.count || 0);
+    
+    const categoriesData = categoriesRes.data || [];
+    const expensesData = expensesRes.data || [];
+    const qbExpensesData = qbExpensesRes.data || [];
+    
+    const allExpensesByCategoryId: Record<string, number> = {};
+    expensesData.forEach(e => {
+      allExpensesByCategoryId[e.category_id] = (allExpensesByCategoryId[e.category_id] || 0) + Number(e.amount);
+    });
+    qbExpensesData.forEach(e => {
+      if (e.category_id) {
+        allExpensesByCategoryId[e.category_id] = (allExpensesByCategoryId[e.category_id] || 0) + Number(e.amount);
+      }
+    });
+    
+    const categoriesWithSpent = categoriesData.map(cat => {
+      const actualSpent = allExpensesByCategoryId[cat.id] || 0;
+      return { ...cat, actualSpent };
+    });
+    
+    const qbExpensesConverted: DBExpense[] = qbExpensesData
+      .filter(qb => qb.category_id)
+      .map(qb => ({
+        id: qb.id,
+        project_id: qb.project_id || id,
+        category_id: qb.category_id!,
+        vendor_name: qb.vendor_name,
+        description: qb.description,
+        amount: qb.amount,
+        date: qb.date,
+        payment_method: qb.payment_method,
+        includes_tax: false,
+        tax_amount: null,
+        status: 'actual',
+      }));
+    
+    const combinedExpenses = [...expensesData, ...qbExpensesConverted];
+    
+    setCategories(categoriesWithSpent);
+    setExpenses(expensesData);
+    setAllExpensesForExport(combinedExpenses);
+    setDailyLogs(logsRes.data || []);
+    if (showLoading) setLoading(false);
+  };
+
+  useEffect(() => {
     fetchProjectData();
   }, [id]);
 
@@ -683,6 +681,7 @@ export default function ProjectDetail() {
                 initialVacancyRate={project.vacancy_rate || 8}
                 initialMonthlyMaintenance={project.monthly_maintenance || 0}
                 initialManagementRate={project.management_rate || 10}
+                onSaved={() => fetchProjectData(false)}
               />
             ) : (
               <ProfitCalculator 

@@ -24,6 +24,7 @@ interface CashFlowCalculatorProps {
   initialVacancyRate?: number;
   initialMonthlyMaintenance?: number;
   initialManagementRate?: number;
+  onSaved?: () => void;
 }
 
 export function CashFlowCalculator({ 
@@ -42,6 +43,7 @@ export function CashFlowCalculator({
   initialVacancyRate = 8,
   initialMonthlyMaintenance = 0,
   initialManagementRate = 10,
+  onSaved,
 }: CashFlowCalculatorProps) {
   const [purchasePrice, setPurchasePrice] = useState(initialPurchasePrice);
   const [arv, setArv] = useState(initialArv);
@@ -131,6 +133,7 @@ export function CashFlowCalculator({
       console.error(error);
     } else {
       toast.success('Saved');
+      onSaved?.();
     }
     setSaving(false);
   };
