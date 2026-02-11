@@ -40,8 +40,8 @@ import { BUDGET_CATEGORIES } from '@/types';
 
 // Types
 type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'other';
-type Phase = 'demo' | 'rough_in' | 'drywall' | 'trim_out' | 'final';
-type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'shipped' | 'on_site' | 'installed';
+type Phase = 'demo' | 'rough_in' | 'drywall' | 'trim_out' | 'finish' | 'punch' | 'final';
+type ItemStatus = 'researching' | 'in_cart' | 'ordered' | 'delivered' | 'shipped' | 'on_site' | 'installed';
 
 interface ProcurementItem {
   id: string;
@@ -95,7 +95,9 @@ const PHASES = [
   { value: 'rough_in', label: 'Rough-in', order: 2 },
   { value: 'drywall', label: 'Drywall', order: 3 },
   { value: 'trim_out', label: 'Trim Out', order: 4 },
-  { value: 'final', label: 'Final', order: 5 },
+  { value: 'finish', label: 'Finish', order: 5 },
+  { value: 'punch', label: 'Punch List', order: 6 },
+  { value: 'final', label: 'Final', order: 7 },
 ];
 
 const STATUSES = [
