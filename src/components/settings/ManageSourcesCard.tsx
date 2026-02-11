@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Plus, RotateCcw, List, Pencil, Trash2, Check, X } from 'lucide-react';
+import { MoreHorizontal, Plus, RotateCcw, List, Pencil, Trash2, Check, X, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCustomCategories, type CategoryItem } from '@/hooks/useCustomCategories';
 import { CALENDAR_CATEGORIES, CATEGORY_GROUPS, type CategoryGroup } from '@/lib/calendarCategories';
@@ -14,7 +14,7 @@ import { MONTHLY_COST_CATEGORIES } from '@/lib/monthlyCategories';
 import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES } from '@/types';
 import { DEFAULT_STORES } from '@/hooks/useCustomStores';
 import { DEFAULT_PROPERTY_FIELDS } from '@/components/project/ProjectInfo';
-import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP, resolveTradeGroup } from '@/lib/budgetCalculatorCategories';
+import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP, resolveTradeGroup, getAllGroupDefs, loadCustomGroups, saveCustomGroups, CUSTOM_GROUPS_STORAGE_KEY, type CustomGroupEntry } from '@/lib/budgetCalculatorCategories';
 import { supabase } from '@/integrations/supabase/client';
 import { reassignBudgetCategory, reassignGenericColumn } from '@/lib/reassignCategory';
 import ReassignCategoryDialog from './ReassignCategoryDialog';
@@ -172,10 +172,11 @@ function CategorySection({
   const [selectedGroup, setSelectedGroup] = useState<string>('acquisition_admin');
   const [selectedTradeGroup, setSelectedTradeGroup] = useState<string>('other');
 
+  const allGroupDefs = getAllGroupDefs();
   const groupOptionsList = grouped
     ? (Object.entries(CATEGORY_GROUPS) as [CategoryGroup, typeof CATEGORY_GROUPS[CategoryGroup]][]).map(([key, info]) => ({ value: key, label: info.label }))
     : tradeGrouped
-    ? Object.entries(BUDGET_CALC_GROUP_DEFS).map(([key, def]) => ({ value: key, label: def.label }))
+    ? Object.entries(allGroupDefs).map(([key, def]) => ({ value: key, label: def.label }))
     : undefined;
 
   const handleAdd = () => {
@@ -234,9 +235,9 @@ function CategorySection({
     }
 
     if (tradeGrouped) {
-      const groupOrder = Object.keys(BUDGET_CALC_GROUP_DEFS);
+      const groupOrder = Object.keys(allGroupDefs);
       return groupOrder.map(groupKey => {
-        const def = BUDGET_CALC_GROUP_DEFS[groupKey];
+        const def = allGroupDefs[groupKey];
         const groupItems = items
           .filter(i => resolveTradeGroup(i) === groupKey)
           .sort((a, b) => a.label.localeCompare(b.label));
@@ -281,7 +282,7 @@ function CategorySection({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(BUDGET_CALC_GROUP_DEFS).map(([key, def]) => (
+              {Object.entries(allGroupDefs).map(([key, def]) => (
                 <SelectItem key={key} value={key}>{def.label}</SelectItem>
               ))}
             </SelectContent>
@@ -337,6 +338,91 @@ const SECTION_LABELS: Record<SectionKey, string> = {
   stores: 'store',
   propertyInfo: 'field',
 };
+
+function ManageGroupsSection({ budgetHook }: { budgetHook: ReturnType<typeof useCustomCategories> }) {
+  const [customGroups, setCustomGroups] = useState<CustomGroupEntry[]>([]);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [showManage, setShowManage] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_GROUPS_STORAGE_KEY);
+      if (raw) setCustomGroups(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const handleAddGroup = () => {
+    const trimmed = newGroupName.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const allDefs = getAllGroupDefs();
+    if (allDefs[key]) {
+      toast.error('A group with that name already exists');
+      return;
+    }
+    const updated = [...customGroups, { key, label: trimmed }];
+    setCustomGroups(updated);
+    saveCustomGroups(updated);
+    setNewGroupName('');
+    toast.success(`Added group "${trimmed}"`);
+  };
+
+  const handleDeleteGroup = (key: string) => {
+    // Reassign categories in this group back to 'other'
+    const groupItems = budgetHook.items.filter(i => i.group === key);
+    groupItems.forEach(item => {
+      budgetHook.renameItem(item.value, item.label, 'other');
+    });
+    const updated = customGroups.filter(g => g.key !== key);
+    setCustomGroups(updated);
+    saveCustomGroups(updated);
+    toast.success('Group removed — categories moved to Other');
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border/30 px-1">
+      <button
+        onClick={() => setShowManage(!showManage)}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Settings className="h-3.5 w-3.5" />
+        Manage Groups
+      </button>
+      {showManage && (
+        <div className="mt-2 space-y-2">
+          {customGroups.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {customGroups.map(g => (
+                <Badge key={g.key} variant="outline" className="text-xs">
+                  {g.label}
+                  <button
+                    onClick={() => handleDeleteGroup(g.key)}
+                    className="ml-1.5 hover:text-destructive text-muted-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Input
+              value={newGroupName}
+              onChange={e => setNewGroupName(e.target.value)}
+              placeholder="New group name"
+              className="flex-1"
+              onKeyDown={e => e.key === 'Enter' && handleAddGroup()}
+            />
+            <Button variant="outline" size="sm" onClick={handleAddGroup} disabled={!newGroupName.trim()}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ManageSourcesCard() {
   const calendar = useCustomCategories('calendar', calendarDefaults);
@@ -515,6 +601,7 @@ export default function ManageSourcesCard() {
                 placeholder="New expense category"
                 tradeGrouped
               />
+              <ManageGroupsSection budgetHook={budget} />
             </AccordionContent>
           </AccordionItem>
 

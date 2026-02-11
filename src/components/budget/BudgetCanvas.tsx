@@ -4,7 +4,7 @@ import {
   ChevronRight, ChevronsUpDown, ChevronsDownUp,
   Settings, X, Plus
 } from 'lucide-react';
-import { getBudgetCalcCategories, buildBudgetCalcGroups } from '@/lib/budgetCalculatorCategories';
+import { getBudgetCalcCategories, buildBudgetCalcGroups, getAllGroupDefs } from '@/lib/budgetCalculatorCategories';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   const prevSqftRef = useRef<string>(sqft);
   const dbLoadedRef = useRef(false);
 
-  const dynamicGroups = useMemo(() => buildBudgetCalcGroups(getBudgetCalcCategories()), []);
+  const dynamicGroups = useMemo(() => buildBudgetCalcGroups(getBudgetCalcCategories()), [getBudgetCalcCategories]);
   const allGroupNames = dynamicGroups.map(g => g.name);
   const allExpanded = allGroupNames.every(name => openGroups.includes(name));
   const presetCategories = new Set(presets.map(p => p.category));
