@@ -1,36 +1,38 @@
 
 
-## Persist Budget Category Presets to the Database
+## Stop Auto-Populating "0" in Numeric Inputs
 
 ### Problem
 
-Currently, budget category presets (the $/sqft rates you customize in the Edit Presets dialog) are saved only in your browser's local storage. This means they can be lost if you clear your browser data, switch devices, or use a different browser.
-
-### Solution
-
-Save presets to the database tied to your user account so they persist permanently across sessions, devices, and browsers.
+When you clear a numeric input field (or add a new preset), it immediately fills in "0", forcing you to select and delete it before typing your actual value.
 
 ### What Changes
 
-1. **Database**: Add a `budget_presets` JSONB column to the `profiles` table to store your preset configurations
-2. **BudgetCanvas**: Update the Edit Presets dialog to load/save presets from the database instead of localStorage, falling back to localStorage if no database record exists (one-time migration of your current presets)
-3. **TemplatePicker and BudgetCalculator**: Update the two other files that read presets from localStorage to instead accept presets as a prop from BudgetCanvas (or read from the same database source)
+Update all numeric inputs across the app to show an empty field instead of "0" when there's no meaningful value. This affects two main patterns:
+
+1. **Preset rate inputs** that store numbers and use `|| 0` in the onChange handler (forces 0 immediately)
+2. **TemplatePicker tier inputs** with the same `|| 0` pattern
 
 ### Technical Details
 
-**Database Migration:**
-- Add `budget_presets` (JSONB, nullable) column to `profiles` table
-
 **File: `src/components/budget/BudgetCanvas.tsx`**
-1. On mount, fetch presets from the `profiles` table for the current user. If null, check localStorage for existing presets (migration) and save those to the database. If neither exists, use defaults.
-2. Update `handleSavePresets` to write to the `profiles.budget_presets` column instead of (or in addition to) localStorage
-3. Keep localStorage as a write-through cache so TemplatePicker and BudgetCalculator can still read from it without refactoring
+- Line 345: Change `value={preset.pricePerSqft}` to `value={preset.pricePerSqft || ''}` so empty/zero shows blank
+- Line 346: Change `parseFloat(e.target.value) || 0` to `parseFloat(e.target.value) || 0` but only on blur/save -- for onChange, store the raw string. Actually, simpler: keep the number storage but display empty when 0.
+- Specifically: `value={preset.pricePerSqft || ''}` and keep the onChange as `parseFloat(e.target.value) || 0` -- this way it only shows 0 after you leave the field with nothing typed.
 
-**Files: `src/components/budget/TemplatePicker.tsx` and `src/pages/BudgetCalculator.tsx`**
-- No changes needed -- they read from localStorage which will stay in sync as a cache
+Wait -- the issue is that `|| 0` in onChange immediately sets the value to 0 when you clear, and then the value prop shows "0". The fix:
+- Change `updatePresetRate` to accept the raw string and only convert to number, allowing 0 to persist but not auto-fill the UI
+- Change `value={preset.pricePerSqft}` to `value={preset.pricePerSqft || ''}` -- when pricePerSqft is 0, show empty
 
-**Flow:**
-1. User opens Budget Calculator -- BudgetCanvas loads presets from database
-2. Also writes them to localStorage (cache for other components)
-3. User edits presets and clicks Save -- writes to both database and localStorage
-4. Days later, user returns -- presets load from database, always up to date
+**File: `src/components/budget/TemplatePicker.tsx`**
+- Line 355: Change `value={tier.pricePerSqft}` to `value={tier.pricePerSqft || ''}`
+- Line 356: Change `parseInt(e.target.value) || 0` to `parseFloat(e.target.value) || 0` (same pattern)
+
+**File: `src/components/budget/BudgetCategoryCard.tsx`**
+- Already uses string values and placeholder="0", so this one is fine -- no changes needed
+
+**File: `src/components/project/CashFlowCalculator.tsx`**
+- Already uses `value={x || ''}` pattern throughout -- no changes needed
+
+### Summary of edits
+Two files, two lines each -- just add `|| ''` to the value prop so zero displays as empty, letting users type freely.
