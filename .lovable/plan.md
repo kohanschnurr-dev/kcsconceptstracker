@@ -1,48 +1,47 @@
 
 
-## Fix: Prevent Contact Card from Opening When Editing via Dropdown or Contact Card
+## Show Event Title as Read-Only by Default
 
-### Problem
-Clicking "Edit" from the 3-dot dropdown menu (or the contact card's Edit button) opens BOTH the edit modal AND the contact card dialog, because the click event bubbles up to the vendor card's `onClick` handler.
+Currently, the event side panel title is always an editable `Input` field, so it appears selected/editable the moment you open an event. The fix is to make the title display as plain text by default, and only switch to an editable input when the user clicks on it (or clicks an edit icon).
 
-### Root Cause
-- The `DropdownMenuItem` for "Edit" (line 224) does not call `e.stopPropagation()`, so after the dropdown closes, the click reaches the card and sets `selectedVendor`.
-- The contact card's "Edit Vendor" button has `e.stopPropagation()` but the dialog overlay click-through may still trigger the card underneath.
+### Changes
 
-### Fix
+**File: `src/components/calendar/TaskDetailPanel.tsx`**
 
-**File: `src/pages/Vendors.tsx`**
+1. Add a new `isEditingTitle` state (default `false`), reset to `false` when `task` changes (in the existing `useEffect`).
 
-1. **DropdownMenuItem "Edit" (line 224)**: Add `e.stopPropagation()` so clicking Edit in the menu doesn't also open the contact card.
+2. Replace the always-visible `Input` (lines 325-330) with conditional rendering:
+   - **When not editing**: Show the title as a styled `h2`/`span` with a click handler that sets `isEditingTitle = true`.
+   - **When editing**: Show the current `Input` with `autoFocus`, and on blur (or Enter key), set `isEditingTitle = false`.
 
-```tsx
-<DropdownMenuItem onClick={(e) => {
-  e.stopPropagation();
-  handleEditVendor(vendor);
-}}>
+3. No other files affected.
+
+### Technical Detail
+
 ```
+// New state
+const [isEditingTitle, setIsEditingTitle] = useState(false);
 
-2. **DropdownMenuItem "Delete" (line 228-234)**: Also add `e.stopPropagation()` for consistency.
+// Reset on task change (add to existing useEffect)
+setIsEditingTitle(false);
 
-```tsx
-<DropdownMenuItem 
-  className="text-destructive focus:text-destructive"
-  onClick={(e) => {
-    e.stopPropagation();
-    setVendorToDelete(vendor);
-    setDeleteDialogOpen(true);
-  }}
->
+// In JSX, replace the Input with:
+{isEditingTitle ? (
+  <Input
+    value={editedTitle}
+    onChange={(e) => handleTitleChange(e.target.value)}
+    onBlur={() => setIsEditingTitle(false)}
+    onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
+    autoFocus
+    className="text-xl font-semibold ..."
+    placeholder="Event title..."
+  />
+) : (
+  <h2
+    className="text-xl font-semibold cursor-pointer hover:text-primary ..."
+    onClick={() => setIsEditingTitle(true)}
+  >
+    {editedTitle || 'Untitled Event'}
+  </h2>
+)}
 ```
-
-3. **Contact card Dialog (line 293)**: Add `onInteractOutside` prevention on `DialogContent` so closing the contact card doesn't accidentally re-trigger the card click underneath:
-
-```tsx
-<DialogContent 
-  className="sm:max-w-md"
-  onInteractOutside={(e) => e.preventDefault()}
->
-```
-
-These three small changes ensure only one dialog opens at a time.
-
