@@ -11,10 +11,49 @@ import {
   ClipboardCheck,
   Calendar,
   Sparkles,
+  Layers,
+  Grid2x2,
+  DoorOpen,
+  Trees,
+  Landmark,
+  ShieldCheck,
+  Warehouse,
+  Package,
+  Fence,
+  Square,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarTask } from '@/pages/Calendar';
 import { getCategoryStyles, getCategoryGroup, getCategoryLabel } from '@/lib/calendarCategories';
+
+const KEYWORD_ICON_MAP: { keywords: string[]; icon: React.ReactNode }[] = (() => {
+  const c = 'h-3 w-3';
+  return [
+    { keywords: ['floor', 'lvp', 'hardwood', 'carpet'], icon: <Layers className={c} /> },
+    { keywords: ['plumb', 'drain', 'pipe', 'water_heater'], icon: <Droplets className={c} /> },
+    { keywords: ['electric', 'wiring'], icon: <Zap className={c} /> },
+    { keywords: ['hvac', 'ac', 'heat', 'furnace'], icon: <Fan className={c} /> },
+    { keywords: ['paint', 'stain'], icon: <PaintBucket className={c} /> },
+    { keywords: ['demo', 'demolition'], icon: <Hammer className={c} /> },
+    { keywords: ['frame', 'framing', 'carpentry', 'trim'], icon: <Hammer className={c} /> },
+    { keywords: ['tile'], icon: <Grid2x2 className={c} /> },
+    { keywords: ['cabinet', 'counter'], icon: <Square className={c} /> },
+    { keywords: ['window', 'door', 'glass'], icon: <DoorOpen className={c} /> },
+    { keywords: ['inspect', 'permit', 'code'], icon: <ClipboardCheck className={c} /> },
+    { keywords: ['clean', 'stage'], icon: <Sparkles className={c} /> },
+    { keywords: ['fence', 'gate'], icon: <Fence className={c} /> },
+    { keywords: ['landscape', 'yard', 'sod'], icon: <Trees className={c} /> },
+    { keywords: ['foundation', 'pier', 'concrete'], icon: <Landmark className={c} /> },
+    { keywords: ['insulation'], icon: <ShieldCheck className={c} /> },
+    { keywords: ['drywall', 'sheetrock'], icon: <PaintBucket className={c} /> },
+    { keywords: ['garage'], icon: <Warehouse className={c} /> },
+    { keywords: ['roof'], icon: <Home className={c} /> },
+    { keywords: ['siding', 'stucco', 'brick', 'exterior'], icon: <Home className={c} /> },
+    { keywords: ['list', 'open_house', 'closing', 'sale'], icon: <Calendar className={c} /> },
+    { keywords: ['purchase', 'refinanc'], icon: <Calendar className={c} /> },
+    { keywords: ['order', 'arrived', 'delivery'], icon: <Package className={c} /> },
+  ];
+})();
 
 interface DealCardProps {
   task: CalendarTask;
@@ -25,36 +64,30 @@ interface DealCardProps {
 export function DealCard({ task, compact = false, onClick }: DealCardProps) {
   const getCategoryIcon = (category: string) => {
     const iconClass = 'h-3 w-3';
+    const lower = category.toLowerCase();
+
+    // Keyword-based lookup first
+    for (const entry of KEYWORD_ICON_MAP) {
+      if (entry.keywords.some(kw => lower.includes(kw))) {
+        return entry.icon;
+      }
+    }
+
+    // Fallback to group-based defaults
     const group = getCategoryGroup(category);
-    
-    // Icons based on category group
     switch (group) {
       case 'acquisition_admin':
         return <FileText className={iconClass} />;
       case 'structural_exterior':
-        switch (category) {
-          case 'demo': return <Hammer className={iconClass} />;
-          default: return <Home className={iconClass} />;
-        }
+        return <Home className={iconClass} />;
       case 'rough_ins':
-        switch (category) {
-          case 'plumbing_rough': return <Droplets className={iconClass} />;
-          case 'electrical_rough': return <Zap className={iconClass} />;
-          case 'hvac_rough': return <Fan className={iconClass} />;
-          case 'framing': return <Hammer className={iconClass} />;
-          default: return <Wrench className={iconClass} />;
-        }
+        return <Wrench className={iconClass} />;
       case 'inspections':
         return <ClipboardCheck className={iconClass} />;
       case 'interior_finishes':
         return <PaintBucket className={iconClass} />;
       case 'milestones':
-        switch (category) {
-          case 'listing_date': return <Calendar className={iconClass} />;
-          case 'open_house': return <Home className={iconClass} />;
-          case 'stage_clean': return <Sparkles className={iconClass} />;
-          default: return <Calendar className={iconClass} />;
-        }
+        return <Calendar className={iconClass} />;
       default:
         return <Wrench className={iconClass} />;
     }
