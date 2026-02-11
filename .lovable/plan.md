@@ -1,49 +1,40 @@
 
 
-## Fix: Auto-Refresh Budget Page After Category Reassignment
+## Add "Change Category" to 3-Dot Menu
 
-The budget page (`ProjectBudget.tsx`) fetches data only once when it mounts. After renaming or reassigning a category (from Settings or inline), returning to the budget page shows stale data because the component doesn't know the underlying data changed.
+Add a third option to the existing 3-dot dropdown on each category badge that lets users reassign which trade group (Structure, MEPs, Finishes, etc.) the item belongs to.
 
-### Root Cause
+### Changes
 
-`fetchData()` is called in a `useEffect` with `[id]` as the dependency. Since the project ID doesn't change, no refetch happens when you navigate away and back.
+**File: `src/components/settings/ManageSourcesCard.tsx`**
 
-### Fix
+1. **Add `onChangeGroup` prop to `CategoryBadge`** -- A new optional callback `onChangeGroup?: (newGroup: string) => void` that fires when a user picks a new trade group.
 
-**File: `src/pages/ProjectBudget.tsx`**
+2. **Add "Change Category" menu item** -- Insert a third `DropdownMenuItem` between Rename and Delete. When clicked, it toggles an inline trade group selector (similar to the rename inline input) showing a `Select` dropdown with the trade group options. User picks a new group and confirms.
 
-Add a `visibilitychange` event listener so the page refetches whenever it regains focus (e.g., switching tabs or navigating back from Settings). This is a lightweight, reliable pattern that catches all cases where data may have changed externally.
+3. **Inline group selector UI** -- When "Change Category" is clicked, the badge enters a "changing group" mode showing a compact `Select` with trade group options and confirm/cancel buttons (reusing the same inline pattern as rename).
 
-```typescript
-// Add alongside the existing useEffect
-useEffect(() => {
-  const handleVisibility = () => {
-    if (document.visibilityState === 'visible') {
-      fetchData();
-    }
-  };
-  window.addEventListener('visibilitychange', handleVisibility);
-  // Also refetch on window focus (covers same-tab navigation)
-  window.addEventListener('focus', handleVisibility);
-  return () => {
-    window.removeEventListener('visibilitychange', handleVisibility);
-    window.removeEventListener('focus', handleVisibility);
-  };
-}, [id]);
+4. **Wire up in `CategorySection`** -- Pass `onChangeGroup` through from `CategorySection` to `CategoryBadge`. The callback will:
+   - For Expense Categories (`tradeGrouped`): call `budget.renameItem(value, item.label, newGroup)` to update the group in localStorage while keeping the same label/value.
+   - For Calendar Categories (`grouped`): call `calendar.renameItem(value, item.label, newGroup)`.
+   - For non-grouped sections: the menu item simply won't appear.
+
+5. **Add `onChangeGroup` prop to `CategorySection`** -- Optional callback `onChangeGroup?: (value: string, newGroup: string) => void`. Only rendered when `grouped` or `tradeGrouped` is true.
+
+### Menu Layout (after change)
+
+```text
+[Category Name] [...]
+                 |-- Rename
+                 |-- Change Category
+                 |-- Delete
 ```
 
-Additionally, add the `pathname` from `useLocation()` as a dependency on the existing fetch `useEffect`, so navigating back to the same route triggers a refetch:
+### Inline Group Change UI
 
-```typescript
-const location = useLocation(); // already imported via react-router-dom
-
-useEffect(() => {
-  fetchData();
-}, [id, location.key]);
+```text
+[Trade Group Dropdown ▼] [✓] [✗]
 ```
 
-Using `location.key` ensures that every navigation event (even to the same URL) triggers a fresh data load. This is the most direct fix for the "navigate back and see stale data" problem.
+This reuses the existing `renameItem` hook method (which already supports updating the group) and requires no DB changes since the trade group is stored in localStorage only.
 
-### Summary
-
-One small change to the existing `useEffect` dependency array -- adding `location.key` -- ensures the budget page always shows fresh data after navigating away and back.
