@@ -1,41 +1,28 @@
 
 
-## Make Cash Flow Result Cards Clickable with Breakdown
+## Add State Field for Accurate Weather Geocoding
 
 ### What Changes
-The three result cards -- Monthly Cash Flow, Annual Cash Flow, and Cash-on-Cash ROI -- will become clickable. Clicking any of them will expand/toggle a breakdown panel showing the line-by-line math behind that number.
+Add a "Business State" field next to "Business City" on the Settings page. The state will be stored in the database and combined with the city when geocoding for weather, ensuring the correct location is resolved (e.g., "Eugene, Oregon" instead of a Eugene in another country).
 
-### Breakdown Content
+### Steps
 
-**Monthly Cash Flow breakdown:**
-- Gross Rent: (monthly rent amount)
-- Vacancy Allowance: -(vacancy % of rent)
-- Effective Income: (rent minus vacancy)
-- Mortgage P&I: -(monthly mortgage)
-- Property Taxes: -(annual / 12)
-- Insurance: -(annual / 12)
-- HOA: -(annual / 12)
-- Maintenance: -(monthly amount)
-- Management Fee: -(management % of rent)
-- **= Monthly Cash Flow**
+**1. Database migration** -- Add a `state` column (text, nullable) to the `profiles` table.
 
-**Annual Cash Flow breakdown:**
-- Monthly Cash Flow x 12
-- Shows the same items annualized
+**2. Update profile hook (`src/hooks/useProfile.ts`)**
+- Add `state: string | null` to the `Profile` interface
+- Include `state` in the `updateProfile` mutation payload
 
-**Cash-on-Cash ROI breakdown:**
-- Annual Cash Flow: (amount)
-- Total Investment: Purchase Price + Rehab Spent
-- Loan Amount: -(refi amount)
-- Cash Left in Deal: (total investment minus loan)
-- **= Annual Cash Flow / Cash in Deal**
+**3. Update Settings page (`src/pages/Settings.tsx`)**
+- Add a `state` local state variable initialized from `profile.state`
+- Replace the single city input with a side-by-side row: City + State (using the existing `grid gap-4 sm:grid-cols-2` pattern)
+- Update placeholder to "e.g. Dallas" for city and "e.g. TX" for state
+- Include `state` in the dirty-check and save logic
 
-### Technical Details
+**4. Update Weather Widget (`src/components/calendar/WeatherWidget.tsx`)**
+- Accept an optional `state` prop
+- When geocoding, combine city and state into the search query: `"${city}, ${state}"` for more precise results
 
-**File: `src/components/project/CashFlowCalculator.tsx`**
+**5. Update Calendar Header (`src/components/calendar/CalendarHeader.tsx`)**
+- Pass `profile.state` to the `WeatherWidget` alongside `profile.city`
 
-1. Add a state variable `expandedCard` (`'monthly' | 'annual' | 'roi' | null`) to track which card's breakdown is visible
-2. Make each of the three result card `div`s clickable with `cursor-pointer` and an `onClick` that toggles `expandedCard`
-3. Add a `Collapsible`-style panel below each card (or below the row) that renders when that card is selected, showing the itemized math in a clean two-column layout (label on left, amount on right)
-4. Use existing calculated values (`monthlyTaxes`, `monthlyInsurance`, `monthlyHoa`, `managementFee`, `vacancyAllowance`, `monthlyMortgage`, `grossMonthlyIncome`, `cashInvested`, etc.) -- no new calculations needed
-5. Style the breakdown with the same `bg-muted/30` treatment used in the Summary section, with a subtle border to connect it to the clicked card
