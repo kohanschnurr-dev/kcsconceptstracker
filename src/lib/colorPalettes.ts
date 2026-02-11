@@ -1,4 +1,4 @@
-export type PaletteKey = 'ember' | 'ocean' | 'forest' | 'amethyst' | 'steel';
+export type PaletteKey = 'ember' | 'ocean' | 'amethyst' | 'steel';
 
 export interface Palette {
   key: PaletteKey;
@@ -83,34 +83,6 @@ export const palettes: Palette[] = [
     },
   },
   {
-    key: 'forest',
-    name: 'Forest',
-    variables: {
-      ...shared,
-      '--background': '160 20% 8%',
-      '--card': '160 15% 11%',
-      '--popover': '160 15% 11%',
-      '--primary': '160 84% 39%',
-      '--secondary': '160 15% 20%',
-      '--muted': '160 12% 18%',
-      '--accent': '160 80% 35%',
-      '--border': '160 12% 22%',
-      '--input': '160 12% 22%',
-      '--ring': '160 84% 39%',
-      '--chart-1': '160 84% 39%',
-      '--chart-2': '45 93% 47%',
-      '--chart-3': '0 72% 51%',
-      '--chart-4': '200 80% 50%',
-      '--chart-5': '270 60% 55%',
-      '--sidebar-background': '160 20% 6%',
-      '--sidebar-primary': '160 84% 39%',
-      '--sidebar-primary-foreground': '220 20% 10%',
-      '--sidebar-accent': '160 12% 15%',
-      '--sidebar-border': '160 12% 18%',
-      '--sidebar-ring': '160 84% 39%',
-    },
-  },
-  {
     key: 'amethyst',
     name: 'Amethyst',
     variables: {
@@ -173,6 +145,7 @@ const STORAGE_KEY = 'kcs-color-palette';
 export function getActivePalette(): PaletteKey {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === 'forest') return 'ember';
     if (stored && palettes.some((p) => p.key === stored)) {
       return stored as PaletteKey;
     }
