@@ -238,7 +238,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
                     onValueChange={setCategorySearch}
                     className="text-white"
                   />
-                  <CommandList className="max-h-[300px]">
+                  <CommandList className="max-h-[300px]" style={{ overflowY: 'auto' }}>
                     <CommandEmpty className="text-slate-400 py-6 text-center text-sm">
                       No categories found
                     </CommandEmpty>
