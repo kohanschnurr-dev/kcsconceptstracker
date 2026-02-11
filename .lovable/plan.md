@@ -1,32 +1,43 @@
 
-
-## Change "Expenses" Card to "Procurement" Quick-Link
+## Add Flat Cost vs $/sqft Pricing Mode to Category Presets
 
 ### What changes
-The 4th summary card on the Project Detail page currently shows "Expenses" with the expense count and navigates to the Budget page. It will be changed to show "Procurement" and directly activate the Procurement tab on the same page.
+Each preset category currently only supports a $/sqft rate. This update adds a pricing mode toggle so categories like HVAC can use a flat dollar amount that stays constant regardless of square footage.
 
-### Steps
-
-1. **Add Procurement tab to Project Detail** (`src/pages/ProjectDetail.tsx`)
-   - Import `ProcurementTab` and `ShoppingCart` icon
-   - Add `'procurement'` to `DEFAULT_DETAIL_TAB_ORDER` and `TAB_LABELS`
-   - Add a `TabsContent` for procurement rendering `<ProcurementTab projectId={id!} />`
-
-2. **Change the 4th summary card** (`src/pages/ProjectDetail.tsx`)
-   - Replace "Expenses" label with "Procurement"
-   - Replace `Receipt` icon with `ShoppingCart`
-   - Fetch the count of procurement items assigned to this project from `project_procurement_items`
-   - Display that count instead of the expenses count
-   - Instead of navigating to `/projects/${id}/budget`, make the card programmatically switch the active tab to `procurement`
-
-3. **Make tabs controllable** (`src/pages/ProjectDetail.tsx`)
-   - Convert the `Tabs` component from uncontrolled (`defaultValue`) to controlled (`value` + `onValueChange`) using a `useState`
-   - The procurement card click sets the tab value to `'procurement'`
+### How it works
+- Each preset gets a new `mode` field: either `"psf"` (per sqft, the default) or `"flat"`
+- In the Edit Presets dialog, a new column header shows "Mode" with a toggle/select for each row
+  - `psf` mode: shows "$/sqft" column, calculates `sqft x rate`
+  - `flat` mode: shows "Flat $" column, uses the value as-is regardless of sqft
+- Column headers update to: **Category | Mode | Amount | X**
+- The auto-calculation logic updates so flat-mode presets always set their fixed amount when sqft changes (or on initial load), while psf presets multiply as before
 
 ### Technical Details
 
-- Add state: `const [activeTab, setActiveTab] = useState(effectiveTabOrder[0])`
-- Add state: `const [procurementCount, setProcurementCount] = useState(0)`
-- Fetch procurement count in `fetchProjectData`: query `project_procurement_items` where `project_id = id`, use `.select('id', { count: 'exact', head: true })`
-- Card onClick: `setActiveTab('procurement')` plus scroll the tabs into view
-- `ShoppingCart` is already imported via lucide-react in other files; just add the import here
+**File: `src/components/budget/BudgetCanvas.tsx`**
+
+1. Update the `CategoryPreset` interface:
+   ```typescript
+   interface CategoryPreset {
+     category: string;
+     label: string;
+     pricePerSqft: number;
+     mode: 'psf' | 'flat'; // new field
+   }
+   ```
+
+2. Update `DEFAULT_CATEGORY_PRESETS` to include `mode: 'psf'` on existing entries
+
+3. In the sqft-change `useEffect` (line 104-117), update calculation logic:
+   - `psf` mode: `sqftNum * preset.pricePerSqft` (existing behavior)
+   - `flat` mode: `preset.pricePerSqft` directly (the value IS the flat cost)
+
+4. Handle backward compatibility: when loading from localStorage, default missing `mode` to `'psf'`
+
+5. Update the Edit Presets dialog:
+   - Add a compact mode selector (Select dropdown or toggle) per row between Category and Amount columns
+   - Column header changes from just "$/sqft" to show "Mode" and "Amount"
+   - When mode is `flat`, the input placeholder shows "$" instead of "$/sqft"
+   - New presets default to `psf` mode
+
+6. Update the `addPreset` function to include `mode: 'psf'` as default
