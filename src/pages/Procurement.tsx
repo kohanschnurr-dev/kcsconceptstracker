@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   ShoppingCart, 
@@ -20,7 +21,8 @@ import {
   Trash2,
   FolderOpen,
   Layers,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
@@ -126,7 +128,7 @@ export default function Procurement() {
   const [bundleModalOpen, setBundleModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ProcurementItem | null>(null);
   const [editingBundle, setEditingBundle] = useState<Bundle | null>(null);
-
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fetchData = async () => {
     if (!user) return;
     
@@ -286,6 +288,26 @@ export default function Procurement() {
 
   const activeProjects = projects.filter(p => p.status !== 'complete');
 
+  const allVisibleSelected = sortedItems.length > 0 && sortedItems.every(item => selectedIds.has(item.id));
+  const someVisibleSelected = sortedItems.some(item => selectedIds.has(item.id));
+
+  const toggleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sortedItems.map(item => item.id)));
+    }
+  };
+
+  const toggleSelectItem = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const handleAssignToProject = async (itemId: string, projectId: string, projectName: string) => {
     const { error } = await supabase
       .from('project_procurement_items')
@@ -301,6 +323,33 @@ export default function Procurement() {
       toast.success(`Added to ${projectName}`);
       fetchData();
     }
+  };
+
+  const handleBulkAssign = async (projectId: string, projectName: string) => {
+    const ids = Array.from(selectedIds);
+    let added = 0;
+    let skipped = 0;
+
+    for (const itemId of ids) {
+      const alreadyAssigned = (itemProjectMap[itemId] || []).includes(projectId);
+      if (alreadyAssigned) { skipped++; continue; }
+
+      const { error } = await supabase
+        .from('project_procurement_items')
+        .insert({ item_id: itemId, project_id: projectId, quantity: 1 });
+
+      if (error) {
+        if (error.code === '23505') skipped++;
+        else toast.error(`Failed to assign item`);
+      } else {
+        added++;
+      }
+    }
+
+    if (added > 0) toast.success(`Added ${added} item${added > 1 ? 's' : ''} to ${projectName}`);
+    if (skipped > 0) toast.info(`${skipped} item${skipped > 1 ? 's' : ''} already assigned`);
+    setSelectedIds(new Set());
+    fetchData();
   };
 
   const getStatusBadge = (status: ItemStatus | null) => {
@@ -475,6 +524,14 @@ export default function Procurement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10 text-center">
+                        <Checkbox
+                          checked={allVisibleSelected}
+                          onCheckedChange={toggleSelectAll}
+                          aria-label="Select all"
+                          className={someVisibleSelected && !allVisibleSelected ? 'opacity-50' : ''}
+                        />
+                      </TableHead>
                       <TableHead className="w-16 text-center"></TableHead>
                       <TableHead>Item</TableHead>
                       <TableHead className="text-center">Bundle</TableHead>
@@ -487,7 +544,14 @@ export default function Procurement() {
                   </TableHeader>
                   <TableBody>
                     {sortedItems.map((item) => (
-                      <TableRow key={item.id}>
+                      <TableRow key={item.id} data-state={selectedIds.has(item.id) ? 'selected' : undefined}>
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={selectedIds.has(item.id)}
+                            onCheckedChange={() => toggleSelectItem(item.id)}
+                            aria-label={`Select ${item.name}`}
+                          />
+                        </TableCell>
                         <TableCell className="text-center">
                           <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center mx-auto">
                             {item.image_url ? (
@@ -618,6 +682,44 @@ export default function Procurement() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Bulk Selection Floating Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-lg shadow-lg px-4 py-3 flex items-center gap-4">
+          <span className="text-sm font-medium whitespace-nowrap">
+            {selectedIds.size} item{selectedIds.size > 1 ? 's' : ''} selected
+          </span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Assign to Project
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="center" side="top">
+              <p className="text-xs font-medium text-muted-foreground px-2 pb-2">Assign to Project</p>
+              <div className="max-h-48 overflow-y-auto space-y-0.5">
+                {activeProjects.length === 0 ? (
+                  <p className="text-sm text-muted-foreground px-2 py-1">No active projects</p>
+                ) : (
+                  activeProjects.map(project => (
+                    <button
+                      key={project.id}
+                      className="w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer"
+                      onClick={() => handleBulkAssign(project.id, project.name)}
+                    >
+                      <span className="truncate">{project.name}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Add/Edit Item Modal */}
       <ProcurementItemModal
