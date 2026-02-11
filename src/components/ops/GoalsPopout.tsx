@@ -73,6 +73,7 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
   const handleStepValue = async (goal: Goal, delta: number) => {
     if (!onUpdateGoal) return;
     const newVal = Math.max(0, (goal.current_value || 0) + delta);
+    setEditValue(String(newVal));
     await onUpdateGoal(goal.id, newVal);
   };
 
