@@ -204,8 +204,9 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
   }
 
   return (
-    <div className="flex items-center gap-1 bg-card rounded-lg px-2 py-1.5">
-      <span className="text-xs text-muted-foreground mr-1 hidden lg:block">{locationLabel}</span>
+    <div className="flex flex-col items-center bg-card rounded-lg px-2 py-1.5">
+      <span className="text-[10px] text-muted-foreground font-medium truncate mb-0.5">{locationLabel}</span>
+      <div className="flex items-center gap-1">
       {forecast.map((day) => (
         <Tooltip key={day.date}>
           <TooltipTrigger asChild>
@@ -230,6 +231,7 @@ export function WeatherWidget({ city, state }: WeatherWidgetProps) {
           </TooltipContent>
         </Tooltip>
       ))}
+      </div>
     </div>
   );
 }
