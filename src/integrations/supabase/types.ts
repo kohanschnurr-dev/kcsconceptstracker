@@ -1735,6 +1735,16 @@ export type Database = {
         | "inspections"
         | "test"
         | "foundation"
+        | "water"
+        | "gas"
+        | "electric"
+        | "insurance"
+        | "property_tax"
+        | "lawn_care"
+        | "pool_maintenance"
+        | "internet_cable"
+        | "trash_recycling"
+        | "security_alarm"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
@@ -1983,6 +1993,16 @@ export const Constants = {
         "inspections",
         "test",
         "foundation",
+        "water",
+        "gas",
+        "electric",
+        "insurance",
+        "property_tax",
+        "lawn_care",
+        "pool_maintenance",
+        "internet_cable",
+        "trash_recycling",
+        "security_alarm",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer"],

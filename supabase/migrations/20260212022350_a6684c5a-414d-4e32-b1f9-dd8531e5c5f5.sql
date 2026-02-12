@@ -1,0 +1,10 @@
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'water';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'gas';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'electric';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'insurance';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'property_tax';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'lawn_care';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'pool_maintenance';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'internet_cable';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'trash_recycling';
+ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'security_alarm';
