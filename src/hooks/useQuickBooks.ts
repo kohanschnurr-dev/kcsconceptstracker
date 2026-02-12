@@ -415,6 +415,9 @@ export function useQuickBooks() {
     let categoryId: string | null = null;
     
     if (categoryValue) {
+      // Ensure the enum value exists before any DB query referencing it
+      await supabase.rpc('add_budget_category', { new_value: categoryValue });
+
       // Check if category already exists for this project
       const { data: existingCategory, error: findError } = await supabase
         .from('project_categories')
@@ -436,9 +439,6 @@ export function useQuickBooks() {
       if (existingCategory) {
         categoryId = existingCategory.id;
       } else {
-        // Register the enum value before creating project_category
-        await supabase.rpc('add_budget_category', { new_value: categoryValue });
-
         const { data: newCategory, error: createError } = await supabase
           .from('project_categories')
           .insert({
