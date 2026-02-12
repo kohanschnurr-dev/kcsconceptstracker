@@ -332,7 +332,7 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
@@ -349,7 +349,7 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
           <div className="space-y-6 py-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
-                onClick={downloadSample}
+                onClick={(e) => { e.stopPropagation(); downloadSample(); }}
                 className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-accent/50 transition-all cursor-pointer"
               >
                 <Download className="h-8 w-8 text-primary" />
