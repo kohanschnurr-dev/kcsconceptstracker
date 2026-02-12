@@ -1757,6 +1757,7 @@ export type Database = {
         | "internet_cable"
         | "trash_recycling"
         | "security_alarm"
+        | "trims"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer"
       pricing_model: "flat" | "hourly"
@@ -2015,6 +2016,7 @@ export const Constants = {
         "internet_cable",
         "trash_recycling",
         "security_alarm",
+        "trims",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer"],

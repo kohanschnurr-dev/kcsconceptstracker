@@ -20,6 +20,22 @@ export const BUDGET_CALC_GROUP_DEFS: Record<string, BudgetCalcGroupDef> = {
 // --- Custom trade groups (localStorage) ---
 export const CUSTOM_GROUPS_STORAGE_KEY = 'custom-trade-groups';
 
+// --- Group order persistence ---
+export const GROUPS_ORDER_STORAGE_KEY = 'trade-groups-order';
+
+export function loadGroupOrder(): string[] {
+  try {
+    const raw = localStorage.getItem(GROUPS_ORDER_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+export function saveGroupOrder(order: string[]) {
+  localStorage.setItem(GROUPS_ORDER_STORAGE_KEY, JSON.stringify(order));
+  import('@/hooks/useSettingsSync').then(({ triggerSettingsSync }) => triggerSettingsSync()).catch(() => {});
+}
+
 export interface CustomGroupEntry {
   key: string;
   label: string;
@@ -76,9 +92,21 @@ export function saveCustomGroups(entries: CustomGroupEntry[]) {
   import('@/hooks/useSettingsSync').then(({ triggerSettingsSync }) => triggerSettingsSync()).catch(() => {});
 }
 
-/** Returns built-in groups merged with any user-created custom groups */
+/** Returns built-in groups merged with any user-created custom groups, sorted by saved order */
 export function getAllGroupDefs(): Record<string, BudgetCalcGroupDef> {
-  return { ...BUDGET_CALC_GROUP_DEFS, ...loadCustomGroups() };
+  const merged = { ...BUDGET_CALC_GROUP_DEFS, ...loadCustomGroups() };
+  const savedOrder = loadGroupOrder();
+  if (savedOrder.length === 0) return merged;
+
+  // Build an ordered record: saved keys first, then any new/untracked keys
+  const ordered: Record<string, BudgetCalcGroupDef> = {};
+  for (const key of savedOrder) {
+    if (merged[key]) ordered[key] = merged[key];
+  }
+  for (const key of Object.keys(merged)) {
+    if (!ordered[key]) ordered[key] = merged[key];
+  }
+  return ordered;
 }
 
 /** Maps category values to their trade group. Unmapped categories default to 'other'. */
