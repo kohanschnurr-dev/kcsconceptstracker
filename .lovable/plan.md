@@ -1,27 +1,48 @@
 
-## Reorder Summary Cards
 
-### New Layout
+## Show Empty Custom Trade Groups in Budget Calculator
 
-**Row 1:** Total Spent | Construction Costs | Loan Costs | Holding Costs
-**Row 2:** Total Construction Budget | Remaining Construction Budget | This Month | # of Expenses
+### Problem
+When you create a new trade group like "Purchase & Sale" in Settings, it doesn't appear in the Budget Calculator canvas because the code filters out groups with zero categories assigned.
+
+### Solution
+Modify `buildBudgetCalcGroups` in `src/lib/budgetCalculatorCategories.ts` to always include **custom** groups (even if empty), while still hiding empty **built-in** groups. This way, newly created groups immediately appear in the canvas so you can see them and assign categories to them.
 
 ### Technical Details
 
-**File: `src/pages/ProjectBudget.tsx` (lines 638-733)**
+**File: `src/lib/budgetCalculatorCategories.ts` (lines 141-157)**
 
-Rearrange the existing card blocks within the two grid rows:
+Update `buildBudgetCalcGroups` to keep custom groups even when they have no categories:
 
-**Row 1 (lines 638-690)** — reorder to:
-1. Total Spent (currently in Row 2, position 1)
-2. Construction Costs (currently in Row 2, position 4) — clickable, filters to `construction`
-3. Loan Costs (currently in Row 1, position 3) — clickable, filters to `loan`
-4. Holding Costs (currently in Row 1, position 4) — clickable, filters to `monthly`
+```typescript
+export function buildBudgetCalcGroups(categories: CategoryItem[]) {
+  const allDefs = getAllGroupDefs();
+  const customDefs = loadCustomGroups();
+  const groupOrder = Object.keys(allDefs);
+  return groupOrder
+    .map(groupKey => {
+      const def = allDefs[groupKey];
+      const cats = categories.filter(c => c.group === groupKey);
+      return {
+        key: groupKey,
+        name: def.label,
+        icon: def.icon,
+        emoji: def.emoji,
+        categories: cats.map(c => c.value),
+      };
+    })
+    .filter(g => g.categories.length > 0 || g.key in customDefs);
+}
+```
 
-**Row 2 (lines 692-733)** — reorder to:
-1. Total Construction Budget (currently in Row 1, position 1) — clickable, filters to `construction`
-2. Remaining Construction Budget (currently in Row 1, position 2) — not clickable
-3. This Month (currently in Row 2, position 3) — not clickable
-4. Number of Expenses (currently in Row 2, position 2) — not clickable
+**File: `src/components/budget/BudgetCanvas.tsx`**
 
-This is a pure reorder of existing card JSX blocks — no new logic or calculations needed.
+Add an empty-state message inside empty custom groups so they don't look broken:
+
+```
+No categories assigned yet. Go to Settings > Expense Categories to assign categories to this group.
+```
+
+### Files Modified
+- `src/lib/budgetCalculatorCategories.ts` -- keep custom groups visible even when empty
+- `src/components/budget/BudgetCanvas.tsx` -- empty-state hint for groups with no categories
