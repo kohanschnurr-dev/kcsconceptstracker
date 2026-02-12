@@ -138,6 +138,12 @@ export function GroupedExpenseDetailModal({
 
       const originalAmount = firstRecord.original_amount || totalAmount;
 
+      // Delete linked expenses from the expenses table
+      const qbIdsToClean = expenses.map(e => e.qb_id).filter(Boolean) as string[];
+      for (const qbId of qbIdsToClean) {
+        await (supabase.from('expenses').delete() as any).eq('qb_expense_id', qbId);
+      }
+
       // Delete all split records for this parent
       const { error: deleteError } = await supabase
         .from('quickbooks_expenses')
