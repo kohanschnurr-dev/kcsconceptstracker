@@ -234,6 +234,7 @@ export default function ProjectBudget() {
       receipt_url: qb.receipt_url,
       qb_id: qb.qb_id,
       expense_type: qb.expense_type,
+      cost_type: (qb as any).cost_type || 'construction',
     }));
     
     const allExpenses = [...expensesData, ...qbAsExpenses].sort((a, b) => 
@@ -481,10 +482,24 @@ export default function ProjectBudget() {
   const hasActiveFilters = searchQuery || selectedCategory !== 'all' || selectedPaymentMethod !== 'all' || selectedCostType !== 'all' || dateRange !== 'all';
 
   const handleCostTypeChange = async (expenseId: string, costType: string) => {
-    const { error } = await supabase
-      .from('expenses')
-      .update({ cost_type: costType } as any)
-      .eq('id', expenseId);
+    const expense = expenses.find(e => e.id === expenseId);
+    if (!expense) return;
+
+    let error;
+    if (expense.isQuickBooks) {
+      const result = await supabase
+        .from('quickbooks_expenses')
+        .update({ cost_type: costType } as any)
+        .eq('id', expenseId);
+      error = result.error;
+    } else {
+      const result = await supabase
+        .from('expenses')
+        .update({ cost_type: costType } as any)
+        .eq('id', expenseId);
+      error = result.error;
+    }
+
     if (error) {
       toast.error('Failed to update expense type');
       return;
