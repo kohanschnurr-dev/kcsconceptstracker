@@ -1,0 +1,1 @@
+ALTER TABLE quickbooks_expenses ADD COLUMN cost_type text NOT NULL DEFAULT 'construction';

@@ -1351,6 +1351,7 @@ export type Database = {
           account_name: string | null
           amount: number
           category_id: string | null
+          cost_type: string
           created_at: string
           date: string
           description: string | null
@@ -1371,6 +1372,7 @@ export type Database = {
           account_name?: string | null
           amount: number
           category_id?: string | null
+          cost_type?: string
           created_at?: string
           date: string
           description?: string | null
@@ -1391,6 +1393,7 @@ export type Database = {
           account_name?: string | null
           amount?: number
           category_id?: string | null
+          cost_type?: string
           created_at?: string
           date?: string
           description?: string | null
