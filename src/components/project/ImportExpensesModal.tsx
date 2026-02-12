@@ -410,7 +410,7 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sm">Have messy data? Let AI format it for you</p>
-                  <p className="text-xs text-muted-foreground">Copy this prompt into ChatGPT, Gemini, or Claude, then upload your file (PDF, Excel, or receipt image). Save the output as a .csv file and upload it above.</p>
+                  <p className="text-xs text-muted-foreground">Copy this prompt into ChatGPT, Gemini, Claude, or other LLM, then upload your file (PDF, Excel, or receipt image). Save the output as a .csv file and upload it above.</p>
                 </div>
                 <Button
                   variant="outline"
