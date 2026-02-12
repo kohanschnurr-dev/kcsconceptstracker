@@ -274,14 +274,20 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
       vendor: header.indexOf('vendor'),
       category: header.indexOf('category'),
       description: header.indexOf('description'),
-      amount: header.indexOf('amount'),
-      paymentMethod: Math.max(header.indexOf('payment method'), header.indexOf('paymentmethod'), header.indexOf('payment_method')),
+      amount: Math.max(header.indexOf('amount'), header.indexOf('total')),
+      paymentMethod: Math.max(header.indexOf('payment method'), header.indexOf('paymentmethod'), header.indexOf('payment_method'), header.indexOf('payment')),
       expenseType: Math.max(header.indexOf('expense type'), header.indexOf('expensetype'), header.indexOf('expense_type'), header.indexOf('type')),
       notes: header.indexOf('notes'),
     };
 
-    if (colMap.date === -1 || colMap.amount === -1 || colMap.category === -1) {
-      toast.error('CSV must have at least Date, Category, and Amount columns');
+    console.log('[CSV Import] Detected headers:', header, 'Column map:', colMap);
+
+    const missing: string[] = [];
+    if (colMap.date === -1) missing.push('Date');
+    if (colMap.amount === -1) missing.push('Amount (or Total)');
+    if (colMap.category === -1) missing.push('Category');
+    if (missing.length > 0) {
+      toast.error(`Missing required columns: ${missing.join(', ')}. Found: ${header.join(', ')}`);
       return;
     }
 
