@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Plus, RotateCcw, List, Pencil, Trash2, Check, X, Settings } from 'lucide-react';
+import { MoreHorizontal, Plus, RotateCcw, List, Pencil, Trash2, Check, X, Settings, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCustomCategories, type CategoryItem } from '@/hooks/useCustomCategories';
 import { CALENDAR_CATEGORIES, CATEGORY_GROUPS, type CategoryGroup } from '@/lib/calendarCategories';
@@ -14,11 +14,14 @@ import { MONTHLY_COST_CATEGORIES } from '@/lib/monthlyCategories';
 import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES } from '@/types';
 import { DEFAULT_STORES } from '@/hooks/useCustomStores';
 import { DEFAULT_PROPERTY_FIELDS } from '@/components/project/ProjectInfo';
-import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP, resolveTradeGroup, getAllGroupDefs, loadCustomGroups, saveCustomGroups, CUSTOM_GROUPS_STORAGE_KEY, pickEmoji, type CustomGroupEntry } from '@/lib/budgetCalculatorCategories';
+import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP, resolveTradeGroup, getAllGroupDefs, loadCustomGroups, saveCustomGroups, CUSTOM_GROUPS_STORAGE_KEY, pickEmoji, saveGroupOrder, type CustomGroupEntry } from '@/lib/budgetCalculatorCategories';
 import { supabase } from '@/integrations/supabase/client';
 import { reassignBudgetCategory, reassignGenericColumn } from '@/lib/reassignCategory';
 import ReassignCategoryDialog from './ReassignCategoryDialog';
 import GenericReassignDialog from './GenericReassignDialog';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 function CategoryBadge({
   item,
@@ -344,16 +347,53 @@ const SECTION_LABELS: Record<SectionKey, string> = {
   propertyInfo: 'field',
 };
 
+function SortableGroupBadge({ groupKey, label, isBuiltIn, onDelete }: { groupKey: string; label: string; isBuiltIn: boolean; onDelete?: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: groupKey });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center">
+      <Badge variant="outline" className="text-xs flex items-center gap-0.5">
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none">
+          <GripVertical className="h-3 w-3" />
+        </button>
+        {label}
+        {!isBuiltIn && onDelete && (
+          <button
+            onClick={onDelete}
+            className="ml-1 hover:text-destructive text-muted-foreground"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </Badge>
+    </div>
+  );
+}
+
 function ManageGroupsSection({ budgetHook }: { budgetHook: ReturnType<typeof useCustomCategories> }) {
   const [customGroups, setCustomGroups] = useState<CustomGroupEntry[]>([]);
   const [newGroupName, setNewGroupName] = useState('');
   const [showManage, setShowManage] = useState(false);
+  const [orderedKeys, setOrderedKeys] = useState<string[]>([]);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  // Initialize custom groups and ordered keys
   useEffect(() => {
     try {
       const raw = localStorage.getItem(CUSTOM_GROUPS_STORAGE_KEY);
       if (raw) setCustomGroups(JSON.parse(raw));
     } catch {}
+    // Build ordered keys from getAllGroupDefs (which already respects saved order)
+    setOrderedKeys(Object.keys(getAllGroupDefs()));
   }, []);
 
   const handleAddGroup = () => {
@@ -369,12 +409,14 @@ function ManageGroupsSection({ budgetHook }: { budgetHook: ReturnType<typeof use
     const updated = [...customGroups, { key, label: trimmed, emoji }];
     setCustomGroups(updated);
     saveCustomGroups(updated);
+    const newOrder = [...orderedKeys, key];
+    setOrderedKeys(newOrder);
+    saveGroupOrder(newOrder);
     setNewGroupName('');
     toast.success(`Added group "${trimmed}"`);
   };
 
   const handleDeleteGroup = (key: string) => {
-    // Reassign categories in this group back to 'other'
     const groupItems = budgetHook.items.filter(i => i.group === key);
     groupItems.forEach(item => {
       budgetHook.renameItem(item.value, item.label, 'other');
@@ -382,8 +424,24 @@ function ManageGroupsSection({ budgetHook }: { budgetHook: ReturnType<typeof use
     const updated = customGroups.filter(g => g.key !== key);
     setCustomGroups(updated);
     saveCustomGroups(updated);
+    const newOrder = orderedKeys.filter(k => k !== key);
+    setOrderedKeys(newOrder);
+    saveGroupOrder(newOrder);
     toast.success('Group removed — categories moved to Other');
   };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = orderedKeys.indexOf(active.id as string);
+    const newIndex = orderedKeys.indexOf(over.id as string);
+    const newOrder = arrayMove(orderedKeys, oldIndex, newIndex);
+    setOrderedKeys(newOrder);
+    saveGroupOrder(newOrder);
+  };
+
+  const allDefs = getAllGroupDefs();
+  const builtInKeys = new Set(Object.keys(BUDGET_CALC_GROUP_DEFS));
 
   return (
     <div className="mt-3 pt-3 border-t border-border/30 px-1">
@@ -396,21 +454,25 @@ function ManageGroupsSection({ budgetHook }: { budgetHook: ReturnType<typeof use
       </button>
       {showManage && (
         <div className="mt-2 space-y-2">
-          {customGroups.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {customGroups.map(g => (
-                <Badge key={g.key} variant="outline" className="text-xs">
-                  {g.label}
-                  <button
-                    onClick={() => handleDeleteGroup(g.key)}
-                    className="ml-1.5 hover:text-destructive text-muted-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          )}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={orderedKeys} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-wrap gap-1.5">
+                {orderedKeys.map(key => {
+                  const def = allDefs[key];
+                  if (!def) return null;
+                  return (
+                    <SortableGroupBadge
+                      key={key}
+                      groupKey={key}
+                      label={def.label}
+                      isBuiltIn={builtInKeys.has(key)}
+                      onDelete={!builtInKeys.has(key) ? () => handleDeleteGroup(key) : undefined}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
           <div className="flex gap-2">
             <Input
               value={newGroupName}

@@ -14,6 +14,7 @@ const SETTINGS_KEYS = [
   'custom-property-info-fields',
   'kcs-color-palette',
   'custom-trade-groups',
+  'trade-groups-order',
 ];
 
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
