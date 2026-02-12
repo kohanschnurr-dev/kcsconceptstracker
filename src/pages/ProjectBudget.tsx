@@ -91,6 +91,7 @@ interface DBExpense {
   includes_tax: boolean;
   tax_amount: number | null;
   status: string;
+  expense_type?: string | null;
   isQuickBooks?: boolean;
   notes?: string | null;
   receipt_url?: string | null;
@@ -120,6 +121,7 @@ export default function ProjectBudget() {
   const [categories, setCategories] = useState<(DBCategory & { actualSpent: number })[]>([]);
   const [expenses, setExpenses] = useState<DBExpense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalLoanCosts, setTotalLoanCosts] = useState(0);
   
   // Filters and search
   const [searchQuery, setSearchQuery] = useState('');
@@ -168,11 +170,15 @@ export default function ProjectBudget() {
     
     setProject(projectData);
     
-    const [categoriesRes, expensesRes, qbExpensesRes] = await Promise.all([
+    const [categoriesRes, expensesRes, qbExpensesRes, loanPaymentsRes] = await Promise.all([
       supabase.from('project_categories').select('*').eq('project_id', id),
       supabase.from('expenses').select('*').eq('project_id', id).order('date', { ascending: false }),
-      supabase.from('quickbooks_expenses').select('*').eq('project_id', id).eq('is_imported', true).order('date', { ascending: false })
+      supabase.from('quickbooks_expenses').select('*').eq('project_id', id).eq('is_imported', true).order('date', { ascending: false }),
+      supabase.from('loan_payments').select('amount').eq('project_id', id)
     ]);
+
+    const loanTotal = (loanPaymentsRes.data || []).reduce((sum, lp) => sum + Number(lp.amount), 0);
+    setTotalLoanCosts(loanTotal);
     
     const categoriesData = categoriesRes.data || [];
     const expensesData = expensesRes.data || [];
@@ -224,6 +230,7 @@ export default function ProjectBudget() {
       notes: qb.notes,
       receipt_url: qb.receipt_url,
       qb_id: qb.qb_id,
+      expense_type: qb.expense_type,
     }));
     
     const allExpenses = [...expensesData, ...qbAsExpenses].sort((a, b) => 
@@ -413,13 +420,21 @@ export default function ProjectBudget() {
   const remaining = totalBudget - totalSpent;
   const filteredTotal = filteredExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
 
+  // Monthly costs from expense_type = 'monthly'
+  const totalMonthlyCosts = useMemo(() => {
+    return expenses
+      .filter(e => e.expense_type === 'monthly')
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+  }, [expenses]);
+
+  // Grand total spent across all types
+  const grandTotalSpent = totalSpent + totalMonthlyCosts + totalLoanCosts;
+
   // Monthly spending calculations
   const spendingAnalytics = useMemo(() => {
     const now = new Date();
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
-    const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
-    const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
     
     // This month spending
     const thisMonthSpending = expenses.reduce((sum, exp) => {
@@ -430,44 +445,17 @@ export default function ProjectBudget() {
       return sum;
     }, 0);
     
-    // Last month spending
-    const lastMonthSpending = expenses.reduce((sum, exp) => {
-      const expDate = new Date(exp.date);
-      if (expDate.getMonth() === lastMonth && expDate.getFullYear() === lastMonthYear) {
-        return sum + Number(exp.amount);
-      }
-      return sum;
-    }, 0);
-    
-    // This week spending (last 7 days)
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const thisWeekSpending = expenses.reduce((sum, exp) => {
-      const expDate = new Date(exp.date);
-      if (expDate >= weekAgo) {
-        return sum + Number(exp.amount);
-      }
-      return sum;
-    }, 0);
-    
     // Average daily spending
     const projectStart = new Date(project?.start_date || now);
     const daysSinceStart = Math.max(1, Math.ceil((now.getTime() - projectStart.getTime()) / (24 * 60 * 60 * 1000)));
-    const avgDailySpending = totalSpent / daysSinceStart;
-    
-    // Month over month change
-    const monthChange = lastMonthSpending > 0 
-      ? ((thisMonthSpending - lastMonthSpending) / lastMonthSpending) * 100
-      : thisMonthSpending > 0 ? 100 : 0;
+    const avgDailySpending = grandTotalSpent / daysSinceStart;
 
     return {
       thisMonthSpending,
-      lastMonthSpending,
-      thisWeekSpending,
       avgDailySpending,
-      monthChange,
       daysSinceStart
     };
-  }, [expenses, project, totalSpent]);
+  }, [expenses, project, grandTotalSpent]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -592,114 +580,97 @@ export default function ProjectBudget() {
           </TabsList>
 
           <TabsContent value="budget" className="space-y-6">
-            {/* Summary Cards */}
+            {/* Summary Cards - Row 1 */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="glass-card">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <DollarSign className="h-4 w-4 text-primary" />
-                <span className="text-sm text-muted-foreground">Total Budget</span>
-              </div>
-              <p className="text-2xl font-bold font-mono">{formatCurrency(totalBudget)}</p>
-              <p className="text-xs text-muted-foreground mt-1">from {categories.length} categories</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="glass-card">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="h-4 w-4 text-warning" />
-                <span className="text-sm text-muted-foreground">Total Spent</span>
-              </div>
-              <p className="text-2xl font-bold font-mono text-warning">{formatCurrency(totalSpent)}</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="glass-card">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingDown className={cn("h-4 w-4", remaining >= 0 ? "text-success" : "text-destructive")} />
-                <span className="text-sm text-muted-foreground">Remaining</span>
-              </div>
-              <p className={cn("text-2xl font-bold font-mono", remaining >= 0 ? "text-success" : "text-destructive")}>
-                {formatCurrency(remaining)}
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="glass-card">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Receipt className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Expenses</span>
-              </div>
-              <p className="text-2xl font-bold">{expenses.length}</p>
-            </CardContent>
-          </Card>
-        </div>
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Total Construction Budget</span>
+                  </div>
+                  <p className="text-2xl font-bold font-mono">{formatCurrency(totalBudget)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">from {categories.length} categories</p>
+                </CardContent>
+              </Card>
 
-        {/* Spending Analytics */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="glass-card">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Calendar className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-muted-foreground">This Month</span>
-              </div>
-              <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.thisMonthSpending)}</p>
-              <div className="flex items-center gap-1 mt-1">
-                {spendingAnalytics.monthChange !== 0 && (
-                  <>
-                    {spendingAnalytics.monthChange > 0 ? (
-                      <TrendingUp className="h-3 w-3 text-destructive" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3 text-success" />
-                    )}
-                    <span className={cn(
-                      "text-xs",
-                      spendingAnalytics.monthChange > 0 ? "text-destructive" : "text-success"
-                    )}>
-                      {Math.abs(spendingAnalytics.monthChange).toFixed(0)}% vs last month
-                    </span>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingDown className={cn("h-4 w-4", remaining >= 0 ? "text-success" : "text-destructive")} />
+                    <span className="text-sm text-muted-foreground">Remaining Construction Budget</span>
+                  </div>
+                  <p className={cn("text-2xl font-bold font-mono", remaining >= 0 ? "text-success" : "text-destructive")}>
+                    {formatCurrency(remaining)}
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card className="glass-card">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Last Month</span>
-              </div>
-              <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.lastMonthSpending)}</p>
-            </CardContent>
-          </Card>
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Total Monthly Costs</span>
+                  </div>
+                  <p className="text-2xl font-bold font-mono">{formatCurrency(totalMonthlyCosts)}</p>
+                </CardContent>
+              </Card>
 
-          <Card className="glass-card">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="h-4 w-4 text-purple-500" />
-                <span className="text-sm text-muted-foreground">This Week</span>
-              </div>
-              <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.thisWeekSpending)}</p>
-            </CardContent>
-          </Card>
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Banknote className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Total Loan Costs</span>
+                  </div>
+                  <p className="text-2xl font-bold font-mono">{formatCurrency(totalLoanCosts)}</p>
+                </CardContent>
+              </Card>
+            </div>
 
-          <Card className="glass-card">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <DollarSign className="h-4 w-4 text-cyan-500" />
-                <span className="text-sm text-muted-foreground">Avg. Daily</span>
-              </div>
-              <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.avgDailySpending)}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                over {spendingAnalytics.daysSinceStart} days
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+            {/* Summary Cards - Row 2 */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp className="h-4 w-4 text-warning" />
+                    <span className="text-sm text-muted-foreground">Total Spent</span>
+                  </div>
+                  <p className="text-2xl font-bold font-mono text-warning">{formatCurrency(grandTotalSpent)}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Receipt className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground"># of Expenses</span>
+                  </div>
+                  <p className="text-2xl font-bold">{expenses.length}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">This Month</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.thisMonthSpending)}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Avg. Daily</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.avgDailySpending)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    over {spendingAnalytics.daysSinceStart} days
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
         {/* Budget Progress */}
         <Card className="glass-card">
