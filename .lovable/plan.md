@@ -1,39 +1,27 @@
 
 
-## Add Cost Type Classification to Project Budget Expenses
+## Unify Cost Type Column to Badge-Style UI
 
-### Overview
-Add a new "Type" column to the project budget's "All Expenses" table (between Description and Amount) that lets users classify each expense as **Construction**, **Loan**, or **Monthly**. This classification is clickable inline -- no modal needed.
+### Problem
+Manual expenses show a bordered `Select` dropdown with a chevron arrow, while QuickBooks expenses show a clean `Badge`. The inconsistency looks messy.
 
-### Database Change
+### Solution
+Replace the `Select` dropdown for manual expenses with a clickable `Badge` that matches the QuickBooks badge style. When clicked, show a small `Popover` with three options (Construction, Loan, Monthly) to change the type. All rows will look identical -- clean badge, no dropdown chrome.
 
-Add a new `cost_type` column to the `expenses` table (separate from the existing `expense_type` which tracks product/labor):
-
-```text
-ALTER TABLE expenses ADD COLUMN cost_type text NOT NULL DEFAULT 'construction';
-```
-
-Default is `'construction'` since all existing expenses are construction costs. Valid values: `'construction'`, `'loan'`, `'monthly'`.
-
-### UI Changes
+### Technical Details
 
 **File: `src/pages/ProjectBudget.tsx`**
 
-1. Add a new "Type" column header between "Description" and "Amount" in the All Expenses table
-2. In each expense row, render a small inline `Select` dropdown (or clickable badge) in that column showing the current cost type (Construction / Loan / Monthly)
-3. Clicking it opens a dropdown to change the type -- on change, update the `expenses` record's `cost_type` in the database and refresh
-4. Add `cost_type` to the `DBExpense` interface
-5. Add a "Type" filter dropdown to the filter bar (All Types / Construction / Loan / Monthly)
-6. Update `filteredExpenses` memo to support the new type filter
-7. Update `clearFilters` and `hasActiveFilters` to include the type filter
-8. Include cost type in CSV export
+Replace the current conditional rendering (lines 1195-1214) so both manual and QB expenses render as a `Badge`. For manual expenses (and QB expenses that have a linked record), the badge will be wrapped in a `Popover` trigger. Clicking it opens a minimal popover with three buttons to pick the type.
 
-**Inline Select behavior:**
-- Displays as a small badge-styled select: "Construction" (default), "Loan", or "Monthly"
-- Clicking stops row propagation (doesn't open detail modal)
-- On change, calls `supabase.from('expenses').update({ cost_type }).eq('id', exp.id)` then refreshes
+The badge color will subtly vary by type:
+- Construction: default outline badge
+- Loan: secondary variant
+- Monthly: secondary variant
 
-### What stays the same
-- The existing `expense_type` column (product/labor) is untouched -- it serves a different purpose
-- No changes to QuickBooks import flow
-- No changes to the Expenses page or other pages
+Clicking a type in the popover updates the database, closes the popover, and refreshes the row -- same `handleCostTypeChange` logic already in place.
+
+Imports needed: `Popover`, `PopoverTrigger`, `PopoverContent` from the existing UI components.
+
+Remove the `Select`/`SelectTrigger`/`SelectContent`/`SelectItem` imports if no longer used elsewhere in the file.
+
