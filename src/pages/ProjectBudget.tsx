@@ -130,6 +130,7 @@ export default function ProjectBudget() {
   const [dateRange, setDateRange] = useState<'all' | '7d' | '30d' | '90d' | 'year'>('all');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [selectedExpenseType, setSelectedExpenseType] = useState<string>('all');
   
   // Expanded categories
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -391,6 +392,15 @@ export default function ProjectBudget() {
       filtered = filtered.filter(exp => new Date(exp.date) >= cutoff);
     }
     
+    // Expense type filter
+    if (selectedExpenseType !== 'all') {
+      if (selectedExpenseType === 'construction') {
+        filtered = filtered.filter(exp => !exp.expense_type || (exp.expense_type !== 'loan' && exp.expense_type !== 'monthly'));
+      } else {
+        filtered = filtered.filter(exp => exp.expense_type === selectedExpenseType);
+      }
+    }
+    
     // Sorting
     filtered.sort((a, b) => {
       let comparison = 0;
@@ -471,9 +481,10 @@ export default function ProjectBudget() {
     setSelectedCategory('all');
     setSelectedPaymentMethod('all');
     setDateRange('all');
+    setSelectedExpenseType('all');
   };
 
-  const hasActiveFilters = searchQuery || selectedCategory !== 'all' || selectedPaymentMethod !== 'all' || dateRange !== 'all';
+  const hasActiveFilters = searchQuery || selectedCategory !== 'all' || selectedPaymentMethod !== 'all' || dateRange !== 'all' || selectedExpenseType !== 'all';
 
   const exportToCSV = () => {
     const headers = ['Date', 'Vendor', 'Category', 'Description', 'Amount', 'Tax', 'Payment Method', 'Status'];
@@ -1008,7 +1019,7 @@ export default function ProjectBudget() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
               <div className="relative lg:col-span-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -1018,6 +1029,18 @@ export default function ProjectBudget() {
                   className="pl-9"
                 />
               </div>
+              
+              <Select value={selectedExpenseType} onValueChange={setSelectedExpenseType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="construction">Construction</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="loan">Loan</SelectItem>
+                </SelectContent>
+              </Select>
               
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger>
@@ -1167,9 +1190,23 @@ export default function ProjectBudget() {
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          <Badge variant="outline" className="text-xs font-normal">
-                            {getCategoryLabel(exp.category_id)}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="outline" className="text-xs font-normal">
+                              {exp.expense_type === 'loan' && !exp.category_id
+                                ? 'Loan Payment'
+                                : getCategoryLabel(exp.category_id)}
+                            </Badge>
+                            {exp.expense_type === 'loan' && (
+                              <Badge className="text-[10px] px-1.5 py-0 bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/15">
+                                Loan
+                              </Badge>
+                            )}
+                            {exp.expense_type === 'monthly' && (
+                              <Badge className="text-[10px] px-1.5 py-0 bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/15">
+                                Monthly
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <span className="text-sm text-muted-foreground truncate max-w-[200px] block">
