@@ -1,0 +1,1 @@
+ALTER TABLE public.expenses ALTER COLUMN category_id DROP NOT NULL;
