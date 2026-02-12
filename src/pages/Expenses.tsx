@@ -282,7 +282,7 @@ export default function Expenses() {
       
       // Get resolved names for searching
       const projectName = getProjectName(expense.project_id).toLowerCase();
-      const categoryLabel = getCategoryLabel(expense.category_id, expense.project_id).toLowerCase();
+      const categoryLabel = (expense.category_id ? getCategoryLabel(expense.category_id, expense.project_id) : '').toLowerCase();
       const amountStr = expense.amount.toString();
       
       const matchesSearch = 
