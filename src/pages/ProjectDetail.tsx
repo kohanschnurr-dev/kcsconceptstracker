@@ -250,11 +250,17 @@ export default function ProjectDetail() {
     const expensesData = expensesRes.data || [];
     const qbExpensesData = qbExpensesRes.data || [];
     
+    // Collect QB IDs already imported as regular expenses to prevent duplicates
+    const importedQbIds = new Set(
+      expensesData.filter(e => e.qb_expense_id).map(e => e.qb_expense_id)
+    );
+    const dedupedQbExpenses = qbExpensesData.filter(qb => !importedQbIds.has(qb.id));
+
     const allExpensesByCategoryId: Record<string, number> = {};
     expensesData.forEach(e => {
       allExpensesByCategoryId[e.category_id] = (allExpensesByCategoryId[e.category_id] || 0) + Number(e.amount);
     });
-    qbExpensesData.forEach(e => {
+    dedupedQbExpenses.forEach(e => {
       if (e.category_id) {
         allExpensesByCategoryId[e.category_id] = (allExpensesByCategoryId[e.category_id] || 0) + Number(e.amount);
       }
@@ -265,7 +271,7 @@ export default function ProjectDetail() {
       return { ...cat, actualSpent };
     });
     
-    const qbExpensesConverted: DBExpense[] = qbExpensesData
+    const qbExpensesConverted: DBExpense[] = dedupedQbExpenses
       .filter(qb => qb.category_id)
       .map(qb => ({
         id: qb.id,
