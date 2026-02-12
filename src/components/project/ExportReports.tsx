@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 import { toast } from 'sonner';
 import { formatDisplayDateNumeric } from '@/lib/dateUtils';
 
@@ -52,11 +52,11 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
   const getCategoryLabel = (categoryId: string) => {
     const cat = categories.find(c => c.id === categoryId);
     if (!cat) return 'Unknown';
-    return BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label || cat.category;
+    return getBudgetCategories().find(b => b.value === cat.category)?.label || cat.category;
   };
 
   const getCategoryName = (categoryValue: string) => {
-    return BUDGET_CATEGORIES.find(b => b.value === categoryValue)?.label || categoryValue;
+    return getBudgetCategories().find(b => b.value === categoryValue)?.label || categoryValue;
   };
 
   const formatCurrency = (amount: number) => {

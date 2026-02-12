@@ -36,7 +36,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 
 // Types
 type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'other';
@@ -195,12 +195,12 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
     if (item.category_id) {
       const cat = categories.find(c => c.id === item.category_id);
       if (cat) {
-        const budgetCat = BUDGET_CATEGORIES.find(bc => bc.value === cat.category);
+        const budgetCat = getBudgetCategories().find(bc => bc.value === cat.category);
         return budgetCat?.label || cat.category;
       }
     }
     if (item.category) {
-      const budgetCat = BUDGET_CATEGORIES.find(bc => bc.value === item.category);
+      const budgetCat = getBudgetCategories().find(bc => bc.value === item.category);
       return budgetCat?.label || item.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
     return 'Uncategorized';

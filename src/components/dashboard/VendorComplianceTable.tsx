@@ -1,5 +1,5 @@
 import { CheckCircle, XCircle, Star } from 'lucide-react';
-import { Vendor, BUDGET_CATEGORIES } from '@/types';
+import { Vendor, getBudgetCategories } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
@@ -9,7 +9,7 @@ interface VendorComplianceTableProps {
 
 export function VendorComplianceTable({ vendors }: VendorComplianceTableProps) {
   const getTradeLabel = (trade: string) => {
-    return BUDGET_CATEGORIES.find(b => b.value === trade)?.label || trade;
+    return getBudgetCategories().find(b => b.value === trade)?.label || trade;
   };
 
   return (

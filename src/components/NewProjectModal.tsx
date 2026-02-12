@@ -14,7 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { BUDGET_CATEGORIES, type ProjectType } from '@/types';
+import { getBudgetCategories, type ProjectType } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateString } from '@/lib/dateUtils';
@@ -82,8 +82,9 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
       if (projectError) throw projectError;
 
       // Create default budget categories
-      const budgetPerCategory = parseFloat(totalBudget) / BUDGET_CATEGORIES.length;
-      const categories = BUDGET_CATEGORIES.map(cat => ({
+      const allCats = getBudgetCategories();
+      const budgetPerCategory = parseFloat(totalBudget) / allCats.length;
+      const categories = allCats.map(cat => ({
         project_id: project.id,
         category: cat.value,
         estimated_budget: Math.round(budgetPerCategory),
@@ -244,7 +245,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
           </div>
 
           <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Budget will be automatically distributed across {BUDGET_CATEGORIES.length} categories. You can adjust individual amounts later.
+            Budget will be automatically distributed across {getBudgetCategories().length} categories. You can adjust individual amounts later.
           </div>
 
           <div className="flex gap-2 pt-2">

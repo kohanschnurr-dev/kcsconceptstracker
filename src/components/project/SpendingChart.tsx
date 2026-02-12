@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp } from 'lucide-react';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 
 interface Category {
   id: string;
@@ -21,7 +21,7 @@ export function SpendingChart({ categories, totalBudget }: SpendingChartProps) {
     return categories
       .filter(cat => cat.actualSpent > 0)
       .map(cat => {
-        const label = BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label || cat.category;
+        const label = getBudgetCategories().find(b => b.value === cat.category)?.label || cat.category;
         return {
           name: label,
           actual: cat.actualSpent,

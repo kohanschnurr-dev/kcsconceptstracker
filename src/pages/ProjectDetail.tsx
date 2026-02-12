@@ -53,7 +53,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import {

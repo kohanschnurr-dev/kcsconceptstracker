@@ -1,5 +1,5 @@
 import { CreditCard, DollarSign, Check, FileText } from 'lucide-react';
-import { Expense, BUDGET_CATEGORIES } from '@/types';
+import { Expense, getBudgetCategories } from '@/types';
 import { cn } from '@/lib/utils';
 import { formatDisplayDateShort } from '@/lib/dateUtils';
 
@@ -37,7 +37,7 @@ export function RecentExpenses({ expenses, projectCategories }: RecentExpensesPr
     if (!projectCategories) return categoryId;
     const cat = projectCategories.find(c => c.id === categoryId);
     if (!cat) return categoryId;
-    return BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label || cat.category;
+    return getBudgetCategories().find(b => b.value === cat.category)?.label || cat.category;
   };
 
   return (
