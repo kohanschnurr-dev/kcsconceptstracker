@@ -6,6 +6,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { QuickTaskInput } from '@/components/dashboard/QuickTaskInput';
 import { TasksDueTodayBanner } from '@/components/dashboard/TasksDueTodayBanner';
+import { useProfile } from '@/hooks/useProfile';
 import { NewProjectModal } from '@/components/NewProjectModal';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +45,7 @@ export default function Index() {
   const [totalLoanPayments, setTotalLoanPayments] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
+  const { profile } = useProfile();
 
   useEffect(() => {
     fetchData();
@@ -181,11 +183,19 @@ export default function Index() {
 
   // Calculate stats
   // Sort by project type priority (fix & flips first, then wholesaling, etc.)
+  // Sort by starred first (in saved order), then by start date descending
   const activeProjects = projects
     .filter(p => p.status === 'active')
     .sort((a, b) => {
-      const priority = { fix_flip: 0, wholesaling: 1, new_construction: 2, rental: 3 };
-      return (priority[a.projectType] ?? 4) - (priority[b.projectType] ?? 4);
+      const starredList = profile?.starred_projects as string[] || [];
+      const aIdx = starredList.indexOf(a.id);
+      const bIdx = starredList.indexOf(b.id);
+      const aStarred = aIdx >= 0;
+      const bStarred = bIdx >= 0;
+      if (aStarred && !bStarred) return -1;
+      if (!aStarred && bStarred) return 1;
+      if (aStarred && bStarred) return aIdx - bIdx;
+      return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
     });
   const totalBudget = projects.reduce((sum, p) => sum + p.totalBudget, 0);
   const totalSpent = projects.reduce((sum, p) => 
