@@ -46,7 +46,7 @@ export default function Index() {
   const [totalLoanPayments, setTotalLoanPayments] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
-  const { profile } = useProfile();
+  const { profile, isProjectStarred, toggleStarProject } = useProfile();
 
   useEffect(() => {
     fetchData();
@@ -309,6 +309,16 @@ export default function Index() {
                     key={project.id}
                     project={project}
                     onClick={() => navigate(`/projects/${project.id}`)}
+                    isStarred={isProjectStarred(project.id)}
+                    onToggleStar={(id) => {
+                      toggleStarProject.mutate(id, {
+                        onError: (err) => {
+                          if (err.message === 'max') {
+                            toast({ title: 'Limit reached', description: 'You can pin up to 6 projects', variant: 'destructive' });
+                          }
+                        },
+                      });
+                    }}
                   />
                 ))}
               </div>
