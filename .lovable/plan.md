@@ -1,48 +1,38 @@
 
 
-## Show Empty Custom Trade Groups in Budget Calculator
+## Show Custom Trade Groups as Section Headers in Settings
 
 ### Problem
-When you create a new trade group like "Purchase & Sale" in Settings, it doesn't appear in the Budget Calculator canvas because the code filters out groups with zero categories assigned.
+The "Purchase & Sale" custom group you created appears in the "Manage Groups" area but doesn't show up as a section header (like Structure, MEPs, Finishes, etc.) in the Expense Categories list. This is because the code skips any group with zero categories.
 
 ### Solution
-Modify `buildBudgetCalcGroups` in `src/lib/budgetCalculatorCategories.ts` to always include **custom** groups (even if empty), while still hiding empty **built-in** groups. This way, newly created groups immediately appear in the canvas so you can see them and assign categories to them.
+Update the rendering logic in `src/components/settings/ManageSourcesCard.tsx` so that custom trade groups always appear as section headers -- even when empty -- just like the built-in groups that have categories. This lets you see the group and start assigning categories to it via the dropdown.
 
 ### Technical Details
 
-**File: `src/lib/budgetCalculatorCategories.ts` (lines 141-157)**
+**File: `src/components/settings/ManageSourcesCard.tsx` (line 244)**
 
-Update `buildBudgetCalcGroups` to keep custom groups even when they have no categories:
+Change the filter to keep custom groups visible even when empty:
 
 ```typescript
-export function buildBudgetCalcGroups(categories: CategoryItem[]) {
-  const allDefs = getAllGroupDefs();
-  const customDefs = loadCustomGroups();
-  const groupOrder = Object.keys(allDefs);
-  return groupOrder
-    .map(groupKey => {
-      const def = allDefs[groupKey];
-      const cats = categories.filter(c => c.group === groupKey);
-      return {
-        key: groupKey,
-        name: def.label,
-        icon: def.icon,
-        emoji: def.emoji,
-        categories: cats.map(c => c.value),
-      };
-    })
-    .filter(g => g.categories.length > 0 || g.key in customDefs);
-}
+// Before
+if (groupItems.length === 0) return null;
+
+// After
+const customDefs = loadCustomGroups();
+if (groupItems.length === 0 && !(groupKey in customDefs)) return null;
 ```
 
-**File: `src/components/budget/BudgetCanvas.tsx`**
+Also add a subtle empty-state hint when a custom group has no categories yet:
 
-Add an empty-state message inside empty custom groups so they don't look broken:
-
-```
-No categories assigned yet. Go to Settings > Expense Categories to assign categories to this group.
+```tsx
+{groupItems.length === 0 && (
+  <p className="text-xs text-muted-foreground/60 italic">
+    No categories assigned yet
+  </p>
+)}
 ```
 
 ### Files Modified
-- `src/lib/budgetCalculatorCategories.ts` -- keep custom groups visible even when empty
-- `src/components/budget/BudgetCanvas.tsx` -- empty-state hint for groups with no categories
+- `src/components/settings/ManageSourcesCard.tsx` -- show empty custom groups as section headers with placeholder text
+
