@@ -5,6 +5,7 @@ import { getBudgetCategories } from '@/types';
 export interface BudgetCalcGroupDef {
   label: string;
   icon: LucideIcon;
+  emoji?: string;
 }
 
 export const BUDGET_CALC_GROUP_DEFS: Record<string, BudgetCalcGroupDef> = {
@@ -22,6 +23,37 @@ export const CUSTOM_GROUPS_STORAGE_KEY = 'custom-trade-groups';
 export interface CustomGroupEntry {
   key: string;
   label: string;
+  emoji?: string;
+}
+
+const EMOJI_MAP: Record<string, string> = {
+  purchase: '🏠', buy: '🏠', acquire: '🏠',
+  sale: '💰', sell: '💰', profit: '💰',
+  closing: '📝', close: '📝',
+  'pre-close': '🔑', preclose: '🔑',
+  finance: '💵', loan: '💵', lending: '💵', mortgage: '💵',
+  labor: '👷', crew: '👷', contractor: '👷',
+  land: '🌍', lot: '🌍',
+  legal: '⚖️', attorney: '⚖️',
+  marketing: '📣', advertising: '📣',
+  office: '🏢',
+  insurance: '🛡️',
+  tax: '🧾', taxes: '🧾',
+  holding: '⏳', carry: '⏳',
+  rehab: '🔨', renovation: '🔨', construction: '🔨',
+  utility: '⚡', utilities: '⚡',
+  inspection: '🔍', inspect: '🔍',
+  permit: '📋', permits: '📋',
+  design: '🎨', architect: '🎨',
+  title: '📄', escrow: '📄',
+};
+
+export function pickEmoji(label: string): string {
+  const words = label.toLowerCase().split(/[\s&,]+/);
+  for (const word of words) {
+    if (EMOJI_MAP[word]) return EMOJI_MAP[word];
+  }
+  return '📦';
 }
 
 export function loadCustomGroups(): Record<string, BudgetCalcGroupDef> {
@@ -31,7 +63,7 @@ export function loadCustomGroups(): Record<string, BudgetCalcGroupDef> {
     const entries: CustomGroupEntry[] = JSON.parse(raw);
     const result: Record<string, BudgetCalcGroupDef> = {};
     for (const e of entries) {
-      result[e.key] = { label: e.label, icon: Package };
+      result[e.key] = { label: e.label, icon: Package, emoji: e.emoji };
     }
     return result;
   } catch {
@@ -117,6 +149,7 @@ export function buildBudgetCalcGroups(categories: CategoryItem[]) {
       return {
         name: def.label,
         icon: def.icon,
+        emoji: def.emoji,
         categories: cats.map(c => c.value),
       };
     })
