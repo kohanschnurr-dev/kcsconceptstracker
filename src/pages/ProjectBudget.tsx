@@ -299,11 +299,11 @@ export default function ProjectBudget() {
   const getCategoryLabel = (categoryId: string) => {
     const cat = categories.find(c => c.id === categoryId);
     if (!cat) return 'Unknown';
-    return getBudgetCategories().find(b => b.value === cat.category)?.label || cat.category;
+    return getBudgetCategories().find(b => b.value === cat.category)?.label || cat.category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const getCategoryName = (categoryValue: string) => {
-    return getBudgetCategories().find(b => b.value === categoryValue)?.label || categoryValue;
+    return getBudgetCategories().find(b => b.value === categoryValue)?.label || categoryValue.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   // Calculate budget status with color gradient based on percentage over budget
