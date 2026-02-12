@@ -1,48 +1,62 @@
 
 
-## Fix: Register Category Enum Before Querying
+## Fix: Prevent Duplicate Expenses and Remove "Transfer" Payment Method
 
-### Root Cause
-The "Failed to find category" error occurs at the **query** step, not the insert step. When checking if a category already exists for a project, the SQL query uses `.eq('category', categoryValue)` — but if `categoryValue` isn't registered in the Postgres `budget_category` enum, the query itself fails with a type mismatch error.
+### Problem 1: Duplicate Expenses
+When a QuickBooks expense is imported, the system inserts into the `expenses` table without checking if a record with the same `qb_expense_id` already exists. If the import runs twice (e.g., user clicks again, or a race condition), identical expense rows are created.
 
-The previous fix only added the RPC call before the **insert** (line 440), but the query on line 419-424 runs first and fails before we ever reach the insert.
+### Problem 2: "Transfer" Payment Method
+Line 530 in `useQuickBooks.ts` hardcodes `payment_method: 'transfer' as const` for every imported expense, regardless of the actual payment method from QuickBooks. The user only expects "cash" or "card" as valid options.
 
-### Fix
-Move the `add_budget_category` RPC call to **before** the find query — so the enum value is guaranteed to exist before any database operation references it.
+### Solution
 
-### Technical Details
+**File: `src/hooks/useQuickBooks.ts`** (3 import paths to fix)
 
-**File: `src/hooks/useQuickBooks.ts`** (one change around lines 417-440)
+#### A. Add duplicate check before every expense insert
+Before each `.from('expenses').insert(...)` call, query for an existing record with the same `qb_expense_id`. Skip the insert if one already exists. There are 3 insert locations:
 
-Before:
+1. **Line ~523 (single import, live mode)** -- add duplicate check before insert
+2. **Line ~645 (manual split import)** -- add duplicate check before insert  
+3. **Line ~770 (SmartSplit batch import)** -- add duplicate check before insert
+
 ```ts
-if (categoryValue) {
-  // Check if category already exists for this project
-  const { data: existingCategory, error: findError } = await supabase
-    .from('project_categories')
-    .select('id')
-    .eq('project_id', projectId)
-    .eq('category', categoryValue as BudgetCategory)
-    .maybeSingle();
+// Before each insert, check for existing
+const { data: existingExpense } = await supabase
+  .from('expenses')
+  .select('id')
+  .eq('qb_expense_id', expenseId)
+  .maybeSingle();
+
+if (existingExpense) {
+  // Already imported, skip insert
+} else {
+  // Proceed with insert
+}
 ```
 
-After:
-```ts
-if (categoryValue) {
-  // Ensure the enum value exists before any DB query referencing it
-  await supabase.rpc('add_budget_category', { new_value: categoryValue });
+#### B. Fix payment method mapping
+Replace all hardcoded `'transfer'` values and normalize the payment method from QuickBooks data to only allow "cash" or "card":
 
-  // Check if category already exists for this project
-  const { data: existingCategory, error: findError } = await supabase
-    .from('project_categories')
-    .select('id')
-    .eq('project_id', projectId)
-    .eq('category', categoryValue as BudgetCategory)
-    .maybeSingle();
+```ts
+// Helper to normalize payment method (only cash or card allowed)
+const normalizePaymentMethod = (method: string | null): 'cash' | 'card' => {
+  if (method === 'cash') return 'cash';
+  return 'card'; // default everything else (transfer, check, etc.) to card
+};
 ```
 
-And remove the now-redundant RPC call on line 440 (inside the else branch).
+Apply this in all 4 insert locations:
+- Line 488 (demo mode): already uses `expense.payment_method` but with full type union -- normalize it
+- Line 530 (live mode): currently hardcoded to `'transfer'` -- use `normalizePaymentMethod(expense.payment_method)`
+- Line 654 (manual split): uses `expense.payment_method` with full union -- normalize it
+- Line 779 (SmartSplit batch): uses `expense.payment_method` with full union -- normalize it
+
+#### C. Also fix demo mode duplicate check (Line ~479)
+The demo mode insert (line 479) also lacks a duplicate guard.
 
 ### Files Modified
-- `src/hooks/useQuickBooks.ts` — move RPC registration before the find query
+- `src/hooks/useQuickBooks.ts` -- add duplicate checks before all expense inserts, normalize payment method to cash/card only
+
+### No Database Changes Needed
+The `qb_expense_id` column already exists in the `expenses` table. We are adding application-level dedup checks. The `payment_method` enum in the database includes "transfer" but we will simply stop using it for new records.
 
