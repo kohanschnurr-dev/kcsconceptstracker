@@ -436,7 +436,9 @@ export function useQuickBooks() {
       if (existingCategory) {
         categoryId = existingCategory.id;
       } else {
-        // Create new project_category
+        // Register the enum value before creating project_category
+        await supabase.rpc('add_budget_category', { new_value: categoryValue });
+
         const { data: newCategory, error: createError } = await supabase
           .from('project_categories')
           .insert({
