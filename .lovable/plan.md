@@ -1,25 +1,43 @@
 
 
-## Fix Drag-and-Drop in Import Modal
+## Stop Budget Page from Showing Loading Screen on Tab Switch
 
 ### Problem
-The Radix Dialog component intercepts browser drag-and-drop events, preventing the CSV file drop from reaching the small upload button. The drag visual feedback triggers but the actual drop never processes.
+Every time you click away from the browser tab and come back, the Budget page runs `fetchData()` which sets `loading = true`, causing the full loading skeleton to flash. This is disruptive since the data is already displayed.
 
 ### Solution
-Move the drag-and-drop handlers from the small upload button to the entire upload step container, so the drop zone covers the full modal content area. Also add `onDragOver` to the `DialogContent` to prevent the dialog from swallowing the event.
+Two changes in `src/pages/ProjectBudget.tsx`:
 
-### Changes
+1. **Only show loading skeleton on initial load**: Change `setLoading(true)` so it only triggers when there's no existing data. On subsequent refreshes (tab focus, visibility change), the data refreshes silently in the background without resetting the loading state.
 
-**File: `src/components/project/ImportExpensesModal.tsx`**
+2. **Remove the `focus` event listener**: The `visibilitychange` event already covers tab switches. The `focus` listener fires redundantly (e.g., clicking back into the window) and doubles the unnecessary refreshes.
 
-1. **Wrap the entire upload step in a drop zone div**: Move `onDragOver`, `onDragLeave`, and `onDrop` handlers from the small upload `<button>` to the outer `<div className="space-y-6 py-4">` that wraps the full upload step content. This makes the entire modal body a valid drop target.
+### Technical Detail
 
-2. **Remove drag handlers from the upload button**: The button keeps its click handler but no longer needs drag event handlers since the parent div handles drops.
+**File: `src/pages/ProjectBudget.tsx`**
 
-3. **Add visual feedback on the outer container**: Apply the `isDragging` border/background highlight to the outer wrapper so the user sees the entire area light up when dragging a file over the modal.
+- **Line ~182**: Change `setLoading(true)` to only set loading when no project data exists yet:
+  ```ts
+  const fetchData = async (silent = false) => {
+    if (!id) return;
+    if (!silent) setLoading(true);
+    // ... rest unchanged
+  };
+  ```
 
-4. **Add `onDragOver` to `DialogContent`**: Prevent the dialog overlay from eating the drag event by adding `e.preventDefault()` on dragover at the DialogContent level.
+- **Lines ~271-281**: Update the visibility listener to call `fetchData(true)` (silent mode) and remove the `focus` listener:
+  ```ts
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchData(true);
+    };
+    window.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [id]);
+  ```
 
 ### Files Modified
-- `src/components/project/ImportExpensesModal.tsx`
+- `src/pages/ProjectBudget.tsx`
 
