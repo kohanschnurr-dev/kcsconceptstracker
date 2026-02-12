@@ -1,37 +1,28 @@
 
-## Redesign Budget Stats Cards
 
-### Overview
-Replace the current two rows of 4 stat cards (8 total) with a single redesigned set of 8 cards in two rows, showing the requested metrics.
+## Add Expense Type Badges to the All Expenses Table
 
-### New Layout
+### What You'll Get
+Every expense in the "All Expenses" feed on the Budget page will display a small color-coded badge next to the category showing whether it's a **Loan**, **Monthly**, or standard construction expense. This gives you at-a-glance separation without removing them from the unified feed.
 
-**Row 1 (4 cards):**
-1. **Total Construction Budget** -- sum of all category budgets (same as current "Total Budget")
-2. **Remaining Construction Budget** -- budget minus construction spent (same as current "Remaining")
-3. **Total Monthly Costs** -- sum of expenses where `expense_type = 'monthly'` for this project
-4. **Total Loan Costs** -- sum of loan_payments for this project
+### Visual Design
+- **Loan** expenses: A blue "Loan" badge next to the category column
+- **Monthly** expenses: A teal "Monthly" badge next to the category column  
+- **Product/Labor** (standard construction): No extra badge -- stays clean as-is
+- Loan expenses that have no category will show "Loan Payment" instead of "Unknown" in the category column
 
-**Row 2 (4 cards):**
-5. **Total Spent** -- total spent across all types (construction + monthly + loan)
-6. **# of Expenses** -- count of all expenses (same as current "Expenses")
-7. **This Month** -- spending this calendar month (kept from current)
-8. **Avg. Daily** -- average daily spending (kept from current)
-
-**Removed:** "Last Month" and "This Week" cards.
-
-### Technical Details
+### Technical Changes
 
 **File: `src/pages/ProjectBudget.tsx`**
 
-1. **Fetch loan_payments data** -- add a query in `fetchData()` to pull from `loan_payments` table for this project and store the total.
+1. **Category column** (lines 1169-1173): Add an expense type badge next to the category badge for loan and monthly expenses. Loan expenses with no `category_id` will display "Loan Payment" instead of calling `getCategoryLabel` with an empty string.
 
-2. **Calculate monthly costs** -- filter the existing expenses array for `expense_type === 'monthly'` and sum the amounts. Also include QB expenses that were imported as monthly type.
+2. **Add a "Type" filter option**: Add expense type filtering to the existing filter bar so you can quickly isolate just Loan or Monthly expenses from the feed. This adds a new select dropdown with options: All Types, Construction, Monthly, Loan.
 
-3. **Replace the two stat card grids** (lines 596-701) with the new 8-card layout:
-   - Row 1: Total Construction Budget, Remaining Construction Budget, Total Monthly Costs, Total Loan Costs
-   - Row 2: Total Spent, # of Expenses, This Month, Avg. Daily
+3. **Update `filteredExpenses` memo** (line 364): Add the expense type filter logic alongside the existing category/payment/date filters.
 
-4. **Update labels** -- rename "Total Budget" to "Total Construction Budget" and "Remaining" to "Remaining Construction Budget" for clarity.
-
-5. **Remove unused analytics** -- drop `lastMonthSpending` and `thisWeekSpending` from the `spendingAnalytics` memo since those cards are being removed.
+### Summary
+- One file modified: `src/pages/ProjectBudget.tsx`
+- Adds type badges for visual separation in the expense table
+- Adds a Type filter dropdown to isolate loan/monthly expenses
+- No database changes needed
