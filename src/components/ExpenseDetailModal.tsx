@@ -212,6 +212,9 @@ export function ExpenseDetailModal({
           .delete()
           .like('qb_id', `${expenseData.qb_id}_split_%`);
       }
+
+      // Delete linked expenses from the expenses table
+      await (supabase.from('expenses').delete() as any).eq('qb_expense_id', expense.id);
       
       // Reset the expense to pending
       const { error } = await supabase
@@ -311,6 +314,9 @@ export function ExpenseDetailModal({
             .delete()
             .like('qb_id', `${expense.qb_id}_split_%`);
         }
+
+        // Delete linked expenses from the expenses table
+        await (supabase.from('expenses').delete() as any).eq('qb_expense_id', expense.id);
         
         // Reset the main expense to pending
         const { error } = await supabase

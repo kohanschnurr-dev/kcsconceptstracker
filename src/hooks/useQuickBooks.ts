@@ -530,7 +530,8 @@ export function useQuickBooks() {
           includes_tax: false,
           expense_type: expenseType,
           notes: notes || null,
-        });
+          qb_expense_id: expenseId,
+        } as any);
 
         if (insertError) {
           console.error('Error inserting expense:', insertError);
@@ -653,7 +654,8 @@ export function useQuickBooks() {
             includes_tax: false,
             expense_type: split.expenseType,
             notes: split.notes || null,
-          });
+            qb_expense_id: expenseId,
+          } as any);
 
         if (insertError) {
           console.error('Error inserting split expense:', insertError);
@@ -777,7 +779,8 @@ export function useQuickBooks() {
             includes_tax: false,
             expense_type: 'product',
             notes: expense.notes || null,
-          });
+            qb_expense_id: expense.id,
+          } as any);
 
         if (insertError) {
           console.error('Error inserting expense:', insertError);

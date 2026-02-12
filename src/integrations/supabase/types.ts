@@ -345,6 +345,7 @@ export type Database = {
           notes: string | null
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           project_id: string
+          qb_expense_id: string | null
           receipt_url: string | null
           status: Database["public"]["Enums"]["expense_status"]
           tax_amount: number | null
@@ -363,6 +364,7 @@ export type Database = {
           notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           project_id: string
+          qb_expense_id?: string | null
           receipt_url?: string | null
           status?: Database["public"]["Enums"]["expense_status"]
           tax_amount?: number | null
@@ -381,6 +383,7 @@ export type Database = {
           notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           project_id?: string
+          qb_expense_id?: string | null
           receipt_url?: string | null
           status?: Database["public"]["Enums"]["expense_status"]
           tax_amount?: number | null

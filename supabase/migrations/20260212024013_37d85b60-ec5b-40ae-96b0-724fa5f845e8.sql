@@ -1,0 +1,1 @@
+ALTER TABLE public.expenses ADD COLUMN qb_expense_id text;
