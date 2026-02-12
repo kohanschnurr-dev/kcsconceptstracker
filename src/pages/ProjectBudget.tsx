@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   ArrowLeft, 
   DollarSign, 
@@ -158,6 +158,16 @@ export default function ProjectBudget() {
   // All Expenses collapsed state - show only 7 by default
   const [showAllExpenses, setShowAllExpenses] = useState(false);
   const VISIBLE_EXPENSE_COUNT = 7;
+
+  // Ref for scrolling to expenses table
+  const expensesTableRef = useRef<HTMLDivElement>(null);
+
+  const handleCardFilter = (costType: string) => {
+    setSelectedCostType(prev => prev === costType ? 'all' : costType);
+    setTimeout(() => {
+      expensesTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
 
   const fetchData = async () => {
     if (!id) return;
@@ -624,7 +634,10 @@ export default function ProjectBudget() {
           <TabsContent value="budget" className="space-y-6">
             {/* Summary Cards - Row 1 */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="glass-card">
+              <Card 
+                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")}
+                onClick={() => handleCardFilter('construction')}
+              >
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-1">
                     <DollarSign className="h-4 w-4 text-primary" />
@@ -647,7 +660,10 @@ export default function ProjectBudget() {
                 </CardContent>
               </Card>
 
-              <Card className="glass-card">
+              <Card 
+                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'loan' && "ring-2 ring-primary")}
+                onClick={() => handleCardFilter('loan')}
+              >
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Landmark className="h-4 w-4 text-primary" />
@@ -657,7 +673,10 @@ export default function ProjectBudget() {
                 </CardContent>
               </Card>
 
-              <Card className="glass-card">
+              <Card 
+                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'monthly' && "ring-2 ring-primary")}
+                onClick={() => handleCardFilter('monthly')}
+              >
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Home className="h-4 w-4 text-primary" />
@@ -1036,7 +1055,7 @@ export default function ProjectBudget() {
         </Collapsible>
 
         {/* All Expenses with Filters */}
-        <Card className="glass-card">
+        <Card className="glass-card" ref={expensesTableRef}>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <CardTitle className="text-lg">All Expenses</CardTitle>
