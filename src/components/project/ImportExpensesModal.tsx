@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Download, CheckCircle2, AlertTriangle, Loader2, FileSpreadsheet } from 'lucide-react';
+import { Upload, Download, CheckCircle2, AlertTriangle, Loader2, FileSpreadsheet, Copy, Check } from 'lucide-react';
 import { getBudgetCategories } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -135,8 +135,33 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
   const [step, setStep] = useState<'upload' | 'preview'>('upload');
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [importing, setImporting] = useState(false);
+  const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const allCategories = getBudgetCategories();
+
+  const categoryList = allCategories.map(c => c.label).join(', ');
+  const aiPrompt = `Convert my raw expense data into a CSV with these exact columns:
+Date,Vendor,Category,Description,Amount,Payment Method,Expense Type,Notes
+
+Strict Formatting Rules:
+- Date: Convert all dates to MM/DD/YYYY.
+- Category: Use one of these exact values: ${categoryList}
+- Expense Type: 'product' for materials (Home Depot, Lowe's, etc.) or 'labor' for service providers (contractors, plumbers, etc.).
+- Amount: Numerical value only (no $ signs or commas).
+- Payment Method: cash, check, card, or transfer. Leave blank if unclear.
+- Notes: Include relevant details like 'Licensed & insured' or project locations.
+- Missing Data: Leave fields blank if not available.
+
+Output: Provide the CSV content only, no headers or explanation. Ready to copy-paste into a .csv file.
+
+Here is my raw data:`;
+
+  const handleCopyPrompt = async () => {
+    await navigator.clipboard.writeText(aiPrompt);
+    setCopied(true);
+    toast.success('Prompt copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const resetState = () => {
     setStep('upload');
@@ -372,6 +397,26 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
             </div>
 
             <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFile} />
+
+            {/* AI Prompt Helper */}
+            <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Have messy data? Let AI format it for you</p>
+                  <p className="text-xs text-muted-foreground">Paste this prompt into ChatGPT, Gemini, or Claude along with your raw data. Then save the output as a .csv file and upload it above.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); handleCopyPrompt(); }}
+                  className="shrink-0 gap-1.5"
+                >
+                  {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? 'Copied!' : 'Copy Prompt'}
+                </Button>
+              </div>
+              <pre className="text-xs text-muted-foreground bg-background rounded-md p-3 max-h-32 overflow-y-auto whitespace-pre-wrap border border-border">{aiPrompt}</pre>
+            </div>
 
             <div className="text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded-lg">
               <p className="font-medium mb-2">Required columns: Date, Category, Amount</p>
