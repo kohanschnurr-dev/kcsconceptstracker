@@ -1,38 +1,49 @@
 
 
-## Show Custom Trade Groups as Section Headers in Settings
+## Sort Projects by Start Date + Star/Pin Feature
 
-### Problem
-The "Purchase & Sale" custom group you created appears in the "Manage Groups" area but doesn't show up as a section header (like Structure, MEPs, Finishes, etc.) in the Expense Categories list. This is because the code skips any group with zero categories.
+### What Changes
 
-### Solution
-Update the rendering logic in `src/components/settings/ManageSourcesCard.tsx` so that custom trade groups always appear as section headers -- even when empty -- just like the built-in groups that have categories. This lets you see the group and start assigning categories to it via the dropdown.
+1. **Sort projects by newest start date first** within each project type tab
+2. **Add a star button** on each project card allowing up to 3 starred projects per type, which are always pinned to the front in the order they were starred
 
 ### Technical Details
 
-**File: `src/components/settings/ManageSourcesCard.tsx` (line 244)**
+#### 1. Database: Add `starred_projects` column to `profiles` table
 
-Change the filter to keep custom groups visible even when empty:
+Add a new JSONB column to store starred project IDs with their order:
 
-```typescript
-// Before
-if (groupItems.length === 0) return null;
-
-// After
-const customDefs = loadCustomGroups();
-if (groupItems.length === 0 && !(groupKey in customDefs)) return null;
+```sql
+ALTER TABLE profiles ADD COLUMN starred_projects jsonb DEFAULT '[]'::jsonb;
 ```
 
-Also add a subtle empty-state hint when a custom group has no categories yet:
+The column stores an array of project IDs, e.g. `["uuid1", "uuid2", "uuid3"]`. Order in the array = pin order.
 
-```tsx
-{groupItems.length === 0 && (
-  <p className="text-xs text-muted-foreground/60 italic">
-    No categories assigned yet
-  </p>
-)}
-```
+#### 2. Hook: `useProfile.ts` -- add star mutation
+
+- Add a `toggleStarProject` mutation that adds/removes a project ID from the `starred_projects` array
+- Enforce max 3 starred projects -- if already 3, show a toast warning
+- Add a helper `isProjectStarred(projectId)` getter
+
+#### 3. Sorting: `Projects.tsx` -- update `getFilteredProjects`
+
+Change sorting logic to:
+1. Starred projects first, in their saved order
+2. Then remaining projects sorted by `startDate` descending (newest first)
+
+#### 4. UI: `ProjectCard.tsx` -- add star icon
+
+- Add a small star icon (lucide `Star`) in the top-left or next to the project name
+- Filled star = starred, outline = not starred
+- Click toggles star status (with `e.stopPropagation()` to prevent card navigation)
+
+#### 5. Dashboard: `Index.tsx` -- update active projects sorting
+
+Apply the same sorting logic (starred first, then by start date descending) to the dashboard's active projects list, replacing the current project-type priority sort.
 
 ### Files Modified
-- `src/components/settings/ManageSourcesCard.tsx` -- show empty custom groups as section headers with placeholder text
-
+- **Migration** -- add `starred_projects` jsonb column to `profiles`
+- `src/hooks/useProfile.ts` -- add `starred_projects` to Profile interface, add `toggleStarProject` mutation and `isProjectStarred` helper
+- `src/pages/Projects.tsx` -- update `getFilteredProjects` sorting: starred first, then by start date desc
+- `src/components/dashboard/ProjectCard.tsx` -- add star/unstar icon button
+- `src/pages/Index.tsx` -- update active projects sort to match (starred first, then newest start date)
