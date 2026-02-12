@@ -163,6 +163,10 @@ export default function ProjectBudget() {
   const [showAllExpenses, setShowAllExpenses] = useState(false);
   const VISIBLE_EXPENSE_COUNT = 7;
 
+  // Budget quick-edit state
+  const [budgetEditMode, setBudgetEditMode] = useState(false);
+  const [budgetEditValue, setBudgetEditValue] = useState('');
+
   // Ref for scrolling to expenses table
   const expensesTableRef = useRef<HTMLDivElement>(null);
 
@@ -438,8 +442,10 @@ export default function ProjectBudget() {
     return filtered;
   }, [expenses, searchQuery, selectedCategory, selectedPaymentMethod, selectedCostType, dateRange, sortField, sortOrder, categories]);
 
-  // Calculate total budget from sum of category budgets
-  const totalBudget = categories.reduce((sum, cat) => sum + Number(cat.estimated_budget), 0);
+  // Calculate total budget - manual override takes precedence
+  const categoryTotal = categories.reduce((sum, cat) => sum + Number(cat.estimated_budget), 0);
+  const hasManualBudget = (project?.total_budget ?? 0) > 0;
+  const totalBudget = hasManualBudget ? project!.total_budget : categoryTotal;
   const totalSpent = categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
   const remaining = totalBudget - totalSpent;
   const loanCosts = expenses.filter(e => e.cost_type === 'loan').reduce((sum, e) => sum + Number(e.amount), 0);
@@ -683,16 +689,104 @@ export default function ProjectBudget() {
             {/* Summary Cards - Row 2 */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Card 
-                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")}
-                onClick={() => handleCardFilter('construction')}
+                className={cn("glass-card transition-all", !budgetEditMode && "cursor-pointer hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")}
+                onClick={() => !budgetEditMode && handleCardFilter('construction')}
               >
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <DollarSign className="h-4 w-4 text-primary" />
-                    <span className="text-sm text-muted-foreground">Total Construction Budget</span>
-                  </div>
-                  <p className="text-2xl font-bold font-mono">{formatCurrency(totalBudget)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">from {categories.length} categories</p>
+                <CardContent className="pt-4 relative">
+                  {!budgetEditMode ? (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBudgetEditMode(true);
+                          setBudgetEditValue(String(totalBudget));
+                        }}
+                        className="absolute top-3 right-3 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                      <div className="flex items-center gap-2 mb-1">
+                        <DollarSign className="h-4 w-4 text-primary" />
+                        <span className="text-sm text-muted-foreground">Total Construction Budget</span>
+                      </div>
+                      <p className="text-2xl font-bold font-mono">{formatCurrency(totalBudget)}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {hasManualBudget ? (
+                          <span className="flex items-center gap-1">
+                            manual override
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const { error } = await supabase
+                                  .from('projects')
+                                  .update({ total_budget: 0 })
+                                  .eq('id', id!);
+                                if (!error) {
+                                  setProject(prev => prev ? { ...prev, total_budget: 0 } : prev);
+                                  toast.success('Reverted to category total');
+                                }
+                              }}
+                              className="text-primary hover:underline"
+                            >
+                              (revert)
+                            </button>
+                          </span>
+                        ) : (
+                          `from ${categories.length} categories`
+                        )}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <DollarSign className="h-4 w-4 text-primary" />
+                        <span className="text-sm text-muted-foreground">Edit Total Budget</span>
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                        <Input
+                          type="number"
+                          value={budgetEditValue}
+                          onChange={(e) => setBudgetEditValue(e.target.value)}
+                          className="pl-7 font-mono h-9"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') setBudgetEditMode(false);
+                          }}
+                        />
+                      </div>
+                      <div className="flex gap-1.5">
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs flex-1"
+                          onClick={async () => {
+                            const val = parseFloat(budgetEditValue) || 0;
+                            const { error } = await supabase
+                              .from('projects')
+                              .update({ total_budget: val })
+                              .eq('id', id!);
+                            if (error) {
+                              toast.error('Failed to update budget');
+                            } else {
+                              setProject(prev => prev ? { ...prev, total_budget: val } : prev);
+                              toast.success('Budget updated');
+                              setBudgetEditMode(false);
+                            }
+                          }}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={() => setBudgetEditMode(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
