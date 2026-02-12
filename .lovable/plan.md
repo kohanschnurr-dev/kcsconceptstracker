@@ -1,36 +1,30 @@
 
 
-## Fix CSV Import: Register Custom Categories in DB Enum
+## Allow Reordering of Trade Groups
 
-### Problem
-The import fails with `invalid input value for enum budget_category: "trims"` because the user's localStorage has custom category values (e.g., "trims" instead of "carpentry") that were never registered in the database's `budget_category` enum. The import tries to insert into `project_categories` with these values and the DB rejects them.
+### What Changes
+Add drag-and-drop reordering to the trade groups (Structure, MEPs, Finishes, Kitchen & Bath, Exterior, Other, and any custom groups like Purchase & Sale) in the **Manage Groups** section under Settings > Expense Categories. The new order will persist and be reflected everywhere groups appear: the Budget Calculator canvas, the category assignment dropdown, and the Settings display.
 
-### Solution
-Before inserting new `project_categories` rows, call the `add_budget_category` RPC for each category value that needs to be created. This registers the value in the Postgres enum so the insert succeeds.
+### How It Works
+- In the "Manage Groups" area, each group badge gets a drag handle (grip icon)
+- Drag groups up/down to reorder them
+- The order is saved to localStorage (and synced via the existing settings sync mechanism)
+- Built-in groups (Structure, MEPs, etc.) and custom groups share the same orderable list
 
-### Changes
+### Technical Details
 
-**File: `src/components/project/ImportExpensesModal.tsx`**
+**1. New storage key for group order** (`src/lib/budgetCalculatorCategories.ts`)
+- Add a `GROUPS_ORDER_STORAGE_KEY` constant (`'trade-groups-order'`)
+- Add `loadGroupOrder()` and `saveGroupOrder()` helpers that read/write an ordered array of group keys
+- Update `getAllGroupDefs()` to return groups sorted by the saved order (falling back to the current default order for any untracked keys)
 
-In the `handleImport` function (~line 355), before the `project_categories` insert, add a loop that registers each needed category value via the RPC:
+**2. Make ManageGroupsSection drag-sortable** (`src/components/settings/ManageSourcesCard.tsx`)
+- Import `@dnd-kit/core` and `@dnd-kit/sortable` (already installed)
+- Render all groups (built-in + custom) as sortable items using `useSortable`
+- On drag end, compute the new order and call `saveGroupOrder()`
+- Add a small grip/drag handle icon to each group badge
 
-```ts
-// Register any custom category values in the DB enum first
-if (neededCats.length > 0) {
-  for (const cat of neededCats) {
-    await supabase.rpc('add_budget_category', { new_value: cat });
-  }
+**3. Files Modified**
+- `src/lib/budgetCalculatorCategories.ts` — group order persistence + sorted `getAllGroupDefs()`
+- `src/components/settings/ManageSourcesCard.tsx` — drag-and-drop UI in ManageGroupsSection
 
-  // Then create the project_categories rows
-  const { data: newCats, error: catError } = await supabase
-    .from('project_categories')
-    .insert(...)
-    .select();
-  // ... rest unchanged
-}
-```
-
-This mirrors the pattern already used in `ManageSourcesCard.tsx` and `ReassignCategoryDialog.tsx`.
-
-### Files Modified
-- `src/components/project/ImportExpensesModal.tsx`
