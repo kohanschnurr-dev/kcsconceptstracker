@@ -136,6 +136,7 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const allCategories = getBudgetCategories();
 
@@ -176,6 +177,36 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
     setStep('upload');
     setRows([]);
     setImporting(false);
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && (file.name.endsWith('.csv') || file.type === 'text/csv')) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        processCSV(text);
+      };
+      reader.readAsText(file);
+    } else {
+      toast.error('Please drop a CSV file');
+    }
   };
 
   const handleClose = (val: boolean) => {
@@ -395,12 +426,21 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
 
               <button
                 onClick={() => fileRef.current?.click()}
-                className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-accent/50 transition-all cursor-pointer"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-dashed transition-all cursor-pointer ${
+                  isDragging 
+                    ? 'border-primary bg-primary/10 text-primary' 
+                    : 'border-border hover:border-primary/50 hover:bg-accent/50'
+                }`}
               >
                 <Upload className="h-8 w-8 text-primary" />
                 <div className="text-center">
                   <p className="font-medium">Upload CSV File</p>
-                  <p className="text-sm text-muted-foreground">Select your expense file to begin</p>
+                  <p className="text-sm text-muted-foreground">
+                    {isDragging ? 'Drop your CSV file here' : 'Drag & drop or click to select'}
+                  </p>
                 </div>
               </button>
             </div>
