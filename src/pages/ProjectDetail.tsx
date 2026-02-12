@@ -66,6 +66,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { PhotoGallery } from '@/components/project/PhotoGallery';
 import { DocumentsGallery } from '@/components/project/DocumentsGallery';
 
@@ -586,19 +592,19 @@ export default function ProjectDetail() {
                     )}
                   </DropdownMenuContent>
               </DropdownMenu>
-              <Popover open={completionDateOpen} onOpenChange={setCompletionDateOpen}>
-                <PopoverTrigger asChild>
-                  <span />
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+              <Dialog open={completionDateOpen} onOpenChange={setCompletionDateOpen}>
+                <DialogContent className="w-auto max-w-fit p-6">
+                  <DialogHeader>
+                    <DialogTitle>Select Completion Date</DialogTitle>
+                  </DialogHeader>
                   <CalendarComponent
                     mode="single"
                     selected={new Date()}
                     onSelect={(date) => date && handleCompleteWithDate(date)}
                     className={cn("p-3 pointer-events-auto")}
                   />
-                </PopoverContent>
-              </Popover>
+                </DialogContent>
+              </Dialog>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                 {isEditing ? (
