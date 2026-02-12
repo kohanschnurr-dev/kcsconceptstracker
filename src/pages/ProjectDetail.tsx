@@ -439,7 +439,7 @@ export default function ProjectDetail() {
             <AlertDialogHeader>
               <AlertDialogTitle>Convert to Rental Property</AlertDialogTitle>
               <AlertDialogDescription>
-                This will convert <strong>{project.name}</strong> to a rental property. The Financials tab will switch to the Cash Flow calculator, and the Loan tab will be hidden. This can't be undone.
+                This will convert <strong>{project.name}</strong> to a rental property. The Financials tab will switch to the Cash Flow calculator. This can't be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -806,8 +806,7 @@ export default function ProjectDetail() {
             />
           </TabsContent>
 
-          {!isRental && (
-            <TabsContent value="loan" className="space-y-6">
+          <TabsContent value="loan" className="space-y-6">
               <HardMoneyLoanCalculator
                 projectId={id!}
                 purchasePrice={project.purchase_price || 0}
@@ -823,7 +822,6 @@ export default function ProjectDetail() {
               />
               <LoanPayments projectId={id!} />
             </TabsContent>
-          )}
 
           <TabsContent value="team">
             <ProjectVendors projectId={id!} />
