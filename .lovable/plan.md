@@ -1,36 +1,39 @@
 
 
-## Fix Duplicate QuickBooks Expenses on Expenses Page
+## Add Cost Type Classification to Project Budget Expenses
 
-### Problem
-The Expenses page fetches records from two tables and combines them:
-1. The `expenses` table (where imported QB expenses are inserted during categorization)
-2. The `quickbooks_expenses` table (where `is_imported = true` records are also fetched)
+### Overview
+Add a new "Type" column to the project budget's "All Expenses" table (between Description and Amount) that lets users classify each expense as **Construction**, **Loan**, or **Monthly**. This classification is clickable inline -- no modal needed.
 
-This causes every imported QB expense to appear twice -- once from each table. The "Transfer" payment method you see is actually the correct record from the `expenses` table (QB stores Zelle as "transfer"), while the other is the raw `quickbooks_expenses` record.
+### Database Change
 
-### Solution
+Add a new `cost_type` column to the `expenses` table (separate from the existing `expense_type` which tracks product/labor):
 
-In `src/pages/Expenses.tsx`, after fetching both datasets, filter out any `quickbooks_expenses` records whose `id` matches a `qb_expense_id` value in the `expenses` table. This prevents the duplicate while preserving older QB records that don't yet have a link.
-
-### Technical Details
-
-**File: `src/pages/Expenses.tsx`**
-
-In the `fetchData` function, after fetching both `expensesData` and `qbExpensesData`, collect all `qb_expense_id` values from the expenses table and exclude matching QB records:
-
-```typescript
-// Collect linked QB IDs from expenses table
-const linkedQbIds = new Set(
-  (expensesData || [])
-    .map(e => e.qb_expense_id)
-    .filter(Boolean)
-);
-
-// Filter out QB expenses that already have a linked expenses record
-const filteredQbExpenses = (qbExpensesData || [])
-  .filter(qb => !linkedQbIds.has(qb.id));
+```text
+ALTER TABLE expenses ADD COLUMN cost_type text NOT NULL DEFAULT 'construction';
 ```
 
-This is a single change in one file -- no other modifications needed.
+Default is `'construction'` since all existing expenses are construction costs. Valid values: `'construction'`, `'loan'`, `'monthly'`.
 
+### UI Changes
+
+**File: `src/pages/ProjectBudget.tsx`**
+
+1. Add a new "Type" column header between "Description" and "Amount" in the All Expenses table
+2. In each expense row, render a small inline `Select` dropdown (or clickable badge) in that column showing the current cost type (Construction / Loan / Monthly)
+3. Clicking it opens a dropdown to change the type -- on change, update the `expenses` record's `cost_type` in the database and refresh
+4. Add `cost_type` to the `DBExpense` interface
+5. Add a "Type" filter dropdown to the filter bar (All Types / Construction / Loan / Monthly)
+6. Update `filteredExpenses` memo to support the new type filter
+7. Update `clearFilters` and `hasActiveFilters` to include the type filter
+8. Include cost type in CSV export
+
+**Inline Select behavior:**
+- Displays as a small badge-styled select: "Construction" (default), "Loan", or "Monthly"
+- Clicking stops row propagation (doesn't open detail modal)
+- On change, calls `supabase.from('expenses').update({ cost_type }).eq('id', exp.id)` then refreshes
+
+### What stays the same
+- The existing `expense_type` column (product/labor) is untouched -- it serves a different purpose
+- No changes to QuickBooks import flow
+- No changes to the Expenses page or other pages
