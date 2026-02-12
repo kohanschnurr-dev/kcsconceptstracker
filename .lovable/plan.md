@@ -1,23 +1,21 @@
 
-## Add "Loan Costs" and "Holding Costs" Cards to Budget Summary Row 1
 
-### Overview
-Add two new stat cards to the first row of the Budget summary grid, next to "Total Construction Budget" and "Remaining Construction Budget". These cards will aggregate expenses by `cost_type`:
-- **Loan Costs**: sum of all expenses where `cost_type = 'loan'`
-- **Holding Costs**: sum of all expenses where `cost_type = 'monthly'`
+## Close Popover on Cost Type Selection
+
+### Change
+Add controlled `open` state to the cost type `Popover` so it closes immediately when a type is selected.
 
 ### Technical Details
 
 **File: `src/pages/ProjectBudget.tsx`**
 
-1. Add two computed values after existing stats (near the `remaining` calculation):
-   - `loanCosts = expenses.filter(e => e.cost_type === 'loan').reduce(sum of amounts)`
-   - `holdingCosts = expenses.filter(e => e.cost_type === 'monthly').reduce(sum of amounts)`
+Since each expense row has its own `Popover`, the simplest approach is to convert the `Popover` to a controlled component using a state map or by using the `onOpenChange` prop combined with closing on click.
 
-2. Import `Landmark` icon from lucide-react (for Loan Costs) and `Home` icon (for Holding Costs)
+The cleanest approach: wrap the popover in a controlled state using `open`/`onOpenChange`, and set `open` to `false` inside `handleCostTypeChange`. Since there are multiple rows, we will track which expense's popover is open via a single `openCostTypeId` state variable (string | null).
 
-3. Update the Row 1 grid (currently `grid-cols-2 lg:grid-cols-4`) to include two new cards after "Remaining Construction Budget":
-   - **Loan Costs** card with `Landmark` icon
-   - **Holding Costs** card with `Home` icon
+1. Add state: `const [openCostTypeId, setOpenCostTypeId] = useState<string | null>(null);`
+2. Change `<Popover>` to `<Popover open={openCostTypeId === exp.id} onOpenChange={(open) => setOpenCostTypeId(open ? exp.id : null)}>`
+3. In the button `onClick`, after calling `handleCostTypeChange`, also call `setOpenCostTypeId(null)`
 
-Both cards will use the same `glass-card` styling as the existing cards, with the value displayed in `font-mono` style.
+This ensures exactly one popover is open at a time and it closes immediately on selection.
+
