@@ -1,4 +1,4 @@
-import { MapPin, Calendar, Home, Hammer, Building2, Handshake } from 'lucide-react';
+import { MapPin, Calendar, Home, Hammer, Building2, Handshake, Star } from 'lucide-react';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -8,9 +8,11 @@ import { supabase } from '@/integrations/supabase/client';
 interface ProjectCardProps {
   project: Project;
   onClick?: () => void;
+  isStarred?: boolean;
+  onToggleStar?: (projectId: string) => void;
 }
 
-export function ProjectCard({ project, onClick }: ProjectCardProps) {
+export function ProjectCard({ project, onClick, isStarred, onToggleStar }: ProjectCardProps) {
   const totalSpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
   const isRental = project.projectType === 'rental';
   const isNewConstruction = project.projectType === 'new_construction';
@@ -61,6 +63,15 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
         <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
+              {onToggleStar && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleStar(project.id); }}
+                  className="shrink-0 hover:scale-110 transition-transform"
+                  aria-label={isStarred ? 'Unstar project' : 'Star project'}
+                >
+                  <Star className={cn('h-4 w-4', isStarred ? 'fill-warning text-warning' : 'text-muted-foreground')} />
+                </button>
+              )}
               {isNewConstruction ? (
                 <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
               ) : isRental ? (

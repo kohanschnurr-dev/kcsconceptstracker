@@ -33,7 +33,7 @@ const TAB_CONFIG: Record<string, { label: string; icon: typeof Hammer; createLab
 export default function Projects() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { profile, updateTabOrder } = useProfile();
+  const { profile, updateTabOrder, starredProjects, isProjectStarred, toggleStarProject } = useProfile();
   const [search, setSearch] = useState('');
   const [statusTab, setStatusTab] = useState('all');
   const [projects, setProjects] = useState<Project[]>([]);
@@ -137,14 +137,34 @@ export default function Projects() {
     }
   };
 
+  const handleToggleStar = (projectId: string) => {
+    if (!isProjectStarred(projectId) && starredProjects.length >= 3) {
+      toast({ title: 'Limit reached', description: 'You can star up to 3 projects', variant: 'destructive' });
+      return;
+    }
+    toggleStarProject.mutate(projectId);
+  };
+
   const getFilteredProjects = (type: ProjectType) => {
-    return projects.filter((project) => {
+    const filtered = projects.filter((project) => {
       const matchesType = project.projectType === type;
       const matchesSearch = project.name.toLowerCase().includes(search.toLowerCase()) ||
         project.address.toLowerCase().includes(search.toLowerCase());
       
       if (statusTab === 'all') return matchesType && matchesSearch;
       return matchesType && matchesSearch && project.status === statusTab;
+    });
+
+    // Sort: starred first (in saved order), then by start date descending
+    return filtered.sort((a, b) => {
+      const aStarIdx = starredProjects.indexOf(a.id);
+      const bStarIdx = starredProjects.indexOf(b.id);
+      const aStarred = aStarIdx >= 0;
+      const bStarred = bStarIdx >= 0;
+      if (aStarred && !bStarred) return -1;
+      if (!aStarred && bStarred) return 1;
+      if (aStarred && bStarred) return aStarIdx - bStarIdx;
+      return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
     });
   };
 
@@ -197,6 +217,8 @@ export default function Projects() {
                   key={project.id} 
                   project={project} 
                   onClick={() => navigate(`/projects/${project.id}`)}
+                  isStarred={isProjectStarred(project.id)}
+                  onToggleStar={handleToggleStar}
                 />
               ))}
             </div>

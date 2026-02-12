@@ -11,6 +11,7 @@ interface Profile {
   state: string | null;
   project_tab_order: string[] | null;
   detail_tab_order: Record<string, string[]> | null;
+  starred_projects: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -113,6 +114,39 @@ export function useProfile() {
     return defaultOrder;
   };
 
+  const starredProjects: string[] = Array.isArray(profile?.starred_projects) ? (profile.starred_projects as string[]) : [];
+
+  const isProjectStarred = (projectId: string) => starredProjects.includes(projectId);
+
+  const toggleStarProject = useMutation({
+    mutationFn: async (projectId: string) => {
+      if (!user) throw new Error('Not authenticated');
+      const current = [...starredProjects];
+      const idx = current.indexOf(projectId);
+      if (idx >= 0) {
+        current.splice(idx, 1);
+      } else {
+        if (current.length >= 3) {
+          throw new Error('max');
+        }
+        current.push(projectId);
+      }
+      const { error } = await supabase
+        .from('profiles')
+        .update({ starred_projects: current } as any)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+    },
+    onError: (err: Error) => {
+      if (err.message === 'max') {
+        // handled by caller
+      }
+    },
+  });
+
   const displayName = profile?.first_name && profile?.last_name
     ? `${profile.first_name} ${profile.last_name}`
     : null;
@@ -125,5 +159,8 @@ export function useProfile() {
     updateDetailTabOrder,
     getDetailTabOrder,
     displayName,
+    starredProjects,
+    isProjectStarred,
+    toggleStarProject,
   };
 }
