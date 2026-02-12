@@ -3,6 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { BudgetCategory } from '@/types';
 
+// Helper to normalize payment method (only cash or card allowed)
+const normalizePaymentMethod = (method: string | null | undefined): 'cash' | 'card' => {
+  if (method === 'cash') return 'cash';
+  return 'card';
+};
+
 interface QuickBooksExpense {
   id: string;
   qb_id: string;
@@ -475,6 +481,19 @@ export function useQuickBooks() {
         return false;
       }
 
+      // Check for duplicate before inserting (demo mode uses qb_id as identifier)
+      const { data: existingDemo } = await supabase
+        .from('expenses')
+        .select('id')
+        .eq('qb_expense_id', expenseId)
+        .maybeSingle();
+
+      if (existingDemo) {
+        toast({ title: 'Already Imported', description: 'This expense has already been imported.' });
+        setPendingExpenses(prev => prev.filter(e => e.id !== expenseId));
+        return true;
+      }
+
       // Insert into the real expenses table
       const { error } = await supabase
         .from('expenses')
@@ -485,7 +504,7 @@ export function useQuickBooks() {
           date: expense.date,
           vendor_name: expense.vendor_name,
           description: expense.description,
-          payment_method: expense.payment_method as 'cash' | 'check' | 'card' | 'transfer' || 'card',
+          payment_method: normalizePaymentMethod(expense.payment_method),
           status: 'actual',
           includes_tax: false,
           expense_type: expenseType,
@@ -520,6 +539,19 @@ export function useQuickBooks() {
 
       // Insert into expenses table (mirrors demo-mode behavior)
       if (expense && user) {
+        // Check for duplicate before inserting
+        const { data: existingExpense } = await supabase
+          .from('expenses')
+          .select('id')
+          .eq('qb_expense_id', expenseId)
+          .maybeSingle();
+
+        if (existingExpense) {
+          toast({ title: 'Already Imported', description: 'This expense has already been imported.' });
+          setPendingExpenses(prev => prev.filter(e => e.id !== expenseId));
+          return true;
+        }
+
         const { error: insertError } = await supabase.from('expenses').insert({
           project_id: projectId,
           category_id: categoryId,
@@ -527,7 +559,7 @@ export function useQuickBooks() {
           date: expense.date,
           vendor_name: expense.vendor_name,
           description: expense.description,
-          payment_method: 'transfer' as const,
+          payment_method: normalizePaymentMethod(expense.payment_method),
           status: 'actual' as const,
           includes_tax: false,
           expense_type: expenseType,
@@ -605,7 +637,8 @@ export function useQuickBooks() {
 
     try {
       // Process each split
-      for (const split of splits) {
+      for (let i = 0; i < splits.length; i++) {
+        const split = splits[i];
         // Find or create the project_category
         let categoryId: string;
         
@@ -641,6 +674,19 @@ export function useQuickBooks() {
           categoryId = newCategory.id;
         }
 
+        // Check for duplicate split expense
+        const splitQbId = `${expenseId}_split_${i}`;
+        const { data: existingSplit } = await supabase
+          .from('expenses')
+          .select('id')
+          .eq('qb_expense_id', splitQbId)
+          .maybeSingle();
+
+        if (existingSplit) {
+          console.log('Skipping duplicate split expense:', splitQbId);
+          continue;
+        }
+
         // Insert split expense
         const { error: insertError } = await supabase
           .from('expenses')
@@ -651,12 +697,12 @@ export function useQuickBooks() {
             date: expense.date,
             vendor_name: expense.vendor_name,
             description: split.notes ? `${expense.description || ''} - ${split.notes}`.trim() : expense.description,
-            payment_method: expense.payment_method as 'cash' | 'check' | 'card' | 'transfer' || 'card',
+            payment_method: normalizePaymentMethod(expense.payment_method),
             status: 'actual',
             includes_tax: false,
             expense_type: split.expenseType,
             notes: split.notes || null,
-            qb_expense_id: expenseId,
+            qb_expense_id: splitQbId,
           } as any);
 
         if (insertError) {
@@ -766,6 +812,18 @@ export function useQuickBooks() {
           continue;
         }
 
+        // Check for duplicate before inserting
+        const { data: existingBatch } = await supabase
+          .from('expenses')
+          .select('id')
+          .eq('qb_expense_id', expense.id)
+          .maybeSingle();
+
+        if (existingBatch) {
+          console.log('Skipping duplicate batch expense:', expense.id);
+          continue;
+        }
+
         // Insert into expenses table
         const { error: insertError } = await supabase
           .from('expenses')
@@ -776,7 +834,7 @@ export function useQuickBooks() {
             date: expense.date,
             vendor_name: expense.vendor_name,
             description: expense.description,
-            payment_method: (expense.payment_method as 'cash' | 'check' | 'card' | 'transfer') || 'card',
+            payment_method: normalizePaymentMethod(expense.payment_method),
             status: 'actual',
             includes_tax: false,
             expense_type: 'product',
