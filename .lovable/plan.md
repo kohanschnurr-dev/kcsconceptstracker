@@ -1,37 +1,27 @@
 
 
-## Fix: Apply Deduplication to All Remaining Pages
+## Add 6-Pin Star Feature to Dashboard
 
-The Budget page fix is working. The same duplicate issue exists in **two more pages** that merge `quickbooks_expenses` with `expenses` without filtering out already-imported records.
+### What Changes
 
-### Pages to Fix
+1. **Increase the pin limit from 3 to 6** in the profile hook so you can star more projects.
 
-**1. Dashboard (`src/pages/Index.tsx`) -- Lines 92-168**
-- QB expenses are merged into category spend calculations (lines 97-101) and into the combined expense list (lines 152-168) without checking if they already exist as regular expenses.
-- Fix: Add `importedQbIds` Set from `expensesData`, filter `qbExpensesData` before both the category calculation and the expense list merge.
+2. **Show star icons on dashboard project cards** by passing the star/unstar props that `ProjectCard` already supports but the dashboard currently doesn't use.
 
-**2. Project Detail (`src/pages/ProjectDetail.tsx`) -- Lines 253-284**
-- QB expenses are merged into category spend (lines 257-261) and into `combinedExpenses` (line 284) without dedup.
-- Fix: Same pattern -- collect `qb_expense_id` values from expenses, filter QB records before merging.
+3. **Keep sorting logic as-is** -- pinned projects appear first (in the order they were pinned), followed by unpinned projects sorted by most recent start date.
 
-Note: The **Expenses page** (`src/pages/Expenses.tsx`) already has this dedup logic at lines 141-150 -- no changes needed there.
+4. **Show a toast** when you try to pin a 7th project, letting you know the limit.
 
 ### Technical Details
 
-Both fixes follow the exact same pattern already proven on the Budget page:
+**File: `src/hooks/useProfile.ts`** (~line 119)
+- Change `current.length >= 3` to `current.length >= 6`
 
-```ts
-// Collect QB IDs already imported as regular expenses
-const importedQbIds = new Set(
-  expensesData
-    .filter(e => e.qb_expense_id)
-    .map(e => e.qb_expense_id)
-);
-
-// Filter before any merge or calculation
-const dedupedQbExpenses = qbExpensesData.filter(qb => !importedQbIds.has(qb.id));
-```
+**File: `src/pages/Index.tsx`** (~lines 195-200, the ProjectCard render)
+- Import and use `useProfile` hook's `isProjectStarred` and `toggleStarProject`
+- Pass `isStarred={isProjectStarred(project.id)}` and `onToggleStar` handler to each `ProjectCard`
+- In the `onToggleStar` handler, call `toggleStarProject.mutate(projectId)` and show a toast on the "max" error
 
 ### Files Modified
-- `src/pages/Index.tsx` -- add dedup filter before category spend calculation and expense list merge
-- `src/pages/ProjectDetail.tsx` -- add dedup filter before category spend calculation and combined expenses merge
+- `src/hooks/useProfile.ts` -- raise star limit from 3 to 6
+- `src/pages/Index.tsx` -- wire up `isStarred` and `onToggleStar` on dashboard project cards, add max-reached toast
