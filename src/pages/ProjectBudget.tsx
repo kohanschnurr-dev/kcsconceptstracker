@@ -177,9 +177,9 @@ export default function ProjectBudget() {
     }, 100);
   };
 
-  const fetchData = async () => {
+  const fetchData = async (silent = false) => {
     if (!id) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     
     const { data: projectData, error: projectError } = await supabase
       .from('projects')
@@ -270,13 +270,11 @@ export default function ProjectBudget() {
 
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') fetchData();
+      if (document.visibilityState === 'visible') fetchData(true);
     };
     window.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('focus', handleVisibility);
     return () => {
       window.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('focus', handleVisibility);
     };
   }, [id]);
 
