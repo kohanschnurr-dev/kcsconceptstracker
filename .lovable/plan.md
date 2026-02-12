@@ -1,23 +1,37 @@
 
+## Redesign Budget Stats Cards
 
-## Show Loan Tab Content for Rental Projects
+### Overview
+Replace the current two rows of 4 stat cards (8 total) with a single redesigned set of 8 cards in two rows, showing the requested metrics.
 
-### What's happening
-The Loan tab is now visible for rental projects (fixed earlier), but its **content** is still hidden behind a `{!isRental && ...}` guard on line 809. So the tab appears but shows a blank page.
+### New Layout
 
-### Change
+**Row 1 (4 cards):**
+1. **Total Construction Budget** -- sum of all category budgets (same as current "Total Budget")
+2. **Remaining Construction Budget** -- budget minus construction spent (same as current "Remaining")
+3. **Total Monthly Costs** -- sum of expenses where `expense_type = 'monthly'` for this project
+4. **Total Loan Costs** -- sum of loan_payments for this project
 
-**File: `src/pages/ProjectDetail.tsx` (line 809-826)**
+**Row 2 (4 cards):**
+5. **Total Spent** -- total spent across all types (construction + monthly + loan)
+6. **# of Expenses** -- count of all expenses (same as current "Expenses")
+7. **This Month** -- spending this calendar month (kept from current)
+8. **Avg. Daily** -- average daily spending (kept from current)
 
-Remove the `{!isRental && ...}` wrapper so the Loan tab content renders for all project types. The content includes:
-- **HardMoneyLoanCalculator** -- the loan calculator with interest, term presets, and payoff timeline
-- **LoanPayments** -- the payment history table at the bottom
+**Removed:** "Last Month" and "This Week" cards.
 
-Both components are project-type agnostic and will work for rentals as-is.
+### Technical Details
 
-Also update the AlertDialog description (line 442) to remove the outdated text saying "the Loan tab will be hidden" since it will no longer be hidden after conversion.
+**File: `src/pages/ProjectBudget.tsx`**
 
-### Summary
-- One file changed (`ProjectDetail.tsx`)
-- Remove the `!isRental` conditional around the loan tab content
-- Update the convert-to-rental dialog text
+1. **Fetch loan_payments data** -- add a query in `fetchData()` to pull from `loan_payments` table for this project and store the total.
+
+2. **Calculate monthly costs** -- filter the existing expenses array for `expense_type === 'monthly'` and sum the amounts. Also include QB expenses that were imported as monthly type.
+
+3. **Replace the two stat card grids** (lines 596-701) with the new 8-card layout:
+   - Row 1: Total Construction Budget, Remaining Construction Budget, Total Monthly Costs, Total Loan Costs
+   - Row 2: Total Spent, # of Expenses, This Month, Avg. Daily
+
+4. **Update labels** -- rename "Total Budget" to "Total Construction Budget" and "Remaining" to "Remaining Construction Budget" for clarity.
+
+5. **Remove unused analytics** -- drop `lastMonthSpending` and `thisWeekSpending` from the `spendingAnalytics` memo since those cards are being removed.
