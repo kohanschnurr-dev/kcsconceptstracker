@@ -241,13 +241,18 @@ function CategorySection({
         const groupItems = items
           .filter(i => resolveTradeGroup(i) === groupKey)
           .sort((a, b) => a.label.localeCompare(b.label));
-        if (groupItems.length === 0) return null;
+        const customDefs = loadCustomGroups();
+        if (groupItems.length === 0 && !(groupKey in customDefs)) return null;
         return (
           <div key={groupKey} className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">{def.label}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {groupItems.map(item => renderBadge(item))}
-            </div>
+            {groupItems.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {groupItems.map(item => renderBadge(item))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground/60 italic">No categories assigned yet</p>
+            )}
           </div>
         );
       });
