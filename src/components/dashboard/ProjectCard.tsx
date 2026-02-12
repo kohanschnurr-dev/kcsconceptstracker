@@ -142,11 +142,20 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
             </div>
           )}
           <div>
-            <p className="text-xs text-muted-foreground">{project.completedDate ? 'Completed' : 'Start Date'}</p>
+            <p className="text-xs text-muted-foreground">Start Date</p>
             <div className="flex items-center gap-1 text-sm">
               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>{project.completedDate ? formatDate(project.completedDate) : formatDate(project.startDate)}</span>
+              <span>{formatDate(project.startDate)}</span>
             </div>
+            {project.completedDate && (
+              <>
+                <p className="text-xs text-muted-foreground mt-2">Completed</p>
+                <div className="flex items-center gap-1 text-sm">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>{formatDate(project.completedDate)}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
