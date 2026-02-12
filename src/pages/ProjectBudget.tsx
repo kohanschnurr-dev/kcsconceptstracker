@@ -144,6 +144,7 @@ export default function ProjectBudget() {
   // Edit/Delete modals
   const [editingExpense, setEditingExpense] = useState<DBExpense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<DBExpense | null>(null);
+  const [openCostTypeId, setOpenCostTypeId] = useState<string | null>(null);
   
   // Category modals
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -1218,7 +1219,7 @@ export default function ProjectBudget() {
                           </span>
                         </TableCell>
                         <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
-                          <Popover>
+                          <Popover open={openCostTypeId === exp.id} onOpenChange={(open) => setOpenCostTypeId(open ? exp.id : null)}>
                             <PopoverTrigger asChild>
                               <button type="button" className="cursor-pointer">
                                 <Badge variant="outline" className="text-xs font-normal hover:bg-accent transition-colors">
@@ -1233,7 +1234,7 @@ export default function ProjectBudget() {
                                     key={type}
                                     type="button"
                                     className={`text-xs px-3 py-1.5 rounded text-left hover:bg-accent transition-colors ${(exp.cost_type || 'construction') === type ? 'bg-accent font-medium' : ''}`}
-                                    onClick={() => handleCostTypeChange(exp.id, type)}
+                                    onClick={() => { handleCostTypeChange(exp.id, type); setOpenCostTypeId(null); }}
                                   >
                                     {getCostTypeLabel(type)}
                                   </button>
