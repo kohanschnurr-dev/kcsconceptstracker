@@ -1,38 +1,48 @@
 
 
-## Fix: Register Custom Categories Before QuickBooks Import
+## Fix: Register Category Enum Before Querying
 
-### Problem
-When importing a QuickBooks expense and selecting a custom category (e.g., "Insurance"), the system tries to insert a `project_categories` row with that value. If the value hasn't been registered in the Postgres `budget_category` enum, the insert fails with "Failed to find category."
+### Root Cause
+The "Failed to find category" error occurs at the **query** step, not the insert step. When checking if a category already exists for a project, the SQL query uses `.eq('category', categoryValue)` — but if `categoryValue` isn't registered in the Postgres `budget_category` enum, the query itself fails with a type mismatch error.
 
-This is the same root cause we just fixed for CSV imports — the `add_budget_category` RPC call is missing before the insert.
+The previous fix only added the RPC call before the **insert** (line 440), but the query on line 419-424 runs first and fails before we ever reach the insert.
 
-### Solution
-In `src/hooks/useQuickBooks.ts`, add a call to `supabase.rpc('add_budget_category', { new_value: categoryValue })` before attempting to insert into `project_categories`. This ensures the enum value exists in the database before the row is created.
+### Fix
+Move the `add_budget_category` RPC call to **before** the find query — so the enum value is guaranteed to exist before any database operation references it.
 
 ### Technical Details
 
-**File: `src/hooks/useQuickBooks.ts`**
+**File: `src/hooks/useQuickBooks.ts`** (one change around lines 417-440)
 
-In the `importExpense` function (around line 438), before the `project_categories` insert in the `else` branch:
-
+Before:
 ```ts
-// Before creating a new project_category, register the enum value
-await supabase.rpc('add_budget_category', { new_value: categoryValue });
-
-const { data: newCategory, error: createError } = await supabase
-  .from('project_categories')
-  .insert({
-    project_id: projectId,
-    category: categoryValue as BudgetCategory,
-    estimated_budget: 0,
-  })
-  .select('id')
-  .single();
+if (categoryValue) {
+  // Check if category already exists for this project
+  const { data: existingCategory, error: findError } = await supabase
+    .from('project_categories')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('category', categoryValue as BudgetCategory)
+    .maybeSingle();
 ```
 
-This is the same one-line fix pattern used in the CSV import fix and in `ManageSourcesCard.tsx`.
+After:
+```ts
+if (categoryValue) {
+  // Ensure the enum value exists before any DB query referencing it
+  await supabase.rpc('add_budget_category', { new_value: categoryValue });
+
+  // Check if category already exists for this project
+  const { data: existingCategory, error: findError } = await supabase
+    .from('project_categories')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('category', categoryValue as BudgetCategory)
+    .maybeSingle();
+```
+
+And remove the now-redundant RPC call on line 440 (inside the else branch).
 
 ### Files Modified
-- `src/hooks/useQuickBooks.ts` — add RPC call before category insert
+- `src/hooks/useQuickBooks.ts` — move RPC registration before the find query
 
