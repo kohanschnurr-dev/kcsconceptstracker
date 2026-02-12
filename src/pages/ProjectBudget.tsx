@@ -26,7 +26,9 @@ import {
   MoreHorizontal,
   Settings2,
   ShoppingCart,
-  Paperclip
+  Paperclip,
+  Landmark,
+  Home
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -424,6 +426,8 @@ export default function ProjectBudget() {
   const totalBudget = categories.reduce((sum, cat) => sum + Number(cat.estimated_budget), 0);
   const totalSpent = categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
   const remaining = totalBudget - totalSpent;
+  const loanCosts = expenses.filter(e => e.cost_type === 'loan').reduce((sum, e) => sum + Number(e.amount), 0);
+  const holdingCosts = expenses.filter(e => e.cost_type === 'monthly').reduce((sum, e) => sum + Number(e.amount), 0);
   const filteredTotal = filteredExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
 
 
@@ -624,6 +628,26 @@ export default function ProjectBudget() {
                   <p className={cn("text-2xl font-bold font-mono", remaining >= 0 ? "text-success" : "text-destructive")}>
                     {formatCurrency(remaining)}
                   </p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Landmark className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Loan Costs</span>
+                  </div>
+                  <p className="text-2xl font-bold font-mono">{formatCurrency(loanCosts)}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Home className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Holding Costs</span>
+                  </div>
+                  <p className="text-2xl font-bold font-mono">{formatCurrency(holdingCosts)}</p>
                 </CardContent>
               </Card>
             </div>
