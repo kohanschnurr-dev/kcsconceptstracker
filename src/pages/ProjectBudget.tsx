@@ -28,7 +28,8 @@ import {
   ShoppingCart,
   Paperclip,
   Landmark,
-  Home
+  Home,
+  Hammer
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -440,6 +441,7 @@ export default function ProjectBudget() {
   const remaining = totalBudget - totalSpent;
   const loanCosts = expenses.filter(e => e.cost_type === 'loan').reduce((sum, e) => sum + Number(e.amount), 0);
   const holdingCosts = expenses.filter(e => e.cost_type === 'monthly').reduce((sum, e) => sum + Number(e.amount), 0);
+  const constructionCosts = expenses.filter(e => e.cost_type === 'construction').reduce((sum, e) => sum + Number(e.amount), 0);
   const filteredTotal = filteredExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
 
 
@@ -719,16 +721,13 @@ export default function ProjectBudget() {
                 </CardContent>
               </Card>
 
-              <Card className="glass-card">
+              <Card className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")} onClick={() => handleCardFilter('construction')}>
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-1">
-                    <DollarSign className="h-4 w-4 text-primary" />
-                    <span className="text-sm text-muted-foreground">Avg. Daily</span>
+                    <Hammer className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Construction Costs</span>
                   </div>
-                  <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.avgDailySpending)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    over {spendingAnalytics.daysSinceStart} days
-                  </p>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(constructionCosts)}</p>
                 </CardContent>
               </Card>
             </div>
