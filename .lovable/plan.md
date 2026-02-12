@@ -1,41 +1,36 @@
 
 
-## Fix "Send Back to Queue" to Remove Expense from Project
+## Fix Duplicate QuickBooks Expenses on Expenses Page
 
 ### Problem
-When you click "Send Back to Queue" on an imported QuickBooks expense, it only resets the `quickbooks_expenses` record back to pending. It never deletes the corresponding record from the `expenses` table, so the expense remains visible in the project's budget feed -- and if you re-import it, you get duplicates.
+The Expenses page fetches records from two tables and combines them:
+1. The `expenses` table (where imported QB expenses are inserted during categorization)
+2. The `quickbooks_expenses` table (where `is_imported = true` records are also fetched)
 
-### Root Cause
-When a QB expense is imported, a new row is inserted into the `expenses` table AND the `quickbooks_expenses` row is marked as imported. But there's no link between the two records. The "send back" logic only touches `quickbooks_expenses` and has no way to find and remove the matching `expenses` row.
+This causes every imported QB expense to appear twice -- once from each table. The "Transfer" payment method you see is actually the correct record from the `expenses` table (QB stores Zelle as "transfer"), while the other is the raw `quickbooks_expenses` record.
 
 ### Solution
 
-**1. Database migration -- add a `qb_expense_id` column to the `expenses` table**
-
-Add a nullable `qb_expense_id` column (text) to the `expenses` table. This stores the `quickbooks_expenses.id` when the expense was created via QB import, giving us a reliable link to clean up later.
-
-**2. Update `src/hooks/useQuickBooks.ts` -- store the link on import**
-
-When inserting into the `expenses` table during categorization, include `qb_expense_id` set to the QB expense's ID. This applies to both single imports and split imports.
-
-**3. Update `src/components/ExpenseDetailModal.tsx` -- delete expense record on send-back**
-
-Before resetting the `quickbooks_expenses` record, delete any rows from the `expenses` table where `qb_expense_id` matches the QB expense ID being sent back.
-
-**4. Update `src/components/GroupedExpenseDetailModal.tsx` -- delete expense records on send-back**
-
-Same fix for the grouped (split) send-back flow: delete all `expenses` rows linked to the split QB IDs before resetting/deleting the QB records.
+In `src/pages/Expenses.tsx`, after fetching both datasets, filter out any `quickbooks_expenses` records whose `id` matches a `qb_expense_id` value in the `expenses` table. This prevents the duplicate while preserving older QB records that don't yet have a link.
 
 ### Technical Details
 
-```text
-Database migration:
-  ALTER TABLE expenses ADD COLUMN qb_expense_id text;
+**File: `src/pages/Expenses.tsx`**
+
+In the `fetchData` function, after fetching both `expensesData` and `qbExpensesData`, collect all `qb_expense_id` values from the expenses table and exclude matching QB records:
+
+```typescript
+// Collect linked QB IDs from expenses table
+const linkedQbIds = new Set(
+  (expensesData || [])
+    .map(e => e.qb_expense_id)
+    .filter(Boolean)
+);
+
+// Filter out QB expenses that already have a linked expenses record
+const filteredQbExpenses = (qbExpensesData || [])
+  .filter(qb => !linkedQbIds.has(qb.id));
 ```
 
-Files modified:
-- `src/hooks/useQuickBooks.ts` -- pass `qb_expense_id` when inserting expenses
-- `src/components/ExpenseDetailModal.tsx` -- add delete from `expenses` where `qb_expense_id = expense.id` before resetting
-- `src/components/GroupedExpenseDetailModal.tsx` -- same delete logic for grouped/split expenses
+This is a single change in one file -- no other modifications needed.
 
-No UI changes needed -- this is purely a data cleanup fix.
