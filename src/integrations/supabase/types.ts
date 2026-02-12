@@ -1205,6 +1205,7 @@ export type Database = {
           arv: number | null
           cashflow_rehab_override: number | null
           closing_costs_pct: number | null
+          completed_date: string | null
           cover_photo_path: string | null
           cover_photo_position: string | null
           created_at: string
@@ -1240,6 +1241,7 @@ export type Database = {
           arv?: number | null
           cashflow_rehab_override?: number | null
           closing_costs_pct?: number | null
+          completed_date?: string | null
           cover_photo_path?: string | null
           cover_photo_position?: string | null
           created_at?: string
@@ -1275,6 +1277,7 @@ export type Database = {
           arv?: number | null
           cashflow_rehab_override?: number | null
           closing_costs_pct?: number | null
+          completed_date?: string | null
           cover_photo_path?: string | null
           cover_photo_position?: string | null
           created_at?: string
