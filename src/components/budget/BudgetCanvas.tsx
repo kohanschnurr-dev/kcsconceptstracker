@@ -364,7 +364,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           const isOpen = openGroups.includes(group.name);
           const hasValue = groupTotal > 0;
 
-          if (groupCategories.length === 0) return null;
+          // Empty built-in groups are already filtered out by buildBudgetCalcGroups
 
           return (
             <Collapsible 
@@ -396,18 +396,24 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
                 </span>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="p-2 pt-0 grid grid-cols-2 lg:grid-cols-3 gap-1.5">
-                  {groupCategories.map((category) => (
-                    <BudgetCategoryCard
-                      key={category}
-                      category={category}
-                      label={getCategoryLabel(category)}
-                      value={categoryBudgets[category] || ''}
-                      onChange={(value) => onCategoryChange(category, value)}
-                      hasPreset={presetCategories.has(category)}
-                    />
-                  ))}
-                </div>
+                {groupCategories.length > 0 ? (
+                  <div className="p-2 pt-0 grid grid-cols-2 lg:grid-cols-3 gap-1.5">
+                    {groupCategories.map((category) => (
+                      <BudgetCategoryCard
+                        key={category}
+                        category={category}
+                        label={getCategoryLabel(category)}
+                        value={categoryBudgets[category] || ''}
+                        onChange={(value) => onCategoryChange(category, value)}
+                        hasPreset={presetCategories.has(category)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-3 pb-3 text-xs text-muted-foreground">
+                    No categories assigned yet. Go to Settings &gt; Expense Categories to assign categories to this group.
+                  </p>
+                )}
               </CollapsibleContent>
             </Collapsible>
           );

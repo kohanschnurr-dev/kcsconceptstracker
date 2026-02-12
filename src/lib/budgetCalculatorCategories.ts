@@ -141,17 +141,19 @@ export function resolveTradeGroup(item: CategoryItem): string {
 /** Build grouped structure from expense categories for BudgetCanvas rendering */
 export function buildBudgetCalcGroups(categories: CategoryItem[]) {
   const allDefs = getAllGroupDefs();
+  const customDefs = loadCustomGroups();
   const groupOrder = Object.keys(allDefs);
   return groupOrder
     .map(groupKey => {
       const def = allDefs[groupKey];
       const cats = categories.filter(c => c.group === groupKey);
       return {
+        key: groupKey,
         name: def.label,
         icon: def.icon,
         emoji: def.emoji,
         categories: cats.map(c => c.value),
       };
     })
-    .filter(g => g.categories.length > 0);
+    .filter(g => g.categories.length > 0 || g.key in customDefs);
 }
