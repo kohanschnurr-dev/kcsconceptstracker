@@ -18,6 +18,7 @@ interface Expense {
   includes_tax: boolean;
   tax_amount: number | null;
   status: string;
+  expense_type?: string | null;
 }
 
 interface Category {
@@ -87,26 +88,27 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
   };
 
   const exportExpensesCSV = () => {
-    const headers = ['Date', 'Vendor', 'Category', 'Description', 'Amount', 'Tax Amount', 'Total', 'Payment Method', 'Status'];
+    const headers = ['Date', 'Vendor', 'Category', 'Description', 'Type', 'Total', 'Payment Method'];
     const rows = expenses.map(exp => {
       const total = exp.includes_tax ? Number(exp.amount) + (Number(exp.tax_amount) || 0) : Number(exp.amount);
+      const type = exp.expense_type ? exp.expense_type.charAt(0).toUpperCase() + exp.expense_type.slice(1) : '';
       return [
         formatDate(exp.date),
         exp.vendor_name || '',
         getCategoryLabel(exp.category_id),
         exp.description || '',
-        formatCurrencyForCSV(Number(exp.amount)),
-        formatCurrencyForCSV(exp.tax_amount ? Number(exp.tax_amount) : 0),
+        type,
         formatCurrencyForCSV(total),
         exp.payment_method || '',
-        exp.status,
       ];
     });
 
     // Add totals row
-    const totalAmount = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
-    const totalTax = expenses.reduce((sum, exp) => sum + (Number(exp.tax_amount) || 0), 0);
-    rows.push(['', '', '', 'TOTALS', formatCurrencyForCSV(totalAmount), formatCurrencyForCSV(totalTax), formatCurrencyForCSV(totalAmount + totalTax), '', '']);
+    const grandTotal = expenses.reduce((sum, exp) => {
+      const total = exp.includes_tax ? Number(exp.amount) + (Number(exp.tax_amount) || 0) : Number(exp.amount);
+      return sum + total;
+    }, 0);
+    rows.push(['', '', '', 'TOTALS', '', formatCurrencyForCSV(grandTotal), '']);
 
     const csvContent = [
       `"Project:","${project.name}"`,
@@ -209,16 +211,16 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
 
     lines.push('');
     lines.push('"EXPENSE DETAILS"');
-    lines.push('"Date","Vendor","Category","Description","Amount","Tax","Total","Payment Method"');
+    lines.push('"Date","Vendor","Category","Description","Type","Total","Payment Method"');
     expenses.forEach(exp => {
       const total = exp.includes_tax ? Number(exp.amount) + (Number(exp.tax_amount) || 0) : Number(exp.amount);
+      const type = exp.expense_type ? exp.expense_type.charAt(0).toUpperCase() + exp.expense_type.slice(1) : '';
       lines.push([
         formatDate(exp.date),
         exp.vendor_name || '',
         getCategoryLabel(exp.category_id),
-        (exp.description || '').replace(/"/g, '""'), // Escape quotes in description
-        formatCurrencyForCSV(Number(exp.amount)),
-        formatCurrencyForCSV(exp.tax_amount ? Number(exp.tax_amount) : 0),
+        (exp.description || '').replace(/"/g, '""'),
+        type,
         formatCurrencyForCSV(total),
         exp.payment_method || '',
       ].map(cell => `"${cell}"`).join(','));
