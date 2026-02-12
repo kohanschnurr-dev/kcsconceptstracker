@@ -1,28 +1,30 @@
 
 
-## Make Summary Cards Clickable to Filter Expenses
+## Restructure Row 2: Replace "Avg. Daily" with "Construction Costs"
 
 ### Overview
-Make the "Total Construction Budget", "Loan Costs", and "Holding Costs" cards in Row 1 clickable. Clicking one will:
-1. Set the `selectedCostType` filter to the corresponding value (`construction`, `loan`, or `monthly`)
-2. Scroll down to the expenses table so the user immediately sees the filtered results
+Replace the "Avg. Daily" card in Row 2 with a clickable "Construction Costs" card that shows actual spending on construction-type expenses. This gives you a clear breakdown of where money is going across all three cost types, alongside the total.
 
-Clicking the same card again (when already filtered) will reset the filter back to "all".
+### Row 2 Layout (after change)
+| Total Spent | # of Expenses | This Month | Construction Costs |
+|---|---|---|---|
+
+- **Construction Costs**: Sum of all expenses where `cost_type === 'construction'`. Clickable to filter + scroll to the expenses table (same behavior as Loan/Holding cards in Row 1).
 
 ### Technical Details
 
 **File: `src/pages/ProjectBudget.tsx`**
 
-1. Add a `useRef` for the expenses table section (e.g., `expensesTableRef`) and attach it to the expenses table container element.
+1. **Add `constructionCosts` calculation** (near line 441, alongside `loanCosts`/`holdingCosts`):
+   ```
+   const constructionCosts = expenses.filter(e => e.cost_type === 'construction').reduce((sum, e) => sum + Number(e.amount), 0);
+   ```
 
-2. Create a helper function `handleCardFilter(costType: string)` that:
-   - Toggles `selectedCostType` (if already set to that value, reset to `'all'`; otherwise set it)
-   - Scrolls `expensesTableRef.current` into view with `behavior: 'smooth'`
+2. **Replace the "Avg. Daily" card** (lines 722-733) with a clickable "Construction Costs" card:
+   - Uses `Hammer` icon (or similar from lucide-react)
+   - Shows `constructionCosts` value
+   - Clickable with `handleCardFilter('construction')` -- same toggle behavior as the existing construction budget card in Row 1
+   - Active ring highlight when `selectedCostType === 'construction'`
 
-3. Update three cards to be clickable with `cursor-pointer` and a visual active state (e.g., ring highlight when the corresponding filter is active):
-   - **Total Construction Budget** card: filters to `'construction'`
-   - **Loan Costs** card: filters to `'loan'`
-   - **Holding Costs** card: filters to `'monthly'`
-
-4. Add the `ref={expensesTableRef}` to the expenses table wrapper (the Collapsible or its parent div).
+3. **Remove `spendingAnalytics.avgDailySpending`** usage from Row 2 (the card and its "over X days" subtitle).
 
