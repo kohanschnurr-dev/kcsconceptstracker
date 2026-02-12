@@ -1,33 +1,41 @@
 
 
-## Fix: Silent Refresh After "Send Back to Queue"
+## Fix: Eliminate Duplicate Display on Budget Page
 
-### Problem
-When you click "Send Back to Queue" (or Delete/Save), the `onExpenseUpdated` callback calls `refreshData()`, which calls `fetchData()` without the `silent` flag. This triggers `setLoading(true)`, causing the entire page to show loading skeletons, resetting your scroll position and collapsing all UI sections.
+### Root Cause
+The budget page fetches from **two** tables and merges them:
+1. `expenses` table -- contains the imported expense record (with `qb_expense_id` linking back to the QB record)
+2. `quickbooks_expenses` table -- contains the original QB record (with `is_imported: true`)
 
-### Solution
-Change `refreshData` in `ProjectBudget.tsx` to use a silent refresh by default, so the data updates in the background without flashing loading states.
+Both records represent the same transaction, so when they're combined on line 258 of `ProjectBudget.tsx`, every imported QB expense appears twice.
+
+### Fix
+When merging the two lists, filter out any `quickbooks_expenses` record whose `id` matches a `qb_expense_id` in the `expenses` table. This way, once a QB expense has been imported as a proper expense, only the `expenses` table version shows.
 
 ### Technical Details
 
-**File: `src/pages/ProjectBudget.tsx`** (line 281-283)
+**File: `src/pages/ProjectBudget.tsx`** (around lines 237-260)
 
-Change:
+Before the merge on line 258, collect all `qb_expense_id` values from the regular expenses, then exclude matching QB records:
+
 ```ts
-const refreshData = () => {
-  fetchData();
-};
+// Collect QB IDs that have already been imported as regular expenses
+const importedQbIds = new Set(
+  expensesData
+    .filter(e => e.qb_expense_id)
+    .map(e => e.qb_expense_id)
+);
+
+// Only include QB expenses that haven't been imported as regular expenses
+const qbAsExpenses: DBExpense[] = qbExpensesData
+  .filter(qb => !importedQbIds.has(qb.id))
+  .map(qb => ({
+    // ... existing mapping
+  }));
 ```
 
-To:
-```ts
-const refreshData = () => {
-  fetchData(true);
-};
-```
-
-This single change makes all post-action refreshes (Send Back to Queue, Delete, Save, Edit) update data silently in the background, preserving scroll position and UI state. The full loading skeleton will only show on initial page load and navigation.
+This also fixes the **category spend double-counting** on lines 229-235, where both the regular expense amount and the QB expense amount are summed for the same transaction. The same filter needs to apply before calculating `qbCategoryExpenses`.
 
 ### Files Modified
-- `src/pages/ProjectBudget.tsx` -- pass `silent=true` to `fetchData` in `refreshData`
+- `src/pages/ProjectBudget.tsx` -- filter out QB records that already exist as imported expenses before merging and before calculating category totals
 
