@@ -381,25 +381,13 @@ export default function ProjectDetail() {
 
   const effectiveTabOrder = useMemo(() => {
     if (!project) return DEFAULT_DETAIL_TAB_ORDER;
-    const order = getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
-    // Filter out loan for rentals
-    if (project.project_type === 'rental') {
-      return order.filter(t => t !== 'loan');
-    }
-    return order;
+    return getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
   }, [project?.project_type, profile?.detail_tab_order]);
 
   const moveDetailTab = (index: number, direction: 'up' | 'down') => {
     if (!project) return;
     const fullOrder = getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
-    // Work on the full order (including loan even for rentals) so it's preserved
-    const filtered = project.project_type === 'rental' ? fullOrder.filter(t => t !== 'loan') : fullOrder;
-    const newOrder = arrayMove(filtered, index, direction === 'up' ? index - 1 : index + 1);
-    // For rentals, re-insert loan in its original position for storage
-    if (project.project_type === 'rental') {
-      const loanIdx = fullOrder.indexOf('loan');
-      if (loanIdx >= 0) newOrder.splice(loanIdx, 0, 'loan');
-    }
+    const newOrder = arrayMove(fullOrder, index, direction === 'up' ? index - 1 : index + 1);
     updateDetailTabOrder.mutate({ projectType: project.project_type, tabOrder: newOrder });
   };
 
@@ -413,12 +401,7 @@ export default function ProjectDetail() {
     const newIndex = effectiveTabOrder.indexOf(over.id as string);
     if (oldIndex === -1 || newIndex === -1) return;
     const fullOrder = getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
-    const filtered = project.project_type === 'rental' ? fullOrder.filter(t => t !== 'loan') : fullOrder;
-    const newOrder = arrayMove(filtered, oldIndex, newIndex);
-    if (project.project_type === 'rental') {
-      const loanIdx = fullOrder.indexOf('loan');
-      if (loanIdx >= 0) newOrder.splice(loanIdx, 0, 'loan');
-    }
+    const newOrder = arrayMove(fullOrder, oldIndex, newIndex);
     updateDetailTabOrder.mutate({ projectType: project.project_type, tabOrder: newOrder });
   };
 
