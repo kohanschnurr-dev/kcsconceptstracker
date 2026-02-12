@@ -1,39 +1,44 @@
 
 
-## Move Import & Export Buttons into the "All Expenses" Card
+## Fix Security Issues
 
-### What Changes
-Move the **Import CSV** and **Export** buttons from the top-level page header into the **"All Expenses"** card header, placed to the right of the title. This makes it clear they relate to expenses specifically, not the overall budget.
+### Overview
+Address all 5 detected security issues: 2 errors and 3 warnings. After analysis, here's what needs to happen:
+
+### Issue 1: "RLS Policy Always True" + "OAuth State Validation Could Be Bypassed" (Warning)
+**Problem:** The `quickbooks_oauth_states` table has a policy called "Service role has full access" that grants unrestricted read/write to ALL users (including anonymous), not just the service role. This means any user could manipulate OAuth state records.
+
+**Fix:** Drop this overly permissive policy. The edge function already uses the service role key (which bypasses RLS entirely), so this policy is unnecessary and dangerous.
+
+```sql
+DROP POLICY "Service role has full access" ON quickbooks_oauth_states;
+```
+
+### Issue 2: "Leaked Password Protection Disabled" (Warning)
+**Problem:** Users can sign up with passwords that have appeared in known data breaches.
+
+**Fix:** Enable leaked password protection via the auth configuration.
+
+### Issue 3: "Receipt Data Could Be Accessed" (Error - False Positive)
+**Analysis:** The `pending_receipts` table already has correct RLS policies -- all operations require `auth.uid() = user_id`. Data is properly protected. Will mark this finding as resolved in the security scanner.
+
+### Issue 4: "User Personal Information Could Be Exposed" (Error - False Positive)  
+**Analysis:** The `profiles` table already has correct RLS policies -- SELECT, INSERT, and UPDATE all require `auth.uid() = user_id`. Users can only see their own profile. Will mark this finding as resolved in the security scanner.
 
 ### Technical Details
 
-**File: `src/pages/ProjectBudget.tsx`**
+**Database migration:**
+- Drop the "Service role has full access" policy from `quickbooks_oauth_states`
 
-1. **Remove** the Import CSV and Export buttons from the page header area (lines ~613-621), keeping only the "Add Expense" button there.
+**Auth configuration:**
+- Enable HaveIBeenPwned leaked password protection
 
-2. **Add** the Import CSV and Export buttons into the "All Expenses" card header (line ~1067), next to the title:
-
-```tsx
-<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-  <CardTitle className="text-lg">All Expenses</CardTitle>
-  <div className="flex items-center gap-2">
-    {hasActiveFilters && (
-      <Button variant="ghost" size="sm" onClick={clearFilters}>
-        <X className="h-4 w-4 mr-1" />
-        Clear Filters
-      </Button>
-    )}
-    <Button variant="outline" size="sm" onClick={() => setImportModalOpen(true)}>
-      <Upload className="h-4 w-4 mr-2" />
-      Import CSV
-    </Button>
-    <Button variant="outline" size="sm" onClick={exportToCSV}>
-      <Download className="h-4 w-4 mr-2" />
-      Export
-    </Button>
-  </div>
-</div>
-```
+**Security findings:**
+- Mark `pending_receipts_financial_exposure` as ignored (already properly secured)
+- Mark `profiles_personal_data_exposure` as ignored (already properly secured)
 
 ### Files Modified
-- `src/pages/ProjectBudget.tsx` -- move Import CSV and Export buttons from page header to "All Expenses" card header
+- Database migration (drop overly permissive RLS policy)
+- Auth config update (enable leaked password protection)
+- Security findings updates (dismiss false positives with justification)
+
