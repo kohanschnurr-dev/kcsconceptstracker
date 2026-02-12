@@ -225,17 +225,27 @@ export default function ProjectBudget() {
       return true;
     });
     
+    // Collect QB IDs that have already been imported as regular expenses
+    const importedQbIds = new Set(
+      expensesData
+        .filter(e => e.qb_expense_id)
+        .map(e => e.qb_expense_id)
+    );
+
+    // Filter out QB expenses that already exist as imported regular expenses
+    const dedupedQbExpenses = qbExpensesData.filter(qb => !importedQbIds.has(qb.id));
+
     // Combine regular expenses with QB imported expenses for category calculations
     const categoriesWithSpent = categoriesData.map(cat => {
       const regularCategoryExpenses = expensesData.filter(e => e.category_id === cat.id);
-      const qbCategoryExpenses = qbExpensesData.filter(e => e.category_id === cat.id);
+      const qbCategoryExpenses = dedupedQbExpenses.filter(e => e.category_id === cat.id);
       const regularSpent = regularCategoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
       const qbSpent = qbCategoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
       return { ...cat, actualSpent: regularSpent + qbSpent };
     });
     
     // Merge expenses for display - convert QB expenses to match DBExpense format
-    const qbAsExpenses: DBExpense[] = qbExpensesData.map(qb => ({
+    const qbAsExpenses: DBExpense[] = dedupedQbExpenses.map(qb => ({
       id: qb.id,
       project_id: qb.project_id || '',
       category_id: qb.category_id || '',
