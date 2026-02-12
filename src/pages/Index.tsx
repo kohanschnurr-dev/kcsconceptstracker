@@ -33,6 +33,7 @@ interface DBExpense {
   description: string | null;
   includes_tax: boolean;
   tax_amount: number | null;
+  qb_expense_id: string | null;
 }
 
 export default function Index() {
@@ -88,13 +89,21 @@ export default function Index() {
         .select('amount');
       const loanTotal = (loanPaymentsData || []).reduce((sum, p) => sum + Number(p.amount), 0);
       setTotalLoanPayments(loanTotal);
-      // Calculate actual spent per category (include both regular and QB expenses)
+      // Collect QB IDs already imported as regular expenses to prevent duplicates
+      const importedQbIds = new Set(
+        (expensesData || [])
+          .filter((e: DBExpense) => e.qb_expense_id)
+          .map((e: any) => e.qb_expense_id)
+      );
+      const dedupedQbExpenses = (qbExpensesData || []).filter((qb: any) => !importedQbIds.has(qb.id));
+
+      // Calculate actual spent per category (include both regular and deduped QB expenses)
       const expensesByCategory: Record<string, number> = {};
       (expensesData || []).forEach((e: DBExpense) => {
         expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
       });
-      // Include QuickBooks imported expenses
-      (qbExpensesData || []).forEach((e: any) => {
+      // Include only non-duplicate QuickBooks imported expenses
+      dedupedQbExpenses.forEach((e: any) => {
         if (e.category_id) {
           expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
         }
@@ -148,8 +157,8 @@ export default function Index() {
         taxAmount: e.tax_amount ? Number(e.tax_amount) : undefined,
       }));
 
-      // Include QuickBooks imported expenses for dashboard stats
-      const qbImportedExpenses: Expense[] = (qbExpensesData || [])
+      // Include only non-duplicate QuickBooks imported expenses for dashboard stats
+      const qbImportedExpenses: Expense[] = dedupedQbExpenses
         .filter((e: any) => e.project_id && e.category_id) // Only count project-assigned expenses
         .map((e: any) => ({
           id: e.id,
