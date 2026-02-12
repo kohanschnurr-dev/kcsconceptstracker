@@ -1,20 +1,23 @@
 
 
-## Fix Loan Import: Add 'loan' to expense_type Check Constraint
+## Show Loan Tab Content for Rental Projects
 
-### Problem
-The error "Failed to create expense record" is caused by a **CHECK constraint** on the `expenses.expense_type` column. It currently only allows `'product'` and `'labor'`, but the loan import flow tries to insert with `expense_type: 'loan'`.
+### What's happening
+The Loan tab is now visible for rental projects (fixed earlier), but its **content** is still hidden behind a `{!isRental && ...}` guard on line 809. So the tab appears but shows a blank page.
 
-The `category_id` nullable fix was correct and applied -- this is a separate, second constraint that also needs updating.
+### Change
 
-### Solution
+**File: `src/pages/ProjectDetail.tsx` (line 809-826)**
 
-**Database migration** -- update the check constraint to include `'loan'` and `'monthly'` (since monthly is also used in the QB flow):
+Remove the `{!isRental && ...}` wrapper so the Loan tab content renders for all project types. The content includes:
+- **HardMoneyLoanCalculator** -- the loan calculator with interest, term presets, and payoff timeline
+- **LoanPayments** -- the payment history table at the bottom
 
-```sql
-ALTER TABLE public.expenses DROP CONSTRAINT expenses_expense_type_check;
-ALTER TABLE public.expenses ADD CONSTRAINT expenses_expense_type_check
-  CHECK (expense_type = ANY (ARRAY['product', 'labor', 'loan', 'monthly']));
-```
+Both components are project-type agnostic and will work for rentals as-is.
 
-That's it. One migration, no code changes needed. The insert logic in `useQuickBooks.ts` is already correct -- it just needs the database to accept `'loan'` as a valid type.
+Also update the AlertDialog description (line 442) to remove the outdated text saying "the Loan tab will be hidden" since it will no longer be hidden after conversion.
+
+### Summary
+- One file changed (`ProjectDetail.tsx`)
+- Remove the `!isRental` conditional around the loan tab content
+- Update the convert-to-rental dialog text
