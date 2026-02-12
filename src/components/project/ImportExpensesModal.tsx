@@ -350,9 +350,14 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
       const existingCatValues = new Set(existingCategories.map(c => c.category));
       const neededCats = [...new Set(rows.map(r => r.matchedCategory!))].filter(c => !existingCatValues.has(c));
 
-      // Create missing project_categories
+      // Register any custom category values in the DB enum first
       let newCatMap: Record<string, string> = {};
       if (neededCats.length > 0) {
+        for (const cat of neededCats) {
+          await supabase.rpc('add_budget_category', { new_value: cat });
+        }
+
+        // Then create the project_categories rows
         const { data: newCats, error: catError } = await supabase
           .from('project_categories')
           .insert(neededCats.map(cat => ({
