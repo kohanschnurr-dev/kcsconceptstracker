@@ -1,0 +1,1 @@
+ALTER TABLE public.expenses ADD COLUMN cost_type text NOT NULL DEFAULT 'construction';

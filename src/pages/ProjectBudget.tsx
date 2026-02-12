@@ -92,6 +92,7 @@ interface DBExpense {
   tax_amount: number | null;
   status: string;
   expense_type?: string | null;
+  cost_type?: string;
   isQuickBooks?: boolean;
   notes?: string | null;
   receipt_url?: string | null;
@@ -127,6 +128,7 @@ export default function ProjectBudget() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all');
+  const [selectedCostType, setSelectedCostType] = useState<string>('all');
   const [dateRange, setDateRange] = useState<'all' | '7d' | '30d' | '90d' | 'year'>('all');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -388,6 +390,11 @@ export default function ProjectBudget() {
       filtered = filtered.filter(exp => new Date(exp.date) >= cutoff);
     }
     
+    // Cost type filter
+    if (selectedCostType !== 'all') {
+      filtered = filtered.filter(exp => (exp.cost_type || 'construction') === selectedCostType);
+    }
+    
     
     // Sorting
     filtered.sort((a, b) => {
@@ -410,7 +417,7 @@ export default function ProjectBudget() {
     });
     
     return filtered;
-  }, [expenses, searchQuery, selectedCategory, selectedPaymentMethod, dateRange, sortField, sortOrder, categories]);
+  }, [expenses, searchQuery, selectedCategory, selectedPaymentMethod, selectedCostType, dateRange, sortField, sortOrder, categories]);
 
   // Calculate total budget from sum of category budgets
   const totalBudget = categories.reduce((sum, cat) => sum + Number(cat.estimated_budget), 0);
@@ -461,18 +468,41 @@ export default function ProjectBudget() {
     setSearchQuery('');
     setSelectedCategory('all');
     setSelectedPaymentMethod('all');
+    setSelectedCostType('all');
     setDateRange('all');
   };
 
-  const hasActiveFilters = searchQuery || selectedCategory !== 'all' || selectedPaymentMethod !== 'all' || dateRange !== 'all';
+  const hasActiveFilters = searchQuery || selectedCategory !== 'all' || selectedPaymentMethod !== 'all' || selectedCostType !== 'all' || dateRange !== 'all';
+
+  const handleCostTypeChange = async (expenseId: string, costType: string) => {
+    const { error } = await supabase
+      .from('expenses')
+      .update({ cost_type: costType } as any)
+      .eq('id', expenseId);
+    if (error) {
+      toast.error('Failed to update expense type');
+      return;
+    }
+    setExpenses(prev => prev.map(e => e.id === expenseId ? { ...e, cost_type: costType } : e));
+    toast.success('Type updated');
+  };
+
+  const getCostTypeLabel = (type: string) => {
+    switch (type) {
+      case 'loan': return 'Loan';
+      case 'monthly': return 'Monthly';
+      default: return 'Construction';
+    }
+  };
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Vendor', 'Category', 'Description', 'Amount', 'Tax', 'Payment Method', 'Status'];
+    const headers = ['Date', 'Vendor', 'Category', 'Description', 'Type', 'Amount', 'Tax', 'Payment Method', 'Status'];
     const rows = filteredExpenses.map(exp => [
       formatDate(exp.date),
       exp.vendor_name || '',
       getCategoryLabel(exp.category_id),
       exp.description || '',
+      getCostTypeLabel(exp.cost_type || 'construction'),
       Number(exp.amount).toFixed(2),
       exp.tax_amount ? Number(exp.tax_amount).toFixed(2) : '0.00',
       exp.payment_method || '',
@@ -979,7 +1009,7 @@ export default function ProjectBudget() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
               <div className="relative lg:col-span-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -1029,6 +1059,18 @@ export default function ProjectBudget() {
                   <SelectItem value="30d">Last 30 Days</SelectItem>
                   <SelectItem value="90d">Last 90 Days</SelectItem>
                   <SelectItem value="year">Last Year</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={selectedCostType} onValueChange={setSelectedCostType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="construction">Construction</SelectItem>
+                  <SelectItem value="loan">Loan</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1085,6 +1127,7 @@ export default function ProjectBudget() {
                       </div>
                     </TableHead>
                     <TableHead className="hidden lg:table-cell">Description</TableHead>
+                    <TableHead className="hidden md:table-cell">Type</TableHead>
                     <TableHead 
                       className="text-right cursor-pointer hover:bg-muted/50"
                       onClick={() => handleSort('amount')}
@@ -1103,7 +1146,7 @@ export default function ProjectBudget() {
                 <TableBody>
                   {filteredExpenses.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                         {expenses.length === 0 ? (
                           <div className="flex flex-col items-center gap-2">
                             <Receipt className="h-8 w-8 opacity-50" />
@@ -1148,6 +1191,27 @@ export default function ProjectBudget() {
                           <span className="text-sm text-muted-foreground truncate max-w-[200px] block">
                             {exp.description || '-'}
                           </span>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
+                          {exp.isQuickBooks ? (
+                            <Badge variant="outline" className="text-xs font-normal">
+                              {getCostTypeLabel(exp.cost_type || 'construction')}
+                            </Badge>
+                          ) : (
+                            <Select
+                              value={exp.cost_type || 'construction'}
+                              onValueChange={(val) => handleCostTypeChange(exp.id, val)}
+                            >
+                              <SelectTrigger className="h-7 w-[120px] text-xs border-dashed">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="construction">Construction</SelectItem>
+                                <SelectItem value="loan">Loan</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
