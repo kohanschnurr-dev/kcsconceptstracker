@@ -121,6 +121,7 @@ export default function Projects() {
           categories: projectCategories,
           coverPhotoPath: p.cover_photo_path || undefined,
           coverPhotoPosition: p.cover_photo_position || undefined,
+          completedDate: (p as any).completed_date || undefined,
         };
       });
 

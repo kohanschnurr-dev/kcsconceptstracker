@@ -105,6 +105,7 @@ interface DBProject {
   vacancy_rate?: number;
   monthly_maintenance?: number;
   management_rate?: number;
+  completed_date?: string | null;
 }
 
 interface DBCategory {
@@ -331,14 +332,21 @@ export default function ProjectDetail() {
     }
   };
 
+  const [completionDateOpen, setCompletionDateOpen] = useState(false);
+
   const handleStatusChange = async (newStatus: 'active' | 'complete' | 'on_hold') => {
     if (!project || newStatus === project.status) return;
     
+    if (newStatus === 'complete') {
+      setCompletionDateOpen(true);
+      return;
+    }
+
     setUpdatingStatus(true);
     
     const { error } = await supabase
       .from('projects')
-      .update({ status: newStatus })
+      .update({ status: newStatus, completed_date: null } as any)
       .eq('id', project.id);
     
     if (error) {
@@ -349,10 +357,39 @@ export default function ProjectDetail() {
         variant: 'destructive',
       });
     } else {
-      setProject({ ...project, status: newStatus });
+      setProject({ ...project, status: newStatus, completed_date: null });
       toast({
         title: 'Status updated',
         description: `Project marked as ${newStatus.replace('_', ' ')}`,
+      });
+    }
+    
+    setUpdatingStatus(false);
+  };
+
+  const handleCompleteWithDate = async (date: Date) => {
+    if (!project) return;
+    setCompletionDateOpen(false);
+    setUpdatingStatus(true);
+    const completedDate = format(date, 'yyyy-MM-dd');
+    
+    const { error } = await supabase
+      .from('projects')
+      .update({ status: 'complete', completed_date: completedDate } as any)
+      .eq('id', project.id);
+    
+    if (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update project status',
+        variant: 'destructive',
+      });
+    } else {
+      setProject({ ...project, status: 'complete', completed_date: completedDate });
+      toast({
+        title: 'Project completed',
+        description: `Marked complete on ${format(date, 'MMM d, yyyy')}`,
       });
     }
     
@@ -548,7 +585,20 @@ export default function ProjectDetail() {
                       </>
                     )}
                   </DropdownMenuContent>
-                </DropdownMenu>
+              </DropdownMenu>
+              <Popover open={completionDateOpen} onOpenChange={setCompletionDateOpen}>
+                <PopoverTrigger asChild>
+                  <span />
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={new Date()}
+                    onSelect={(date) => date && handleCompleteWithDate(date)}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                 {isEditing ? (
@@ -608,8 +658,14 @@ export default function ProjectDetail() {
                       }}
                       className={cn("p-3 pointer-events-auto")}
                     />
-                  </PopoverContent>
+                </PopoverContent>
                 </Popover>
+                {project.completed_date && (
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    Completed {formatDate(project.completed_date)}
+                  </span>
+                )}
               </div>
             </div>
           </div>

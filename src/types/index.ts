@@ -121,6 +121,7 @@ export interface Project {
   categories: CategoryBudget[];
   coverPhotoPath?: string;
   coverPhotoPosition?: string;
+  completedDate?: string;
 }
 
 export interface CategoryBudget {
