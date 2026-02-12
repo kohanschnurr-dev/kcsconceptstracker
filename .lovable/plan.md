@@ -1,54 +1,52 @@
 
-## Fix Monthly and Loan Expense Import from QuickBooks
 
-### Problem
-When you select "Monthly" or "Loan" in the QuickBooks pending queue and try to import, it fails because:
-- **Monthly**: The monthly category values (water, gas, electric, insurance, etc.) are not valid entries in the database's budget category list. The system tries to create a project category with an invalid value and the database rejects it.
-- **Loan**: Loans work partially but may have edge cases where the expense doesn't properly clear from the queue.
+## Remove Loan and Monthly Expense Types from QuickBooks Pending Cards
 
-### Solution
+### Overview
+Strip out the "Loan" and "Monthly" options from the QuickBooks pending expense card's "More" popover, along with all related UI and logic that was recently added. This is a clean rollback so we can start fresh on this feature later.
 
-**1. Add monthly category values to the database enum** (database migration)
+### Changes
 
-Add these missing values to the `budget_category` enum so monthly costs can be properly stored:
-- water, gas, electric, insurance, property_tax, lawn_care, pool_maintenance, internet_cable, trash_recycling, security_alarm
+**File 1: `src/components/quickbooks/GroupedPendingExpenseCard.tsx`**
+- Remove the `Landmark`, `Zap`, and `MoreHorizontal` icon imports (no longer needed)
+- Remove the `Popover`/`PopoverContent`/`PopoverTrigger` imports (no longer needed for this component)
+- Remove `morePopoverOpen` state
+- Simplify `selectedExpenseType` state type from `'product' | 'labor' | 'loan' | 'monthly'` to just `'product' | 'labor'`
+- Remove the entire "More" popover button and its contents (the `...` button with Loan/Monthly options)
+- Remove the loan/monthly label text that appears next to the popover
+- Remove the conditional logic that hides the category selector when `selectedExpenseType === 'loan'`
+- Remove the monthly categories placeholder text logic
+- Remove the conditional that hides the Product/Labor toggle when loan is selected
+- Remove the special validation that allows loan without a category (`selectedExpenseType !== 'loan'`)
+- Always show the category selector and always require a category
+- Always show the Product/Labor toggle
+- Simplify the `onCategorize` prop type from `'product' | 'labor' | 'loan' | 'monthly'` to `'product' | 'labor'`
+- Remove the `getMonthlyCategories` import
 
-(Some like `pest_control` and `hoa` already exist in the enum.)
+**File 2: `src/pages/ProjectBudget.tsx`**
+- Remove the `totalLoanCosts` state and its data fetch from `loan_payments`
+- Remove the `totalMonthlyCosts` memo
+- Remove the `grandTotalSpent` calculation
+- Remove the "Total Monthly Costs" and "Total Loan Costs" stat cards from Row 1
+- Restore Row 1 to: Total Construction Budget, Remaining Construction Budget (and add back 2 useful cards or keep 2 columns)
+- Update "Total Spent" to use `totalSpent` directly instead of `grandTotalSpent`
+- Update `avgDailySpending` to use `totalSpent` instead of `grandTotalSpent`
+- Remove the `selectedExpenseType` filter state
+- Remove the "Type" filter dropdown (Construction/Monthly/Loan)
+- Remove the expense type badges (Loan/Monthly) from the category column in the expense table
+- Remove `selectedExpenseType` from `clearFilters` and `hasActiveFilters`
+- Remove the expense type filter logic from the `filteredExpenses` memo
+- Remove the `Banknote` icon import if no longer used
 
-**2. Fix the categorize flow in `src/hooks/useQuickBooks.ts`**
+**File 3: `src/hooks/useQuickBooks.ts`**
+- Simplify `categorizeExpense` parameter type from `'product' | 'labor' | 'loan' | 'monthly'` to `'product' | 'labor'`
+- Remove the loan-specific code path (skipping category creation, inserting into `loan_payments`)
+- Remove the loan-specific toast messages
+- Always require a category value
 
-For **monthly** expenses: The current code path already works correctly once the enum values exist -- it finds/creates a `project_categories` row and inserts an expense with `expense_type: 'monthly'`. No code changes needed for this path.
+### What stays untouched
+- The `loan_payments` table and data remain in the database (no destructive changes)
+- The `MonthlyExpenses` component on ProjectDetail stays (it reads existing data)
+- The monthly category enum values stay in the database (harmless, may be useful later)
+- The `expense_type` column on the expenses table stays (existing data is preserved)
 
-For **loan** expenses: The code already handles loans by skipping category creation and inserting into `loan_payments`. However, ensure the QB expense record gets properly marked as imported and cleared from the pending list. Review and fix any issues where the QB record update might fail silently.
-
-**3. Verify the full flow works end-to-end**
-
-After the enum update:
-- Monthly: Select project, pick monthly category (e.g. Insurance), click checkmark. Expense is created with `expense_type: 'monthly'`, appears in the feed with a teal "Monthly" badge, and contributes to "Total Monthly Costs."
-- Loan: Select project, click checkmark (no category needed). Expense is created with `expense_type: 'loan'`, a `loan_payments` record is inserted, appears in feed with a blue "Loan" badge, and contributes to "Total Loan Costs."
-
-### Technical Details
-
-**Database migration**: Single `ALTER TYPE` statement to add the new enum values.
-
-```text
-ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'water';
-ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'gas';
-ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'electric';
-ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'insurance';
-ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'property_tax';
-ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'lawn_care';
-ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'pool_maintenance';
-ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'internet_cable';
-ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'trash_recycling';
-ALTER TYPE budget_category ADD VALUE IF NOT EXISTS 'security_alarm';
-```
-
-**File: `src/hooks/useQuickBooks.ts`** -- No major changes needed once enum is fixed. Will verify the loan path clears the pending queue correctly.
-
-**File: `src/pages/ProjectBudget.tsx`** -- Already has the badge rendering and stat cards from the previous changes. Monthly and loan expenses will automatically flow into the correct totals.
-
-### Summary
-- One database migration to add monthly cost values to the budget category enum
-- The existing code already handles monthly/loan routing correctly -- it just couldn't save because the DB rejected the category values
-- No UI changes needed -- badges and stat cards are already in place
