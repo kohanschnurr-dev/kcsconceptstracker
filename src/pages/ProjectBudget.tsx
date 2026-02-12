@@ -6,6 +6,7 @@ import {
   TrendingUp, 
   TrendingDown,
   Receipt,
+  Upload,
   Search,
   Filter,
   ChevronDown,
@@ -49,6 +50,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { EditExpenseModal, DeleteExpenseDialog } from '@/components/project/ExpenseActions';
 import { CategoryBudgetModal, DeleteCategoryDialog } from '@/components/project/CategoryBudgetModal';
+import { ImportExpensesModal } from '@/components/project/ImportExpensesModal';
 import { ExpenseDetailModal } from '@/components/ExpenseDetailModal';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
@@ -155,6 +157,7 @@ export default function ProjectBudget() {
   // Detail modal state
   const [selectedExpense, setSelectedExpense] = useState<DBExpense | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   
   // All Expenses collapsed state - show only 7 by default
   const [showAllExpenses, setShowAllExpenses] = useState(false);
@@ -608,6 +611,10 @@ export default function ProjectBudget() {
               <p className="text-muted-foreground">{project.name} • {project.address}</p>
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setImportModalOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import CSV
+              </Button>
               <Button variant="outline" onClick={exportToCSV}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
@@ -1404,6 +1411,14 @@ export default function ProjectBudget() {
         categoryLabel={selectedExpense ? getCategoryLabel(selectedExpense.category_id) : ''}
         categories={categories}
         onExpenseUpdated={refreshData}
+      />
+
+      <ImportExpensesModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        projectId={id!}
+        existingCategories={categories}
+        onImportComplete={refreshData}
       />
     </MainLayout>
   );
