@@ -1,40 +1,20 @@
 
 
-## Enable Loan Tracking for Rental Projects
+## Fix Loan Import: Add 'loan' to expense_type Check Constraint
 
 ### Problem
-1. **Loan tab is hidden for rentals** -- Rental properties can have mortgages/loans, but the Loan tab is filtered out for rental projects.
-2. **Loan import fails with error** -- When marking a QB expense as "Loan," the code tries to insert into the `expenses` table with `category_id: null`, but that column is NOT NULL, causing "Failed to create expense record."
-3. **Budget isolation** -- Loan payments should NOT count toward the project budget (construction-only), which is already the intended behavior since loans skip category assignment.
+The error "Failed to create expense record" is caused by a **CHECK constraint** on the `expenses.expense_type` column. It currently only allows `'product'` and `'labor'`, but the loan import flow tries to insert with `expense_type: 'loan'`.
+
+The `category_id` nullable fix was correct and applied -- this is a separate, second constraint that also needs updating.
 
 ### Solution
 
-**1. Database migration -- make `category_id` nullable**
+**Database migration** -- update the check constraint to include `'loan'` and `'monthly'` (since monthly is also used in the QB flow):
 
-The `expenses.category_id` column is currently `NOT NULL`. Change it to nullable so loan-type expenses can be stored without a budget category. This is the root cause of the error in the screenshot.
-
-**2. Show Loan tab for rental projects**
-
-Remove the filter in `ProjectDetail.tsx` that hides the Loan tab when `project_type === 'rental'`. Rentals need loan tracking just as much as fix-and-flips.
-
-**3. No other changes needed**
-
-The existing logic already:
-- Skips category selection when "Loan" is chosen in the QB queue
-- Inserts into `loan_payments` table for loan-type expenses
-- Sets `category_id: null` for loans (which will now work after the migration)
-- Excludes null-category expenses from budget calculations
-
-### Technical Details
-
-**Database migration:**
 ```sql
-ALTER TABLE public.expenses ALTER COLUMN category_id DROP NOT NULL;
+ALTER TABLE public.expenses DROP CONSTRAINT expenses_expense_type_check;
+ALTER TABLE public.expenses ADD CONSTRAINT expenses_expense_type_check
+  CHECK (expense_type = ANY (ARRAY['product', 'labor', 'loan', 'monthly']));
 ```
 
-**File: `src/pages/ProjectDetail.tsx`**
-- Remove the two places where `loan` is filtered out of the tab order for rental projects (lines ~386-387 and ~396)
-- The Loan tab and LoanPayments component will then render for all project types
-
-**Two files touched, one migration. The loan import flow will work end-to-end after this.**
-
+That's it. One migration, no code changes needed. The insert logic in `useQuickBooks.ts` is already correct -- it just needs the database to accept `'loan'` as a valid type.
