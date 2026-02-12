@@ -279,7 +279,7 @@ export default function ProjectBudget() {
   }, [id]);
 
   const refreshData = () => {
-    fetchData();
+    fetchData(true);
   };
 
   const formatCurrency = (amount: number) => {
