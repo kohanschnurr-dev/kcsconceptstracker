@@ -139,22 +139,29 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
   const fileRef = useRef<HTMLInputElement>(null);
   const allCategories = getBudgetCategories();
 
-  const categoryList = allCategories.map(c => c.label).join(', ');
-  const aiPrompt = `Convert my raw expense data into a CSV with these exact columns:
-Date,Vendor,Category,Description,Amount,Payment Method,Expense Type,Notes
+  const aiPrompt = `Role: You are a specialized construction bookkeeper for a DFW real estate developer. Your goal is to convert messy financial documents into clean, structured data for a master expense tracker.
 
-Strict Formatting Rules:
-- Date: Convert all dates to MM/DD/YYYY.
-- Category: Use one of these exact values: ${categoryList}
-- Expense Type: 'product' for materials (Home Depot, Lowe's, etc.) or 'labor' for service providers (contractors, plumbers, etc.).
-- Amount: Numerical value only (no $ signs or commas).
-- Payment Method: cash, check, card, or transfer. Leave blank if unclear.
-- Notes: Include relevant details like 'Licensed & insured' or project locations.
-- Missing Data: Leave fields blank if not available.
+Task: Extract every individual expense from the uploaded file (PDF, Excel, or Image) and prepare it for a CSV export.
 
-Output: Provide the CSV content only, no headers or explanation. Ready to copy-paste into a .csv file.
+Strict Extraction Rules:
 
-Here is my raw data:`;
+Identify All Data: Scan the entire document. Do not summarize; extract every line item separately.
+
+Date: Convert to MM/DD/YYYY.
+
+Category: Map each expense to exactly one of these: Appliances, Bathroom, Cabinets, Cleaning, Closing Costs, Concrete, Countertops, Demolition, Doors, Drain Line Repair, Drywall, Electrical, Exterior Finish, Fencing, Filler, Final Punch, Flooring, Food, Foundation, Framing, Garage, Gas, Hardware, HOA, HVAC, Inspections, Insulation, Insurance, Kitchen, Landscaping, Light Fixtures, Main Bathroom, Misc., Painting, Permits, Pest Control, Plumbing, Pool, Railing, Roofing, Staging, Taxes, Tile, Trash Hauling, Trims, Utilities, Variable, Water Heater, Wholesale Fee, Windows.
+
+Expense Type: Use 'product' for materials/retailers or 'labor' for contractors/service providers.
+
+Amount: Numerical only (no currency symbols or commas).
+
+Payment Method: card, check, cash, or transfer.
+
+Notes: Include project-specific details or credentials (e.g., "Licensed & insured").
+
+Output Format: Create a downloadable CSV file with these exact headers: Date,Vendor,Category,Description,Amount,Payment Method,Expense Type,Notes.
+
+Please upload your file (PDF, Excel, or Receipt image) now.`;
 
   const handleCopyPrompt = async () => {
     await navigator.clipboard.writeText(aiPrompt);
@@ -403,7 +410,7 @@ Here is my raw data:`;
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sm">Have messy data? Let AI format it for you</p>
-                  <p className="text-xs text-muted-foreground">Paste this prompt into ChatGPT, Gemini, or Claude along with your raw data. Then save the output as a .csv file and upload it above.</p>
+                  <p className="text-xs text-muted-foreground">Copy this prompt into ChatGPT, Gemini, or Claude, then upload your file (PDF, Excel, or receipt image). Save the output as a .csv file and upload it above.</p>
                 </div>
                 <Button
                   variant="outline"
