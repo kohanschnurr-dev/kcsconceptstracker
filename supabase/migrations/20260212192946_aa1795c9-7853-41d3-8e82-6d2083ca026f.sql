@@ -1,0 +1,1 @@
+DROP POLICY "Service role has full access" ON quickbooks_oauth_states;
