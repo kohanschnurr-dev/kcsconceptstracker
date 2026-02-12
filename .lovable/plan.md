@@ -1,21 +1,36 @@
 
 
-## Close Popover on Cost Type Selection
+## Fix: Cost Type Changes Not Persisting for QuickBooks Expenses
 
-### Change
-Add controlled `open` state to the cost type `Popover` so it closes immediately when a type is selected.
+### Root Cause
+When changing the cost type on a QuickBooks expense, the code updates the `expenses` table -- but QuickBooks expenses live in the `quickbooks_expenses` table. The update silently matches zero rows, the optimistic UI update shows briefly, then the next data refresh (triggered by focus/visibility listeners) overwrites it back to the default "Construction".
 
-### Technical Details
+### Solution
 
-**File: `src/pages/ProjectBudget.tsx`**
+**1. Add `cost_type` column to `quickbooks_expenses` table** (database migration)
 
-Since each expense row has its own `Popover`, the simplest approach is to convert the `Popover` to a controlled component using a state map or by using the `onOpenChange` prop combined with closing on click.
+```sql
+ALTER TABLE quickbooks_expenses ADD COLUMN cost_type text DEFAULT 'construction';
+```
 
-The cleanest approach: wrap the popover in a controlled state using `open`/`onOpenChange`, and set `open` to `false` inside `handleCostTypeChange`. Since there are multiple rows, we will track which expense's popover is open via a single `openCostTypeId` state variable (string | null).
+**2. Update `handleCostTypeChange` in `src/pages/ProjectBudget.tsx`**
 
-1. Add state: `const [openCostTypeId, setOpenCostTypeId] = useState<string | null>(null);`
-2. Change `<Popover>` to `<Popover open={openCostTypeId === exp.id} onOpenChange={(open) => setOpenCostTypeId(open ? exp.id : null)}>`
-3. In the button `onClick`, after calling `handleCostTypeChange`, also call `setOpenCostTypeId(null)`
+Check whether the expense is a QuickBooks record (`isQuickBooks` flag). If so, update the `quickbooks_expenses` table instead of `expenses`.
 
-This ensures exactly one popover is open at a time and it closes immediately on selection.
+```
+if (expense.isQuickBooks) {
+  update quickbooks_expenses where id = expenseId
+} else {
+  update expenses where id = expenseId
+}
+```
 
+**3. Include `cost_type` in QB-to-expense mapping** (line ~220-237)
+
+When converting QB expenses into the merged display list, carry over the `cost_type` field:
+
+```
+cost_type: qb.cost_type || 'construction',
+```
+
+This ensures cost type selections persist across refreshes for both manual and QuickBooks expenses.
