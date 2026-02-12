@@ -161,6 +161,8 @@ Notes: Include project-specific details or credentials (e.g., "Licensed & insure
 
 Output Format: Create a downloadable CSV file with these exact headers: Date,Vendor,Category,Description,Amount,Payment Method,Expense Type,Notes.
 
+If the file exceeds response limits, process it programmatically and ensure 100% of line items are extracted before generating the CSV. Do not partially complete.
+
 Please upload your file (PDF, Excel, or Receipt image) now.`;
 
   const handleCopyPrompt = async () => {
