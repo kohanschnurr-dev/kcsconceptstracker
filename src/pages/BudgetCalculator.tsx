@@ -10,7 +10,7 @@ import { MAOGauge } from '@/components/budget/MAOGauge';
 import { BudgetCanvas } from '@/components/budget/BudgetCanvas';
 import { TemplatePicker } from '@/components/budget/TemplatePicker';
 import { DealSidebar } from '@/components/budget/DealSidebar';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -51,7 +51,7 @@ export default function BudgetCalculator() {
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
-    BUDGET_CATEGORIES.forEach(cat => {
+    getBudgetCategories().forEach(cat => {
       initial[cat.value] = '';
     });
     return initial;
@@ -115,7 +115,7 @@ export default function BudgetCalculator() {
         setCurrentTemplateName(template.name);
 
         const newBudgets: Record<string, string> = {};
-        BUDGET_CATEGORIES.forEach(cat => {
+        getBudgetCategories().forEach(cat => {
           newBudgets[cat.value] = template.category_budgets[cat.value]?.toString() || '';
         });
         setCategoryBudgets(newBudgets);
@@ -188,7 +188,7 @@ export default function BudgetCalculator() {
 
     // Load category budgets
     const newBudgets: Record<string, string> = {};
-    BUDGET_CATEGORIES.forEach(cat => {
+    getBudgetCategories().forEach(cat => {
       newBudgets[cat.value] = template.category_budgets[cat.value]?.toString() || '';
     });
     setCategoryBudgets(newBudgets);
@@ -208,7 +208,7 @@ export default function BudgetCalculator() {
     setActiveBaselineRate(null);
     
     const cleared: Record<string, string> = {};
-    BUDGET_CATEGORIES.forEach(cat => {
+    getBudgetCategories().forEach(cat => {
       cleared[cat.value] = '';
     });
     setCategoryBudgets(cleared);
@@ -239,7 +239,7 @@ export default function BudgetCalculator() {
 
   const getCategoryBudgetsObject = () => {
     const budgets: Record<string, number> = {};
-    BUDGET_CATEGORIES.forEach(cat => {
+    getBudgetCategories().forEach(cat => {
       const val = parseFloat(categoryBudgets[cat.value]) || 0;
       if (val > 0) {
         budgets[cat.value] = val;
@@ -322,7 +322,7 @@ export default function BudgetCalculator() {
       const categoriesToUpdate = [];
       const categoriesToInsert = [];
 
-      for (const cat of BUDGET_CATEGORIES) {
+      for (const cat of getBudgetCategories()) {
         const budgetValue = parseFloat(categoryBudgets[cat.value]) || 0;
         if (budgetValue > 0) {
           const existingId = existingCategoryMap.get(cat.value);

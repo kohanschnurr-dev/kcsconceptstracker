@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 
 interface BudgetTemplate {
   id: string;
@@ -146,7 +146,7 @@ export function SavedBudgetsPanel({
   };
 
   const getCategoryLabel = (categoryValue: string) => {
-    const cat = BUDGET_CATEGORIES.find(c => c.value === categoryValue);
+    const cat = getBudgetCategories().find(c => c.value === categoryValue);
     return cat?.label || categoryValue.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 

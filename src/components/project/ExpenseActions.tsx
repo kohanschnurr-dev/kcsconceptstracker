@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { BUDGET_CATEGORIES, TEXAS_SALES_TAX } from '@/types';
+import { TEXAS_SALES_TAX, getBudgetCategories } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
@@ -67,7 +67,7 @@ export function EditExpenseModal({ expense, categories, open, onOpenChange, onEx
   }, [expense]);
 
   const getCategoryName = (categoryValue: string) => {
-    return BUDGET_CATEGORIES.find(b => b.value === categoryValue)?.label || categoryValue;
+    return getBudgetCategories().find(b => b.value === categoryValue)?.label || categoryValue;
   };
 
   const calculateTax = () => {

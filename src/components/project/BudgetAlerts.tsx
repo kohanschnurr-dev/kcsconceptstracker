@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle, AlertCircle, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface Category {
@@ -47,7 +47,7 @@ export function BudgetAlerts({ categories, totalBudget, totalSpent }: BudgetAler
 
   // Category-specific alerts
   categories.forEach(cat => {
-    const label = BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label || cat.category;
+    const label = getBudgetCategories().find(b => b.value === cat.category)?.label || cat.category;
     const percent = cat.estimated_budget > 0 ? (cat.actualSpent / cat.estimated_budget) * 100 : 0;
     
     if (percent > 100) {

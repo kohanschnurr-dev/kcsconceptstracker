@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -79,7 +79,7 @@ export function CreateBudgetModal({
   // Category budgets
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
-    BUDGET_CATEGORIES.forEach(cat => {
+    getBudgetCategories().forEach(cat => {
       initial[cat.value] = '';
     });
     return initial;
@@ -95,7 +95,7 @@ export function CreateBudgetModal({
         setArv(editingTemplate.arv?.toString() || '');
         
         const budgets: Record<string, string> = {};
-        BUDGET_CATEGORIES.forEach(cat => {
+        getBudgetCategories().forEach(cat => {
           budgets[cat.value] = editingTemplate.category_budgets[cat.value]?.toString() || '';
         });
         setCategoryBudgets(budgets);
@@ -113,15 +113,16 @@ export function CreateBudgetModal({
         setRehabBudgetManual('');
         
         if (initialTotalBudget > 0) {
-          const perCategory = Math.round(initialTotalBudget / BUDGET_CATEGORIES.length);
+          const allCats = getBudgetCategories();
+          const perCategory = Math.round(initialTotalBudget / allCats.length);
           const newBudgets: Record<string, string> = {};
-          BUDGET_CATEGORIES.forEach(cat => {
+          allCats.forEach(cat => {
             newBudgets[cat.value] = perCategory.toString();
           });
           setCategoryBudgets(newBudgets);
         } else {
           const cleared: Record<string, string> = {};
-          BUDGET_CATEGORIES.forEach(cat => {
+          getBudgetCategories().forEach(cat => {
             cleared[cat.value] = '';
           });
           setCategoryBudgets(cleared);
@@ -192,9 +193,10 @@ export function CreateBudgetModal({
       : calculatedTotal;
     
     if (budgetToDistribute > 0) {
-      const perCategory = Math.round(budgetToDistribute / BUDGET_CATEGORIES.length);
+      const allCats = getBudgetCategories();
+      const perCategory = Math.round(budgetToDistribute / allCats.length);
       const newBudgets: Record<string, string> = {};
-      BUDGET_CATEGORIES.forEach(cat => {
+      allCats.forEach(cat => {
         newBudgets[cat.value] = perCategory.toString();
       });
       setCategoryBudgets(newBudgets);
@@ -206,7 +208,7 @@ export function CreateBudgetModal({
 
   const handleClearAll = () => {
     const cleared: Record<string, string> = {};
-    BUDGET_CATEGORIES.forEach(cat => {
+    getBudgetCategories().forEach(cat => {
       cleared[cat.value] = '';
     });
     setCategoryBudgets(cleared);
@@ -214,7 +216,7 @@ export function CreateBudgetModal({
 
   const getCategoryBudgetsObject = () => {
     const budgets: Record<string, number> = {};
-    BUDGET_CATEGORIES.forEach(cat => {
+    getBudgetCategories().forEach(cat => {
       const val = parseFloat(categoryBudgets[cat.value]) || 0;
       if (val > 0) {
         budgets[cat.value] = val;
@@ -308,7 +310,7 @@ export function CreateBudgetModal({
       const categoriesToUpdate = [];
       const categoriesToInsert = [];
 
-      for (const cat of BUDGET_CATEGORIES) {
+      for (const cat of getBudgetCategories()) {
         const budgetValue = parseFloat(categoryBudgets[cat.value]) || 0;
         if (budgetValue > 0) {
           const existingId = existingCategoryMap.get(cat.value);
@@ -496,7 +498,7 @@ export function CreateBudgetModal({
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 p-4 overflow-y-auto">
               <div className="grid grid-cols-4 gap-x-4 gap-y-1">
-                {[...BUDGET_CATEGORIES]
+                {[...getBudgetCategories()]
                   .sort((a, b) => a.label.localeCompare(b.label))
                   .map(category => (
                     <div key={category.value} className="flex items-center gap-2">

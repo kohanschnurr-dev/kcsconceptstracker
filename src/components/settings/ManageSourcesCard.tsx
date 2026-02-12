@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { useCustomCategories, type CategoryItem } from '@/hooks/useCustomCategories';
 import { CALENDAR_CATEGORIES, CATEGORY_GROUPS, type CategoryGroup } from '@/lib/calendarCategories';
 import { MONTHLY_COST_CATEGORIES } from '@/lib/monthlyCategories';
-import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES } from '@/types';
+import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES, getBudgetCategories } from '@/types';
 import { DEFAULT_STORES } from '@/hooks/useCustomStores';
 import { DEFAULT_PROPERTY_FIELDS } from '@/components/project/ProjectInfo';
 import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP, resolveTradeGroup, getAllGroupDefs, loadCustomGroups, saveCustomGroups, CUSTOM_GROUPS_STORAGE_KEY, pickEmoji, saveGroupOrder, type CustomGroupEntry } from '@/lib/budgetCalculatorCategories';

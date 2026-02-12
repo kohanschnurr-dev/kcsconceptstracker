@@ -1,4 +1,4 @@
-import { Project, BUDGET_CATEGORIES } from '@/types';
+import { Project, getBudgetCategories } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface BudgetBreakdownProps {
@@ -32,7 +32,7 @@ export function BudgetBreakdown({ project }: BudgetBreakdownProps) {
       
       <div className="divide-y divide-border">
         {project.categories.map((cat) => {
-          const label = BUDGET_CATEGORIES.find(b => b.value === cat.category)?.label || cat.category;
+          const label = getBudgetCategories().find(b => b.value === cat.category)?.label || cat.category;
           const remaining = cat.estimatedBudget - cat.actualSpent;
           const percentUsed = cat.estimatedBudget > 0 ? (cat.actualSpent / cat.estimatedBudget) * 100 : 0;
           const status = getVarianceStatus(cat.estimatedBudget, cat.actualSpent);

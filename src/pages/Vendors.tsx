@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { BUDGET_CATEGORIES } from '@/types';
+import { getBudgetCategories } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface Vendor {
@@ -86,7 +86,7 @@ export default function Vendors() {
   );
 
   const getTradeLabel = (trade: string) => {
-    return BUDGET_CATEGORIES.find(b => b.value === trade)?.label || trade;
+    return getBudgetCategories().find(b => b.value === trade)?.label || trade;
   };
 
   const handleEditVendor = (vendor: Vendor) => {
