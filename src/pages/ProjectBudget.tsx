@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -1193,25 +1194,29 @@ export default function ProjectBudget() {
                           </span>
                         </TableCell>
                         <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
-                          {exp.isQuickBooks ? (
-                            <Badge variant="outline" className="text-xs font-normal">
-                              {getCostTypeLabel(exp.cost_type || 'construction')}
-                            </Badge>
-                          ) : (
-                            <Select
-                              value={exp.cost_type || 'construction'}
-                              onValueChange={(val) => handleCostTypeChange(exp.id, val)}
-                            >
-                              <SelectTrigger className="h-7 w-[120px] text-xs border-dashed">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="construction">Construction</SelectItem>
-                                <SelectItem value="loan">Loan</SelectItem>
-                                <SelectItem value="monthly">Monthly</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button type="button" className="cursor-pointer">
+                                <Badge variant="outline" className="text-xs font-normal hover:bg-accent transition-colors">
+                                  {getCostTypeLabel(exp.cost_type || 'construction')}
+                                </Badge>
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-1" align="start">
+                              <div className="flex flex-col gap-0.5">
+                                {['construction', 'loan', 'monthly'].map((type) => (
+                                  <button
+                                    key={type}
+                                    type="button"
+                                    className={`text-xs px-3 py-1.5 rounded text-left hover:bg-accent transition-colors ${(exp.cost_type || 'construction') === type ? 'bg-accent font-medium' : ''}`}
+                                    onClick={() => handleCostTypeChange(exp.id, type)}
+                                  >
+                                    {getCostTypeLabel(type)}
+                                  </button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
