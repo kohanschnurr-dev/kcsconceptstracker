@@ -1,36 +1,28 @@
 
 
-## Fix: Cost Type Changes Not Persisting for QuickBooks Expenses
+## Make Summary Cards Clickable to Filter Expenses
 
-### Root Cause
-When changing the cost type on a QuickBooks expense, the code updates the `expenses` table -- but QuickBooks expenses live in the `quickbooks_expenses` table. The update silently matches zero rows, the optimistic UI update shows briefly, then the next data refresh (triggered by focus/visibility listeners) overwrites it back to the default "Construction".
+### Overview
+Make the "Total Construction Budget", "Loan Costs", and "Holding Costs" cards in Row 1 clickable. Clicking one will:
+1. Set the `selectedCostType` filter to the corresponding value (`construction`, `loan`, or `monthly`)
+2. Scroll down to the expenses table so the user immediately sees the filtered results
 
-### Solution
+Clicking the same card again (when already filtered) will reset the filter back to "all".
 
-**1. Add `cost_type` column to `quickbooks_expenses` table** (database migration)
+### Technical Details
 
-```sql
-ALTER TABLE quickbooks_expenses ADD COLUMN cost_type text DEFAULT 'construction';
-```
+**File: `src/pages/ProjectBudget.tsx`**
 
-**2. Update `handleCostTypeChange` in `src/pages/ProjectBudget.tsx`**
+1. Add a `useRef` for the expenses table section (e.g., `expensesTableRef`) and attach it to the expenses table container element.
 
-Check whether the expense is a QuickBooks record (`isQuickBooks` flag). If so, update the `quickbooks_expenses` table instead of `expenses`.
+2. Create a helper function `handleCardFilter(costType: string)` that:
+   - Toggles `selectedCostType` (if already set to that value, reset to `'all'`; otherwise set it)
+   - Scrolls `expensesTableRef.current` into view with `behavior: 'smooth'`
 
-```
-if (expense.isQuickBooks) {
-  update quickbooks_expenses where id = expenseId
-} else {
-  update expenses where id = expenseId
-}
-```
+3. Update three cards to be clickable with `cursor-pointer` and a visual active state (e.g., ring highlight when the corresponding filter is active):
+   - **Total Construction Budget** card: filters to `'construction'`
+   - **Loan Costs** card: filters to `'loan'`
+   - **Holding Costs** card: filters to `'monthly'`
 
-**3. Include `cost_type` in QB-to-expense mapping** (line ~220-237)
+4. Add the `ref={expensesTableRef}` to the expenses table wrapper (the Collapsible or its parent div).
 
-When converting QB expenses into the merged display list, carry over the `cost_type` field:
-
-```
-cost_type: qb.cost_type || 'construction',
-```
-
-This ensures cost type selections persist across refreshes for both manual and QuickBooks expenses.
