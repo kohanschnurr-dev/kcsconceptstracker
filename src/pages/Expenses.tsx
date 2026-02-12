@@ -173,7 +173,7 @@ export default function Expenses() {
       // Combine manual expenses with imported QuickBooks expenses
       const manualExpenses: DBExpense[] = (expensesData || []).map(e => ({
         ...e,
-        source: 'manual' as const,
+        source: (e.qb_expense_id ? 'quickbooks' : 'manual') as 'manual' | 'quickbooks',
       }));
 
       const qbExpenses: DBExpense[] = filteredQbExpenses
