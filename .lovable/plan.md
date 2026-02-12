@@ -1,49 +1,62 @@
 
 
-## Sort Projects by Start Date + Star/Pin Feature
+## CSV Import for Project Expenses
 
-### What Changes
+### Overview
+Add an "Import CSV" button on the Project Budget page that lets you bulk-import historical expenses into the current project. The feature includes a downloadable sample CSV template showing the exact format required, a preview/review step before importing, and smart category matching that flags any rows whose category doesn't match an existing project category -- suggesting the closest match for you to reassign.
 
-1. **Sort projects by newest start date first** within each project type tab
-2. **Add a star button** on each project card allowing up to 3 starred projects per type, which are always pinned to the front in the order they were starred
+### How It Works
+
+1. **Import button** appears next to the existing "Add Expense" button on the Project Budget page
+2. Click it to open an import modal with two options:
+   - **Download Sample CSV** -- a pre-filled template with example rows and all your category names as a reference sheet
+   - **Upload CSV** -- select your file to begin
+3. **Preview step** -- parses the CSV and shows a table of rows to be imported:
+   - Rows with recognized categories get a green checkmark
+   - Rows with unrecognized categories get a yellow warning with a dropdown to reassign them to an existing project category
+   - Summary at top: "X rows ready, Y rows need category assignment"
+4. **Confirm Import** -- inserts all resolved rows into the database as expenses on the current project
+
+### Sample CSV Format
+
+```text
+Date,Vendor,Category,Description,Amount,Payment Method,Type,Tax Amount,Notes
+2025-01-15,Home Depot,Flooring,LVP for living room,2450.00,card,actual,202.13,
+2025-01-18,Mike's Plumbing,Plumbing,Rough-in for 2 bathrooms,3200.00,check,actual,0,Licensed & insured
+2025-02-01,Lowe's,Electrical,Panels and wiring,1875.50,card,estimate,154.73,
+```
+
+**Column definitions:**
+- **Date** -- MM/DD/YYYY or YYYY-MM-DD (both accepted)
+- **Vendor** -- vendor/store name (optional)
+- **Category** -- must match one of the app's category labels (e.g. "Flooring", "Plumbing", "HVAC"). The sample CSV will list all valid categories as a reference
+- **Description** -- what was purchased (optional)
+- **Amount** -- dollar amount (no $ sign needed)
+- **Payment Method** -- cash, check, card, or transfer (optional, defaults to card)
+- **Type** -- "estimate" or "actual" (optional, defaults to actual)
+- **Tax Amount** -- tax portion if known (optional, defaults to 0)
+- **Notes** -- any extra notes (optional)
+
+### Category Matching Logic
+- First tries exact match on category label (case-insensitive)
+- Then tries fuzzy match (e.g., "Ext. Finish" would suggest "Exterior Finish")
+- Unmatched rows are highlighted in the preview with a dropdown to pick the correct category
+- You cannot import until all rows have a valid category assigned
 
 ### Technical Details
 
-#### 1. Database: Add `starred_projects` column to `profiles` table
+**New file: `src/components/project/ImportExpensesModal.tsx`**
+- Modal with two-step flow: upload then preview/resolve
+- Parses CSV client-side (no external library needed -- simple split-based parser handles quoted fields)
+- Downloads sample CSV with all budget category labels from `getBudgetCategories()` listed in a reference section
+- Category matching: normalize labels to lowercase, strip spaces/punctuation for comparison; use Levenshtein-like similarity for suggestions
+- On confirm: batch-inserts into `expenses` table via Supabase, auto-creating `project_categories` rows (with $0 budget) for any categories the project doesn't have yet
 
-Add a new JSONB column to store starred project IDs with their order:
-
-```sql
-ALTER TABLE profiles ADD COLUMN starred_projects jsonb DEFAULT '[]'::jsonb;
-```
-
-The column stores an array of project IDs, e.g. `["uuid1", "uuid2", "uuid3"]`. Order in the array = pin order.
-
-#### 2. Hook: `useProfile.ts` -- add star mutation
-
-- Add a `toggleStarProject` mutation that adds/removes a project ID from the `starred_projects` array
-- Enforce max 3 starred projects -- if already 3, show a toast warning
-- Add a helper `isProjectStarred(projectId)` getter
-
-#### 3. Sorting: `Projects.tsx` -- update `getFilteredProjects`
-
-Change sorting logic to:
-1. Starred projects first, in their saved order
-2. Then remaining projects sorted by `startDate` descending (newest first)
-
-#### 4. UI: `ProjectCard.tsx` -- add star icon
-
-- Add a small star icon (lucide `Star`) in the top-left or next to the project name
-- Filled star = starred, outline = not starred
-- Click toggles star status (with `e.stopPropagation()` to prevent card navigation)
-
-#### 5. Dashboard: `Index.tsx` -- update active projects sorting
-
-Apply the same sorting logic (starred first, then by start date descending) to the dashboard's active projects list, replacing the current project-type priority sort.
+**Modified file: `src/pages/ProjectBudget.tsx`**
+- Add "Import CSV" button next to existing expense-add buttons
+- Wire up the modal with current project ID and categories
 
 ### Files Modified
-- **Migration** -- add `starred_projects` jsonb column to `profiles`
-- `src/hooks/useProfile.ts` -- add `starred_projects` to Profile interface, add `toggleStarProject` mutation and `isProjectStarred` helper
-- `src/pages/Projects.tsx` -- update `getFilteredProjects` sorting: starred first, then by start date desc
-- `src/components/dashboard/ProjectCard.tsx` -- add star/unstar icon button
-- `src/pages/Index.tsx` -- update active projects sort to match (starred first, then newest start date)
+- `src/components/project/ImportExpensesModal.tsx` -- new component (CSV parser, preview table, category resolver, batch insert)
+- `src/pages/ProjectBudget.tsx` -- add Import CSV button and modal state
+
