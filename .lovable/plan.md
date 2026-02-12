@@ -1,33 +1,24 @@
 
 
-## Add Completeness Instruction to AI Prompt
+## Fix Drag-and-Drop in Import Modal
 
-### What Changes
-Add a new instruction line before the final "Please upload your file" line in the AI prompt to ensure LLMs process all data even if the document is large.
+### Problem
+The Radix Dialog component intercepts browser drag-and-drop events, preventing the CSV file drop from reaching the small upload button. The drag visual feedback triggers but the actual drop never processes.
+
+### Solution
+Move the drag-and-drop handlers from the small upload button to the entire upload step container, so the drop zone covers the full modal content area. Also add `onDragOver` to the `DialogContent` to prevent the dialog from swallowing the event.
 
 ### Changes
 
-**File: `src/components/project/ImportExpensesModal.tsx`** (around line 162)
+**File: `src/components/project/ImportExpensesModal.tsx`**
 
-Insert this line before "Please upload your file (PDF, Excel, or Receipt image) now.":
+1. **Wrap the entire upload step in a drop zone div**: Move `onDragOver`, `onDragLeave`, and `onDrop` handlers from the small upload `<button>` to the outer `<div className="space-y-6 py-4">` that wraps the full upload step content. This makes the entire modal body a valid drop target.
 
-> If the file exceeds response limits, process it programmatically and ensure 100% of line items are extracted before generating the CSV. Do not partially complete.
+2. **Remove drag handlers from the upload button**: The button keeps its click handler but no longer needs drag event handlers since the parent div handles drops.
 
-The prompt's ending will change from:
-```
-Output Format: Create a downloadable CSV file with these exact headers: Date,Vendor,Category,Description,Amount,Payment Method,Expense Type,Notes.
+3. **Add visual feedback on the outer container**: Apply the `isDragging` border/background highlight to the outer wrapper so the user sees the entire area light up when dragging a file over the modal.
 
-Please upload your file (PDF, Excel, or Receipt image) now.
-```
-
-To:
-```
-Output Format: Create a downloadable CSV file with these exact headers: Date,Vendor,Category,Description,Amount,Payment Method,Expense Type,Notes.
-
-If the file exceeds response limits, process it programmatically and ensure 100% of line items are extracted before generating the CSV. Do not partially complete.
-
-Please upload your file (PDF, Excel, or Receipt image) now.
-```
+4. **Add `onDragOver` to `DialogContent`**: Prevent the dialog overlay from eating the drag event by adding `e.preventDefault()` on dragover at the DialogContent level.
 
 ### Files Modified
 - `src/components/project/ImportExpensesModal.tsx`
