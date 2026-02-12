@@ -398,11 +398,11 @@ export function useQuickBooks() {
   const categorizeExpense = useCallback(async (
     expenseId: string, 
     projectId: string, 
-    categoryValue: string, // Now accepts category value like "plumbing" instead of UUID
-    expenseType: 'product' | 'labor' | 'loan' | 'monthly' = 'product',
+    categoryValue: string,
+    expenseType: 'product' | 'labor' = 'product',
     notes?: string
   ) => {
-    if (!categoryValue && expenseType !== 'loan') {
+    if (!categoryValue) {
       toast({
         title: 'Error',
         description: 'Please select a category',
@@ -411,10 +411,10 @@ export function useQuickBooks() {
       return false;
     }
 
-    // First, find or create the project_category (skip for loans)
+    // Find or create the project_category
     let categoryId: string | null = null;
     
-    if (expenseType !== 'loan' && categoryValue) {
+    if (categoryValue) {
       // Check if category already exists for this project
       const { data: existingCategory, error: findError } = await supabase
         .from('project_categories')
@@ -500,30 +500,13 @@ export function useQuickBooks() {
         return false;
       }
 
-      // If loan type, also insert into loan_payments
-      if (expenseType === 'loan') {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from('loan_payments').insert({
-            project_id: projectId,
-            user_id: user.id,
-            amount: expense.amount,
-            date: expense.date,
-            description: expense.description,
-            vendor_name: expense.vendor_name,
-            payment_type: 'other',
-            source: 'quickbooks',
-            expense_id: expenseId,
-            notes: notes || null,
-          });
-        }
-      }
+
 
       // Remove from pending in demo mode
       setPendingExpenses(prev => prev.filter(e => e.id !== expenseId));
       toast({
         title: 'Imported!',
-        description: expenseType === 'loan' ? 'Loan payment recorded' : 'Expense added to your project',
+        description: 'Expense added to your project',
       });
       return true;
     }
@@ -580,28 +563,14 @@ export function useQuickBooks() {
         return false;
       }
 
-      // If loan type, also insert into loan_payments
-      if (expenseType === 'loan' && user && expense) {
-        await supabase.from('loan_payments').insert({
-          project_id: projectId,
-          user_id: user.id,
-          amount: expense.amount,
-          date: expense.date,
-          description: expense.description,
-          vendor_name: expense.vendor_name,
-          payment_type: 'other',
-          source: 'quickbooks',
-          expense_id: expenseId,
-          notes: notes || null,
-        });
-      }
+
 
       // Refresh pending expenses
       await fetchPendingExpenses();
       
       toast({
         title: 'Categorized',
-        description: expenseType === 'loan' ? 'Loan payment recorded' : 'Expense categorized and imported successfully',
+        description: 'Expense categorized and imported successfully',
       });
       
       return true;
