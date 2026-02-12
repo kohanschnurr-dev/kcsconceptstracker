@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { formatDisplayDate } from '@/lib/dateUtils';
-import { ChevronDown, ChevronUp, Check, Trash2, Receipt, Package, Wrench, StickyNote, Split, Landmark, MoreHorizontal, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, Trash2, Receipt, Package, Wrench, StickyNote, Split } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -16,10 +16,8 @@ import {
   ToggleGroupItem,
 } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getAllCategories, getBudgetCategories } from '@/types';
 import type { Project } from '@/types';
-import { getMonthlyCategories } from '@/lib/monthlyCategories';
 
 // Helper to format category values: "tech_equipment" -> "Tech Equipment"
 const formatCategoryValue = (value: string) => {
@@ -55,7 +53,7 @@ interface PendingExpense {
 interface GroupedPendingExpenseCardProps {
   expenses: PendingExpense[];
   projects: Project[];
-  onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor' | 'loan' | 'monthly', notes?: string) => Promise<void>;
+  onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor', notes?: string) => Promise<void>;
   onDelete: (expenseId: string) => Promise<void>;
   onImportAll: (expenseIds: string[], projectId: string) => Promise<void>;
   onOpenSplitModal?: (expense: PendingExpense) => void;
@@ -75,8 +73,7 @@ export function GroupedPendingExpenseCard({
   const [isSingleExpanded, setIsSingleExpanded] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedExpenseType, setSelectedExpenseType] = useState<'product' | 'labor' | 'loan' | 'monthly'>('product');
-  const [morePopoverOpen, setMorePopoverOpen] = useState(false);
+  const [selectedExpenseType, setSelectedExpenseType] = useState<'product' | 'labor'>('product');
   const [expenseNotes, setExpenseNotes] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
 
@@ -116,7 +113,7 @@ export function GroupedPendingExpenseCard({
   };
 
   const handleSingleCategorize = async () => {
-    if (!selectedProject || (!selectedCategory && selectedExpenseType !== 'loan')) return;
+    if (!selectedProject || !selectedCategory) return;
     setIsImporting(true);
     try {
       await onCategorize(primaryExpense.id, selectedProject, selectedCategory, selectedExpenseType, expenseNotes);
@@ -224,33 +221,25 @@ export function GroupedPendingExpenseCard({
                   ))}
               </SelectContent>
             </Select>
-            {selectedExpenseType !== 'loan' && (
-              <Select
-                value={selectedCategory}
-                onValueChange={setSelectedCategory}
-                disabled={!selectedProject}
-              >
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder={selectedExpenseType === 'monthly' ? "Select Monthly Cost" : "Select Category"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {selectedProject && selectedExpenseType === 'monthly'
-                    ? getMonthlyCategories().map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))
-                    : selectedProject &&
-                      getCategoriesForProject(
-                        projects.find(p => p.id === selectedProject)?.name || ''
-                      ).map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
-            )}
+            <Select
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+              disabled={!selectedProject}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select Category" />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedProject &&
+                  getCategoriesForProject(
+                    projects.find(p => p.id === selectedProject)?.name || ''
+                  ).map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
             <div className="flex items-center gap-1 flex-1 min-w-0 sm:max-w-[180px]">
               <StickyNote className="h-4 w-4 text-muted-foreground shrink-0" />
               <Input
@@ -262,54 +251,6 @@ export function GroupedPendingExpenseCard({
             </div>
           </div>
            <div className="flex items-center gap-2 justify-end">
-            <Popover open={morePopoverOpen} onOpenChange={setMorePopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-8 w-8 shrink-0",
-                    (selectedExpenseType === 'loan' || selectedExpenseType === 'monthly')
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-40 p-1" align="start" sideOffset={4}>
-                <button
-                  className={cn(
-                    "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md hover:bg-accent",
-                    selectedExpenseType === 'loan' && "bg-emerald-500/20 text-emerald-400"
-                  )}
-                  onClick={() => {
-                    setSelectedExpenseType('loan');
-                    setMorePopoverOpen(false);
-                  }}
-                >
-                  <Landmark className="h-4 w-4" />
-                  Loan
-                </button>
-                <button
-                  className={cn(
-                    "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md hover:bg-accent",
-                    selectedExpenseType === 'monthly' && "bg-yellow-500/20 text-yellow-400"
-                  )}
-                  onClick={() => {
-                    setSelectedExpenseType('monthly');
-                    setSelectedCategory('');
-                    setMorePopoverOpen(false);
-                  }}
-                >
-                  <Zap className="h-4 w-4" />
-                  Monthly
-                </button>
-              </PopoverContent>
-            </Popover>
-            {(selectedExpenseType === 'loan' || selectedExpenseType === 'monthly') && (
-              <span className="text-xs text-muted-foreground">{selectedExpenseType === 'monthly' ? 'Monthly' : 'Loan'}</span>
-            )}
             <Button
               variant="outline"
               size="sm"
@@ -319,17 +260,16 @@ export function GroupedPendingExpenseCard({
               <Split className="h-4 w-4" />
               <span className="hidden sm:inline">Split</span>
             </Button>
-            {selectedExpenseType !== 'loan' && (
-              <ToggleGroup 
-                type="single" 
-                value={(selectedExpenseType === 'monthly') ? '' : selectedExpenseType}
-                onValueChange={(value) => {
-                  if (value) {
-                    setSelectedExpenseType(value as 'product' | 'labor');
-                  }
-                }}
-                className="shrink-0"
-              >
+            <ToggleGroup 
+              type="single" 
+              value={selectedExpenseType}
+              onValueChange={(value) => {
+                if (value) {
+                  setSelectedExpenseType(value as 'product' | 'labor');
+                }
+              }}
+              className="shrink-0"
+            >
                 <ToggleGroupItem 
                   value="product" 
                   aria-label="Product"
@@ -352,11 +292,10 @@ export function GroupedPendingExpenseCard({
                   <Wrench className="h-4 w-4" />
                   <span className="hidden sm:inline text-xs">Labor</span>
                 </ToggleGroupItem>
-              </ToggleGroup>
-            )}
+            </ToggleGroup>
             <Button
               size="sm"
-              disabled={!selectedProject || (!selectedCategory && selectedExpenseType !== 'loan') || isImporting}
+              disabled={!selectedProject || !selectedCategory || isImporting}
               onClick={handleSingleCategorize}
             >
               <Check className="h-4 w-4" />
