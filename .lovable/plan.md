@@ -1,41 +1,37 @@
 
 
-## Fix: Eliminate Duplicate Display on Budget Page
+## Fix: Apply Deduplication to All Remaining Pages
 
-### Root Cause
-The budget page fetches from **two** tables and merges them:
-1. `expenses` table -- contains the imported expense record (with `qb_expense_id` linking back to the QB record)
-2. `quickbooks_expenses` table -- contains the original QB record (with `is_imported: true`)
+The Budget page fix is working. The same duplicate issue exists in **two more pages** that merge `quickbooks_expenses` with `expenses` without filtering out already-imported records.
 
-Both records represent the same transaction, so when they're combined on line 258 of `ProjectBudget.tsx`, every imported QB expense appears twice.
+### Pages to Fix
 
-### Fix
-When merging the two lists, filter out any `quickbooks_expenses` record whose `id` matches a `qb_expense_id` in the `expenses` table. This way, once a QB expense has been imported as a proper expense, only the `expenses` table version shows.
+**1. Dashboard (`src/pages/Index.tsx`) -- Lines 92-168**
+- QB expenses are merged into category spend calculations (lines 97-101) and into the combined expense list (lines 152-168) without checking if they already exist as regular expenses.
+- Fix: Add `importedQbIds` Set from `expensesData`, filter `qbExpensesData` before both the category calculation and the expense list merge.
+
+**2. Project Detail (`src/pages/ProjectDetail.tsx`) -- Lines 253-284**
+- QB expenses are merged into category spend (lines 257-261) and into `combinedExpenses` (line 284) without dedup.
+- Fix: Same pattern -- collect `qb_expense_id` values from expenses, filter QB records before merging.
+
+Note: The **Expenses page** (`src/pages/Expenses.tsx`) already has this dedup logic at lines 141-150 -- no changes needed there.
 
 ### Technical Details
 
-**File: `src/pages/ProjectBudget.tsx`** (around lines 237-260)
-
-Before the merge on line 258, collect all `qb_expense_id` values from the regular expenses, then exclude matching QB records:
+Both fixes follow the exact same pattern already proven on the Budget page:
 
 ```ts
-// Collect QB IDs that have already been imported as regular expenses
+// Collect QB IDs already imported as regular expenses
 const importedQbIds = new Set(
   expensesData
     .filter(e => e.qb_expense_id)
     .map(e => e.qb_expense_id)
 );
 
-// Only include QB expenses that haven't been imported as regular expenses
-const qbAsExpenses: DBExpense[] = qbExpensesData
-  .filter(qb => !importedQbIds.has(qb.id))
-  .map(qb => ({
-    // ... existing mapping
-  }));
+// Filter before any merge or calculation
+const dedupedQbExpenses = qbExpensesData.filter(qb => !importedQbIds.has(qb.id));
 ```
 
-This also fixes the **category spend double-counting** on lines 229-235, where both the regular expense amount and the QB expense amount are summed for the same transaction. The same filter needs to apply before calculating `qbCategoryExpenses`.
-
 ### Files Modified
-- `src/pages/ProjectBudget.tsx` -- filter out QB records that already exist as imported expenses before merging and before calculating category totals
-
+- `src/pages/Index.tsx` -- add dedup filter before category spend calculation and expense list merge
+- `src/pages/ProjectDetail.tsx` -- add dedup filter before category spend calculation and combined expenses merge
