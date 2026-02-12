@@ -27,10 +27,9 @@ interface ParsedRow {
   description: string;
   amount: number;
   paymentMethod: string;
-  type: string;
-  taxAmount: number;
+  expenseType: string;
   notes: string;
-  matchedCategory: string | null; // budget_category value
+  matchedCategory: string | null;
   suggestedCategory: string | null;
   hasError: boolean;
   errorMsg?: string;
@@ -152,18 +151,17 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
 
   const downloadSample = () => {
     const catList = allCategories.map(c => c.label).join(', ');
-    const header = 'Date,Vendor,Category,Description,Amount,Payment Method,Type,Tax Amount,Notes';
-    const example1 = '2025-01-15,Home Depot,Flooring,LVP for living room,2450.00,card,actual,202.13,';
-    const example2 = '2025-01-18,Mike\'s Plumbing,Plumbing,Rough-in for 2 bathrooms,3200.00,check,actual,0,Licensed & insured';
-    const example3 = '2025-02-01,Lowe\'s,Electrical,Panels and wiring,1875.50,card,estimate,154.73,';
+    const header = 'Date,Vendor,Category,Description,Amount,Payment Method,Expense Type,Notes';
+    const example1 = '2025-01-15,Home Depot,Flooring,LVP for living room,2450.00,card,product,';
+    const example2 = '2025-01-18,Mike\'s Plumbing,Plumbing,Rough-in for 2 bathrooms,3200.00,check,labor,Licensed & insured';
+    const example3 = '2025-02-01,Lowe\'s,Electrical,Panels and wiring,1875.50,card,product,';
     const content = [
       '# SAMPLE CSV - Delete these instruction lines before importing',
       `# Valid Categories: ${catList}`,
       '#',
       '# Date: YYYY-MM-DD or MM/DD/YYYY',
       '# Payment Method: cash, check, card, transfer (optional, defaults to card)',
-      '# Type: estimate or actual (optional, defaults to actual)',
-      '# Tax Amount: number (optional, defaults to 0)',
+      '# Expense Type: product or labor (optional, defaults to product)',
       '#',
       header,
       example1,
@@ -213,8 +211,7 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
       description: header.indexOf('description'),
       amount: header.indexOf('amount'),
       paymentMethod: Math.max(header.indexOf('payment method'), header.indexOf('paymentmethod'), header.indexOf('payment_method')),
-      type: header.indexOf('type'),
-      taxAmount: Math.max(header.indexOf('tax amount'), header.indexOf('taxamount'), header.indexOf('tax_amount')),
+      expenseType: Math.max(header.indexOf('expense type'), header.indexOf('expensetype'), header.indexOf('expense_type'), header.indexOf('type')),
       notes: header.indexOf('notes'),
     };
 
@@ -230,14 +227,12 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
       const parsedDate = parseDate(rawDate);
       const rawAmount = get(colMap.amount).replace(/[$,]/g, '');
       const amount = parseFloat(rawAmount);
-      const rawTax = get(colMap.taxAmount).replace(/[$,]/g, '');
-      const taxAmount = rawTax ? parseFloat(rawTax) : 0;
       const rawCategory = get(colMap.category);
       const { exact, suggested } = matchCategory(rawCategory, allCategories);
       const pm = get(colMap.paymentMethod).toLowerCase();
       const validPm = ['cash', 'check', 'card', 'transfer'].includes(pm) ? pm : 'card';
-      const type = get(colMap.type).toLowerCase();
-      const validType = type === 'estimate' ? 'estimate' : 'actual';
+      const rawExpenseType = get(colMap.expenseType).toLowerCase();
+      const expenseType = rawExpenseType === 'labor' ? 'labor' : 'product';
 
       let hasError = false;
       let errorMsg: string | undefined;
@@ -251,8 +246,7 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
         description: get(colMap.description),
         amount: isNaN(amount) ? 0 : amount,
         paymentMethod: validPm,
-        type: validType,
-        taxAmount: isNaN(taxAmount) ? 0 : taxAmount,
+        expenseType,
         notes: get(colMap.notes),
         matchedCategory: exact,
         suggestedCategory: exact ? null : suggested,
@@ -314,9 +308,8 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
         vendor_name: r.vendor || null,
         description: r.description || null,
         payment_method: r.paymentMethod as any,
-        status: r.type as any,
-        includes_tax: r.taxAmount > 0,
-        tax_amount: r.taxAmount || null,
+        status: 'actual' as any,
+        expense_type: r.expenseType,
         notes: r.notes || null,
         cost_type: 'construction',
       }));
@@ -382,7 +375,7 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
 
             <div className="text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded-lg">
               <p className="font-medium mb-2">Required columns: Date, Category, Amount</p>
-              <p>Optional: Vendor, Description, Payment Method (cash/check/card/transfer), Type (estimate/actual), Tax Amount, Notes</p>
+              <p>Optional: Vendor, Description, Payment Method (cash/check/card/transfer), Expense Type (product/labor), Notes</p>
             </div>
           </div>
         )}
@@ -416,7 +409,7 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
                     <TableHead>Vendor</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead>Expense Type</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -449,7 +442,7 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
                         ${row.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-xs capitalize">{row.type}</Badge>
+                        <Badge variant="outline" className="text-xs capitalize">{row.expenseType}</Badge>
                       </TableCell>
                       <TableCell>
                         {row.hasError ? (
