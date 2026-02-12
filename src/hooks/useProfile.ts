@@ -126,7 +126,7 @@ export function useProfile() {
       if (idx >= 0) {
         current.splice(idx, 1);
       } else {
-        if (current.length >= 3) {
+        if (current.length >= 6) {
           throw new Error('max');
         }
         current.push(projectId);
