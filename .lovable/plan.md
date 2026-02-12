@@ -1,43 +1,27 @@
 
 
-## Stop Budget Page from Showing Loading Screen on Tab Switch
+## Fix CSV Bulk Import Not Processing Files
 
-### Problem
-Every time you click away from the browser tab and come back, the Budget page runs `fetchData()` which sets `loading = true`, causing the full loading skeleton to flash. This is disruptive since the data is already displayed.
+### Root Cause
+The `processCSV` function in `ImportExpensesModal.tsx` maps the amount column by looking for a header named exactly `"amount"`. However, the project's own CSV schema (used in the AI prompt and exports) uses `"Total"` as the column name. When the header check fails, the function calls `toast.error(...)` and silently returns -- making it look like nothing happened.
 
-### Solution
-Two changes in `src/pages/ProjectBudget.tsx`:
+### Changes
 
-1. **Only show loading skeleton on initial load**: Change `setLoading(true)` so it only triggers when there's no existing data. On subsequent refreshes (tab focus, visibility change), the data refreshes silently in the background without resetting the loading state.
+**File: `src/components/project/ImportExpensesModal.tsx`**
 
-2. **Remove the `focus` event listener**: The `visibilitychange` event already covers tab switches. The `focus` listener fires redundantly (e.g., clicking back into the window) and doubles the unnecessary refreshes.
+1. **Expand the amount column aliases** (line ~277): Add `"total"` as a recognized alias alongside `"amount"`, so CSVs with either header work:
+   ```ts
+   amount: Math.max(header.indexOf('amount'), header.indexOf('total')),
+   ```
 
-### Technical Detail
+2. **Add more header aliases for robustness**:
+   - `"type"` is already handled for expense type -- good.
+   - Add `"payment"` as alias for payment method column.
 
-**File: `src/pages/ProjectBudget.tsx`**
+3. **Add console.log for debugging** (temporary, in `processCSV`): Log the detected header and column map so if issues persist, they'll show in the console for diagnosis.
 
-- **Line ~182**: Change `setLoading(true)` to only set loading when no project data exists yet:
-  ```ts
-  const fetchData = async (silent = false) => {
-    if (!id) return;
-    if (!silent) setLoading(true);
-    // ... rest unchanged
-  };
-  ```
-
-- **Lines ~271-281**: Update the visibility listener to call `fetchData(true)` (silent mode) and remove the `focus` listener:
-  ```ts
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') fetchData(true);
-    };
-    window.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      window.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [id]);
-  ```
+4. **Make the error toast more descriptive**: When required columns are missing, include which columns were detected vs. which are missing, so the user knows exactly what to fix in their CSV.
 
 ### Files Modified
-- `src/pages/ProjectBudget.tsx`
+- `src/components/project/ImportExpensesModal.tsx`
 
