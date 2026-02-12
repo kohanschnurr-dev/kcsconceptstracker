@@ -1,27 +1,23 @@
 
+## Add "Loan Costs" and "Holding Costs" Cards to Budget Summary Row 1
 
-## Unify Cost Type Column to Badge-Style UI
-
-### Problem
-Manual expenses show a bordered `Select` dropdown with a chevron arrow, while QuickBooks expenses show a clean `Badge`. The inconsistency looks messy.
-
-### Solution
-Replace the `Select` dropdown for manual expenses with a clickable `Badge` that matches the QuickBooks badge style. When clicked, show a small `Popover` with three options (Construction, Loan, Monthly) to change the type. All rows will look identical -- clean badge, no dropdown chrome.
+### Overview
+Add two new stat cards to the first row of the Budget summary grid, next to "Total Construction Budget" and "Remaining Construction Budget". These cards will aggregate expenses by `cost_type`:
+- **Loan Costs**: sum of all expenses where `cost_type = 'loan'`
+- **Holding Costs**: sum of all expenses where `cost_type = 'monthly'`
 
 ### Technical Details
 
 **File: `src/pages/ProjectBudget.tsx`**
 
-Replace the current conditional rendering (lines 1195-1214) so both manual and QB expenses render as a `Badge`. For manual expenses (and QB expenses that have a linked record), the badge will be wrapped in a `Popover` trigger. Clicking it opens a minimal popover with three buttons to pick the type.
+1. Add two computed values after existing stats (near the `remaining` calculation):
+   - `loanCosts = expenses.filter(e => e.cost_type === 'loan').reduce(sum of amounts)`
+   - `holdingCosts = expenses.filter(e => e.cost_type === 'monthly').reduce(sum of amounts)`
 
-The badge color will subtly vary by type:
-- Construction: default outline badge
-- Loan: secondary variant
-- Monthly: secondary variant
+2. Import `Landmark` icon from lucide-react (for Loan Costs) and `Home` icon (for Holding Costs)
 
-Clicking a type in the popover updates the database, closes the popover, and refreshes the row -- same `handleCostTypeChange` logic already in place.
+3. Update the Row 1 grid (currently `grid-cols-2 lg:grid-cols-4`) to include two new cards after "Remaining Construction Budget":
+   - **Loan Costs** card with `Landmark` icon
+   - **Holding Costs** card with `Home` icon
 
-Imports needed: `Popover`, `PopoverTrigger`, `PopoverContent` from the existing UI components.
-
-Remove the `Select`/`SelectTrigger`/`SelectContent`/`SelectItem` imports if no longer used elsewhere in the file.
-
+Both cards will use the same `glass-card` styling as the existing cards, with the value displayed in `font-mono` style.
