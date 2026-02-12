@@ -138,9 +138,16 @@ export default function Expenses() {
 
       if (qbExpensesError) throw qbExpensesError;
 
-      // SmartSplit updates the original record with the first category's data,
-      // so all QB expenses (original + splits) should be shown - no filtering needed
-      const filteredQbExpenses = qbExpensesData || [];
+      // Collect linked QB IDs from expenses table to prevent duplicates
+      const linkedQbIds = new Set(
+        (expensesData || [])
+          .map((e: any) => e.qb_expense_id)
+          .filter(Boolean)
+      );
+
+      // Filter out QB expenses that already have a linked expenses record
+      const filteredQbExpenses = (qbExpensesData || [])
+        .filter((qb: DBQuickBooksExpense) => !linkedQbIds.has(qb.id));
 
       // Transform to match Project type
       const transformedProjects: Project[] = (projectsData || [])
