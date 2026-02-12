@@ -397,7 +397,7 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()} onDragOver={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
@@ -411,7 +411,12 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
         </DialogHeader>
 
         {step === 'upload' && (
-          <div className="space-y-6 py-4">
+          <div
+            className={`space-y-6 py-4 rounded-lg transition-all ${isDragging ? 'ring-2 ring-primary bg-primary/5' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 onClick={(e) => { e.stopPropagation(); downloadSample(); }}
@@ -426,20 +431,13 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
 
               <button
                 onClick={() => fileRef.current?.click()}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-dashed transition-all cursor-pointer ${
-                  isDragging 
-                    ? 'border-primary bg-primary/10 text-primary' 
-                    : 'border-border hover:border-primary/50 hover:bg-accent/50'
-                }`}
+                className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-dashed transition-all cursor-pointer border-border hover:border-primary/50 hover:bg-accent/50"
               >
                 <Upload className="h-8 w-8 text-primary" />
                 <div className="text-center">
                   <p className="font-medium">Upload CSV File</p>
                   <p className="text-sm text-muted-foreground">
-                    {isDragging ? 'Drop your CSV file here' : 'Drag & drop or click to select'}
+                    Drag & drop or click to select
                   </p>
                 </div>
               </button>
