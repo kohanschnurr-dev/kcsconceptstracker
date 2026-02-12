@@ -610,20 +610,10 @@ export default function ProjectBudget() {
               <h1 className="text-2xl font-semibold">Budget & Expenses</h1>
               <p className="text-muted-foreground">{project.name} • {project.address}</p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setImportModalOpen(true)}>
-                <Upload className="h-4 w-4 mr-2" />
-                Import CSV
-              </Button>
-              <Button variant="outline" onClick={exportToCSV}>
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-              <Button onClick={() => navigate(`/expenses`)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Expense
-              </Button>
-            </div>
+            <Button onClick={() => navigate(`/expenses`)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Expense
+            </Button>
           </div>
         </div>
 
@@ -1065,12 +1055,22 @@ export default function ProjectBudget() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <CardTitle className="text-lg">All Expenses</CardTitle>
-              {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  <X className="h-4 w-4 mr-1" />
-                  Clear Filters
+              <div className="flex items-center gap-2">
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    <X className="h-4 w-4 mr-1" />
+                    Clear Filters
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => setImportModalOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import CSV
                 </Button>
-              )}
+                <Button variant="outline" size="sm" onClick={exportToCSV}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
