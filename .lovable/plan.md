@@ -1,37 +1,37 @@
 
 
-## Fix: Completion Date Picker Disappearing
+## Show Both Start and Completed Dates on ProjectCard
 
-### Problem
-When clicking "Complete" in the status dropdown, the dropdown closes and a `Popover` tries to open. But the Popover is anchored to an invisible `<span />` with no size or position, so the calendar either appears incorrectly or is hidden.
+### What Changes
 
-### Solution
-Replace the `Popover` with a `Dialog` for the completion date picker. A Dialog doesn't need an anchor element -- it opens as a centered overlay, which is more reliable and better UX.
+For completed projects, the card currently shows only "Completed" date. Instead, it will show **both** the start date and the completed date, so you can see the full timeline at a glance.
 
 ### Technical Details
 
-**File: `src/pages/ProjectDetail.tsx`**
+**File: `src/components/dashboard/ProjectCard.tsx`** (lines 144-150)
 
-1. Replace the `Popover`/`PopoverTrigger`/`PopoverContent` imports with `Dialog`/`DialogContent`/`DialogHeader`/`DialogTitle` (already imported from alert-dialog, so just add the regular dialog imports).
+Replace the single date display with conditional logic:
+- If the project has a `completedDate`, show two rows: "Start Date" with the start date, and "Completed" with the completed date.
+- If no `completedDate`, show just "Start Date" as before.
 
-2. Replace the Popover block (lines 589-601) with a Dialog:
 ```tsx
-<Dialog open={completionDateOpen} onOpenChange={setCompletionDateOpen}>
-  <DialogContent className="w-auto max-w-fit p-6">
-    <DialogHeader>
-      <DialogTitle>Select Completion Date</DialogTitle>
-    </DialogHeader>
-    <CalendarComponent
-      mode="single"
-      selected={new Date()}
-      onSelect={(date) => date && handleCompleteWithDate(date)}
-      className={cn("p-3 pointer-events-auto")}
-    />
-  </DialogContent>
-</Dialog>
+<div>
+  <p className="text-xs text-muted-foreground">Start Date</p>
+  <div className="flex items-center gap-1 text-sm">
+    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+    <span>{formatDate(project.startDate)}</span>
+  </div>
+  {project.completedDate && (
+    <>
+      <p className="text-xs text-muted-foreground mt-2">Completed</p>
+      <div className="flex items-center gap-1 text-sm">
+        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+        <span>{formatDate(project.completedDate)}</span>
+      </div>
+    </>
+  )}
+</div>
 ```
 
-3. Remove the now-unused Popover imports if they are no longer used elsewhere in the file.
-
 ### Files Modified
-- `src/pages/ProjectDetail.tsx` -- replace Popover with Dialog for completion date picker
+- `src/components/dashboard/ProjectCard.tsx` -- show both start and completed dates for complete projects
