@@ -1,27 +1,36 @@
 
 
-## Fix CSV Bulk Import Not Processing Files
+## Fix CSV Import: Register Custom Categories in DB Enum
 
-### Root Cause
-The `processCSV` function in `ImportExpensesModal.tsx` maps the amount column by looking for a header named exactly `"amount"`. However, the project's own CSV schema (used in the AI prompt and exports) uses `"Total"` as the column name. When the header check fails, the function calls `toast.error(...)` and silently returns -- making it look like nothing happened.
+### Problem
+The import fails with `invalid input value for enum budget_category: "trims"` because the user's localStorage has custom category values (e.g., "trims" instead of "carpentry") that were never registered in the database's `budget_category` enum. The import tries to insert into `project_categories` with these values and the DB rejects them.
+
+### Solution
+Before inserting new `project_categories` rows, call the `add_budget_category` RPC for each category value that needs to be created. This registers the value in the Postgres enum so the insert succeeds.
 
 ### Changes
 
 **File: `src/components/project/ImportExpensesModal.tsx`**
 
-1. **Expand the amount column aliases** (line ~277): Add `"total"` as a recognized alias alongside `"amount"`, so CSVs with either header work:
-   ```ts
-   amount: Math.max(header.indexOf('amount'), header.indexOf('total')),
-   ```
+In the `handleImport` function (~line 355), before the `project_categories` insert, add a loop that registers each needed category value via the RPC:
 
-2. **Add more header aliases for robustness**:
-   - `"type"` is already handled for expense type -- good.
-   - Add `"payment"` as alias for payment method column.
+```ts
+// Register any custom category values in the DB enum first
+if (neededCats.length > 0) {
+  for (const cat of neededCats) {
+    await supabase.rpc('add_budget_category', { new_value: cat });
+  }
 
-3. **Add console.log for debugging** (temporary, in `processCSV`): Log the detected header and column map so if issues persist, they'll show in the console for diagnosis.
+  // Then create the project_categories rows
+  const { data: newCats, error: catError } = await supabase
+    .from('project_categories')
+    .insert(...)
+    .select();
+  // ... rest unchanged
+}
+```
 
-4. **Make the error toast more descriptive**: When required columns are missing, include which columns were detected vs. which are missing, so the user knows exactly what to fix in their CSV.
+This mirrors the pattern already used in `ManageSourcesCard.tsx` and `ReassignCategoryDialog.tsx`.
 
 ### Files Modified
 - `src/components/project/ImportExpensesModal.tsx`
-
