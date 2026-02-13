@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { resolveTimeline, isDateInRange, type TimelinePreset } from '@/lib/timelineFilter';
 
 type StatusFilter = 'all' | 'active' | 'complete';
 type TypeFilter = 'all' | 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling';
@@ -55,6 +56,16 @@ export default function ProfitBreakdown() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
+  // Read timeline from dashboard preferences
+  const dashFilters = (() => {
+    try {
+      const raw = localStorage.getItem('dashboard-profit-filters');
+      if (raw) return JSON.parse(raw) as { timeline?: TimelinePreset; timelineStart?: string; timelineEnd?: string };
+    } catch {}
+    return { timeline: 'all' as TimelinePreset };
+  })();
+  const timelineRange = resolveTimeline(dashFilters.timeline || 'all', dashFilters.timelineStart, dashFilters.timelineEnd);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -100,6 +111,11 @@ export default function ProfitBreakdown() {
       projects.forEach((p) => {
         const arv = p.arv ?? 0;
         const purchasePrice = p.purchase_price ?? 0;
+
+        // Apply timeline filter based on start_date
+        if (!isDateInRange(p.start_date, timelineRange)) {
+          return;
+        }
 
         if (arv <= 0) {
           unconfiguredList.push({ id: p.id, name: p.name, status: p.status, projectType: p.project_type });

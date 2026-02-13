@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Project, CategoryBudget, Expense } from '@/types';
 import { startOfMonth, isAfter } from 'date-fns';
+import { resolveTimeline, isDateInRange, type TimelinePreset } from '@/lib/timelineFilter';
 
 interface DBCategory {
   id: string;
@@ -211,10 +212,16 @@ export default function Index() {
   const profitFilters = (() => {
     try {
       const raw = localStorage.getItem('dashboard-profit-filters');
-      if (raw) return JSON.parse(raw) as { types: string[]; statuses: string[] };
+      if (raw) return JSON.parse(raw) as { types: string[]; statuses: string[]; timeline?: TimelinePreset; timelineStart?: string; timelineEnd?: string };
     } catch {}
-    return { types: ['fix_flip', 'rental', 'new_construction', 'wholesaling'], statuses: ['active'] };
+    return { types: ['fix_flip', 'rental', 'new_construction', 'wholesaling'], statuses: ['active'], timeline: 'all' as TimelinePreset };
   })();
+
+  const timelineRange = resolveTimeline(
+    profitFilters.timeline || 'all',
+    profitFilters.timelineStart,
+    profitFilters.timelineEnd,
+  );
 
   // Map status values to match project status format
   const statusMap: Record<string, string> = { active: 'active', complete: 'complete' };
@@ -224,7 +231,8 @@ export default function Index() {
       return p.status === mapped || (s === 'complete' && p.status === 'complete');
     });
     const typeMatch = profitFilters.types.includes(p.projectType);
-    return statusMatch && typeMatch && (p as any).arv > 0;
+    if (!statusMatch || !typeMatch || (p as any).arv <= 0) return false;
+    return isDateInRange(p.startDate, timelineRange);
   });
 
   const profitProjectCount = filteredProfitProjects.length;
