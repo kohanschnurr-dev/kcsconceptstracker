@@ -1,5 +1,5 @@
 import { CategoryItem } from '@/hooks/useCustomCategories';
-import { Zap, Droplets, PaintBucket, Home, Trees, Package, LucideIcon, DollarSign, Banknote, HardHat, Scale, Shield, Receipt, Clock, Hammer, Search, ClipboardList, Palette, FileText, Megaphone, Building2, MapPin, FileSignature, Key } from 'lucide-react';
+import { Zap, Droplets, PaintBucket, Home, Trees, Package, LucideIcon, DollarSign, Banknote, HardHat, Scale, Shield, Receipt, Clock, Hammer, Search, ClipboardList, Palette, FileText, Megaphone, Building2, MapPin, FileSignature, Key, Landmark } from 'lucide-react';
 import { getBudgetCategories } from '@/types';
 
 export interface BudgetCalcGroupDef {
@@ -41,7 +41,7 @@ export interface CustomGroupEntry {
 }
 
 const ICON_MAP: Record<string, LucideIcon> = {
-  purchase: Home, buy: Home, acquire: Home,
+  purchase: Landmark, buy: Landmark, acquire: Landmark,
   sale: DollarSign, sell: DollarSign, profit: DollarSign,
   closing: FileSignature, close: FileSignature,
   'pre-close': Key, preclose: Key,
