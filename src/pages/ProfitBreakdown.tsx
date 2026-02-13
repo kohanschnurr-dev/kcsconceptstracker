@@ -114,14 +114,21 @@ export default function ProfitBreakdown() {
       const dedupedQb = qbExpenses.filter((qb) => !importedQbIds.has(qb.id));
 
       const expensesByCategory: Record<string, number> = {};
+      const constructionByCategory: Record<string, number> = {};
       expenses.forEach((e) => {
         if (e.category_id) {
           expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
+          if (!e.cost_type || e.cost_type === 'construction') {
+            constructionByCategory[e.category_id] = (constructionByCategory[e.category_id] || 0) + Number(e.amount);
+          }
         }
       });
       dedupedQb.forEach((e) => {
         if (e.category_id) {
           expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
+          if (!e.cost_type || e.cost_type === 'construction') {
+            constructionByCategory[e.category_id] = (constructionByCategory[e.category_id] || 0) + Number(e.amount);
+          }
         }
       });
 
@@ -144,15 +151,15 @@ export default function ProfitBreakdown() {
 
         const projectCats = categories.filter((c) => c.project_id === p.id);
         const plannedBudget = projectCats.reduce((s, c) => s + Number(c.estimated_budget), 0);
-        const actualSpent = projectCats.reduce((s, c) => s + (expensesByCategory[c.id] || 0), 0);
-        const costBasis = Math.max(actualSpent, plannedBudget);
-        const costSource = actualSpent > plannedBudget ? 'actual' : 'budget';
+        const constructionSpent = projectCats.reduce((s, c) => s + (constructionByCategory[c.id] || 0), 0);
+        const costBasis = Math.max(constructionSpent, plannedBudget);
+        const costSource = constructionSpent > plannedBudget ? 'actual' : 'budget';
         const loanCosts = loansByProject[p.id] || 0;
         const monthlyCosts = monthlyByProject[p.id] || 0;
         const profit = arv - purchasePrice - costBasis;
 
         configuredList.push({
-          id: p.id, name: p.name, arv, purchasePrice, plannedBudget, actualSpent,
+          id: p.id, name: p.name, arv, purchasePrice, plannedBudget, actualSpent: constructionSpent,
           costBasis, costSource, loanCosts, monthlyCosts, profit, status: p.status, projectType: p.project_type,
         });
       });
