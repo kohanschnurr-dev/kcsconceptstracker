@@ -1,25 +1,56 @@
 
 
-## Tighten Profit Calculator Breakdown UI
+## Add Dashboard Profit Filter Setting
 
-### Problem
-The breakdown panel for Closing/Holding costs has excessive gaps between the toggle buttons, inputs, and labels. The layout feels spread out and awkward, especially when toggling between % and $ modes.
+### What It Does
+Adds a new setting in Settings that lets you choose which project types and statuses are included in the **Profit Potential** stat card on the Dashboard. For example, you could show only Fix & Flips, or Fix & Flips + Wholesaling, etc.
 
-### Changes
+### Where It Lives
+A new "Dashboard Preferences" card on the Settings page, placed before the Legal section. It contains multi-select checkboxes for:
 
-**`src/components/project/ProfitCalculator.tsx`**:
+**Project Types to include in Profit Potential:**
+- Fix & Flip (checked by default)
+- Rental
+- New Construction
+- Wholesaling
 
-1. **Compact the toggle buttons**: Reduce padding on the %/$ toggle segments, make them smaller and tighter against the label text
-2. **Tighten input widths**: Make the percentage input narrower (w-8 instead of w-10) and the flat dollar input more compact (w-16 instead of w-20)
-3. **Remove extra gaps**: Reduce `gap-1` spacing in the flex containers to `gap-0.5`, remove unnecessary margin on the toggle (`ml-1` to `ml-0.5`)
-4. **Align parentheses closer**: Pull the "(" and "% ARV)" / "% PP)" labels tighter to the input field
-5. **Consistent line height**: Ensure the cost lines with toggles align vertically with the simpler lines above them by using `items-center` consistently and matching text sizes
+**Project Statuses:**
+- Active (checked by default)
+- Completed
 
-### Visual Result (before vs after)
+### How It Works
+- The selected filters are stored in localStorage under a key like `dashboard-profit-filters` and synced across devices via the existing settings sync system.
+- The Dashboard reads these filters and applies them when calculating the Profit Potential stat card values.
+- If no setting exists, it defaults to current behavior (active projects only, all types).
 
-Before: `- Closing Costs  [%|$]  (  1  % ARV)          $12,270`
+### File Changes
 
-After: `- Closing Costs [%|$] (1 % ARV)                $12,270`
+**`src/hooks/useSettingsSync.ts`**
+- Add `'dashboard-profit-filters'` to the `SETTINGS_KEYS` array so it syncs across devices.
 
-Tighter spacing, smaller toggle, narrower inputs -- everything feels inline and intentional rather than scattered.
+**`src/pages/Settings.tsx`**
+- Add a new "Dashboard Preferences" card with checkbox toggles for each project type and status.
+- Read/write from localStorage key `dashboard-profit-filters` (JSON object: `{ statuses: string[], types: string[] }`).
+- Call `triggerSettingsSync()` on change.
+
+**`src/pages/Index.tsx`**
+- Read the `dashboard-profit-filters` setting from localStorage on mount.
+- Filter the projects used for the Profit Potential calculation based on the saved statuses and types.
+- Update the subtitle to reflect the filtered count.
+
+### Settings UI Layout
+
+```text
+Dashboard Preferences
+Configure which projects appear in your dashboard profit stats.
+
+Profit Potential - Project Types:
+[x] Fix & Flip    [x] Wholesaling
+[ ] Rental        [ ] New Construction
+
+Profit Potential - Status:
+[x] Active        [ ] Completed
+```
+
+Checkboxes use the existing Checkbox component. Changes save to localStorage immediately and trigger the settings sync.
 
