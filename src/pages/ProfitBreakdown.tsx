@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, AlertCircle } from 'lucide-react';
+import { ArrowLeft, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+
+type StatusFilter = 'all' | 'active' | 'complete';
+type TypeFilter = 'all' | 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling';
 
 interface ProjectProfit {
   id: string;
@@ -18,14 +20,39 @@ interface ProjectProfit {
   costBasis: number;
   costSource: 'budget' | 'actual';
   profit: number;
+  status: string;
+  projectType: string;
 }
+
+interface UnconfiguredProject {
+  id: string;
+  name: string;
+  status: string;
+  projectType: string;
+}
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'complete', label: 'Completed' },
+];
+
+const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
+  { value: 'all', label: 'All Types' },
+  { value: 'fix_flip', label: 'Fix & Flip' },
+  { value: 'rental', label: 'Rental' },
+  { value: 'new_construction', label: 'New Construction' },
+  { value: 'wholesaling', label: 'Wholesaling' },
+];
 
 export default function ProfitBreakdown() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [configured, setConfigured] = useState<ProjectProfit[]>([]);
-  const [unconfigured, setUnconfigured] = useState<{ id: string; name: string }[]>([]);
+  const [unconfigured, setUnconfigured] = useState<UnconfiguredProject[]>([]);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
   useEffect(() => {
     fetchData();
@@ -34,7 +61,7 @@ export default function ProfitBreakdown() {
   const fetchData = async () => {
     try {
       const [projectsRes, categoriesRes, expensesRes, qbRes] = await Promise.all([
-        supabase.from('projects').select('*').eq('status', 'active').order('created_at', { ascending: false }),
+        supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('project_categories').select('*'),
         supabase.from('expenses').select('*'),
         supabase.from('quickbooks_expenses').select('*').eq('is_imported', true),
@@ -49,13 +76,11 @@ export default function ProfitBreakdown() {
       const expenses = expensesRes.data || [];
       const qbExpenses = qbRes.data || [];
 
-      // Dedupe QB expenses
       const importedQbIds = new Set(
         expenses.filter((e) => e.qb_expense_id).map((e) => e.qb_expense_id)
       );
       const dedupedQb = qbExpenses.filter((qb) => !importedQbIds.has(qb.id));
 
-      // Expense totals by category
       const expensesByCategory: Record<string, number> = {};
       expenses.forEach((e) => {
         if (e.category_id) {
@@ -69,14 +94,14 @@ export default function ProfitBreakdown() {
       });
 
       const configuredList: ProjectProfit[] = [];
-      const unconfiguredList: { id: string; name: string }[] = [];
+      const unconfiguredList: UnconfiguredProject[] = [];
 
       projects.forEach((p) => {
         const arv = p.arv ?? 0;
         const purchasePrice = p.purchase_price ?? 0;
 
         if (arv <= 0) {
-          unconfiguredList.push({ id: p.id, name: p.name });
+          unconfiguredList.push({ id: p.id, name: p.name, status: p.status, projectType: p.project_type });
           return;
         }
 
@@ -87,7 +112,10 @@ export default function ProfitBreakdown() {
         const costSource = actualSpent > plannedBudget ? 'actual' : 'budget';
         const profit = arv - purchasePrice - costBasis;
 
-        configuredList.push({ id: p.id, name: p.name, arv, purchasePrice, plannedBudget, actualSpent, costBasis, costSource, profit });
+        configuredList.push({
+          id: p.id, name: p.name, arv, purchasePrice, plannedBudget, actualSpent,
+          costBasis, costSource, profit, status: p.status, projectType: p.project_type,
+        });
       });
 
       setConfigured(configuredList);
@@ -100,13 +128,24 @@ export default function ProfitBreakdown() {
     }
   };
 
+  const applyFilters = <T extends { status: string; projectType: string }>(list: T[]): T[] => {
+    return list.filter((item) => {
+      if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+      if (typeFilter !== 'all' && item.projectType !== typeFilter) return false;
+      return true;
+    });
+  };
+
+  const filteredConfigured = useMemo(() => applyFilters(configured), [configured, statusFilter, typeFilter]);
+  const filteredUnconfigured = useMemo(() => applyFilters(unconfigured), [unconfigured, statusFilter, typeFilter]);
+
   const fmt = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 
-  const totalProfit = configured.reduce((s, p) => s + p.profit, 0);
-  const totalARV = configured.reduce((s, p) => s + p.arv, 0);
-  const totalPurchase = configured.reduce((s, p) => s + p.purchasePrice, 0);
-  const totalCost = configured.reduce((s, p) => s + p.costBasis, 0);
+  const totalProfit = filteredConfigured.reduce((s, p) => s + p.profit, 0);
+  const totalARV = filteredConfigured.reduce((s, p) => s + p.arv, 0);
+  const totalPurchase = filteredConfigured.reduce((s, p) => s + p.purchasePrice, 0);
+  const totalCost = filteredConfigured.reduce((s, p) => s + p.costBasis, 0);
 
   if (isLoading) {
     return (
@@ -121,21 +160,54 @@ export default function ProfitBreakdown() {
   return (
     <MainLayout>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-semibold">Profit Potential</h1>
-          <p className="text-sm text-muted-foreground">Per-project breakdown across {configured.length} active project{configured.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-muted-foreground">
+            Per-project breakdown across {filteredConfigured.length} project{filteredConfigured.length !== 1 ? 's' : ''}
+          </p>
         </div>
         <div className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
           {fmt(totalProfit)}
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        {STATUS_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setStatusFilter(opt.value)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              statusFilter === opt.value
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+        <div className="w-px h-5 bg-border mx-1" />
+        {TYPE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setTypeFilter(opt.value)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              typeFilter === opt.value
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {/* Table */}
-      {configured.length > 0 ? (
+      {filteredConfigured.length > 0 ? (
         <div className="glass-card overflow-hidden">
           <Table>
             <TableHeader>
@@ -148,12 +220,8 @@ export default function ProfitBreakdown() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {configured.map((p) => (
-                <TableRow
-                  key={p.id}
-                  className="cursor-pointer"
-                  onClick={() => navigate(`/projects/${p.id}`)}
-                >
+              {filteredConfigured.map((p) => (
+                <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/projects/${p.id}`)}>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell className="text-right">{fmt(p.arv)}</TableCell>
                   <TableCell className="text-right">{fmt(p.purchasePrice)}</TableCell>
@@ -183,19 +251,19 @@ export default function ProfitBreakdown() {
       ) : (
         <div className="glass-card p-8 text-center">
           <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-          <p className="text-muted-foreground">No projects with ARV configured yet</p>
+          <p className="text-muted-foreground">No projects match the current filters</p>
         </div>
       )}
 
       {/* Unconfigured projects */}
-      {unconfigured.length > 0 && (
+      {filteredUnconfigured.length > 0 && (
         <div className="mt-6">
           <div className="flex items-center gap-2 mb-3">
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-medium text-muted-foreground">Missing ARV / Purchase Price</h3>
           </div>
           <div className="space-y-1">
-            {unconfigured.map((p) => (
+            {filteredUnconfigured.map((p) => (
               <div
                 key={p.id}
                 className="glass-card px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors"
