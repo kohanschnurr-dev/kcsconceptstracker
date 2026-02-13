@@ -123,6 +123,16 @@ export interface Project {
   coverPhotoPosition?: string;
   completedDate?: string;
   monthlyRent?: number;
+  loanAmount?: number;
+  interestRate?: number;
+  loanTermYears?: number;
+  annualPropertyTaxes?: number;
+  annualInsurance?: number;
+  annualHoa?: number;
+  vacancyRate?: number;
+  monthlyMaintenance?: number;
+  managementRate?: number;
+  cashflowRehabOverride?: number | null;
 }
 
 export interface CategoryBudget {
