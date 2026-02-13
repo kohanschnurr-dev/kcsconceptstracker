@@ -1,33 +1,30 @@
 
 
-## Add "Transaction Costs" as a 4th Cost Type
+## Reset All Filters When Clicking a Cost-Type Card
 
-### What Changes
+### Problem
+When clicking a cost-type card (e.g., "Holding Costs"), any previously active filters (like a specific category or date range) remain applied, which hides relevant expenses and creates confusion.
 
-1. **Row 1 (summary cards)**: Reorder so the first row shows only cost-type cards: Construction Costs, Loan Costs, Holding Costs, and the new **Transaction Costs** -- all clickable filters
-2. **Row 2**: Move **Total Spent** down to the second row (where Total Budget, Remaining, etc. live)
-3. **New cost type**: Add `transaction` as a 4th cost type throughout the system -- in the type selector popover, the filter dropdown, the label function, and the summary calculation
+### Solution
+Update `handleCardFilter` to reset all other filters (category, search, payment method, date range) back to defaults whenever a cost-type card is clicked. This ensures the user sees all expenses of that cost type without any leftover filters.
 
-### Technical Steps (all in `src/pages/ProjectBudget.tsx`)
+### Technical Change
 
-**1. Add transaction cost calculation (near line 461)**
-- Add: `const transactionCosts = expenses.filter(e => e.cost_type === 'transaction').reduce((sum, e) => sum + Number(e.amount), 0);`
+**`src/pages/ProjectBudget.tsx` (lines 173-178)** -- Update `handleCardFilter`:
 
-**2. Update `getCostTypeLabel` (line 540-546)**
-- Add case `'transaction': return 'Transaction';`
+```typescript
+const handleCardFilter = (costType: string) => {
+  setSelectedCostType(prev => prev === costType ? 'all' : costType);
+  // Reset all other filters so only the cost type filter is active
+  setSearchQuery('');
+  setSelectedCategory('all');
+  setSelectedPaymentMethod('all');
+  setDateRange('all');
+  setTimeout(() => {
+    expensesTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+};
+```
 
-**3. Reorganize Row 1 cards (lines 649-695)**
-- Remove "Total Spent" card from Row 1
-- Keep Construction Costs, Loan Costs, Holding Costs
-- Add new **Transaction Costs** card with a suitable icon (e.g., `Receipt` or `FileText`)
-- All four cards are clickable filters
-
-**4. Add "Total Spent" to Row 2 (line 697+)**
-- Insert the Total Spent card as the first card in the existing Row 2 grid (before Total Budget)
-
-**5. Update cost type popover options (line 1374)**
-- Change `['construction', 'loan', 'monthly']` to `['construction', 'loan', 'monthly', 'transaction']`
-
-**6. Update filter dropdown (lines 1238-1242)**
-- Add `<SelectItem value="transaction">Transaction</SelectItem>`
+This is a single, minimal change -- no other files are affected.
 
