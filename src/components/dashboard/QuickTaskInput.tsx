@@ -79,7 +79,7 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
             variant="outline"
             size="default"
             className={cn(
-              "shrink-0 gap-1",
+              "shrink-0 gap-1 min-w-[44px] px-4",
               dueDate && "text-primary"
             )}
           >
@@ -110,7 +110,7 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
           )}
         </PopoverContent>
       </Popover>
-      <Button type="submit" disabled={!title.trim() || isSubmitting} size="default" className="px-5">
+      <Button type="submit" disabled={!title.trim() || isSubmitting} size="default" className="min-w-[80px] px-5">
         Add
       </Button>
     </form>
