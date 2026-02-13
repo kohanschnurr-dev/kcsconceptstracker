@@ -60,7 +60,7 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex gap-3">
       <div className="relative flex-1">
         <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -77,7 +77,7 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="default"
             className={cn(
               "shrink-0 gap-1",
               dueDate && "text-primary"
@@ -110,7 +110,7 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
           )}
         </PopoverContent>
       </Popover>
-      <Button type="submit" disabled={!title.trim() || isSubmitting} size="sm">
+      <Button type="submit" disabled={!title.trim() || isSubmitting} size="default" className="px-5">
         Add
       </Button>
     </form>
