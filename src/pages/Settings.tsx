@@ -36,6 +36,7 @@ const US_STATES = [
 import { toast } from 'sonner';
 import kcsLogo from '@/assets/kcs-logo.png';
 import ManageSourcesCard from '@/components/settings/ManageSourcesCard';
+import ManageUsersCard from '@/components/settings/ManageUsersCard';
 import ColorPaletteCard from '@/components/settings/ColorPaletteCard';
 
 export default function Settings() {
@@ -373,6 +374,9 @@ export default function Settings() {
 
           {/* Manage Sources Section */}
           <ManageSourcesCard />
+
+          {/* Manage Users Section */}
+          <ManageUsersCard />
 
           {/* Color Palette Section */}
           <ColorPaletteCard />
