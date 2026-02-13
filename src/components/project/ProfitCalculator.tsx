@@ -282,6 +282,60 @@ export function ProfitCalculator({
               />
             </div>
           </div>
+          <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <Label htmlFor="closing-costs" className="mb-0">Closing Costs</Label>
+              <button
+                type="button"
+                onClick={() => setClosingMode(closingMode === 'pct' ? 'flat' : 'pct')}
+                className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden"
+              >
+                <span className={cn("px-1 py-px transition-colors", closingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
+                <span className={cn("px-1 py-px transition-colors", closingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
+              </button>
+            </div>
+            <div className="relative">
+              {closingMode === 'flat' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+              <Input
+                id="closing-costs"
+                type="number"
+                value={closingMode === 'pct' ? (closingPct || '') : (closingFlat || '')}
+                onChange={(e) => closingMode === 'pct' ? setClosingPct(Number(e.target.value)) : setClosingFlat(Number(e.target.value))}
+                className={closingMode === 'flat' ? 'pl-9' : ''}
+                placeholder="0"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {closingMode === 'pct' ? `% of ARV = ${formatCurrency(closingCosts)}` : `= ${formatCurrency(closingCosts)}`}
+            </p>
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <Label htmlFor="holding-costs" className="mb-0">Holding Costs</Label>
+              <button
+                type="button"
+                onClick={() => setHoldingMode(holdingMode === 'pct' ? 'flat' : 'pct')}
+                className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden"
+              >
+                <span className={cn("px-1 py-px transition-colors", holdingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
+                <span className={cn("px-1 py-px transition-colors", holdingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
+              </button>
+            </div>
+            <div className="relative">
+              {holdingMode === 'flat' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+              <Input
+                id="holding-costs"
+                type="number"
+                value={holdingMode === 'pct' ? (holdingPct || '') : (holdingFlat || '')}
+                onChange={(e) => holdingMode === 'pct' ? setHoldingPct(Number(e.target.value)) : setHoldingFlat(Number(e.target.value))}
+                className={holdingMode === 'flat' ? 'pl-9' : ''}
+                placeholder="0"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {holdingMode === 'pct' ? `% of PP = ${formatCurrency(holdingCosts)}` : `= ${formatCurrency(holdingCosts)}`}
+            </p>
+          </div>
         </div>
 
         {/* Results */}
@@ -361,64 +415,12 @@ export function ProfitCalculator({
               <span>− {expandedBreakdown === 'estimated' ? 'Rehab Budget' : 'Rehab Spent'}</span>
               <span>{formatCurrency(expandedBreakdown === 'estimated' ? totalBudget : totalSpent)}</span>
             </div>
-            <div className="flex justify-between text-destructive items-center">
-              <span className="inline-flex items-center gap-0.5">− Closing Costs
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setClosingMode(closingMode === 'pct' ? 'flat' : 'pct'); }}
-                  className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden ml-0.5"
-                >
-                  <span className={cn("px-1 py-px transition-colors", closingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
-                  <span className={cn("px-1 py-px transition-colors", closingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
-                </button>
-                {closingMode === 'pct' ? (
-                  <span className="inline-flex items-center text-muted-foreground text-xs">(<input
-                      type="number"
-                      value={closingPct || ''}
-                      onChange={(e) => setClosingPct(Number(e.target.value))}
-                      className="w-8 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary mx-px"
-                      onClick={(e) => e.stopPropagation()}
-                    />% ARV)</span>
-                ) : (
-                  <span className="inline-flex items-center text-muted-foreground text-xs">$<input
-                      type="number"
-                      value={closingFlat || ''}
-                      onChange={(e) => setClosingFlat(Number(e.target.value))}
-                      className="w-16 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary mx-px"
-                      onClick={(e) => e.stopPropagation()}
-                    /></span>
-                )}
-              </span>
+            <div className="flex justify-between text-destructive">
+              <span>− Closing Costs{closingMode === 'pct' ? ` (${closingPct}% ARV)` : ''}</span>
               <span>{formatCurrency(closingCosts)}</span>
             </div>
-            <div className="flex justify-between text-destructive items-center">
-              <span className="inline-flex items-center gap-0.5">− Holding Costs
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setHoldingMode(holdingMode === 'pct' ? 'flat' : 'pct'); }}
-                  className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden ml-0.5"
-                >
-                  <span className={cn("px-1 py-px transition-colors", holdingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
-                  <span className={cn("px-1 py-px transition-colors", holdingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
-                </button>
-                {holdingMode === 'pct' ? (
-                  <span className="inline-flex items-center text-muted-foreground text-xs">(<input
-                      type="number"
-                      value={holdingPct || ''}
-                      onChange={(e) => setHoldingPct(Number(e.target.value))}
-                      className="w-8 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary mx-px"
-                      onClick={(e) => e.stopPropagation()}
-                    />% PP)</span>
-                ) : (
-                  <span className="inline-flex items-center text-muted-foreground text-xs">$<input
-                      type="number"
-                      value={holdingFlat || ''}
-                      onChange={(e) => setHoldingFlat(Number(e.target.value))}
-                      className="w-16 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary mx-px"
-                      onClick={(e) => e.stopPropagation()}
-                    /></span>
-                )}
-              </span>
+            <div className="flex justify-between text-destructive">
+              <span>− Holding Costs{holdingMode === 'pct' ? ` (${holdingPct}% PP)` : ''}</span>
               <span>{formatCurrency(holdingCosts)}</span>
             </div>
             <div className="border-t pt-2 flex justify-between font-bold">
