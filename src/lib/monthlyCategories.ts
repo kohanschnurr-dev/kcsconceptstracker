@@ -17,11 +17,11 @@ export const MONTHLY_COST_CATEGORIES = [
 export function getMonthlyCategories(): typeof MONTHLY_COST_CATEGORIES {
   try {
     const saved = localStorage.getItem('custom-monthly-categories');
-    if (saved) return JSON.parse(saved);
+    if (saved) return (JSON.parse(saved) as typeof MONTHLY_COST_CATEGORIES).sort((a, b) => a.label.localeCompare(b.label));
   } catch (e) {
     console.error('Error loading custom monthly categories:', e);
   }
-  return MONTHLY_COST_CATEGORIES;
+  return [...MONTHLY_COST_CATEGORIES].sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export const getMonthlyCategoryLabel = (value: string): string => {

@@ -286,11 +286,11 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 export function getBudgetCategories(): typeof BUDGET_CATEGORIES {
-  return loadFromStorage('custom-budget-categories', BUDGET_CATEGORIES);
+  return loadFromStorage('custom-budget-categories', BUDGET_CATEGORIES).sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function getBusinessExpenseCategories(): typeof BUSINESS_EXPENSE_CATEGORIES {
-  return loadFromStorage('custom-business-categories', BUSINESS_EXPENSE_CATEGORIES);
+  return loadFromStorage('custom-business-categories', BUSINESS_EXPENSE_CATEGORIES).sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function getAllCategories() {
