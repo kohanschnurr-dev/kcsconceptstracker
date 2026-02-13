@@ -1,57 +1,38 @@
 
 
-## Count Pending Invitations as Seats + Show Inline with "Pending" Badge + Resend Button
+## Fix Email Delivery: Update Resend Sender Domain
 
-### Changes
+### Problem
+Resend's API rejects all emails because the edge function sends from `onboarding@resend.dev` (a sandbox domain). Resend only allows sending test emails to the account owner's email. No emails reach other recipients.
 
-**File: `src/components/settings/ManageUsersCard.tsx`**
+### Prerequisites (User Action Required)
+1. Go to [resend.com/domains](https://resend.com/domains)
+2. Add your domain (e.g., `kcsconcepts.com`)
+3. Configure the DNS records Resend provides (SPF, DKIM, etc.)
+4. Wait for verification to complete
 
-1. **Pending invitations count toward seats** -- Already working (line 30: `currentCount = members.length + invitations.length`). The display just needs to reflect this visually.
+### Code Change
 
-2. **Show pending invitations inline** (not in a separate section) -- Move pending invitations up into the main user list, right after the owner and any accepted members. Each pending invite shows:
-   - Mail icon
-   - Email address
-   - A yellow/amber "Pending" badge
-   - A "Resend" button (refresh/send icon) alongside the cancel (X) button
+**File: `supabase/functions/send-team-invite/index.ts`**
 
-3. **Remove the separate "Pending Invitations" section** -- Since they now appear inline in the main list.
-
-4. **Add resend functionality** -- A "Resend" button on each pending invitation that re-triggers the `send-team-invite` edge function. Add a `resendInvitation` handler that calls `supabase.functions.invoke('send-team-invite', ...)` with the invitation email, shows a success toast, and has a brief loading state.
-
-**File: `src/hooks/useTeam.ts`**
-
-5. **Add `resendInvitation` mutation** -- New mutation that invokes the `send-team-invite` edge function for a given email without creating a new DB record (just re-sends the email).
-
-### Visual Result
+Update the `from` address from `"FlipTracker <onboarding@resend.dev>"` to use the verified domain, e.g.:
 
 ```
-kohanschnurr@gmail.com
-  [Owner]
-
-invited@example.com
-  [Pending]                    [Resend] [X]
-
-1 / 2 seats used
+from: "FlipTracker <noreply@kcsconcepts.com>"
 ```
 
-### Technical Details
-
-In `useTeam.ts`, add:
+This is a single-line change on the line that currently reads:
 ```typescript
-const resendInvitation = useMutation({
-  mutationFn: async (email: string) => {
-    const ownerName = user?.email || 'A team owner';
-    const appUrl = window.location.origin;
-    await supabase.functions.invoke('send-team-invite', {
-      body: { email, ownerName, appUrl },
-    });
-  },
-});
+from: "FlipTracker <onboarding@resend.dev>",
 ```
 
-In `ManageUsersCard.tsx`:
-- Import `RefreshCw` from lucide-react for the resend icon
-- Add `resendInvitation` from `useTeam()`
-- Render pending invitations in the main list with a "Pending" badge and resend button
-- Remove the separate "Pending Invitations" section below the separator
+### Summary
+
+| Step | Who | What |
+|------|-----|------|
+| 1 | You | Verify a domain in Resend dashboard |
+| 2 | Lovable | Update the `from` address in the edge function |
+| 3 | Test | Send an invitation to confirm delivery |
+
+No other code changes are needed -- the invitation logic, database records, and UI are all working correctly. The only blocker is Resend rejecting the unverified sender domain.
 
