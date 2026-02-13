@@ -173,50 +173,40 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
         {/* Middle Box - Tasks */}
         <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center gap-2 text-center min-h-[100px]">
           <Clock className="h-6 w-6 text-primary" />
-          <div className="flex-1 flex flex-col justify-center space-y-1">
-            {tasksDueToday.length > 0 && (
-              <p className="text-sm text-warning font-medium">
-                {tasksDueToday.length} due today
-              </p>
-            )}
-            {overdueCount > 0 && (
-              <p className="text-sm text-destructive font-medium">
-                {overdueCount} overdue
-              </p>
-            )}
-            {tasksDueToday.length === 0 && overdueCount === 0 && (
-              <p className="text-sm text-muted-foreground">No tasks due</p>
-            )}
-          </div>
+          <div className="flex-1" />
           <Button
             onClick={() => navigate('/checklist')}
             variant="outline"
             size="sm"
-            className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
+            className={`gap-2 w-full ${
+              overdueCount > 0
+                ? 'border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive'
+                : tasksDueToday.length > 0
+                ? 'border-warning/30 text-warning hover:bg-warning/10 hover:text-warning'
+                : 'border-primary/30 text-primary hover:bg-primary/10 hover:text-primary'
+            }`}
           >
-            View Tasks
+            {overdueCount > 0
+              ? `${overdueCount} Overdue`
+              : tasksDueToday.length > 0
+              ? `${tasksDueToday.length} Due Today`
+              : 'View Tasks'}
           </Button>
         </div>
 
         {/* Right Box - Events */}
         <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center gap-2 text-center min-h-[100px]">
           <Calendar className="h-6 w-6 text-primary" />
-          <div className="flex-1 flex flex-col justify-center space-y-1">
-            {todayEvents.length > 0 ? (
-              <p className="text-sm text-foreground font-medium">
-                {todayEvents.length} event{todayEvents.length !== 1 ? 's' : ''}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">No events today</p>
-            )}
-          </div>
+          <div className="flex-1" />
           <Button
             onClick={() => navigate('/calendar?view=weekly')}
             variant="outline"
             size="sm"
             className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
           >
-            View Events
+            {todayEvents.length > 0
+              ? `View ${todayEvents.length} Event${todayEvents.length !== 1 ? 's' : ''}`
+              : 'View Events'}
           </Button>
         </div>
       </div>
