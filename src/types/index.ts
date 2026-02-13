@@ -122,6 +122,9 @@ export interface Project {
   coverPhotoPath?: string;
   coverPhotoPosition?: string;
   completedDate?: string;
+  arv?: number;
+  purchasePrice?: number;
+  constructionSpent?: number;
   monthlyRent?: number;
   loanAmount?: number;
   interestRate?: number;
