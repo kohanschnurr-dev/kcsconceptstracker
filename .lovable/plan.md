@@ -1,50 +1,75 @@
 
 
-## Add Tier-Based Team Member Limits
+## Send Email Invitations for Team Members
 
 ### Overview
 
-Enforce team member limits based on the user's subscription tier:
-- **Free**: No team access (locked UI, as it is now)
-- **Pro**: Up to 2 extra team members (not counting the owner)
-- **Premium**: Unlimited team members
+When you invite someone to your team, they'll receive a professional email prompting them to sign up on FlipTracker and join your team. We'll create a backend function that sends the email automatically when you click the invite button.
 
-### What Changes
+### How It Works
 
-**File: `src/components/settings/ManageUsersCard.tsx`**
+1. You enter an email and click Invite (same as now)
+2. The invitation is saved to the database (same as now)
+3. **New**: A backend function is called that sends a branded email to the invited person
+4. The email contains a link to your app's sign-up page with a special token so they're auto-added to your team when they create their account
 
-1. Add a tier-to-limit mapping:
-   - `free` = 0, `pro` = 2, `premium` = Infinity
+### Email Service
 
-2. Calculate `currentCount` as `members.length + invitations.length` (total seats used, excluding the owner).
+We'll use **Resend** as the email provider -- it's simple, reliable, and has a generous free tier (100 emails/day). You'll need to:
+- Create a free account at resend.com
+- Get an API key (takes 30 seconds)
+- Optionally verify a custom domain later (for now, emails send from Resend's default domain)
 
-3. Show a usage indicator below the owner row, e.g. "2 / 2 seats used" for Pro, or "3 seats used" for Premium.
+No need to set up a Gmail account -- Resend handles delivery for you and emails look more professional.
 
-4. Disable the invite form (input + button) and show a message like "You've reached your plan limit" when `currentCount >= maxSlots`.
+### What the Invited Person Sees
 
-5. For Pro users at their limit, show a subtle prompt to upgrade to Premium for unlimited members.
+They'll receive an email like:
 
-6. Update the card description to reflect the tier, e.g. "Pro plan -- 2 team seats" or "Premium plan -- unlimited seats".
+> **Subject:** You've been invited to join a team on FlipTracker
+>
+> Hi there,
+>
+> You've been invited to join a team on FlipTracker as a project manager.
+>
+> Click the link below to create your account and get started:
+>
+> **[Join Team on FlipTracker]**
+>
+> If you already have an account, simply log in and you'll be added to the team automatically.
+
+### Auto-Join on Sign Up
+
+When the invited person signs up (or logs in), the app will check if their email has any pending team invitations. If so, they'll be automatically added to the team and the invitation status will be updated to "accepted."
 
 ### Technical Details
 
-```text
-Tier limits (defined as a constant in ManageUsersCard.tsx):
+**New backend function: `send-team-invite`**
+- Receives the invitation email, team owner name, and invite token
+- Sends a branded HTML email via Resend API
+- Called from the `useTeam` hook after successfully inserting the invitation
 
-const TIER_LIMITS: Record<string, number> = {
-  free: 0,
-  pro: 2,
-  premium: Infinity,
-};
-```
+**New secret needed: `RESEND_API_KEY`**
+- You'll be prompted to enter this when we implement
 
-- `maxSlots = TIER_LIMITS[subscriptionTier] ?? 0`
-- `currentCount = members.length + invitations.length`
-- `atLimit = currentCount >= maxSlots`
+**Modified file: `src/hooks/useTeam.ts`**
+- After inserting the invitation, call the `send-team-invite` edge function
 
-The invite button and input get `disabled={atLimit || isInviting || !inviteEmail.trim()}`. When `atLimit` is true, the helper text changes to indicate the limit is reached with a suggestion to upgrade (for Pro users only).
+**New file: `supabase/functions/send-team-invite/index.ts`**
+- Edge function that sends the invitation email
 
-No database changes needed -- limits are enforced purely in the UI. The `handleInvite` function will also check the limit before submitting as a safeguard.
+**Modified file: `src/contexts/AuthContext.tsx`** (or a new hook)
+- On login/signup, check `team_invitations` for a matching email
+- If found, auto-create a `team_members` row and update the invitation status to "accepted"
+
+**New database function (migration):**
+- `accept_pending_invitations(p_user_id uuid, p_email text)` -- security definer function that checks for pending invitations matching the email and adds the user to the team
+
+### Files to Create
+- `supabase/functions/send-team-invite/index.ts`
 
 ### Files to Modify
-- `src/components/settings/ManageUsersCard.tsx`
+- `src/hooks/useTeam.ts` -- call edge function after invite
+- `src/contexts/AuthContext.tsx` -- auto-accept invitations on login
+- Database migration -- add `accept_pending_invitations` function
+
