@@ -1,33 +1,48 @@
 
 
-## Fix: Pending Invitations Not Showing (403 Error) + UI Confirmation
+## Fix: Stop Manage Users Card from Auto-Refreshing
 
 ### Root Cause
 
-The RLS policy "Invited users can view their invitation" on `team_invitations` uses a subquery against `auth.users`, which regular authenticated users cannot access. This causes **all** SELECT queries on the table to fail with a 403 "permission denied for table users" error -- which is why you see 0/2 seats even though 2 invitations exist in the database.
+React Query retries failed queries 3 times by default (with exponential backoff). If any of the three team queries (team, members, invitations) fail, they enter a retry loop that keeps the loading spinner visible. The card shows a spinner for the entire duration of retries, making it look like it's endlessly refreshing.
 
 ### Changes
 
-**1. Database Migration -- Fix RLS Policy**
+**File: `src/hooks/useTeam.ts`**
 
-Drop and recreate the "Invited users can view their invitation" policy to use `auth.email()` instead of querying `auth.users`:
+Add `retry: false` to all three `useQuery` calls (team, team-members, team-invitations). This way, if a query fails, it fails once and shows the data (or empty state) instead of retrying in a loop with a spinner.
 
-```sql
-DROP POLICY IF EXISTS "Invited users can view their invitation" ON team_invitations;
+Additionally, change error handling in the members and invitations queries to log errors and return empty arrays instead of throwing -- this prevents the error state from blocking the rest of the UI.
 
-CREATE POLICY "Invited users can view their invitation"
-  ON team_invitations
-  FOR SELECT
-  USING (lower(email) = lower(auth.email()));
+```
+// For each useQuery:
+{
+  queryKey: [...],
+  queryFn: async () => { ... },
+  enabled: ...,
+  retry: false,       // <-- add this
+  staleTime: 30000,   // <-- prevent unnecessary refetches for 30s
+}
 ```
 
-This is the only change needed. Once this is applied:
-- The owner will see pending invitations inline (code already handles this)
-- Seat count will correctly show `2 / 2 seats used`
-- Resend and cancel (X) buttons are already implemented and will work
-- Pending invitations count toward the seat limit, preventing excess invites
+For the members and invitations query functions, wrap in try/catch to gracefully degrade:
 
-### No Code Changes Needed
+```typescript
+// Instead of: if (error) throw error;
+// Do:
+if (error) {
+  console.error('Failed to fetch team members:', error);
+  return [];
+}
+```
 
-The `ManageUsersCard.tsx` and `useTeam.ts` files already have all the UI and logic in place from the previous updates -- pending invitations inline with "Pending" badge, resend button, cancel button, and seat counting. The only blocker was this broken RLS policy.
+### Summary
+
+| Change | Why |
+|--------|-----|
+| `retry: false` on all 3 queries | Stop retry loops that cause repeated spinner |
+| `staleTime: 30000` | Prevent refetching every time component re-renders |
+| Graceful error handling | Return empty data instead of throwing, so UI still renders |
+
+No database or other file changes needed.
 
