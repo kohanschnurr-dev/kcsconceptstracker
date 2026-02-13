@@ -2,7 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Shield, Lock, Crown, Loader2 } from 'lucide-react';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { Shield, Lock, Crown, Loader2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProfile } from '@/hooks/useProfile';
 import { useTeamRoles, AVAILABLE_PERMISSIONS, AVAILABLE_ROLES } from '@/hooks/useTeamRoles';
@@ -56,36 +57,41 @@ export default function ManageRolesCard() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {AVAILABLE_ROLES.map((role, roleIdx) => (
               <div key={role.key}>
-                {roleIdx > 0 && <Separator className="mb-6" />}
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge variant="secondary" className="text-xs font-medium">
-                    {role.label}
-                  </Badge>
-                </div>
-                <div className="grid gap-2">
-                  {AVAILABLE_PERMISSIONS.map((perm) => {
-                    const enabled = hasPermission(role.key, perm.key);
-                    return (
-                      <label
-                        key={perm.key}
-                        className="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
-                      >
-                        <Checkbox
-                          checked={enabled}
-                          onCheckedChange={() => handleToggle(role.key, perm.key, enabled)}
-                          disabled={togglePermission.isPending}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground">{perm.label}</p>
-                          <p className="text-xs text-muted-foreground">{perm.description}</p>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
+                {roleIdx > 0 && <Separator className="mb-4" />}
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full group">
+                    <Badge variant="secondary" className="text-xs font-medium">
+                      {role.label}
+                    </Badge>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    <div className="grid gap-2">
+                      {AVAILABLE_PERMISSIONS.map((perm) => {
+                        const enabled = hasPermission(role.key, perm.key);
+                        return (
+                          <label
+                            key={perm.key}
+                            className="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                          >
+                            <Checkbox
+                              checked={enabled}
+                              onCheckedChange={() => handleToggle(role.key, perm.key, enabled)}
+                              disabled={togglePermission.isPending}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground">{perm.label}</p>
+                              <p className="text-xs text-muted-foreground">{perm.description}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             ))}
           </div>
