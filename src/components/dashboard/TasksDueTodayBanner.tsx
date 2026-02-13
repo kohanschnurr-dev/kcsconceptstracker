@@ -204,23 +204,24 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
         {/* Right Box - Events */}
         <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-between text-center min-h-[120px]">
           <Calendar className="h-8 w-8 text-primary mb-2" />
-          <div className="mt-auto">
+          <div className="space-y-1">
             {todayEvents.length > 0 ? (
-              <div className="space-y-1">
-                {todayEvents.slice(0, 3).map((event) => (
-                  <p key={event.id} className="text-sm text-foreground truncate max-w-full">
-                    {event.title}
-                  </p>
-                ))}
-                {todayEvents.length > 3 && (
-                  <p className="text-xs text-muted-foreground">
-                    +{todayEvents.length - 3} more
-                  </p>
-                )}
-              </div>
+              <p className="text-sm text-foreground font-medium">
+                {todayEvents.length} event{todayEvents.length !== 1 ? 's' : ''}
+              </p>
             ) : (
               <p className="text-sm text-muted-foreground">No events today</p>
             )}
+          </div>
+          <div className="mt-auto w-full">
+            <Button
+              onClick={() => navigate('/calendar?view=weekly')}
+              variant="outline"
+              size="sm"
+              className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
+            >
+              View Events
+            </Button>
           </div>
         </div>
       </div>
