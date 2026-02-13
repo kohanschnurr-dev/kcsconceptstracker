@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.parse-product-screenshot]
 verify_jwt = false
+
+[functions.send-team-invite]
+verify_jwt = false

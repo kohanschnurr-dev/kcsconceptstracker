@@ -127,6 +127,18 @@ export function useTeam() {
         if (error.code === '23505') throw new Error('This email has already been invited');
         throw error;
       }
+
+      // Send invitation email via edge function
+      try {
+        const ownerName = user?.email || 'A team owner';
+        const appUrl = window.location.origin;
+        await supabase.functions.invoke('send-team-invite', {
+          body: { email: email.toLowerCase(), ownerName, appUrl },
+        });
+      } catch (emailError) {
+        // Don't fail the invite if email fails — the DB record is already created
+        console.error('Failed to send invite email:', emailError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-invitations', team?.id] });
