@@ -35,6 +35,7 @@ interface DBExpense {
   includes_tax: boolean;
   tax_amount: number | null;
   qb_expense_id: string | null;
+  cost_type: string | null;
 }
 
 export default function Index() {
@@ -104,6 +105,21 @@ export default function Index() {
         }
       });
 
+      // Calculate construction-only spent per project (for profit calculation)
+      const constructionByProject: Record<string, number> = {};
+      (expensesData || []).forEach((e: DBExpense) => {
+        if (!e.cost_type || e.cost_type === 'construction') {
+          constructionByProject[e.project_id] = (constructionByProject[e.project_id] || 0) + Number(e.amount);
+        }
+      });
+      dedupedQbExpenses.forEach((e: any) => {
+        if (e.category_id && (!e.cost_type || e.cost_type === 'construction')) {
+          if (e.project_id) {
+            constructionByProject[e.project_id] = (constructionByProject[e.project_id] || 0) + Number(e.amount);
+          }
+        }
+      });
+
       // Transform projects
       const transformedProjects: Project[] = (projectsData || []).map((p) => {
         // Get categories for this project
@@ -148,6 +164,7 @@ export default function Index() {
           monthlyMaintenance: p.monthly_maintenance ?? undefined,
           managementRate: p.management_rate ?? undefined,
           cashflowRehabOverride: p.cashflow_rehab_override ?? null,
+          constructionSpent: constructionByProject[p.id] || 0,
         };
       });
 
@@ -251,8 +268,8 @@ export default function Index() {
     const arv = (p as any).arv || 0;
     const purchasePrice = (p as any).purchasePrice || 0;
     const plannedBudget = p.totalBudget;
-    const actualSpent = p.categories.reduce((s, c) => s + c.actualSpent, 0);
-    const costBasis = Math.max(actualSpent, plannedBudget);
+    const constructionSpent = (p as any).constructionSpent || 0;
+    const costBasis = Math.max(constructionSpent, plannedBudget);
     return sum + (arv - purchasePrice - costBasis);
   }, 0);
 

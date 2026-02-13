@@ -169,6 +169,7 @@ export default function ProjectDetail() {
   const [expenses, setExpenses] = useState<DBExpense[]>([]);
   const [allExpensesForExport, setAllExpensesForExport] = useState<DBExpense[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DBDailyLog[]>([]);
+  const [constructionSpent, setConstructionSpent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
@@ -296,8 +297,17 @@ export default function ProjectDetail() {
     
     const combinedExpenses = [...expensesData, ...qbExpensesConverted];
     
+    // Sum only construction expenses for profit calculator (avoids double-counting loan/holding costs)
+    const constructionOnlySpent = expensesData
+      .filter(e => !e.cost_type || e.cost_type === 'construction')
+      .reduce((sum, e) => sum + Number(e.amount), 0)
+      + dedupedQbExpenses
+        .filter(e => e.category_id && (!e.cost_type || e.cost_type === 'construction'))
+        .reduce((sum, e) => sum + Number(e.amount), 0);
+
     setCategories(categoriesWithSpent);
     setExpenses(expensesData);
+    setConstructionSpent(constructionOnlySpent);
     setAllExpensesForExport(combinedExpenses);
     setDailyLogs(logsRes.data || []);
     if (showLoading) setLoading(false);
@@ -862,7 +872,7 @@ export default function ProjectDetail() {
               <ProfitCalculator 
                 projectId={id!}
                 totalBudget={totalBudget}
-                totalSpent={totalSpent}
+                totalSpent={constructionSpent}
                 initialPurchasePrice={project.purchase_price || 0}
                 initialArv={project.arv || 0}
                 initialClosingPct={(project as any).closing_costs_pct ?? defaultPreset?.closingPct ?? 6}
