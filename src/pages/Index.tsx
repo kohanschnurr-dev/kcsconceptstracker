@@ -207,8 +207,8 @@ export default function Index() {
       if (aStarred && bStarred) return aIdx - bIdx;
       return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
     });
-  const totalBudget = projects.reduce((sum, p) => sum + p.totalBudget, 0);
-  const totalSpent = projects.reduce((sum, p) => 
+  const totalBudget = activeProjects.reduce((sum, p) => sum + p.totalBudget, 0);
+  const totalSpent = activeProjects.reduce((sum, p) => 
     sum + p.categories.reduce((catSum, cat) => catSum + cat.actualSpent, 0), 0
   );
 
@@ -268,19 +268,19 @@ export default function Index() {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard
+              title="Total Budget"
+              value={formatCurrency(totalBudget)}
+              subtitle={`${formatCurrency(totalSpent)} spent`}
+              icon={DollarSign}
+              variant="success"
+            />
+            <StatCard
               title="This Month"
               value={formatCurrency(thisMonthTotal)}
               subtitle={`${thisMonthExpenses.length} transactions`}
               icon={TrendingUp}
               variant="default"
               onClick={() => navigate('/expenses')}
-            />
-            <StatCard
-              title="Total Budget"
-              value={formatCurrency(totalBudget)}
-              subtitle={`${formatCurrency(totalSpent)} spent`}
-              icon={DollarSign}
-              variant="success"
             />
             <StatCard
               title="Loan Payments"
