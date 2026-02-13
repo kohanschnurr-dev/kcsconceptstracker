@@ -40,6 +40,7 @@ import ManageUsersCard from '@/components/settings/ManageUsersCard';
 import ManageRolesCard from '@/components/settings/ManageRolesCard';
 import ColorPaletteCard from '@/components/settings/ColorPaletteCard';
 import DashboardPreferencesCard from '@/components/settings/DashboardPreferencesCard';
+import FinancialPresetsCard from '@/components/settings/FinancialPresetsCard';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -388,6 +389,9 @@ export default function Settings() {
 
           {/* Dashboard Preferences */}
           <DashboardPreferencesCard />
+
+          {/* Financial Presets */}
+          <FinancialPresetsCard />
 
           {/* Legal Section */}
           <Card>
