@@ -1,43 +1,47 @@
 
 
-## Improve the "+X more" Popover Appearance
+## Redesign the Events Box in Today's Agenda
 
 ### Problem
-The popover that appears when clicking "+1 more" on a calendar day looks plain and unstyled. The items appear as simple text without the category color styling, and the overall popover lacks visual polish.
+The right "Events" box currently lists individual event titles which looks cluttered, and has no action button like the other two boxes. It's inconsistent with the clean layout of the Calendar and Tasks boxes.
 
 ### Solution
-**File: `src/components/calendar/MonthlyView.tsx`**
+**File: `src/components/dashboard/TasksDueTodayBanner.tsx`**
 
-Enhance the popover styling to look more polished and consistent with the rest of the calendar:
+Redesign the events box to match the same clean pattern as the other two boxes:
+- Show a summary count (e.g. "4 events") instead of listing individual event titles
+- Add a "View Events" button at the bottom that navigates to the calendar's weekly view for today
+- Remove the individual event title listing and the "+X more" text
 
-1. **Widen the popover** from `w-64` to `w-72` so task cards have more breathing room
-2. **Style the header** with a bottom border separator and slightly larger text for the date
-3. **Add padding and spacing** between task items for better visual separation
-4. **Add a subtle background tint** to the popover header area to distinguish it from the list
+### Changes
 
-### Changes (single file)
+Replace the right box content (lines 204-225) with:
 
 ```tsx
-<PopoverContent className="w-72 p-0 overflow-hidden" align="start">
-  <div className="px-3 py-2 border-b border-border bg-muted/30">
-    <p className="text-xs font-semibold text-foreground">
-      {format(day, 'EEEE, MMM d')}
-    </p>
-    <p className="text-[10px] text-muted-foreground">
-      {dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}
-    </p>
+{/* Right Box - Events */}
+<div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-between text-center min-h-[120px]">
+  <Calendar className="h-8 w-8 text-primary mb-2" />
+  <div className="space-y-1">
+    {todayEvents.length > 0 ? (
+      <p className="text-sm text-foreground font-medium">
+        {todayEvents.length} event{todayEvents.length !== 1 ? 's' : ''}
+      </p>
+    ) : (
+      <p className="text-sm text-muted-foreground">No events today</p>
+    )}
   </div>
-  <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
-    {dayTasks.map(task => (
-      <DealCard key={task.id} task={task} compact onClick={() => onTaskClick(task)} />
-    ))}
+  <div className="mt-auto w-full">
+    <Button
+      onClick={() => navigate('/calendar?view=weekly')}
+      variant="outline"
+      size="sm"
+      className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
+    >
+      View Events
+    </Button>
   </div>
-</PopoverContent>
+</div>
 ```
 
-Key improvements:
-- **Structured header** with full day name (e.g. "Friday, Feb 14") and event count
-- **Visual separation** between header and task list via border and muted background
-- **Zero padding on wrapper** with internal section padding for a cleaner card-like layout
-- **Slightly more max-height** (240px) and spacing between items
+This makes all three boxes visually consistent: icon at top, summary text in the middle, action button at the bottom. The "View Events" button navigates to the calendar weekly view so the user can see all of today's events in detail.
 
