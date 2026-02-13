@@ -1,47 +1,42 @@
 
-## Financial Presets for Profit Calculator
 
-### What It Does
-Adds a "Financial Presets" system to the Profit Calculator on the Financials tab. Users can save and load preset templates for their typical deal assumptions -- closing cost %, holding cost %, and their modes (% vs flat $). This lets users quickly apply known rates (e.g., "My Hard Money Deal" with 6% closing, 3% holding) across projects instead of manually entering the same numbers each time.
+## Move Closing & Holding Costs to Top-Level Input Fields
 
-### How It Works
+### What Changes
+Move the Closing Costs and Holding Costs out of the breakdown panel and into the main input grid at the top, alongside Purchase Price and ARV. Each cost field will have its own `%/$` mode toggle and proper input, making them always visible and editable without needing to expand the breakdown.
 
-**Preset Data Structure** (stored in localStorage, synced via settings sync):
+### Layout Change
+
+Current (2-column grid):
 ```text
-Key: "profit-calculator-presets"
-Value: [
-  { name: "Default", closingPct: 6, holdingPct: 3, closingMode: "pct", holdingMode: "pct", closingFlat: 0, holdingFlat: 0 },
-  { name: "Cash Deal", closingPct: 2, holdingPct: 1, closingMode: "pct", holdingMode: "pct", closingFlat: 0, holdingFlat: 0 },
-  ...
-]
+Purchase Price          |  ARV
 ```
 
-**UI Location**: A small dropdown + save button added to the Profit Calculator header, next to the existing Save button.
-
-### UI Layout
-
+New (4-column grid, 2 rows on mobile):
 ```text
-Profit Calculator                    [Preset: v] [+ Save as Preset] [Save]
+Purchase Price          |  ARV
+Closing Costs [%|$]     |  Holding Costs [%|$]
 ```
 
-- **Preset Dropdown**: A Select component showing saved presets. Selecting one applies its closing/holding values to the calculator fields.
-- **Save as Preset**: Opens a small popover/dialog asking for a name, then saves the current closing/holding config as a new preset.
-- **Delete**: Each preset in the dropdown (except the first default) shows a small X to remove it.
+Each closing/holding input will show:
+- A label with the `%/$` toggle button inline
+- When in `%` mode: a number input with "% of ARV" or "% of PP" helper text, plus the calculated dollar amount shown as muted text
+- When in `$` mode: a standard dollar input
 
-### File Changes
+### Breakdown Panel Simplification
+The breakdown rows for Closing Costs and Holding Costs become read-only display lines (no more inline editing there) -- just showing the label and calculated amount, since editing now happens at the top.
 
-**`src/hooks/useSettingsSync.ts`**
-- Add `'profit-calculator-presets'` to the `SETTINGS_KEYS` array so presets sync across devices.
+### File Change
 
-**`src/components/project/ProfitCalculator.tsx`**
-- Add state for presets list (loaded from localStorage on mount).
-- Add a `Select` dropdown in the header to pick a preset, which applies its values to closingPct, holdingPct, closingMode, holdingMode, closingFlat, holdingFlat.
-- Add a "Save Preset" button that opens a small Popover with a name input and confirm button. On confirm, saves the current closing/holding config to the presets array in localStorage and triggers settings sync.
-- Each preset item in the dropdown shows a delete icon (except built-in defaults).
-- Presets only control closing/holding cost fields -- Purchase Price and ARV remain project-specific.
+**`src/components/project/ProfitCalculator.tsx`**:
 
-### Default Presets
-The system ships with one built-in preset:
-- "Standard" -- 6% closing (of ARV), 3% holding (of PP), both in % mode
+1. **Expand the input grid** from `grid-cols-2` to include a second row with Closing Costs and Holding Costs fields
+2. **Each cost field** gets:
+   - Label with inline `%/$` toggle button (reuse existing toggle style)
+   - Input for the value (percentage or flat dollar)
+   - Helper text showing "% of ARV" / "% of PP" when in percentage mode, or just `$` prefix in flat mode
+   - Calculated amount shown as small muted text below (e.g., "= $15,600")
+3. **Simplify breakdown panel** -- remove the inline editing controls for closing/holding costs; replace with plain read-only lines showing just the label and calculated dollar amount
 
-Users can create unlimited additional presets from their current calculator values.
+No new files, no database changes. The preset system continues to work as-is since it already sets these same state values.
+
