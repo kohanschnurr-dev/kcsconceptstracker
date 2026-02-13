@@ -1,71 +1,42 @@
 
 
-## Replace "Loan Payments" with "Profit Potential" Stat Card
+## Profit Potential Breakdown Page
 
 ### What It Does
-The third stat card will show a realistic estimated profit across all active projects. It uses conservative logic so users don't get false hope from untouched budgets.
+Clicking the "Profit Potential" stat card on the dashboard navigates to a new `/profit` page that shows a per-project breakdown of how the total profit number is calculated.
 
-### Profit Calculation Logic
+### Layout
 
-For each active project that has an ARV set:
+**Header**: "Profit Potential" title with a back button and the total profit number displayed prominently.
 
-```
-Actual Spent = sum of all expense actuals for that project
-Planned Budget = sum of category estimated budgets for that project
+**Project Table/Cards**: Each active project with ARV > 0 shown as a row with:
+- Project Name
+- ARV
+- Purchase Price
+- Rehab Costs (shows MAX of budget vs actual, with a note indicating which is used)
+- Profit = ARV - Purchase Price - Rehab Costs
+- Color-coded profit (green positive, red negative)
 
-Cost Basis = MAX(Actual Spent, Planned Budget)
-   -- If over budget, use actual spent (reality wins)
-   -- If under budget, use planned budget (don't inflate profit)
+Projects without ARV are listed separately at the bottom as "Not configured" so users know to add ARV/purchase price.
 
-Project Profit = ARV - Purchase Price - Cost Basis
-```
-
-Then sum across all active projects with ARV values.
-
-The subtitle will show how many projects contribute (e.g., "Across 2 projects").
+**Summary row** at the bottom with the totals.
 
 ### Changes
 
-**File: `src/pages/Index.tsx`**
+**New file: `src/pages/ProfitBreakdown.tsx`**
+- Fetches projects, categories, and expenses (same pattern as Index.tsx)
+- Calculates per-project profit using the same conservative MAX(actual, planned) logic
+- Renders a table with columns: Project | ARV | Purchase Price | Rehab Costs | Profit
+- Each row is clickable, navigating to that project's detail page
+- Shows a summary total row at the bottom
+- Projects without ARV shown in a muted section below
 
-1. **Remove** the loan payments database fetch and `totalLoanPayments` state
-2. **Add** profit calculation logic after `activeProjects` is computed:
-   - Loop through active projects that have `arv > 0` and `purchase_price`
-   - For each, compare actual spent vs. planned budget, take the higher value as cost basis
-   - Subtract purchase price and cost basis from ARV
-   - Sum all project profits
-3. **Replace** the Loan Payments `StatCard` with a "Profit Potential" card using a `TrendingUp` or `DollarSign`-style icon and a "success" or "default" variant
+**File: `src/App.tsx`**
+- Add route: `/profit` pointing to `ProfitBreakdown` (protected)
+
+**File: `src/pages/Index.tsx`**
+- Add `onClick={() => navigate('/profit')}` to the Profit Potential `StatCard`
 
 ### Technical Details
 
-**Removing loan fetch** (around lines 79-82): Delete the `loan_payments` query and `setTotalLoanPayments`. Remove the `totalLoanPayments` state variable.
-
-**New calculation** (after line ~163):
-```tsx
-const profitProjectCount = activeProjects.filter(p => (p as any).arv > 0).length;
-const totalProfitPotential = activeProjects.reduce((sum, p) => {
-  const arv = (p as any).arv || 0;
-  const purchasePrice = (p as any).purchasePrice || 0;
-  if (arv <= 0) return sum;
-  const plannedBudget = p.totalBudget;
-  const actualSpent = p.categories.reduce((s, c) => s + c.actualSpent, 0);
-  const costBasis = Math.max(actualSpent, plannedBudget);
-  return sum + (arv - purchasePrice - costBasis);
-}, 0);
-```
-
-**Project type update**: The `Project` type transform needs to carry `arv` and `purchasePrice` from the DB row so the calculation can access them.
-
-**StatCard replacement** (around line 217):
-```tsx
-<StatCard
-  title="Profit Potential"
-  value={formatCurrency(totalProfitPotential)}
-  subtitle={`Across ${profitProjectCount} project${profitProjectCount !== 1 ? 's' : ''}`}
-  icon={TrendingUp}
-  variant={totalProfitPotential >= 0 ? 'success' : 'danger'}
-/>
-```
-
-This gives a realistic, conservative profit view -- if a project is over budget the real numbers show, and untouched budgets use planned costs rather than $0.
-
+The new page reuses the `MainLayout`, `Table` components, and the same data-fetching pattern from `Index.tsx`. The rehab cost column will show a small label "(budget)" or "(actual)" so users understand which number is being used and why. Each project row links to `/projects/:id` for deeper drill-down.
