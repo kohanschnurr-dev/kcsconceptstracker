@@ -1,16 +1,17 @@
 
 
-## Give Calendar & Add Buttons More Presence
+## Give Calendar and Add Buttons More Width
 
 ### Problem
-The calendar date-picker button and "Add" button in the Quick Task Input feel cramped and pushed to the far right, like afterthoughts.
+The text input takes up too much horizontal space, leaving the calendar icon button and "Add" button squeezed into narrow widths on the right.
 
 ### Solution
 **File: `src/components/dashboard/QuickTaskInput.tsx`**
 
-- Increase the calendar button size from `size="sm"` to `size="default"` (h-10) so it matches the input height
-- Increase the Add button size from `size="sm"` to `size="default"` and add horizontal padding (`px-5`) so it feels more intentional
-- Add `gap-3` instead of `gap-2` on the form container for slightly more breathing room between elements
+- Change the input wrapper from `flex-1` to a constrained width (e.g., `flex-1 max-w-[75%]`) so it doesn't consume all available space
+- Add `min-w-[100px]` to the "Add" button and increase padding so it has more presence
+- Add `min-w-[44px]` to the calendar button so it doesn't shrink too small
+- Alternatively, a simpler approach: give the calendar button and Add button explicit wider sizing (`w-12` for calendar, `w-24` for Add) so they claim more of the row
 
-This keeps the input as the primary element but gives the action buttons enough visual weight to not feel like afterthoughts.
+The simplest fix: add `px-4` to the calendar button and `min-w-[80px]` to the Add button, giving both more horizontal real estate without overcomplicating the layout.
 
