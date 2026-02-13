@@ -1764,6 +1764,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_pending_invitations: {
+        Args: { p_email: string; p_user_id: string }
+        Returns: undefined
+      }
       add_budget_category: { Args: { new_value: string }; Returns: undefined }
       get_team_owner_id: { Args: { p_user_id: string }; Returns: string }
     }
