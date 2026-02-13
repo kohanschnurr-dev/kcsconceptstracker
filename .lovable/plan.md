@@ -1,20 +1,27 @@
 
 
-## Update Rental Project Card Display
+## Pull Annual Cash Flow from Financials Data
 
-### What Changes
-1. Replace the "Total Expenses / $582" box with **"Annual Cash Flow"** showing the cash flow figure instead
-2. Remove the "Type: Rental Property" label from the bottom-left grid cell -- replace it with something more useful (e.g., show "Remaining" like other project types, or just show expenses)
+### Problem
+The ProjectCard currently computes Annual Cash Flow as a simple `(monthlyRent * 12) - totalExpenses`, but it should match the Cash Flow Calculator's formula which accounts for vacancy, mortgage P&I, property taxes, insurance, HOA, maintenance, and management fees.
 
-### Technical Steps
+### Changes
 
-**`src/components/dashboard/ProjectCard.tsx`**
+**1. `src/types/index.ts`** -- Add rental financial fields to the Project interface:
+- `loanAmount`, `interestRate`, `loanTermYears`
+- `annualPropertyTaxes`, `annualInsurance`, `annualHoa`
+- `vacancyRate`, `monthlyMaintenance`, `managementRate`
+- `cashflowRehabOverride`
 
-1. **Rental summary box (lines ~107-111)**: Change label from "Total Expenses" to "Annual Cash Flow". For the value, compute annual cash flow if rental income data is available, otherwise show total expenses as a fallback for now.
+**2. `src/pages/Projects.tsx`** -- Map the new DB columns to the Project object:
+- `loan_amount`, `interest_rate`, `loan_term_years`, `annual_property_taxes`, `annual_insurance`, `annual_hoa`, `vacancy_rate`, `monthly_maintenance`, `management_rate`, `cashflow_rehab_override`
 
-2. **Bottom grid "Type" cell (lines ~119-123)**: The `isRental` branch currently renders "Type: Rental Property". Replace this with the same "Total Expenses" display so the spending info is not lost -- or simply show "Expenses" with the total spent amount, matching the pattern of the other project types' "Remaining" cell.
+**3. `src/components/dashboard/ProjectCard.tsx`** -- Update the ACF calculation to match the Cash Flow Calculator formula:
+- Compute monthly mortgage (P&I) using amortization formula
+- Apply vacancy rate to monthly rent for gross income
+- Sum monthly expenses (taxes, insurance, HOA, maintenance, management fee)
+- Monthly Cash Flow = Gross Income - Mortgage - Expenses
+- Annual Cash Flow = Monthly Cash Flow x 12
 
-### Layout Result
-- Top box: "Annual Cash Flow" with dollar amount
-- Bottom-left: "Expenses" with total spent (instead of "Type: Rental Property")
-- Bottom-right: Start Date (unchanged)
+This ensures the card shows the exact same $3,114 figure as the Financials tab.
+
