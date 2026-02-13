@@ -1,14 +1,50 @@
 import { useState, useEffect } from 'react';
-import { Calculator, DollarSign, TrendingUp, Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, Save, Loader2, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { triggerSettingsSync } from '@/hooks/useSettingsSync';
 
 type CostMode = 'pct' | 'flat';
+
+interface FinancialPreset {
+  name: string;
+  closingPct: number;
+  holdingPct: number;
+  closingMode: CostMode;
+  holdingMode: CostMode;
+  closingFlat: number;
+  holdingFlat: number;
+  isDefault?: boolean;
+}
+
+const DEFAULT_PRESETS: FinancialPreset[] = [
+  { name: 'Standard', closingPct: 6, holdingPct: 3, closingMode: 'pct', holdingMode: 'pct', closingFlat: 0, holdingFlat: 0, isDefault: true },
+];
+
+const PRESETS_KEY = 'profit-calculator-presets';
+
+function loadPresets(): FinancialPreset[] {
+  try {
+    const raw = localStorage.getItem(PRESETS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as FinancialPreset[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /* ignore */ }
+  return [...DEFAULT_PRESETS];
+}
+
+function savePresets(presets: FinancialPreset[]) {
+  localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+  triggerSettingsSync();
+}
 
 interface ProfitCalculatorProps {
   projectId: string;
@@ -48,6 +84,18 @@ export function ProfitCalculator({
   const [closingFlat, setClosingFlat] = useState(initialClosingFlat);
   const [holdingFlat, setHoldingFlat] = useState(initialHoldingFlat);
 
+  // Presets state
+  const [presets, setPresets] = useState<FinancialPreset[]>(loadPresets);
+  const [presetPopoverOpen, setPresetPopoverOpen] = useState(false);
+  const [newPresetName, setNewPresetName] = useState('');
+
+  // Reload presets when synced from another device
+  useEffect(() => {
+    const handler = () => setPresets(loadPresets());
+    window.addEventListener('settings-synced', handler);
+    return () => window.removeEventListener('settings-synced', handler);
+  }, []);
+
   useEffect(() => {
     setPurchasePrice(initialPurchasePrice);
     setArv(initialArv);
@@ -58,19 +106,20 @@ export function ProfitCalculator({
     setClosingFlat(initialClosingFlat);
     setHoldingFlat(initialHoldingFlat);
   }, [initialPurchasePrice, initialArv, initialClosingPct, initialHoldingPct, initialClosingMode, initialHoldingMode, initialClosingFlat, initialHoldingFlat]);
+
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase
       .from('projects')
       .update({
-      purchase_price: purchasePrice,
-      arv: arv,
-      closing_costs_pct: closingPct,
-      holding_costs_pct: holdingPct,
-      closing_costs_mode: closingMode,
-      holding_costs_mode: holdingMode,
-      closing_costs_flat: closingFlat,
-      holding_costs_flat: holdingFlat,
+        purchase_price: purchasePrice,
+        arv: arv,
+        closing_costs_pct: closingPct,
+        holding_costs_pct: holdingPct,
+        closing_costs_mode: closingMode,
+        holding_costs_mode: holdingMode,
+        closing_costs_flat: closingFlat,
+        holding_costs_flat: holdingFlat,
       } as any)
       .eq('id', projectId);
 
@@ -83,22 +132,55 @@ export function ProfitCalculator({
     setSaving(false);
   };
 
+  const applyPreset = (presetName: string) => {
+    const preset = presets.find(p => p.name === presetName);
+    if (!preset) return;
+    setClosingPct(preset.closingPct);
+    setHoldingPct(preset.holdingPct);
+    setClosingMode(preset.closingMode);
+    setHoldingMode(preset.holdingMode);
+    setClosingFlat(preset.closingFlat);
+    setHoldingFlat(preset.holdingFlat);
+  };
+
+  const handleSavePreset = () => {
+    const name = newPresetName.trim();
+    if (!name) return;
+    if (presets.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+      toast.error('A preset with that name already exists');
+      return;
+    }
+    const newPreset: FinancialPreset = {
+      name,
+      closingPct, holdingPct, closingMode, holdingMode, closingFlat, holdingFlat,
+    };
+    const updated = [...presets, newPreset];
+    setPresets(updated);
+    savePresets(updated);
+    setNewPresetName('');
+    setPresetPopoverOpen(false);
+    toast.success(`Preset "${name}" saved`);
+  };
+
+  const handleDeletePreset = (presetName: string) => {
+    const updated = presets.filter(p => p.name !== presetName);
+    setPresets(updated);
+    savePresets(updated);
+    toast.success(`Preset deleted`);
+  };
+
   const closingCosts = closingMode === 'pct' ? arv * (closingPct / 100) : closingFlat;
   const holdingCosts = holdingMode === 'pct' ? purchasePrice * (holdingPct / 100) : holdingFlat;
 
-  // Estimated profit (based on allocated budget)
   const estimatedInvestment = purchasePrice + totalBudget;
   const estimatedTotalCosts = estimatedInvestment + closingCosts + holdingCosts;
   const estimatedProfit = arv - estimatedTotalCosts;
 
-  // Current profit (based on actual spending)
   const currentInvestment = purchasePrice + totalSpent;
   const currentTotalCosts = currentInvestment + closingCosts + holdingCosts;
   const currentProfit = arv - currentTotalCosts;
 
-  // ROI based on current investment
   const roi = currentInvestment > 0 ? (currentProfit / currentInvestment) * 100 : 0;
-  
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -111,15 +193,63 @@ export function ProfitCalculator({
 
   return (
     <Card className="glass-card">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
         <CardTitle className="text-lg flex items-center gap-2">
           <Calculator className="h-5 w-5" />
           Profit Calculator
         </CardTitle>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-          Save
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select onValueChange={applyPreset}>
+            <SelectTrigger className="w-[140px] h-8 text-xs">
+              <SelectValue placeholder="Preset…" />
+            </SelectTrigger>
+            <SelectContent>
+              {presets.map(p => (
+                <div key={p.name} className="flex items-center group">
+                  <SelectItem value={p.name} className="flex-1 text-xs">
+                    {p.name}
+                  </SelectItem>
+                  {!p.isDefault && (
+                    <button
+                      type="button"
+                      className="p-1 mr-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); handleDeletePreset(p.name); }}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </SelectContent>
+          </Select>
+          <Popover open={presetPopoverOpen} onOpenChange={setPresetPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 text-xs">
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Save Preset
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-3" align="end">
+              <div className="space-y-2">
+                <Label className="text-xs">Preset Name</Label>
+                <Input
+                  value={newPresetName}
+                  onChange={e => setNewPresetName(e.target.value)}
+                  placeholder="e.g. My HM Deal"
+                  className="h-8 text-xs"
+                  onKeyDown={e => e.key === 'Enter' && handleSavePreset()}
+                />
+                <Button size="sm" className="w-full h-8 text-xs" onClick={handleSavePreset} disabled={!newPresetName.trim()}>
+                  Save
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+            Save
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Inputs */}
@@ -153,7 +283,6 @@ export function ProfitCalculator({
             </div>
           </div>
         </div>
-
 
         {/* Results */}
         <div className="grid grid-cols-3 gap-4">

@@ -16,6 +16,7 @@ const SETTINGS_KEYS = [
   'custom-trade-groups',
   'trade-groups-order',
   'dashboard-profit-filters',
+  'profit-calculator-presets',
 ];
 
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
