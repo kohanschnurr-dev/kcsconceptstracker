@@ -168,7 +168,7 @@ export default function BusinessExpenses() {
           .order('date', { ascending: false }),
         supabase
           .from('projects')
-          .select('id, name, address')
+          .select('id, name, address, project_type')
            .order('name'),
          supabase
            .from('quarterly_goals')
