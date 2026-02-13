@@ -1,47 +1,34 @@
 
 
-## Redesign the Events Box in Today's Agenda
+## Clean Up Today's Agenda Banner
 
-### Problem
-The right "Events" box currently lists individual event titles which looks cluttered, and has no action button like the other two boxes. It's inconsistent with the clean layout of the Calendar and Tasks boxes.
-
-### Solution
+### What Changes
 **File: `src/components/dashboard/TasksDueTodayBanner.tsx`**
 
-Redesign the events box to match the same clean pattern as the other two boxes:
-- Show a summary count (e.g. "4 events") instead of listing individual event titles
-- Add a "View Events" button at the bottom that navigates to the calendar's weekly view for today
-- Remove the individual event title listing and the "+X more" text
+Tighten the three-box grid to feel more compact and polished:
 
-### Changes
+1. **Reduce box height** from `min-h-[120px]` to `min-h-[100px]` — less dead space
+2. **Shrink icons** from `h-8 w-8` to `h-6 w-6` — they dominate too much currently
+3. **Remove `mb-2`** from icons and use consistent `gap` via the flex column instead
+4. **Add `gap-2`** to the flex-col containers so spacing is uniform between icon, text, and button
+5. **Remove redundant `mt-auto`** wrapper divs — use `flex-1` on the middle content area to naturally push buttons down
+6. **Reduce outer padding** from `p-4` to `p-3` on the main container and `mb-3` to `mb-2` on the header for a tighter feel
 
-Replace the right box content (lines 204-225) with:
+### Technical Details
 
-```tsx
-{/* Right Box - Events */}
-<div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-between text-center min-h-[120px]">
-  <Calendar className="h-8 w-8 text-primary mb-2" />
-  <div className="space-y-1">
-    {todayEvents.length > 0 ? (
-      <p className="text-sm text-foreground font-medium">
-        {todayEvents.length} event{todayEvents.length !== 1 ? 's' : ''}
-      </p>
-    ) : (
-      <p className="text-sm text-muted-foreground">No events today</p>
-    )}
-  </div>
-  <div className="mt-auto w-full">
-    <Button
-      onClick={() => navigate('/calendar?view=weekly')}
-      variant="outline"
-      size="sm"
-      className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
-    >
-      View Events
-    </Button>
-  </div>
-</div>
+The three boxes will each follow this streamlined structure:
+```
+flex flex-col items-center gap-2 min-h-[100px]
+  Icon (h-6 w-6)
+  Content area (flex-1, centered)
+  Button (w-full, anchored bottom)
 ```
 
-This makes all three boxes visually consistent: icon at top, summary text in the middle, action button at the bottom. The "View Events" button navigates to the calendar weekly view so the user can see all of today's events in detail.
+Key class changes per box:
+- Container: `min-h-[120px]` → `min-h-[100px]`, add `gap-2`
+- Icons: `h-8 w-8 mb-2` → `h-6 w-6` (no margin, gap handles spacing)
+- Remove wrapper `<div className="mt-auto w-full">` around buttons — instead put `mt-auto` directly on the Button
+- Content text divs get `flex-1` to fill middle space
+
+Overall container: `p-4` → `p-3`, header `mb-3` → `mb-2`
 
