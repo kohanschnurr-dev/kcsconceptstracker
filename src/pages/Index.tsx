@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, FolderKanban, Landmark, Plus, TrendingUp } from 'lucide-react';
+import { DollarSign, FolderKanban, Plus, TrendingUp } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
@@ -43,7 +43,7 @@ export default function Index() {
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [totalLoanPayments, setTotalLoanPayments] = useState(0);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
   const { profile, isProjectStarred, toggleStarProject } = useProfile();
@@ -83,12 +83,6 @@ export default function Index() {
         .select('*')
         .eq('is_imported', true);
 
-      // Fetch loan payments for dashboard stat
-      const { data: loanPaymentsData } = await supabase
-        .from('loan_payments')
-        .select('amount');
-      const loanTotal = (loanPaymentsData || []).reduce((sum, p) => sum + Number(p.amount), 0);
-      setTotalLoanPayments(loanTotal);
       // Collect QB IDs already imported as regular expenses to prevent duplicates
       const importedQbIds = new Set(
         (expensesData || [])
@@ -140,6 +134,8 @@ export default function Index() {
           coverPhotoPath: p.cover_photo_path || undefined,
           coverPhotoPosition: p.cover_photo_position || undefined,
           completedDate: (p as any).completed_date || undefined,
+          arv: p.arv ?? 0,
+          purchasePrice: p.purchase_price ?? 0,
         };
       });
 
@@ -212,6 +208,18 @@ export default function Index() {
     sum + p.categories.reduce((catSum, cat) => catSum + cat.actualSpent, 0), 0
   );
 
+  // Profit Potential: conservative calc using MAX(actual, planned) as cost basis
+  const profitProjectCount = activeProjects.filter(p => (p as any).arv > 0).length;
+  const totalProfitPotential = activeProjects.reduce((sum, p) => {
+    const arv = (p as any).arv || 0;
+    const purchasePrice = (p as any).purchasePrice || 0;
+    if (arv <= 0) return sum;
+    const plannedBudget = p.totalBudget;
+    const actualSpent = p.categories.reduce((s, c) => s + c.actualSpent, 0);
+    const costBasis = Math.max(actualSpent, plannedBudget);
+    return sum + (arv - purchasePrice - costBasis);
+  }, 0);
+
   // This month stats - include both regular expenses and QuickBooks imported expenses
   const monthStart = startOfMonth(new Date());
   const thisMonthExpenses = expenses.filter(e => {
@@ -283,11 +291,11 @@ export default function Index() {
               onClick={() => navigate('/expenses')}
             />
             <StatCard
-              title="Loan Payments"
-              value={formatCurrency(totalLoanPayments)}
-              subtitle="All projects"
-              icon={Landmark}
-              variant="warning"
+              title="Profit Potential"
+              value={formatCurrency(totalProfitPotential)}
+              subtitle={`Across ${profitProjectCount} project${profitProjectCount !== 1 ? 's' : ''}`}
+              icon={TrendingUp}
+              variant={totalProfitPotential >= 0 ? 'success' : 'danger'}
             />
           </div>
 
