@@ -459,6 +459,7 @@ export default function ProjectBudget() {
   const loanCosts = expenses.filter(e => e.cost_type === 'loan').reduce((sum, e) => sum + Number(e.amount), 0);
   const holdingCosts = expenses.filter(e => e.cost_type === 'monthly').reduce((sum, e) => sum + Number(e.amount), 0);
   const constructionCosts = expenses.filter(e => e.cost_type === 'construction').reduce((sum, e) => sum + Number(e.amount), 0);
+  const transactionCosts = expenses.filter(e => e.cost_type === 'transaction').reduce((sum, e) => sum + Number(e.amount), 0);
   const filteredTotal = filteredExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
 
 
@@ -541,6 +542,7 @@ export default function ProjectBudget() {
     switch (type) {
       case 'loan': return 'Loan';
       case 'monthly': return 'Monthly';
+      case 'transaction': return 'Transaction';
       default: return 'Construction';
     }
   };
@@ -647,16 +649,6 @@ export default function ProjectBudget() {
           <TabsContent value="budget" className="space-y-6">
             {/* Summary Cards - Row 1 */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="glass-card">
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <TrendingUp className="h-4 w-4 text-warning" />
-                    <span className="text-sm text-muted-foreground">Total Spent</span>
-                  </div>
-                  <p className="text-2xl font-bold font-mono text-warning">{formatCurrency(totalSpent)}</p>
-                </CardContent>
-              </Card>
-
               <Card className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")} onClick={() => handleCardFilter('construction')}>
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-1">
@@ -676,7 +668,7 @@ export default function ProjectBudget() {
                     <Landmark className="h-4 w-4 text-primary" />
                     <span className="text-sm text-muted-foreground">Loan Costs</span>
                   </div>
-                  <p className="text-2xl font-bold font-mono">{formatCurrency(loanCosts)}</p>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(loanCosts)}</p>
                 </CardContent>
               </Card>
 
@@ -689,13 +681,36 @@ export default function ProjectBudget() {
                     <Home className="h-4 w-4 text-primary" />
                     <span className="text-sm text-muted-foreground">Holding Costs</span>
                   </div>
-                  <p className="text-2xl font-bold font-mono">{formatCurrency(holdingCosts)}</p>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(holdingCosts)}</p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'transaction' && "ring-2 ring-primary")}
+                onClick={() => handleCardFilter('transaction')}
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Receipt className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Transaction Costs</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(transactionCosts)}</p>
                 </CardContent>
               </Card>
             </div>
 
             {/* Summary Cards - Row 2 */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp className="h-4 w-4 text-warning" />
+                    <span className="text-sm text-muted-foreground">Total Spent</span>
+                  </div>
+                  <p className="text-2xl font-bold font-mono text-warning">{formatCurrency(totalSpent)}</p>
+                </CardContent>
+              </Card>
+
               <Card 
                 className={cn("glass-card transition-all", !budgetEditMode && "cursor-pointer hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")}
                 onClick={() => !budgetEditMode && handleCardFilter('construction')}
@@ -1239,6 +1254,7 @@ export default function ProjectBudget() {
                   <SelectItem value="construction">Construction</SelectItem>
                   <SelectItem value="loan">Loan</SelectItem>
                   <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="transaction">Transaction</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1371,7 +1387,7 @@ export default function ProjectBudget() {
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-1" align="start">
                               <div className="flex flex-col gap-0.5">
-                                {['construction', 'loan', 'monthly'].map((type) => (
+                                {['construction', 'loan', 'monthly', 'transaction'].map((type) => (
                                   <button
                                     key={type}
                                     type="button"
