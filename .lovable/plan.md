@@ -1,38 +1,33 @@
 
 
-## Fix Email Delivery: Update Resend Sender Domain
+## Fix: Pending Invitations Not Showing (403 Error) + UI Confirmation
 
-### Problem
-Resend's API rejects all emails because the edge function sends from `onboarding@resend.dev` (a sandbox domain). Resend only allows sending test emails to the account owner's email. No emails reach other recipients.
+### Root Cause
 
-### Prerequisites (User Action Required)
-1. Go to [resend.com/domains](https://resend.com/domains)
-2. Add your domain (e.g., `kcsconcepts.com`)
-3. Configure the DNS records Resend provides (SPF, DKIM, etc.)
-4. Wait for verification to complete
+The RLS policy "Invited users can view their invitation" on `team_invitations` uses a subquery against `auth.users`, which regular authenticated users cannot access. This causes **all** SELECT queries on the table to fail with a 403 "permission denied for table users" error -- which is why you see 0/2 seats even though 2 invitations exist in the database.
 
-### Code Change
+### Changes
 
-**File: `supabase/functions/send-team-invite/index.ts`**
+**1. Database Migration -- Fix RLS Policy**
 
-Update the `from` address from `"FlipTracker <onboarding@resend.dev>"` to use the verified domain, e.g.:
+Drop and recreate the "Invited users can view their invitation" policy to use `auth.email()` instead of querying `auth.users`:
 
-```
-from: "FlipTracker <noreply@kcsconcepts.com>"
-```
+```sql
+DROP POLICY IF EXISTS "Invited users can view their invitation" ON team_invitations;
 
-This is a single-line change on the line that currently reads:
-```typescript
-from: "FlipTracker <onboarding@resend.dev>",
+CREATE POLICY "Invited users can view their invitation"
+  ON team_invitations
+  FOR SELECT
+  USING (lower(email) = lower(auth.email()));
 ```
 
-### Summary
+This is the only change needed. Once this is applied:
+- The owner will see pending invitations inline (code already handles this)
+- Seat count will correctly show `2 / 2 seats used`
+- Resend and cancel (X) buttons are already implemented and will work
+- Pending invitations count toward the seat limit, preventing excess invites
 
-| Step | Who | What |
-|------|-----|------|
-| 1 | You | Verify a domain in Resend dashboard |
-| 2 | Lovable | Update the `from` address in the edge function |
-| 3 | Test | Send an invitation to confirm delivery |
+### No Code Changes Needed
 
-No other code changes are needed -- the invitation logic, database records, and UI are all working correctly. The only blocker is Resend rejecting the unverified sender domain.
+The `ManageUsersCard.tsx` and `useTeam.ts` files already have all the UI and logic in place from the previous updates -- pending invitations inline with "Pending" badge, resend button, cancel button, and seat counting. The only blocker was this broken RLS policy.
 
