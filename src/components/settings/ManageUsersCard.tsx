@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Users, Mail, X, Loader2, Lock, Crown, UserPlus } from 'lucide-react';
+import { Users, Mail, X, Loader2, Lock, Crown, UserPlus, RefreshCw } from 'lucide-react';
 import { useTeam } from '@/hooks/useTeam';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,9 +20,10 @@ const TIER_LIMITS: Record<string, number> = {
 export default function ManageUsersCard() {
   const { user } = useAuth();
   const { profile } = useProfile();
-  const { team, members, invitations, isLoading, inviteMember, cancelInvitation, removeMember } = useTeam();
+  const { team, members, invitations, isLoading, inviteMember, cancelInvitation, removeMember, resendInvitation } = useTeam();
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState<string | null>(null);
 
   const subscriptionTier = (profile as any)?.subscription_tier || 'free';
   const isPaid = subscriptionTier !== 'free';
@@ -70,6 +71,19 @@ export default function ManageUsersCard() {
       toast.success('Member removed');
     } catch {
       toast.error('Failed to remove member');
+    }
+  };
+
+
+  const handleResend = async (email: string) => {
+    setResendingEmail(email);
+    try {
+      await resendInvitation.mutateAsync(email);
+      toast.success(`Invitation resent to ${email}`);
+    } catch {
+      toast.error('Failed to resend invitation');
+    } finally {
+      setResendingEmail(null);
     }
   };
 
@@ -166,38 +180,43 @@ export default function ManageUsersCard() {
               </div>
             ))}
 
-            {/* Pending Invitations */}
-            {invitations.length > 0 && (
-              <>
-                <Separator />
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Pending Invitations
-                </p>
-                {invitations.map((inv) => (
-                  <div key={inv.id} className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-foreground">{inv.email}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Invited {format(new Date(inv.invited_at), 'MMM d, yyyy')}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleCancelInvitation(inv.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+            {/* Pending Invitations (inline) */}
+            {invitations.map((inv) => (
+              <div key={inv.id} className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
                   </div>
-                ))}
-              </>
-            )}
+                  <div>
+                    <p className="text-sm text-foreground">{inv.email}</p>
+                    <Badge variant="outline" className="text-xs mt-0.5">Pending</Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleResend(inv.email)}
+                    disabled={resendingEmail === inv.email}
+                    title="Resend invitation"
+                  >
+                    {resendingEmail === inv.email ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCancelInvitation(inv.id)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
 
             <Separator />
 
