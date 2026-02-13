@@ -19,7 +19,13 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
   const isWholesaling = project.projectType === 'wholesaling';
   const showBudgetProgress = !isRental;
   const percentSpent = showBudgetProgress ? (totalSpent / project.totalBudget) * 100 : 0;
-  const remaining = showBudgetProgress ? project.totalBudget - totalSpent : 0;
+
+  const arv = project.arv || 0;
+  const purchasePrice = project.purchasePrice || 0;
+  const constructionSpent = project.constructionSpent || 0;
+  const rehabBasis = Math.max(project.totalBudget, constructionSpent);
+  const profit = arv - purchasePrice - rehabBasis;
+  const hasProfit = arv > 0;
 
   const getProgressColor = () => {
     if (percentSpent > 100) return 'bg-primary';
@@ -157,9 +163,9 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
           {showBudgetProgress ? (
             <div>
-              <p className="text-xs text-muted-foreground">Remaining</p>
-              <p className={cn('font-mono font-semibold', remaining < 0 ? 'text-destructive' : 'text-success')}>
-                {formatCurrency(remaining)}
+              <p className="text-xs text-muted-foreground">Profit</p>
+              <p className={cn('font-mono font-semibold', !hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success')}>
+                {hasProfit ? formatCurrency(profit) : '—'}
               </p>
             </div>
           ) : (
