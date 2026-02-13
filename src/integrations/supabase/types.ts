@@ -70,6 +70,7 @@ export type Database = {
           includes_tax: boolean
           notes: string | null
           payment_method: Database["public"]["Enums"]["payment_method"] | null
+          project_id: string | null
           receipt_url: string | null
           tax_amount: number | null
           updated_at: string
@@ -86,6 +87,7 @@ export type Database = {
           includes_tax?: boolean
           notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          project_id?: string | null
           receipt_url?: string | null
           tax_amount?: number | null
           updated_at?: string
@@ -102,13 +104,22 @@ export type Database = {
           includes_tax?: boolean
           notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          project_id?: string | null
           receipt_url?: string | null
           tax_amount?: number | null
           updated_at?: string
           user_id?: string
           vendor_name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "business_expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       calendar_events: {
         Row: {
