@@ -382,10 +382,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
                     "h-4 w-4 text-muted-foreground transition-transform",
                     isOpen && "rotate-90"
                   )} />
-                  {group.emoji
-                    ? <span className="text-base leading-none">{group.emoji}</span>
-                    : <GroupIcon className="h-4 w-4 text-muted-foreground" />
-                  }
+                  <GroupIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium text-sm">{group.name}</span>
                 </div>
                 <span className={cn(

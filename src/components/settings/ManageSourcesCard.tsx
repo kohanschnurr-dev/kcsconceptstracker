@@ -14,7 +14,7 @@ import { MONTHLY_COST_CATEGORIES } from '@/lib/monthlyCategories';
 import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES, getBudgetCategories } from '@/types';
 import { DEFAULT_STORES } from '@/hooks/useCustomStores';
 import { DEFAULT_PROPERTY_FIELDS } from '@/components/project/ProjectInfo';
-import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP, resolveTradeGroup, getAllGroupDefs, loadCustomGroups, saveCustomGroups, CUSTOM_GROUPS_STORAGE_KEY, pickEmoji, saveGroupOrder, type CustomGroupEntry } from '@/lib/budgetCalculatorCategories';
+import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP, resolveTradeGroup, getAllGroupDefs, loadCustomGroups, saveCustomGroups, CUSTOM_GROUPS_STORAGE_KEY, saveGroupOrder, type CustomGroupEntry } from '@/lib/budgetCalculatorCategories';
 import { supabase } from '@/integrations/supabase/client';
 import { reassignBudgetCategory, reassignGenericColumn } from '@/lib/reassignCategory';
 import ReassignCategoryDialog from './ReassignCategoryDialog';
@@ -405,8 +405,7 @@ function ManageGroupsSection({ budgetHook }: { budgetHook: ReturnType<typeof use
       toast.error('A group with that name already exists');
       return;
     }
-    const emoji = pickEmoji(trimmed);
-    const updated = [...customGroups, { key, label: trimmed, emoji }];
+    const updated = [...customGroups, { key, label: trimmed }];
     setCustomGroups(updated);
     saveCustomGroups(updated);
     const newOrder = [...orderedKeys, key];
