@@ -1,45 +1,51 @@
 
 
-## Allow % or Flat Dollar Amount for Closing & Holding Costs
+## Add Filters to Profit Potential Breakdown
 
 ### What Changes
-Currently, Closing Costs and Holding Costs are always calculated as a percentage (of ARV and Purchase Price respectively). This change adds a toggle so users can switch between **percentage mode** and **flat dollar mode** for each cost line.
+Add a row of filter buttons below the header so users can slice the profit data by **status** and **project type**. The filters apply client-side to already-fetched data, keeping things fast.
+
+### Filter Options
+A horizontal row of small toggle-style buttons:
+
+**Status filters:**
+- All Projects (removes the `status = active` constraint, shows all)
+- Active (default, current behavior)
+- Completed
+
+**Project type filters:**
+- All Types (default)
+- Fix & Flip
+- Rental
+- New Construction
+- Wholesaling
+
+Both filter groups work together (e.g., "Active" + "Fix & Flip" shows only active flips).
 
 ### How It Works
-Each cost line (Closing, Holding) gets a small clickable toggle (e.g., "%" / "$") next to the input. When in "%" mode, it works as today. When in "$" mode, the user types a flat dollar amount directly, bypassing the percentage calculation.
-
-### Database Migration
-Add two new columns to the `projects` table:
-- `closing_costs_mode` (text, default `'pct'`) -- values: `'pct'` or `'flat'`
-- `holding_costs_mode` (text, default `'pct'`)
-- `closing_costs_flat` (numeric, default `0`)
-- `holding_costs_flat` (numeric, default `0`)
+1. Fetch **all** projects (remove the `.eq('status', 'active')` filter from the query) so completed projects are available too
+2. Store each project's `status` and `projectType` alongside its profit data
+3. Add `statusFilter` and `typeFilter` state variables
+4. Filter `configured` and `unconfigured` lists client-side before rendering
+5. Totals and subtitle dynamically update to reflect the filtered view
 
 ### File Changes
 
-**`src/components/project/ProfitCalculator.tsx`**:
-1. Add new props: `initialClosingMode`, `initialHoldingMode`, `initialClosingFlat`, `initialHoldingFlat`
-2. Add state for each: `closingMode`, `holdingMode`, `closingFlat`, `holdingFlat`
-3. Update cost calculation:
-   - `closingCosts = closingMode === 'pct' ? arv * (closingPct / 100) : closingFlat`
-   - `holdingCosts = holdingMode === 'pct' ? purchasePrice * (holdingPct / 100) : holdingFlat`
-4. Save mode and flat values alongside pct values in `handleSave`
-5. In the breakdown panel, replace the inline input with a toggle-able input:
-   - A small "%" / "$" toggle button next to the label
-   - In "%" mode: show the percentage input with "% ARV" / "% PP" suffix (current behavior)
-   - In "$" mode: show a dollar input field directly
+**`src/pages/ProfitBreakdown.tsx`**:
 
-**`src/pages/ProjectDetail.tsx`**:
-- Pass the new initial values from the project data to `ProfitCalculator`
+1. **Update interface** -- add `status` and `projectType` fields to `ProjectProfit` and the unconfigured type
+2. **Remove `.eq('status', 'active')`** from the projects query so all projects are fetched
+3. **Add state**: `statusFilter` (`'all' | 'active' | 'complete'`, default `'active'`) and `typeFilter` (`'all' | 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling'`, default `'all'`)
+4. **Store project metadata**: include `status` and `project_type` from the DB row in each `ProjectProfit` entry
+5. **Filter before render**: derive `filteredConfigured` and `filteredUnconfigured` from state using both filters
+6. **Add filter UI**: a flex row of small buttons between the header and the table, grouped as "Status: [All | Active | Completed]" and "Type: [All | Fix & Flip | Rental | ...]"
+7. **Update subtitle** and totals to use filtered counts/sums
 
-### UI in the Breakdown (per cost line)
+### UI Layout (between header and table)
 
 ```
-- Closing Costs [%|$]  ( 6 % ARV)          $12,270
-```
-vs
-```
-- Closing Costs [%|$]  $12,270             $12,270
+[All] [Active] [Completed]    [All Types] [Fix & Flip] [Rental] [New Construction] [Wholesaling]
 ```
 
-The toggle is a small inline button pair. The active mode is visually highlighted. Switching modes preserves both values so users can flip back and forth without losing data.
+Small pill-style buttons; the active filter is visually highlighted (primary color). Compact, single row, matching the existing design language.
+
