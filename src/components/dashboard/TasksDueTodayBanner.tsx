@@ -164,7 +164,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
               onClick={() => navigate('/calendar')}
               variant="outline"
               size="sm"
-              className="gap-2 border-primary/30 text-primary hover:bg-primary/10 w-full"
+              className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
             >
               View Calendar
             </Button>
@@ -194,7 +194,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
               onClick={() => navigate('/checklist')}
               variant="outline"
               size="sm"
-              className="gap-2 border-primary/30 text-primary hover:bg-primary/10 w-full"
+              className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
             >
               View Tasks
             </Button>
