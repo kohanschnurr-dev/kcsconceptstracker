@@ -122,6 +122,7 @@ export interface Project {
   coverPhotoPath?: string;
   coverPhotoPosition?: string;
   completedDate?: string;
+  monthlyRent?: number;
 }
 
 export interface CategoryBudget {

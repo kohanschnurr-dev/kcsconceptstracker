@@ -120,12 +120,18 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
           </div>
         )}
 
-        {isRental && (
-          <div className="mb-4 p-3 rounded-lg bg-muted/50">
-            <p className="text-xs text-muted-foreground">Total Expenses</p>
-            <p className="font-mono font-semibold text-lg">{formatCurrency(totalSpent)}</p>
-          </div>
-        )}
+        {isRental && (() => {
+          const annualRent = (project.monthlyRent || 0) * 12;
+          const annualCashFlow = annualRent > 0 ? annualRent - totalSpent : 0;
+          return (
+            <div className="mb-4 p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground">Annual Cash Flow</p>
+              <p className={cn('font-mono font-semibold text-lg', annualCashFlow < 0 ? 'text-destructive' : annualCashFlow > 0 ? 'text-success' : '')}>
+                {annualRent > 0 ? formatCurrency(annualCashFlow) : '—'}
+              </p>
+            </div>
+          );
+        })()}
 
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
           {showBudgetProgress ? (
@@ -137,8 +143,8 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
             </div>
           ) : (
             <div>
-              <p className="text-xs text-muted-foreground">Type</p>
-              <p className="text-sm font-medium">Rental Property</p>
+              <p className="text-xs text-muted-foreground">Expenses</p>
+              <p className="font-mono font-semibold">{formatCurrency(totalSpent)}</p>
             </div>
           )}
           <div>
