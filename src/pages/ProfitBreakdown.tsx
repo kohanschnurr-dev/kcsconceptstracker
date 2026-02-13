@@ -21,6 +21,8 @@ interface ProjectProfit {
   actualSpent: number;
   costBasis: number;
   costSource: 'budget' | 'actual';
+  loanCosts: number;
+  monthlyCosts: number;
   profit: number;
   status: string;
   projectType: string;
@@ -72,11 +74,12 @@ export default function ProfitBreakdown() {
 
   const fetchData = async () => {
     try {
-      const [projectsRes, categoriesRes, expensesRes, qbRes] = await Promise.all([
+      const [projectsRes, categoriesRes, expensesRes, qbRes, loanRes] = await Promise.all([
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('project_categories').select('*'),
         supabase.from('expenses').select('*'),
         supabase.from('quickbooks_expenses').select('*').eq('is_imported', true),
+        supabase.from('loan_payments').select('project_id, amount'),
       ]);
 
       if (projectsRes.error) throw projectsRes.error;
@@ -87,6 +90,23 @@ export default function ProfitBreakdown() {
       const categories = categoriesRes.data || [];
       const expenses = expensesRes.data || [];
       const qbExpenses = qbRes.data || [];
+      const loanPayments = loanRes.data || [];
+
+      // Sum loan costs per project
+      const loansByProject: Record<string, number> = {};
+      loanPayments.forEach((lp: any) => {
+        if (lp.project_id) {
+          loansByProject[lp.project_id] = (loansByProject[lp.project_id] || 0) + Number(lp.amount);
+        }
+      });
+
+      // Sum monthly costs per project
+      const monthlyByProject: Record<string, number> = {};
+      expenses.forEach((e) => {
+        if (e.expense_type === 'monthly' && e.project_id) {
+          monthlyByProject[e.project_id] = (monthlyByProject[e.project_id] || 0) + Number(e.amount);
+        }
+      });
 
       const importedQbIds = new Set(
         expenses.filter((e) => e.qb_expense_id).map((e) => e.qb_expense_id)
@@ -127,11 +147,13 @@ export default function ProfitBreakdown() {
         const actualSpent = projectCats.reduce((s, c) => s + (expensesByCategory[c.id] || 0), 0);
         const costBasis = Math.max(actualSpent, plannedBudget);
         const costSource = actualSpent > plannedBudget ? 'actual' : 'budget';
+        const loanCosts = loansByProject[p.id] || 0;
+        const monthlyCosts = monthlyByProject[p.id] || 0;
         const profit = arv - purchasePrice - costBasis;
 
         configuredList.push({
           id: p.id, name: p.name, arv, purchasePrice, plannedBudget, actualSpent,
-          costBasis, costSource, profit, status: p.status, projectType: p.project_type,
+          costBasis, costSource, loanCosts, monthlyCosts, profit, status: p.status, projectType: p.project_type,
         });
       });
 
@@ -163,6 +185,8 @@ export default function ProfitBreakdown() {
   const totalARV = filteredConfigured.reduce((s, p) => s + p.arv, 0);
   const totalPurchase = filteredConfigured.reduce((s, p) => s + p.purchasePrice, 0);
   const totalCost = filteredConfigured.reduce((s, p) => s + p.costBasis, 0);
+  const totalLoan = filteredConfigured.reduce((s, p) => s + p.loanCosts, 0);
+  const totalMonthly = filteredConfigured.reduce((s, p) => s + p.monthlyCosts, 0);
 
   if (isLoading) {
     return (
@@ -230,23 +254,27 @@ export default function ProfitBreakdown() {
             <TableHeader>
               <TableRow>
                 <TableHead>Project</TableHead>
-                <TableHead className="text-right">ARV</TableHead>
-                <TableHead className="text-right">Purchase Price</TableHead>
-                <TableHead className="text-right">Rehab Costs</TableHead>
-                <TableHead className="text-right">Profit</TableHead>
+                <TableHead className="text-center">ARV</TableHead>
+                <TableHead className="text-center">Purchase Price</TableHead>
+                <TableHead className="text-center">Rehab Costs</TableHead>
+                <TableHead className="text-center">Loan Costs</TableHead>
+                <TableHead className="text-center">Monthly Costs</TableHead>
+                <TableHead className="text-center">Profit</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredConfigured.map((p) => (
                 <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/projects/${p.id}`)}>
                   <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell className="text-right">{fmt(p.arv)}</TableCell>
-                  <TableCell className="text-right">{fmt(p.purchasePrice)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-center">{fmt(p.arv)}</TableCell>
+                  <TableCell className="text-center">{fmt(p.purchasePrice)}</TableCell>
+                  <TableCell className="text-center">
                     <span>{fmt(p.costBasis)}</span>
                     <span className="ml-1.5 text-xs text-muted-foreground">({p.costSource})</span>
                   </TableCell>
-                  <TableCell className={`text-right font-semibold ${p.profit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
+                  <TableCell className="text-center">{fmt(p.loanCosts)}</TableCell>
+                  <TableCell className="text-center">{fmt(p.monthlyCosts)}</TableCell>
+                  <TableCell className={`text-center font-semibold ${p.profit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
                     {fmt(p.profit)}
                   </TableCell>
                 </TableRow>
@@ -255,10 +283,12 @@ export default function ProfitBreakdown() {
             <TableFooter>
               <TableRow>
                 <TableCell className="font-semibold">Total</TableCell>
-                <TableCell className="text-right font-semibold">{fmt(totalARV)}</TableCell>
-                <TableCell className="text-right font-semibold">{fmt(totalPurchase)}</TableCell>
-                <TableCell className="text-right font-semibold">{fmt(totalCost)}</TableCell>
-                <TableCell className={`text-right font-bold ${totalProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
+                <TableCell className="text-center font-semibold">{fmt(totalARV)}</TableCell>
+                <TableCell className="text-center font-semibold">{fmt(totalPurchase)}</TableCell>
+                <TableCell className="text-center font-semibold">{fmt(totalCost)}</TableCell>
+                <TableCell className="text-center font-semibold">{fmt(totalLoan)}</TableCell>
+                <TableCell className="text-center font-semibold">{fmt(totalMonthly)}</TableCell>
+                <TableCell className={`text-center font-bold ${totalProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
                   {fmt(totalProfit)}
                 </TableCell>
               </TableRow>
