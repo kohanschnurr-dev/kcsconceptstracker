@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DollarSign, Plus, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { DollarSign, Plus, Trash2, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { triggerSettingsSync } from '@/hooks/useSettingsSync';
 
@@ -25,6 +26,7 @@ const DEFAULT_PRESETS: FinancialPreset[] = [
 ];
 
 const PRESETS_KEY = 'profit-calculator-presets';
+const DEFAULT_PRESET_KEY = 'profit-calculator-default-preset';
 
 function loadPresets(): FinancialPreset[] {
   try {
@@ -37,22 +39,41 @@ function loadPresets(): FinancialPreset[] {
   return [...DEFAULT_PRESETS];
 }
 
+function loadDefaultPresetName(): string {
+  return localStorage.getItem(DEFAULT_PRESET_KEY) || 'Standard';
+}
+
 function savePresets(presets: FinancialPreset[]) {
   localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
   triggerSettingsSync();
 }
 
+function saveDefaultPresetName(name: string) {
+  localStorage.setItem(DEFAULT_PRESET_KEY, name);
+  triggerSettingsSync();
+}
+
 export default function FinancialPresetsCard() {
   const [presets, setPresets] = useState<FinancialPreset[]>(loadPresets);
+  const [defaultName, setDefaultName] = useState(loadDefaultPresetName);
   const [newName, setNewName] = useState('');
   const [newClosingPct, setNewClosingPct] = useState(6);
   const [newHoldingPct, setNewHoldingPct] = useState(3);
 
   useEffect(() => {
-    const handler = () => setPresets(loadPresets());
+    const handler = () => {
+      setPresets(loadPresets());
+      setDefaultName(loadDefaultPresetName());
+    };
     window.addEventListener('settings-synced', handler);
     return () => window.removeEventListener('settings-synced', handler);
   }, []);
+
+  const handleSetDefault = (presetName: string) => {
+    setDefaultName(presetName);
+    saveDefaultPresetName(presetName);
+    toast.success(`"${presetName}" set as default`);
+  };
 
   const handleAdd = () => {
     const name = newName.trim();
@@ -81,8 +102,15 @@ export default function FinancialPresetsCard() {
 
   const handleDelete = (presetName: string) => {
     const updated = presets.filter(p => p.name !== presetName);
-    setPresets(updated.length > 0 ? updated : [...DEFAULT_PRESETS]);
-    savePresets(updated.length > 0 ? updated : [...DEFAULT_PRESETS]);
+    const final = updated.length > 0 ? updated : [...DEFAULT_PRESETS];
+    setPresets(final);
+    savePresets(final);
+    // If deleting the current default, reset to first preset
+    if (presetName === defaultName) {
+      const newDefault = final[0].name;
+      setDefaultName(newDefault);
+      saveDefaultPresetName(newDefault);
+    }
     toast.success('Preset deleted');
   };
 
@@ -100,21 +128,44 @@ export default function FinancialPresetsCard() {
       <CardContent className="space-y-4">
         {/* Existing presets */}
         <div className="space-y-2">
-          {presets.map((p) => (
-            <div key={p.name} className="flex items-center justify-between rounded-md border px-3 py-2">
-              <div>
-                <span className="font-medium text-sm">{p.name}</span>
-                <span className="ml-3 text-xs text-muted-foreground">
-                  Closing {p.closingMode === 'pct' ? `${p.closingPct}%` : `$${p.closingFlat}`} · Holding {p.holdingMode === 'pct' ? `${p.holdingPct}%` : `$${p.holdingFlat}`}
-                </span>
+          {presets.map((p) => {
+            const isDefault = p.name === defaultName;
+            return (
+              <div key={p.name} className="flex items-center justify-between rounded-md border px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleSetDefault(p.name)}
+                    className="flex-shrink-0"
+                    title={isDefault ? 'Default preset' : 'Set as default'}
+                  >
+                    <Star
+                      className={`h-4 w-4 transition-colors ${
+                        isDefault
+                          ? 'fill-primary text-primary'
+                          : 'text-muted-foreground/40 hover:text-primary/60'
+                      }`}
+                    />
+                  </button>
+                  <div>
+                    <span className="font-medium text-sm">{p.name}</span>
+                    {isDefault && (
+                      <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">
+                        Default
+                      </Badge>
+                    )}
+                    <span className="ml-3 text-xs text-muted-foreground">
+                      Closing {p.closingMode === 'pct' ? `${p.closingPct}%` : `$${p.closingFlat}`} · Holding {p.holdingMode === 'pct' ? `${p.holdingPct}%` : `$${p.holdingFlat}`}
+                    </span>
+                  </div>
+                </div>
+                {!p.isDefault && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(p.name)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
-              {!p.isDefault && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(p.name)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Add new preset */}

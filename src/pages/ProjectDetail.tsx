@@ -428,6 +428,18 @@ export default function ProjectDetail() {
 
   const isRental = project?.project_type === 'rental';
 
+  const defaultPreset = useMemo(() => {
+    try {
+      const defaultName = localStorage.getItem('profit-calculator-default-preset') || 'Standard';
+      const raw = localStorage.getItem('profit-calculator-presets');
+      if (raw) {
+        const presets = JSON.parse(raw) as Array<{ name: string; closingPct: number; holdingPct: number; closingFlat: number; holdingFlat: number }>;
+        if (Array.isArray(presets)) return presets.find(p => p.name === defaultName) ?? presets[0] ?? null;
+      }
+    } catch { /* ignore */ }
+    return null;
+  }, [project?.id]);
+
   const effectiveTabOrder = useMemo(() => {
     if (!project) return DEFAULT_DETAIL_TAB_ORDER;
     return getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
@@ -853,12 +865,12 @@ export default function ProjectDetail() {
                 totalSpent={totalSpent}
                 initialPurchasePrice={project.purchase_price || 0}
                 initialArv={project.arv || 0}
-                initialClosingPct={(project as any).closing_costs_pct ?? 6}
-                initialHoldingPct={(project as any).holding_costs_pct ?? 3}
+                initialClosingPct={(project as any).closing_costs_pct ?? defaultPreset?.closingPct ?? 6}
+                initialHoldingPct={(project as any).holding_costs_pct ?? defaultPreset?.holdingPct ?? 3}
                 initialClosingMode={(project as any).closing_costs_mode ?? 'pct'}
                 initialHoldingMode={(project as any).holding_costs_mode ?? 'pct'}
-                initialClosingFlat={(project as any).closing_costs_flat ?? 0}
-                initialHoldingFlat={(project as any).holding_costs_flat ?? 0}
+                initialClosingFlat={(project as any).closing_costs_flat ?? defaultPreset?.closingFlat ?? 0}
+                initialHoldingFlat={(project as any).holding_costs_flat ?? defaultPreset?.holdingFlat ?? 0}
               />
             )}
             
