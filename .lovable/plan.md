@@ -1,39 +1,18 @@
 
 
-## Redesign Today's Agenda: Equal Columns + Sleek Style
+## Fix: Equal Height for All Three Agenda Boxes
 
-### File: `src/components/dashboard/TasksDueTodayBanner.tsx`
+### Problem
+The three boxes in Today's Agenda have unequal heights -- the Tasks box is taller when it shows overdue/due-today text plus a button, while the Calendar and Events boxes are shorter.
 
-**1. Equal-width columns**
-Change the grid from `grid-cols-[auto_1fr_1fr]` to `grid-cols-3` so all three boxes share the same width.
+### Solution
+**File: `src/components/dashboard/TasksDueTodayBanner.tsx`**
 
-**2. Match the View Calendar box style**
-- Make Tasks and Events boxes centered like the Calendar box (items centered, compact)
-- Replace the full-width "View Tasks" button with a smaller outline button matching the "View Calendar" style
-- Remove `min-h-[100px]` constraints -- let content dictate height naturally
-- Center content vertically and horizontally in each box
+Add a consistent `min-h-[120px]` to all three box containers so they always match in height regardless of their content. This ensures the "View Calendar" box, "Tasks" box, and "Events" box all render at the same height whether there are 0 or 5 items showing.
 
-**3. Layout per box (all three follow same pattern)**
+Each box already has `flex flex-col items-center justify-center` which will keep content vertically centered within the fixed minimum height.
 
-```
-+------------------+------------------+------------------+
-|   Calendar icon  |   Clock icon     |   Calendar icon  |
-|  View Calendar   |   2 overdue      |  No events today |
-|                  |  View Tasks      |                  |
-+------------------+------------------+------------------+
-```
+### Change
+- Lines for all three box `div`s: add `min-h-[120px]` to the className
+- No other files affected
 
-- Each box: centered flex column, same padding, same border style
-- Tasks box: icon at top, status text below, small "View Tasks" outline button at bottom
-- Events box: icon at top, event list or "No events today" text, centered
-
-### Technical Changes
-
-In `TasksDueTodayBanner.tsx`:
-- Line with grid class: change `grid-cols-[auto_1fr_1fr]` to `grid-cols-3`
-- Calendar box: remove `min-w-[120px]`, keep existing centered layout
-- Tasks box: remove `min-h-[100px]`, add `items-center justify-center text-center`, shrink the button to match "View Calendar" style (outline variant, small size)
-- Events box: remove `min-h-[100px]`, add `items-center justify-center text-center`
-- Use consistent icon sizes (h-8 w-8) and spacing across all three boxes
-
-No other files need to change.
