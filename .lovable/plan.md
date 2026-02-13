@@ -1,32 +1,45 @@
 
 
-## Move Financial Presets to Settings, Simplify Profit Calculator Header
+## Replace Emojis with Lucide Icons for Custom Trade Groups
 
 ### What Changes
-
-1. **Remove** the Preset dropdown, Save Preset popover, and all preset-related state/logic from `ProfitCalculator.tsx`. The header goes back to just the title and Save button.
-
-2. **Create** a new `src/components/settings/FinancialPresetsCard.tsx` -- an accordion/card section in Settings where users can manage their financial presets (add, edit, delete). Same data structure (`profit-calculator-presets` in localStorage, synced via settings sync), just managed from Settings instead.
-
-3. **Add** the new `FinancialPresetsCard` to `src/pages/Settings.tsx`, placed after the Dashboard Preferences card.
+Custom trade groups currently use colored Unicode emojis (e.g., "🏠", "💰") while built-in groups use monochrome Lucide vector icons. This change replaces the emoji system with a Lucide icon mapping, so all groups -- built-in and custom -- have the same consistent vector icon style.
 
 ### Technical Details
 
-**`src/components/project/ProfitCalculator.tsx`**:
-- Remove imports: `Plus`, `X`, `Select*`, `Popover*`, `triggerSettingsSync`
-- Remove: `FinancialPreset` interface, `DEFAULT_PRESETS`, `PRESETS_KEY`, `loadPresets`, `savePresets` functions
-- Remove: `presets`, `presetPopoverOpen`, `newPresetName` state and `settings-synced` listener
-- Remove: `applyPreset`, `handleSavePreset`, `handleDeletePreset` functions
-- Remove: The entire preset Select + Popover block from the header (lines 202-247)
-- Keep: All closing/holding cost inputs, modes, and the Save button as-is
+**`src/lib/budgetCalculatorCategories.ts`**:
+- Replace the `EMOJI_MAP` (string-to-emoji mapping) with an `ICON_MAP` (string-to-LucideIcon mapping), e.g.:
+  - `purchase/buy/acquire` -> `Home`
+  - `sale/sell/profit` -> `DollarSign`
+  - `finance/loan/mortgage` -> `Banknote`
+  - `labor/crew/contractor` -> `HardHat`
+  - `legal/attorney` -> `Scale`
+  - `insurance` -> `Shield`
+  - `tax/taxes` -> `Receipt`
+  - `holding/carry` -> `Clock`
+  - `rehab/renovation/construction` -> `Hammer`
+  - `utility/utilities` -> `Zap`
+  - `inspection/inspect` -> `Search`
+  - `permit/permits` -> `ClipboardList`
+  - `design/architect` -> `Palette`
+  - `title/escrow` -> `FileText`
+  - `marketing/advertising` -> `Megaphone`
+  - `office` -> `Building2`
+  - `land/lot` -> `MapPin`
+  - `closing/close` -> `FileSignature`
+  - `pre-close/preclose` -> `Key`
+  - Default fallback -> `Package`
+- Change `pickEmoji` to `pickIcon` returning a `LucideIcon` instead of a string
+- Remove the `emoji` field from `CustomGroupEntry` and `BudgetCalcGroupDef` interfaces; custom groups will just use the `icon` field directly
+- Update `loadCustomGroups()` to call `pickIcon(label)` for the icon instead of storing an emoji
 
-**`src/components/settings/FinancialPresetsCard.tsx`** (new file):
-- Card with title "Financial Presets" and description about deal assumptions
-- List of saved presets, each showing name, closing %, holding %, with edit/delete controls
-- "Add Preset" row with name input, closing %, holding % inputs, and mode toggles
-- Uses `profit-calculator-presets` localStorage key + `triggerSettingsSync()`
-- Ships with one built-in "Standard" preset (6% closing, 3% holding)
+**`src/components/budget/BudgetCanvas.tsx`**:
+- Remove the emoji conditional rendering block -- always render `<GroupIcon>` since all groups now have proper Lucide icons
 
-**`src/pages/Settings.tsx`**:
-- Import and render `FinancialPresetsCard` after `DashboardPreferencesCard`
+**`src/components/settings/ManageSourcesCard.tsx`**:
+- Update custom group creation to use `pickIcon` instead of `pickEmoji`
+- Remove emoji references when saving/displaying custom groups
+
+### No Database Changes
+All icon mapping is done at render time based on the group label, so existing saved custom groups will automatically get their matching icons.
 
