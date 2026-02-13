@@ -16,6 +16,7 @@ import {
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { DealCard } from './DealCard';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import type { CalendarTask } from '@/pages/Calendar';
 
 interface MonthlyViewProps {
@@ -163,9 +164,21 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
                     />
                   ))}
                   {dayTasks.length > 3 && (
-                    <p className="text-[10px] text-muted-foreground text-center">
-                      +{dayTasks.length - 3} more
-                    </p>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="text-[10px] text-primary cursor-pointer hover:underline w-full text-center">
+                          +{dayTasks.length - 3} more
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-2" align="start">
+                        <p className="text-xs font-medium mb-2">{format(day, 'MMM d')} — All Events</p>
+                        <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                          {dayTasks.map(task => (
+                            <DealCard key={task.id} task={task} compact onClick={() => onTaskClick(task)} />
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
               </DroppableDay>
