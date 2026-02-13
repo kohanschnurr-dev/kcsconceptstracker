@@ -1,42 +1,45 @@
 
 
-## Profit Potential Breakdown Page
+## Allow % or Flat Dollar Amount for Closing & Holding Costs
 
-### What It Does
-Clicking the "Profit Potential" stat card on the dashboard navigates to a new `/profit` page that shows a per-project breakdown of how the total profit number is calculated.
+### What Changes
+Currently, Closing Costs and Holding Costs are always calculated as a percentage (of ARV and Purchase Price respectively). This change adds a toggle so users can switch between **percentage mode** and **flat dollar mode** for each cost line.
 
-### Layout
+### How It Works
+Each cost line (Closing, Holding) gets a small clickable toggle (e.g., "%" / "$") next to the input. When in "%" mode, it works as today. When in "$" mode, the user types a flat dollar amount directly, bypassing the percentage calculation.
 
-**Header**: "Profit Potential" title with a back button and the total profit number displayed prominently.
+### Database Migration
+Add two new columns to the `projects` table:
+- `closing_costs_mode` (text, default `'pct'`) -- values: `'pct'` or `'flat'`
+- `holding_costs_mode` (text, default `'pct'`)
+- `closing_costs_flat` (numeric, default `0`)
+- `holding_costs_flat` (numeric, default `0`)
 
-**Project Table/Cards**: Each active project with ARV > 0 shown as a row with:
-- Project Name
-- ARV
-- Purchase Price
-- Rehab Costs (shows MAX of budget vs actual, with a note indicating which is used)
-- Profit = ARV - Purchase Price - Rehab Costs
-- Color-coded profit (green positive, red negative)
+### File Changes
 
-Projects without ARV are listed separately at the bottom as "Not configured" so users know to add ARV/purchase price.
+**`src/components/project/ProfitCalculator.tsx`**:
+1. Add new props: `initialClosingMode`, `initialHoldingMode`, `initialClosingFlat`, `initialHoldingFlat`
+2. Add state for each: `closingMode`, `holdingMode`, `closingFlat`, `holdingFlat`
+3. Update cost calculation:
+   - `closingCosts = closingMode === 'pct' ? arv * (closingPct / 100) : closingFlat`
+   - `holdingCosts = holdingMode === 'pct' ? purchasePrice * (holdingPct / 100) : holdingFlat`
+4. Save mode and flat values alongside pct values in `handleSave`
+5. In the breakdown panel, replace the inline input with a toggle-able input:
+   - A small "%" / "$" toggle button next to the label
+   - In "%" mode: show the percentage input with "% ARV" / "% PP" suffix (current behavior)
+   - In "$" mode: show a dollar input field directly
 
-**Summary row** at the bottom with the totals.
+**`src/pages/ProjectDetail.tsx`**:
+- Pass the new initial values from the project data to `ProfitCalculator`
 
-### Changes
+### UI in the Breakdown (per cost line)
 
-**New file: `src/pages/ProfitBreakdown.tsx`**
-- Fetches projects, categories, and expenses (same pattern as Index.tsx)
-- Calculates per-project profit using the same conservative MAX(actual, planned) logic
-- Renders a table with columns: Project | ARV | Purchase Price | Rehab Costs | Profit
-- Each row is clickable, navigating to that project's detail page
-- Shows a summary total row at the bottom
-- Projects without ARV shown in a muted section below
+```
+- Closing Costs [%|$]  ( 6 % ARV)          $12,270
+```
+vs
+```
+- Closing Costs [%|$]  $12,270             $12,270
+```
 
-**File: `src/App.tsx`**
-- Add route: `/profit` pointing to `ProfitBreakdown` (protected)
-
-**File: `src/pages/Index.tsx`**
-- Add `onClick={() => navigate('/profit')}` to the Profit Potential `StatCard`
-
-### Technical Details
-
-The new page reuses the `MainLayout`, `Table` components, and the same data-fetching pattern from `Index.tsx`. The rehab cost column will show a small label "(budget)" or "(actual)" so users understand which number is being used and why. Each project row links to `/projects/:id` for deeper drill-down.
+The toggle is a small inline button pair. The active mode is visually highlighted. Switching modes preserves both values so users can flip back and forth without losing data.
