@@ -187,9 +187,9 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
             }`}
           >
             {overdueCount > 0
-              ? `${overdueCount} Overdue`
+              ? `${overdueCount} Tasks Overdue`
               : tasksDueToday.length > 0
-              ? `${tasksDueToday.length} Due Today`
+              ? `${tasksDueToday.length} Tasks Due`
               : 'View Tasks'}
           </Button>
         </div>
