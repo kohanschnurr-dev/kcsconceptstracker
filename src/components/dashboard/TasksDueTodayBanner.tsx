@@ -157,7 +157,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
       {/* Three-Box Grid: equal columns */}
       <div className="grid grid-cols-3 gap-3">
         {/* Left Box - View Calendar */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center">
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center min-h-[120px]">
           <Calendar className="h-8 w-8 text-primary mb-2" />
           <Button
             onClick={() => navigate('/calendar')}
@@ -170,7 +170,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
         </div>
 
         {/* Middle Box - Tasks */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center text-center">
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center text-center min-h-[120px]">
           <Clock className="h-8 w-8 text-primary mb-2" />
           <div className="space-y-1 mb-2">
             {tasksDueToday.length > 0 && (
@@ -200,7 +200,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
         </div>
 
         {/* Right Box - Events */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center text-center">
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center text-center min-h-[120px]">
           <Calendar className="h-8 w-8 text-primary mb-2" />
           {todayEvents.length > 0 ? (
             <div className="space-y-1">
