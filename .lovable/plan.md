@@ -1,51 +1,25 @@
 
 
-## Add Filters to Profit Potential Breakdown
+## Tighten Profit Calculator Breakdown UI
 
-### What Changes
-Add a row of filter buttons below the header so users can slice the profit data by **status** and **project type**. The filters apply client-side to already-fetched data, keeping things fast.
+### Problem
+The breakdown panel for Closing/Holding costs has excessive gaps between the toggle buttons, inputs, and labels. The layout feels spread out and awkward, especially when toggling between % and $ modes.
 
-### Filter Options
-A horizontal row of small toggle-style buttons:
+### Changes
 
-**Status filters:**
-- All Projects (removes the `status = active` constraint, shows all)
-- Active (default, current behavior)
-- Completed
+**`src/components/project/ProfitCalculator.tsx`**:
 
-**Project type filters:**
-- All Types (default)
-- Fix & Flip
-- Rental
-- New Construction
-- Wholesaling
+1. **Compact the toggle buttons**: Reduce padding on the %/$ toggle segments, make them smaller and tighter against the label text
+2. **Tighten input widths**: Make the percentage input narrower (w-8 instead of w-10) and the flat dollar input more compact (w-16 instead of w-20)
+3. **Remove extra gaps**: Reduce `gap-1` spacing in the flex containers to `gap-0.5`, remove unnecessary margin on the toggle (`ml-1` to `ml-0.5`)
+4. **Align parentheses closer**: Pull the "(" and "% ARV)" / "% PP)" labels tighter to the input field
+5. **Consistent line height**: Ensure the cost lines with toggles align vertically with the simpler lines above them by using `items-center` consistently and matching text sizes
 
-Both filter groups work together (e.g., "Active" + "Fix & Flip" shows only active flips).
+### Visual Result (before vs after)
 
-### How It Works
-1. Fetch **all** projects (remove the `.eq('status', 'active')` filter from the query) so completed projects are available too
-2. Store each project's `status` and `projectType` alongside its profit data
-3. Add `statusFilter` and `typeFilter` state variables
-4. Filter `configured` and `unconfigured` lists client-side before rendering
-5. Totals and subtitle dynamically update to reflect the filtered view
+Before: `- Closing Costs  [%|$]  (  1  % ARV)          $12,270`
 
-### File Changes
+After: `- Closing Costs [%|$] (1 % ARV)                $12,270`
 
-**`src/pages/ProfitBreakdown.tsx`**:
-
-1. **Update interface** -- add `status` and `projectType` fields to `ProjectProfit` and the unconfigured type
-2. **Remove `.eq('status', 'active')`** from the projects query so all projects are fetched
-3. **Add state**: `statusFilter` (`'all' | 'active' | 'complete'`, default `'active'`) and `typeFilter` (`'all' | 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling'`, default `'all'`)
-4. **Store project metadata**: include `status` and `project_type` from the DB row in each `ProjectProfit` entry
-5. **Filter before render**: derive `filteredConfigured` and `filteredUnconfigured` from state using both filters
-6. **Add filter UI**: a flex row of small buttons between the header and the table, grouped as "Status: [All | Active | Completed]" and "Type: [All | Fix & Flip | Rental | ...]"
-7. **Update subtitle** and totals to use filtered counts/sums
-
-### UI Layout (between header and table)
-
-```
-[All] [Active] [Completed]    [All Types] [Fix & Flip] [Rental] [New Construction] [Wholesaling]
-```
-
-Small pill-style buttons; the active filter is visually highlighted (primary color). Compact, single row, matching the existing design language.
+Tighter spacing, smaller toggle, narrower inputs -- everything feels inline and intentional rather than scattered.
 
