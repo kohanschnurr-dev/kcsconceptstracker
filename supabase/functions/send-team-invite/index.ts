@@ -89,7 +89,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "FlipTracker <onboarding@resend.dev>",
+        from: "FlipTracker <noreply@fliptracker.com>",
         to: [email],
         subject: "You've been invited to join a team on FlipTracker",
         html: htmlBody,
