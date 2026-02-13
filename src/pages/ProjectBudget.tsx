@@ -172,6 +172,10 @@ export default function ProjectBudget() {
 
   const handleCardFilter = (costType: string) => {
     setSelectedCostType(prev => prev === costType ? 'all' : costType);
+    setSearchQuery('');
+    setSelectedCategory('all');
+    setSelectedPaymentMethod('all');
+    setDateRange('all');
     setTimeout(() => {
       expensesTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
