@@ -31,8 +31,10 @@ interface BusinessExpenseDetailModalProps {
     tax_amount: number | null;
     notes?: string | null;
     receipt_url?: string | null;
+    project_id?: string | null;
   } | null;
   onExpenseUpdated: () => void;
+  projects?: { id: string; name: string }[];
 }
 
 export function BusinessExpenseDetailModal({
@@ -40,6 +42,7 @@ export function BusinessExpenseDetailModal({
   onOpenChange,
   expense,
   onExpenseUpdated,
+  projects = [],
 }: BusinessExpenseDetailModalProps) {
   const [notes, setNotes] = useState('');
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
@@ -268,6 +271,17 @@ export function BusinessExpenseDetailModal({
                 {expense.description}
               </p>
             )}
+
+            {expense.project_id && (() => {
+              const proj = projects.find(p => p.id === expense.project_id);
+              return proj ? (
+                <div className="flex items-center gap-2 pt-2 border-t border-border mt-2">
+                  <Badge variant="outline" className="text-xs">
+                    {proj.name}
+                  </Badge>
+                </div>
+              ) : null;
+            })()}
           </div>
 
           {/* Notes */}

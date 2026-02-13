@@ -57,9 +57,11 @@ import { DateRange } from 'react-day-picker';
 import { BusinessQuickBooksIntegration } from '@/components/BusinessQuickBooksIntegration';
  import { CompactDashboardWidgets } from '@/components/ops/CompactDashboardWidgets';
 import { BusinessExpenseDetailModal } from '@/components/BusinessExpenseDetailModal';
+import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 
 import { formatDisplayDate, formatDateString } from '@/lib/dateUtils';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useProfile } from '@/hooks/useProfile';
 const BACKUP_KEY = 'dfw_project_expenses_backup';
 
 interface DBBusinessExpense {
@@ -75,6 +77,7 @@ interface DBBusinessExpense {
   tax_amount: number | null;
   notes: string | null;
   receipt_url: string | null;
+  project_id: string | null;
 }
 
 export default function BusinessExpenses() {
@@ -92,6 +95,7 @@ export default function BusinessExpenses() {
   const [expensesTableOpen, setExpensesTableOpen] = useState(true);
   const { toast } = useToast();
   const { companyName } = useCompanySettings();
+  const { starredProjects } = useProfile();
    const [goals, setGoals] = useState<{id: string; title: string; target_value: number; current_value: number | null; category: string | null; start_date: string | null; due_date: string | null; completed_at: string | null}[]>([]);
    const [rules, setRules] = useState<{id: string; title: string; category: string | null; is_completed: boolean | null}[]>([]);
   // Form state for new expense
@@ -104,6 +108,7 @@ export default function BusinessExpenses() {
     date: formatDateString(new Date()),
     includesTax: false,
     notes: '',
+    projectId: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -296,7 +301,8 @@ export default function BusinessExpenses() {
           tax_amount: taxAmount,
           notes: formData.notes || null,
           receipt_url: receiptUrl,
-        });
+          project_id: formData.projectId || null,
+        } as any);
 
       if (error) throw error;
 
@@ -314,6 +320,7 @@ export default function BusinessExpenses() {
         date: formatDateString(new Date()),
         includesTax: false,
         notes: '',
+        projectId: '',
       });
       setReceiptFile(null);
       setExpenseModalOpen(false);
@@ -728,6 +735,7 @@ export default function BusinessExpenses() {
                     <tr className="bg-muted/30">
                       <th>Date</th>
                       <th>Vendor</th>
+                      <th>Project</th>
                       <th className="!text-center">Category</th>
                       <th className="!text-center">Payment</th>
                       <th className="!text-center">Amount</th>
@@ -736,13 +744,13 @@ export default function BusinessExpenses() {
                   <tbody>
                     {isLoading ? (
                       <tr>
-                        <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                       <td colSpan={6} className="text-center py-8 text-muted-foreground">
                           Loading...
                         </td>
                       </tr>
                     ) : filteredExpenses.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                        <td colSpan={6} className="text-center py-8 text-muted-foreground">
                           <Receipt className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                           <p>No business expenses found</p>
                         </td>
@@ -770,6 +778,9 @@ export default function BusinessExpenses() {
                                 </p>
                               )}
                             </div>
+                          </td>
+                          <td className="text-sm text-muted-foreground truncate max-w-[120px]">
+                            {expense.project_id ? projects.find(p => p.id === expense.project_id)?.name || '' : ''}
                           </td>
                           <td className="text-center">
                             <Badge variant="secondary" className="text-xs">
@@ -836,6 +847,41 @@ export default function BusinessExpenses() {
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 />
               </div>
+            </div>
+
+            {/* Project (optional) */}
+            <div className="space-y-2">
+              <Label>Project <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              {starredProjects.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {starredProjects.map((pid) => {
+                    const proj = projects.find(p => p.id === pid);
+                    if (!proj) return null;
+                    const isSelected = formData.projectId === pid;
+                    return (
+                      <button
+                        key={pid}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, projectId: isSelected ? '' : pid })}
+                        className={cn(
+                          "px-2.5 py-1 rounded-full text-xs font-medium border transition-colors",
+                          isSelected
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted/50 text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                        )}
+                      >
+                        {proj.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <ProjectAutocomplete
+                projects={projects}
+                value={formData.projectId}
+                onSelect={(id) => setFormData({ ...formData, projectId: formData.projectId === id ? '' : id })}
+                placeholder="Search projects..."
+              />
             </div>
 
             <div className="space-y-2">
@@ -975,6 +1021,7 @@ export default function BusinessExpenses() {
         onOpenChange={setDetailModalOpen}
         expense={selectedExpense}
         onExpenseUpdated={fetchData}
+        projects={projects}
       />
 
       {/* Restore Backup Dialog */}
