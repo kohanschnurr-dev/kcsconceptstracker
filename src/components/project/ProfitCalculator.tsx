@@ -233,75 +233,61 @@ export function ProfitCalculator({
               <span>{formatCurrency(expandedBreakdown === 'estimated' ? totalBudget : totalSpent)}</span>
             </div>
             <div className="flex justify-between text-destructive items-center">
-              <span className="flex items-center gap-1">− Closing Costs
+              <span className="inline-flex items-center gap-0.5">− Closing Costs
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setClosingMode(closingMode === 'pct' ? 'flat' : 'pct'); }}
-                  className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden ml-1"
+                  className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden ml-0.5"
                 >
-                  <span className={cn("px-1.5 py-0.5 transition-colors", closingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
-                  <span className={cn("px-1.5 py-0.5 transition-colors", closingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
+                  <span className={cn("px-1 py-px transition-colors", closingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
+                  <span className={cn("px-1 py-px transition-colors", closingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
                 </button>
                 {closingMode === 'pct' ? (
-                  <>
-                    <span className="text-muted-foreground text-xs">(</span>
-                    <input
+                  <span className="inline-flex items-center text-muted-foreground text-xs">(<input
                       type="number"
                       value={closingPct || ''}
                       onChange={(e) => setClosingPct(Number(e.target.value))}
-                      className="w-10 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
+                      className="w-8 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary mx-px"
                       onClick={(e) => e.stopPropagation()}
-                    />
-                    <span className="text-muted-foreground text-xs">% ARV)</span>
-                  </>
+                    />% ARV)</span>
                 ) : (
-                  <>
-                    <span className="text-muted-foreground text-xs">$</span>
-                    <input
+                  <span className="inline-flex items-center text-muted-foreground text-xs">$<input
                       type="number"
                       value={closingFlat || ''}
                       onChange={(e) => setClosingFlat(Number(e.target.value))}
-                      className="w-20 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
+                      className="w-16 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary mx-px"
                       onClick={(e) => e.stopPropagation()}
-                    />
-                  </>
+                    /></span>
                 )}
               </span>
               <span>{formatCurrency(closingCosts)}</span>
             </div>
             <div className="flex justify-between text-destructive items-center">
-              <span className="flex items-center gap-1">− Holding Costs
+              <span className="inline-flex items-center gap-0.5">− Holding Costs
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setHoldingMode(holdingMode === 'pct' ? 'flat' : 'pct'); }}
-                  className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden ml-1"
+                  className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden ml-0.5"
                 >
-                  <span className={cn("px-1.5 py-0.5 transition-colors", holdingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
-                  <span className={cn("px-1.5 py-0.5 transition-colors", holdingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
+                  <span className={cn("px-1 py-px transition-colors", holdingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
+                  <span className={cn("px-1 py-px transition-colors", holdingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
                 </button>
                 {holdingMode === 'pct' ? (
-                  <>
-                    <span className="text-muted-foreground text-xs">(</span>
-                    <input
+                  <span className="inline-flex items-center text-muted-foreground text-xs">(<input
                       type="number"
                       value={holdingPct || ''}
                       onChange={(e) => setHoldingPct(Number(e.target.value))}
-                      className="w-10 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
+                      className="w-8 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary mx-px"
                       onClick={(e) => e.stopPropagation()}
-                    />
-                    <span className="text-muted-foreground text-xs">% PP)</span>
-                  </>
+                    />% PP)</span>
                 ) : (
-                  <>
-                    <span className="text-muted-foreground text-xs">$</span>
-                    <input
+                  <span className="inline-flex items-center text-muted-foreground text-xs">$<input
                       type="number"
                       value={holdingFlat || ''}
                       onChange={(e) => setHoldingFlat(Number(e.target.value))}
-                      className="w-20 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
+                      className="w-16 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary mx-px"
                       onClick={(e) => e.stopPropagation()}
-                    />
-                  </>
+                    /></span>
                 )}
               </span>
               <span>{formatCurrency(holdingCosts)}</span>
