@@ -1,39 +1,36 @@
 
 
-## Add Timeline Filter to Dashboard Preferences
+## Set a Default Financial Preset
 
 ### What Changes
-A new "Timeline" section will be added to the Dashboard Preferences card, allowing you to scope dashboard profit and budget stats to a specific time window. Options include preset ranges and a custom date picker.
+Add the ability to mark one of your financial presets as your **default**. This default preset will auto-populate the Profit Calculator's closing and holding cost fields on any project that doesn't already have custom values saved.
 
-### Timeline Options
-- **All Time** (default) -- no date filtering, current behavior
-- **This Year** -- current calendar year
-- **Last 6 Months** -- rolling 6 months from today
-- **Last 12 Months** -- rolling 12 months from today
-- **Custom Range** -- pick specific start and end dates via date pickers
+### UI Changes
 
-### How It Works
-- The selected timeline is saved alongside the existing type/status filters in the same `dashboard-profit-filters` localStorage key and synced across devices
-- The Dashboard page reads the timeline preference and filters projects and expenses by their dates before calculating stats (Profit Potential, Total Budget, This Month)
-- For project-based stats, projects are filtered by `start_date` falling within the range
-- Preset options use radio buttons for single selection; "Custom Range" reveals two date pickers inline
+**`src/components/settings/FinancialPresetsCard.tsx`**
+- Add a small star/radio indicator next to each preset row to mark it as the default
+- Clicking the star on a preset sets it as the default (and unsets the previous one)
+- The currently-default preset gets a subtle "Default" badge or filled star icon
+- Store the default preset name in localStorage under a dedicated key (e.g., `profit-calculator-default-preset`) alongside the existing presets data, synced across devices
+
+### Logic Changes
+
+**`src/pages/ProjectDetail.tsx`**
+- When passing initial closing/holding values to `ProfitCalculator`, check if the project has saved values (`closing_costs_pct`, etc.)
+- If the project has NO saved values (all nullish), look up the user's default preset from localStorage and use its closing/holding percentages as the initial values instead of the hardcoded 6%/3%
+- This means new projects automatically get the user's preferred preset without any extra clicks
 
 ### Technical Steps
 
-**1. `src/components/settings/DashboardPreferencesCard.tsx`**
-- Extend the `ProfitFilters` interface with `timeline` (string, e.g. `'all'`, `'this_year'`, `'6_months'`, `'12_months'`, `'custom'`) and optional `timelineStart` / `timelineEnd` date strings
-- Update `DEFAULT_FILTERS` to include `timeline: 'all'`
-- Add a new "Timeline" section with radio buttons for each preset
-- When "Custom Range" is selected, show two date pickers (start/end) using the Shadcn Popover + Calendar pattern
-- Save changes through the existing `save()` flow which triggers settings sync
+1. **`src/components/settings/FinancialPresetsCard.tsx`**
+   - Add a `defaultPreset` state loaded from localStorage key `profit-calculator-default-preset`
+   - Add a star/radio button on each preset row; clicking it saves that preset's name as the default
+   - The "Standard" preset remains the default if nothing is explicitly chosen
+   - Persist via `triggerSettingsSync()` so it syncs across devices
 
-**2. `src/pages/Index.tsx`**
-- Read the `timeline`, `timelineStart`, and `timelineEnd` fields from the parsed `dashboard-profit-filters`
-- Create a helper that resolves the timeline preset into a `{ start: Date, end: Date }` range
-- Apply the date range filter to `filteredProfitProjects` (filter by `startDate`) before calculating profit potential
-- Apply the same filter to `activeProjects` for Total Budget calculation
-- The "This Month" stat remains unaffected (it always shows current month)
-
-**3. `src/pages/ProfitBreakdown.tsx`**
-- Apply the same timeline filter to the profit breakdown table so it stays consistent with the dashboard number
+2. **`src/pages/ProjectDetail.tsx`**
+   - Import and read both `profit-calculator-presets` and `profit-calculator-default-preset` from localStorage
+   - Find the matching preset object
+   - Use its values as fallbacks (via `??`) when the project's own columns are null
+   - Fallback chain: project saved value -> default preset value -> hardcoded 6%/3%
 
