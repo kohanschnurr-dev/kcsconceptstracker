@@ -140,9 +140,9 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
   if (totalActionable === 0) return null;
 
   return (
-    <div className="glass-card border-border bg-muted/30 p-4 animate-slide-up">
+    <div className="glass-card border-border bg-muted/30 p-3 animate-slide-up">
       {/* Header Row */}
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-3 mb-2">
         <div className="p-2 rounded-lg bg-primary/10">
           <ListChecks className="h-5 w-5 text-primary" />
         </div>
@@ -157,24 +157,23 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
       {/* Three-Box Grid: equal columns */}
       <div className="grid grid-cols-3 gap-3">
         {/* Left Box - View Calendar */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-between min-h-[120px]">
-          <Calendar className="h-8 w-8 text-primary mb-2" />
-          <div className="mt-auto w-full">
-            <Button
-              onClick={() => navigate('/calendar')}
-              variant="outline"
-              size="sm"
-              className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
-            >
-              View Calendar
-            </Button>
-          </div>
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center gap-2 min-h-[100px]">
+          <Calendar className="h-6 w-6 text-primary" />
+          <div className="flex-1" />
+          <Button
+            onClick={() => navigate('/calendar')}
+            variant="outline"
+            size="sm"
+            className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
+          >
+            View Calendar
+          </Button>
         </div>
 
         {/* Middle Box - Tasks */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-between text-center min-h-[120px]">
-          <Clock className="h-8 w-8 text-primary mb-2" />
-          <div className="space-y-1">
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center gap-2 text-center min-h-[100px]">
+          <Clock className="h-6 w-6 text-primary" />
+          <div className="flex-1 flex flex-col justify-center space-y-1">
             {tasksDueToday.length > 0 && (
               <p className="text-sm text-warning font-medium">
                 {tasksDueToday.length} due today
@@ -189,22 +188,20 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
               <p className="text-sm text-muted-foreground">No tasks due</p>
             )}
           </div>
-          <div className="mt-auto w-full">
-            <Button
-              onClick={() => navigate('/checklist')}
-              variant="outline"
-              size="sm"
-              className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
-            >
-              View Tasks
-            </Button>
-          </div>
+          <Button
+            onClick={() => navigate('/checklist')}
+            variant="outline"
+            size="sm"
+            className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
+          >
+            View Tasks
+          </Button>
         </div>
 
         {/* Right Box - Events */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-between text-center min-h-[120px]">
-          <Calendar className="h-8 w-8 text-primary mb-2" />
-          <div className="space-y-1">
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center gap-2 text-center min-h-[100px]">
+          <Calendar className="h-6 w-6 text-primary" />
+          <div className="flex-1 flex flex-col justify-center space-y-1">
             {todayEvents.length > 0 ? (
               <p className="text-sm text-foreground font-medium">
                 {todayEvents.length} event{todayEvents.length !== 1 ? 's' : ''}
@@ -213,16 +210,14 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
               <p className="text-sm text-muted-foreground">No events today</p>
             )}
           </div>
-          <div className="mt-auto w-full">
-            <Button
-              onClick={() => navigate('/calendar?view=weekly')}
-              variant="outline"
-              size="sm"
-              className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
-            >
-              View Events
-            </Button>
-          </div>
+          <Button
+            onClick={() => navigate('/calendar?view=weekly')}
+            variant="outline"
+            size="sm"
+            className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
+          >
+            View Events
+          </Button>
         </div>
       </div>
     </div>
