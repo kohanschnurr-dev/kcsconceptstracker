@@ -170,9 +170,16 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
                           +{dayTasks.length - 3} more
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-64 p-2" align="start">
-                        <p className="text-xs font-medium mb-2">{format(day, 'MMM d')} — All Events</p>
-                        <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                      <PopoverContent className="w-72 p-0 overflow-hidden" align="start">
+                        <div className="px-3 py-2 border-b border-border bg-muted/30">
+                          <p className="text-xs font-semibold text-foreground">
+                            {format(day, 'EEEE, MMM d')}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
                           {dayTasks.map(task => (
                             <DealCard key={task.id} task={task} compact onClick={() => onTaskClick(task)} />
                           ))}
