@@ -157,22 +157,24 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
       {/* Three-Box Grid: equal columns */}
       <div className="grid grid-cols-3 gap-3">
         {/* Left Box - View Calendar */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center min-h-[120px]">
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-between min-h-[120px]">
           <Calendar className="h-8 w-8 text-primary mb-2" />
-          <Button
-            onClick={() => navigate('/calendar')}
-            variant="outline"
-            size="sm"
-            className="gap-2 border-primary/30 text-primary hover:bg-primary/10 w-full"
-          >
-            View Calendar
-          </Button>
+          <div className="mt-auto w-full">
+            <Button
+              onClick={() => navigate('/calendar')}
+              variant="outline"
+              size="sm"
+              className="gap-2 border-primary/30 text-primary hover:bg-primary/10 w-full"
+            >
+              View Calendar
+            </Button>
+          </div>
         </div>
 
         {/* Middle Box - Tasks */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center text-center min-h-[120px]">
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-between text-center min-h-[120px]">
           <Clock className="h-8 w-8 text-primary mb-2" />
-          <div className="space-y-1 mb-2">
+          <div className="space-y-1">
             {tasksDueToday.length > 0 && (
               <p className="text-sm text-warning font-medium">
                 {tasksDueToday.length} due today
@@ -187,7 +189,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
               <p className="text-sm text-muted-foreground">No tasks due</p>
             )}
           </div>
-          {(tasksDueToday.length > 0 || overdueCount > 0) && (
+          <div className="mt-auto w-full">
             <Button
               onClick={() => navigate('/checklist')}
               variant="outline"
@@ -196,28 +198,30 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
             >
               View Tasks
             </Button>
-          )}
+          </div>
         </div>
 
         {/* Right Box - Events */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center text-center min-h-[120px]">
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-between text-center min-h-[120px]">
           <Calendar className="h-8 w-8 text-primary mb-2" />
-          {todayEvents.length > 0 ? (
-            <div className="space-y-1">
-              {todayEvents.slice(0, 3).map((event) => (
-                <p key={event.id} className="text-sm text-foreground truncate max-w-full">
-                  {event.title}
-                </p>
-              ))}
-              {todayEvents.length > 3 && (
-                <p className="text-xs text-muted-foreground">
-                  +{todayEvents.length - 3} more
-                </p>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No events today</p>
-          )}
+          <div className="mt-auto">
+            {todayEvents.length > 0 ? (
+              <div className="space-y-1">
+                {todayEvents.slice(0, 3).map((event) => (
+                  <p key={event.id} className="text-sm text-foreground truncate max-w-full">
+                    {event.title}
+                  </p>
+                ))}
+                {todayEvents.length > 3 && (
+                  <p className="text-xs text-muted-foreground">
+                    +{todayEvents.length - 3} more
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No events today</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
