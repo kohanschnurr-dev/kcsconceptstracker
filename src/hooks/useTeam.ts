@@ -72,6 +72,8 @@ export function useTeam() {
       return data as Team;
     },
     enabled: !!user,
+    retry: false,
+    staleTime: 30000,
   });
 
   // Fetch team members
@@ -86,7 +88,10 @@ export function useTeam() {
         .eq('team_id', team.id)
         .order('joined_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to fetch team members:', error);
+        return [];
+      }
 
       // Fetch profile info for each member
       const memberProfiles: TeamMember[] = [];
@@ -107,6 +112,8 @@ export function useTeam() {
       return memberProfiles;
     },
     enabled: !!team,
+    retry: false,
+    staleTime: 30000,
   });
 
   // Fetch pending invitations
@@ -122,10 +129,15 @@ export function useTeam() {
         .eq('status', 'pending')
         .order('invited_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to fetch team invitations:', error);
+        return [];
+      }
       return data as TeamInvitation[];
     },
     enabled: !!team,
+    retry: false,
+    staleTime: 30000,
   });
 
   const inviteMember = useMutation({
