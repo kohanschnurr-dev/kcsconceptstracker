@@ -296,6 +296,7 @@ export default function Index() {
               subtitle={`Across ${profitProjectCount} project${profitProjectCount !== 1 ? 's' : ''}`}
               icon={TrendingUp}
               variant={totalProfitPotential >= 0 ? 'success' : 'danger'}
+              onClick={() => navigate('/profit')}
             />
           </div>
 
