@@ -1,39 +1,15 @@
 
 
-## Collapse Role Sections by Default
+## Add Dashboard Preferences to Profit Breakdown Page
 
-### Problem
-The Manage Roles card shows all permissions for both "Project Manager" and "Viewer" fully expanded, making the settings page very long to scroll through.
-
-### Solution
-Wrap each role section in a `Collapsible` component (already available in the project) so they start **collapsed** by default. Users click the role badge to expand and see/edit permissions.
+### What Changes
+Add the existing `DashboardPreferencesCard` component to the bottom of the `/profit` page, below the unconfigured projects section. This gives quick access to configure which project types/statuses feed the Dashboard's Profit Potential stat without navigating to Settings.
 
 ### File Change
 
-**`src/components/settings/ManageRolesCard.tsx`**:
+**`src/pages/ProfitBreakdown.tsx`**:
+1. Import `DashboardPreferencesCard` from `@/components/settings/DashboardPreferencesCard`
+2. Add `<DashboardPreferencesCard />` at the bottom of the page content, after the unconfigured projects section, wrapped in a `mt-6` div for spacing
 
-1. Import `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` from `@/components/ui/collapsible`
-2. Import `ChevronDown` from `lucide-react`
-3. Wrap each role's permission grid inside a `Collapsible` with `open` defaulting to `false`
-4. Make the role `Badge` the `CollapsibleTrigger`, adding a small chevron icon that rotates when open
-5. Move the permissions grid into `CollapsibleContent`
-
-### Visual Result
-
-Collapsed (default):
-```
-[v] Project Manager
-[v] Viewer
-```
-
-Expanded (after clicking):
-```
-[^] Project Manager
-  [x] View Projects - Can see project details
-  [x] Edit Projects - Can create/edit projects
-  ...
-[v] Viewer
-```
-
-Each role independently toggles open/closed. No other layout changes.
+No new components needed -- we reuse the existing card as-is.
 
