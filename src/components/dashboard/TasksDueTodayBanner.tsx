@@ -154,10 +154,10 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
         </div>
       </div>
 
-      {/* Three-Box Grid: small View Calendar + equal Tasks & Events */}
-      <div className="grid grid-cols-[auto_1fr_1fr] gap-3">
-        {/* Left Box - View Calendar (compact) */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center min-w-[120px]">
+      {/* Three-Box Grid: equal columns */}
+      <div className="grid grid-cols-3 gap-3">
+        {/* Left Box - View Calendar */}
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center">
           <Calendar className="h-8 w-8 text-primary mb-2" />
           <Button
             onClick={() => navigate('/calendar')}
@@ -170,26 +170,18 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
         </div>
 
         {/* Middle Box - Tasks */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 min-h-[100px] flex flex-col">
-          <Badge variant="outline" className="w-fit mb-2 text-xs">
-            Tasks
-          </Badge>
-          <div className="flex-1 space-y-1">
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center text-center">
+          <Clock className="h-8 w-8 text-primary mb-2" />
+          <div className="space-y-1 mb-2">
             {tasksDueToday.length > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-3.5 w-3.5 text-warning" />
-                <span className="text-warning font-medium">
-                  {tasksDueToday.length} due today
-                </span>
-              </div>
+              <p className="text-sm text-warning font-medium">
+                {tasksDueToday.length} due today
+              </p>
             )}
             {overdueCount > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-                <span className="text-destructive font-medium">
-                  {overdueCount} overdue
-                </span>
-              </div>
+              <p className="text-sm text-destructive font-medium">
+                {overdueCount} overdue
+              </p>
             )}
             {tasksDueToday.length === 0 && overdueCount === 0 && (
               <p className="text-sm text-muted-foreground">No tasks due</p>
@@ -198,42 +190,34 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
           {(tasksDueToday.length > 0 || overdueCount > 0) && (
             <Button
               onClick={() => navigate('/checklist')}
+              variant="outline"
               size="sm"
-              className="gap-2 mt-2 w-full"
+              className="gap-2 border-primary/30 text-primary hover:bg-primary/10 w-full"
             >
               View Tasks
-              <ArrowRight className="h-4 w-4" />
             </Button>
           )}
         </div>
 
         {/* Right Box - Events */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 min-h-[100px] flex flex-col">
-          <Badge variant="outline" className="w-fit mb-2 text-xs">
-            Events
-          </Badge>
-          <div className="flex-1 space-y-1.5">
-            {todayEvents.length > 0 ? (
-              <>
-                {todayEvents.slice(0, 3).map((event) => (
-                  <div
-                    key={event.id}
-                    className="text-sm text-foreground truncate flex items-center gap-2"
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-                    <span className="truncate">{event.title}</span>
-                  </div>
-                ))}
-                {todayEvents.length > 3 && (
-                  <p className="text-xs text-muted-foreground">
-                    +{todayEvents.length - 3} more
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">No events today</p>
-            )}
-          </div>
+        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center justify-center text-center">
+          <Calendar className="h-8 w-8 text-primary mb-2" />
+          {todayEvents.length > 0 ? (
+            <div className="space-y-1">
+              {todayEvents.slice(0, 3).map((event) => (
+                <p key={event.id} className="text-sm text-foreground truncate max-w-full">
+                  {event.title}
+                </p>
+              ))}
+              {todayEvents.length > 3 && (
+                <p className="text-xs text-muted-foreground">
+                  +{todayEvents.length - 3} more
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No events today</p>
+          )}
         </div>
       </div>
     </div>
