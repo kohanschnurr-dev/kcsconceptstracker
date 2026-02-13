@@ -37,6 +37,7 @@ import { toast } from 'sonner';
 import kcsLogo from '@/assets/kcs-logo.png';
 import ManageSourcesCard from '@/components/settings/ManageSourcesCard';
 import ManageUsersCard from '@/components/settings/ManageUsersCard';
+import ManageRolesCard from '@/components/settings/ManageRolesCard';
 import ColorPaletteCard from '@/components/settings/ColorPaletteCard';
 
 export default function Settings() {
@@ -374,6 +375,9 @@ export default function Settings() {
 
           {/* Manage Sources Section */}
           <ManageSourcesCard />
+
+          {/* Manage Roles Section */}
+          <ManageRolesCard />
 
           {/* Manage Users Section */}
           <ManageUsersCard />
