@@ -256,7 +256,7 @@ export default function ProfitBreakdown() {
                 <TableHead>Project</TableHead>
                 <TableHead className="text-center">ARV</TableHead>
                 <TableHead className="text-center">Purchase Price</TableHead>
-                <TableHead className="text-center">Rehab Costs</TableHead>
+                <TableHead className="text-center">Construction Costs</TableHead>
                 <TableHead className="text-center">Loan Costs</TableHead>
                 <TableHead className="text-center">Monthly Costs</TableHead>
                 <TableHead className="text-center">Profit</TableHead>
