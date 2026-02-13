@@ -1,36 +1,35 @@
 
 
-## Set a Default Financial Preset
+## Add Loan Costs and Monthly Costs Columns to Profit Breakdown Table
 
 ### What Changes
-Add the ability to mark one of your financial presets as your **default**. This default preset will auto-populate the Profit Calculator's closing and holding cost fields on any project that doesn't already have custom values saved.
+1. Add two new columns to the table: **Loan Costs** and **Monthly Costs** after Rehab Costs
+2. Center-align all column headers and values except the Project column (stays left-aligned)
+3. Shift the table content leftward for better spacing
 
-### UI Changes
-
-**`src/components/settings/FinancialPresetsCard.tsx`**
-- Add a small star/radio indicator next to each preset row to mark it as the default
-- Clicking the star on a preset sets it as the default (and unsets the previous one)
-- The currently-default preset gets a subtle "Default" badge or filled star icon
-- Store the default preset name in localStorage under a dedicated key (e.g., `profit-calculator-default-preset`) alongside the existing presets data, synced across devices
-
-### Logic Changes
-
-**`src/pages/ProjectDetail.tsx`**
-- When passing initial closing/holding values to `ProfitCalculator`, check if the project has saved values (`closing_costs_pct`, etc.)
-- If the project has NO saved values (all nullish), look up the user's default preset from localStorage and use its closing/holding percentages as the initial values instead of the hardcoded 6%/3%
-- This means new projects automatically get the user's preferred preset without any extra clicks
+### Data Sources
+- **Loan Costs**: Summed from the `loan_payments` table per project
+- **Monthly Costs**: Summed from the `expenses` table where `expense_type = 'monthly'` per project
 
 ### Technical Steps
 
-1. **`src/components/settings/FinancialPresetsCard.tsx`**
-   - Add a `defaultPreset` state loaded from localStorage key `profit-calculator-default-preset`
-   - Add a star/radio button on each preset row; clicking it saves that preset's name as the default
-   - The "Standard" preset remains the default if nothing is explicitly chosen
-   - Persist via `triggerSettingsSync()` so it syncs across devices
+**`src/pages/ProfitBreakdown.tsx`**
 
-2. **`src/pages/ProjectDetail.tsx`**
-   - Import and read both `profit-calculator-presets` and `profit-calculator-default-preset` from localStorage
-   - Find the matching preset object
-   - Use its values as fallbacks (via `??`) when the project's own columns are null
-   - Fallback chain: project saved value -> default preset value -> hardcoded 6%/3%
+1. **Fetch additional data**
+   - Add `loan_payments` query to the existing `Promise.all` fetch
+   - Query: `supabase.from('loan_payments').select('project_id, amount')`
+   - For monthly costs, filter existing expenses data by `expense_type === 'monthly'`
 
+2. **Extend the `ProjectProfit` interface**
+   - Add `loanCosts: number` and `monthlyCosts: number` fields
+   - Compute totals per project during the data processing loop
+
+3. **Update the table layout**
+   - Column order: Project | ARV | Purchase Price | Rehab Costs | Loan Costs | Monthly Costs | Profit
+   - All headers and cell values use `text-center` alignment except:
+     - "Project" column header and its cells stay `text-left`
+   - Add corresponding footer totals for the new columns
+
+4. **Profit calculation stays unchanged**
+   - The new columns are informational/display-only
+   - Profit formula remains: `ARV - Purchase Price - MAX(actual, budget)`
