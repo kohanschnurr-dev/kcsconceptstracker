@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-type CostMode = 'pct' | 'flat';
+type CostMode = 'pct' | 'flat' | 'actual';
 
 interface ProfitCalculatorProps {
   projectId: string;
@@ -22,6 +22,8 @@ interface ProfitCalculatorProps {
   initialHoldingMode?: CostMode;
   initialClosingFlat?: number;
   initialHoldingFlat?: number;
+  transactionCostActual?: number;
+  holdingCostActual?: number;
 }
 
 export function ProfitCalculator({ 
@@ -36,6 +38,8 @@ export function ProfitCalculator({
   initialHoldingMode = 'pct',
   initialClosingFlat = 0,
   initialHoldingFlat = 0,
+  transactionCostActual = 0,
+  holdingCostActual = 0,
 }: ProfitCalculatorProps) {
   const [purchasePrice, setPurchasePrice] = useState(initialPurchasePrice);
   const [arv, setArv] = useState(initialArv);
@@ -84,9 +88,14 @@ export function ProfitCalculator({
     setSaving(false);
   };
 
+  const cycleMode = (current: CostMode): CostMode => {
+    if (current === 'pct') return 'flat';
+    if (current === 'flat') return 'actual';
+    return 'pct';
+  };
 
-  const closingCosts = closingMode === 'pct' ? arv * (closingPct / 100) : closingFlat;
-  const holdingCosts = holdingMode === 'pct' ? purchasePrice * (holdingPct / 100) : holdingFlat;
+  const closingCosts = closingMode === 'actual' ? transactionCostActual : closingMode === 'pct' ? arv * (closingPct / 100) : closingFlat;
+  const holdingCosts = holdingMode === 'actual' ? holdingCostActual : holdingMode === 'pct' ? purchasePrice * (holdingPct / 100) : holdingFlat;
 
   const estimatedInvestment = purchasePrice + totalBudget;
   const estimatedTotalCosts = estimatedInvestment + closingCosts + holdingCosts;
@@ -105,6 +114,24 @@ export function ProfitCalculator({
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const renderModeToggle = (mode: CostMode, setMode: (m: CostMode) => void) => (
+    <button
+      type="button"
+      onClick={() => setMode(cycleMode(mode))}
+      className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden"
+    >
+      <span className={cn("px-1 py-px transition-colors", mode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
+      <span className={cn("px-1 py-px transition-colors", mode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
+      <span className={cn("px-1 py-px transition-colors", mode === 'actual' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>A</span>
+    </button>
+  );
+
+  const renderCostHelperText = (mode: CostMode, pct: number, costs: number, pctLabel: string) => {
+    if (mode === 'actual') return `from project expenses = ${formatCurrency(costs)}`;
+    if (mode === 'pct') return `% of ${pctLabel} = ${formatCurrency(costs)}`;
+    return `= ${formatCurrency(costs)}`;
   };
 
   return (
@@ -152,56 +179,44 @@ export function ProfitCalculator({
           </div>
           <div>
             <div className="flex items-center gap-1.5 mb-1">
-              <Label htmlFor="closing-costs" className="mb-0">Closing Costs</Label>
-              <button
-                type="button"
-                onClick={() => setClosingMode(closingMode === 'pct' ? 'flat' : 'pct')}
-                className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden"
-              >
-                <span className={cn("px-1 py-px transition-colors", closingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
-                <span className={cn("px-1 py-px transition-colors", closingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
-              </button>
+              <Label htmlFor="closing-costs" className="mb-0">Transaction Costs</Label>
+              {renderModeToggle(closingMode, setClosingMode)}
             </div>
             <div className="relative">
               {closingMode === 'flat' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
               <Input
                 id="closing-costs"
                 type="number"
-                value={closingMode === 'pct' ? (closingPct || '') : (closingFlat || '')}
+                value={closingMode === 'actual' ? transactionCostActual : closingMode === 'pct' ? (closingPct || '') : (closingFlat || '')}
                 onChange={(e) => closingMode === 'pct' ? setClosingPct(Number(e.target.value)) : setClosingFlat(Number(e.target.value))}
                 className={closingMode === 'flat' ? 'pl-9' : ''}
                 placeholder="0"
+                disabled={closingMode === 'actual'}
               />
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {closingMode === 'pct' ? `% of ARV = ${formatCurrency(closingCosts)}` : `= ${formatCurrency(closingCosts)}`}
+              {renderCostHelperText(closingMode, closingPct, closingCosts, 'ARV')}
             </p>
           </div>
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <Label htmlFor="holding-costs" className="mb-0">Holding Costs</Label>
-              <button
-                type="button"
-                onClick={() => setHoldingMode(holdingMode === 'pct' ? 'flat' : 'pct')}
-                className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden"
-              >
-                <span className={cn("px-1 py-px transition-colors", holdingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
-                <span className={cn("px-1 py-px transition-colors", holdingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
-              </button>
+              {renderModeToggle(holdingMode, setHoldingMode)}
             </div>
             <div className="relative">
               {holdingMode === 'flat' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
               <Input
                 id="holding-costs"
                 type="number"
-                value={holdingMode === 'pct' ? (holdingPct || '') : (holdingFlat || '')}
+                value={holdingMode === 'actual' ? holdingCostActual : holdingMode === 'pct' ? (holdingPct || '') : (holdingFlat || '')}
                 onChange={(e) => holdingMode === 'pct' ? setHoldingPct(Number(e.target.value)) : setHoldingFlat(Number(e.target.value))}
                 className={holdingMode === 'flat' ? 'pl-9' : ''}
                 placeholder="0"
+                disabled={holdingMode === 'actual'}
               />
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {holdingMode === 'pct' ? `% of PP = ${formatCurrency(holdingCosts)}` : `= ${formatCurrency(holdingCosts)}`}
+              {renderCostHelperText(holdingMode, holdingPct, holdingCosts, 'PP')}
             </p>
           </div>
         </div>
@@ -284,11 +299,11 @@ export function ProfitCalculator({
               <span>{formatCurrency(expandedBreakdown === 'estimated' ? totalBudget : totalSpent)}</span>
             </div>
             <div className="flex justify-between text-destructive">
-              <span>− Closing Costs{closingMode === 'pct' ? ` (${closingPct}% ARV)` : ''}</span>
+              <span>− Transaction Costs{closingMode === 'pct' ? ` (${closingPct}% ARV)` : closingMode === 'actual' ? ' (actual)' : ''}</span>
               <span>{formatCurrency(closingCosts)}</span>
             </div>
             <div className="flex justify-between text-destructive">
-              <span>− Holding Costs{holdingMode === 'pct' ? ` (${holdingPct}% PP)` : ''}</span>
+              <span>− Holding Costs{holdingMode === 'pct' ? ` (${holdingPct}% PP)` : holdingMode === 'actual' ? ' (actual)' : ''}</span>
               <span>{formatCurrency(holdingCosts)}</span>
             </div>
             <div className="border-t pt-2 flex justify-between font-bold">

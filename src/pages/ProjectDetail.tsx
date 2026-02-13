@@ -170,6 +170,8 @@ export default function ProjectDetail() {
   const [allExpensesForExport, setAllExpensesForExport] = useState<DBExpense[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DBDailyLog[]>([]);
   const [constructionSpent, setConstructionSpent] = useState(0);
+  const [transactionCostActual, setTransactionCostActual] = useState(0);
+  const [holdingCostActual, setHoldingCostActual] = useState(0);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
@@ -305,9 +307,25 @@ export default function ProjectDetail() {
         .filter(e => e.category_id && (!e.cost_type || e.cost_type === 'construction'))
         .reduce((sum, e) => sum + Number(e.amount), 0);
 
+    // Sum transaction and holding (monthly) expenses for "Actual" mode in profit calculator
+    const txActual = expensesData
+      .filter(e => e.cost_type === 'transaction')
+      .reduce((sum, e) => sum + Number(e.amount), 0)
+      + dedupedQbExpenses
+        .filter(e => e.cost_type === 'transaction')
+        .reduce((sum, e) => sum + Number(e.amount), 0);
+    const holdActual = expensesData
+      .filter(e => e.cost_type === 'monthly')
+      .reduce((sum, e) => sum + Number(e.amount), 0)
+      + dedupedQbExpenses
+        .filter(e => e.cost_type === 'monthly')
+        .reduce((sum, e) => sum + Number(e.amount), 0);
+
     setCategories(categoriesWithSpent);
     setExpenses(expensesData);
     setConstructionSpent(constructionOnlySpent);
+    setTransactionCostActual(txActual);
+    setHoldingCostActual(holdActual);
     setAllExpensesForExport(combinedExpenses);
     setDailyLogs(logsRes.data || []);
     if (showLoading) setLoading(false);
@@ -881,6 +899,8 @@ export default function ProjectDetail() {
                 initialHoldingMode={(project as any).holding_costs_mode ?? 'pct'}
                 initialClosingFlat={(project as any).closing_costs_flat ?? defaultPreset?.closingFlat ?? 0}
                 initialHoldingFlat={(project as any).holding_costs_flat ?? defaultPreset?.holdingFlat ?? 0}
+                transactionCostActual={transactionCostActual}
+                holdingCostActual={holdingCostActual}
               />
             )}
             
