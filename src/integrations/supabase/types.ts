@@ -1770,6 +1770,10 @@ export type Database = {
       }
       add_budget_category: { Args: { new_value: string }; Returns: undefined }
       get_team_owner_id: { Args: { p_user_id: string }; Returns: string }
+      is_team_member: {
+        Args: { p_team_id: string; p_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       budget_category:
