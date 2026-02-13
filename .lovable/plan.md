@@ -1,48 +1,103 @@
 
 
-## Fix: Stop Manage Users Card from Auto-Refreshing
+## Manage Roles Card -- Role-Based Permissions for Team Members
 
-### Root Cause
+### Overview
+Add a "Manage Roles" card above the "Manage Users" card on the Settings page. The team owner can define what each role is allowed to do within the app, and assign roles to team members.
 
-React Query retries failed queries 3 times by default (with exponential backoff). If any of the three team queries (team, members, invitations) fail, they enter a retry loop that keeps the loading spinner visible. The card shows a spinner for the entire duration of retries, making it look like it's endlessly refreshing.
+### Database Changes
 
-### Changes
+**1. New table: `team_role_permissions`**
+Stores which permissions are enabled for each role within a team.
 
-**File: `src/hooks/useTeam.ts`**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | Primary key |
+| team_id | uuid | FK to teams |
+| role | text | e.g. 'manager', 'viewer' |
+| permission | text | e.g. 'manage_expenses', 'edit_projects' |
+| created_at | timestamptz | Default now() |
+| UNIQUE(team_id, role, permission) | | Prevent duplicates |
 
-Add `retry: false` to all three `useQuery` calls (team, team-members, team-invitations). This way, if a query fails, it fails once and shows the data (or empty state) instead of retrying in a loop with a spinner.
+RLS: Owner of the team can manage; team members can read their team's permissions.
 
-Additionally, change error handling in the members and invitations queries to log errors and return empty arrays instead of throwing -- this prevents the error state from blocking the rest of the UI.
+**2. Predefined permissions (stored as text values):**
 
+| Permission Key | Label | Description |
+|----------------|-------|-------------|
+| `view_projects` | View Projects | Can see project details |
+| `edit_projects` | Edit Projects | Can create/edit projects |
+| `manage_expenses` | Manage Expenses | Can add/edit/delete expenses |
+| `manage_vendors` | Manage Vendors | Can add/edit vendors |
+| `manage_procurement` | Manage Procurement | Can manage procurement items |
+| `manage_budgets` | Manage Budgets | Can create/edit budgets |
+| `manage_calendar` | Manage Calendar | Can add/edit calendar events |
+| `view_reports` | View Reports | Can view financial reports |
+| `manage_documents` | Manage Documents | Can upload/delete documents |
+
+**3. Predefined roles:**
+- **Project Manager** (default role for invited members) -- all permissions enabled by default
+- **Viewer** -- only `view_projects` and `view_reports` enabled
+
+### New Files
+
+**`src/components/settings/ManageRolesCard.tsx`**
+- Card with Shield icon and "Manage Roles" title
+- Shows available roles (Project Manager, Viewer) as tabs or sections
+- Each role shows a checklist of permissions the owner can toggle on/off
+- Owner can assign a role to each team member via a dropdown in the Manage Users card
+- Only visible to paid plans (same gate as Manage Users)
+
+**`src/hooks/useTeamRoles.ts`**
+- Fetches permissions for the team from `team_role_permissions`
+- Mutations to toggle permissions on/off for a role
+- Mutation to update a member's role
+
+### Modified Files
+
+**`src/pages/Settings.tsx`**
+- Import and render `ManageRolesCard` above `ManageUsersCard`
+
+**`src/components/settings/ManageUsersCard.tsx`**
+- Add a role selector (dropdown) next to each team member showing their current role
+- Owner can change a member's role from "Project Manager" to "Viewer" or vice versa
+- Calls `updateMemberRole` mutation from `useTeamRoles`
+
+**`src/hooks/useTeam.ts`**
+- Add a `updateMemberRole` mutation that updates the `role` column on `team_members`
+
+### Technical Details
+
+```text
+Settings Page Layout:
++---------------------------+
+| Account                   |
++---------------------------+
+| Company Branding          |
++---------------------------+
+| Manage Sources            |
++---------------------------+
+| Manage Roles     [NEW]    |
+|  - Project Manager        |
+|    [x] View Projects      |
+|    [x] Edit Projects      |
+|    [x] Manage Expenses    |
+|    ...                    |
+|  - Viewer                 |
+|    [x] View Projects      |
+|    [ ] Edit Projects      |
+|    ...                    |
++---------------------------+
+| Manage Users              |
+|  Owner: you@email.com     |
+|  member@email - [Manager▼]|
++---------------------------+
+| Color Palette             |
++---------------------------+
 ```
-// For each useQuery:
-{
-  queryKey: [...],
-  queryFn: async () => { ... },
-  enabled: ...,
-  retry: false,       // <-- add this
-  staleTime: 30000,   // <-- prevent unnecessary refetches for 30s
-}
-```
 
-For the members and invitations query functions, wrap in try/catch to gracefully degrade:
+The migration SQL will:
+1. Create `team_role_permissions` table with RLS
+2. Seed default permissions for existing teams (Project Manager gets all, Viewer gets view-only)
 
-```typescript
-// Instead of: if (error) throw error;
-// Do:
-if (error) {
-  console.error('Failed to fetch team members:', error);
-  return [];
-}
-```
-
-### Summary
-
-| Change | Why |
-|--------|-----|
-| `retry: false` on all 3 queries | Stop retry loops that cause repeated spinner |
-| `staleTime: 30000` | Prevent refetching every time component re-renders |
-| Graceful error handling | Return empty data instead of throwing, so UI still renders |
-
-No database or other file changes needed.
-
+Permission enforcement in the frontend will check the current user's role and permissions before showing action buttons (edit, delete, create). This is a UI-level gate initially -- the RLS policies already restrict data by team membership.
