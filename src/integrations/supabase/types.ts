@@ -797,6 +797,7 @@ export type Database = {
           settings_data: Json | null
           starred_projects: Json | null
           state: string | null
+          subscription_tier: string
           updated_at: string
           user_id: string
         }
@@ -812,6 +813,7 @@ export type Database = {
           settings_data?: Json | null
           starred_projects?: Json | null
           state?: string | null
+          subscription_tier?: string
           updated_at?: string
           user_id: string
         }
@@ -827,6 +829,7 @@ export type Database = {
           settings_data?: Json | null
           starred_projects?: Json | null
           state?: string | null
+          subscription_tier?: string
           updated_at?: string
           user_id?: string
         }
@@ -1626,6 +1629,91 @@ export type Database = {
           },
         ]
       }
+      team_invitations: {
+        Row: {
+          email: string
+          id: string
+          invited_at: string
+          status: string
+          team_id: string
+        }
+        Insert: {
+          email: string
+          id?: string
+          invited_at?: string
+          status?: string
+          team_id: string
+        }
+        Update: {
+          email?: string
+          id?: string
+          invited_at?: string
+          status?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          id: string
+          joined_at: string
+          role: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          role?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          role?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          owner_id?: string
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           created_at: string
@@ -1677,6 +1765,7 @@ export type Database = {
     }
     Functions: {
       add_budget_category: { Args: { new_value: string }; Returns: undefined }
+      get_team_owner_id: { Args: { p_user_id: string }; Returns: string }
     }
     Enums: {
       budget_category:
