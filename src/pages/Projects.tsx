@@ -77,20 +77,27 @@ export default function Projects() {
 
       const { data: expensesData } = await supabase
         .from('expenses')
-        .select('category_id, amount');
+        .select('category_id, amount, project_id, cost_type');
 
       const { data: qbExpensesData } = await supabase
         .from('quickbooks_expenses')
-        .select('category_id, amount')
+        .select('category_id, amount, project_id, cost_type')
         .eq('is_imported', true);
 
       const expensesByCategory: Record<string, number> = {};
+      const constructionByProject: Record<string, number> = {};
       (expensesData || []).forEach(e => {
         expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
+        if (!e.cost_type || e.cost_type === 'construction') {
+          constructionByProject[e.project_id] = (constructionByProject[e.project_id] || 0) + Number(e.amount);
+        }
       });
       (qbExpensesData || []).forEach(e => {
         if (e.category_id) {
           expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
+        }
+        if (e.project_id && (!e.cost_type || e.cost_type === 'construction')) {
+          constructionByProject[e.project_id] = (constructionByProject[e.project_id] || 0) + Number(e.amount);
         }
       });
 
@@ -133,6 +140,9 @@ export default function Projects() {
           monthlyMaintenance: p.monthly_maintenance ?? undefined,
           managementRate: p.management_rate ?? undefined,
           cashflowRehabOverride: p.cashflow_rehab_override ?? null,
+          arv: p.arv ?? 0,
+          purchasePrice: p.purchase_price ?? 0,
+          constructionSpent: constructionByProject[p.id] || 0,
         };
       });
 
