@@ -15,6 +15,7 @@ const SETTINGS_KEYS = [
   'kcs-color-palette',
   'custom-trade-groups',
   'trade-groups-order',
+  'dashboard-profit-filters',
 ];
 
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
