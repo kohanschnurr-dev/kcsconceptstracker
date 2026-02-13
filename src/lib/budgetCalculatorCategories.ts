@@ -1,11 +1,10 @@
 import { CategoryItem } from '@/hooks/useCustomCategories';
-import { Zap, Droplets, PaintBucket, Home, Trees, Package, LucideIcon } from 'lucide-react';
+import { Zap, Droplets, PaintBucket, Home, Trees, Package, LucideIcon, DollarSign, Banknote, HardHat, Scale, Shield, Receipt, Clock, Hammer, Search, ClipboardList, Palette, FileText, Megaphone, Building2, MapPin, FileSignature, Key } from 'lucide-react';
 import { getBudgetCategories } from '@/types';
 
 export interface BudgetCalcGroupDef {
   label: string;
   icon: LucideIcon;
-  emoji?: string;
 }
 
 export const BUDGET_CALC_GROUP_DEFS: Record<string, BudgetCalcGroupDef> = {
@@ -39,37 +38,36 @@ export function saveGroupOrder(order: string[]) {
 export interface CustomGroupEntry {
   key: string;
   label: string;
-  emoji?: string;
 }
 
-const EMOJI_MAP: Record<string, string> = {
-  purchase: '🏠', buy: '🏠', acquire: '🏠',
-  sale: '💰', sell: '💰', profit: '💰',
-  closing: '📝', close: '📝',
-  'pre-close': '🔑', preclose: '🔑',
-  finance: '💵', loan: '💵', lending: '💵', mortgage: '💵',
-  labor: '👷', crew: '👷', contractor: '👷',
-  land: '🌍', lot: '🌍',
-  legal: '⚖️', attorney: '⚖️',
-  marketing: '📣', advertising: '📣',
-  office: '🏢',
-  insurance: '🛡️',
-  tax: '🧾', taxes: '🧾',
-  holding: '⏳', carry: '⏳',
-  rehab: '🔨', renovation: '🔨', construction: '🔨',
-  utility: '⚡', utilities: '⚡',
-  inspection: '🔍', inspect: '🔍',
-  permit: '📋', permits: '📋',
-  design: '🎨', architect: '🎨',
-  title: '📄', escrow: '📄',
+const ICON_MAP: Record<string, LucideIcon> = {
+  purchase: Home, buy: Home, acquire: Home,
+  sale: DollarSign, sell: DollarSign, profit: DollarSign,
+  closing: FileSignature, close: FileSignature,
+  'pre-close': Key, preclose: Key,
+  finance: Banknote, loan: Banknote, lending: Banknote, mortgage: Banknote,
+  labor: HardHat, crew: HardHat, contractor: HardHat,
+  land: MapPin, lot: MapPin,
+  legal: Scale, attorney: Scale,
+  marketing: Megaphone, advertising: Megaphone,
+  office: Building2,
+  insurance: Shield,
+  tax: Receipt, taxes: Receipt,
+  holding: Clock, carry: Clock,
+  rehab: Hammer, renovation: Hammer, construction: Hammer,
+  utility: Zap, utilities: Zap,
+  inspection: Search, inspect: Search,
+  permit: ClipboardList, permits: ClipboardList,
+  design: Palette, architect: Palette,
+  title: FileText, escrow: FileText,
 };
 
-export function pickEmoji(label: string): string {
+export function pickIcon(label: string): LucideIcon {
   const words = label.toLowerCase().split(/[\s&,]+/);
   for (const word of words) {
-    if (EMOJI_MAP[word]) return EMOJI_MAP[word];
+    if (ICON_MAP[word]) return ICON_MAP[word];
   }
-  return '📦';
+  return Package;
 }
 
 export function loadCustomGroups(): Record<string, BudgetCalcGroupDef> {
@@ -79,7 +77,7 @@ export function loadCustomGroups(): Record<string, BudgetCalcGroupDef> {
     const entries: CustomGroupEntry[] = JSON.parse(raw);
     const result: Record<string, BudgetCalcGroupDef> = {};
     for (const e of entries) {
-      result[e.key] = { label: e.label, icon: Package, emoji: e.emoji };
+      result[e.key] = { label: e.label, icon: pickIcon(e.label) };
     }
     return result;
   } catch {
@@ -179,7 +177,7 @@ export function buildBudgetCalcGroups(categories: CategoryItem[]) {
         key: groupKey,
         name: def.label,
         icon: def.icon,
-        emoji: def.emoji,
+        
         categories: cats.map(c => c.value),
       };
     })
