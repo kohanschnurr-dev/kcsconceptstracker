@@ -11,6 +11,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
+const TIER_LIMITS: Record<string, number> = {
+  free: 0,
+  pro: 2,
+  premium: Infinity,
+};
+
 export default function ManageUsersCard() {
   const { user } = useAuth();
   const { profile } = useProfile();
@@ -20,9 +26,16 @@ export default function ManageUsersCard() {
 
   const subscriptionTier = (profile as any)?.subscription_tier || 'free';
   const isPaid = subscriptionTier !== 'free';
+  const maxSlots = TIER_LIMITS[subscriptionTier] ?? 0;
+  const currentCount = (members?.length || 0) + (invitations?.length || 0);
+  const atLimit = currentCount >= maxSlots;
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
+    if (atLimit) {
+      toast.error("You've reached your plan's team member limit");
+      return;
+    }
 
     // Basic email validation
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail)) {
@@ -67,7 +80,13 @@ export default function ManageUsersCard() {
           <Users className="h-5 w-5" />
           Manage Users
         </CardTitle>
-        <CardDescription>Invite project managers to your team</CardDescription>
+        <CardDescription>
+          {subscriptionTier === 'premium'
+            ? 'Premium plan — unlimited team seats'
+            : subscriptionTier === 'pro'
+              ? 'Pro plan — 2 team seats'
+              : 'Invite project managers to your team'}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {!isPaid ? (
@@ -106,6 +125,17 @@ export default function ManageUsersCard() {
                 </div>
               </div>
             </div>
+
+            {/* Seats indicator */}
+            {maxSlots !== Infinity ? (
+              <p className="text-xs text-muted-foreground">
+                {currentCount} / {maxSlots} seats used
+              </p>
+            ) : currentCount > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {currentCount} {currentCount === 1 ? 'seat' : 'seats'} used
+              </p>
+            ) : null}
 
             {/* Team Members */}
             {members.map((member) => (
@@ -174,13 +204,14 @@ export default function ManageUsersCard() {
             {/* Invite Form */}
             <div className="flex gap-2">
               <Input
-                placeholder="Email address"
+                placeholder={atLimit ? 'Seat limit reached' : 'Email address'}
                 type="email"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
+                disabled={atLimit}
               />
-              <Button onClick={handleInvite} disabled={isInviting || !inviteEmail.trim()} size="sm">
+              <Button onClick={handleInvite} disabled={atLimit || isInviting || !inviteEmail.trim()} size="sm">
                 {isInviting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -188,9 +219,15 @@ export default function ManageUsersCard() {
                 )}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Invited users will be able to access your projects when they sign up or log in.
-            </p>
+            {atLimit && subscriptionTier === 'pro' ? (
+              <p className="text-xs text-muted-foreground">
+                You've reached your Pro plan limit. Upgrade to Premium for unlimited team members.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Invited users will be able to access your projects when they sign up or log in.
+              </p>
+            )}
           </div>
         )}
       </CardContent>
