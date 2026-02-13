@@ -1,30 +1,46 @@
 
 
-## Reorder Stat Cards and Filter Budgets to Active Projects Only
+## Move Status Text Into the Buttons
+
+### Problem
+The "2 overdue" and "4 events" text floats as separate lines above the buttons, creating visual clutter. The user wants these counts embedded directly into the button labels.
 
 ### Changes
-**File: `src/pages/Index.tsx`**
+**File: `src/components/dashboard/TasksDueTodayBanner.tsx`**
 
-Two modifications:
+**Middle Box (Tasks)** -- Remove the floating text div entirely. Build the button label dynamically:
+- If overdue > 0: button says "View Tasks (2 overdue)" with the count in destructive color
+- If only due today: button says "View Tasks (1 due today)"  
+- If neither: button says "View Tasks"
 
-1. **Swap card order**: Move "Total Budget" before "This Month" in the stats grid so the layout reads: Total Budget | This Month | Loan Payments
+**Right Box (Events)** -- Same approach. Remove the floating text div:
+- If events > 0: button says "View 4 Events"
+- If no events: button says "View Events"
 
-2. **Filter budget stats to active projects only**: Currently `totalBudget` and `totalSpent` aggregate across ALL projects (including complete/on-hold). Change the calculation to use only active projects, so the numbers reflect current construction draw needs.
+**Left Box (Calendar)** -- No change needed, it's already clean.
 
 ### Technical Details
 
-**Card reorder** (around lines 199-217): Simply swap the two `<StatCard>` components so Total Budget renders first.
-
-**Budget filtering** (around lines 160-163): Change:
+**Middle box (lines 173-199)**: Remove lines 176-190 (the `flex-1` content div with status text). Replace the button content with:
 ```tsx
-const totalBudget = projects.reduce(...)
-const totalSpent = projects.reduce(...)
+<Button ...>
+  {overdueCount > 0
+    ? `${overdueCount} Overdue`
+    : tasksDueToday.length > 0
+    ? `${tasksDueToday.length} Due Today`
+    : 'View Tasks'}
+</Button>
 ```
-to:
+The button text color will change based on status: destructive styling for overdue, warning for due today, default primary for no tasks. Add `flex-1` spacer div before the button to keep it anchored at the bottom.
+
+**Right box (lines 201-221)**: Remove lines 204-212 (the `flex-1` content div with event count). Replace the button content with:
 ```tsx
-const totalBudget = activeProjects.reduce(...)
-const totalSpent = activeProjects.reduce(...)
+<Button ...>
+  {todayEvents.length > 0
+    ? `View ${todayEvents.length} Event${todayEvents.length !== 1 ? 's' : ''}`
+    : 'View Events'}
+</Button>
 ```
+Add `flex-1` spacer div before the button.
 
-This uses the already-computed `activeProjects` array (which filters to `status === 'active'`) instead of the full `projects` array.
-
+This eliminates all floating text, making each box just: icon at top, button at bottom with the count baked into the label.
