@@ -828,16 +828,6 @@ export default function ProjectBudget() {
               <Card className="glass-card">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-1">
-                    <Calendar className="h-4 w-4 text-primary" />
-                    <span className="text-sm text-muted-foreground">This Month</span>
-                  </div>
-                  <p className="text-xl font-bold font-mono">{formatCurrency(spendingAnalytics.thisMonthSpending)}</p>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card">
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 mb-1">
                     <Receipt className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground"># of Expenses</span>
                   </div>
