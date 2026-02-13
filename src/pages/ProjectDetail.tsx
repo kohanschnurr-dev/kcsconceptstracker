@@ -855,6 +855,10 @@ export default function ProjectDetail() {
                 initialArv={project.arv || 0}
                 initialClosingPct={(project as any).closing_costs_pct ?? 6}
                 initialHoldingPct={(project as any).holding_costs_pct ?? 3}
+                initialClosingMode={(project as any).closing_costs_mode ?? 'pct'}
+                initialHoldingMode={(project as any).holding_costs_mode ?? 'pct'}
+                initialClosingFlat={(project as any).closing_costs_flat ?? 0}
+                initialHoldingFlat={(project as any).holding_costs_flat ?? 0}
               />
             )}
             

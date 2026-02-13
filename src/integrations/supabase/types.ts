@@ -1207,6 +1207,8 @@ export type Database = {
           annual_property_taxes: number | null
           arv: number | null
           cashflow_rehab_override: number | null
+          closing_costs_flat: number | null
+          closing_costs_mode: string
           closing_costs_pct: number | null
           completed_date: string | null
           cover_photo_path: string | null
@@ -1218,6 +1220,8 @@ export type Database = {
           hm_loan_amount: number | null
           hm_loan_term_months: number | null
           hm_points: number | null
+          holding_costs_flat: number | null
+          holding_costs_mode: string
           holding_costs_pct: number | null
           id: string
           interest_rate: number | null
@@ -1243,6 +1247,8 @@ export type Database = {
           annual_property_taxes?: number | null
           arv?: number | null
           cashflow_rehab_override?: number | null
+          closing_costs_flat?: number | null
+          closing_costs_mode?: string
           closing_costs_pct?: number | null
           completed_date?: string | null
           cover_photo_path?: string | null
@@ -1254,6 +1260,8 @@ export type Database = {
           hm_loan_amount?: number | null
           hm_loan_term_months?: number | null
           hm_points?: number | null
+          holding_costs_flat?: number | null
+          holding_costs_mode?: string
           holding_costs_pct?: number | null
           id?: string
           interest_rate?: number | null
@@ -1279,6 +1287,8 @@ export type Database = {
           annual_property_taxes?: number | null
           arv?: number | null
           cashflow_rehab_override?: number | null
+          closing_costs_flat?: number | null
+          closing_costs_mode?: string
           closing_costs_pct?: number | null
           completed_date?: string | null
           cover_photo_path?: string | null
@@ -1290,6 +1300,8 @@ export type Database = {
           hm_loan_amount?: number | null
           hm_loan_term_months?: number | null
           hm_points?: number | null
+          holding_costs_flat?: number | null
+          holding_costs_mode?: string
           holding_costs_pct?: number | null
           id?: string
           interest_rate?: number | null

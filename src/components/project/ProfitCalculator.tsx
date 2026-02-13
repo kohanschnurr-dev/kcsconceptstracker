@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+type CostMode = 'pct' | 'flat';
+
 interface ProfitCalculatorProps {
   projectId: string;
   totalBudget: number;
@@ -16,6 +18,10 @@ interface ProfitCalculatorProps {
   initialArv?: number;
   initialClosingPct?: number;
   initialHoldingPct?: number;
+  initialClosingMode?: CostMode;
+  initialHoldingMode?: CostMode;
+  initialClosingFlat?: number;
+  initialHoldingFlat?: number;
 }
 
 export function ProfitCalculator({ 
@@ -25,7 +31,11 @@ export function ProfitCalculator({
   initialPurchasePrice = 0,
   initialArv = 0,
   initialClosingPct = 6,
-  initialHoldingPct = 3
+  initialHoldingPct = 3,
+  initialClosingMode = 'pct',
+  initialHoldingMode = 'pct',
+  initialClosingFlat = 0,
+  initialHoldingFlat = 0,
 }: ProfitCalculatorProps) {
   const [purchasePrice, setPurchasePrice] = useState(initialPurchasePrice);
   const [arv, setArv] = useState(initialArv);
@@ -33,13 +43,21 @@ export function ProfitCalculator({
   const [expandedBreakdown, setExpandedBreakdown] = useState<'estimated' | 'current' | 'roi' | null>(null);
   const [closingPct, setClosingPct] = useState(initialClosingPct);
   const [holdingPct, setHoldingPct] = useState(initialHoldingPct);
+  const [closingMode, setClosingMode] = useState<CostMode>(initialClosingMode);
+  const [holdingMode, setHoldingMode] = useState<CostMode>(initialHoldingMode);
+  const [closingFlat, setClosingFlat] = useState(initialClosingFlat);
+  const [holdingFlat, setHoldingFlat] = useState(initialHoldingFlat);
 
   useEffect(() => {
     setPurchasePrice(initialPurchasePrice);
     setArv(initialArv);
     setClosingPct(initialClosingPct);
     setHoldingPct(initialHoldingPct);
-  }, [initialPurchasePrice, initialArv, initialClosingPct, initialHoldingPct]);
+    setClosingMode(initialClosingMode);
+    setHoldingMode(initialHoldingMode);
+    setClosingFlat(initialClosingFlat);
+    setHoldingFlat(initialHoldingFlat);
+  }, [initialPurchasePrice, initialArv, initialClosingPct, initialHoldingPct, initialClosingMode, initialHoldingMode, initialClosingFlat, initialHoldingFlat]);
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase
@@ -49,7 +67,11 @@ export function ProfitCalculator({
       arv: arv,
       closing_costs_pct: closingPct,
       holding_costs_pct: holdingPct,
-      })
+      closing_costs_mode: closingMode,
+      holding_costs_mode: holdingMode,
+      closing_costs_flat: closingFlat,
+      holding_costs_flat: holdingFlat,
+      } as any)
       .eq('id', projectId);
 
     if (error) {
@@ -61,8 +83,8 @@ export function ProfitCalculator({
     setSaving(false);
   };
 
-  const closingCosts = arv * (closingPct / 100);
-  const holdingCosts = purchasePrice * (holdingPct / 100);
+  const closingCosts = closingMode === 'pct' ? arv * (closingPct / 100) : closingFlat;
+  const holdingCosts = holdingMode === 'pct' ? purchasePrice * (holdingPct / 100) : holdingFlat;
 
   // Estimated profit (based on allocated budget)
   const estimatedInvestment = purchasePrice + totalBudget;
@@ -211,28 +233,76 @@ export function ProfitCalculator({
               <span>{formatCurrency(expandedBreakdown === 'estimated' ? totalBudget : totalSpent)}</span>
             </div>
             <div className="flex justify-between text-destructive items-center">
-              <span className="flex items-center gap-1">− Closing Costs <span className="text-muted-foreground text-xs">(</span>
-                <input
-                  type="number"
-                  value={closingPct || ''}
-                  onChange={(e) => setClosingPct(Number(e.target.value))}
-                  className="w-10 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <span className="text-muted-foreground text-xs">% ARV)</span>
+              <span className="flex items-center gap-1">− Closing Costs
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setClosingMode(closingMode === 'pct' ? 'flat' : 'pct'); }}
+                  className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden ml-1"
+                >
+                  <span className={cn("px-1.5 py-0.5 transition-colors", closingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
+                  <span className={cn("px-1.5 py-0.5 transition-colors", closingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
+                </button>
+                {closingMode === 'pct' ? (
+                  <>
+                    <span className="text-muted-foreground text-xs">(</span>
+                    <input
+                      type="number"
+                      value={closingPct || ''}
+                      onChange={(e) => setClosingPct(Number(e.target.value))}
+                      className="w-10 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="text-muted-foreground text-xs">% ARV)</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground text-xs">$</span>
+                    <input
+                      type="number"
+                      value={closingFlat || ''}
+                      onChange={(e) => setClosingFlat(Number(e.target.value))}
+                      className="w-20 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </>
+                )}
               </span>
               <span>{formatCurrency(closingCosts)}</span>
             </div>
             <div className="flex justify-between text-destructive items-center">
-              <span className="flex items-center gap-1">− Holding Costs <span className="text-muted-foreground text-xs">(</span>
-                <input
-                  type="number"
-                  value={holdingPct || ''}
-                  onChange={(e) => setHoldingPct(Number(e.target.value))}
-                  className="w-10 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <span className="text-muted-foreground text-xs">% PP)</span>
+              <span className="flex items-center gap-1">− Holding Costs
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setHoldingMode(holdingMode === 'pct' ? 'flat' : 'pct'); }}
+                  className="inline-flex items-center rounded border border-muted-foreground/30 text-[10px] font-semibold overflow-hidden ml-1"
+                >
+                  <span className={cn("px-1.5 py-0.5 transition-colors", holdingMode === 'pct' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>%</span>
+                  <span className={cn("px-1.5 py-0.5 transition-colors", holdingMode === 'flat' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>$</span>
+                </button>
+                {holdingMode === 'pct' ? (
+                  <>
+                    <span className="text-muted-foreground text-xs">(</span>
+                    <input
+                      type="number"
+                      value={holdingPct || ''}
+                      onChange={(e) => setHoldingPct(Number(e.target.value))}
+                      className="w-10 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="text-muted-foreground text-xs">% PP)</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground text-xs">$</span>
+                    <input
+                      type="number"
+                      value={holdingFlat || ''}
+                      onChange={(e) => setHoldingFlat(Number(e.target.value))}
+                      className="w-20 text-xs text-center bg-transparent border-b border-muted-foreground/30 focus:outline-none focus:border-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </>
+                )}
               </span>
               <span>{formatCurrency(holdingCosts)}</span>
             </div>
