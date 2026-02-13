@@ -39,6 +39,7 @@ import ManageSourcesCard from '@/components/settings/ManageSourcesCard';
 import ManageUsersCard from '@/components/settings/ManageUsersCard';
 import ManageRolesCard from '@/components/settings/ManageRolesCard';
 import ColorPaletteCard from '@/components/settings/ColorPaletteCard';
+import DashboardPreferencesCard from '@/components/settings/DashboardPreferencesCard';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -385,6 +386,8 @@ export default function Settings() {
           {/* Color Palette Section */}
           <ColorPaletteCard />
 
+          {/* Dashboard Preferences */}
+          <DashboardPreferencesCard />
 
           {/* Legal Section */}
           <Card>

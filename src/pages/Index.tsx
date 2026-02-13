@@ -188,7 +188,6 @@ export default function Index() {
   };
 
   // Calculate stats
-  // Sort by project type priority (fix & flips first, then wholesaling, etc.)
   // Sort by starred first (in saved order), then by start date descending
   const activeProjects = projects
     .filter(p => p.status === 'active')
@@ -208,12 +207,30 @@ export default function Index() {
     sum + p.categories.reduce((catSum, cat) => catSum + cat.actualSpent, 0), 0
   );
 
-  // Profit Potential: conservative calc using MAX(actual, planned) as cost basis
-  const profitProjectCount = activeProjects.filter(p => (p as any).arv > 0).length;
-  const totalProfitPotential = activeProjects.reduce((sum, p) => {
+  // Read profit filter preferences from localStorage
+  const profitFilters = (() => {
+    try {
+      const raw = localStorage.getItem('dashboard-profit-filters');
+      if (raw) return JSON.parse(raw) as { types: string[]; statuses: string[] };
+    } catch {}
+    return { types: ['fix_flip', 'rental', 'new_construction', 'wholesaling'], statuses: ['active'] };
+  })();
+
+  // Map status values to match project status format
+  const statusMap: Record<string, string> = { active: 'active', complete: 'complete' };
+  const filteredProfitProjects = projects.filter(p => {
+    const statusMatch = profitFilters.statuses.some(s => {
+      const mapped = statusMap[s] || s;
+      return p.status === mapped || (s === 'complete' && p.status === 'complete');
+    });
+    const typeMatch = profitFilters.types.includes(p.projectType);
+    return statusMatch && typeMatch && (p as any).arv > 0;
+  });
+
+  const profitProjectCount = filteredProfitProjects.length;
+  const totalProfitPotential = filteredProfitProjects.reduce((sum, p) => {
     const arv = (p as any).arv || 0;
     const purchasePrice = (p as any).purchasePrice || 0;
-    if (arv <= 0) return sum;
     const plannedBudget = p.totalBudget;
     const actualSpent = p.categories.reduce((s, c) => s + c.actualSpent, 0);
     const costBasis = Math.max(actualSpent, plannedBudget);
