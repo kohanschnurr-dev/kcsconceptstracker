@@ -59,6 +59,14 @@ export function useCompanySettings() {
           .insert({ user_id: user.id, ...updateData });
         if (error) throw error;
       }
+
+      // Sync company name to team name
+      if (companyName !== undefined) {
+        await supabase
+          .from('teams')
+          .update({ name: companyName || null })
+          .eq('owner_id', user.id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company-settings'] });
