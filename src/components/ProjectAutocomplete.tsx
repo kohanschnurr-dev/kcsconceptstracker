@@ -21,6 +21,7 @@ interface Project {
   name: string;
   address?: string;
   status?: string;
+  project_type?: string;
 }
 
 interface ProjectAutocompleteProps {
@@ -53,20 +54,13 @@ export function ProjectAutocomplete({
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
   }, [projects, filterActive]);
 
-  // Filter projects based on search query (supports @ mention trigger)
+  // Filter projects based on search query
   const filteredProjects = useMemo(() => {
     if (!searchQuery.trim()) {
       return filteredByStatus;
     }
 
-    // Remove @ prefix if present for search
-    const query = searchQuery.startsWith('@') 
-      ? searchQuery.slice(1).toLowerCase().trim()
-      : searchQuery.toLowerCase().trim();
-
-    if (!query) {
-      return filteredByStatus;
-    }
+    const query = searchQuery.toLowerCase().trim();
 
     return filteredByStatus.filter(project => {
       const nameMatch = project.name.toLowerCase().includes(query);
@@ -74,6 +68,21 @@ export function ProjectAutocomplete({
       return nameMatch || addressMatch;
     });
   }, [filteredByStatus, searchQuery]);
+
+  // Group projects by type
+  const PROJECT_TYPE_GROUPS: { type: string; label: string }[] = [
+    { type: 'fix_flip', label: 'Fix & Flips' },
+    { type: 'rental', label: 'Rentals' },
+    { type: 'new_construction', label: 'New Builds' },
+    { type: 'wholesaling', label: 'Wholesaling' },
+  ];
+
+  const groupedProjects = useMemo(() => {
+    return PROJECT_TYPE_GROUPS.map(group => ({
+      ...group,
+      projects: filteredProjects.filter(p => p.project_type === group.type),
+    })).filter(g => g.projects.length > 0);
+  }, [filteredProjects]);
 
   // Get selected project details
   const selectedProject = projects.find(p => p.id === value);
@@ -115,7 +124,7 @@ export function ProjectAutocomplete({
       >
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Type to search or @mention..."
+            placeholder="Search projects..."
             value={searchQuery}
             onValueChange={setSearchQuery}
             className="h-9"
@@ -127,31 +136,33 @@ export function ProjectAutocomplete({
                 No projects found
               </div>
             </CommandEmpty>
-            <CommandGroup>
-              {filteredProjects.map((project) => (
-                <CommandItem
-                  key={project.id}
-                  value={project.id}
-                  onSelect={() => handleSelect(project.id)}
-                  className="cursor-pointer"
-                >
-                  <Check
-                    className={cn(
-                      'mr-2 h-4 w-4 flex-shrink-0',
-                      value === project.id ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-medium truncate">{project.name}</span>
-                    {project.address && (
-                      <span className="text-xs text-muted-foreground truncate">
-                        {project.address}
-                      </span>
-                    )}
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {groupedProjects.map((group) => (
+              <CommandGroup key={group.type} heading={group.label}>
+                {group.projects.map((project) => (
+                  <CommandItem
+                    key={project.id}
+                    value={project.id}
+                    onSelect={() => handleSelect(project.id)}
+                    className="cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 h-4 w-4 flex-shrink-0',
+                        value === project.id ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-medium truncate">{project.name}</span>
+                      {project.address && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          {project.address}
+                        </span>
+                      )}
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>
