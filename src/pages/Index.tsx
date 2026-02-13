@@ -137,6 +137,17 @@ export default function Index() {
           completedDate: (p as any).completed_date || undefined,
           arv: p.arv ?? 0,
           purchasePrice: p.purchase_price ?? 0,
+          monthlyRent: p.monthly_rent ?? undefined,
+          loanAmount: p.loan_amount ?? undefined,
+          interestRate: p.interest_rate ?? undefined,
+          loanTermYears: p.loan_term_years ?? undefined,
+          annualPropertyTaxes: p.annual_property_taxes ?? undefined,
+          annualInsurance: p.annual_insurance ?? undefined,
+          annualHoa: p.annual_hoa ?? undefined,
+          vacancyRate: p.vacancy_rate ?? undefined,
+          monthlyMaintenance: p.monthly_maintenance ?? undefined,
+          managementRate: p.management_rate ?? undefined,
+          cashflowRehabOverride: p.cashflow_rehab_override ?? null,
         };
       });
 
