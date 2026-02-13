@@ -186,6 +186,16 @@ export function useTeam() {
     },
   });
 
+  const resendInvitation = useMutation({
+    mutationFn: async (email: string) => {
+      const ownerName = user?.email || 'A team owner';
+      const appUrl = window.location.origin;
+      await supabase.functions.invoke('send-team-invite', {
+        body: { email, ownerName, appUrl },
+      });
+    },
+  });
+
   return {
     team,
     members,
@@ -194,5 +204,6 @@ export function useTeam() {
     inviteMember,
     cancelInvitation,
     removeMember,
+    resendInvitation,
   };
 }
