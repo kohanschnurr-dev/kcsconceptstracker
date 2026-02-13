@@ -1,56 +1,39 @@
 
 
-## Add Dashboard Profit Filter Setting
+## Collapse Role Sections by Default
 
-### What It Does
-Adds a new setting in Settings that lets you choose which project types and statuses are included in the **Profit Potential** stat card on the Dashboard. For example, you could show only Fix & Flips, or Fix & Flips + Wholesaling, etc.
+### Problem
+The Manage Roles card shows all permissions for both "Project Manager" and "Viewer" fully expanded, making the settings page very long to scroll through.
 
-### Where It Lives
-A new "Dashboard Preferences" card on the Settings page, placed before the Legal section. It contains multi-select checkboxes for:
+### Solution
+Wrap each role section in a `Collapsible` component (already available in the project) so they start **collapsed** by default. Users click the role badge to expand and see/edit permissions.
 
-**Project Types to include in Profit Potential:**
-- Fix & Flip (checked by default)
-- Rental
-- New Construction
-- Wholesaling
+### File Change
 
-**Project Statuses:**
-- Active (checked by default)
-- Completed
+**`src/components/settings/ManageRolesCard.tsx`**:
 
-### How It Works
-- The selected filters are stored in localStorage under a key like `dashboard-profit-filters` and synced across devices via the existing settings sync system.
-- The Dashboard reads these filters and applies them when calculating the Profit Potential stat card values.
-- If no setting exists, it defaults to current behavior (active projects only, all types).
+1. Import `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` from `@/components/ui/collapsible`
+2. Import `ChevronDown` from `lucide-react`
+3. Wrap each role's permission grid inside a `Collapsible` with `open` defaulting to `false`
+4. Make the role `Badge` the `CollapsibleTrigger`, adding a small chevron icon that rotates when open
+5. Move the permissions grid into `CollapsibleContent`
 
-### File Changes
+### Visual Result
 
-**`src/hooks/useSettingsSync.ts`**
-- Add `'dashboard-profit-filters'` to the `SETTINGS_KEYS` array so it syncs across devices.
-
-**`src/pages/Settings.tsx`**
-- Add a new "Dashboard Preferences" card with checkbox toggles for each project type and status.
-- Read/write from localStorage key `dashboard-profit-filters` (JSON object: `{ statuses: string[], types: string[] }`).
-- Call `triggerSettingsSync()` on change.
-
-**`src/pages/Index.tsx`**
-- Read the `dashboard-profit-filters` setting from localStorage on mount.
-- Filter the projects used for the Profit Potential calculation based on the saved statuses and types.
-- Update the subtitle to reflect the filtered count.
-
-### Settings UI Layout
-
-```text
-Dashboard Preferences
-Configure which projects appear in your dashboard profit stats.
-
-Profit Potential - Project Types:
-[x] Fix & Flip    [x] Wholesaling
-[ ] Rental        [ ] New Construction
-
-Profit Potential - Status:
-[x] Active        [ ] Completed
+Collapsed (default):
+```
+[v] Project Manager
+[v] Viewer
 ```
 
-Checkboxes use the existing Checkbox component. Changes save to localStorage immediately and trigger the settings sync.
+Expanded (after clicking):
+```
+[^] Project Manager
+  [x] View Projects - Can see project details
+  [x] Edit Projects - Can create/edit projects
+  ...
+[v] Viewer
+```
+
+Each role independently toggles open/closed. No other layout changes.
 
