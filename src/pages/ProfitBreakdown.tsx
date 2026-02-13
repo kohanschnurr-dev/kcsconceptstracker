@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
+import DashboardPreferencesCard from '@/components/settings/DashboardPreferencesCard';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter } from '@/components/ui/table';
@@ -276,6 +277,10 @@ export default function ProfitBreakdown() {
           </div>
         </div>
       )}
+
+      <div className="mt-6">
+        <DashboardPreferencesCard />
+      </div>
     </MainLayout>
   );
 }
