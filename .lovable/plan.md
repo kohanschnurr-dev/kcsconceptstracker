@@ -1,45 +1,46 @@
 
 
-## Replace Emojis with Lucide Icons for Custom Trade Groups
+## Add Project Picker with Starred Quick-Select to Business Expenses
 
 ### What Changes
-Custom trade groups currently use colored Unicode emojis (e.g., "🏠", "💰") while built-in groups use monochrome Lucide vector icons. This change replaces the emoji system with a Lucide icon mapping, so all groups -- built-in and custom -- have the same consistent vector icon style.
+The "Add Business Expense" modal will get a new **Project** field with:
+1. A `ProjectAutocomplete` dropdown to select any active project
+2. A row of quick-select buttons showing your **starred projects** (up to 6), so you can assign a project with a single tap instead of opening the dropdown every time
+3. The selected project name will also show in the expenses table as a column
 
-### Technical Details
+### Database Migration
+Add an optional `project_id` column to `business_expenses`:
 
-**`src/lib/budgetCalculatorCategories.ts`**:
-- Replace the `EMOJI_MAP` (string-to-emoji mapping) with an `ICON_MAP` (string-to-LucideIcon mapping), e.g.:
-  - `purchase/buy/acquire` -> `Home`
-  - `sale/sell/profit` -> `DollarSign`
-  - `finance/loan/mortgage` -> `Banknote`
-  - `labor/crew/contractor` -> `HardHat`
-  - `legal/attorney` -> `Scale`
-  - `insurance` -> `Shield`
-  - `tax/taxes` -> `Receipt`
-  - `holding/carry` -> `Clock`
-  - `rehab/renovation/construction` -> `Hammer`
-  - `utility/utilities` -> `Zap`
-  - `inspection/inspect` -> `Search`
-  - `permit/permits` -> `ClipboardList`
-  - `design/architect` -> `Palette`
-  - `title/escrow` -> `FileText`
-  - `marketing/advertising` -> `Megaphone`
-  - `office` -> `Building2`
-  - `land/lot` -> `MapPin`
-  - `closing/close` -> `FileSignature`
-  - `pre-close/preclose` -> `Key`
-  - Default fallback -> `Package`
-- Change `pickEmoji` to `pickIcon` returning a `LucideIcon` instead of a string
-- Remove the `emoji` field from `CustomGroupEntry` and `BudgetCalcGroupDef` interfaces; custom groups will just use the `icon` field directly
-- Update `loadCustomGroups()` to call `pickIcon(label)` for the icon instead of storing an emoji
+```sql
+ALTER TABLE public.business_expenses
+  ADD COLUMN project_id uuid REFERENCES public.projects(id) ON DELETE SET NULL;
+```
 
-**`src/components/budget/BudgetCanvas.tsx`**:
-- Remove the emoji conditional rendering block -- always render `<GroupIcon>` since all groups now have proper Lucide icons
+No RLS changes needed -- the existing policies already cover this table.
 
-**`src/components/settings/ManageSourcesCard.tsx`**:
-- Update custom group creation to use `pickIcon` instead of `pickEmoji`
-- Remove emoji references when saving/displaying custom groups
+### UI Details
 
-### No Database Changes
-All icon mapping is done at render time based on the group label, so existing saved custom groups will automatically get their matching icons.
+**In the Add Expense modal** (above the Category field):
+- Label: "Project (optional)"
+- Row of starred project buttons (compact chips/badges) -- tap one to instantly select it, tap again to deselect
+- Below the chips: the full `ProjectAutocomplete` dropdown for searching all projects
+- The selected project highlights in the chip row and syncs with the dropdown
 
+**In the expenses table**:
+- Add a "Project" column between Vendor and Category showing the linked project name (or blank if none)
+
+**In the detail modal** (`BusinessExpenseDetailModal`):
+- Show the linked project name if one is assigned
+
+### Technical Steps
+
+1. **Migration**: Add `project_id` column to `business_expenses`
+2. **`src/pages/BusinessExpenses.tsx`**:
+   - Import `useProfile` hook to access `starredProjects`
+   - Add `projectId` to `formData` state (default empty string)
+   - Add starred project chip buttons + `ProjectAutocomplete` to the form
+   - Include `project_id` in the insert payload
+   - Add `project_id` to `DBBusinessExpense` interface
+   - Add Project column to the table, looking up project name from the `projects` array
+3. **`src/components/BusinessExpenseDetailModal.tsx`**:
+   - Accept projects list as prop, display linked project name if present
