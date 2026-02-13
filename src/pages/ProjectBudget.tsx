@@ -1201,7 +1201,7 @@ export default function ProjectBudget() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((cat) => (
+                  {[...categories].sort((a, b) => getCategoryName(a.category).localeCompare(getCategoryName(b.category))).map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
                       {getCategoryName(cat.category)}
                     </SelectItem>
