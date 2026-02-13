@@ -25,6 +25,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Auto-accept pending team invitations on sign-in or sign-up
+        if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+          const u = session.user;
+          const email = u.email;
+          if (email) {
+            supabase.rpc('accept_pending_invitations', {
+              p_user_id: u.id,
+              p_email: email,
+            }).then(({ error }) => {
+              if (error) console.error('Failed to accept pending invitations:', error);
+            });
+          }
+        }
       }
     );
 
