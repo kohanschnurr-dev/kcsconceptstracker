@@ -47,12 +47,25 @@ export function useTeam() {
       if (error) throw error;
 
       if (!data) {
+        // Fetch company name for team name
+        const { data: companyData } = await supabase
+          .from('company_settings')
+          .select('company_name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
         const { data: newTeam, error: insertError } = await supabase
           .from('teams')
-          .insert({ owner_id: user.id })
+          .insert({ 
+            owner_id: user.id, 
+            name: companyData?.company_name || null 
+          })
           .select()
           .single();
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Failed to auto-create team:', insertError);
+          throw insertError;
+        }
         return newTeam as Team;
       }
 
