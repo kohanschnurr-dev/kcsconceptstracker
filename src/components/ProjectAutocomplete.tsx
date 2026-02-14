@@ -21,7 +21,7 @@ interface Project {
   name: string;
   address?: string;
   status?: string;
-  project_type?: string;
+  projectType?: string;
 }
 
 interface ProjectAutocompleteProps {
@@ -80,7 +80,7 @@ export function ProjectAutocomplete({
   const groupedProjects = useMemo(() => {
     return PROJECT_TYPE_GROUPS.map(group => ({
       ...group,
-      projects: filteredProjects.filter(p => p.project_type === group.type),
+      projects: filteredProjects.filter(p => p.projectType === group.type),
     })).filter(g => g.projects.length > 0);
   }, [filteredProjects]);
 
