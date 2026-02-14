@@ -1,31 +1,60 @@
 
-## Fix LTV Not Persisting on Save
+
+## Fix Dashboard Profit Potential to Match Breakdown Page
 
 ### Problem
-When you adjust the LTV slider (which changes the Loan Amount) and click Save, the value resets back to 75% of the purchase price. This happens because the code uses JavaScript's `||` operator for the fallback, which treats `0` and any falsy value as "not set" and defaults to 75%.
+The Dashboard "Profit Potential" card shows **$217,348** while the Profit Breakdown page shows **$140,353** for the same projects. The Dashboard calculation is missing **Transaction Costs** and **Holding Costs** from the profit formula.
 
-Additionally, the component's `useEffect` re-runs after save and can reset the loan amount before the parent has refetched the updated data from the database.
+### Root Cause
+In `src/pages/Index.tsx` lines 289-296, the profit is calculated as:
+```
+ARV - Purchase Price - Construction Cost Basis
+```
+
+But the correct formula (used on the Breakdown page) is:
+```
+ARV - Purchase Price - Construction Cost Basis - Transaction Costs - Holding Costs
+```
+
+The data for transaction and holding costs is already available on each project object (e.g., `closingCostsMode`, `closingCostsPct`, `closingCostsFlat`, `transactionCostActual`, `holdingCostsMode`, etc.) -- it's just not being used in the calculation.
 
 ### Fix
 
-**`src/components/project/HardMoneyLoanCalculator.tsx`**
+**`src/pages/Index.tsx`** (lines 289-296):
 
-1. **Line 115**: Change `initialLoanAmount || (editablePurchasePrice * 0.75)` to use `??` (nullish coalescing) so that a saved value of any number (including values that might be 0 in edge cases) is respected:
-   ```typescript
-   const defaultLoanAmount = initialLoanAmount ?? (editablePurchasePrice * 0.75);
-   ```
+Update the `totalProfitPotential` reducer to compute transaction and holding costs per project using the same mode-aware logic as the Breakdown page:
 
-2. **Line 181**: Same fix in the `useEffect` that syncs props to state:
-   ```typescript
-   setLoanAmount(initialLoanAmount ?? (editablePurchasePrice * 0.75));
-   ```
+```typescript
+const totalProfitPotential = filteredProfitProjects.reduce((sum, p) => {
+  const arv = (p as any).arv || 0;
+  const purchasePrice = (p as any).purchasePrice || 0;
+  const plannedBudget = p.totalBudget;
+  const constructionSpent = (p as any).constructionSpent || 0;
+  const costBasis = p.status === 'complete'
+    ? constructionSpent
+    : Math.max(constructionSpent, plannedBudget);
 
-3. **In `handleSave`**: After a successful save, invalidate/refetch the project data so the parent passes back the correct `initialLoanAmount` prop immediately, preventing the effect from reverting state.
+  // Transaction costs (same logic as ProfitBreakdown)
+  const closingMode = (p as any).closingCostsMode || 'pct';
+  const transactionCosts = closingMode === 'actual'
+    ? ((p as any).transactionCostActual || 0)
+    : closingMode === 'flat'
+      ? ((p as any).closingCostsFlat ?? 0)
+      : arv * (((p as any).closingCostsPct ?? 6) / 100);
 
-### Why This Fixes It
-- The `||` operator treats `0` as falsy, so even valid saved values can be overwritten by the 75% default
-- Using `??` only falls back when the value is `null` or `undefined` (truly not set)
-- Refetching after save ensures the parent component has the latest data, so the `useEffect` won't reset to stale values
+  // Holding costs (same logic as ProfitBreakdown)
+  const holdingMode = (p as any).holdingCostsMode || 'pct';
+  const holdingCosts = holdingMode === 'actual'
+    ? ((p as any).holdingCostActual || 0)
+    : holdingMode === 'flat'
+      ? ((p as any).holdingCostsFlat ?? 0)
+      : purchasePrice * (((p as any).holdingCostsPct ?? 3) / 100);
+
+  return sum + (arv - purchasePrice - costBasis - transactionCosts - holdingCosts);
+}, 0);
+```
+
+This also adds the `status === 'complete'` check for `costBasis` to match the Breakdown page logic.
 
 ### Files to Change
-- **`src/components/project/HardMoneyLoanCalculator.tsx`** -- fix `||` to `??` on lines 115 and 181, add query invalidation after successful save
+- **`src/pages/Index.tsx`** -- update `totalProfitPotential` calculation to include transaction costs, holding costs, and the completed-project cost basis logic
