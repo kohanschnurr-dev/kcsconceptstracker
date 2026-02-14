@@ -23,7 +23,9 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
   const arv = project.arv || 0;
   const purchasePrice = project.purchasePrice || 0;
   const constructionSpent = project.constructionSpent || 0;
-  const rehabBasis = Math.max(project.totalBudget, constructionSpent);
+  const rehabBasis = project.status === 'complete'
+    ? constructionSpent
+    : Math.max(project.totalBudget, constructionSpent);
 
   // Transaction costs (closing costs)
   const closingMode = project.closingCostsMode || 'pct';
