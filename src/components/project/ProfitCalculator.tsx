@@ -24,6 +24,7 @@ interface ProfitCalculatorProps {
   initialHoldingFlat?: number;
   transactionCostActual?: number;
   holdingCostActual?: number;
+  onSaved?: () => void;
 }
 
 export function ProfitCalculator({ 
@@ -40,6 +41,7 @@ export function ProfitCalculator({
   initialHoldingFlat = 0,
   transactionCostActual = 0,
   holdingCostActual = 0,
+  onSaved,
 }: ProfitCalculatorProps) {
   const [purchasePrice, setPurchasePrice] = useState(initialPurchasePrice);
   const [arv, setArv] = useState(initialArv);
@@ -84,6 +86,7 @@ export function ProfitCalculator({
       console.error(error);
     } else {
       toast.success('Saved');
+      onSaved?.();
     }
     setSaving(false);
   };

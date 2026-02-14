@@ -901,6 +901,7 @@ export default function ProjectDetail() {
                 initialHoldingFlat={(project as any).holding_costs_flat ?? defaultPreset?.holdingFlat ?? 0}
                 transactionCostActual={transactionCostActual}
                 holdingCostActual={holdingCostActual}
+                onSaved={() => fetchProjectData(false)}
               />
             )}
             
