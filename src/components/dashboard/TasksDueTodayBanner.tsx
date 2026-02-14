@@ -137,7 +137,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
 
   const totalActionable = tasksDueToday.length + overdueCount + todayEvents.length;
 
-  if (totalActionable === 0) return null;
+  
 
   return (
     <div className="glass-card border-border bg-muted/30 p-3 animate-slide-up">
