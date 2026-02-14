@@ -1,38 +1,36 @@
 
+## Split Financials into Two Tabs for Rental Projects
 
-## Move Export Button Next to Expense Summary
+### What Changes
+For **rental projects only**, the single "Financials" tab will be split into two separate tabs:
+- **Financials** -- the Profit Calculator (Purchase Price, ARV, Transaction/Holding costs, profit breakdown)
+- **Cash Flow** -- the Cash Flow / Refi Calculator (rent, refi details, expenses, cash-on-cash ROI)
 
-### Problem
-The Export button sits in the page header far from the expense count/total summary, making it unclear what data is being exported.
+Non-rental projects (Fix & Flip, New Construction, Wholesaling) remain unchanged with a single "Financials" tab showing the Profit Calculator.
 
-### Changes
+### Technical Changes
 
-**`src/pages/Expenses.tsx`**
+**`src/pages/ProjectDetail.tsx`**
 
-1. **Remove the Export button from the page header** (around line 250-253): Delete the Export button from the top-right button group, leaving only "Add Expense".
+1. **Add "cashflow" to the tab system**:
+   - Add `cashflow` to `DEFAULT_DETAIL_TAB_ORDER` (after `financials`)
+   - Add `cashflow: 'Cash Flow'` to `TAB_LABELS`
 
-2. **Add the Export button next to the summary line** (around line 302-306): Place it inline with "54 expenses . $26,709.94" in the table header bar, just before the summary text.
+2. **Conditionally show/hide tabs based on project type**:
+   - When rendering `TabsTrigger` items, skip `cashflow` for non-rental projects
+   - For rental projects, show both `financials` and `cashflow` tabs
 
-The summary section currently looks like:
-```tsx
-<div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-  <span>{filteredExpenses.length} expenses</span>
-  <span>•</span>
-  <span className="font-mono font-medium">{formatCurrency(totalExpenses)}</span>
-</div>
-```
+3. **Update the "financials" TabsContent**:
+   - Currently it conditionally renders `CashFlowCalculator` for rentals vs `ProfitCalculator` for others
+   - Change it to **always** render `ProfitCalculator` (the rental version will also get the profit calculator here)
+   - Move `ExportReports` to stay within this tab
 
-It will become:
-```tsx
-<div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-  <span>{filteredExpenses.length} expenses</span>
-  <span>•</span>
-  <span className="font-mono font-medium">{formatCurrency(totalExpenses)}</span>
-  <Button variant="ghost" size="sm" className="gap-1 h-7 ml-1" onClick={exportToCSV}>
-    <Download className="h-3.5 w-3.5" />
-    Export
-  </Button>
-</div>
-```
+4. **Add a new "cashflow" TabsContent**:
+   - Render the `CashFlowCalculator` component (currently shown for rentals under financials)
+   - Only relevant for rental projects
 
-This places the export action directly beside the data summary so users know exactly what they're exporting.
+5. **Filter tab order in `effectiveTabOrder` memo**:
+   - For non-rental projects, filter out `cashflow` from the order
+   - For rental projects, include both `financials` and `cashflow`
+
+This approach keeps the tab reordering system working correctly since both tabs exist in the order array and labels map.
