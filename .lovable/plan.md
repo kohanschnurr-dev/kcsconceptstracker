@@ -1,19 +1,31 @@
 
 
-## Fix Holding Costs Mode Reverting to %
+## Use Actual Spent for Completed Projects' Profit
 
 ### Problem
-When you select "$" for Holding Costs and click Save, the value saves correctly to the database. However, the Profit Calculator doesn't notify the parent page to refresh its data. So if anything else on the page triggers a re-render, the stale parent data (still showing "%") overwrites your selection.
+Currently, the profit formula always uses `MAX(totalBudget, constructionSpent)` as the rehab basis. For completed projects, this is overly conservative -- if the project came in under budget, the profit should reflect the actual spend, not the higher planned budget.
 
-The CashFlow Calculator already has this fix (`onSaved` callback) but the Profit Calculator is missing it.
+### Change
+When a project's status is `'complete'`, use `constructionSpent` (actual) instead of `MAX(budget, constructionSpent)` as the rehab basis.
 
-### Changes
+```
+Active:    profit = ARV - PP - MAX(budget, constructionSpent) - transaction - holding
+Complete:  profit = ARV - PP - constructionSpent - transaction - holding
+```
 
-**1. `src/components/project/ProfitCalculator.tsx`**
-- Add an `onSaved?: () => void` callback prop to the interface
-- Call `onSaved()` after a successful save in `handleSave`
+### Technical Changes
 
-**2. `src/pages/ProjectDetail.tsx`**
-- Pass `onSaved={() => fetchProjectData(false)}` to the ProfitCalculator component (same pattern already used by CashFlowCalculator on line 887)
+**`src/components/dashboard/ProjectCard.tsx`** (~line 30):
+- Change the `rehabBasis` calculation from:
+  ```ts
+  const rehabBasis = Math.max(project.totalBudget, constructionSpent);
+  ```
+  to:
+  ```ts
+  const rehabBasis = project.status === 'complete'
+    ? constructionSpent
+    : Math.max(project.totalBudget, constructionSpent);
+  ```
 
-This ensures that after clicking Save, the parent page re-fetches the project with the correct mode values from the database, preventing any revert.
+That is the only file that needs to change. The same component is used on both the Dashboard and Projects pages.
+
