@@ -423,10 +423,6 @@ export default function Expenses() {
             <p className="text-muted-foreground mt-1">Track all project costs</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="gap-2" onClick={exportToCSV}>
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
             <Button className="gap-2" onClick={() => setExpenseModalOpen(true)}>
               <Plus className="h-4 w-4" />
               Add Expense
@@ -539,6 +535,10 @@ export default function Expenses() {
                 <span>{filteredExpenses.length} expenses</span>
                 <span>•</span>
                 <span className="font-mono font-medium">{formatCurrency(totalExpenses)}</span>
+                <Button variant="ghost" size="sm" className="gap-1 h-7 ml-1" onClick={exportToCSV}>
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                </Button>
               </div>
             </div>
             
