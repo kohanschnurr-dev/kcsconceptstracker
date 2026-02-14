@@ -1,26 +1,32 @@
 
 
-## Fix: Projects Not Showing in Quick Log Expense Modal
+## Fix Project Dropdown Text Contrast
 
-### Root Cause
-The `ProjectAutocomplete` component defines its own internal `Project` interface that expects `project_type` (snake_case), but the app's `Project` type uses `projectType` (camelCase). When projects are passed in, the grouping logic looks for `project_type` on each project object, finds `undefined`, and every group ends up empty -- resulting in "No projects found."
-
-This affects both the Expenses page and the MainLayout (sidebar quick-add) modals.
+### Problem
+In the `ProjectAutocomplete` dropdown, the address subtitle text uses `text-muted-foreground`, which becomes nearly invisible when:
+- An item is highlighted/selected (accent background makes muted text disappear)
+- The dark theme's muted foreground doesn't contrast well enough
 
 ### Fix
 
-**`src/components/ProjectAutocomplete.tsx`**
+**`src/components/ProjectAutocomplete.tsx`** (line 157):
 
-Update the internal `Project` interface to accept both conventions, and update the grouping logic to check for either field:
+Change the address text class from:
+```
+text-xs text-muted-foreground truncate
+```
+to:
+```
+text-xs text-muted-foreground truncate data-[selected=true]:text-accent-foreground/70
+```
 
-1. Change the interface property from `project_type?: string` to `projectType?: string` (matching the app-wide `Project` type)
-2. Update the grouping filter (line 83) from:
-   ```ts
-   projects: filteredProjects.filter(p => p.project_type === group.type)
-   ```
-   to:
-   ```ts
-   projects: filteredProjects.filter(p => p.projectType === group.type)
-   ```
+However, since the `data-[selected]` attribute is on the parent `CommandItem`, not the span itself, we need a different approach. Update the span to use a class that inherits proper contrast:
 
-This single file change fixes the dropdown everywhere it's used (Expenses page, MainLayout sidebar, Business Expenses, etc.).
+```
+text-xs opacity-70 truncate
+```
+
+Using `opacity-70` instead of `text-muted-foreground` ensures the address text always maintains relative contrast to its parent's text color — whether the item is in normal state or highlighted/selected state.
+
+### Files to Change
+- **`src/components/ProjectAutocomplete.tsx`** — line 157: replace `text-muted-foreground` with `opacity-70` on the address span
