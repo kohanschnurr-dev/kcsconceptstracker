@@ -10,9 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import { resolveTimeline, isDateInRange, type TimelinePreset } from '@/lib/timelineFilter';
 
 type StatusFilter = 'all' | 'active' | 'complete';
-type TypeFilter = 'all' | 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling';
 
 const ALL_TYPES = ['fix_flip', 'rental', 'new_construction', 'wholesaling'];
+const ALL_TYPES_SET = new Set(ALL_TYPES);
 const ALL_STATUSES = ['active', 'complete'];
 
 // Read dashboard preferences once at module level for initial state
@@ -32,11 +32,10 @@ const deriveInitialStatus = (prefs: { statuses?: string[] }): StatusFilter => {
   return 'all';
 };
 
-const deriveInitialType = (prefs: { types?: string[] }): TypeFilter => {
+const deriveSelectedTypes = (prefs: { types?: string[] }): Set<string> => {
   const t = prefs.types;
-  if (!t || t.length === 0 || t.length === ALL_TYPES.length) return 'all';
-  if (t.length === 1) return t[0] as TypeFilter;
-  return 'all'; // multi-select that doesn't map to a single pill
+  if (!t || t.length === 0 || t.length === ALL_TYPES.length) return new Set(ALL_TYPES);
+  return new Set(t);
 };
 
 interface ProjectProfit {
@@ -72,7 +71,7 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'complete', label: 'Completed' },
 ];
 
-const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
+const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'all', label: 'All Types' },
   { value: 'fix_flip', label: 'Fix & Flip' },
   { value: 'rental', label: 'Rental' },
@@ -90,14 +89,7 @@ export default function ProfitBreakdown() {
   // Read preferences and derive initial filter state
   const dashFilters = useMemo(() => readDashFilters(), []);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => deriveInitialStatus(dashFilters));
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>(() => deriveInitialType(dashFilters));
-  // Track preferred types for multi-select filtering when no single pill matches
-  const [preferredTypes, setPreferredTypes] = useState<string[] | null>(() => {
-    const t = dashFilters.types;
-    if (!t || t.length === 0 || t.length === ALL_TYPES.length) return null;
-    if (t.length === 1) return null; // single pill handles it
-    return t;
-  });
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(() => deriveSelectedTypes(dashFilters));
 
   const [timelineRange, setTimelineRange] = useState(() =>
     resolveTimeline(dashFilters.timeline || 'all', dashFilters.timelineStart, dashFilters.timelineEnd)
@@ -108,15 +100,7 @@ export default function ProfitBreakdown() {
     const handleSettingsChanged = () => {
       const newFilters = readDashFilters();
       setStatusFilter(deriveInitialStatus(newFilters));
-      setTypeFilter(deriveInitialType(newFilters));
-      const t = newFilters.types;
-      if (!t || t.length === 0 || t.length === ALL_TYPES.length) {
-        setPreferredTypes(null);
-      } else if (t.length === 1) {
-        setPreferredTypes(null);
-      } else {
-        setPreferredTypes(t);
-      }
+      setSelectedTypes(deriveSelectedTypes(newFilters));
       setTimelineRange(resolveTimeline(newFilters.timeline || 'all', newFilters.timelineStart, newFilters.timelineEnd));
     };
     window.addEventListener('settings-changed', handleSettingsChanged);
@@ -246,26 +230,36 @@ export default function ProfitBreakdown() {
     }
   };
 
-  const handleTypeFilter = (value: TypeFilter) => {
-    setTypeFilter(value);
-    setPreferredTypes(null); // user manually selected, clear preference-based multi-filter
+  const handleTypeToggle = (value: string) => {
+    if (value === 'all') {
+      setSelectedTypes(new Set(ALL_TYPES));
+      return;
+    }
+    setSelectedTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(value)) {
+        next.delete(value);
+        if (next.size === 0) return new Set(ALL_TYPES); // prevent empty
+      } else {
+        next.add(value);
+      }
+      return next;
+    });
   };
+
+  const isAllSelected = selectedTypes.size === ALL_TYPES.length;
 
   const applyFilters = <T extends { status: string; projectType: string; startDate?: string }>(list: T[]): T[] => {
     return list.filter((item) => {
       if (statusFilter !== 'all' && item.status !== statusFilter) return false;
-      if (preferredTypes) {
-        if (!preferredTypes.includes(item.projectType)) return false;
-      } else if (typeFilter !== 'all' && item.projectType !== typeFilter) {
-        return false;
-      }
+      if (!isAllSelected && !selectedTypes.has(item.projectType)) return false;
       if (!isDateInRange(item.startDate, timelineRange)) return false;
       return true;
     });
   };
 
-  const filteredConfigured = useMemo(() => applyFilters(configured), [configured, statusFilter, typeFilter, preferredTypes, timelineRange]);
-  const filteredUnconfigured = useMemo(() => applyFilters(unconfigured), [unconfigured, statusFilter, typeFilter, preferredTypes, timelineRange]);
+  const filteredConfigured = useMemo(() => applyFilters(configured), [configured, statusFilter, selectedTypes, timelineRange]);
+  const filteredUnconfigured = useMemo(() => applyFilters(unconfigured), [unconfigured, statusFilter, selectedTypes, timelineRange]);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -326,9 +320,9 @@ export default function ProfitBreakdown() {
         {TYPE_OPTIONS.map((opt) => (
           <button
             key={opt.value}
-            onClick={() => handleTypeFilter(opt.value)}
+            onClick={() => handleTypeToggle(opt.value)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              typeFilter === opt.value && !preferredTypes
+              (opt.value === 'all' && isAllSelected) || (opt.value !== 'all' && selectedTypes.has(opt.value))
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
             }`}
