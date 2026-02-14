@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -68,6 +69,7 @@ export function CashFlowCalculator({
   const [hoaPeriod, setHoaPeriod] = useState<'month' | 'year'>('year');
   const [insurancePeriod, setInsurancePeriod] = useState<'month' | 'year'>('year');
   const [maintenancePeriod, setMaintenancePeriod] = useState<'month' | 'year'>('month');
+  const [refiEnabled, setRefiEnabled] = useState(initialLoanAmount > 0);
 
   const PeriodToggle = ({ value, onChange }: { value: 'month' | 'year'; onChange: (v: 'month' | 'year') => void }) => (
     <span className="inline-flex rounded-full border border-border overflow-hidden text-[10px] font-semibold leading-none">
@@ -109,6 +111,7 @@ export function CashFlowCalculator({
     setVacancyRate(initialVacancyRate);
     setMonthlyMaintenance(initialMonthlyMaintenance);
     setManagementRate(initialManagementRate);
+    setRefiEnabled(initialLoanAmount > 0);
   }, [
     initialPurchasePrice, initialArv, initialMonthlyRent, initialLoanAmount,
     initialInterestRate, initialLoanTermYears, initialAnnualPropertyTaxes,
@@ -124,7 +127,7 @@ export function CashFlowCalculator({
         purchase_price: purchasePrice,
         arv: arv,
         monthly_rent: monthlyRent,
-        loan_amount: loanAmount,
+        loan_amount: refiEnabled ? loanAmount : 0,
         interest_rate: interestRate,
         loan_term_years: loanTermMonths / 12,
         annual_property_taxes: annualPropertyTaxes,
@@ -149,8 +152,8 @@ export function CashFlowCalculator({
 
   // Suggested loan amount for placeholder display only
   const suggestedLoanAmount = arv * 0.75;
-  // When no loan entered, treat as all-cash deal (effectiveLoanAmount = 0)
-  const effectiveLoanAmount = loanAmount > 0 ? loanAmount : 0;
+  // When refi disabled or no loan entered, treat as all-cash deal
+  const effectiveLoanAmount = refiEnabled && loanAmount > 0 ? loanAmount : 0;
 
   // Monthly mortgage payment (P&I) using amortization formula
   const monthlyInterestRate = (interestRate / 100) / 12;
@@ -252,55 +255,6 @@ export function CashFlowCalculator({
                 onChange={(e) => setMonthlyRent(Number(e.target.value))}
                 className="pl-9"
                 placeholder="0"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Refi Details */}
-        <div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-            <Building className="h-4 w-4" />
-            REFI DETAILS
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="loan-amount">Loan Amount (75% ARV)</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="loan-amount"
-                  type="number"
-                  value={loanAmount || ''}
-                  onChange={(e) => setLoanAmount(Number(e.target.value))}
-                  className="pl-9"
-                  placeholder={suggestedLoanAmount.toFixed(0)}
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="interest-rate">Interest Rate (%)</Label>
-              <div className="relative">
-                <Percent className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="interest-rate"
-                  type="number"
-                  step="0.125"
-                  value={interestRate || ''}
-                  onChange={(e) => setInterestRate(Number(e.target.value))}
-                  className="pl-9"
-                  placeholder="7.0"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="loan-term">Loan Term (months)</Label>
-              <Input
-                id="loan-term"
-                type="number"
-                value={loanTermMonths || ''}
-                onChange={(e) => setLoanTermMonths(Number(e.target.value))}
-                placeholder="360"
               />
             </div>
           </div>
@@ -508,6 +462,95 @@ export function CashFlowCalculator({
           </div>
         </div>
 
+        {/* Refi Section - Toggleable */}
+        <div>
+          <div className="flex items-center gap-3 mb-3">
+            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              REFI / LOAN
+            </h3>
+            <Switch
+              checked={refiEnabled}
+              onCheckedChange={setRefiEnabled}
+              className="scale-75"
+            />
+          </div>
+          <Collapsible open={refiEnabled}>
+            <CollapsibleContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="loan-amount">Loan Amount (75% ARV)</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="loan-amount"
+                        type="number"
+                        value={loanAmount || ''}
+                        onChange={(e) => setLoanAmount(Number(e.target.value))}
+                        className="pl-9"
+                        placeholder={suggestedLoanAmount.toFixed(0)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="interest-rate">Interest Rate (%)</Label>
+                    <div className="relative">
+                      <Percent className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="interest-rate"
+                        type="number"
+                        step="0.125"
+                        value={interestRate || ''}
+                        onChange={(e) => setInterestRate(Number(e.target.value))}
+                        className="pl-9"
+                        placeholder="7.0"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="loan-term">Loan Term (months)</Label>
+                    <Input
+                      id="loan-term"
+                      type="number"
+                      value={loanTermMonths || ''}
+                      onChange={(e) => setLoanTermMonths(Number(e.target.value))}
+                      placeholder="360"
+                    />
+                  </div>
+                </div>
+
+                {/* Refi Analysis */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="p-4 rounded-lg bg-muted/50 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Refi Loan Amount</p>
+                    <p className="text-xl font-bold font-mono">{formatCurrency(effectiveLoanAmount)}</p>
+                  </div>
+                  <div className={cn(
+                    "p-4 rounded-lg text-center",
+                    refiCashOut >= 0 ? "bg-success/10" : "bg-warning/10"
+                  )}>
+                    <p className="text-sm text-muted-foreground mb-1">Cash Out at Refi</p>
+                    <p className={cn(
+                      "text-xl font-bold font-mono",
+                      refiCashOut >= 0 ? "text-success" : "text-warning"
+                    )}>
+                      {formatCurrency(refiCashOut)}
+                    </p>
+                    {refiCashOut < 0 && (
+                      <p className="text-xs text-warning mt-1">money left in deal</p>
+                    )}
+                  </div>
+                  <div className="p-4 rounded-lg bg-muted/50 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Equity in Property</p>
+                    <p className="text-xl font-bold font-mono">{formatCurrency(equityInProperty)}</p>
+                  </div>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+
         {/* Results */}
         <div className="grid grid-cols-3 gap-4">
           <div
@@ -620,36 +663,6 @@ export function CashFlowCalculator({
             <p className="text-xs text-muted-foreground mt-1">Annual Cash Flow ÷ Cash Left in Deal = ROI</p>
           </div>
         )}
-
-        {/* Refi Analysis */}
-        <div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-3">REFI ANALYSIS</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 rounded-lg bg-muted/50 text-center">
-              <p className="text-sm text-muted-foreground mb-1">Refi Loan Amount</p>
-              <p className="text-xl font-bold font-mono">{formatCurrency(effectiveLoanAmount)}</p>
-            </div>
-            <div className={cn(
-              "p-4 rounded-lg text-center",
-              refiCashOut >= 0 ? "bg-success/10" : "bg-warning/10"
-            )}>
-              <p className="text-sm text-muted-foreground mb-1">Cash Out at Refi</p>
-              <p className={cn(
-                "text-xl font-bold font-mono",
-                refiCashOut >= 0 ? "text-success" : "text-warning"
-              )}>
-                {formatCurrency(refiCashOut)}
-              </p>
-              {refiCashOut < 0 && (
-                <p className="text-xs text-warning mt-1">money left in deal</p>
-              )}
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50 text-center">
-              <p className="text-sm text-muted-foreground mb-1">Equity in Property</p>
-              <p className="text-xl font-bold font-mono">{formatCurrency(equityInProperty)}</p>
-            </div>
-          </div>
-        </div>
 
         {/* Summary */}
         <div className="p-4 rounded-lg bg-muted/30 border border-border">
