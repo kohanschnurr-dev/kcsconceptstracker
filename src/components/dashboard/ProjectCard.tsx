@@ -24,7 +24,24 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
   const purchasePrice = project.purchasePrice || 0;
   const constructionSpent = project.constructionSpent || 0;
   const rehabBasis = Math.max(project.totalBudget, constructionSpent);
-  const profit = arv - purchasePrice - rehabBasis;
+
+  // Transaction costs (closing costs)
+  const closingMode = project.closingCostsMode || 'pct';
+  const transactionCosts = closingMode === 'actual'
+    ? (project.transactionCostActual || 0)
+    : closingMode === 'flat'
+      ? (project.closingCostsFlat ?? 0)
+      : arv * ((project.closingCostsPct ?? 6) / 100);
+
+  // Holding costs
+  const holdingMode = project.holdingCostsMode || 'pct';
+  const holdingCosts = holdingMode === 'actual'
+    ? (project.holdingCostActual || 0)
+    : holdingMode === 'flat'
+      ? (project.holdingCostsFlat ?? 0)
+      : purchasePrice * ((project.holdingCostsPct ?? 3) / 100);
+
+  const profit = arv - purchasePrice - rehabBasis - transactionCosts - holdingCosts;
   const hasProfit = arv > 0;
 
   const getProgressColor = () => {

@@ -136,6 +136,14 @@ export interface Project {
   monthlyMaintenance?: number;
   managementRate?: number;
   cashflowRehabOverride?: number | null;
+  closingCostsPct?: number;
+  closingCostsMode?: string;
+  closingCostsFlat?: number;
+  holdingCostsPct?: number;
+  holdingCostsMode?: string;
+  holdingCostsFlat?: number;
+  transactionCostActual?: number;
+  holdingCostActual?: number;
 }
 
 export interface CategoryBudget {
