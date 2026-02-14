@@ -12,6 +12,33 @@ import { resolveTimeline, isDateInRange, type TimelinePreset } from '@/lib/timel
 type StatusFilter = 'all' | 'active' | 'complete';
 type TypeFilter = 'all' | 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling';
 
+const ALL_TYPES = ['fix_flip', 'rental', 'new_construction', 'wholesaling'];
+const ALL_STATUSES = ['active', 'complete'];
+
+// Read dashboard preferences once at module level for initial state
+const readDashFilters = () => {
+  try {
+    const raw = localStorage.getItem('dashboard-profit-filters');
+    if (raw) return JSON.parse(raw) as { types?: string[]; statuses?: string[]; timeline?: TimelinePreset; timelineStart?: string; timelineEnd?: string };
+  } catch {}
+  return {} as { types?: string[]; statuses?: string[]; timeline?: TimelinePreset; timelineStart?: string; timelineEnd?: string };
+};
+
+const deriveInitialStatus = (prefs: { statuses?: string[] }): StatusFilter => {
+  const s = prefs.statuses;
+  if (!s || s.length === 0 || s.length === ALL_STATUSES.length) return 'all';
+  if (s.length === 1 && s[0] === 'active') return 'active';
+  if (s.length === 1 && s[0] === 'complete') return 'complete';
+  return 'all';
+};
+
+const deriveInitialType = (prefs: { types?: string[] }): TypeFilter => {
+  const t = prefs.types;
+  if (!t || t.length === 0 || t.length === ALL_TYPES.length) return 'all';
+  if (t.length === 1) return t[0] as TypeFilter;
+  return 'all'; // multi-select that doesn't map to a single pill
+};
+
 interface ProjectProfit {
   id: string;
   name: string;
@@ -57,17 +84,19 @@ export default function ProfitBreakdown() {
   const [isLoading, setIsLoading] = useState(true);
   const [configured, setConfigured] = useState<ProjectProfit[]>([]);
   const [unconfigured, setUnconfigured] = useState<UnconfiguredProject[]>([]);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
-  // Read timeline from dashboard preferences
-  const dashFilters = (() => {
-    try {
-      const raw = localStorage.getItem('dashboard-profit-filters');
-      if (raw) return JSON.parse(raw) as { timeline?: TimelinePreset; timelineStart?: string; timelineEnd?: string };
-    } catch {}
-    return { timeline: 'all' as TimelinePreset };
-  })();
+  // Read preferences and derive initial filter state
+  const dashFilters = useMemo(() => readDashFilters(), []);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => deriveInitialStatus(dashFilters));
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>(() => deriveInitialType(dashFilters));
+  // Track preferred types for multi-select filtering when no single pill matches
+  const [preferredTypes, setPreferredTypes] = useState<string[] | null>(() => {
+    const t = dashFilters.types;
+    if (!t || t.length === 0 || t.length === ALL_TYPES.length) return null;
+    if (t.length === 1) return null; // single pill handles it
+    return t;
+  });
+
   const timelineRange = resolveTimeline(dashFilters.timeline || 'all', dashFilters.timelineStart, dashFilters.timelineEnd);
 
   useEffect(() => {
@@ -198,16 +227,26 @@ export default function ProfitBreakdown() {
     }
   };
 
+  const handleTypeFilter = (value: TypeFilter) => {
+    setTypeFilter(value);
+    setPreferredTypes(null); // user manually selected, clear preference-based multi-filter
+  };
+
   const applyFilters = <T extends { status: string; projectType: string }>(list: T[]): T[] => {
     return list.filter((item) => {
       if (statusFilter !== 'all' && item.status !== statusFilter) return false;
-      if (typeFilter !== 'all' && item.projectType !== typeFilter) return false;
+      // If preferredTypes is set (from preferences multi-select), use it
+      if (preferredTypes) {
+        if (!preferredTypes.includes(item.projectType)) return false;
+      } else if (typeFilter !== 'all' && item.projectType !== typeFilter) {
+        return false;
+      }
       return true;
     });
   };
 
-  const filteredConfigured = useMemo(() => applyFilters(configured), [configured, statusFilter, typeFilter]);
-  const filteredUnconfigured = useMemo(() => applyFilters(unconfigured), [unconfigured, statusFilter, typeFilter]);
+  const filteredConfigured = useMemo(() => applyFilters(configured), [configured, statusFilter, typeFilter, preferredTypes]);
+  const filteredUnconfigured = useMemo(() => applyFilters(unconfigured), [unconfigured, statusFilter, typeFilter, preferredTypes]);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -268,9 +307,9 @@ export default function ProfitBreakdown() {
         {TYPE_OPTIONS.map((opt) => (
           <button
             key={opt.value}
-            onClick={() => setTypeFilter(opt.value)}
+            onClick={() => handleTypeFilter(opt.value)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              typeFilter === opt.value
+              typeFilter === opt.value && !preferredTypes
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
             }`}
