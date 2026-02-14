@@ -86,18 +86,34 @@ export default function Projects() {
 
       const expensesByCategory: Record<string, number> = {};
       const constructionByProject: Record<string, number> = {};
+      const transactionByProject: Record<string, number> = {};
+      const holdingByProject: Record<string, number> = {};
       (expensesData || []).forEach(e => {
         expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
         if (!e.cost_type || e.cost_type === 'construction') {
           constructionByProject[e.project_id] = (constructionByProject[e.project_id] || 0) + Number(e.amount);
+        }
+        if (e.cost_type === 'transaction') {
+          transactionByProject[e.project_id] = (transactionByProject[e.project_id] || 0) + Number(e.amount);
+        }
+        if (e.cost_type === 'monthly') {
+          holdingByProject[e.project_id] = (holdingByProject[e.project_id] || 0) + Number(e.amount);
         }
       });
       (qbExpensesData || []).forEach(e => {
         if (e.category_id) {
           expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
         }
-        if (e.project_id && (!e.cost_type || e.cost_type === 'construction')) {
-          constructionByProject[e.project_id] = (constructionByProject[e.project_id] || 0) + Number(e.amount);
+        if (e.project_id) {
+          if (!e.cost_type || e.cost_type === 'construction') {
+            constructionByProject[e.project_id] = (constructionByProject[e.project_id] || 0) + Number(e.amount);
+          }
+          if (e.cost_type === 'transaction') {
+            transactionByProject[e.project_id] = (transactionByProject[e.project_id] || 0) + Number(e.amount);
+          }
+          if (e.cost_type === 'monthly') {
+            holdingByProject[e.project_id] = (holdingByProject[e.project_id] || 0) + Number(e.amount);
+          }
         }
       });
 
@@ -143,6 +159,14 @@ export default function Projects() {
           arv: p.arv ?? 0,
           purchasePrice: p.purchase_price ?? 0,
           constructionSpent: constructionByProject[p.id] || 0,
+          closingCostsPct: p.closing_costs_pct ?? undefined,
+          closingCostsMode: p.closing_costs_mode || 'pct',
+          closingCostsFlat: p.closing_costs_flat ?? undefined,
+          holdingCostsPct: p.holding_costs_pct ?? undefined,
+          holdingCostsMode: p.holding_costs_mode || 'pct',
+          holdingCostsFlat: p.holding_costs_flat ?? undefined,
+          transactionCostActual: transactionByProject[p.id] || 0,
+          holdingCostActual: holdingByProject[p.id] || 0,
         };
       });
 
