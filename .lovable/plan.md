@@ -1,48 +1,40 @@
 
+## Make Refi Section Toggleable and Reorder Layout
 
-## Fix Missing "Cash Flow" Tab for Rental Projects
+### What Changes
+The "Refi Details" section becomes an on/off toggle. When off, the section collapses. The Refi section (inputs + analysis) moves to sit between Expenses and the Cash Flow results, keeping it as its own distinct block.
 
-### Problem
-The "Cash Flow" tab doesn't appear because the user has a **previously saved tab order** for rental projects in their profile. That saved order was created before `cashflow` was added, so it doesn't include it. The `getDetailTabOrder` function returns the saved array as-is without merging in newly added tabs.
+### Layout Order (New)
+1. Property Details (Purchase Price, ARV, Monthly Rent)
+2. Rehab Budget
+3. Expenses (Taxes, Insurance, HOA, Maintenance, Vacancy, Management)
+4. **Refi Section** (toggle on/off) -- contains Refi Details inputs + Refi Analysis results
+5. Monthly/Annual Cash Flow + Cash-on-Cash ROI results
+6. Breakdown panels
+7. Summary bar
 
-### Root Cause
-In `src/hooks/useProfile.ts` line 113, when a saved tab order exists, it's returned directly:
-```typescript
-if (saved && Array.isArray(saved) && saved.length > 0) return saved;
-```
-This skips any tabs that were added to `DEFAULT_DETAIL_TAB_ORDER` after the user saved their preference.
+### Technical Changes
 
-### Fix
+**`src/components/project/CashFlowCalculator.tsx`**
 
-**`src/hooks/useProfile.ts`** (line 111-114):
+1. **Add a `refiEnabled` state** (default: `true` if `loanAmount > 0`, else `false`):
+   ```tsx
+   const [refiEnabled, setRefiEnabled] = useState(initialLoanAmount > 0);
+   ```
 
-Update `getDetailTabOrder` to merge any missing tabs from `defaultOrder` into the saved order. New tabs will be inserted at the position they occupy in the default order:
+2. **Move Refi Details + Refi Analysis into a single collapsible block** between Expenses and the Results grid:
+   - Header row: "REFI / LOAN" label with a `Switch` toggle
+   - When toggled ON: show Loan Amount, Interest Rate, Loan Term inputs + the Refi Analysis cards (Refi Loan Amount, Cash Out at Refi, Equity in Property)
+   - When toggled OFF: collapse/hide all refi inputs and analysis using Collapsible
 
-```typescript
-const getDetailTabOrder = (projectType: string, defaultOrder: string[]): string[] => {
-  const saved = (profile?.detail_tab_order as Record<string, string[]> | null)?.[projectType];
-  if (saved && Array.isArray(saved) && saved.length > 0) {
-    // Merge any new tabs from defaultOrder that aren't in saved
-    const merged = [...saved];
-    for (const tab of defaultOrder) {
-      if (!merged.includes(tab)) {
-        // Insert at its default position (or end)
-        const defaultIdx = defaultOrder.indexOf(tab);
-        const insertAt = Math.min(defaultIdx, merged.length);
-        merged.splice(insertAt, 0, tab);
-      }
-    }
-    // Also remove any tabs that no longer exist in defaultOrder
-    return merged.filter(tab => defaultOrder.includes(tab));
-  }
-  return defaultOrder;
-};
-```
+3. **When Refi is OFF, calculations treat loan as 0**:
+   - `effectiveLoanAmount` becomes `refiEnabled ? loanAmount : 0`
+   - Cash-on-Cash ROI calculates as all-cash deal
+   - Monthly mortgage = 0
 
-This ensures:
-- Existing user tab reordering is preserved
-- Newly added tabs (like `cashflow`) appear automatically
-- Removed tabs are cleaned up
+4. **Move the Rehab Budget section** up to sit right after Property Details (before Expenses)
+
+5. **Reorder sections**: Property Details -> Rehab Budget -> Expenses -> Refi (collapsible) -> Results -> Breakdowns -> Summary
 
 ### Files to Change
-- **`src/hooks/useProfile.ts`** -- update `getDetailTabOrder` to merge missing tabs from the default order into the saved order
+- **`src/components/project/CashFlowCalculator.tsx`** -- reorder sections, add refi toggle with Collapsible wrapper, update `effectiveLoanAmount` to respect toggle state
