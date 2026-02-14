@@ -1,36 +1,48 @@
 
-## Split Financials into Two Tabs for Rental Projects
 
-### What Changes
-For **rental projects only**, the single "Financials" tab will be split into two separate tabs:
-- **Financials** -- the Profit Calculator (Purchase Price, ARV, Transaction/Holding costs, profit breakdown)
-- **Cash Flow** -- the Cash Flow / Refi Calculator (rent, refi details, expenses, cash-on-cash ROI)
+## Fix Missing "Cash Flow" Tab for Rental Projects
 
-Non-rental projects (Fix & Flip, New Construction, Wholesaling) remain unchanged with a single "Financials" tab showing the Profit Calculator.
+### Problem
+The "Cash Flow" tab doesn't appear because the user has a **previously saved tab order** for rental projects in their profile. That saved order was created before `cashflow` was added, so it doesn't include it. The `getDetailTabOrder` function returns the saved array as-is without merging in newly added tabs.
 
-### Technical Changes
+### Root Cause
+In `src/hooks/useProfile.ts` line 113, when a saved tab order exists, it's returned directly:
+```typescript
+if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+```
+This skips any tabs that were added to `DEFAULT_DETAIL_TAB_ORDER` after the user saved their preference.
 
-**`src/pages/ProjectDetail.tsx`**
+### Fix
 
-1. **Add "cashflow" to the tab system**:
-   - Add `cashflow` to `DEFAULT_DETAIL_TAB_ORDER` (after `financials`)
-   - Add `cashflow: 'Cash Flow'` to `TAB_LABELS`
+**`src/hooks/useProfile.ts`** (line 111-114):
 
-2. **Conditionally show/hide tabs based on project type**:
-   - When rendering `TabsTrigger` items, skip `cashflow` for non-rental projects
-   - For rental projects, show both `financials` and `cashflow` tabs
+Update `getDetailTabOrder` to merge any missing tabs from `defaultOrder` into the saved order. New tabs will be inserted at the position they occupy in the default order:
 
-3. **Update the "financials" TabsContent**:
-   - Currently it conditionally renders `CashFlowCalculator` for rentals vs `ProfitCalculator` for others
-   - Change it to **always** render `ProfitCalculator` (the rental version will also get the profit calculator here)
-   - Move `ExportReports` to stay within this tab
+```typescript
+const getDetailTabOrder = (projectType: string, defaultOrder: string[]): string[] => {
+  const saved = (profile?.detail_tab_order as Record<string, string[]> | null)?.[projectType];
+  if (saved && Array.isArray(saved) && saved.length > 0) {
+    // Merge any new tabs from defaultOrder that aren't in saved
+    const merged = [...saved];
+    for (const tab of defaultOrder) {
+      if (!merged.includes(tab)) {
+        // Insert at its default position (or end)
+        const defaultIdx = defaultOrder.indexOf(tab);
+        const insertAt = Math.min(defaultIdx, merged.length);
+        merged.splice(insertAt, 0, tab);
+      }
+    }
+    // Also remove any tabs that no longer exist in defaultOrder
+    return merged.filter(tab => defaultOrder.includes(tab));
+  }
+  return defaultOrder;
+};
+```
 
-4. **Add a new "cashflow" TabsContent**:
-   - Render the `CashFlowCalculator` component (currently shown for rentals under financials)
-   - Only relevant for rental projects
+This ensures:
+- Existing user tab reordering is preserved
+- Newly added tabs (like `cashflow`) appear automatically
+- Removed tabs are cleaned up
 
-5. **Filter tab order in `effectiveTabOrder` memo**:
-   - For non-rental projects, filter out `cashflow` from the order
-   - For rental projects, include both `financials` and `cashflow`
-
-This approach keeps the tab reordering system working correctly since both tabs exist in the order array and labels map.
+### Files to Change
+- **`src/hooks/useProfile.ts`** -- update `getDetailTabOrder` to merge missing tabs from the default order into the saved order
