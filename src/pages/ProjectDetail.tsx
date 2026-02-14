@@ -144,7 +144,7 @@ interface DBDailyLog {
   contractors_on_site: string[] | null;
 }
 
-const DEFAULT_DETAIL_TAB_ORDER = ['schedule', 'tasks', 'documents', 'photos', 'logs', 'financials', 'loan', 'team', 'info', 'procurement'];
+const DEFAULT_DETAIL_TAB_ORDER = ['schedule', 'tasks', 'documents', 'photos', 'logs', 'financials', 'cashflow', 'loan', 'team', 'info', 'procurement'];
 
 const TAB_LABELS: Record<string, string> = {
   schedule: 'Schedule',
@@ -153,6 +153,7 @@ const TAB_LABELS: Record<string, string> = {
   photos: 'Photos',
   logs: 'Logs',
   financials: 'Financials',
+  cashflow: 'Cash Flow',
   loan: 'Loan',
   team: 'Team',
   info: 'Info',
@@ -470,7 +471,12 @@ export default function ProjectDetail() {
 
   const effectiveTabOrder = useMemo(() => {
     if (!project) return DEFAULT_DETAIL_TAB_ORDER;
-    return getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
+    const order = getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
+    // Hide cashflow tab for non-rental projects
+    if (project.project_type !== 'rental') {
+      return order.filter(tab => tab !== 'cashflow');
+    }
+    return order;
   }, [project?.project_type, profile?.detail_tab_order]);
 
   const moveDetailTab = (index: number, direction: 'up' | 'down') => {
@@ -866,7 +872,41 @@ export default function ProjectDetail() {
           </TabsContent>
 
           <TabsContent value="financials" className="space-y-6">
-            {isRental ? (
+            <ProfitCalculator 
+              projectId={id!}
+              totalBudget={totalBudget}
+              totalSpent={constructionSpent}
+              initialPurchasePrice={project.purchase_price || 0}
+              initialArv={project.arv || 0}
+              initialClosingPct={(project as any).closing_costs_pct ?? defaultPreset?.closingPct ?? 6}
+              initialHoldingPct={(project as any).holding_costs_pct ?? defaultPreset?.holdingPct ?? 3}
+              initialClosingMode={(project as any).closing_costs_mode ?? 'pct'}
+              initialHoldingMode={(project as any).holding_costs_mode ?? 'pct'}
+              initialClosingFlat={(project as any).closing_costs_flat ?? defaultPreset?.closingFlat ?? 0}
+              initialHoldingFlat={(project as any).holding_costs_flat ?? defaultPreset?.holdingFlat ?? 0}
+              transactionCostActual={transactionCostActual}
+              holdingCostActual={holdingCostActual}
+              onSaved={() => fetchProjectData(false)}
+            />
+            
+            <ExportReports 
+              project={{
+                id: project.id,
+                name: project.name,
+                address: project.address,
+                total_budget: totalBudget,
+                start_date: project.start_date,
+                status: project.status,
+                purchase_price: project.purchase_price,
+                arv: project.arv,
+              }}
+              categories={categories}
+              expenses={allExpensesForExport}
+            />
+          </TabsContent>
+
+          {isRental && (
+            <TabsContent value="cashflow" className="space-y-6">
               <CashFlowCalculator 
                 projectId={id!}
                 totalBudget={totalBudget}
@@ -886,40 +926,8 @@ export default function ProjectDetail() {
                 initialRehabOverride={(project as any).cashflow_rehab_override ?? null}
                 onSaved={() => fetchProjectData(false)}
               />
-            ) : (
-              <ProfitCalculator 
-                projectId={id!}
-                totalBudget={totalBudget}
-                totalSpent={constructionSpent}
-                initialPurchasePrice={project.purchase_price || 0}
-                initialArv={project.arv || 0}
-                initialClosingPct={(project as any).closing_costs_pct ?? defaultPreset?.closingPct ?? 6}
-                initialHoldingPct={(project as any).holding_costs_pct ?? defaultPreset?.holdingPct ?? 3}
-                initialClosingMode={(project as any).closing_costs_mode ?? 'pct'}
-                initialHoldingMode={(project as any).holding_costs_mode ?? 'pct'}
-                initialClosingFlat={(project as any).closing_costs_flat ?? defaultPreset?.closingFlat ?? 0}
-                initialHoldingFlat={(project as any).holding_costs_flat ?? defaultPreset?.holdingFlat ?? 0}
-                transactionCostActual={transactionCostActual}
-                holdingCostActual={holdingCostActual}
-                onSaved={() => fetchProjectData(false)}
-              />
-            )}
-            
-            <ExportReports 
-              project={{
-                id: project.id,
-                name: project.name,
-                address: project.address,
-                total_budget: totalBudget,
-                start_date: project.start_date,
-                status: project.status,
-                purchase_price: project.purchase_price,
-                arv: project.arv,
-              }}
-              categories={categories}
-              expenses={allExpensesForExport}
-            />
-          </TabsContent>
+            </TabsContent>
+          )}
 
           <TabsContent value="loan" className="space-y-6">
               <HardMoneyLoanCalculator
