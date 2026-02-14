@@ -1,34 +1,30 @@
 
-## Live-Update Profit Breakdown When Preferences Change
+
+## Multi-Select Type Filter Pills
 
 ### Problem
-When you toggle checkboxes in the Dashboard Preferences card at the bottom of the Profit Breakdown page, the table and filters above don't update until you navigate away and back. The preferences are saved to localStorage immediately, but the page only reads them once on mount.
+The type filter pills (Fix & Flip, Rental, etc.) currently work as single-select -- you can only pick one type or "All Types". Users want to select multiple types at once (e.g., Fix & Flip + Rental).
 
 ### Fix
 
 **`src/pages/ProfitBreakdown.tsx`**
 
-Add a `useEffect` that listens for the `'settings-changed'` event (already dispatched by the DashboardPreferencesCard on every toggle). When fired, re-read localStorage, re-derive the filter states (statusFilter, typeFilter, preferredTypes), and recompute the timeline range.
+Replace the single `typeFilter` state with a `Set`-based `selectedTypes` state that supports toggling multiple types on/off:
 
-Specific changes:
+1. **Replace `typeFilter` with `selectedTypes: Set<string>`** -- initialized from dashboard preferences (e.g., 3 of 4 types checked = those 3 in the set; all or none = all 4 in the set). Remove the `preferredTypes` state since `selectedTypes` now handles multi-select natively.
 
-1. Convert `timelineRange` from a one-time computed value to reactive state so it updates when preferences change.
+2. **Update `handleTypeFilter`**:
+   - Clicking "All Types" selects all 4 types
+   - Clicking an individual type toggles it in/out of the set
+   - If toggling would empty the set, re-select all instead (prevent zero selection)
 
-2. Add a `useEffect` listener for the `'settings-changed'` window event that:
-   - Re-reads `dashboard-profit-filters` from localStorage
-   - Calls `setStatusFilter(deriveInitialStatus(newFilters))`
-   - Calls `setTypeFilter(deriveInitialType(newFilters))`
-   - Updates `preferredTypes` for multi-select scenarios
-   - Updates `timelineRange` state with the new timeline/custom dates
+3. **Update pill highlighting**:
+   - "All Types" is highlighted when all 4 types are selected
+   - Individual pills are highlighted when they're in the set
 
-3. Since `timelineRange` affects which projects appear in `configured`/`unconfigured` (it filters during `fetchData`), the timeline portion needs to move from the fetch phase into the `applyFilters` phase -- or, simpler: re-run `fetchData` when timeline changes. The cleanest approach is to move timeline filtering out of `fetchData` and into `applyFilters`/`useMemo` so all filtering is reactive without needing a re-fetch.
+4. **Simplify `applyFilters`**: check if `item.projectType` is in `selectedTypes` (no more `preferredTypes` vs `typeFilter` branching)
 
-### Technical Details
-
-- Move `isDateInRange` check from inside `fetchData` (line 178) into the `applyFilters` function, adding `startDate` to the project interfaces so it can be filtered reactively
-- Add `startDate` field to both `ProjectProfit` and `UnconfiguredProject` interfaces
-- Store `timelineRange` in state instead of computing once
-- Listen for `'settings-changed'` event to re-read preferences and update all filter state
+5. **Update the settings-changed listener**: derive `selectedTypes` directly from preferences array instead of the old `typeFilter`/`preferredTypes` split
 
 ### Files to Change
-- **`src/pages/ProfitBreakdown.tsx`** -- add settings-changed listener, move timeline filtering to be reactive, convert timelineRange to state
+- **`src/pages/ProfitBreakdown.tsx`** -- replace single-select type filter with multi-select toggle set
