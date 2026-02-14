@@ -23,6 +23,8 @@ interface ProjectProfit {
   costSource: 'budget' | 'actual';
   loanCosts: number;
   monthlyCosts: number;
+  transactionCosts: number;
+  holdingCosts: number;
   profit: number;
   status: string;
   projectType: string;
@@ -100,11 +102,15 @@ export default function ProfitBreakdown() {
         }
       });
 
-      // Sum monthly costs per project
+      // Sum monthly and transaction costs per project
       const monthlyByProject: Record<string, number> = {};
+      const transactionByProject: Record<string, number> = {};
       expenses.forEach((e) => {
         if (e.expense_type === 'monthly' && e.project_id) {
           monthlyByProject[e.project_id] = (monthlyByProject[e.project_id] || 0) + Number(e.amount);
+        }
+        if (e.cost_type === 'transaction' && e.project_id) {
+          transactionByProject[e.project_id] = (transactionByProject[e.project_id] || 0) + Number(e.amount);
         }
       });
 
@@ -152,15 +158,33 @@ export default function ProfitBreakdown() {
         const projectCats = categories.filter((c) => c.project_id === p.id);
         const plannedBudget = projectCats.reduce((s, c) => s + Number(c.estimated_budget), 0);
         const constructionSpent = projectCats.reduce((s, c) => s + (constructionByCategory[c.id] || 0), 0);
-        const costBasis = Math.max(constructionSpent, plannedBudget);
-        const costSource = constructionSpent > plannedBudget ? 'actual' : 'budget';
+        const costBasis = p.status === 'complete' ? constructionSpent : Math.max(constructionSpent, plannedBudget);
+        const costSource = p.status === 'complete' ? 'actual' as const : (constructionSpent > plannedBudget ? 'actual' as const : 'budget' as const);
         const loanCosts = loansByProject[p.id] || 0;
         const monthlyCosts = monthlyByProject[p.id] || 0;
-        const profit = arv - purchasePrice - costBasis;
+
+        // Transaction costs (closing costs) — same logic as ProjectCard
+        const closingMode = p.closing_costs_mode || 'pct';
+        const transactionCosts = closingMode === 'actual'
+          ? (transactionByProject[p.id] || 0)
+          : closingMode === 'flat'
+            ? (p.closing_costs_flat ?? 0)
+            : arv * ((p.closing_costs_pct ?? 6) / 100);
+
+        // Holding costs — same logic as ProjectCard
+        const holdingMode = p.holding_costs_mode || 'pct';
+        const holdingCosts = holdingMode === 'actual'
+          ? (monthlyByProject[p.id] || 0)
+          : holdingMode === 'flat'
+            ? (p.holding_costs_flat ?? 0)
+            : purchasePrice * ((p.holding_costs_pct ?? 3) / 100);
+
+        const profit = arv - purchasePrice - costBasis - transactionCosts - holdingCosts;
 
         configuredList.push({
           id: p.id, name: p.name, arv, purchasePrice, plannedBudget, actualSpent: constructionSpent,
-          costBasis, costSource, loanCosts, monthlyCosts, profit, status: p.status, projectType: p.project_type,
+          costBasis, costSource, loanCosts, monthlyCosts, transactionCosts, holdingCosts,
+          profit, status: p.status, projectType: p.project_type,
         });
       });
 
@@ -194,6 +218,8 @@ export default function ProfitBreakdown() {
   const totalCost = filteredConfigured.reduce((s, p) => s + p.costBasis, 0);
   const totalLoan = filteredConfigured.reduce((s, p) => s + p.loanCosts, 0);
   const totalMonthly = filteredConfigured.reduce((s, p) => s + p.monthlyCosts, 0);
+  const totalTransaction = filteredConfigured.reduce((s, p) => s + p.transactionCosts, 0);
+  const totalHolding = filteredConfigured.reduce((s, p) => s + p.holdingCosts, 0);
 
   if (isLoading) {
     return (
@@ -264,8 +290,8 @@ export default function ProfitBreakdown() {
                 <TableHead className="text-center">ARV</TableHead>
                 <TableHead className="text-center">Purchase Price</TableHead>
                 <TableHead className="text-center">Construction Costs</TableHead>
-                <TableHead className="text-center">Loan Costs</TableHead>
-                <TableHead className="text-center">Monthly Costs</TableHead>
+                <TableHead className="text-center">Transaction Costs</TableHead>
+                <TableHead className="text-center">Holding Costs</TableHead>
                 <TableHead className="text-center">Profit</TableHead>
               </TableRow>
             </TableHeader>
@@ -279,8 +305,8 @@ export default function ProfitBreakdown() {
                     <span>{fmt(p.costBasis)}</span>
                     <span className="ml-1.5 text-xs text-muted-foreground">({p.costSource})</span>
                   </TableCell>
-                  <TableCell className="text-center">{fmt(p.loanCosts)}</TableCell>
-                  <TableCell className="text-center">{fmt(p.monthlyCosts)}</TableCell>
+                  <TableCell className="text-center">{fmt(p.transactionCosts)}</TableCell>
+                  <TableCell className="text-center">{fmt(p.holdingCosts)}</TableCell>
                   <TableCell className={`text-center font-semibold ${p.profit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
                     {fmt(p.profit)}
                   </TableCell>
@@ -293,8 +319,8 @@ export default function ProfitBreakdown() {
                 <TableCell className="text-center font-semibold">{fmt(totalARV)}</TableCell>
                 <TableCell className="text-center font-semibold">{fmt(totalPurchase)}</TableCell>
                 <TableCell className="text-center font-semibold">{fmt(totalCost)}</TableCell>
-                <TableCell className="text-center font-semibold">{fmt(totalLoan)}</TableCell>
-                <TableCell className="text-center font-semibold">{fmt(totalMonthly)}</TableCell>
+                <TableCell className="text-center font-semibold">{fmt(totalTransaction)}</TableCell>
+                <TableCell className="text-center font-semibold">{fmt(totalHolding)}</TableCell>
                 <TableCell className={`text-center font-bold ${totalProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
                   {fmt(totalProfit)}
                 </TableCell>
