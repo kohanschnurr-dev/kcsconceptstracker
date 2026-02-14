@@ -291,8 +291,25 @@ export default function Index() {
     const purchasePrice = (p as any).purchasePrice || 0;
     const plannedBudget = p.totalBudget;
     const constructionSpent = (p as any).constructionSpent || 0;
-    const costBasis = Math.max(constructionSpent, plannedBudget);
-    return sum + (arv - purchasePrice - costBasis);
+    const costBasis = p.status === 'complete'
+      ? constructionSpent
+      : Math.max(constructionSpent, plannedBudget);
+
+    const closingMode = (p as any).closingCostsMode || 'pct';
+    const transactionCosts = closingMode === 'actual'
+      ? ((p as any).transactionCostActual || 0)
+      : closingMode === 'flat'
+        ? ((p as any).closingCostsFlat ?? 0)
+        : arv * (((p as any).closingCostsPct ?? 6) / 100);
+
+    const holdingMode = (p as any).holdingCostsMode || 'pct';
+    const holdingCosts = holdingMode === 'actual'
+      ? ((p as any).holdingCostActual || 0)
+      : holdingMode === 'flat'
+        ? ((p as any).holdingCostsFlat ?? 0)
+        : purchasePrice * (((p as any).holdingCostsPct ?? 3) / 100);
+
+    return sum + (arv - purchasePrice - costBasis - transactionCosts - holdingCosts);
   }, 0);
 
   // This month stats - include both regular expenses and QuickBooks imported expenses
