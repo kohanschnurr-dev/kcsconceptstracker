@@ -1,36 +1,26 @@
 
 
-## Align Profit Breakdown Page with Financials Tab Logic
+## Fix: Projects Not Showing in Quick Log Expense Modal
 
-### Problem
-The Profit Breakdown table (`/profit`) calculates profit as `ARV - Purchase Price - MAX(budget, actual)` without factoring in Transaction Costs or Holding Costs, and without using actual spent for completed projects. This is inconsistent with the ProjectCard and Financials tab.
+### Root Cause
+The `ProjectAutocomplete` component defines its own internal `Project` interface that expects `project_type` (snake_case), but the app's `Project` type uses `projectType` (camelCase). When projects are passed in, the grouping logic looks for `project_type` on each project object, finds `undefined`, and every group ends up empty -- resulting in "No projects found."
 
-### Changes
+This affects both the Expenses page and the MainLayout (sidebar quick-add) modals.
 
-**`src/pages/ProfitBreakdown.tsx`**
+### Fix
 
-1. **Add transaction/holding expense accumulators** alongside existing monthly/construction accumulators:
-   - Sum expenses with `cost_type = 'transaction'` per project
-   - Sum expenses with `cost_type = 'monthly'` per project (already done for display, but needed for "actual" mode)
+**`src/components/ProjectAutocomplete.tsx`**
 
-2. **Read each project's cost mode settings** from the DB row (`closing_costs_mode`, `closing_costs_pct`, `closing_costs_flat`, `holding_costs_mode`, `holding_costs_pct`, `holding_costs_flat`)
+Update the internal `Project` interface to accept both conventions, and update the grouping logic to check for either field:
 
-3. **Compute transaction and holding costs per project** using the same mode logic as ProjectCard:
-   - `pct`: % of ARV (closing) or % of Purchase Price (holding)
-   - `flat`: flat dollar amount
-   - `actual`: sum of matching expenses
+1. Change the interface property from `project_type?: string` to `projectType?: string` (matching the app-wide `Project` type)
+2. Update the grouping filter (line 83) from:
+   ```ts
+   projects: filteredProjects.filter(p => p.project_type === group.type)
+   ```
+   to:
+   ```ts
+   projects: filteredProjects.filter(p => p.projectType === group.type)
+   ```
 
-4. **Use actual spent for completed projects**: Change `costBasis` from always `MAX(budget, actual)` to using just `constructionSpent` when `status === 'complete'`
-
-5. **Update profit formula**: `ARV - Purchase Price - costBasis - transactionCosts - holdingCosts`
-
-6. **Add `transactionCosts` and `holdingCosts` fields** to the `ProjectProfit` interface so the table can display them if desired
-
-### Updated Profit Logic
-```text
-Active:    profit = ARV - PP - MAX(budget, constructionSpent) - transactionCosts - holdingCosts
-Complete:  profit = ARV - PP - constructionSpent - transactionCosts - holdingCosts
-```
-
-The table columns (Loan Costs, Monthly Costs) remain for display. The new transaction and holding costs will be factored into the Profit column without adding extra columns, keeping the table clean and matching the screenshot layout.
-
+This single file change fixes the dropdown everywhere it's used (Expenses page, MainLayout sidebar, Business Expenses, etc.).
