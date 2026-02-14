@@ -110,7 +110,16 @@ export function useProfile() {
 
   const getDetailTabOrder = (projectType: string, defaultOrder: string[]): string[] => {
     const saved = (profile?.detail_tab_order as Record<string, string[]> | null)?.[projectType];
-    if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+    if (saved && Array.isArray(saved) && saved.length > 0) {
+      const merged = [...saved];
+      for (const tab of defaultOrder) {
+        if (!merged.includes(tab)) {
+          const defaultIdx = defaultOrder.indexOf(tab);
+          merged.splice(Math.min(defaultIdx, merged.length), 0, tab);
+        }
+      }
+      return merged.filter(tab => defaultOrder.includes(tab));
+    }
     return defaultOrder;
   };
 
