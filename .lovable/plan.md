@@ -1,28 +1,43 @@
 
+## Factor Transaction and Holding Costs into Project Card Profit
 
-## Fix Profit Display on Project Cards (Projects Page)
+### What Changes
+The Profit value on project cards currently only calculates `ARV - Purchase Price - MAX(Budget, ConstructionSpent)`. It needs to also subtract Transaction Costs and Holding Costs, using each project's saved cost parameters (mode, percentage, flat amount, or actual expenses).
 
-### Problem
-The Projects page (`/projects`) is missing the data needed to display profit on project cards:
-1. It doesn't fetch `arv` or `purchase_price` from the database when building Project objects
-2. It doesn't compute `constructionSpent` (construction-only expenses) per project
-3. Without these, every project card on the Projects page shows a dash for profit
+### How It Works
+Each project stores its cost configuration:
+- **Mode**: `pct` (percentage), `flat` (dollar amount), or `actual` (from expenses)
+- **Parameters**: percentage values, flat amounts
 
-The Dashboard (Index.tsx) already does this correctly -- the Projects page needs the same treatment.
+The card will compute costs the same way the Profit Calculator does:
+- Transaction Costs: based on mode -- `% of ARV`, flat `$`, or actual sum of `cost_type = 'transaction'` expenses
+- Holding Costs: based on mode -- `% of Purchase Price`, flat `$`, or actual sum of `cost_type = 'monthly'` expenses
 
 ### Technical Changes
 
-**`src/pages/Projects.tsx`** (lines 78-136):
+**1. `src/types/index.ts`** -- Add new optional fields to the `Project` interface:
+- `closingCostsPct?: number`
+- `closingCostsMode?: string`
+- `closingCostsFlat?: number`
+- `holdingCostsPct?: number`
+- `holdingCostsMode?: string`
+- `holdingCostsFlat?: number`
+- `transactionCostActual?: number`
+- `holdingCostActual?: number`
 
-1. Update the expenses query to also fetch `project_id` and `cost_type` fields (currently only fetches `category_id, amount`)
-2. Add construction-only expense aggregation per project (same pattern as Index.tsx)
-3. Add `arv`, `purchasePrice`, and `constructionSpent` to the project transform (lines 113-136)
+**2. `src/pages/Index.tsx`** -- In the project transform:
+- Add per-project accumulators for `cost_type = 'transaction'` and `cost_type = 'monthly'` expenses (similar to the existing `constructionByProject`)
+- Map the new cost fields from the DB columns into the Project object
 
-Specifically:
-- Change expenses select from `'category_id, amount'` to `'category_id, amount, project_id, cost_type'`
-- Change QB expenses select to also include `'project_id, cost_type'`
-- Add a `constructionByProject` accumulator that sums expenses where `cost_type` is null or `'construction'`
-- Map `arv: p.arv ?? 0` and `purchasePrice: p.purchase_price ?? 0` in the project transform
-- Map `constructionSpent: constructionByProject[p.id] || 0`
+**3. `src/pages/Projects.tsx`** -- Same changes as Index.tsx:
+- Add transaction/holding expense accumulators per project
+- Map the cost fields into the Project object
 
-No other files need changes -- the ProjectCard component already has the profit display logic.
+**4. `src/components/dashboard/ProjectCard.tsx`** -- Update profit calculation:
+- Compute `closingCosts` and `holdingCosts` using the same mode logic as ProfitCalculator
+- Subtract both from profit: `ARV - Purchase Price - rehabBasis - closingCosts - holdingCosts`
+
+```text
+Current:  profit = ARV - PP - MAX(budget, constructionSpent)
+Updated:  profit = ARV - PP - MAX(budget, constructionSpent) - transactionCosts - holdingCosts
+```
