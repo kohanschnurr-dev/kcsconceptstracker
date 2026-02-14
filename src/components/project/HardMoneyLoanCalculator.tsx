@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, TrendingDown, Clock, Package, Plus, Pencil, Trash2, Star, ChevronDown, ChevronUp, MoreVertical, Settings, CalendarClock, RotateCcw, CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { parseDateString } from '@/lib/dateUtils';
@@ -112,7 +113,7 @@ export function HardMoneyLoanCalculator({
   const [editablePurchasePrice, setEditablePurchasePrice] = useState(purchasePrice);
   
   // Default loan amount to 75% of purchase price if not set
-  const defaultLoanAmount = initialLoanAmount || (editablePurchasePrice * 0.75);
+  const defaultLoanAmount = initialLoanAmount ?? (editablePurchasePrice * 0.75);
   const defaultClosingCosts = initialClosingCosts ?? (editablePurchasePrice * 0.02);
   
   const [loanAmount, setLoanAmount] = useState(defaultLoanAmount);
@@ -178,7 +179,7 @@ export function HardMoneyLoanCalculator({
   }, [purchasePrice]);
 
   useEffect(() => {
-    setLoanAmount(initialLoanAmount || (editablePurchasePrice * 0.75));
+    setLoanAmount(initialLoanAmount ?? (editablePurchasePrice * 0.75));
     setInterestRate(initialInterestRate);
     setLoanTermMonths(initialLoanTermMonths);
     setPoints(initialPoints);
@@ -241,6 +242,8 @@ export function HardMoneyLoanCalculator({
     fetchPresets();
   }, [initialLoanAmount, editablePurchasePrice]);
 
+  const queryClient = useQueryClient();
+
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase
@@ -260,6 +263,7 @@ export function HardMoneyLoanCalculator({
       console.error(error);
     } else {
       toast.success('Loan details saved');
+      await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     }
     setSaving(false);
   };
