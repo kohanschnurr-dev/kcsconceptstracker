@@ -55,6 +55,7 @@ interface ProjectProfit {
   profit: number;
   status: string;
   projectType: string;
+  startDate?: string;
 }
 
 interface UnconfiguredProject {
@@ -62,6 +63,7 @@ interface UnconfiguredProject {
   name: string;
   status: string;
   projectType: string;
+  startDate?: string;
 }
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
@@ -97,7 +99,29 @@ export default function ProfitBreakdown() {
     return t;
   });
 
-  const timelineRange = resolveTimeline(dashFilters.timeline || 'all', dashFilters.timelineStart, dashFilters.timelineEnd);
+  const [timelineRange, setTimelineRange] = useState(() =>
+    resolveTimeline(dashFilters.timeline || 'all', dashFilters.timelineStart, dashFilters.timelineEnd)
+  );
+
+  // Listen for settings-changed events to live-update filters
+  useEffect(() => {
+    const handleSettingsChanged = () => {
+      const newFilters = readDashFilters();
+      setStatusFilter(deriveInitialStatus(newFilters));
+      setTypeFilter(deriveInitialType(newFilters));
+      const t = newFilters.types;
+      if (!t || t.length === 0 || t.length === ALL_TYPES.length) {
+        setPreferredTypes(null);
+      } else if (t.length === 1) {
+        setPreferredTypes(null);
+      } else {
+        setPreferredTypes(t);
+      }
+      setTimelineRange(resolveTimeline(newFilters.timeline || 'all', newFilters.timelineStart, newFilters.timelineEnd));
+    };
+    window.addEventListener('settings-changed', handleSettingsChanged);
+    return () => window.removeEventListener('settings-changed', handleSettingsChanged);
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -174,13 +198,8 @@ export default function ProfitBreakdown() {
         const arv = p.arv ?? 0;
         const purchasePrice = p.purchase_price ?? 0;
 
-        // Apply timeline filter based on start_date
-        if (!isDateInRange(p.start_date, timelineRange)) {
-          return;
-        }
-
         if (arv <= 0) {
-          unconfiguredList.push({ id: p.id, name: p.name, status: p.status, projectType: p.project_type });
+          unconfiguredList.push({ id: p.id, name: p.name, status: p.status, projectType: p.project_type, startDate: p.start_date });
           return;
         }
 
@@ -213,7 +232,7 @@ export default function ProfitBreakdown() {
         configuredList.push({
           id: p.id, name: p.name, arv, purchasePrice, plannedBudget, actualSpent: constructionSpent,
           costBasis, costSource, loanCosts, monthlyCosts, transactionCosts, holdingCosts,
-          profit, status: p.status, projectType: p.project_type,
+          profit, status: p.status, projectType: p.project_type, startDate: p.start_date,
         });
       });
 
@@ -232,21 +251,21 @@ export default function ProfitBreakdown() {
     setPreferredTypes(null); // user manually selected, clear preference-based multi-filter
   };
 
-  const applyFilters = <T extends { status: string; projectType: string }>(list: T[]): T[] => {
+  const applyFilters = <T extends { status: string; projectType: string; startDate?: string }>(list: T[]): T[] => {
     return list.filter((item) => {
       if (statusFilter !== 'all' && item.status !== statusFilter) return false;
-      // If preferredTypes is set (from preferences multi-select), use it
       if (preferredTypes) {
         if (!preferredTypes.includes(item.projectType)) return false;
       } else if (typeFilter !== 'all' && item.projectType !== typeFilter) {
         return false;
       }
+      if (!isDateInRange(item.startDate, timelineRange)) return false;
       return true;
     });
   };
 
-  const filteredConfigured = useMemo(() => applyFilters(configured), [configured, statusFilter, typeFilter, preferredTypes]);
-  const filteredUnconfigured = useMemo(() => applyFilters(unconfigured), [unconfigured, statusFilter, typeFilter, preferredTypes]);
+  const filteredConfigured = useMemo(() => applyFilters(configured), [configured, statusFilter, typeFilter, preferredTypes, timelineRange]);
+  const filteredUnconfigured = useMemo(() => applyFilters(unconfigured), [unconfigured, statusFilter, typeFilter, preferredTypes, timelineRange]);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
