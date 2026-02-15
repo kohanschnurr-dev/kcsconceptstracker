@@ -1,50 +1,47 @@
 
-## Add "Delete Project" Feature with Double Confirmation
 
-### Overview
-Add a delete button to the project detail page that requires two confirmation dialogs before permanently removing a project. Any QuickBooks expenses linked to the project get sent back to the pending queue.
+## Fix Loan Calculator: Remove Presets, Simplify Save
 
-### Changes to `src/pages/ProjectDetail.tsx`
+### Problem
+The preset system (built-in presets, user presets, default preset auto-loading, "To Date" auto-override) constantly fights with user-saved values. Every time the component re-renders or props update, effects stomp on what you just saved. The dirty-tracking patches have not been sufficient because there are too many competing effects.
 
-1. **Add a "Delete Project" button** -- Place a red destructive button (with Trash2 icon) in the header area near the status dropdown. Alternatively, add it as a dropdown menu item alongside status options.
+### Solution
+Strip out the entire preset system and simplify the component so that:
+- Values initialize from the project's saved data (props) on mount
+- User edits stay put in local state
+- Clicking Save writes to the database and that's it -- no re-initialization, no auto-overrides
+- The "To Date" term selector remains as a manual button the user can click, not something that auto-fires
 
-2. **Two-step confirmation flow using AlertDialog**:
-   - **Step 1**: "Are you sure you want to delete this project? All project data will be permanently removed. Any categorized expenses will be sent back to the queue."
-   - **Step 2**: "This action cannot be undone. Type the project name to confirm." -- Requires the user to type the project name before the delete button becomes active.
+### Changes to `src/components/project/HardMoneyLoanCalculator.tsx`
 
-3. **Delete handler logic** (executed in order):
-   - **Reset QuickBooks expenses**: Update all `quickbooks_expenses` rows where `project_id = projectId` -- set `project_id = null`, `category_id = null`, `is_imported = false`, and `cost_type = 'construction'` (default). This sends them back to the pending queue.
-   - **Delete the project row**: `DELETE FROM projects WHERE id = projectId`. Because all other related tables (`expenses`, `project_categories`, `daily_logs`, `calendar_events`, `document_folders`, `project_documents`, `project_photos`, `project_info`, `project_milestones`, `project_notes`, `project_vendors`, `project_procurement_items`, `loan_payments`, `tasks`, `receipt_line_items`) have `ON DELETE CASCADE`, they will be automatically cleaned up.
-   - **Navigate to `/projects`** on success with a toast confirmation.
+**1. Remove all preset-related code (~400 lines eliminated):**
+- Remove `BUILT_IN_PRESETS`, `LoanPreset` interface
+- Remove all preset state variables (`userPresets`, `savePresetOpen`, `presetName`, `savingPreset`, `editPresetOpen`, `editingPreset`, `editPresetName`, `editInterestRate`, `editLoanTermMonths`, `editPoints`, `editClosingCostsPercent`, `editInterestOnly`, `updatingPreset`, `deletePresetOpen`, `deletingPreset`, `presetsOpen`)
+- Remove `handleClearDefaultPreset`, `handleSetDefaultPreset`, `handleSavePreset`, `handleDeletePreset`, `handleUpdatePreset`, `loadPreset`, `openEditDialog`
+- Remove the preset-fetch `useEffect` (lines 209-264) -- this is the main culprit that auto-loads defaults and forces "To Date"
+- Remove the entire Collapsible presets panel UI (lines 632-722)
+- Remove the Save Preset dialog, Edit Preset dialog, and Delete Preset AlertDialog (lines 1175-1302)
+- Remove the "Presets" button from the header
 
-4. **New state variables**:
-   - `deleteStep` (0 | 1 | 2) -- 0 = closed, 1 = first confirmation, 2 = type-to-confirm
-   - `deleteConfirmName` (string) -- text input for the name-typing confirmation
-   - `deleting` (boolean) -- loading state during deletion
+**2. Simplify state initialization:**
+- Initialize state from props once on mount using `useState` defaults (already done)
+- Remove `hasUserEdited` ref and `lastSavedValues` ref -- no longer needed
+- Remove the sync `useEffect` (lines 185-206) entirely. State initializes from props via `useState` on mount; after that, only user input or Save changes it
 
-### Technical Detail
+**3. Simplify `handleSave`:**
+- Just save to DB and show toast. Remove `lastSavedValues` tracking
+- After successful save, invalidate the query (keeps parent in sync) but do NOT reset any local state -- local state is already correct since the user just set it
 
-```text
-Delete Flow:
-  [Trash Button] --> AlertDialog Step 1 ("Are you sure?")
-                     --> [Delete] --> AlertDialog Step 2 ("Type project name")
-                                     --> [Confirm] --> Reset QB expenses
-                                                   --> DELETE project (cascades)
-                                                   --> Navigate to /projects
-```
+**4. Keep "To Date" as a manual action only:**
+- The "To Date" button in the term selector stays, but it only fires when the user clicks it -- no auto-selection on mount or after preset load
 
-**SQL operations in the handler:**
-```typescript
-// 1. Reset QB expenses back to queue
-await supabase.from('quickbooks_expenses')
-  .update({ project_id: null, category_id: null, is_imported: false })
-  .eq('project_id', projectId);
-
-// 2. Delete the project (cascades to all child tables)
-await supabase.from('projects')
-  .delete()
-  .eq('id', projectId);
-```
+### What stays the same
+- All calculation logic (monthly payment, total interest, effective APR, etc.)
+- All UI for inputs (loan amount, interest rate, term selector, points, closing costs, interest-only toggle)
+- Rate sensitivity table, payoff timeline, daily interest display
+- Term presets settings (the custom month slots, not loan presets)
+- The Save button behavior
 
 ### Files to Change
-- `src/pages/ProjectDetail.tsx` -- Add delete button, two AlertDialogs, and delete handler
+- `src/components/project/HardMoneyLoanCalculator.tsx` -- Major cleanup removing ~400 lines of preset code and ~30 lines of sync/dirty-tracking logic
+
