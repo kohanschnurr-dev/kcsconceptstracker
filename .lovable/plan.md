@@ -1,47 +1,31 @@
 
 
-## Fix Loan Calculator Save Persistence
+## Fix Loan Calculator Save Persistence (For Real This Time)
 
-### Root Cause
-In `handleSave` (line 268-271), the code sets `hasUserEdited.current = false` and then awaits `queryClient.invalidateQueries`. However, the invalidation triggers a re-render where the `useEffect` (line 184) runs with the **old** prop values (they haven't updated yet from the refetch), resetting the state back to stale values.
+### Root Cause (Multiple Issues)
+
+The previous fix only partially addressed the problem. There are actually **three** things overwriting your saved values:
+
+1. **The preset-fetch effect (line 204-257)** re-runs whenever `initialLoanAmount` changes (which happens after save + query invalidation). It **always** overrides the loan term with "To Date" at lines 244-252, regardless of whether the user just saved. This is the biggest culprit.
+
+2. **`lastSavedValues` only tracks 2 of 6 fields** -- it stores `loanAmount` and `interestRate` but the reset effect also resets `loanTermMonths`, `points`, `closingCosts`, and `interestOnly`. If the comparison fails for any reason, all fields get wiped.
+
+3. **Interest rate changes don't mark as dirty** -- the `onChange` at line 757 calls `setInterestRate()` but never sets `hasUserEdited.current = true`, so the reset effect can overwrite interest rate changes.
 
 ### Fix in `src/components/project/HardMoneyLoanCalculator.tsx`
 
-1. **Keep `hasUserEdited` true until props actually reflect saved values**: Instead of resetting the flag immediately in `handleSave`, store the "last saved" values in a ref. Then in the reset `useEffect`, compare incoming initial props against the saved values — only clear the dirty flag and allow syncing once the props match what was saved.
+**Change 1 -- Mark ALL user edits as dirty**: Add `hasUserEdited.current = true` to every input's onChange handler (interest rate at line 757, points, closing costs, interest-only toggle).
 
-2. **Simpler alternative (preferred)**: Don't reset `hasUserEdited` in `handleSave` at all. Instead, only reset it when the component receives new `initialLoanAmount` / `initialInterestRate` props that match the current local state (meaning the server round-trip completed successfully).
+**Change 2 -- Guard the preset-fetch effect**: Skip the "To Date" override and default preset auto-load when `hasUserEdited.current` is true. This prevents the preset effect from stomping on values after a save.
 
-### Technical Detail
+**Change 3 -- Track all saved fields in `lastSavedValues`**: Expand the ref to include all 6 fields (`loanAmount`, `interestRate`, `loanTermMonths`, `points`, `closingCosts`, `interestOnly`) and compare all of them in the reset effect before clearing the dirty flag.
 
-**Change 1 — `handleSave` (line 268-273):** Remove `hasUserEdited.current = false` from the success block. Instead, store the just-saved values in a ref:
+**Change 4 -- Add "No Preset" option**: Add a "None / Manual" option to the presets list that clears the default preset selection and just keeps whatever values the user has entered manually, without auto-loading any preset on mount.
 
-```typescript
-const lastSavedValues = useRef<{ loanAmount: number; interestRate: number } | null>(null);
-
-// In handleSave success:
-lastSavedValues.current = { loanAmount, interestRate };
-await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-```
-
-**Change 2 — Reset `useEffect` (lines 184-192):** After syncing state from props, check if the incoming values match `lastSavedValues`. If so, clear both `hasUserEdited` and `lastSavedValues`:
-
-```typescript
-useEffect(() => {
-  if (hasUserEdited.current) {
-    // Check if props now reflect our saved values
-    if (lastSavedValues.current &&
-        initialLoanAmount === lastSavedValues.current.loanAmount &&
-        initialInterestRate === lastSavedValues.current.interestRate) {
-      hasUserEdited.current = false;
-      lastSavedValues.current = null;
-    }
-    return;
-  }
-  setLoanAmount(initialLoanAmount ?? (editablePurchasePrice * 0.75));
-  setInterestRate(initialInterestRate);
-  // ... rest of resets
-}, [initialLoanAmount, initialInterestRate, ...]);
-```
-
-This ensures local state is never overwritten until the server-confirmed values arrive via props.
+### Files to Change
+- `src/components/project/HardMoneyLoanCalculator.tsx`
+  - Add `hasUserEdited.current = true` to interest rate, points, closing costs, and interest-only onChange handlers
+  - Guard preset-fetch effect with `hasUserEdited.current` check
+  - Expand `lastSavedValues` to track all 6 loan fields
+  - Add "No Preset / Manual" option in the presets UI
 
