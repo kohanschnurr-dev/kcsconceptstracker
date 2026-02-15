@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Plus, RotateCcw, List, Pencil, Trash2, Check, X, Settings, GripVertical } from 'lucide-react';
+import { MoreHorizontal, Plus, RotateCcw, List, Pencil, Trash2, Check, X, Settings, GripVertical, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCustomCategories, type CategoryItem } from '@/hooks/useCustomCategories';
 import { CALENDAR_CATEGORIES, CATEGORY_GROUPS, type CategoryGroup } from '@/lib/calendarCategories';
@@ -148,6 +149,86 @@ function CategoryBadge({
   );
 }
 
+function SortableGroupRow({ groupKey, label, isSelected, onSelect }: { groupKey: string; label: string; isSelected: boolean; onSelect: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: groupKey });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent cursor-pointer text-sm"
+      onClick={onSelect}
+    >
+      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none" onClick={e => e.stopPropagation()}>
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+      <span className="flex-1">{label}</span>
+      {isSelected && <Check className="h-3.5 w-3.5 text-primary" />}
+    </div>
+  );
+}
+
+function TradeGroupPopover({ allGroupDefs, selectedTradeGroup, onSelect }: { allGroupDefs: Record<string, { label: string }>; selectedTradeGroup: string; onSelect: (key: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [orderedKeys, setOrderedKeys] = useState<string[]>(() => Object.keys(allGroupDefs));
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  useEffect(() => {
+    setOrderedKeys(Object.keys(getAllGroupDefs()));
+  }, [open]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = orderedKeys.indexOf(active.id as string);
+    const newIndex = orderedKeys.indexOf(over.id as string);
+    const newOrder = arrayMove(orderedKeys, oldIndex, newIndex);
+    setOrderedKeys(newOrder);
+    saveGroupOrder(newOrder);
+  };
+
+  const selectedLabel = allGroupDefs[selectedTradeGroup]?.label ?? selectedTradeGroup;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className="w-[160px] justify-between text-sm font-normal h-10">
+          {selectedLabel}
+          <ChevronDown className="h-4 w-4 opacity-50 ml-auto" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-1" align="start">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={orderedKeys} strategy={verticalListSortingStrategy}>
+            {orderedKeys.map(key => {
+              const def = allGroupDefs[key];
+              if (!def) return null;
+              return (
+                <SortableGroupRow
+                  key={key}
+                  groupKey={key}
+                  label={def.label}
+                  isSelected={key === selectedTradeGroup}
+                  onSelect={() => { onSelect(key); setOpen(false); }}
+                />
+              );
+            })}
+          </SortableContext>
+        </DndContext>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function CategorySection({
   items,
   onAdd,
@@ -285,16 +366,11 @@ function CategorySection({
           </Select>
         )}
         {tradeGrouped && (
-          <Select value={selectedTradeGroup} onValueChange={setSelectedTradeGroup}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(allGroupDefs).map(([key, def]) => (
-                <SelectItem key={key} value={key}>{def.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <TradeGroupPopover
+            allGroupDefs={allGroupDefs}
+            selectedTradeGroup={selectedTradeGroup}
+            onSelect={setSelectedTradeGroup}
+          />
         )}
         <Input
           value={newLabel}
