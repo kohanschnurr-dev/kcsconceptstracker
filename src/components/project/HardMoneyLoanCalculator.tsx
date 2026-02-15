@@ -179,6 +179,9 @@ export function HardMoneyLoanCalculator({
     const termYears = loanTermMonths / 12;
     const effectiveAPR = termYears > 0 ? ((totalLoanCost / loanAmount) / termYears) * 100 : 0;
     
+    const monthlyInterestPortion = loanAmount * monthlyRate;
+    const monthlyPrincipal = interestOnly ? 0 : monthlyPayment - monthlyInterestPortion;
+
     return {
       monthlyPayment,
       dailyInterest,
@@ -186,6 +189,8 @@ export function HardMoneyLoanCalculator({
       pointsCost,
       totalLoanCost,
       effectiveAPR,
+      monthlyInterestPortion,
+      monthlyPrincipal,
     };
   }, [loanAmount, interestRate, loanTermMonths, points, closingCosts, interestOnly, termDaysOverride]);
 
@@ -614,6 +619,11 @@ export function HardMoneyLoanCalculator({
                 <p className="text-lg font-bold font-mono text-primary">
                   {formatCurrency(calculations.monthlyPayment)}
                 </p>
+                {!interestOnly && (
+                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                    P: {formatCurrency(calculations.monthlyPrincipal)}  |  I: {formatCurrency(calculations.monthlyInterestPortion)}
+                  </p>
+                )}
               </div>
               <div className="p-3 rounded-sm bg-warning/10 border border-warning/30 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Total Interest</p>
