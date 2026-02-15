@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calculator, DollarSign, TrendingUp, Save, Loader2, Home, Percent, Building, Settings2 } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, Save, Loader2, Home, Percent, Building, Settings2, ArrowDownToLine } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,9 @@ interface CashFlowCalculatorProps {
   initialMonthlyMaintenance?: number;
   initialManagementRate?: number;
   initialRehabOverride?: number | null;
+  hmLoanAmount?: number;
+  hmInterestRate?: number;
+  hmLoanTermMonths?: number;
   onSaved?: () => void;
 }
 
@@ -47,6 +50,9 @@ export function CashFlowCalculator({
   initialMonthlyMaintenance = 0,
   initialManagementRate = 10,
   initialRehabOverride,
+  hmLoanAmount = 0,
+  hmInterestRate = 0,
+  hmLoanTermMonths = 0,
   onSaved,
 }: CashFlowCalculatorProps) {
   const [purchasePrice, setPurchasePrice] = useState(initialPurchasePrice);
@@ -474,6 +480,24 @@ export function CashFlowCalculator({
               onCheckedChange={setRefiEnabled}
               className="scale-75"
             />
+            {hmLoanAmount > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => {
+                  setLoanAmount(hmLoanAmount);
+                  setInterestRate(hmInterestRate);
+                  setLoanTermMonths(hmLoanTermMonths);
+                  if (!refiEnabled) setRefiEnabled(true);
+                  toast.success('Loan details imported from Loan tab');
+                }}
+              >
+                <ArrowDownToLine className="h-3 w-3" />
+                Use Loan Tab
+              </Button>
+            )}
           </div>
           <Collapsible open={refiEnabled}>
             <CollapsibleContent>

@@ -113,6 +113,9 @@ interface DBProject {
   monthly_maintenance?: number;
   management_rate?: number;
   completed_date?: string | null;
+  hm_loan_amount?: number | null;
+  hm_interest_rate?: number | null;
+  hm_loan_term_months?: number | null;
 }
 
 interface DBCategory {
@@ -1016,6 +1019,9 @@ export default function ProjectDetail() {
                 initialMonthlyMaintenance={project.monthly_maintenance ?? 0}
                 initialManagementRate={project.management_rate ?? 10}
                 initialRehabOverride={(project as any).cashflow_rehab_override ?? null}
+                hmLoanAmount={project.hm_loan_amount || 0}
+                hmInterestRate={project.hm_interest_rate || 0}
+                hmLoanTermMonths={project.hm_loan_term_months || 0}
                 onSaved={() => fetchProjectData(false)}
               />
             </TabsContent>
