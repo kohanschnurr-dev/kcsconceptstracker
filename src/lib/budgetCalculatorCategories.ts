@@ -92,7 +92,15 @@ export function saveCustomGroups(entries: CustomGroupEntry[]) {
 
 /** Returns built-in groups merged with any user-created custom groups, sorted by saved order */
 export function getAllGroupDefs(): Record<string, BudgetCalcGroupDef> {
-  const merged = { ...BUDGET_CALC_GROUP_DEFS, ...loadCustomGroups() };
+  const raw = { ...BUDGET_CALC_GROUP_DEFS, ...loadCustomGroups() };
+  // Ensure 'other' is always last
+  const { other, ...rest } = (() => {
+    const o = raw['other'];
+    const r = { ...raw };
+    delete r['other'];
+    return { other: o, ...r };
+  })();
+  const merged: Record<string, BudgetCalcGroupDef> = { ...rest, ...(other ? { other } : {}) };
   const savedOrder = loadGroupOrder();
   if (savedOrder.length === 0) return merged;
 
