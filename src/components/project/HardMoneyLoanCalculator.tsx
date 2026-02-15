@@ -608,6 +608,17 @@ export function HardMoneyLoanCalculator({
                 onCheckedChange={setInterestOnly}
               />
             </div>
+
+            {/* Amortization Schedule */}
+            {!interestOnly && loanAmount > 0 && loanTermMonths > 0 && (
+              <AmortizationSchedule
+                loanAmount={loanAmount}
+                monthlyRate={interestRate / 100 / 12}
+                monthlyPayment={calculations.monthlyPayment}
+                loanTermMonths={Math.ceil(loanTermMonths)}
+                formatCurrency={formatCurrency}
+              />
+            )}
           </div>
 
           {/* Right Column - Results */}
@@ -737,16 +748,6 @@ export function HardMoneyLoanCalculator({
               </div>
             </div>
 
-            {/* Amortization Schedule */}
-            {!interestOnly && loanAmount > 0 && loanTermMonths > 0 && (
-              <AmortizationSchedule
-                loanAmount={loanAmount}
-                monthlyRate={interestRate / 100 / 12}
-                monthlyPayment={calculations.monthlyPayment}
-                loanTermMonths={Math.ceil(loanTermMonths)}
-                formatCurrency={formatCurrency}
-              />
-            )}
           </div>
         </div>
       </CardContent>
