@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, Clock, Settings, CalendarClock, RotateCcw, ChevronDown } from 'lucide-react';
+import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, Clock, Settings, CalendarClock, RotateCcw, ChevronDown, TableProperties } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { parseDateString } from '@/lib/dateUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -736,9 +736,99 @@ export function HardMoneyLoanCalculator({
                 ))}
               </div>
             </div>
+
+            {/* Amortization Schedule */}
+            {!interestOnly && loanAmount > 0 && loanTermMonths > 0 && (
+              <AmortizationSchedule
+                loanAmount={loanAmount}
+                monthlyRate={interestRate / 100 / 12}
+                monthlyPayment={calculations.monthlyPayment}
+                loanTermMonths={Math.ceil(loanTermMonths)}
+                formatCurrency={formatCurrency}
+              />
+            )}
           </div>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/* ---- Amortization Schedule Sub-component ---- */
+function AmortizationSchedule({
+  loanAmount,
+  monthlyRate,
+  monthlyPayment,
+  loanTermMonths,
+  formatCurrency,
+}: {
+  loanAmount: number;
+  monthlyRate: number;
+  monthlyPayment: number;
+  loanTermMonths: number;
+  formatCurrency: (n: number) => string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const rows = useMemo(() => {
+    const schedule: { month: number; payment: number; principal: number; interest: number; balance: number }[] = [];
+    let balance = loanAmount;
+    for (let m = 1; m <= loanTermMonths && balance > 0.01; m++) {
+      const interest = balance * monthlyRate;
+      const principal = Math.min(monthlyPayment - interest, balance);
+      balance = balance - principal;
+      schedule.push({
+        month: m,
+        payment: principal + interest,
+        principal,
+        interest,
+        balance: Math.max(balance, 0),
+      });
+    }
+    return schedule;
+  }, [loanAmount, monthlyRate, monthlyPayment, loanTermMonths]);
+
+  return (
+    <div className="space-y-2">
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full justify-between text-sm"
+        onClick={() => setOpen(!open)}
+      >
+        <span className="flex items-center gap-2">
+          <TableProperties className="h-4 w-4 text-primary" />
+          Amortization Schedule
+        </span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+      </Button>
+
+      {open && (
+        <div className="rounded-sm border border-border overflow-hidden max-h-[400px] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 sticky top-0">
+              <tr>
+                <th className="text-left p-2 font-medium">#</th>
+                <th className="text-right p-2 font-medium">Payment</th>
+                <th className="text-right p-2 font-medium">Principal</th>
+                <th className="text-right p-2 font-medium">Interest</th>
+                <th className="text-right p-2 font-medium">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.month} className="border-t border-border">
+                  <td className="p-2 font-mono text-muted-foreground">{r.month}</td>
+                  <td className="p-2 text-right font-mono">{formatCurrency(r.payment)}</td>
+                  <td className="p-2 text-right font-mono text-success">{formatCurrency(r.principal)}</td>
+                  <td className="p-2 text-right font-mono text-warning">{formatCurrency(r.interest)}</td>
+                  <td className="p-2 text-right font-mono">{formatCurrency(r.balance)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
