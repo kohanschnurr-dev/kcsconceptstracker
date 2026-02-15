@@ -78,7 +78,7 @@ import { DocumentsGallery } from '@/components/project/DocumentsGallery';
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { CashFlowCalculator } from '@/components/project/CashFlowCalculator';
 import { HardMoneyLoanCalculator } from '@/components/project/HardMoneyLoanCalculator';
-import { LoanPayments } from '@/components/project/LoanPayments';
+
 import { ProjectCalendar } from '@/components/project/ProjectCalendar';
 import { ProjectTasks } from '@/components/project/ProjectTasks';
 
@@ -943,7 +943,7 @@ export default function ProjectDetail() {
                 initialClosingCosts={(project as any).hm_closing_costs ?? 0}
                 initialInterestOnly={(project as any).hm_interest_only ?? true}
               />
-              <LoanPayments projectId={id!} />
+              
             </TabsContent>
 
           <TabsContent value="team">
