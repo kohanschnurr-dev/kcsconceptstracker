@@ -21,7 +21,8 @@ import {
   ChevronDown,
   Settings,
   GripVertical,
-  Pencil
+  Pencil,
+  Trash2
 } from 'lucide-react';
 
 function SortableTabItem({ id, label }: { id: string; label: string }) {
@@ -185,6 +186,9 @@ export default function ProjectDetail() {
   const [addressValue, setAddressValue] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
   const addressInputRef = useRef<HTMLInputElement>(null);
+  const [deleteStep, setDeleteStep] = useState<0 | 1 | 2>(0);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -455,6 +459,31 @@ export default function ProjectDetail() {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!project || !id) return;
+    setDeleting(true);
+    try {
+      // Reset QB expenses back to pending queue
+      await supabase
+        .from('quickbooks_expenses')
+        .update({ project_id: null, category_id: null, is_imported: false, cost_type: 'construction' })
+        .eq('project_id', id);
+
+      // Delete project (cascades to all child tables)
+      const { error } = await supabase.from('projects').delete().eq('id', id);
+      if (error) throw error;
+
+      toast({ title: 'Project deleted', description: `${project.name} has been permanently removed.` });
+      navigate('/projects');
+    } catch (err: any) {
+      toast({ title: 'Failed to delete project', description: err.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+      setDeleteStep(0);
+      setDeleteConfirmName('');
+    }
+  };
+
   const isRental = project?.project_type === 'rental';
 
   const defaultPreset = useMemo(() => {
@@ -545,6 +574,58 @@ export default function ProjectDetail() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Delete Project - Step 1 */}
+        <AlertDialog open={deleteStep === 1} onOpenChange={(open) => { if (!open) setDeleteStep(0); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Project</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>{project.name}</strong>? All project data (expenses, tasks, documents, photos, logs) will be permanently removed. Any categorized QuickBooks expenses will be sent back to the queue.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(e) => { e.preventDefault(); setDeleteStep(2); }}
+              >
+                Continue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete Project - Step 2: Type to confirm */}
+        <AlertDialog open={deleteStep === 2} onOpenChange={(open) => { if (!open) { setDeleteStep(0); setDeleteConfirmName(''); } }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>This action cannot be undone</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3">
+                  <p>Type <strong>{project.name}</strong> to confirm deletion.</p>
+                  <Input
+                    value={deleteConfirmName}
+                    onChange={(e) => setDeleteConfirmName(e.target.value)}
+                    placeholder="Type project name..."
+                    autoFocus
+                  />
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setDeleteConfirmName('')}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteConfirmName !== project.name || deleting}
+                onClick={(e) => { e.preventDefault(); handleDeleteProject(); }}
+              >
+                {deleting ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Deleting...</> : 'Permanently Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Header */}
         <div className="flex flex-col gap-4">
           <Button 
@@ -719,6 +800,17 @@ export default function ProjectDetail() {
                   </span>
                 )}
               </div>
+            </div>
+            <div className="flex items-start gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setDeleteStep(1)}
+              >
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                Delete Project
+              </Button>
             </div>
           </div>
         </div>
