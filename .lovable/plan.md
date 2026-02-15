@@ -1,29 +1,22 @@
 
-## Import Loan Details into Cash Flow Refi Section
+
+## Move "Purchase & Sale" Above "Other" in Category Display
 
 ### What Changes
-Add a small "Use Loan Tab" button next to the REFI / LOAN header in the Cash Flow calculator. When clicked, it populates the Loan Amount, Interest Rate, and Loan Term fields with the values saved in the Loan tab (Hard Money Loan Calculator). Users can still manually edit these fields after importing, or ignore the button entirely.
-
-### How It Works
-1. The Loan tab saves `hm_loan_amount`, `hm_interest_rate`, and `hm_loan_term_months` to the project
-2. These values get passed as new props to `CashFlowCalculator`
-3. A button appears in the REFI / LOAN section header -- clicking it copies those values into the local state fields
-4. Users can then tweak the numbers or leave them as-is
+The "Other" trade group will always appear last in the list, so custom groups like "Purchase & Sale" display above it. Currently, built-in groups (including "Other") render first, followed by custom groups. This change ensures "Other" is pushed to the bottom since it's the catch-all group.
 
 ### Technical Details
 
-**File: `src/pages/ProjectDetail.tsx`** (~line 1002)
-- Pass three new props to `CashFlowCalculator`:
-  - `hmLoanAmount={(project as any).hm_loan_amount || 0}`
-  - `hmInterestRate={(project as any).hm_interest_rate || 0}`
-  - `hmLoanTermMonths={(project as any).hm_loan_term_months || 0}`
+**File: `src/lib/budgetCalculatorCategories.ts`**
 
-**File: `src/components/project/CashFlowCalculator.tsx`**
+Update the `getAllGroupDefs()` function (~line 93) so that when building the merged result, the `other` key is always moved to the end -- both when there's no saved order and as a fallback default.
 
-1. **Props**: Add `hmLoanAmount`, `hmInterestRate`, `hmLoanTermMonths` (all optional, default 0)
+Current logic returns `{ ...BUDGET_CALC_GROUP_DEFS, ...loadCustomGroups() }` directly when no saved order exists, which puts "other" at position 6 (before any custom groups).
 
-2. **Import button**: Next to the REFI / LOAN toggle (~line 467-476), add a small button labeled "Use Loan Tab" (with a `Link` or `ArrowDownToLine` icon). Only visible when refi is enabled and HM loan data exists (hmLoanAmount > 0).
+Updated logic:
+1. After merging, extract the `other` entry
+2. Delete it from the merged object
+3. Re-add it at the end
 
-3. **On click handler**: Sets `loanAmount`, `interestRate`, and `loanTermMonths` from the HM props, and enables refi if not already on. Shows a toast confirming the import.
+This ensures "Other" is always the last group regardless of whether a custom drag order has been saved. If a user has explicitly saved an order via drag-and-drop, that saved order will continue to be respected.
 
-No database changes needed -- all data already exists in the `projects` table.
