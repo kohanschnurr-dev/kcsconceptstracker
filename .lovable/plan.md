@@ -1,22 +1,30 @@
 
 
-## Move "Purchase & Sale" Above "Other" in Category Display
+## Add Reorder Controls to the Trade Group Dropdown
 
 ### What Changes
-The "Other" trade group will always appear last in the list, so custom groups like "Purchase & Sale" display above it. Currently, built-in groups (including "Other") render first, followed by custom groups. This change ensures "Other" is pushed to the bottom since it's the catch-all group.
+Replace the standard Select dropdown for trade group assignment (shown when adding new expense categories) with a custom popover that displays the groups as a draggable, reorderable list. Users can click a group to select it AND drag groups to reorder them -- all in one place.
+
+### How It Works
+1. The current `<Select>` for trade groups becomes a `<Popover>` with a trigger styled like a Select
+2. Inside the popover, each group is a row with a grip handle (for drag reorder) and the group name (clickable to select)
+3. Dragging a group reorders it and persists the new order via `saveGroupOrder()`
+4. Clicking a group selects it for the new category assignment and closes the popover
+5. The reorder is reflected everywhere that uses `getAllGroupDefs()` (Budget Calculator, this dropdown, Manage Groups section)
 
 ### Technical Details
 
-**File: `src/lib/budgetCalculatorCategories.ts`**
+**File: `src/components/settings/ManageSourcesCard.tsx`**
 
-Update the `getAllGroupDefs()` function (~line 93) so that when building the merged result, the `other` key is always moved to the end -- both when there's no saved order and as a fallback default.
+In the `CategoryListEditor` component (~lines 287-297):
 
-Current logic returns `{ ...BUDGET_CALC_GROUP_DEFS, ...loadCustomGroups() }` directly when no saved order exists, which puts "other" at position 6 (before any custom groups).
+1. Replace the `<Select>` for `tradeGrouped` with a `<Popover>` + `<PopoverTrigger>` + `<PopoverContent>`
+2. Inside the popover content, wrap items in a `<DndContext>` + `<SortableContext>` (already imported)
+3. Each item is a small sortable row with:
+   - A `GripVertical` icon (already imported) for dragging
+   - The group label text, clickable to set `selectedTradeGroup` and close the popover
+   - A checkmark if it's the currently selected group
+4. On drag end, call `saveGroupOrder()` with the new order (same logic as `TradeGroupManager`)
+5. Import `Popover`, `PopoverTrigger`, `PopoverContent` from the existing UI components
 
-Updated logic:
-1. After merging, extract the `other` entry
-2. Delete it from the merged object
-3. Re-add it at the end
-
-This ensures "Other" is always the last group regardless of whether a custom drag order has been saved. If a user has explicitly saved an order via drag-and-drop, that saved order will continue to be respected.
-
+No new files or dependencies needed -- all building blocks (DnD, Popover, saveGroupOrder) are already in place.
