@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, Clock, Settings, CalendarClock, RotateCcw, ChevronDown } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { parseDateString } from '@/lib/dateUtils';
@@ -55,6 +54,7 @@ interface HardMoneyLoanCalculatorProps {
   initialPoints?: number;
   initialClosingCosts?: number;
   initialInterestOnly?: boolean;
+  onSaved?: () => void;
 }
 
 export function HardMoneyLoanCalculator({
@@ -69,6 +69,7 @@ export function HardMoneyLoanCalculator({
   initialPoints = 3,
   initialClosingCosts = 0,
   initialInterestOnly = true,
+  onSaved,
 }: HardMoneyLoanCalculatorProps) {
   // Editable purchase price for testing scenarios
   const [editablePurchasePrice, setEditablePurchasePrice] = useState(purchasePrice);
@@ -109,8 +110,6 @@ export function HardMoneyLoanCalculator({
     return Math.round((toDateEndDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   }, [projectStartDate, toDateEndDate]);
 
-  const queryClient = useQueryClient();
-
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase
@@ -130,7 +129,7 @@ export function HardMoneyLoanCalculator({
       console.error(error);
     } else {
       toast.success('Loan details saved');
-      await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      onSaved?.();
     }
     setSaving(false);
   };

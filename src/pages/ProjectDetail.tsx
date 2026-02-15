@@ -1034,6 +1034,7 @@ export default function ProjectDetail() {
                 initialPoints={(project as any).hm_points ?? 3}
                 initialClosingCosts={(project as any).hm_closing_costs ?? 0}
                 initialInterestOnly={(project as any).hm_interest_only ?? true}
+                onSaved={() => fetchProjectData(false)}
               />
               
             </TabsContent>
