@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN hm_use_to_date boolean DEFAULT false;

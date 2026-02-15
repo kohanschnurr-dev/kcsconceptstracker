@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, Clock, Settings, CalendarClock, RotateCcw, ChevronDown } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { parseDateString } from '@/lib/dateUtils';
@@ -54,6 +54,7 @@ interface HardMoneyLoanCalculatorProps {
   initialPoints?: number;
   initialClosingCosts?: number;
   initialInterestOnly?: boolean;
+  initialUseToDate?: boolean;
   onSaved?: () => void;
 }
 
@@ -69,6 +70,7 @@ export function HardMoneyLoanCalculator({
   initialPoints = 3,
   initialClosingCosts = 0,
   initialInterestOnly = true,
+  initialUseToDate = false,
   onSaved,
 }: HardMoneyLoanCalculatorProps) {
   // Editable purchase price for testing scenarios
@@ -85,6 +87,7 @@ export function HardMoneyLoanCalculator({
   const [closingCosts, setClosingCosts] = useState(defaultClosingCosts);
   const [interestOnly, setInterestOnly] = useState(initialInterestOnly);
   const [saving, setSaving] = useState(false);
+  const [useToDate, setUseToDate] = useState(initialUseToDate);
 
   // Custom term popover
   const [customTermOpen, setCustomTermOpen] = useState(false);
@@ -110,6 +113,16 @@ export function HardMoneyLoanCalculator({
     return Math.round((toDateEndDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   }, [projectStartDate, toDateEndDate]);
 
+  // Restore "To Date" mode on mount if it was saved
+  useEffect(() => {
+    if (initialUseToDate && toDateMonths && toDateMonths > 0 && toDateDays) {
+      setLoanTermMonths(toDateMonths);
+      setTermDaysOverride(toDateDays);
+      setUseToDate(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // One-time on mount
+
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase
@@ -121,7 +134,8 @@ export function HardMoneyLoanCalculator({
         hm_points: points,
         hm_closing_costs: closingCosts,
         hm_interest_only: interestOnly,
-      })
+        hm_use_to_date: useToDate,
+      } as any)
       .eq('id', projectId);
 
     if (error) {
@@ -343,9 +357,9 @@ export function HardMoneyLoanCalculator({
                   <Button
                     key={term}
                     type="button"
-                    variant={loanTermMonths === term ? 'default' : 'outline'}
+                    variant={loanTermMonths === term && !useToDate ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => { setLoanTermMonths(term); setTermDaysOverride(null); }}
+                    onClick={() => { setLoanTermMonths(term); setTermDaysOverride(null); setUseToDate(false); }}
                     className="rounded-sm min-w-[4rem]"
                   >
                     {formatTermLabel(term)}
@@ -355,11 +369,11 @@ export function HardMoneyLoanCalculator({
                   <PopoverTrigger asChild>
                     <Button
                       type="button"
-                      variant={!termOptions.includes(loanTermMonths) && toDateMonths !== loanTermMonths ? 'default' : 'outline'}
+                      variant={!termOptions.includes(loanTermMonths) && !useToDate ? 'default' : 'outline'}
                       size="sm"
                       className="rounded-sm min-w-[4rem]"
                     >
-                      {!termOptions.includes(loanTermMonths) && toDateMonths !== loanTermMonths ? loanTermMonths : 'Custom'}
+                      {!termOptions.includes(loanTermMonths) && !useToDate ? loanTermMonths : 'Custom'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-48 p-3" align="end">
@@ -382,6 +396,7 @@ export function HardMoneyLoanCalculator({
                               if (val > 0 && val <= 600) {
                                 setLoanTermMonths(val);
                                 setTermDaysOverride(null);
+                                setUseToDate(false);
                                 setCustomTermOpen(false);
                                 setCustomTermInput('');
                               }
@@ -396,6 +411,7 @@ export function HardMoneyLoanCalculator({
                             if (val > 0 && val <= 600) {
                               setLoanTermMonths(val);
                               setTermDaysOverride(null);
+                              setUseToDate(false);
                               setCustomTermOpen(false);
                               setCustomTermInput('');
                             }
@@ -413,10 +429,10 @@ export function HardMoneyLoanCalculator({
                   <div className="flex items-center gap-0.5">
                     <Button
                       type="button"
-                      variant={loanTermMonths === toDateMonths ? 'default' : 'outline'}
+                      variant={useToDate ? 'default' : 'outline'}
                       size="sm"
                       className="rounded-sm rounded-r-none border-primary/50 min-w-[4rem]"
-                      onClick={() => { setLoanTermMonths(toDateMonths); if (toDateDays) setTermDaysOverride(toDateDays); }}
+                      onClick={() => { setLoanTermMonths(toDateMonths); if (toDateDays) setTermDaysOverride(toDateDays); setUseToDate(true); }}
                     >
                       <CalendarClock className="h-3.5 w-3.5 mr-1" />
                       To Date
@@ -425,7 +441,7 @@ export function HardMoneyLoanCalculator({
                       <PopoverTrigger asChild>
                         <Button
                           type="button"
-                          variant={loanTermMonths === toDateMonths ? 'default' : 'outline'}
+                          variant={useToDate ? 'default' : 'outline'}
                           size="sm"
                           className="rounded-sm rounded-l-none border-l-0 border-primary/50 px-1.5"
                         >

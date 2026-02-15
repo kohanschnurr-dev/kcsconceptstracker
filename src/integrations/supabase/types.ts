@@ -1231,6 +1231,7 @@ export type Database = {
           hm_loan_amount: number | null
           hm_loan_term_months: number | null
           hm_points: number | null
+          hm_use_to_date: boolean | null
           holding_costs_flat: number | null
           holding_costs_mode: string
           holding_costs_pct: number | null
@@ -1271,6 +1272,7 @@ export type Database = {
           hm_loan_amount?: number | null
           hm_loan_term_months?: number | null
           hm_points?: number | null
+          hm_use_to_date?: boolean | null
           holding_costs_flat?: number | null
           holding_costs_mode?: string
           holding_costs_pct?: number | null
@@ -1311,6 +1313,7 @@ export type Database = {
           hm_loan_amount?: number | null
           hm_loan_term_months?: number | null
           hm_points?: number | null
+          hm_use_to_date?: boolean | null
           holding_costs_flat?: number | null
           holding_costs_mode?: string
           holding_costs_pct?: number | null
