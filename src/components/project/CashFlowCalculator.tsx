@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calculator, DollarSign, TrendingUp, Save, Loader2, Home, Percent, Building, Settings2, ArrowDownToLine } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, Save, Loader2, Home, Percent, Building, Settings2, ArrowDownToLine, Pencil } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,7 +75,8 @@ export function CashFlowCalculator({
   const [hoaPeriod, setHoaPeriod] = useState<'month' | 'year'>('year');
   const [insurancePeriod, setInsurancePeriod] = useState<'month' | 'year'>('year');
   const [maintenancePeriod, setMaintenancePeriod] = useState<'month' | 'year'>('month');
-  const [refiEnabled, setRefiEnabled] = useState(initialLoanAmount > 0);
+  const [refiEnabled, setRefiEnabled] = useState(initialLoanAmount > 0 || hmLoanAmount > 0);
+  const [useManualLoan, setUseManualLoan] = useState(false);
 
   const PeriodToggle = ({ value, onChange }: { value: 'month' | 'year'; onChange: (v: 'month' | 'year') => void }) => (
     <span className="inline-flex rounded-full border border-border overflow-hidden text-[10px] font-semibold leading-none">
@@ -117,12 +118,13 @@ export function CashFlowCalculator({
     setVacancyRate(initialVacancyRate);
     setMonthlyMaintenance(initialMonthlyMaintenance);
     setManagementRate(initialManagementRate);
-    setRefiEnabled(initialLoanAmount > 0);
+    setRefiEnabled(initialLoanAmount > 0 || hmLoanAmount > 0);
+    setUseManualLoan(initialLoanAmount > 0 && hmLoanAmount > 0 && (initialLoanAmount !== hmLoanAmount || initialInterestRate !== hmInterestRate));
   }, [
     initialPurchasePrice, initialArv, initialMonthlyRent, initialLoanAmount,
     initialInterestRate, initialLoanTermYears, initialAnnualPropertyTaxes,
     initialAnnualInsurance, initialAnnualHoa, initialVacancyRate, initialMonthlyMaintenance,
-    initialManagementRate
+    initialManagementRate, hmLoanAmount, hmInterestRate
   ]);
 
   const handleSave = async () => {
@@ -133,9 +135,9 @@ export function CashFlowCalculator({
         purchase_price: purchasePrice,
         arv: arv,
         monthly_rent: monthlyRent,
-        loan_amount: refiEnabled ? loanAmount : 0,
-        interest_rate: interestRate,
-        loan_term_years: loanTermMonths / 12,
+        loan_amount: refiEnabled ? (useManualLoan ? loanAmount : effectiveLoanAmt) : 0,
+        interest_rate: useManualLoan ? interestRate : effectiveRate,
+        loan_term_years: (useManualLoan ? loanTermMonths : effectiveTerm) / 12,
         annual_property_taxes: annualPropertyTaxes,
         annual_insurance: annualInsurance,
         annual_hoa: annualHoa,
@@ -158,12 +160,16 @@ export function CashFlowCalculator({
 
   // Suggested loan amount for placeholder display only
   const suggestedLoanAmount = arv * 0.75;
+  // Determine effective loan values: use Loan tab unless manual override
+  const effectiveLoanAmt = useManualLoan ? loanAmount : (hmLoanAmount > 0 ? hmLoanAmount : loanAmount);
+  const effectiveRate = useManualLoan ? interestRate : (hmLoanAmount > 0 ? hmInterestRate : interestRate);
+  const effectiveTerm = useManualLoan ? loanTermMonths : (hmLoanAmount > 0 ? hmLoanTermMonths : loanTermMonths);
   // When refi disabled or no loan entered, treat as all-cash deal
-  const effectiveLoanAmount = refiEnabled && loanAmount > 0 ? loanAmount : 0;
+  const effectiveLoanAmount = refiEnabled && effectiveLoanAmt > 0 ? effectiveLoanAmt : 0;
 
   // Monthly mortgage payment (P&I) using amortization formula
-  const monthlyInterestRate = (interestRate / 100) / 12;
-  const numberOfPayments = loanTermMonths;
+  const monthlyInterestRate = (effectiveRate / 100) / 12;
+  const numberOfPayments = effectiveTerm;
   let monthlyMortgage = 0;
   if (effectiveLoanAmount > 0 && monthlyInterestRate > 0 && numberOfPayments > 0) {
     monthlyMortgage = effectiveLoanAmount * 
@@ -480,22 +486,39 @@ export function CashFlowCalculator({
               onCheckedChange={setRefiEnabled}
               className="scale-75"
             />
-            {hmLoanAmount > 0 && (
+            {refiEnabled && !useManualLoan && hmLoanAmount > 0 && (
+              <span className="text-xs text-muted-foreground italic">Using Loan tab</span>
+            )}
+            {refiEnabled && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs gap-1"
                 onClick={() => {
-                  setLoanAmount(hmLoanAmount);
-                  setInterestRate(hmInterestRate);
-                  setLoanTermMonths(hmLoanTermMonths);
-                  if (!refiEnabled) setRefiEnabled(true);
-                  toast.success('Loan details imported from Loan tab');
+                  if (!useManualLoan) {
+                    // Switch to manual — copy current effective values into manual fields
+                    setLoanAmount(effectiveLoanAmt);
+                    setInterestRate(effectiveRate);
+                    setLoanTermMonths(effectiveTerm);
+                    setUseManualLoan(true);
+                  } else {
+                    // Switch back to Loan tab
+                    setUseManualLoan(false);
+                  }
                 }}
               >
-                <ArrowDownToLine className="h-3 w-3" />
-                Use Loan Tab
+                {useManualLoan ? (
+                  <>
+                    <ArrowDownToLine className="h-3 w-3" />
+                    Use Loan Tab
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="h-3 w-3" />
+                    Manual
+                  </>
+                )}
               </Button>
             )}
           </div>
@@ -510,10 +533,12 @@ export function CashFlowCalculator({
                       <Input
                         id="loan-amount"
                         type="number"
-                        value={loanAmount || ''}
+                        value={useManualLoan ? (loanAmount || '') : (effectiveLoanAmt || '')}
                         onChange={(e) => setLoanAmount(Number(e.target.value))}
                         className="pl-9"
                         placeholder={suggestedLoanAmount.toFixed(0)}
+                        readOnly={!useManualLoan}
+                        disabled={!useManualLoan}
                       />
                     </div>
                   </div>
@@ -525,10 +550,12 @@ export function CashFlowCalculator({
                         id="interest-rate"
                         type="number"
                         step="0.125"
-                        value={interestRate || ''}
+                        value={useManualLoan ? (interestRate || '') : (effectiveRate || '')}
                         onChange={(e) => setInterestRate(Number(e.target.value))}
                         className="pl-9"
                         placeholder="7.0"
+                        readOnly={!useManualLoan}
+                        disabled={!useManualLoan}
                       />
                     </div>
                   </div>
@@ -537,9 +564,11 @@ export function CashFlowCalculator({
                     <Input
                       id="loan-term"
                       type="number"
-                      value={loanTermMonths || ''}
+                      value={useManualLoan ? (loanTermMonths || '') : (effectiveTerm || '')}
                       onChange={(e) => setLoanTermMonths(Number(e.target.value))}
                       placeholder="360"
+                      readOnly={!useManualLoan}
+                      disabled={!useManualLoan}
                     />
                   </div>
                 </div>
