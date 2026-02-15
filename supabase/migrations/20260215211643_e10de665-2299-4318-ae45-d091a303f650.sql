@@ -1,0 +1,1 @@
+ALTER TABLE projects ALTER COLUMN hm_loan_term_months TYPE numeric USING hm_loan_term_months::numeric;
