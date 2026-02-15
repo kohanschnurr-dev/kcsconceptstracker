@@ -1,31 +1,21 @@
 
 
-## Add Principal & Interest Breakdown to Monthly Payment
+## Move Amortization Schedule Below Interest Only Toggle
 
 ### What Changes
-When the loan is **not** interest-only, the Monthly Payment KPI card will show a breakdown of how much goes to principal vs. interest (based on the first month's payment). This gives immediate visibility into the payment split without changing the layout.
-
-### Design
-Below the monthly payment amount, add two small lines showing:
-- **Principal**: first month's principal portion
-- **Interest**: first month's interest portion
-
-This only appears when interest-only is OFF. For interest-only loans, the entire payment is interest so no breakdown is needed.
+Move the Amortization Schedule from the right column (after Payoff Timeline) to the left column, directly below the Interest Only toggle. This places it closer to the related setting so users immediately see the P&I breakdown context.
 
 ### Technical Details
 
 **File: `src/components/project/HardMoneyLoanCalculator.tsx`**
 
-1. **Add to calculations `useMemo`** (~line 182): Compute `monthlyPrincipal` and `monthlyInterestPortion` for the first payment:
-   - `monthlyInterestPortion = loanAmount * monthlyRate` (first month's interest)
-   - `monthlyPrincipal = monthlyPayment - monthlyInterestPortion`
-   - Return both in the calculations object
+1. **Remove** the Amortization Schedule block from its current position in the right column (lines 740-749, after Payoff Timeline).
 
-2. **Update the Monthly Payment KPI card** (~lines 611-617): When `!interestOnly`, render two small sub-lines below the payment amount:
+2. **Insert** the same block into the left column, right after the Interest Only toggle's closing `</div>` (after line 610), but before the column's closing `</div>` (line 611):
    ```
-   Monthly Payment
-   $224.39
-   P: $99.39  |  I: $125.00
+   {!interestOnly && loanAmount > 0 && loanTermMonths > 0 && (
+     <AmortizationSchedule ... />
+   )}
    ```
-   Styled as `text-[10px] text-muted-foreground font-mono` to keep it compact within the existing card.
 
+No logic changes -- purely a layout relocation.
