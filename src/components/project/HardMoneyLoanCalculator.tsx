@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, TrendingDown, Clock, Package, Plus, Pencil, Trash2, Star, ChevronDown, ChevronUp, MoreVertical, Settings, CalendarClock, RotateCcw, CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -173,12 +173,16 @@ export function HardMoneyLoanCalculator({
   // Presets collapsible state
   const [presetsOpen, setPresetsOpen] = useState(false);
 
+  // Dirty tracking — skip reset effect when user has manually edited
+  const hasUserEdited = useRef(false);
+
   // Sync editable purchase price with prop
   useEffect(() => {
     setEditablePurchasePrice(purchasePrice);
   }, [purchasePrice]);
 
   useEffect(() => {
+    if (hasUserEdited.current) return;
     setLoanAmount(initialLoanAmount ?? (editablePurchasePrice * 0.75));
     setInterestRate(initialInterestRate);
     setLoanTermMonths(initialLoanTermMonths);
@@ -263,6 +267,7 @@ export function HardMoneyLoanCalculator({
       console.error(error);
     } else {
       toast.success('Loan details saved');
+      hasUserEdited.current = false;
       await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     }
     setSaving(false);
@@ -714,14 +719,14 @@ export function HardMoneyLoanCalculator({
                     id="loan-amount"
                     type="number"
                     value={loanAmount || ''}
-                    onChange={(e) => setLoanAmount(Number(e.target.value))}
+                    onChange={(e) => { hasUserEdited.current = true; setLoanAmount(Number(e.target.value)); }}
                     className="pl-9 rounded-sm"
                     placeholder="0"
                   />
                 </div>
                 <Slider
                   value={[loanAmount]}
-                  onValueChange={([val]) => setLoanAmount(val)}
+                  onValueChange={([val]) => { hasUserEdited.current = true; setLoanAmount(val); }}
                   min={0}
                   max={editablePurchasePrice > 0 ? editablePurchasePrice : 500000}
                   step={1000}
@@ -729,37 +734,29 @@ export function HardMoneyLoanCalculator({
                 />
               </div>
 
-              {/* Interest Rate */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
+              {/* Interest Rate + Loan Term — same row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="interest-rate">Annual Interest Rate</Label>
-                  <span className="text-sm font-mono text-primary">{interestRate.toFixed(2)}%</span>
+                  <div className="relative">
+                    <Percent className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="interest-rate"
+                      type="number"
+                      value={interestRate || ''}
+                      onChange={(e) => setInterestRate(Number(e.target.value))}
+                      className="pl-9 rounded-sm"
+                      step={0.01}
+                      min={0}
+                      max={30}
+                      placeholder="12"
+                    />
+                  </div>
                 </div>
-                <Slider
-                  value={[interestRate]}
-                  onValueChange={([val]) => setInterestRate(val)}
-                  min={2}
-                  max={15}
-                  step={0.01}
-                />
-                <div className="flex items-center gap-2">
-                  <Percent className="h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="interest-rate"
-                    type="number"
-                    value={interestRate || ''}
-                    onChange={(e) => setInterestRate(Number(e.target.value))}
-                    className="rounded-sm"
-                    step={0.01}
-                    min={0}
-                    max={30}
-                  />
-                </div>
-              </div>
 
-              {/* Loan Term */}
-              <div className="space-y-2">
-                <Label>Loan Term (Months)</Label>
+                {/* Loan Term */}
+                <div className="space-y-2">
+                  <Label>Loan Term (Months)</Label>
                 <div className="flex flex-wrap gap-2">
                   {termOptions.map((term) => (
                     <Button
@@ -956,6 +953,7 @@ export function HardMoneyLoanCalculator({
                     </PopoverContent>
                   </Popover>
                 </div>
+              </div>
               </div>
 
               {/* Points/Origination */}
