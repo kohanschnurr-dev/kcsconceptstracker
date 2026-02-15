@@ -735,7 +735,7 @@ export function HardMoneyLoanCalculator({
               </div>
 
               {/* Interest Rate + Loan Term — same row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-[1fr_2fr] gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="interest-rate">Annual Interest Rate</Label>
                   <div className="relative">
@@ -956,6 +956,7 @@ export function HardMoneyLoanCalculator({
               </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
               {/* Points/Origination */}
               <div className="space-y-2">
                 <Label htmlFor="points">Points / Origination (%)</Label>
@@ -988,6 +989,7 @@ export function HardMoneyLoanCalculator({
                     placeholder="0"
                   />
                 </div>
+              </div>
               </div>
 
               {/* Interest Type Toggle */}
