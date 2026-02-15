@@ -1,47 +1,42 @@
 
 
-## Fix Loan Calculator: Remove Presets, Simplify Save
+## Fix: Loan Calculator Values Not Persisting After Tab Switch
 
-### Problem
-The preset system (built-in presets, user presets, default preset auto-loading, "To Date" auto-override) constantly fights with user-saved values. Every time the component re-renders or props update, effects stomp on what you just saved. The dirty-tracking patches have not been sufficient because there are too many competing effects.
+### Root Cause
 
-### Solution
-Strip out the entire preset system and simplify the component so that:
-- Values initialize from the project's saved data (props) on mount
-- User edits stay put in local state
-- Clicking Save writes to the database and that's it -- no re-initialization, no auto-overrides
-- The "To Date" term selector remains as a manual button the user can click, not something that auto-fires
+The loan calculator saves to the database correctly (confirmed: DB has 129000 and 9.5%). However, after saving, it calls `queryClient.invalidateQueries` which does nothing because the parent (`ProjectDetail.tsx`) uses plain `useState` + a manual `fetchProjectData()` function -- not react-query. So the parent's `project` state never updates with the new saved values.
 
-### Changes to `src/components/project/HardMoneyLoanCalculator.tsx`
+When switching away from the Loan tab and back, the `TabsContent` unmounts and remounts the calculator component, re-initializing state from the parent's stale props.
 
-**1. Remove all preset-related code (~400 lines eliminated):**
-- Remove `BUILT_IN_PRESETS`, `LoanPreset` interface
-- Remove all preset state variables (`userPresets`, `savePresetOpen`, `presetName`, `savingPreset`, `editPresetOpen`, `editingPreset`, `editPresetName`, `editInterestRate`, `editLoanTermMonths`, `editPoints`, `editClosingCostsPercent`, `editInterestOnly`, `updatingPreset`, `deletePresetOpen`, `deletingPreset`, `presetsOpen`)
-- Remove `handleClearDefaultPreset`, `handleSetDefaultPreset`, `handleSavePreset`, `handleDeletePreset`, `handleUpdatePreset`, `loadPreset`, `openEditDialog`
-- Remove the preset-fetch `useEffect` (lines 209-264) -- this is the main culprit that auto-loads defaults and forces "To Date"
-- Remove the entire Collapsible presets panel UI (lines 632-722)
-- Remove the Save Preset dialog, Edit Preset dialog, and Delete Preset AlertDialog (lines 1175-1302)
-- Remove the "Presets" button from the header
+### Fix
 
-**2. Simplify state initialization:**
-- Initialize state from props once on mount using `useState` defaults (already done)
-- Remove `hasUserEdited` ref and `lastSavedValues` ref -- no longer needed
-- Remove the sync `useEffect` (lines 185-206) entirely. State initializes from props via `useState` on mount; after that, only user input or Save changes it
+**Option: Pass a refresh callback from parent to calculator**
 
-**3. Simplify `handleSave`:**
-- Just save to DB and show toast. Remove `lastSavedValues` tracking
-- After successful save, invalidate the query (keeps parent in sync) but do NOT reset any local state -- local state is already correct since the user just set it
-
-**4. Keep "To Date" as a manual action only:**
-- The "To Date" button in the term selector stays, but it only fires when the user clicks it -- no auto-selection on mount or after preset load
-
-### What stays the same
-- All calculation logic (monthly payment, total interest, effective APR, etc.)
-- All UI for inputs (loan amount, interest rate, term selector, points, closing costs, interest-only toggle)
-- Rate sensitivity table, payoff timeline, daily interest display
-- Term presets settings (the custom month slots, not loan presets)
-- The Save button behavior
+1. In `ProjectDetail.tsx`, pass `fetchProjectData` as a prop to `HardMoneyLoanCalculator`
+2. In `HardMoneyLoanCalculator.tsx`:
+   - Add `onSaved?: () => void` to the props interface
+   - In `handleSave`, after a successful save, call `onSaved?.()` instead of (or in addition to) `queryClient.invalidateQueries`
+   - This triggers the parent to refetch the project data, updating its state with the new DB values
+   - Remove the react-query `useQueryClient` import since it serves no purpose here
 
 ### Files to Change
-- `src/components/project/HardMoneyLoanCalculator.tsx` -- Major cleanup removing ~400 lines of preset code and ~30 lines of sync/dirty-tracking logic
 
+- `src/components/project/HardMoneyLoanCalculator.tsx`
+  - Add `onSaved?: () => void` to the props interface
+  - Call `onSaved?.()` after successful save instead of `queryClient.invalidateQueries`
+  - Remove unused `useQueryClient` import
+
+- `src/pages/ProjectDetail.tsx`
+  - Pass `onSaved={() => fetchProjectData(false)}` prop to `HardMoneyLoanCalculator`
+
+### Technical Details
+
+```text
+Current broken flow:
+  Save -> DB updated -> invalidateQueries(['project', id]) -> nobody listening -> parent state stale -> tab switch -> remount with old props
+
+Fixed flow:
+  Save -> DB updated -> onSaved() -> fetchProjectData(false) -> parent state updated -> tab switch -> remount with correct props
+```
+
+This is a 2-line fix in the parent and a ~5-line change in the calculator.
