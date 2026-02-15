@@ -1,37 +1,31 @@
 
 
-## Persist "To Date" Term Selection
+## Add Principal & Interest Breakdown to Monthly Payment
 
-### Problem
-When you click "To Date" and save, only the numeric month value is saved. On remount, the calculator doesn't know you had "To Date" selected -- it just sees a number that may not match any preset, so it looks like a custom term.
+### What Changes
+When the loan is **not** interest-only, the Monthly Payment KPI card will show a breakdown of how much goes to principal vs. interest (based on the first month's payment). This gives immediate visibility into the payment split without changing the layout.
 
-### Solution
-Add a `hm_use_to_date` boolean column to the `projects` table. When the user clicks "To Date", set a local flag. On save, persist that flag. On mount, if the flag is true, auto-select "To Date" mode and recalculate from the project start date.
+### Design
+Below the monthly payment amount, add two small lines showing:
+- **Principal**: first month's principal portion
+- **Interest**: first month's interest portion
 
-### Database Migration
-Add column:
-```sql
-ALTER TABLE projects ADD COLUMN hm_use_to_date boolean DEFAULT false;
-```
+This only appears when interest-only is OFF. For interest-only loans, the entire payment is interest so no breakdown is needed.
 
-### Changes to `src/components/project/HardMoneyLoanCalculator.tsx`
+### Technical Details
 
-1. **New prop**: `initialUseToDate?: boolean`
-2. **New state**: `useToDate` boolean, initialized from prop
-3. **When "To Date" is clicked**: set `useToDate = true`
-4. **When any other term button is clicked** (6, 12, 18, Custom, etc.): set `useToDate = false`
-5. **On mount**: if `useToDate` is true and `toDateMonths` is valid, set `loanTermMonths` to `toDateMonths` and `termDaysOverride` to `toDateDays` (one-time effect)
-6. **handleSave**: include `hm_use_to_date: useToDate` in the update
-7. **Highlight logic**: use `useToDate` flag for the "To Date" button variant instead of comparing `loanTermMonths === toDateMonths` (which can drift as days pass)
+**File: `src/components/project/HardMoneyLoanCalculator.tsx`**
 
-### Changes to `src/pages/ProjectDetail.tsx`
+1. **Add to calculations `useMemo`** (~line 182): Compute `monthlyPrincipal` and `monthlyInterestPortion` for the first payment:
+   - `monthlyInterestPortion = loanAmount * monthlyRate` (first month's interest)
+   - `monthlyPrincipal = monthlyPayment - monthlyInterestPortion`
+   - Return both in the calculations object
 
-Pass the new prop:
-```
-initialUseToDate={(project as any).hm_use_to_date ?? false}
-```
+2. **Update the Monthly Payment KPI card** (~lines 611-617): When `!interestOnly`, render two small sub-lines below the payment amount:
+   ```
+   Monthly Payment
+   $224.39
+   P: $99.39  |  I: $125.00
+   ```
+   Styled as `text-[10px] text-muted-foreground font-mono` to keep it compact within the existing card.
 
-### Files to Change
-- **Database**: Add `hm_use_to_date` column
-- `src/components/project/HardMoneyLoanCalculator.tsx` -- Add flag state, persist it, restore on mount
-- `src/pages/ProjectDetail.tsx` -- Pass the new prop
