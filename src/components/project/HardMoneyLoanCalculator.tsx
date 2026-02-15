@@ -175,7 +175,7 @@ export function HardMoneyLoanCalculator({
 
   // Dirty tracking — skip reset effect when user has manually edited
   const hasUserEdited = useRef(false);
-  const lastSavedValues = useRef<{ loanAmount: number; interestRate: number } | null>(null);
+  const lastSavedValues = useRef<{ loanAmount: number; interestRate: number; loanTermMonths: number; points: number; closingCosts: number; interestOnly: boolean } | null>(null);
 
   // Sync editable purchase price with prop
   useEffect(() => {
@@ -184,10 +184,14 @@ export function HardMoneyLoanCalculator({
 
   useEffect(() => {
     if (hasUserEdited.current) {
-      // Only clear dirty flag once props reflect our saved values
+      // Only clear dirty flag once ALL props reflect our saved values
       if (lastSavedValues.current &&
           initialLoanAmount === lastSavedValues.current.loanAmount &&
-          initialInterestRate === lastSavedValues.current.interestRate) {
+          initialInterestRate === lastSavedValues.current.interestRate &&
+          initialLoanTermMonths === lastSavedValues.current.loanTermMonths &&
+          initialPoints === lastSavedValues.current.points &&
+          (initialClosingCosts ?? 0) === lastSavedValues.current.closingCosts &&
+          initialInterestOnly === lastSavedValues.current.interestOnly) {
         hasUserEdited.current = false;
         lastSavedValues.current = null;
       }
@@ -203,6 +207,9 @@ export function HardMoneyLoanCalculator({
 
   // Fetch user presets and auto-load default
   useEffect(() => {
+    // Skip preset auto-load if user has manually edited or just saved
+    if (hasUserEdited.current) return;
+
     const fetchPresets = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -277,7 +284,7 @@ export function HardMoneyLoanCalculator({
       console.error(error);
     } else {
       toast.success('Loan details saved');
-      lastSavedValues.current = { loanAmount, interestRate };
+      lastSavedValues.current = { loanAmount, interestRate, loanTermMonths, points, closingCosts, interestOnly };
       await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     }
     setSaving(false);
@@ -419,6 +426,20 @@ export function HardMoneyLoanCalculator({
       setEditingPreset(null);
     }
     setUpdatingPreset(false);
+  };
+
+  // Clear default handler (No Preset / Manual mode)
+  const handleClearDefaultPreset = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from('loan_presets')
+      .update({ is_default: false })
+      .eq('user_id', user.id);
+
+    setUserPresets(prev => prev.map(p => ({ ...p, isDefault: false })));
+    toast.success('Default preset cleared — using manual values');
   };
 
   // Set as default handler
@@ -623,6 +644,13 @@ export function HardMoneyLoanCalculator({
               <div className="mb-4">
                 <p className="text-xs text-muted-foreground mb-2">Built-in</p>
                 <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={!userPresets.some(p => p.isDefault) ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={handleClearDefaultPreset}
+                  >
+                    None / Manual
+                  </Button>
                   {BUILT_IN_PRESETS.map((preset) => (
                     <Button
                       key={preset.name}
@@ -754,7 +782,7 @@ export function HardMoneyLoanCalculator({
                       id="interest-rate"
                       type="number"
                       value={interestRate || ''}
-                      onChange={(e) => setInterestRate(Number(e.target.value))}
+                      onChange={(e) => { hasUserEdited.current = true; setInterestRate(Number(e.target.value)); }}
                       className="pl-9 rounded-sm"
                       step={0.01}
                       min={0}
@@ -976,7 +1004,7 @@ export function HardMoneyLoanCalculator({
                     id="points"
                     type="number"
                     value={points || ''}
-                    onChange={(e) => setPoints(Number(e.target.value))}
+                    onChange={(e) => { hasUserEdited.current = true; setPoints(Number(e.target.value)); }}
                     className="pl-9 rounded-sm"
                     step={0.5}
                     min={0}
@@ -994,7 +1022,7 @@ export function HardMoneyLoanCalculator({
                     id="closing-costs"
                     type="number"
                     value={closingCosts || ''}
-                    onChange={(e) => setClosingCosts(Number(e.target.value))}
+                    onChange={(e) => { hasUserEdited.current = true; setClosingCosts(Number(e.target.value)); }}
                     className="pl-9 rounded-sm"
                     placeholder="0"
                   />
@@ -1013,7 +1041,7 @@ export function HardMoneyLoanCalculator({
                 <Switch
                   id="interest-type"
                   checked={interestOnly}
-                  onCheckedChange={setInterestOnly}
+                  onCheckedChange={(val) => { hasUserEdited.current = true; setInterestOnly(val); }}
                 />
               </div>
             </div>
