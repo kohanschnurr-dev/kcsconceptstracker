@@ -175,6 +175,7 @@ export function HardMoneyLoanCalculator({
 
   // Dirty tracking — skip reset effect when user has manually edited
   const hasUserEdited = useRef(false);
+  const lastSavedValues = useRef<{ loanAmount: number; interestRate: number } | null>(null);
 
   // Sync editable purchase price with prop
   useEffect(() => {
@@ -182,7 +183,16 @@ export function HardMoneyLoanCalculator({
   }, [purchasePrice]);
 
   useEffect(() => {
-    if (hasUserEdited.current) return;
+    if (hasUserEdited.current) {
+      // Only clear dirty flag once props reflect our saved values
+      if (lastSavedValues.current &&
+          initialLoanAmount === lastSavedValues.current.loanAmount &&
+          initialInterestRate === lastSavedValues.current.interestRate) {
+        hasUserEdited.current = false;
+        lastSavedValues.current = null;
+      }
+      return;
+    }
     setLoanAmount(initialLoanAmount ?? (editablePurchasePrice * 0.75));
     setInterestRate(initialInterestRate);
     setLoanTermMonths(initialLoanTermMonths);
@@ -267,7 +277,7 @@ export function HardMoneyLoanCalculator({
       console.error(error);
     } else {
       toast.success('Loan details saved');
-      hasUserEdited.current = false;
+      lastSavedValues.current = { loanAmount, interestRate };
       await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     }
     setSaving(false);
