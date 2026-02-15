@@ -1,42 +1,37 @@
 
 
-## Fix: Loan Calculator Values Not Persisting After Tab Switch
+## Persist "To Date" Term Selection
 
-### Root Cause
+### Problem
+When you click "To Date" and save, only the numeric month value is saved. On remount, the calculator doesn't know you had "To Date" selected -- it just sees a number that may not match any preset, so it looks like a custom term.
 
-The loan calculator saves to the database correctly (confirmed: DB has 129000 and 9.5%). However, after saving, it calls `queryClient.invalidateQueries` which does nothing because the parent (`ProjectDetail.tsx`) uses plain `useState` + a manual `fetchProjectData()` function -- not react-query. So the parent's `project` state never updates with the new saved values.
+### Solution
+Add a `hm_use_to_date` boolean column to the `projects` table. When the user clicks "To Date", set a local flag. On save, persist that flag. On mount, if the flag is true, auto-select "To Date" mode and recalculate from the project start date.
 
-When switching away from the Loan tab and back, the `TabsContent` unmounts and remounts the calculator component, re-initializing state from the parent's stale props.
-
-### Fix
-
-**Option: Pass a refresh callback from parent to calculator**
-
-1. In `ProjectDetail.tsx`, pass `fetchProjectData` as a prop to `HardMoneyLoanCalculator`
-2. In `HardMoneyLoanCalculator.tsx`:
-   - Add `onSaved?: () => void` to the props interface
-   - In `handleSave`, after a successful save, call `onSaved?.()` instead of (or in addition to) `queryClient.invalidateQueries`
-   - This triggers the parent to refetch the project data, updating its state with the new DB values
-   - Remove the react-query `useQueryClient` import since it serves no purpose here
-
-### Files to Change
-
-- `src/components/project/HardMoneyLoanCalculator.tsx`
-  - Add `onSaved?: () => void` to the props interface
-  - Call `onSaved?.()` after successful save instead of `queryClient.invalidateQueries`
-  - Remove unused `useQueryClient` import
-
-- `src/pages/ProjectDetail.tsx`
-  - Pass `onSaved={() => fetchProjectData(false)}` prop to `HardMoneyLoanCalculator`
-
-### Technical Details
-
-```text
-Current broken flow:
-  Save -> DB updated -> invalidateQueries(['project', id]) -> nobody listening -> parent state stale -> tab switch -> remount with old props
-
-Fixed flow:
-  Save -> DB updated -> onSaved() -> fetchProjectData(false) -> parent state updated -> tab switch -> remount with correct props
+### Database Migration
+Add column:
+```sql
+ALTER TABLE projects ADD COLUMN hm_use_to_date boolean DEFAULT false;
 ```
 
-This is a 2-line fix in the parent and a ~5-line change in the calculator.
+### Changes to `src/components/project/HardMoneyLoanCalculator.tsx`
+
+1. **New prop**: `initialUseToDate?: boolean`
+2. **New state**: `useToDate` boolean, initialized from prop
+3. **When "To Date" is clicked**: set `useToDate = true`
+4. **When any other term button is clicked** (6, 12, 18, Custom, etc.): set `useToDate = false`
+5. **On mount**: if `useToDate` is true and `toDateMonths` is valid, set `loanTermMonths` to `toDateMonths` and `termDaysOverride` to `toDateDays` (one-time effect)
+6. **handleSave**: include `hm_use_to_date: useToDate` in the update
+7. **Highlight logic**: use `useToDate` flag for the "To Date" button variant instead of comparing `loanTermMonths === toDateMonths` (which can drift as days pass)
+
+### Changes to `src/pages/ProjectDetail.tsx`
+
+Pass the new prop:
+```
+initialUseToDate={(project as any).hm_use_to_date ?? false}
+```
+
+### Files to Change
+- **Database**: Add `hm_use_to_date` column
+- `src/components/project/HardMoneyLoanCalculator.tsx` -- Add flag state, persist it, restore on mount
+- `src/pages/ProjectDetail.tsx` -- Pass the new prop
