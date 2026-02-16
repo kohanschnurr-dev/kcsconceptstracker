@@ -12,6 +12,7 @@ import { TemplatePicker } from '@/components/budget/TemplatePicker';
 import { DealSidebar, type CalculatorType } from '@/components/budget/DealSidebar';
 import { RentalAnalysis } from '@/components/budget/RentalAnalysis';
 import { BRRRAnalysis } from '@/components/budget/BRRRAnalysis';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import type { RentalFieldValues } from '@/components/budget/RentalFields';
 import { getBudgetCategories } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -641,27 +642,38 @@ export default function BudgetCalculator() {
                       )}
 
                       {calculatorType === 'rental' && (
-                        <>
-                          <RentalAnalysis
-                            purchasePrice={purchasePriceNum}
-                            arv={arvNum}
-                            totalBudget={totalBudget}
-                            rentalFields={rentalFields}
-                            formatCurrency={formatCurrency}
-                            closingCostsBuy={closingCostsBuy}
-                            holdingCosts={holdingCosts}
-                            closingCostsSell={closingCostsSell}
-                          />
-                          <BRRRAnalysis
-                            purchasePrice={purchasePriceNum}
-                            arv={arvNum}
-                            totalBudget={totalBudget}
-                            closingCostsBuy={closingCostsBuy}
-                            holdingCosts={holdingCosts}
-                            rentalFields={rentalFields}
-                            formatCurrency={formatCurrency}
-                          />
-                        </>
+                        <div className="space-y-2">
+                          <h3 className="text-lg font-semibold">Loan</h3>
+                          <Tabs defaultValue="regular">
+                            <TabsList>
+                              <TabsTrigger value="regular">Regular</TabsTrigger>
+                              <TabsTrigger value="refi">Refi</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="regular">
+                              <RentalAnalysis
+                                purchasePrice={purchasePriceNum}
+                                arv={arvNum}
+                                totalBudget={totalBudget}
+                                rentalFields={rentalFields}
+                                formatCurrency={formatCurrency}
+                                closingCostsBuy={closingCostsBuy}
+                                holdingCosts={holdingCosts}
+                                closingCostsSell={closingCostsSell}
+                              />
+                            </TabsContent>
+                            <TabsContent value="refi">
+                              <BRRRAnalysis
+                                purchasePrice={purchasePriceNum}
+                                arv={arvNum}
+                                totalBudget={totalBudget}
+                                closingCostsBuy={closingCostsBuy}
+                                holdingCosts={holdingCosts}
+                                rentalFields={rentalFields}
+                                formatCurrency={formatCurrency}
+                              />
+                            </TabsContent>
+                          </Tabs>
+                        </div>
                       )}
                     </CollapsibleContent>
                   </Collapsible>
