@@ -131,7 +131,7 @@ export function MAOGauge({
             <TrendingUp className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Rehab Budget</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Construction Budget</p>
             <p className="text-lg font-bold font-mono text-primary">
               {formatCurrency(currentBudget)}
             </p>
