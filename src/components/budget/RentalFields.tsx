@@ -19,17 +19,20 @@ export interface RentalFieldValues {
   refiTerm: string;
   refiPoints: string;
   refiPointsMode: 'pct' | 'flat';
+  refiLtvBase: 'arv' | 'purchase';
 }
 
 interface RentalFieldsProps {
   values: RentalFieldValues;
   onChange: (field: keyof RentalFieldValues, value: string | boolean) => void;
   arv: number;
+  purchasePrice: number;
 }
 
-export function RentalFields({ values, onChange, arv }: RentalFieldsProps) {
+export function RentalFields({ values, onChange, arv, purchasePrice }: RentalFieldsProps) {
   const ltvPercent = parseFloat(values.refiLtv) || 75;
-  const computedLoanAmount = Math.round(arv * (ltvPercent / 100));
+  const ltvBase = values.refiLtvBase === 'purchase' ? purchasePrice : arv;
+  const computedLoanAmount = Math.round(ltvBase * (ltvPercent / 100));
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
@@ -158,14 +161,23 @@ export function RentalFields({ values, onChange, arv }: RentalFieldsProps) {
       <div className="space-y-3">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-xs">Loan-to-Value</Label>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs">Loan-to-{values.refiLtvBase === 'purchase' ? 'Purchase' : 'Value'}</Label>
+              <button
+                type="button"
+                className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded border border-input bg-muted hover:bg-accent transition-colors"
+                onClick={() => onChange('refiLtvBase', values.refiLtvBase === 'purchase' ? 'arv' : 'purchase')}
+              >
+                {values.refiLtvBase === 'purchase' ? 'PP' : 'ARV'}
+              </button>
+            </div>
             <span className="text-xs font-mono font-medium">{ltvPercent}%</span>
           </div>
           <Slider
             value={[ltvPercent]}
             onValueChange={([v]) => {
               onChange('refiLtv', String(v));
-              onChange('refiLoanAmount', String(Math.round(arv * (v / 100))));
+              onChange('refiLoanAmount', String(Math.round(ltvBase * (v / 100))));
             }}
             min={0}
             max={100}
