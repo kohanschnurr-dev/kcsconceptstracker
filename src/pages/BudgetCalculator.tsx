@@ -232,6 +232,9 @@ export default function BudgetCalculator() {
     setBudgetName(template.name);
     setBudgetDescription(template.description || '');
     setCurrentTemplateName(template.name);
+    setPurchasePrice(template.purchase_price?.toString() || '');
+    setArv(template.arv?.toString() || '');
+    setSqft(template.sqft?.toString() || '');
 
     // Restore all deal parameters from template meta
     const meta = (template.category_budgets as any)?._meta;
@@ -334,23 +337,45 @@ export default function BudgetCalculator() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const trimmedName = budgetName.trim();
+      const categoryBudgetsObj = getCategoryBudgetsObject();
+      const totalBudget = Object.entries(categoryBudgetsObj)
+        .filter(([k]) => k !== '_meta')
+        .reduce((sum, [, v]) => sum + (typeof v === 'number' ? v : 0), 0);
+
       const templateData = {
-        user_id: user.id,
-        name: budgetName.trim(),
+        name: trimmedName,
         description: budgetDescription.trim() || null,
         purchase_price: parseFloat(purchasePrice) || 0,
         arv: parseFloat(arv) || 0,
         sqft: parseInt(sqft) || null,
-        category_budgets: getCategoryBudgetsObject(),
+        category_budgets: categoryBudgetsObj,
+        total_budget: totalBudget,
       };
 
-      const { error } = await supabase
+      // Check if a template with this name already exists for this user
+      const { data: existing } = await supabase
         .from('budget_templates')
-        .insert(templateData);
-      
-      if (error) throw error;
-      toast.success('Budget saved to folder');
-      setCurrentTemplateName(budgetName);
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('name', trimmedName)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('budget_templates')
+          .update(templateData)
+          .eq('id', existing.id);
+        if (error) throw error;
+        toast.success('Budget updated');
+      } else {
+        const { error } = await supabase
+          .from('budget_templates')
+          .insert({ ...templateData, user_id: user.id });
+        if (error) throw error;
+        toast.success('Budget saved to folder');
+      }
+      setCurrentTemplateName(trimmedName);
     } catch (error: any) {
       console.error('Error saving budget:', error);
       toast.error(error.message || 'Failed to save budget');
