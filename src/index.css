@@ -153,6 +153,12 @@
   }
 }
 
+/* Force all child text in highlighted dropdown items to inherit accent-foreground */
+[data-highlighted] .text-muted-foreground,
+[data-highlighted] .text-primary {
+  color: hsl(var(--accent-foreground)) !important;
+}
+
 /* Hide number input spinners */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
