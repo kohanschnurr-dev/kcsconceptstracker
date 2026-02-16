@@ -189,8 +189,10 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
             </div>
           ) : (
             <div>
-              <p className="text-xs text-muted-foreground">Expenses</p>
-              <p className="font-mono font-semibold">{formatCurrency(totalSpent)}</p>
+              <p className="text-xs text-muted-foreground">Profit</p>
+              <p className={cn('font-mono font-semibold', !hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success')}>
+                {hasProfit ? formatCurrency(profit) : '—'}
+              </p>
             </div>
           )}
           <div>
