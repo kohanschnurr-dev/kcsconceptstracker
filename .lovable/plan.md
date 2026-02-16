@@ -1,35 +1,34 @@
 
 
-## Fix Dropdown Text Contrast Across All Palettes
+## Fix Calendar Header: Dead Space and Truncated Project Filter
 
-### Problem
-When a dropdown menu item is highlighted (focused/hovered), the background changes to the `accent` color and the main text changes to `accent-foreground`. However, child elements with explicit color classes like `text-muted-foreground` and `text-primary` keep their original colors, causing poor contrast on the highlighted background. This affects the Baselines section and potentially other dropdown menus across the app.
+### Problems
+1. **"All Proje..." truncated** -- The project filter trigger is hardcoded to `w-[160px]`, cutting off "All Projects" text.
+2. **Massive dead space** -- `justify-between` on the outer container pushes the view toggles and Add button to the far right, leaving a wide empty gap in the center.
 
-### Root Cause
-The shadcn DropdownMenuItem component applies `focus:text-accent-foreground` only to the root element. Child `span` and `button` elements with hardcoded text color classes override the inherited color and become unreadable against the accent background.
+### Solution
 
-### Solution: Global CSS Fix + TemplatePicker Cleanup
+**File: `src/components/calendar/CalendarHeader.tsx`**
 
-Rather than adding `group-data-[highlighted]` classes to every child element in every dropdown, add a single global CSS rule that forces all text within highlighted dropdown items to inherit the foreground color. This fixes the issue everywhere at once, for all current and future palettes.
+1. **Widen the project filter trigger** -- Change `w-[160px]` to `w-[180px]` so "All Projects" displays fully without excess width.
 
-**File: `src/index.css`** -- Add one utility rule:
-```css
-/* Force all child text in highlighted dropdown items to inherit accent-foreground */
-[data-highlighted] .text-muted-foreground,
-[data-highlighted] .text-primary {
-  color: hsl(var(--accent-foreground)) !important;
-}
+2. **Close the dead space** -- Change the outer container from `justify-between` to `justify-start` (or just remove `justify-between`) so the right section flows naturally after the left section instead of being pushed to the far edge. Keep `gap-4` between sections and let the Add button sit adjacent to the view toggles.
+
+Alternatively, wrap both sections with `flex-wrap` and `gap-4` so everything flows in one line left-to-right without artificial spacing.
+
+### Technical Detail
+
+In `CalendarHeader.tsx` line 78, change:
+```
+flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4
+```
+to:
+```
+flex flex-col lg:flex-row items-start lg:items-center gap-4
 ```
 
-**File: `src/components/budget/TemplatePicker.tsx`** -- Clean up the now-redundant `group-data-[highlighted]/item:text-accent-foreground` classes from the saved budgets section (lines 359, 364) since the global rule handles it. Also remove the `group/item` class from the DropdownMenuItem (line 341).
-
-### Coverage
-This global rule covers:
-- Baseline tier descriptions and prices (the screenshot issue)
-- Saved budget dollar amounts and delete icons
-- Any other dropdown across the app (Vendors, Documents, etc.) that uses `text-muted-foreground` or `text-primary` inside items
-- Works identically across all 10 palettes (Ember, Graphite, Slate, Onyx, Titanium, Midnight, Cobalt, Ivory, Pearl, Linen) since it uses the CSS variable values
+On line 114, change `w-[160px]` to `w-[180px]`.
 
 ### Files Changed
-- `src/index.css` (one CSS rule addition)
-- `src/components/budget/TemplatePicker.tsx` (cleanup of redundant group classes)
+- `src/components/calendar/CalendarHeader.tsx` (two small edits)
+
