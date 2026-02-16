@@ -322,7 +322,7 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
                   <DropdownMenuItem 
                     key={template.id}
                     onClick={() => onSelectTemplate(template)}
-                    className="cursor-pointer focus:text-accent-foreground"
+                    className="cursor-pointer group/item"
                   >
                     <div className="flex items-center justify-between w-full gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -340,12 +340,12 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
                         <span className="font-medium truncate">{template.name}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs font-mono text-muted-foreground">
+                        <span className="text-xs font-mono text-muted-foreground group-data-[highlighted]/item:text-accent-foreground">
                           {formatCurrency(total)}
                         </span>
                         <button
                           onClick={(e) => handleDeleteTemplate(e, template.id, template.name)}
-                          className="p-0.5 hover:scale-110 transition-transform text-muted-foreground hover:text-destructive"
+                          className="p-0.5 hover:scale-110 transition-transform text-muted-foreground hover:text-destructive group-data-[highlighted]/item:text-accent-foreground"
                           title="Delete budget"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
