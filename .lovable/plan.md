@@ -1,24 +1,23 @@
 
 
-## Add Points Cost Line Item to BRRR Analysis
+## Remove Refinance Toggle from Deal Sidebar
 
 ### What Changes
-Add a "Points" line item to the **Acquisition** section of the BRRR Analysis card, showing the dollar cost of refi points. This makes the cost visible in the P&L breakdown (currently it's factored into the Total All-In math but not shown as its own line).
+Remove the on/off toggle switch next to the "Refinance" heading in the Deal Sidebar. Since the Loan section now has "Regular" vs "Refi" tabs that control which analysis is shown, the toggle is redundant. The refinance input fields (LTV slider, Rate, Term, Points) will always be visible in the sidebar.
+
+### How It Works
+- The "REFINANCE" heading stays, but the Switch is removed
+- The refi input fields (LTV, Rate, Term, Points) are always visible -- no longer wrapped in a conditional
+- `refiEnabled` is initialized to `true` by default so the analysis components continue to use the loan values in their calculations
 
 ### Technical Details
 
-**File: `src/components/budget/BRRRAnalysis.tsx`**
-1. After the "Closing + Holding" line (line 81) and before the "Total All-In" line (line 82), add a conditional row that shows "Points" and its dollar cost -- only when `refiPointsCost > 0`
-2. No calculation changes needed; `refiPointsCost` is already computed and included in `totalAcquisitionCost`
+**File: `src/components/budget/RentalFields.tsx`**
+1. Remove the `Switch` import and the toggle next to the "Refinance" heading
+2. Remove the `{values.refiEnabled && (...)}` conditional wrapper so the refi fields always render
 
-```tsx
-{refiPointsCost > 0 && (
-  <div className="flex justify-between">
-    <span>Points</span>
-    <span className="font-mono">{formatCurrency(refiPointsCost)}</span>
-  </div>
-)}
-```
+**File: `src/pages/BudgetCalculator.tsx`**
+1. Change `refiEnabled` default from `false` to `true` in the initial state
+2. Remove the auto-populate logic tied to `refiEnabled` toggling on (no longer needed since it starts enabled)
 
-One small addition to one file. No other changes required.
-
+No changes to BRRRAnalysis or RentalAnalysis -- they already read `refiEnabled` from the fields object and will see it as `true`.
