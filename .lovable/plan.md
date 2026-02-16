@@ -1,28 +1,42 @@
 
-## Add Editable Closing and Holding Cost Percentages
 
-### Overview
-Add a pencil icon next to the "Closing + Holding" line in the Deal Sidebar that lets you click to edit the percentages (currently hardcoded at 2% buy closing and 3% holding).
+## Save All Deal Parameters with Budget
 
-### How It Works
-- By default, closing is 2% and holding is 3% (current behavior)
-- A small pencil icon appears next to the values
-- Clicking it reveals inline editable percentage inputs for both
-- The edited percentages flow through to all profit/analysis calculations
+### Problem
+Currently, saving a budget only stores name, description, purchase price, ARV, sqft, and category budgets. It does NOT save rental fields (monthly rent, vacancy, taxes, insurance, loan settings, etc.), closing/holding percentages, calculator type toggle, or the sell-closing-costs toggle. When you reload a saved budget, all those entries are lost.
 
-### Technical Details
+### Solution
+Store all deal parameters inside the existing `_meta` key of the `category_budgets` JSONB column -- no database migration needed.
 
-**1. `src/pages/BudgetCalculator.tsx`**
-- Add two new state variables: `closingPct` (default `'2'`) and `holdingPct` (default `'3'`)
-- Update calculations to use these dynamic percentages instead of hardcoded `0.02` / `0.03`
-- Pass `closingPct`, `holdingPct`, and their setters down to `DealSidebar`
+### What Gets Saved (new additions)
+- Calculator type (fix_flip / rental) -- already partially saved
+- Closing cost percentage
+- Holding cost percentage
+- Include sell closing costs toggle
+- All rental fields: monthly rent, vacancy rate, annual taxes, annual insurance, annual HOA, monthly maintenance, management rate, loan enabled, LTV, loan amount, rate, term, points, points mode, LTV base
 
-**2. `src/components/budget/DealSidebar.tsx`**
-- Add new props: `closingPct`, `onClosingPctChange`, `holdingPct`, `onHoldingPctChange`
-- Add local `isEditingCosts` state
-- Replace the static "Closing (Buy, 2%)" and "Holding (3%)" lines with:
-  - When not editing: current display + a small `Pencil` icon button that toggles edit mode
-  - When editing: inline number inputs for each percentage with a "Done" or blur-to-close behavior
-- Update the local `closingCostsBuy` and `holdingCosts` display calculations to use the dynamic percentages
+### Technical Changes
 
-**3. No changes needed** to `RentalAnalysis.tsx` or `BRRRAnalysis.tsx` since they receive pre-computed `closingCostsBuy` and `holdingCosts` as props from `BudgetCalculator.tsx`.
+**File: `src/pages/BudgetCalculator.tsx`**
+
+1. **`handleSave`** -- expand the `category_budgets` object to include a richer `_meta`:
+   ```
+   _meta: {
+     type: calculatorType,
+     closingPct,
+     holdingPct,
+     includeSellClosingCosts,
+     rentalFields,
+   }
+   ```
+
+2. **`loadDefaultTemplate`** and **`handleSelectTemplate`** -- when restoring a template, read `_meta` and restore:
+   - `closingPct` / `holdingPct` (falling back to '2' / '3')
+   - `includeSellClosingCosts` (falling back to `true`)
+   - `rentalFields` (falling back to `defaultRentalFields`)
+   - `calculatorType` (already done, no change)
+
+3. **`handleClearAll`** -- already resets `rentalFields` to defaults; also reset `closingPct` to '2', `holdingPct` to '3', `includeSellClosingCosts` to `true`.
+
+No database migration or new columns needed -- everything fits in the existing JSONB field.
+
