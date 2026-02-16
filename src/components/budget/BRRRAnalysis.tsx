@@ -34,6 +34,7 @@ export function BRRRAnalysis({ purchasePrice, arv, totalBudget, closingCostsBuy,
   const totalAcquisitionCost = purchasePrice + totalBudget + closingCostsBuy + holdingCosts + refiPointsCost;
   const equityCaptured = arv - refiLoanAmount;
   const moneyLeftInDeal = Math.max(0, totalAcquisitionCost - refiLoanAmount);
+  const cashToPocket = Math.max(0, refiLoanAmount - totalAcquisitionCost);
 
   // Cash flow
   const effectiveMonthlyRent = monthlyRent * (1 - vacancyRate);
@@ -116,6 +117,12 @@ export function BRRRAnalysis({ purchasePrice, arv, totalBudget, closingCostsBuy,
                   {formatCurrency(moneyLeftInDeal)}
                 </span>
               </div>
+              {cashToPocket > 0 && (
+                <div className="flex justify-between font-medium">
+                  <span>Cash to Pocket</span>
+                  <span className="font-mono text-green-500">{formatCurrency(cashToPocket)}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -173,11 +180,17 @@ export function BRRRAnalysis({ purchasePrice, arv, totalBudget, closingCostsBuy,
         </div>
 
         {/* Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-8">
           <div className={`p-4 rounded-lg text-center ${moneyLeftInDeal <= 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
             <p className="text-sm text-muted-foreground">Money Left In</p>
             <p className={`text-xl font-bold font-mono ${moneyLeftInDeal <= 0 ? 'text-green-500' : 'text-amber-500'}`}>
               {formatCurrency(moneyLeftInDeal)}
+            </p>
+          </div>
+          <div className={`p-4 rounded-lg text-center ${cashToPocket > 0 ? 'bg-green-500/10' : 'bg-muted/50'}`}>
+            <p className="text-sm text-muted-foreground">Cash to Pocket</p>
+            <p className={`text-xl font-bold font-mono ${cashToPocket > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
+              {formatCurrency(cashToPocket)}
             </p>
           </div>
           <div className={`p-4 rounded-lg text-center ${monthlyCashFlow >= 0 ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
