@@ -149,10 +149,10 @@ export function RentalFields({ values, onChange, arv }: RentalFieldsProps) {
         </div>
       </div>
 
-      {/* Refinance Section */}
+      {/* Loan Section */}
       <Separator />
       <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        Refinance
+        Loan
       </h4>
 
       <div className="space-y-3">
