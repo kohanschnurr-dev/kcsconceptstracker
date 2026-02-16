@@ -1,26 +1,32 @@
 
-## Fix Cash-on-Cash Return for Infinite Return Scenarios
+
+## Fix Cash Invested Calculation for Regular Loan Mode
 
 ### Problem
-When the loan fully covers (or exceeds) the cost basis, Cash Invested = $0 and Cash-on-Cash incorrectly shows 0.0%. This is actually an "infinite return" scenario that should display accordingly -- the BRRR Analysis tab already handles this correctly by showing the infinity symbol.
+In the "Regular" (non-refi) rental analysis, Cash Invested always equals the full cost basis (Purchase + Rehab) because the loan amount is only subtracted when `refiEnabled` is true. However, the mortgage P&I IS being calculated from the loan amount in both modes, meaning the loan exists -- it just is not factored into the cash invested calculation.
+
+This causes Cash Invested to show the full cost basis instead of the reduced amount after the loan, and Cash-on-Cash return to be incorrect.
 
 ### Solution
-Apply the same infinite return logic from `BRRRAnalysis.tsx` to `RentalAnalysis.tsx`: when Cash Invested is $0 (totalCashInvested <= 0), display "∞" for Cash-on-Cash instead of "0.0%", and style it green.
+Always subtract the loan amount from the cost basis when calculating Cash Invested, regardless of whether "refi" mode is toggled. The points cost should also always be included if applicable.
 
 ### Technical Details
 
 **File: `src/components/budget/RentalAnalysis.tsx`**
 
-Three locations need updating:
+Replace lines 56-58:
 
-1. **Returns section (line ~129)** -- Change the Cash-on-Cash value display:
-   - From: `{cashOnCash.toFixed(1)}%`
-   - To: `{totalCashInvested <= 0 ? '∞' : `${cashOnCash.toFixed(1)}%`}`
-   - Color should be green when infinite
+```tsx
+const totalCashInvested = rentalFields.refiEnabled
+  ? Math.max(0, totalCostBasis + refiPointsCost - refiLoanAmount)
+  : totalCostBasis;
+```
 
-2. **Summary card for Cash-on-Cash (line ~155)** -- Same change in the bottom summary banner:
-   - From: `{cashOnCash.toFixed(1)}%`
-   - To: `{totalCashInvested <= 0 ? '∞' : `${cashOnCash.toFixed(1)}%`}`
-   - Background and text should be green when infinite
+With:
 
-This mirrors exactly how `BRRRAnalysis.tsx` handles the `moneyLeftInDeal <= 0` case on lines 169 and 211.
+```tsx
+const totalCashInvested = Math.max(0, totalCostBasis + refiPointsCost - refiLoanAmount);
+```
+
+This ensures the loan amount is always deducted from the cost basis when computing cash invested, whether in Regular or Refi mode. The `refiLoanAmount` already defaults to 0 when no loan is configured, so the math remains correct when no loan exists.
+
