@@ -53,9 +53,7 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
     ? Math.round(refiLoanAmount * (refiPointsVal / 100))
     : refiPointsVal;
 
-  const totalCashInvested = rentalFields.refiEnabled
-    ? Math.max(0, totalCostBasis + refiPointsCost - refiLoanAmount)
-    : totalCostBasis;
+  const totalCashInvested = Math.max(0, totalCostBasis + refiPointsCost - refiLoanAmount);
   const cashOnCash = totalCashInvested > 0 ? (annualCashFlow / totalCashInvested) * 100 : 0;
 
   // Equity Gain (mirrors Fix & Flip profit formula)
