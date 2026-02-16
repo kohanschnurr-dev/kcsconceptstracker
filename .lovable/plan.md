@@ -1,31 +1,32 @@
 
 
-## Switch Info Icon Back to Hover Tooltip
+## Show Profit Instead of Expenses on Rental Project Cards
 
 ### Change
-Revert the Popover back to a Tooltip so the info appears on hover instead of click. Keep the same content and styling.
+In the bottom stats grid of rental project cards, replace the "Expenses" label and total spent value with "Profit" using the same profit formula already calculated in the component.
 
 ### Technical Details
 
-**File: `src/components/SmartSplitReceiptUpload.tsx`**
+**File: `src/components/dashboard/ProjectCard.tsx`**
 
-1. Replace `Popover`/`PopoverContent`/`PopoverTrigger` imports with `Tooltip`/`TooltipContent`/`TooltipProvider`/`TooltipTrigger` from `@/components/ui/tooltip`.
-
-2. Replace the Popover block (lines 998-1005) with:
+In the bottom grid (around lines 155-161), the `else` branch for rental cards currently shows:
 
 ```tsx
-<TooltipProvider>
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-    </TooltipTrigger>
-    <TooltipContent side="right" align="start" className="max-w-xs text-sm p-3">
-      <p>Allow time for receipts to parse after uploading.</p>
-      <p className="mt-1">Upload clear, high-quality PDFs or photos for best parsing accuracy.</p>
-    </TooltipContent>
-  </Tooltip>
-</TooltipProvider>
+<div>
+  <p className="text-xs text-muted-foreground">Expenses</p>
+  <p className="font-mono font-semibold">{formatCurrency(totalSpent)}</p>
+</div>
 ```
 
-Key difference from the original attempt: using `side="right"` and `align="start"` instead of `side="top"` for better positioning that won't overlap the header.
+Replace with:
 
+```tsx
+<div>
+  <p className="text-xs text-muted-foreground">Profit</p>
+  <p className={cn('font-mono font-semibold', !hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success')}>
+    {hasProfit ? formatCurrency(profit) : '—'}
+  </p>
+</div>
+```
+
+This reuses the existing `profit`, `hasProfit`, and color logic already computed at the top of the component. No new calculations needed.
