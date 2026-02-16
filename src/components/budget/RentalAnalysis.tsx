@@ -47,8 +47,14 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
   const monthlyCashFlow = effectiveMonthlyRent - monthlyOpex - monthlyPI;
   const annualCashFlow = monthlyCashFlow * 12;
 
+  // Points cost
+  const refiPointsVal = parseFloat(rentalFields.refiPoints) || 0;
+  const refiPointsCost = rentalFields.refiPointsMode === 'pct'
+    ? Math.round(refiLoanAmount * (refiPointsVal / 100))
+    : refiPointsVal;
+
   const totalCashInvested = rentalFields.refiEnabled
-    ? Math.max(0, totalCostBasis - refiLoanAmount)
+    ? Math.max(0, totalCostBasis + refiPointsCost - refiLoanAmount)
     : totalCostBasis;
   const cashOnCash = totalCashInvested > 0 ? (annualCashFlow / totalCashInvested) * 100 : 0;
 
