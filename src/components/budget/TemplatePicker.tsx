@@ -18,6 +18,16 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -213,24 +223,30 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     }
   };
 
-  const handleDeleteTemplate = async (e: React.MouseEvent, templateId: string, templateName: string) => {
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  const handleDeleteClick = (e: React.MouseEvent, templateId: string, templateName: string) => {
     e.stopPropagation();
     e.preventDefault();
-    
-    if (!confirm(`Delete "${templateName}"?`)) return;
-    
+    setDeleteTarget({ id: templateId, name: templateName });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
       const { error } = await supabase
         .from('budget_templates')
         .delete()
-        .eq('id', templateId);
+        .eq('id', deleteTarget.id);
 
       if (error) throw error;
-      setSavedTemplates(prev => prev.filter(t => t.id !== templateId));
+      setSavedTemplates(prev => prev.filter(t => t.id !== deleteTarget.id));
       toast.success('Budget deleted');
     } catch (error) {
       console.error('Error deleting template:', error);
       toast.error('Failed to delete budget');
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -344,7 +360,7 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
                           {formatCurrency(total)}
                         </span>
                         <button
-                          onClick={(e) => handleDeleteTemplate(e, template.id, template.name)}
+                          onClick={(e) => handleDeleteClick(e, template.id, template.name)}
                           className="p-0.5 hover:scale-110 transition-transform text-muted-foreground hover:text-destructive group-data-[highlighted]/item:text-accent-foreground"
                           title="Delete budget"
                         >
@@ -402,6 +418,23 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Budget?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
