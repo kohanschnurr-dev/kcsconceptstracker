@@ -634,6 +634,12 @@ export default function BusinessExpenses() {
                 setRules(prev => prev.filter(r => r.id !== ruleId));
               }
             }}
+            onUpdateRuleCategory={async (ruleId, newCategory) => {
+              const { error } = await supabase.from('operation_codes').update({ category: newCategory }).eq('id', ruleId);
+              if (!error) {
+                setRules(prev => prev.map(r => r.id === ruleId ? { ...r, category: newCategory } : r));
+              }
+            }}
          />
 
         {/* Expenses Table */}

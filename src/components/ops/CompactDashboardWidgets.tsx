@@ -48,6 +48,7 @@ interface CompactDashboardWidgetsProps {
   onAddRule?: (rule: { title: string; category: string }) => Promise<void>;
   onToggleRule?: (ruleId: string, completed: boolean) => Promise<void>;
   onDeleteRule?: (ruleId: string) => Promise<void>;
+  onUpdateRuleCategory?: (ruleId: string, newCategory: string) => Promise<void>;
   onDeleteGoal?: (goalId: string) => Promise<void>;
 }
  
@@ -66,6 +67,7 @@ export function CompactDashboardWidgets({
   onAddRule,
   onToggleRule,
   onDeleteRule,
+  onUpdateRuleCategory,
   onDeleteGoal,
 }: CompactDashboardWidgetsProps) {
    const [spendingOpen, setSpendingOpen] = useState(false);
@@ -275,6 +277,7 @@ export function CompactDashboardWidgets({
           onAddRule={onAddRule}
           onToggleRule={onToggleRule}
           onDeleteRule={onDeleteRule}
+          onUpdateRuleCategory={onUpdateRuleCategory}
         />
      </>
    );
