@@ -1,27 +1,28 @@
 
+## Add Loan Points Field to Refinance Section
 
-## Fix: Keep Refi Loan Amount in Sync with ARV
+### What Changes
+Add a **Points** input field to the Refinance section in the Deal Sidebar that supports toggling between **% of loan** and **flat $** modes --- matching the existing pattern used elsewhere in the app for transaction/holding costs.
 
-### The Problem
-When ARV is changed **after** the refi slider has been set, the displayed loan amount in the sidebar updates correctly (it's computed fresh from `arv * ltv%` each render), but the stored `refiLoanAmount` state stays stale. The analysis components (RentalAnalysis, BRRRAnalysis) read from that stale state value, causing incorrect financial calculations.
-
-### The Fix
-Add a `useEffect` in `BudgetCalculator.tsx` that recomputes and updates `refiLoanAmount` whenever `arv` changes and refi is enabled. This keeps the stored value in sync with the displayed value.
+### How It Works
+- A new "Points" field appears in the Refi section alongside Rate and Term (expanding the grid to 3 columns)
+- A small toggle button (% or $) lets users switch between percentage-of-loan and flat-dollar modes
+- Default: **0** points
+- The computed dollar cost of points is displayed as helper text when in % mode (e.g., "= $750")
+- The points value feeds into the BRRR/Rental analysis for accurate cash-invested calculations
 
 ### Technical Details
 
+**File: `src/components/budget/RentalFields.tsx`**
+1. Add `refiPoints` (string) and `refiPointsMode` (`'pct'` | `'flat'`) to `RentalFieldValues` interface
+2. Expand the Rate/Term grid from `grid-cols-2` to `grid-cols-3`
+3. Add a Points input with a small toggle button cycling between `%` and `$`
+4. When in `%` mode, show computed dollar amount as helper text: `loanAmount * points / 100`
+
 **File: `src/pages/BudgetCalculator.tsx`**
-- Add a `useEffect` that watches `arv` and `rentalFields.refiEnabled`. When both are truthy, recompute `refiLoanAmount` as `Math.round(arvNum * (ltvPercent / 100))` and update the rental fields state.
+1. Add `refiPoints: ''` and `refiPointsMode: 'pct'` to the initial `rentalFields` state
+2. Pass through to analysis components (no other changes needed for state flow since it's part of `rentalFields`)
 
-```typescript
-useEffect(() => {
-  if (rentalFields.refiEnabled) {
-    const ltv = parseFloat(rentalFields.refiLtv) || 75;
-    const newLoanAmount = String(Math.round(arvNum * (ltv / 100)));
-    setRentalFields(prev => ({ ...prev, refiLoanAmount: newLoanAmount }));
-  }
-}, [arv, rentalFields.refiEnabled, rentalFields.refiLtv]);
-```
-
-This is a small, targeted fix -- one `useEffect` added to the page component. No other files need changes.
-
+**File: `src/components/budget/BRRRAnalysis.tsx`** (and optionally `RentalAnalysis.tsx`)
+1. Read `refiPoints` and `refiPointsMode` from `rentalFields`
+2. Compute points cost and factor into "Cash Invested" or display as a line item
