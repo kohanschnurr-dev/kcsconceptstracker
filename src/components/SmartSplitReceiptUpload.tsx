@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download, Camera, Info } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
@@ -995,17 +995,15 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 <div>
                   <h3 className="font-medium flex items-center gap-2">
                     SmartSplit Receipt Matching
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs text-sm">
-                          <p>Allow time for receipts to parse after uploading.</p>
-                          <p className="mt-1">Upload clear, high-quality PDFs or photos for best parsing accuracy.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </PopoverTrigger>
+                      <PopoverContent side="right" align="start" className="max-w-xs text-sm p-3">
+                        <p>Allow time for receipts to parse after uploading.</p>
+                        <p className="mt-1">Upload clear, high-quality PDFs or photos for best parsing accuracy.</p>
+                      </PopoverContent>
+                    </Popover>
                   </h3>
                   <div className="flex items-center gap-2">
                     {pendingCount > 0 && (
