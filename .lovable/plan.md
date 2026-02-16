@@ -1,13 +1,14 @@
 
-## Rename "Refinance" to "Loan" in Sidebar
+
+## Rename "Rehab Budget" to "Construction Budget"
 
 ### What Changes
-Rename the "REFINANCE" section heading in the Deal Sidebar to "Loan". This clarifies that the sidebar section is for inputting loan details, while the main view's "Regular/Refi" tabs handle which analysis (Cash Flow vs BRRR) is displayed.
+Rename the label **"Rehab Budget"** to **"Construction Budget"** in the sticky header/MAO gauge area of the Budget Calculator. This better reflects that the calculator serves both rehab and new construction projects.
 
 ### Technical Details
 
-**File: `src/components/budget/RentalFields.tsx`**
-- Line 155: Change `Refinance` to `Loan`
-- Also update the comment on line 152 from `{/* Refinance Section */}` to `{/* Loan Section */}`
+**File: `src/components/budget/MAOGauge.tsx`**
+- Line 134: Change `Rehab Budget` to `Construction Budget`
 
 One-line text change, no logic changes.
+
