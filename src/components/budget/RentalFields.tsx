@@ -163,13 +163,26 @@ export function RentalFields({ values, onChange, arv, purchasePrice }: RentalFie
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Label className="text-xs">Loan-to-{values.refiLtvBase === 'purchase' ? 'Purchase' : 'Value'}</Label>
-              <button
-                type="button"
-                className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded border border-input bg-muted hover:bg-accent transition-colors"
-                onClick={() => onChange('refiLtvBase', values.refiLtvBase === 'purchase' ? 'arv' : 'purchase')}
-              >
-                {values.refiLtvBase === 'purchase' ? 'PP' : 'ARV'}
-              </button>
+              <div className="flex rounded border border-input overflow-hidden">
+                <button
+                  type="button"
+                  className={`text-[10px] font-mono font-medium px-1.5 py-0.5 transition-colors ${
+                    values.refiLtvBase === 'arv' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent'
+                  }`}
+                  onClick={() => onChange('refiLtvBase', 'arv')}
+                >
+                  ARV
+                </button>
+                <button
+                  type="button"
+                  className={`text-[10px] font-mono font-medium px-1.5 py-0.5 transition-colors ${
+                    values.refiLtvBase === 'purchase' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent'
+                  }`}
+                  onClick={() => onChange('refiLtvBase', 'purchase')}
+                >
+                  PP
+                </button>
+              </div>
             </div>
             <span className="text-xs font-mono font-medium">{ltvPercent}%</span>
           </div>
