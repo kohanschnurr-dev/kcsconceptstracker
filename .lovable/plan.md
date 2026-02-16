@@ -1,24 +1,27 @@
 
 
-## Add "Equity Gain" to Rental Analysis
+## Fix: Keep Refi Loan Amount in Sync with ARV
 
-### What Changes
-Add an **Equity Gain** metric to the Rental Cash Flow Analysis that mirrors the Fix & Flip profit formula: `ARV - Purchase Price - Rehab Budget - Transaction Costs - Holding Costs`. This shows the investor how much instant equity they capture by buying below market value and rehabbing.
+### The Problem
+When ARV is changed **after** the refi slider has been set, the displayed loan amount in the sidebar updates correctly (it's computed fresh from `arv * ltv%` each render), but the stored `refiLoanAmount` state stays stale. The analysis components (RentalAnalysis, BRRRAnalysis) read from that stale state value, causing incorrect financial calculations.
 
-### How It Works
-- A new "Equity Gain" row appears in the **Returns** column of the Cash Flow Analysis grid
-- A new **Equity Gain** summary card is added to the bottom summary row (expanding from 3 to 4 cards, matching the BRRR layout)
-- The formula is: `ARV - Purchase Price - Total Budget - Closing Costs (Buy 2%) - Holding Costs (3%) - Selling Costs (6% if enabled)`
-- Color coding: green if positive, red if negative
+### The Fix
+Add a `useEffect` in `BudgetCalculator.tsx` that recomputes and updates `refiLoanAmount` whenever `arv` changes and refi is enabled. This keeps the stored value in sync with the displayed value.
 
 ### Technical Details
 
-**File: `src/components/budget/RentalAnalysis.tsx`**
-1. Add new props: `closingCostsBuy`, `holdingCosts`, `closingCostsSell` (numbers)
-2. Calculate `equityGain = arv - purchasePrice - totalBudget - closingCostsBuy - holdingCosts - closingCostsSell`
-3. Add an "Equity Gain" row in the Returns section (below Cash Invested)
-4. Add a 4th summary card at the bottom for Equity Gain (change grid from 3-col to 4-col)
-
 **File: `src/pages/BudgetCalculator.tsx`**
-1. Pass `closingCostsBuy`, `holdingCosts`, and `closingCostsSell` as additional props to `RentalAnalysis`
+- Add a `useEffect` that watches `arv` and `rentalFields.refiEnabled`. When both are truthy, recompute `refiLoanAmount` as `Math.round(arvNum * (ltvPercent / 100))` and update the rental fields state.
+
+```typescript
+useEffect(() => {
+  if (rentalFields.refiEnabled) {
+    const ltv = parseFloat(rentalFields.refiLtv) || 75;
+    const newLoanAmount = String(Math.round(arvNum * (ltv / 100)));
+    setRentalFields(prev => ({ ...prev, refiLoanAmount: newLoanAmount }));
+  }
+}, [arv, rentalFields.refiEnabled, rentalFields.refiLtv]);
+```
+
+This is a small, targeted fix -- one `useEffect` added to the page component. No other files need changes.
 
