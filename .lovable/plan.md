@@ -1,29 +1,37 @@
 
-## Add "Cash to Pocket" Metric to BRRR Analysis
 
-### Problem
-When the refinance loan amount exceeds the total acquisition cost (purchase + rehab + closing + holding + points), the investor pulls out excess cash. Currently, `Money Left In Deal` is clamped to $0 with `Math.max(0, ...)`, so you never see how much extra money you walked away with.
+## Add Info Tooltip to SmartSplit Receipt Matching Header
 
-For example: $100k purchase + $10k rehab = $110k all-in, but you pull out $140k via refi -- you should see $30k cash to pocket.
+### What Changes
+Add an info icon (circle with "i") next to the "SmartSplit Receipt Matching" title that shows helpful tips on hover about receipt parsing.
 
-### Solution
-Add a **"Cash to Pocket"** line item in the Refinance column and a new summary card. This shows the excess cash extracted when the refi loan exceeds total costs.
+### Tooltip Content
+- "Allow time for receipts to parse after uploading."
+- "Upload clear, high-quality PDFs or photos for best parsing accuracy."
 
 ### Technical Details
 
-**File: `src/components/budget/BRRRAnalysis.tsx`**
+**File: `src/components/SmartSplitReceiptUpload.tsx`**
 
-1. **New calculation** (after line 36):
-   - `cashToPocket = Math.max(0, refiLoanAmount - totalAcquisitionCost)` -- the inverse of moneyLeftInDeal
+1. Import `Info` icon from `lucide-react` and `Tooltip`/`TooltipTrigger`/`TooltipContent`/`TooltipProvider` from the existing tooltip component.
 
-2. **Refinance column** -- add a new row after "Money Left In":
-   - Label: "Cash to Pocket"
-   - Show in green when > 0
-   - Only displayed when cashToPocket > 0 (to keep the UI clean when it doesn't apply)
+2. Around line 995-997, add an `Info` icon wrapped in a Tooltip next to the "SmartSplit Receipt Matching" text:
 
-3. **Summary cards row** -- add a 5th card (adjust grid to `md:grid-cols-5`):
-   - Title: "Cash to Pocket"
-   - Green background when > 0, muted when $0
-   - Positioned after "Money Left In" card
+```tsx
+<h3 className="font-medium flex items-center gap-2">
+  SmartSplit Receipt Matching
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs text-sm">
+        <p>Allow time for receipts to parse after uploading.</p>
+        <p className="mt-1">Upload clear, high-quality PDFs or photos for best parsing accuracy.</p>
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+</h3>
+```
 
-This gives immediate visibility into how much excess cash was extracted from the deal at refinance.
+One file, small addition. Uses existing tooltip and icon components already in the project.
