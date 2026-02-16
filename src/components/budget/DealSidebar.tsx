@@ -222,7 +222,7 @@ export function DealSidebar({
 
           {/* Rental-specific fields for Rental and BRRR modes */}
           {(calculatorType === 'rental' || calculatorType === 'brrr') && (
-            <RentalFields values={rentalFields} onChange={onRentalFieldChange} />
+            <RentalFields values={rentalFields} onChange={onRentalFieldChange} arv={arvNum} />
           )}
 
           <Separator />
