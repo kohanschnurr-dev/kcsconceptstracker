@@ -111,7 +111,7 @@ export function CalendarHeader({
             value={selectedProjectId || 'all'}
             onSelect={(value) => onProjectFilterChange(value === 'all' ? null : value)}
             placeholder="All Projects"
-            triggerClassName="h-9 w-[180px] bg-card border-border text-foreground hover:bg-secondary"
+            triggerClassName="h-9 w-[220px] bg-card border-border text-foreground hover:bg-secondary"
             className="bg-card border-border"
           />
         )}
