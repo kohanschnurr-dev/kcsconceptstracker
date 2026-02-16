@@ -75,9 +75,9 @@ export function CalendarHeader({
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
-    <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 bg-card rounded-xl p-4 border border-border">
+    <div className="flex flex-wrap items-center gap-4 bg-card rounded-xl p-4 border border-border">
       {/* Left section: Title + Navigation + Filters + Views */}
-      <div className="flex flex-nowrap items-center gap-3 overflow-x-auto">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
           <h1 className="text-lg font-bold text-foreground whitespace-nowrap">Project Calendar</h1>
@@ -117,10 +117,7 @@ export function CalendarHeader({
         )}
 
         <WeatherWidgetWithCity />
-      </div>
 
-      {/* Right section: View Toggles + Add Button */}
-      <div className="flex items-center gap-2 flex-shrink-0">
         <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
           <Button
             variant={view === 'monthly' ? 'default' : 'ghost'}
@@ -156,8 +153,10 @@ export function CalendarHeader({
             Gantt
           </Button>
         </div>
-        {onAddEvent && <div>{onAddEvent}</div>}
       </div>
+
+      {/* Add Button anchored right */}
+      {onAddEvent && <div className="ml-auto flex-shrink-0">{onAddEvent}</div>}
     </div>
   );
 }
