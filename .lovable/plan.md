@@ -1,26 +1,24 @@
 
-## Combine Cash Flow + BRRR into a Single Toggled Section
+
+## Add Points Cost Line Item to BRRR Analysis
 
 ### What Changes
-Replace the two stacked analysis cards (Cash Flow Analysis + BRRR Analysis) with a single section that has a **segmented toggle** at the top labeled "Loan" with two options: **Regular** (left) and **Refi** (right).
-
-- **Regular** selected: Shows the Cash Flow Analysis (RentalAnalysis component)
-- **Refi** selected: Shows the BRRR Analysis (BRRRAnalysis component)
-
-### How It Works
-- A `Tabs` component (already used elsewhere in the app) provides the segmented control
-- Default selection is "Regular" (Cash Flow)
-- Switching to "Refi" swaps in the BRRR Analysis in the same spot
-- Only one analysis is visible at a time, reducing scroll and clutter
+Add a "Points" line item to the **Acquisition** section of the BRRR Analysis card, showing the dollar cost of refi points. This makes the cost visible in the P&L breakdown (currently it's factored into the Total All-In math but not shown as its own line).
 
 ### Technical Details
 
-**File: `src/pages/BudgetCalculator.tsx`**
-1. Add a local state `loanView` (`'regular' | 'refi'`) defaulting to `'regular'`
-2. Replace the current block (lines 643-664) that renders both `RentalAnalysis` and `BRRRAnalysis` with a `Tabs` wrapper:
-   - `TabsList` with two triggers: "Regular" (left) and "Refi" (right)
-   - `TabsContent value="regular"` renders `RentalAnalysis`
-   - `TabsContent value="refi"` renders `BRRRAnalysis`
-3. The section header/label above the tabs will read "Loan"
+**File: `src/components/budget/BRRRAnalysis.tsx`**
+1. After the "Closing + Holding" line (line 81) and before the "Total All-In" line (line 82), add a conditional row that shows "Points" and its dollar cost -- only when `refiPointsCost > 0`
+2. No calculation changes needed; `refiPointsCost` is already computed and included in `totalAcquisitionCost`
 
-No changes needed to `RentalAnalysis.tsx` or `BRRRAnalysis.tsx` -- they render identically, just conditionally shown.
+```tsx
+{refiPointsCost > 0 && (
+  <div className="flex justify-between">
+    <span>Points</span>
+    <span className="font-mono">{formatCurrency(refiPointsCost)}</span>
+  </div>
+)}
+```
+
+One small addition to one file. No other changes required.
+
