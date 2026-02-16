@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DollarSign, ChevronLeft, ChevronRight, Calculator, Folder, Save, FolderOpen, Loader2, Ruler } from 'lucide-react';
+import { DollarSign, ChevronLeft, ChevronRight, Calculator, Folder, Save, FolderOpen, Loader2, Ruler, Pencil, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,10 @@ interface DealSidebarProps {
   onCalculatorTypeChange: (type: CalculatorType) => void;
   rentalFields: RentalFieldValues;
   onRentalFieldChange: (field: keyof RentalFieldValues, value: string | boolean) => void;
+  closingPct: string;
+  onClosingPctChange: (value: string) => void;
+  holdingPct: string;
+  onHoldingPctChange: (value: string) => void;
 }
 
 export function DealSidebar({
@@ -65,8 +69,13 @@ export function DealSidebar({
   onCalculatorTypeChange,
   rentalFields,
   onRentalFieldChange,
+  closingPct,
+  onClosingPctChange,
+  holdingPct,
+  onHoldingPctChange,
 }: DealSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isEditingCosts, setIsEditingCosts] = useState(false);
   const [selectedProject, setSelectedProject] = useState('');
   const [activeTab, setActiveTab] = useState('save');
 
@@ -74,9 +83,9 @@ export function DealSidebar({
   const arvNum = parseFloat(arv) || 0;
 
   // Quick calculations - buy closing always included, sell closing toggleable
-  const closingCostsBuy = purchasePriceNum * 0.02;
+  const closingCostsBuy = purchasePriceNum * ((parseFloat(closingPct) || 0) / 100);
   const closingCostsSell = includeSellClosingCosts ? arvNum * 0.06 : 0;
-  const holdingCosts = purchasePriceNum * 0.03;
+  const holdingCosts = purchasePriceNum * ((parseFloat(holdingPct) || 0) / 100);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -200,21 +209,65 @@ export function DealSidebar({
                   </div>
                 </div>
                 <div className="space-y-1.5 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Closing (Buy, 2%)</span>
-                    <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Holding (3%)</span>
-                    <span className="font-mono">{formatCurrency(holdingCosts)}</span>
-                  </div>
+                  {isEditingCosts ? (
+                    <>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground text-xs">Closing (Buy)</span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            value={closingPct}
+                            onChange={(e) => onClosingPctChange(e.target.value)}
+                            className="w-14 h-6 text-xs font-mono text-right rounded border border-input bg-background px-1.5"
+                          />
+                          <span className="text-xs text-muted-foreground">%</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground text-xs">Holding</span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            value={holdingPct}
+                            onChange={(e) => onHoldingPctChange(e.target.value)}
+                            className="w-14 h-6 text-xs font-mono text-right rounded border border-input bg-background px-1.5"
+                          />
+                          <span className="text-xs text-muted-foreground">%</span>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" className="w-full h-6 text-xs mt-1" onClick={() => setIsEditingCosts(false)}>
+                        <Check className="h-3 w-3 mr-1" /> Done
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Closing (Buy, {closingPct}%)</span>
+                        <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Holding ({holdingPct}%)</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono">{formatCurrency(holdingCosts)}</span>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingCosts(true)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            title="Edit percentages"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {includeSellClosingCosts && (
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Closing (Sell, 6%)</span>
                       <span className="font-mono">{formatCurrency(closingCostsSell)}</span>
                     </div>
                   )}
-                </div>
+                  </div>
               </div>
             </>
           )}
