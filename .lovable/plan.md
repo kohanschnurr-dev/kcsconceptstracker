@@ -1,34 +1,19 @@
 
 
-## Fix Calendar Header: Dead Space and Truncated Project Filter
+## Fix Truncated Project Name in Calendar Header
 
-### Problems
-1. **"All Proje..." truncated** -- The project filter trigger is hardcoded to `w-[160px]`, cutting off "All Projects" text.
-2. **Massive dead space** -- `justify-between` on the outer container pushes the view toggles and Add button to the far right, leaving a wide empty gap in the center.
+### Problem
+The project filter trigger is set to a fixed `w-[180px]`, which is too narrow for real project names (e.g., "2500 Prosperity Ln" shows as "2500 Prosp...").
 
 ### Solution
 
-**File: `src/components/calendar/CalendarHeader.tsx`**
+**File: `src/components/calendar/CalendarHeader.tsx`** (line 114)
 
-1. **Widen the project filter trigger** -- Change `w-[160px]` to `w-[180px]` so "All Projects" displays fully without excess width.
+Change the trigger width from `w-[180px]` to `w-[220px]`. This gives enough room for typical project names (street addresses) to display without truncation, while still fitting comfortably in the header row alongside the other controls.
 
-2. **Close the dead space** -- Change the outer container from `justify-between` to `justify-start` (or just remove `justify-between`) so the right section flows naturally after the left section instead of being pushed to the far edge. Keep `gap-4` between sections and let the Add button sit adjacent to the view toggles.
-
-Alternatively, wrap both sections with `flex-wrap` and `gap-4` so everything flows in one line left-to-right without artificial spacing.
-
-### Technical Detail
-
-In `CalendarHeader.tsx` line 78, change:
 ```
-flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4
+triggerClassName="h-9 w-[220px] bg-card border-border text-foreground hover:bg-secondary"
 ```
-to:
-```
-flex flex-col lg:flex-row items-start lg:items-center gap-4
-```
-
-On line 114, change `w-[160px]` to `w-[180px]`.
 
 ### Files Changed
-- `src/components/calendar/CalendarHeader.tsx` (two small edits)
-
+- `src/components/calendar/CalendarHeader.tsx` (one width change)
