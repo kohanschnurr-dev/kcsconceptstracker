@@ -7,9 +7,12 @@ interface RentalAnalysisProps {
   totalBudget: number;
   rentalFields: RentalFieldValues;
   formatCurrency: (value: number) => string;
+  closingCostsBuy: number;
+  holdingCosts: number;
+  closingCostsSell: number;
 }
 
-export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, formatCurrency }: RentalAnalysisProps) {
+export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, formatCurrency, closingCostsBuy, holdingCosts, closingCostsSell }: RentalAnalysisProps) {
   const monthlyRent = parseFloat(rentalFields.monthlyRent) || 0;
   const vacancyRate = (parseFloat(rentalFields.vacancyRate) || 5) / 100;
   const annualTaxes = parseFloat(rentalFields.annualTaxes) || 0;
@@ -48,6 +51,9 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
     ? Math.max(0, totalCostBasis - refiLoanAmount)
     : totalCostBasis;
   const cashOnCash = totalCashInvested > 0 ? (annualCashFlow / totalCashInvested) * 100 : 0;
+
+  // Equity Gain (mirrors Fix & Flip profit formula)
+  const equityGain = arv - purchasePrice - totalBudget - closingCostsBuy - holdingCosts - closingCostsSell;
 
   return (
     <Card>
@@ -136,12 +142,18 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
                 <span>Cash Invested</span>
                 <span className="font-mono">{formatCurrency(totalCashInvested)}</span>
               </div>
+              <div className="flex justify-between">
+                <span>Equity Gain</span>
+                <span className={`font-mono font-medium ${equityGain >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                  {formatCurrency(equityGain)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
           <div className={`p-4 rounded-lg text-center ${monthlyCashFlow >= 0 ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
             <p className="text-sm text-muted-foreground">Monthly Cash Flow</p>
             <p className={`text-2xl font-bold font-mono ${monthlyCashFlow >= 0 ? 'text-green-500' : 'text-destructive'}`}>
@@ -158,6 +170,12 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
             <p className="text-sm text-muted-foreground">Cash-on-Cash Return</p>
             <p className={`text-2xl font-bold font-mono ${cashOnCash >= 8 ? 'text-green-500' : cashOnCash >= 4 ? 'text-amber-500' : 'text-destructive'}`}>
               {cashOnCash.toFixed(1)}%
+            </p>
+          </div>
+          <div className={`p-4 rounded-lg text-center ${equityGain >= 0 ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
+            <p className="text-sm text-muted-foreground">Equity Gain</p>
+            <p className={`text-2xl font-bold font-mono ${equityGain >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+              {formatCurrency(equityGain)}
             </p>
           </div>
         </div>

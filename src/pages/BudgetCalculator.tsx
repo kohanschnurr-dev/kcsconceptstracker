@@ -631,6 +631,9 @@ export default function BudgetCalculator() {
                           totalBudget={totalBudget}
                           rentalFields={rentalFields}
                           formatCurrency={formatCurrency}
+                          closingCostsBuy={closingCostsBuy}
+                          holdingCosts={holdingCosts}
+                          closingCostsSell={closingCostsSell}
                         />
                       )}
 
