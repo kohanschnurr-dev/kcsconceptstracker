@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, ChevronDown, ChevronRight, Ruler, FolderOpen, Plus, Settings, Star } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Ruler, FolderOpen, Plus, Settings, Star, Trash2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import {
@@ -213,6 +213,27 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     }
   };
 
+  const handleDeleteTemplate = async (e: React.MouseEvent, templateId: string, templateName: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    if (!confirm(`Delete "${templateName}"?`)) return;
+    
+    try {
+      const { error } = await supabase
+        .from('budget_templates')
+        .delete()
+        .eq('id', templateId);
+
+      if (error) throw error;
+      setSavedTemplates(prev => prev.filter(t => t.id !== templateId));
+      toast.success('Budget deleted');
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      toast.error('Failed to delete budget');
+    }
+  };
+
   const sqftNum = parseFloat(sqft) || 0;
 
   return (
@@ -294,12 +315,14 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
                 Your Saved Budgets
               </DropdownMenuLabel>
               {savedTemplates.map((template) => {
-                const total = Object.values(template.category_budgets).reduce((sum, val) => sum + (val || 0), 0);
+                const total = Object.entries(template.category_budgets)
+                  .filter(([k]) => k !== '_meta')
+                  .reduce((sum, [, val]) => sum + ((val as number) || 0), 0);
                 return (
                   <DropdownMenuItem 
                     key={template.id}
                     onClick={() => onSelectTemplate(template)}
-                    className="cursor-pointer"
+                    className="cursor-pointer focus:text-accent-foreground"
                   >
                     <div className="flex items-center justify-between w-full gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -316,9 +339,18 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
                         </button>
                         <span className="font-medium truncate">{template.name}</span>
                       </div>
-                      <span className="text-xs font-mono text-muted-foreground shrink-0">
-                        {formatCurrency(total)}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-mono text-muted-foreground">
+                          {formatCurrency(total)}
+                        </span>
+                        <button
+                          onClick={(e) => handleDeleteTemplate(e, template.id, template.name)}
+                          className="p-0.5 hover:scale-110 transition-transform text-muted-foreground hover:text-destructive"
+                          title="Delete budget"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </DropdownMenuItem>
                 );
