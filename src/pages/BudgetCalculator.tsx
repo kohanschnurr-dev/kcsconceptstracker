@@ -146,10 +146,16 @@ export default function BudgetCalculator() {
         setSqft(template.sqft?.toString() || '');
         setCurrentTemplateName(template.name);
 
-        // Restore calculator type from meta if saved
+        // Restore all deal parameters from meta
         const meta = (template.category_budgets as any)?._meta;
         if (meta?.type) {
           setCalculatorType(meta.type);
+        }
+        setClosingPct(meta?.closingPct ?? '2');
+        setHoldingPct(meta?.holdingPct ?? '3');
+        setIncludeSellClosingCosts(meta?.includeSellClosingCosts ?? true);
+        if (meta?.rentalFields) {
+          setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
         }
 
         const newBudgets: Record<string, string> = {};
@@ -227,10 +233,16 @@ export default function BudgetCalculator() {
     setBudgetDescription(template.description || '');
     setCurrentTemplateName(template.name);
 
-    // Restore calculator type from template meta
+    // Restore all deal parameters from template meta
     const meta = (template.category_budgets as any)?._meta;
     if (meta?.type) {
       setCalculatorType(meta.type);
+    }
+    setClosingPct(meta?.closingPct ?? '2');
+    setHoldingPct(meta?.holdingPct ?? '3');
+    setIncludeSellClosingCosts(meta?.includeSellClosingCosts ?? true);
+    if (meta?.rentalFields) {
+      setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
     }
 
     const newBudgets: Record<string, string> = {};
@@ -253,6 +265,9 @@ export default function BudgetCalculator() {
     setCurrentTemplateName('');
     setActiveBaselineRate(null);
     setRentalFields(defaultRentalFields);
+    setClosingPct('2');
+    setHoldingPct('3');
+    setIncludeSellClosingCosts(true);
     
     const cleared: Record<string, string> = {};
     getBudgetCategories().forEach(cat => {
@@ -291,8 +306,13 @@ export default function BudgetCalculator() {
         budgets[cat.value] = val;
       }
     });
-    // Store calculator type in meta
-    budgets._meta = { type: calculatorType };
+    budgets._meta = {
+      type: calculatorType,
+      closingPct,
+      holdingPct,
+      includeSellClosingCosts,
+      rentalFields,
+    };
     return budgets;
   };
 
