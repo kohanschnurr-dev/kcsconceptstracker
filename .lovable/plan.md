@@ -1,28 +1,26 @@
 
-## Add Loan Points Field to Refinance Section
+## Combine Cash Flow + BRRR into a Single Toggled Section
 
 ### What Changes
-Add a **Points** input field to the Refinance section in the Deal Sidebar that supports toggling between **% of loan** and **flat $** modes --- matching the existing pattern used elsewhere in the app for transaction/holding costs.
+Replace the two stacked analysis cards (Cash Flow Analysis + BRRR Analysis) with a single section that has a **segmented toggle** at the top labeled "Loan" with two options: **Regular** (left) and **Refi** (right).
+
+- **Regular** selected: Shows the Cash Flow Analysis (RentalAnalysis component)
+- **Refi** selected: Shows the BRRR Analysis (BRRRAnalysis component)
 
 ### How It Works
-- A new "Points" field appears in the Refi section alongside Rate and Term (expanding the grid to 3 columns)
-- A small toggle button (% or $) lets users switch between percentage-of-loan and flat-dollar modes
-- Default: **0** points
-- The computed dollar cost of points is displayed as helper text when in % mode (e.g., "= $750")
-- The points value feeds into the BRRR/Rental analysis for accurate cash-invested calculations
+- A `Tabs` component (already used elsewhere in the app) provides the segmented control
+- Default selection is "Regular" (Cash Flow)
+- Switching to "Refi" swaps in the BRRR Analysis in the same spot
+- Only one analysis is visible at a time, reducing scroll and clutter
 
 ### Technical Details
 
-**File: `src/components/budget/RentalFields.tsx`**
-1. Add `refiPoints` (string) and `refiPointsMode` (`'pct'` | `'flat'`) to `RentalFieldValues` interface
-2. Expand the Rate/Term grid from `grid-cols-2` to `grid-cols-3`
-3. Add a Points input with a small toggle button cycling between `%` and `$`
-4. When in `%` mode, show computed dollar amount as helper text: `loanAmount * points / 100`
-
 **File: `src/pages/BudgetCalculator.tsx`**
-1. Add `refiPoints: ''` and `refiPointsMode: 'pct'` to the initial `rentalFields` state
-2. Pass through to analysis components (no other changes needed for state flow since it's part of `rentalFields`)
+1. Add a local state `loanView` (`'regular' | 'refi'`) defaulting to `'regular'`
+2. Replace the current block (lines 643-664) that renders both `RentalAnalysis` and `BRRRAnalysis` with a `Tabs` wrapper:
+   - `TabsList` with two triggers: "Regular" (left) and "Refi" (right)
+   - `TabsContent value="regular"` renders `RentalAnalysis`
+   - `TabsContent value="refi"` renders `BRRRAnalysis`
+3. The section header/label above the tabs will read "Loan"
 
-**File: `src/components/budget/BRRRAnalysis.tsx`** (and optionally `RentalAnalysis.tsx`)
-1. Read `refiPoints` and `refiPointsMode` from `rentalFields`
-2. Compute points cost and factor into "Cash Invested" or display as a line item
+No changes needed to `RentalAnalysis.tsx` or `BRRRAnalysis.tsx` -- they render identically, just conditionally shown.
