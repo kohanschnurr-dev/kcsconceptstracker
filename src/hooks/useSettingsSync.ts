@@ -18,6 +18,7 @@ const SETTINGS_KEYS = [
   'dashboard-profit-filters',
   'profit-calculator-presets',
   'profit-calculator-default-preset',
+  'custom-rule-groups',
 ];
 
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
