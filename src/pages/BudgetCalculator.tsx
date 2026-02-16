@@ -46,6 +46,8 @@ const defaultRentalFields: RentalFieldValues = {
   refiEnabled: false,
   refiLtv: '75',
   refiLoanAmount: '',
+  refiPoints: '',
+  refiPointsMode: 'pct' as const,
   refiRate: '',
   refiTerm: '',
 };

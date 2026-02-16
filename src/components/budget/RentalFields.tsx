@@ -18,6 +18,8 @@ export interface RentalFieldValues {
   refiLoanAmount: string;
   refiRate: string;
   refiTerm: string;
+  refiPoints: string;
+  refiPointsMode: 'pct' | 'flat';
 }
 
 interface RentalFieldsProps {
@@ -182,7 +184,7 @@ export function RentalFields({ values, onChange, arv }: RentalFieldsProps) {
               Loan: {formatCurrency(computedLoanAmount)}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label htmlFor="refiRate" className="text-xs">Rate (%)</Label>
               <Input
@@ -204,6 +206,31 @@ export function RentalFields({ values, onChange, arv }: RentalFieldsProps) {
                 value={values.refiTerm}
                 onChange={(e) => onChange('refiTerm', e.target.value)}
               />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <Label htmlFor="refiPoints" className="text-xs">Points</Label>
+                <button
+                  type="button"
+                  className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded border border-input bg-muted hover:bg-accent transition-colors"
+                  onClick={() => onChange('refiPointsMode', values.refiPointsMode === 'pct' ? 'flat' : 'pct')}
+                >
+                  {values.refiPointsMode === 'pct' ? '%' : '$'}
+                </button>
+              </div>
+              <Input
+                id="refiPoints"
+                type="number"
+                placeholder="0"
+                className="font-mono text-xs h-9"
+                value={values.refiPoints}
+                onChange={(e) => onChange('refiPoints', e.target.value)}
+              />
+              {values.refiPointsMode === 'pct' && parseFloat(values.refiPoints) > 0 && (
+                <p className="text-[10px] text-muted-foreground font-mono">
+                  = {formatCurrency(Math.round(computedLoanAmount * (parseFloat(values.refiPoints) / 100)))}
+                </p>
+              )}
             </div>
           </div>
         </div>

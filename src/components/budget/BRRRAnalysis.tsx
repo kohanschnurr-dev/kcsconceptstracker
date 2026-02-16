@@ -24,8 +24,14 @@ export function BRRRAnalysis({ purchasePrice, arv, totalBudget, closingCostsBuy,
   const refiRate = (parseFloat(rentalFields.refiRate) || 7) / 100;
   const refiTerm = (parseFloat(rentalFields.refiTerm) || 30) * 12;
 
+  // Points cost
+  const refiPointsVal = parseFloat(rentalFields.refiPoints) || 0;
+  const refiPointsCost = rentalFields.refiPointsMode === 'pct'
+    ? Math.round(refiLoanAmount * (refiPointsVal / 100))
+    : refiPointsVal;
+
   // BRRR-specific
-  const totalAcquisitionCost = purchasePrice + totalBudget + closingCostsBuy + holdingCosts;
+  const totalAcquisitionCost = purchasePrice + totalBudget + closingCostsBuy + holdingCosts + refiPointsCost;
   const equityCaptured = arv - refiLoanAmount;
   const moneyLeftInDeal = Math.max(0, totalAcquisitionCost - refiLoanAmount);
 
