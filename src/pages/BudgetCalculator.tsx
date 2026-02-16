@@ -71,6 +71,8 @@ export default function BudgetCalculator() {
   const [templateJustApplied, setTemplateJustApplied] = useState(false);
   const [calculatorType, setCalculatorType] = useState<CalculatorType>('fix_flip');
   const [rentalFields, setRentalFields] = useState<RentalFieldValues>(defaultRentalFields);
+  const [closingPct, setClosingPct] = useState<string>('2');
+  const [holdingPct, setHoldingPct] = useState<string>('3');
   
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
@@ -178,9 +180,9 @@ export default function BudgetCalculator() {
   }, [arv, purchasePrice, rentalFields.refiLtv, rentalFields.refiLtvBase]);
 
   // Profit calculations
-  const closingCostsBuy = purchasePriceNum * 0.02;
+  const closingCostsBuy = purchasePriceNum * ((parseFloat(closingPct) || 0) / 100);
   const closingCostsSell = includeSellClosingCosts ? arvNum * 0.06 : 0;
-  const holdingCosts = purchasePriceNum * 0.03;
+  const holdingCosts = purchasePriceNum * ((parseFloat(holdingPct) || 0) / 100);
   
   const totalInvestment = purchasePriceNum + totalBudget + closingCostsBuy + holdingCosts;
   const totalCosts = totalInvestment + closingCostsSell;
@@ -461,7 +463,7 @@ export default function BudgetCalculator() {
         {/* Main Content Area */}
         <div className="flex flex-1 overflow-hidden">
           {/* Deal Sidebar - Left Panel */}
-          <DealSidebar
+            <DealSidebar
             purchasePrice={purchasePrice}
             onPurchasePriceChange={setPurchasePrice}
             arv={arv}
@@ -483,6 +485,10 @@ export default function BudgetCalculator() {
             onCalculatorTypeChange={setCalculatorType}
             rentalFields={rentalFields}
             onRentalFieldChange={handleRentalFieldChange}
+            closingPct={closingPct}
+            onClosingPctChange={setClosingPct}
+            holdingPct={holdingPct}
+            onHoldingPctChange={setHoldingPct}
           />
           
           {/* Budget Canvas - Primary Workspace */}
@@ -533,7 +539,7 @@ export default function BudgetCalculator() {
                                     <span className="font-mono">{formatCurrency(purchasePriceNum)}</span>
                                   </div>
                                   <div className="flex justify-between text-sm">
-                                    <span>Closing Costs (2%)</span>
+                                    <span>Closing Costs ({closingPct}%)</span>
                                     <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
                                   </div>
                                 </div>
@@ -548,7 +554,7 @@ export default function BudgetCalculator() {
                                     <span className="font-mono">{formatCurrency(totalBudget)}</span>
                                   </div>
                                   <div className="flex justify-between text-sm">
-                                    <span>Holding Costs (3%)</span>
+                                    <span>Holding Costs ({holdingPct}%)</span>
                                     <span className="font-mono">{formatCurrency(holdingCosts)}</span>
                                   </div>
                                 </div>
