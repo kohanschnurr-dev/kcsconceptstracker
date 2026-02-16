@@ -1,45 +1,35 @@
 
 
-## Fix Budget Save (Upsert) and Restore Deal Parameters
+## Fix Dropdown Text Contrast Across All Palettes
 
-### Problem 1: Duplicate Name Error
-When saving a budget with an existing name, the system always does an `INSERT`, causing a database error instead of updating the existing record.
+### Problem
+When a dropdown menu item is highlighted (focused/hovered), the background changes to the `accent` color and the main text changes to `accent-foreground`. However, child elements with explicit color classes like `text-muted-foreground` and `text-primary` keep their original colors, causing poor contrast on the highlighted background. This affects the Baselines section and potentially other dropdown menus across the app.
 
-### Problem 2: Purchase Price, ARV, SQFT Not Restored
-When clicking a saved budget from the template picker, `purchasePrice`, `arv`, and `sqft` are NOT restored. The `handleSelectTemplate` function sets the budget name and description but skips these three fields (even though `loadDefaultTemplate` correctly restores them).
+### Root Cause
+The shadcn DropdownMenuItem component applies `focus:text-accent-foreground` only to the root element. Child `span` and `button` elements with hardcoded text color classes override the inherited color and become unreadable against the accent background.
 
----
+### Solution: Global CSS Fix + TemplatePicker Cleanup
 
-### Fix 1: Upsert Logic in `handleSave`
+Rather than adding `group-data-[highlighted]` classes to every child element in every dropdown, add a single global CSS rule that forces all text within highlighted dropdown items to inherit the foreground color. This fixes the issue everywhere at once, for all current and future palettes.
 
-**File: `src/pages/BudgetCalculator.tsx`** (~lines 333-359)
-
-Before inserting, query for an existing template with the same name and user. If found, update that row. If not, insert a new one. Also recalculate `total_budget` on save.
-
-```
-Logic:
-1. Query budget_templates WHERE user_id = user.id AND name = trimmedName
-2. If a match exists -> UPDATE that row
-3. If no match -> INSERT new row
-4. Update currentTemplateName on success
+**File: `src/index.css`** -- Add one utility rule:
+```css
+/* Force all child text in highlighted dropdown items to inherit accent-foreground */
+[data-highlighted] .text-muted-foreground,
+[data-highlighted] .text-primary {
+  color: hsl(var(--accent-foreground)) !important;
+}
 ```
 
-### Fix 2: Restore PP/ARV/SQFT in `handleSelectTemplate`
+**File: `src/components/budget/TemplatePicker.tsx`** -- Clean up the now-redundant `group-data-[highlighted]/item:text-accent-foreground` classes from the saved budgets section (lines 359, 364) since the global rule handles it. Also remove the `group/item` class from the DropdownMenuItem (line 341).
 
-**File: `src/pages/BudgetCalculator.tsx`** (~lines 232-234)
-
-Add the three missing lines to restore deal parameters from the template object (same as `loadDefaultTemplate` already does):
-
-```
-setPurchasePrice(template.purchase_price?.toString() || '');
-setArv(template.arv?.toString() || '');
-setSqft(template.sqft?.toString() || '');
-```
-
-These fields are already saved in the database columns (`purchase_price`, `arv`, `sqft`) by `handleSave`, so no changes needed on the save side for this fix.
-
----
+### Coverage
+This global rule covers:
+- Baseline tier descriptions and prices (the screenshot issue)
+- Saved budget dollar amounts and delete icons
+- Any other dropdown across the app (Vendors, Documents, etc.) that uses `text-muted-foreground` or `text-primary` inside items
+- Works identically across all 10 palettes (Ember, Graphite, Slate, Onyx, Titanium, Midnight, Cobalt, Ivory, Pearl, Linen) since it uses the CSS variable values
 
 ### Files Changed
-- `src/pages/BudgetCalculator.tsx` only (two edits)
-
+- `src/index.css` (one CSS rule addition)
+- `src/components/budget/TemplatePicker.tsx` (cleanup of redundant group classes)
