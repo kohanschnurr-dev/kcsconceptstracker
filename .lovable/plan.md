@@ -1,35 +1,42 @@
 
 
-## Add Loan-to-Value / Loan-to-Purchase Toggle
+## Show Both LTV Base Options as Segmented Toggle
 
-### Overview
-Add a small toggle button next to the "Loan-to-Value" label in the Loan section that lets you switch between basing the loan calculation on ARV or Purchase Price.
-
-### How It Works
-- Default: "Loan-to-Value" (LTV) -- percentage of ARV (current behavior)
-- Toggle to: "Loan-to-Purchase" (LTP) -- percentage of Purchase Price
-- The slider, computed loan amount, and all downstream calculations update accordingly
-- A small button (similar to the existing Points % / $ toggle) switches between modes
+### Change
+Replace the single toggle button (showing only the current mode) with a two-option segmented control that displays both "ARV" and "PP" side by side, with the active option highlighted. This matches the pattern already used for the Points toggle.
 
 ### Technical Details
 
-**1. Add new field to `RentalFieldValues` interface (`RentalFields.tsx`)**
-- Add `refiLtvBase: 'arv' | 'purchase'` to the interface
+**File: `src/components/budget/RentalFields.tsx`** (lines ~163-172)
 
-**2. Update `RentalFields` component (`RentalFields.tsx`)**
-- Accept `purchasePrice: number` as a new prop alongside `arv`
-- Determine the base value: `arv` or `purchasePrice` depending on `values.refiLtvBase`
-- Add a toggle button next to the label showing "ARV" or "PP"
-- Update slider `onValueChange` to compute loan from the selected base
-- Update the `computedLoanAmount` calculation to use the selected base
+Replace the single `<button>` toggle with two adjacent buttons styled as a segmented control:
 
-**3. Update `DealSidebar.tsx`**
-- Pass `purchasePrice` number to the `RentalFields` component (already available as a prop)
+```tsx
+<div className="flex items-center gap-1.5">
+  <Label className="text-xs">Loan-to-{values.refiLtvBase === 'purchase' ? 'Purchase' : 'Value'}</Label>
+  <div className="flex rounded border border-input overflow-hidden">
+    <button
+      type="button"
+      className={`text-[10px] font-mono font-medium px-1.5 py-0.5 transition-colors ${
+        values.refiLtvBase === 'arv' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent'
+      }`}
+      onClick={() => onChange('refiLtvBase', 'arv')}
+    >
+      ARV
+    </button>
+    <button
+      type="button"
+      className={`text-[10px] font-mono font-medium px-1.5 py-0.5 transition-colors ${
+        values.refiLtvBase === 'purchase' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent'
+      }`}
+      onClick={() => onChange('refiLtvBase', 'purchase')}
+    >
+      PP
+    </button>
+  </div>
+</div>
+```
 
-**4. Update `BudgetCalculator.tsx`**
-- Add `refiLtvBase: 'arv'` to `defaultRentalFields`
-- Update the `useEffect` that syncs loan amount on ARV/LTV changes to also react to `refiLtvBase` and use the correct base value (ARV or purchase price)
+The active option gets `bg-primary text-primary-foreground` styling while the inactive option stays muted. The label still dynamically reads "Loan-to-Value" or "Loan-to-Purchase" based on selection.
 
-**5. Update analysis components**
-- `RentalAnalysis.tsx` and `BRRRAnalysis.tsx` already read `refiLoanAmount` directly, so no changes needed there -- the loan amount is pre-computed from whichever base is selected
-
+No other files need changes.
