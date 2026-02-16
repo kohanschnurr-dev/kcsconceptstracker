@@ -1,7 +1,6 @@
 import { DollarSign, Percent } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 
@@ -152,89 +151,81 @@ export function RentalFields({ values, onChange, arv }: RentalFieldsProps) {
 
       {/* Refinance Section */}
       <Separator />
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Refinance
-        </h4>
-        <Switch
-          checked={values.refiEnabled}
-          onCheckedChange={(v) => onChange('refiEnabled', v)}
-        />
-      </div>
+      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        Refinance
+      </h4>
 
-      {values.refiEnabled && (
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs">Loan-to-Value</Label>
-              <span className="text-xs font-mono font-medium">{ltvPercent}%</span>
-            </div>
-            <Slider
-              value={[ltvPercent]}
-              onValueChange={([v]) => {
-                onChange('refiLtv', String(v));
-                onChange('refiLoanAmount', String(Math.round(arv * (v / 100))));
-              }}
-              min={0}
-              max={100}
-              step={1}
-              className="py-1"
-            />
-            <p className="text-xs text-muted-foreground font-mono">
-              Loan: {formatCurrency(computedLoanAmount)}
-            </p>
+      <div className="space-y-3">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Loan-to-Value</Label>
+            <span className="text-xs font-mono font-medium">{ltvPercent}%</span>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="refiRate" className="text-xs">Rate (%)</Label>
-              <Input
-                id="refiRate"
-                type="number"
-                placeholder="7"
-                className="font-mono text-xs h-9"
-                value={values.refiRate}
-                onChange={(e) => onChange('refiRate', e.target.value)}
-              />
+          <Slider
+            value={[ltvPercent]}
+            onValueChange={([v]) => {
+              onChange('refiLtv', String(v));
+              onChange('refiLoanAmount', String(Math.round(arv * (v / 100))));
+            }}
+            min={0}
+            max={100}
+            step={1}
+            className="py-1"
+          />
+          <p className="text-xs text-muted-foreground font-mono">
+            Loan: {formatCurrency(computedLoanAmount)}
+          </p>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="refiRate" className="text-xs">Rate (%)</Label>
+            <Input
+              id="refiRate"
+              type="number"
+              placeholder="7"
+              className="font-mono text-xs h-9"
+              value={values.refiRate}
+              onChange={(e) => onChange('refiRate', e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="refiTerm" className="text-xs">Term (yrs)</Label>
+            <Input
+              id="refiTerm"
+              type="number"
+              placeholder="30"
+              className="font-mono text-xs h-9"
+              value={values.refiTerm}
+              onChange={(e) => onChange('refiTerm', e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <Label htmlFor="refiPoints" className="text-xs">Points</Label>
+              <button
+                type="button"
+                className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded border border-input bg-muted hover:bg-accent transition-colors"
+                onClick={() => onChange('refiPointsMode', values.refiPointsMode === 'pct' ? 'flat' : 'pct')}
+              >
+                {values.refiPointsMode === 'pct' ? '%' : '$'}
+              </button>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="refiTerm" className="text-xs">Term (yrs)</Label>
-              <Input
-                id="refiTerm"
-                type="number"
-                placeholder="30"
-                className="font-mono text-xs h-9"
-                value={values.refiTerm}
-                onChange={(e) => onChange('refiTerm', e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1">
-                <Label htmlFor="refiPoints" className="text-xs">Points</Label>
-                <button
-                  type="button"
-                  className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded border border-input bg-muted hover:bg-accent transition-colors"
-                  onClick={() => onChange('refiPointsMode', values.refiPointsMode === 'pct' ? 'flat' : 'pct')}
-                >
-                  {values.refiPointsMode === 'pct' ? '%' : '$'}
-                </button>
-              </div>
-              <Input
-                id="refiPoints"
-                type="number"
-                placeholder="0"
-                className="font-mono text-xs h-9"
-                value={values.refiPoints}
-                onChange={(e) => onChange('refiPoints', e.target.value)}
-              />
-              {values.refiPointsMode === 'pct' && parseFloat(values.refiPoints) > 0 && (
-                <p className="text-[10px] text-muted-foreground font-mono">
-                  = {formatCurrency(Math.round(computedLoanAmount * (parseFloat(values.refiPoints) / 100)))}
-                </p>
-              )}
-            </div>
+            <Input
+              id="refiPoints"
+              type="number"
+              placeholder="0"
+              className="font-mono text-xs h-9"
+              value={values.refiPoints}
+              onChange={(e) => onChange('refiPoints', e.target.value)}
+            />
+            {values.refiPointsMode === 'pct' && parseFloat(values.refiPoints) > 0 && (
+              <p className="text-[10px] text-muted-foreground font-mono">
+                = {formatCurrency(Math.round(computedLoanAmount * (parseFloat(values.refiPoints) / 100)))}
+              </p>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

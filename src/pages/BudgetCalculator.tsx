@@ -44,7 +44,7 @@ const defaultRentalFields: RentalFieldValues = {
   annualHoa: '',
   monthlyMaintenance: '',
   managementRate: '',
-  refiEnabled: false,
+  refiEnabled: true,
   refiLtv: '75',
   refiLoanAmount: '',
   refiPoints: '',
@@ -83,11 +83,6 @@ export default function BudgetCalculator() {
   const handleRentalFieldChange = (field: keyof RentalFieldValues, value: string | boolean) => {
     setRentalFields(prev => {
       const next = { ...prev, [field]: value };
-      // Auto-populate loan amount when refi is first enabled
-      if (field === 'refiEnabled' && value === true && !prev.refiLoanAmount) {
-        const ltv = parseFloat(prev.refiLtv) || 75;
-        next.refiLoanAmount = String(Math.round(arvNum * (ltv / 100)));
-      }
       return next;
     });
   };
