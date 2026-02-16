@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { DollarSign, ChevronLeft, ChevronRight, Calculator, Folder, Save, FolderOpen, Loader2, Ruler } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
-import { cn } from '@/lib/utils';
+import { RentalFields, type RentalFieldValues } from '@/components/budget/RentalFields';
+
+export type CalculatorType = 'fix_flip' | 'rental' | 'brrr';
 
 interface Project {
   id: string;
@@ -36,6 +37,10 @@ interface DealSidebarProps {
   isLoadingProjects: boolean;
   includeSellClosingCosts: boolean;
   onSellClosingCostsChange: (value: boolean) => void;
+  calculatorType: CalculatorType;
+  onCalculatorTypeChange: (type: CalculatorType) => void;
+  rentalFields: RentalFieldValues;
+  onRentalFieldChange: (field: keyof RentalFieldValues, value: string | boolean) => void;
 }
 
 export function DealSidebar({
@@ -56,6 +61,10 @@ export function DealSidebar({
   isLoadingProjects,
   includeSellClosingCosts,
   onSellClosingCostsChange,
+  calculatorType,
+  onCalculatorTypeChange,
+  rentalFields,
+  onRentalFieldChange,
 }: DealSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedProject, setSelectedProject] = useState('');
@@ -77,6 +86,8 @@ export function DealSidebar({
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  const showEstimatedCosts = calculatorType === 'fix_flip' || calculatorType === 'brrr';
 
   if (isCollapsed) {
     return (
@@ -115,6 +126,15 @@ export function DealSidebar({
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
+          {/* Type Selector */}
+          <Tabs value={calculatorType} onValueChange={(v) => onCalculatorTypeChange(v as CalculatorType)}>
+            <TabsList className="grid w-full grid-cols-3 h-9">
+              <TabsTrigger value="fix_flip" className="text-xs px-1">Fix & Flip</TabsTrigger>
+              <TabsTrigger value="rental" className="text-xs px-1">Rental</TabsTrigger>
+              <TabsTrigger value="brrr" className="text-xs px-1">BRRR</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           {/* Deal Inputs */}
           <div className="space-y-4">
             <div className="space-y-2">
@@ -160,8 +180,8 @@ export function DealSidebar({
             </div>
           </div>
 
-          {/* Quick Estimates */}
-          {(purchasePriceNum > 0 || arvNum > 0) && (
+          {/* Quick Estimates - Fix & Flip and BRRR only */}
+          {showEstimatedCosts && (purchasePriceNum > 0 || arvNum > 0) && (
             <>
               <Separator />
               <div className="space-y-2">
@@ -198,6 +218,11 @@ export function DealSidebar({
                 </div>
               </div>
             </>
+          )}
+
+          {/* Rental-specific fields for Rental and BRRR modes */}
+          {(calculatorType === 'rental' || calculatorType === 'brrr') && (
+            <RentalFields values={rentalFields} onChange={onRentalFieldChange} />
           )}
 
           <Separator />
