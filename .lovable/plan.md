@@ -1,23 +1,29 @@
 
-
-## Disable Scroll-Wheel on Number Inputs
+## Add "Cash to Pocket" Metric to BRRR Analysis
 
 ### Problem
-When scrolling through the Deal Parameters sidebar, the mouse wheel changes values in number input fields (e.g., Monthly Rent, Vacancy Rate). This is a common browser behavior for `type="number"` inputs that causes accidental data changes.
+When the refinance loan amount exceeds the total acquisition cost (purchase + rehab + closing + holding + points), the investor pulls out excess cash. Currently, `Money Left In Deal` is clamped to $0 with `Math.max(0, ...)`, so you never see how much extra money you walked away with.
+
+For example: $100k purchase + $10k rehab = $110k all-in, but you pull out $140k via refi -- you should see $30k cash to pocket.
 
 ### Solution
-Add an `onWheel` handler to the shared `Input` component that prevents scroll-wheel interaction when the input is a number type. This fixes the issue globally across the entire app -- every number input in the sidebar and elsewhere will be protected.
+Add a **"Cash to Pocket"** line item in the Refinance column and a new summary card. This shows the excess cash extracted when the refi loan exceeds total costs.
 
 ### Technical Details
 
-**File: `src/components/ui/input.tsx`**
-- Add `onWheel` handler that calls `e.currentTarget.blur()` when `type === "number"`, preventing the scroll from changing the value
-- This is a single-line addition inside the `<input>` element
+**File: `src/components/budget/BRRRAnalysis.tsx`**
 
-```tsx
-onWheel={(e) => {
-  if (type === "number") e.currentTarget.blur();
-}}
-```
+1. **New calculation** (after line 36):
+   - `cashToPocket = Math.max(0, refiLoanAmount - totalAcquisitionCost)` -- the inverse of moneyLeftInDeal
 
-One file, one small change. All number inputs across the app benefit immediately.
+2. **Refinance column** -- add a new row after "Money Left In":
+   - Label: "Cash to Pocket"
+   - Show in green when > 0
+   - Only displayed when cashToPocket > 0 (to keep the UI clean when it doesn't apply)
+
+3. **Summary cards row** -- add a 5th card (adjust grid to `md:grid-cols-5`):
+   - Title: "Cash to Pocket"
+   - Green background when > 0, muted when $0
+   - Positioned after "Money Left In" card
+
+This gives immediate visibility into how much excess cash was extracted from the deal at refinance.
