@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
 
 export interface RentalFieldValues {
   monthlyRent: string;
@@ -13,6 +14,7 @@ export interface RentalFieldValues {
   monthlyMaintenance: string;
   managementRate: string;
   refiEnabled: boolean;
+  refiLtv: string;
   refiLoanAmount: string;
   refiRate: string;
   refiTerm: string;
@@ -21,9 +23,15 @@ export interface RentalFieldValues {
 interface RentalFieldsProps {
   values: RentalFieldValues;
   onChange: (field: keyof RentalFieldValues, value: string | boolean) => void;
+  arv: number;
 }
 
-export function RentalFields({ values, onChange }: RentalFieldsProps) {
+export function RentalFields({ values, onChange, arv }: RentalFieldsProps) {
+  const ltvPercent = parseFloat(values.refiLtv) || 75;
+  const computedLoanAmount = Math.round(arv * (ltvPercent / 100));
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
   return (
     <div className="space-y-4">
       <Separator />
@@ -155,18 +163,24 @@ export function RentalFields({ values, onChange }: RentalFieldsProps) {
       {values.refiEnabled && (
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="refiLoanAmount" className="text-xs">Loan Amount</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="refiLoanAmount"
-                type="number"
-                placeholder="0"
-                className="pl-8 font-mono"
-                value={values.refiLoanAmount}
-                onChange={(e) => onChange('refiLoanAmount', e.target.value)}
-              />
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Loan-to-Value</Label>
+              <span className="text-xs font-mono font-medium">{ltvPercent}%</span>
             </div>
+            <Slider
+              value={[ltvPercent]}
+              onValueChange={([v]) => {
+                onChange('refiLtv', String(v));
+                onChange('refiLoanAmount', String(Math.round(arv * (v / 100))));
+              }}
+              min={0}
+              max={100}
+              step={1}
+              className="py-1"
+            />
+            <p className="text-xs text-muted-foreground font-mono">
+              Loan: {formatCurrency(computedLoanAmount)}
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
