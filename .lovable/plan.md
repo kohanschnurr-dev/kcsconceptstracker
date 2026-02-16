@@ -1,33 +1,31 @@
 
 
-## Improve Info Tooltip UX on SmartSplit Header
+## Switch Info Icon Back to Hover Tooltip
 
-### Problem
-The current tooltip floats awkwardly above the SmartSplit header, especially on mobile where hover isn't natural. The positioning looks off and the interaction isn't mobile-friendly.
-
-### Solution
-Replace the `Tooltip` with a `Popover` component. Popovers are tap-to-open (mobile-friendly) and visually anchor better. The info icon stays the same, but tapping/clicking it opens a small card-style popover instead of a hover tooltip.
+### Change
+Revert the Popover back to a Tooltip so the info appears on hover instead of click. Keep the same content and styling.
 
 ### Technical Details
 
 **File: `src/components/SmartSplitReceiptUpload.tsx`**
 
-1. Replace `Tooltip`/`TooltipProvider`/`TooltipTrigger`/`TooltipContent` imports with `Popover`/`PopoverTrigger`/`PopoverContent` (already used elsewhere in the project).
+1. Replace `Popover`/`PopoverContent`/`PopoverTrigger` imports with `Tooltip`/`TooltipContent`/`TooltipProvider`/`TooltipTrigger` from `@/components/ui/tooltip`.
 
-2. Replace the tooltip block (lines 998-1008) with a Popover:
+2. Replace the Popover block (lines 998-1005) with:
 
 ```tsx
-<Popover>
-  <PopoverTrigger asChild>
-    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-  </PopoverTrigger>
-  <PopoverContent side="right" align="start" className="max-w-xs text-sm p-3">
-    <p>Allow time for receipts to parse after uploading.</p>
-    <p className="mt-1">Upload clear, high-quality PDFs or photos for best parsing accuracy.</p>
-  </PopoverContent>
-</Popover>
+<TooltipProvider>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+    </TooltipTrigger>
+    <TooltipContent side="right" align="start" className="max-w-xs text-sm p-3">
+      <p>Allow time for receipts to parse after uploading.</p>
+      <p className="mt-1">Upload clear, high-quality PDFs or photos for best parsing accuracy.</p>
+    </TooltipContent>
+  </Tooltip>
+</TooltipProvider>
 ```
 
-3. Remove the unused Tooltip imports if no longer needed elsewhere in the file.
+Key difference from the original attempt: using `side="right"` and `align="start"` instead of `side="top"` for better positioning that won't overlap the header.
 
-One file change. Swaps tooltip for popover -- better positioning and tap-friendly on mobile.
