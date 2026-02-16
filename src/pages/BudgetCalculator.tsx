@@ -170,6 +170,15 @@ export default function BudgetCalculator() {
   const purchasePriceNum = parseFloat(purchasePrice) || 0;
   const arvNum = parseFloat(arv) || 0;
 
+  // Keep refi loan amount in sync when ARV or LTV changes
+  useEffect(() => {
+    if (rentalFields.refiEnabled) {
+      const ltv = parseFloat(rentalFields.refiLtv) || 75;
+      const newLoanAmount = String(Math.round(arvNum * (ltv / 100)));
+      setRentalFields(prev => ({ ...prev, refiLoanAmount: newLoanAmount }));
+    }
+  }, [arv, rentalFields.refiEnabled, rentalFields.refiLtv]);
+
   // Profit calculations
   const closingCostsBuy = purchasePriceNum * 0.02;
   const closingCostsSell = includeSellClosingCosts ? arvNum * 0.06 : 0;
