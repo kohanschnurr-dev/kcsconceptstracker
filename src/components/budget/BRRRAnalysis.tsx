@@ -165,7 +165,7 @@ export function BRRRAnalysis({ purchasePrice, arv, totalBudget, closingCostsBuy,
               </div>
               <div className="flex justify-between">
                 <span>Cash-on-Cash</span>
-                <span className={`font-mono font-medium ${cashOnCash >= 8 ? 'text-green-500' : cashOnCash >= 4 ? 'text-amber-500' : 'text-destructive'}`}>
+                <span className={`font-mono font-medium ${moneyLeftInDeal <= 0 || cashOnCash >= 8 ? 'text-green-500' : cashOnCash >= 4 ? 'text-amber-500' : 'text-destructive'}`}>
                   {moneyLeftInDeal <= 0 ? '∞' : `${cashOnCash.toFixed(1)}%`}
                 </span>
               </div>
@@ -205,9 +205,9 @@ export function BRRRAnalysis({ purchasePrice, arv, totalBudget, closingCostsBuy,
               {capRate.toFixed(1)}%
             </p>
           </div>
-          <div className={`p-4 rounded-lg text-center ${cashOnCash >= 8 ? 'bg-green-500/10' : cashOnCash >= 4 ? 'bg-amber-500/10' : 'bg-destructive/10'}`}>
+          <div className={`p-4 rounded-lg text-center ${moneyLeftInDeal <= 0 || cashOnCash >= 8 ? 'bg-green-500/10' : cashOnCash >= 4 ? 'bg-amber-500/10' : 'bg-destructive/10'}`}>
             <p className="text-sm text-muted-foreground">Cash-on-Cash</p>
-            <p className={`text-xl font-bold font-mono ${cashOnCash >= 8 ? 'text-green-500' : cashOnCash >= 4 ? 'text-amber-500' : 'text-destructive'}`}>
+            <p className={`text-xl font-bold font-mono ${moneyLeftInDeal <= 0 || cashOnCash >= 8 ? 'text-green-500' : cashOnCash >= 4 ? 'text-amber-500' : 'text-destructive'}`}>
               {moneyLeftInDeal <= 0 ? '∞' : `${cashOnCash.toFixed(1)}%`}
             </p>
           </div>
