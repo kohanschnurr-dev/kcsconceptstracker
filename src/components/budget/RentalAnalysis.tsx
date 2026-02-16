@@ -140,8 +140,8 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
               </div>
               <div className="flex justify-between">
                 <span>Cash-on-Cash</span>
-                <span className={`font-mono font-medium ${cashOnCash >= 8 ? 'text-green-500' : cashOnCash >= 4 ? 'text-amber-500' : 'text-destructive'}`}>
-                  {cashOnCash.toFixed(1)}%
+                <span className={`font-mono font-medium ${totalCashInvested <= 0 || cashOnCash >= 8 ? 'text-green-500' : cashOnCash >= 4 ? 'text-amber-500' : 'text-destructive'}`}>
+                  {totalCashInvested <= 0 ? '∞' : `${cashOnCash.toFixed(1)}%`}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -172,10 +172,10 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
               {capRate.toFixed(1)}%
             </p>
           </div>
-          <div className={`p-4 rounded-lg text-center ${cashOnCash >= 8 ? 'bg-green-500/10' : cashOnCash >= 4 ? 'bg-amber-500/10' : 'bg-destructive/10'}`}>
+          <div className={`p-4 rounded-lg text-center ${totalCashInvested <= 0 || cashOnCash >= 8 ? 'bg-green-500/10' : cashOnCash >= 4 ? 'bg-amber-500/10' : 'bg-destructive/10'}`}>
             <p className="text-sm text-muted-foreground">Cash-on-Cash Return</p>
-            <p className={`text-2xl font-bold font-mono ${cashOnCash >= 8 ? 'text-green-500' : cashOnCash >= 4 ? 'text-amber-500' : 'text-destructive'}`}>
-              {cashOnCash.toFixed(1)}%
+            <p className={`text-2xl font-bold font-mono ${totalCashInvested <= 0 || cashOnCash >= 8 ? 'text-green-500' : cashOnCash >= 4 ? 'text-amber-500' : 'text-destructive'}`}>
+              {totalCashInvested <= 0 ? '∞' : `${cashOnCash.toFixed(1)}%`}
             </p>
           </div>
           <div className={`p-4 rounded-lg text-center ${equityGain >= 0 ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
