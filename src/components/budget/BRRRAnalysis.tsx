@@ -79,6 +79,12 @@ export function BRRRAnalysis({ purchasePrice, arv, totalBudget, closingCostsBuy,
                 <span>Closing + Holding</span>
                 <span className="font-mono">{formatCurrency(closingCostsBuy + holdingCosts)}</span>
               </div>
+              {refiPointsCost > 0 && (
+                <div className="flex justify-between">
+                  <span>Points</span>
+                  <span className="font-mono">{formatCurrency(refiPointsCost)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-medium border-t pt-1">
                 <span>Total All-In</span>
                 <span className="font-mono">{formatCurrency(totalAcquisitionCost)}</span>
