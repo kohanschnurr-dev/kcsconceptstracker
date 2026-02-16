@@ -420,15 +420,11 @@ export default function BudgetCalculator() {
 
   const subtitleText = calculatorType === 'fix_flip'
     ? 'Build and manage rehab budgets with real-time MAO tracking'
-    : calculatorType === 'rental'
-      ? 'Analyze rental income, expenses, and cash flow projections'
-      : 'Buy, Rehab, Rent, Refinance, Repeat — full BRRR analysis';
+    : 'Analyze rental income, expenses, and cash flow projections';
 
   const analysisTitle = calculatorType === 'fix_flip'
     ? 'Profit Breakdown'
-    : calculatorType === 'rental'
-      ? 'Cash Flow Analysis'
-      : 'BRRR Analysis';
+    : 'Cash Flow Analysis';
 
   return (
     <MainLayout>
@@ -643,28 +639,27 @@ export default function BudgetCalculator() {
                       )}
 
                       {calculatorType === 'rental' && (
-                        <RentalAnalysis
-                          purchasePrice={purchasePriceNum}
-                          arv={arvNum}
-                          totalBudget={totalBudget}
-                          rentalFields={rentalFields}
-                          formatCurrency={formatCurrency}
-                          closingCostsBuy={closingCostsBuy}
-                          holdingCosts={holdingCosts}
-                          closingCostsSell={closingCostsSell}
-                        />
-                      )}
-
-                      {calculatorType === 'brrr' && (
-                        <BRRRAnalysis
-                          purchasePrice={purchasePriceNum}
-                          arv={arvNum}
-                          totalBudget={totalBudget}
-                          closingCostsBuy={closingCostsBuy}
-                          holdingCosts={holdingCosts}
-                          rentalFields={rentalFields}
-                          formatCurrency={formatCurrency}
-                        />
+                        <>
+                          <RentalAnalysis
+                            purchasePrice={purchasePriceNum}
+                            arv={arvNum}
+                            totalBudget={totalBudget}
+                            rentalFields={rentalFields}
+                            formatCurrency={formatCurrency}
+                            closingCostsBuy={closingCostsBuy}
+                            holdingCosts={holdingCosts}
+                            closingCostsSell={closingCostsSell}
+                          />
+                          <BRRRAnalysis
+                            purchasePrice={purchasePriceNum}
+                            arv={arvNum}
+                            totalBudget={totalBudget}
+                            closingCostsBuy={closingCostsBuy}
+                            holdingCosts={holdingCosts}
+                            rentalFields={rentalFields}
+                            formatCurrency={formatCurrency}
+                          />
+                        </>
                       )}
                     </CollapsibleContent>
                   </Collapsible>

@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { RentalFields, type RentalFieldValues } from '@/components/budget/RentalFields';
 
-export type CalculatorType = 'fix_flip' | 'rental' | 'brrr';
+export type CalculatorType = 'fix_flip' | 'rental';
 
 interface Project {
   id: string;
@@ -87,7 +87,7 @@ export function DealSidebar({
     }).format(value);
   };
 
-  const showEstimatedCosts = calculatorType === 'fix_flip' || calculatorType === 'brrr';
+  const showEstimatedCosts = calculatorType === 'fix_flip';
 
   if (isCollapsed) {
     return (
@@ -128,10 +128,9 @@ export function DealSidebar({
         <div className="p-4 space-y-6">
           {/* Type Selector */}
           <Tabs value={calculatorType} onValueChange={(v) => onCalculatorTypeChange(v as CalculatorType)}>
-            <TabsList className="grid w-full grid-cols-3 h-9">
-              <TabsTrigger value="fix_flip" className="text-xs px-1">Fix & Flip</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 h-9">
+              <TabsTrigger value="fix_flip" className="text-xs px-1">Sale</TabsTrigger>
               <TabsTrigger value="rental" className="text-xs px-1">Rental</TabsTrigger>
-              <TabsTrigger value="brrr" className="text-xs px-1">BRRR</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -221,7 +220,7 @@ export function DealSidebar({
           )}
 
           {/* Rental-specific fields for Rental and BRRR modes */}
-          {(calculatorType === 'rental' || calculatorType === 'brrr') && (
+          {calculatorType === 'rental' && (
             <RentalFields values={rentalFields} onChange={onRentalFieldChange} arv={arvNum} />
           )}
 
