@@ -9,7 +9,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MAOGauge } from '@/components/budget/MAOGauge';
 import { BudgetCanvas } from '@/components/budget/BudgetCanvas';
 import { TemplatePicker } from '@/components/budget/TemplatePicker';
-import { DealSidebar } from '@/components/budget/DealSidebar';
+import { DealSidebar, type CalculatorType } from '@/components/budget/DealSidebar';
+import { RentalAnalysis } from '@/components/budget/RentalAnalysis';
+import { BRRRAnalysis } from '@/components/budget/BRRRAnalysis';
+import type { RentalFieldValues } from '@/components/budget/RentalFields';
 import { getBudgetCategories } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -32,6 +35,20 @@ interface BudgetTemplate {
   total_budget: number;
 }
 
+const defaultRentalFields: RentalFieldValues = {
+  monthlyRent: '',
+  vacancyRate: '',
+  annualTaxes: '',
+  annualInsurance: '',
+  annualHoa: '',
+  monthlyMaintenance: '',
+  managementRate: '',
+  refiEnabled: false,
+  refiLoanAmount: '',
+  refiRate: '',
+  refiTerm: '',
+};
+
 export default function BudgetCalculator() {
   const [purchasePrice, setPurchasePrice] = useState<string>('');
   const [arv, setArv] = useState<string>('');
@@ -47,6 +64,8 @@ export default function BudgetCalculator() {
   const [sqft, setSqft] = useState<string>('');
   const [activeBaselineRate, setActiveBaselineRate] = useState<number | null>(null);
   const [templateJustApplied, setTemplateJustApplied] = useState(false);
+  const [calculatorType, setCalculatorType] = useState<CalculatorType>('fix_flip');
+  const [rentalFields, setRentalFields] = useState<RentalFieldValues>(defaultRentalFields);
   
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
@@ -56,6 +75,10 @@ export default function BudgetCalculator() {
     });
     return initial;
   });
+
+  const handleRentalFieldChange = (field: keyof RentalFieldValues, value: string | boolean) => {
+    setRentalFields(prev => ({ ...prev, [field]: value }));
+  };
 
   // Fetch projects on mount
   useEffect(() => {
@@ -106,13 +129,18 @@ export default function BudgetCalculator() {
           total_budget: data.total_budget || 0,
         };
         
-        // Load template values without toast for auto-load
         setBudgetName(template.name);
         setBudgetDescription(template.description || '');
         setPurchasePrice(template.purchase_price?.toString() || '');
         setArv(template.arv?.toString() || '');
         setSqft(template.sqft?.toString() || '');
         setCurrentTemplateName(template.name);
+
+        // Restore calculator type from meta if saved
+        const meta = (template.category_budgets as any)?._meta;
+        if (meta?.type) {
+          setCalculatorType(meta.type);
+        }
 
         const newBudgets: Record<string, string> = {};
         getBudgetCategories().forEach(cat => {
@@ -134,9 +162,7 @@ export default function BudgetCalculator() {
   const arvNum = parseFloat(arv) || 0;
 
   // Profit calculations
-  // Buy closing costs - ALWAYS included
   const closingCostsBuy = purchasePriceNum * 0.02;
-  // Sell closing costs - TOGGLE controlled
   const closingCostsSell = includeSellClosingCosts ? arvNum * 0.06 : 0;
   const holdingCosts = purchasePriceNum * 0.03;
   
@@ -145,7 +171,6 @@ export default function BudgetCalculator() {
   const grossProfit = arvNum - totalCosts;
   const roi = totalInvestment > 0 ? (grossProfit / totalInvestment) * 100 : 0;
   
-  // Dynamic MAO Rule
   const maxOffer = (arvNum * (maoPercentage / 100)) - totalBudget;
   const meetsMaoRule = purchasePriceNum <= maxOffer && purchasePriceNum > 0;
 
@@ -171,7 +196,6 @@ export default function BudgetCalculator() {
       return;
     }
 
-    // Detect baseline templates and store the per-sqft rate
     if (template.id.startsWith('baseline-')) {
       const rateMatch = template.description?.match(/\$(\d+(?:\.\d+)?)\//);
       if (rateMatch) {
@@ -181,12 +205,16 @@ export default function BudgetCalculator() {
       setActiveBaselineRate(null);
     }
 
-    // Load template values (keep deal parameters untouched)
     setBudgetName(template.name);
     setBudgetDescription(template.description || '');
     setCurrentTemplateName(template.name);
 
-    // Load category budgets
+    // Restore calculator type from template meta
+    const meta = (template.category_budgets as any)?._meta;
+    if (meta?.type) {
+      setCalculatorType(meta.type);
+    }
+
     const newBudgets: Record<string, string> = {};
     getBudgetCategories().forEach(cat => {
       newBudgets[cat.value] = template.category_budgets[cat.value]?.toString() || '';
@@ -206,6 +234,7 @@ export default function BudgetCalculator() {
     setSqft('');
     setCurrentTemplateName('');
     setActiveBaselineRate(null);
+    setRentalFields(defaultRentalFields);
     
     const cleared: Record<string, string> = {};
     getBudgetCategories().forEach(cat => {
@@ -223,7 +252,6 @@ export default function BudgetCalculator() {
         return;
       }
       const baselineTotal = sqftNum * activeBaselineRate;
-      // Read presets and subtract their amounts from the baseline total
       const stored = localStorage.getItem('budget-category-presets');
       const presets: { category: string; pricePerSqft: number; mode?: string }[] = stored ? JSON.parse(stored) : [];
       const presetsTotal = presets.reduce((sum, p) => {
@@ -238,13 +266,15 @@ export default function BudgetCalculator() {
   }, [sqft, activeBaselineRate]);
 
   const getCategoryBudgetsObject = () => {
-    const budgets: Record<string, number> = {};
+    const budgets: Record<string, number | any> = {};
     getBudgetCategories().forEach(cat => {
       const val = parseFloat(categoryBudgets[cat.value]) || 0;
       if (val > 0) {
         budgets[cat.value] = val;
       }
     });
+    // Store calculator type in meta
+    budgets._meta = { type: calculatorType };
     return budgets;
   };
 
@@ -306,7 +336,6 @@ export default function BudgetCalculator() {
     setIsSaving(true);
 
     try {
-      // First, get existing categories for this project
       const { data: existingCategories, error: fetchError } = await supabase
         .from('project_categories')
         .select('id, category')
@@ -318,7 +347,6 @@ export default function BudgetCalculator() {
         existingCategories?.map(c => [c.category, c.id]) || []
       );
 
-      // Prepare category data
       const categoriesToUpdate = [];
       const categoriesToInsert = [];
 
@@ -341,7 +369,6 @@ export default function BudgetCalculator() {
         }
       }
 
-      // Update existing categories
       for (const cat of categoriesToUpdate) {
         const { error } = await supabase
           .from('project_categories')
@@ -350,7 +377,6 @@ export default function BudgetCalculator() {
         if (error) throw error;
       }
 
-      // Insert new categories
       if (categoriesToInsert.length > 0) {
         const { error: insertError } = await supabase
           .from('project_categories')
@@ -358,7 +384,6 @@ export default function BudgetCalculator() {
         if (insertError) throw insertError;
       }
 
-      // Update project total budget
       const { error: updateError } = await supabase
         .from('projects')
         .update({ total_budget: totalBudget })
@@ -375,6 +400,18 @@ export default function BudgetCalculator() {
     }
   };
 
+  const subtitleText = calculatorType === 'fix_flip'
+    ? 'Build and manage rehab budgets with real-time MAO tracking'
+    : calculatorType === 'rental'
+      ? 'Analyze rental income, expenses, and cash flow projections'
+      : 'Buy, Rehab, Rent, Refinance, Repeat — full BRRR analysis';
+
+  const analysisTitle = calculatorType === 'fix_flip'
+    ? 'Profit Breakdown'
+    : calculatorType === 'rental'
+      ? 'Cash Flow Analysis'
+      : 'BRRR Analysis';
+
   return (
     <MainLayout>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
@@ -382,9 +419,7 @@ export default function BudgetCalculator() {
         <div className="flex items-center justify-between px-6 py-4 border-b bg-background">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Budget Calculator</h1>
-            <p className="text-muted-foreground text-sm">
-              Build and manage rehab budgets with real-time MAO tracking
-            </p>
+            <p className="text-muted-foreground text-sm">{subtitleText}</p>
           </div>
           <div className="flex items-center gap-3">
             <TemplatePicker
@@ -432,6 +467,10 @@ export default function BudgetCalculator() {
             isLoadingProjects={isLoadingProjects}
             includeSellClosingCosts={includeSellClosingCosts}
             onSellClosingCostsChange={setIncludeSellClosingCosts}
+            calculatorType={calculatorType}
+            onCalculatorTypeChange={setCalculatorType}
+            rentalFields={rentalFields}
+            onRentalFieldChange={handleRentalFieldChange}
           />
           
           {/* Budget Canvas - Primary Workspace */}
@@ -448,7 +487,7 @@ export default function BudgetCalculator() {
                   onExpandHandled={() => setTemplateJustApplied(false)}
                 />
 
-                {/* Profit Breakdown - Collapsible */}
+                {/* Analysis Section - Collapsible */}
                 <div className="mt-8">
                   <Collapsible open={profitBreakdownOpen} onOpenChange={setProfitBreakdownOpen}>
                     <div className="flex items-center gap-3">
@@ -456,132 +495,156 @@ export default function BudgetCalculator() {
                         <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
                           <ChevronDown className={`h-4 w-4 transition-transform ${profitBreakdownOpen ? '' : '-rotate-90'}`} />
                           <Calculator className="h-4 w-4" />
-                          <span className="font-medium">Profit Breakdown</span>
+                          <span className="font-medium">{analysisTitle}</span>
                         </Button>
                       </CollapsibleTrigger>
                       <Separator className="flex-1" />
                     </div>
 
                     <CollapsibleContent className="pt-6">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Profit Analysis</CardTitle>
-                          <CardDescription>
-                            Detailed cost analysis based on current budget and deal parameters
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {/* Costs Column */}
-                            <div className="space-y-3">
-                              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Acquisition</h4>
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span>Purchase Price</span>
-                                  <span className="font-mono">{formatCurrency(purchasePriceNum)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span>Closing Costs (2%)</span>
-                                  <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Rehab Column */}
-                            <div className="space-y-3">
-                              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Rehab & Holding</h4>
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span>Rehab Budget</span>
-                                  <span className="font-mono">{formatCurrency(totalBudget)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span>Holding Costs (3%)</span>
-                                  <span className="font-mono">{formatCurrency(holdingCosts)}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Sale Column */}
-                            <div className="space-y-3">
-                              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Sale</h4>
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span>ARV (Sale Price)</span>
-                                  <span className="font-mono">{formatCurrency(arvNum)}</span>
-                                </div>
-                                {includeSellClosingCosts && (
+                      {calculatorType === 'fix_flip' && (
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Profit Analysis</CardTitle>
+                            <CardDescription>
+                              Detailed cost analysis based on current budget and deal parameters
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                              {/* Costs Column */}
+                              <div className="space-y-3">
+                                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Acquisition</h4>
+                                <div className="space-y-2">
                                   <div className="flex justify-between text-sm">
-                                    <span>Selling Costs (6%)</span>
-                                    <span className="font-mono">-{formatCurrency(closingCostsSell)}</span>
+                                    <span>Purchase Price</span>
+                                    <span className="font-mono">{formatCurrency(purchasePriceNum)}</span>
                                   </div>
-                                )}
+                                  <div className="flex justify-between text-sm">
+                                    <span>Closing Costs (2%)</span>
+                                    <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Rehab Column */}
+                              <div className="space-y-3">
+                                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Rehab & Holding</h4>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span>Rehab Budget</span>
+                                    <span className="font-mono">{formatCurrency(totalBudget)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span>Holding Costs (3%)</span>
+                                    <span className="font-mono">{formatCurrency(holdingCosts)}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Sale Column */}
+                              <div className="space-y-3">
+                                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Sale</h4>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span>ARV (Sale Price)</span>
+                                    <span className="font-mono">{formatCurrency(arvNum)}</span>
+                                  </div>
+                                  {includeSellClosingCosts && (
+                                    <div className="flex justify-between text-sm">
+                                      <span>Selling Costs (6%)</span>
+                                      <span className="font-mono">-{formatCurrency(closingCostsSell)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Profit Column */}
+                              <div className="space-y-3">
+                                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Returns</h4>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span>Total Investment</span>
+                                    <span className="font-mono">{formatCurrency(totalInvestment)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm font-medium">
+                                    <span>Gross Profit</span>
+                                    <span className={`font-mono ${grossProfit >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                      {formatCurrency(grossProfit)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-sm font-medium">
+                                    <span>ROI</span>
+                                    <span className={`font-mono ${roi >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                      {roi.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
 
-                            {/* Profit Column */}
-                            <div className="space-y-3">
-                              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Returns</h4>
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span>Total Investment</span>
-                                  <span className="font-mono">{formatCurrency(totalInvestment)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm font-medium">
-                                  <span>Gross Profit</span>
-                                  <span className={`font-mono ${grossProfit >= 0 ? 'text-green-500' : 'text-destructive'}`}>
-                                    {formatCurrency(grossProfit)}
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+                              <div className="p-4 rounded-lg bg-muted/50 text-center">
+                                <p className="text-sm text-muted-foreground">Total Investment</p>
+                                <p className="text-2xl font-bold font-mono">{formatCurrency(totalInvestment)}</p>
+                              </div>
+                              <div className={`p-4 rounded-lg text-center ${grossProfit >= 0 ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
+                                <p className="text-sm text-muted-foreground">Projected Profit</p>
+                                <p className={`text-2xl font-bold font-mono ${grossProfit >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                  {formatCurrency(grossProfit)}
+                                </p>
+                              </div>
+                              <div className={`p-4 rounded-lg text-center ${roi >= 20 ? 'bg-green-500/10' : roi >= 0 ? 'bg-amber-500/10' : 'bg-destructive/10'}`}>
+                                <p className="text-sm text-muted-foreground">Return on Investment</p>
+                                <p className={`text-2xl font-bold font-mono ${roi >= 20 ? 'text-green-500' : roi >= 0 ? 'text-amber-500' : 'text-destructive'}`}>
+                                  {roi.toFixed(1)}%
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* MAO Rule Check */}
+                            {purchasePriceNum > 0 && arvNum > 0 && (
+                              <div className={`mt-6 p-4 rounded-lg ${meetsMaoRule ? 'bg-green-500/10 border border-green-500/30' : 'bg-destructive/10 border border-destructive/30'}`}>
+                                <div className="flex items-center gap-2">
+                                  {meetsMaoRule ? (
+                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                  ) : (
+                                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                                  )}
+                                  <span className={`font-medium ${meetsMaoRule ? 'text-green-500' : 'text-destructive'}`}>
+                                    {meetsMaoRule
+                                      ? `✓ Meets ${maoPercentage}% Rule - Your offer is ${formatCurrency(maxOffer - purchasePriceNum)} under the max!`
+                                      : `✗ Over ${maoPercentage}% Rule - Your offer is ${formatCurrency(purchasePriceNum - maxOffer)} over the max!`}
                                   </span>
                                 </div>
-                                <div className="flex justify-between text-sm font-medium">
-                                  <span>ROI</span>
-                                  <span className={`font-mono ${roi >= 0 ? 'text-green-500' : 'text-destructive'}`}>
-                                    {roi.toFixed(1)}%
-                                  </span>
-                                </div>
                               </div>
-                            </div>
-                          </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
 
-                          {/* Summary Cards */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-                            <div className="p-4 rounded-lg bg-muted/50 text-center">
-                              <p className="text-sm text-muted-foreground">Total Investment</p>
-                              <p className="text-2xl font-bold font-mono">{formatCurrency(totalInvestment)}</p>
-                            </div>
-                            <div className={`p-4 rounded-lg text-center ${grossProfit >= 0 ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
-                              <p className="text-sm text-muted-foreground">Projected Profit</p>
-                              <p className={`text-2xl font-bold font-mono ${grossProfit >= 0 ? 'text-green-500' : 'text-destructive'}`}>
-                                {formatCurrency(grossProfit)}
-                              </p>
-                            </div>
-                            <div className={`p-4 rounded-lg text-center ${roi >= 20 ? 'bg-green-500/10' : roi >= 0 ? 'bg-amber-500/10' : 'bg-destructive/10'}`}>
-                              <p className="text-sm text-muted-foreground">Return on Investment</p>
-                              <p className={`text-2xl font-bold font-mono ${roi >= 20 ? 'text-green-500' : roi >= 0 ? 'text-amber-500' : 'text-destructive'}`}>
-                                {roi.toFixed(1)}%
-                              </p>
-                            </div>
-                          </div>
+                      {calculatorType === 'rental' && (
+                        <RentalAnalysis
+                          purchasePrice={purchasePriceNum}
+                          arv={arvNum}
+                          totalBudget={totalBudget}
+                          rentalFields={rentalFields}
+                          formatCurrency={formatCurrency}
+                        />
+                      )}
 
-                          {/* MAO Rule Check */}
-                          {purchasePriceNum > 0 && arvNum > 0 && (
-                            <div className={`mt-6 p-4 rounded-lg ${meetsMaoRule ? 'bg-green-500/10 border border-green-500/30' : 'bg-destructive/10 border border-destructive/30'}`}>
-                              <div className="flex items-center gap-2">
-                                {meetsMaoRule ? (
-                                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                ) : (
-                                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                                )}
-                                <span className={`font-medium ${meetsMaoRule ? 'text-green-500' : 'text-destructive'}`}>
-                                  {meetsMaoRule
-                                    ? `✓ Meets ${maoPercentage}% Rule - Your offer is ${formatCurrency(maxOffer - purchasePriceNum)} under the max!`
-                                    : `✗ Over ${maoPercentage}% Rule - Your offer is ${formatCurrency(purchasePriceNum - maxOffer)} over the max!`}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
+                      {calculatorType === 'brrr' && (
+                        <BRRRAnalysis
+                          purchasePrice={purchasePriceNum}
+                          arv={arvNum}
+                          totalBudget={totalBudget}
+                          closingCostsBuy={closingCostsBuy}
+                          holdingCosts={holdingCosts}
+                          rentalFields={rentalFields}
+                          formatCurrency={formatCurrency}
+                        />
+                      )}
                     </CollapsibleContent>
                   </Collapsible>
                 </div>
