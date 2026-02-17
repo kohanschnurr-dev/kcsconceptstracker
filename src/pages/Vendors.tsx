@@ -88,6 +88,15 @@ export default function Vendors() {
     }
   };
 
+  const getTradeLabel = (trade: string) => {
+    const found = getBudgetCategories().find(b => b.value === trade)?.label
+      || getVendorTrades().find(t => t.value === trade)?.label;
+    if (found) return found;
+    return trade
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   const usedTrades = Array.from(new Set(vendors.flatMap(v => v.trades)))
     .map(value => ({ value, label: getTradeLabel(value) }))
     .sort((a, b) => a.label.localeCompare(b.label));
@@ -98,15 +107,6 @@ export default function Vendors() {
     const matchesTrade = tradeFilter === 'all' || vendor.trades.includes(tradeFilter);
     return matchesSearch && matchesTrade;
   });
-
-  const getTradeLabel = (trade: string) => {
-    const found = getBudgetCategories().find(b => b.value === trade)?.label
-      || getVendorTrades().find(t => t.value === trade)?.label;
-    if (found) return found;
-    return trade
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
-  };
 
   const handleEditVendor = (vendor: Vendor) => {
     setEditingVendor(vendor);
