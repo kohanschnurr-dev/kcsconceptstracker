@@ -1,49 +1,48 @@
 
 
-## Show "Multiple" for Items in 2+ Bundles with Hover Detail
+## Fix: Saved Budget Templates Not Reflecting Updated Deal Parameters
 
-### What's Changing
-In the procurement table's Bundle column, when an item belongs to two or more bundles, it will display "Multiple" instead of listing them all. Hovering over "Multiple" will show a tooltip with the full list of bundle names.
+### Problem
+When you save a budget with updated Deal Parameters (e.g., Purchase Price changed to $200k), the save **does** write correctly to the database. However, the `TemplatePicker` dropdown holds a stale copy of the templates fetched on page load. When you re-select the template from the dropdown, it loads the old cached data instead of the freshly saved values.
+
+### Solution
+After a successful save in `BudgetCalculator.tsx`, signal the `TemplatePicker` to refetch its templates from the database so the dropdown always has the latest data.
 
 ### Technical Detail
 
-**File: `src/pages/Procurement.tsx`**
-
-1. Add Tooltip imports at the top:
-```tsx
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-```
-
-2. Replace the bundle cell rendering (lines 571-589) with logic that:
-   - Shows "Unassigned" (italic, muted) if no bundles
-   - Shows the single bundle name if exactly one bundle
-   - Shows a "Multiple" badge wrapped in a `Tooltip` if 2+ bundles, with the tooltip content listing all bundle names
+**1. `src/components/budget/TemplatePicker.tsx`**
+- Extract the `fetchTemplates` function out of the `useEffect` so it can be called externally.
+- Accept a new `refreshKey` prop (a simple counter). Add it as a dependency to the `useEffect` so that incrementing it triggers a refetch.
 
 ```tsx
-<TableCell className="text-center">
-  {(!item.bundle_ids || item.bundle_ids.length === 0) ? (
-    <span className="text-sm text-muted-foreground italic">Unassigned</span>
-  ) : item.bundle_ids.length === 1 ? (
-    <div>
-      <span className="text-sm">{getBundleNames(item.bundle_ids)[0]}</span>
-      {getBundleProjectNames(item.bundle_ids).length > 0 && (
-        <p className="text-xs text-muted-foreground">...</p>
-      )}
-    </div>
-  ) : (
-    <Tooltip>
-      <TooltipTrigger>
-        <Badge variant="secondary">Multiple</Badge>
-      </TooltipTrigger>
-      <TooltipContent>
-        {getBundleNames(item.bundle_ids).map(name => <p>{name}</p>)}
-      </TooltipContent>
-    </Tooltip>
-  )}
-</TableCell>
+// Props change
+interface TemplatePickerProps {
+  // ... existing props
+  refreshKey?: number;  // NEW
+}
+
+// useEffect dependency change
+useEffect(() => {
+  fetchTemplates();
+}, [refreshKey]);
 ```
 
-3. Wrap the Table (or the entire return) with `<TooltipProvider>` so tooltips work.
+**2. `src/pages/BudgetCalculator.tsx`**
+- Add a `templateRefreshKey` state counter.
+- After a successful save (both insert and update paths, around line 369/375), increment the counter.
+- Pass the counter to `TemplatePicker` as the `refreshKey` prop.
+
+```tsx
+const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
+
+// After successful save:
+setTemplateRefreshKey(prev => prev + 1);
+
+// In JSX:
+<TemplatePicker refreshKey={templateRefreshKey} ... />
+```
 
 ### Files
-- **Edit**: `src/pages/Procurement.tsx` -- Add tooltip imports, update bundle cell rendering, wrap with TooltipProvider
+- **Edit**: `src/components/budget/TemplatePicker.tsx` -- Add `refreshKey` prop, use as useEffect dependency
+- **Edit**: `src/pages/BudgetCalculator.tsx` -- Add refresh counter state, increment after save, pass to TemplatePicker
+
