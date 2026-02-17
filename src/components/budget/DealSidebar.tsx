@@ -248,9 +248,21 @@ export function DealSidebar({
               <Separator />
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Estimated Costs
-                  </h4>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Estimated Costs
+                    </h4>
+                    {!isEditingCosts && (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingCosts(true)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        title="Edit cost percentages"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <Label htmlFor="sell-closing-toggle" className="text-xs text-muted-foreground">
                       Include Exit Costs
@@ -325,19 +337,9 @@ export function DealSidebar({
                         <span className="text-muted-foreground">{costLabel('Closing (Buy)', closingMode, closingPct)}</span>
                         <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
                       </div>
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between">
                         <span className="text-muted-foreground">{costLabel('Holding', holdingMode, holdingPct)}</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono">{formatCurrency(holdingCosts)}</span>
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingCosts(true)}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                            title="Edit percentages"
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </button>
-                        </div>
+                        <span className="font-mono">{formatCurrency(holdingCosts)}</span>
                       </div>
                     </>
                   )}
