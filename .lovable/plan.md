@@ -1,18 +1,31 @@
 
-## Open Add Expense Modal Inline on Project Budget Page
+
+## Add "Best for Bulk" Helper Text to Import CSV Tab
 
 ### What's Changing
-The "+ Add Expense" button on the Project Budget page currently navigates to `/expenses`, requiring an extra click. This update makes it open the `QuickExpenseModal` directly on the page instead.
+Below the "Select a project above to begin importing expenses" message, add a visually appealing helper note indicating that the Import CSV tab is best suited for adding many expenses at once. This gives users context about when to use this tab vs. the single expense form.
 
 ### Technical Detail
 
-**File: `src/pages/ProjectBudget.tsx`**
+**File: `src/components/QuickExpenseModal.tsx`**
 
-1. Import `QuickExpenseModal` from `@/components/QuickExpenseModal`.
-2. Add state: `const [expenseModalOpen, setExpenseModalOpen] = useState(false);`
-3. Change the button's `onClick` from `navigate('/expenses')` to `setExpenseModalOpen(true)`.
-4. Render `<QuickExpenseModal open={expenseModalOpen} onOpenChange={setExpenseModalOpen} />` at the bottom of the component JSX.
-5. To auto-refresh expense data after adding, call the existing query refetch in the modal's close handler (refetch when modal closes and was previously open).
+Update the empty-state block (lines 439-443) that shows when no project is selected. Replace the plain text with a more informative layout:
+
+```tsx
+{!selectedProject && (
+  <div className="text-center py-8 space-y-3">
+    <p className="text-muted-foreground text-sm">
+      Select a project above to begin importing expenses.
+    </p>
+    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-medium">
+      <FileSpreadsheet className="h-3.5 w-3.5" />
+      Best for adding numerous expenses at once
+    </div>
+  </div>
+)}
+```
+
+This adds a styled pill/badge below the instruction text with a spreadsheet icon and the helper message, using the existing `FileSpreadsheet` icon (already imported via lucide-react in the file) and the app's primary color for a polished look.
 
 ### Files
-- **Edit**: `src/pages/ProjectBudget.tsx` -- Replace navigation with inline modal state and render QuickExpenseModal
+- **Edit**: `src/components/QuickExpenseModal.tsx` -- Update the no-project-selected empty state (lines 439-443)
