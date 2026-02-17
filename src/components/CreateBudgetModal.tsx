@@ -294,67 +294,22 @@ export function CreateBudgetModal({
     setIsSaving(true);
 
     try {
-      // First, get existing categories for this project
-      const { data: existingCategories, error: fetchError } = await supabase
-        .from('project_categories')
-        .select('id, category')
-        .eq('project_id', selectedProject);
+      // Store as pending budget for user review instead of applying directly
+      const pendingPayload = {
+        total_budget: totalBudget,
+        category_budgets: getCategoryBudgetsObject(),
+        applied_at: new Date().toISOString(),
+        template_name: templateName.trim() || null,
+      };
 
-      if (fetchError) throw fetchError;
-
-      const existingCategoryMap = new Map(
-        existingCategories?.map(c => [c.category, c.id]) || []
-      );
-
-      // Prepare category data
-      const categoriesToUpdate = [];
-      const categoriesToInsert = [];
-
-      for (const cat of getBudgetCategories()) {
-        const budgetValue = parseFloat(categoryBudgets[cat.value]) || 0;
-        if (budgetValue > 0) {
-          const existingId = existingCategoryMap.get(cat.value);
-          if (existingId) {
-            categoriesToUpdate.push({
-              id: existingId,
-              estimated_budget: budgetValue,
-            });
-          } else {
-            categoriesToInsert.push({
-              project_id: selectedProject,
-              category: cat.value,
-              estimated_budget: budgetValue,
-            });
-          }
-        }
-      }
-
-      // Update existing categories
-      for (const cat of categoriesToUpdate) {
-        const { error } = await supabase
-          .from('project_categories')
-          .update({ estimated_budget: cat.estimated_budget })
-          .eq('id', cat.id);
-        if (error) throw error;
-      }
-
-      // Insert new categories
-      if (categoriesToInsert.length > 0) {
-        const { error: insertError } = await supabase
-          .from('project_categories')
-          .insert(categoriesToInsert);
-        if (insertError) throw insertError;
-      }
-
-      // Update project total budget
       const { error: updateError } = await supabase
         .from('projects')
-        .update({ total_budget: totalBudget })
+        .update({ pending_budget: pendingPayload } as any)
         .eq('id', selectedProject);
 
       if (updateError) throw updateError;
 
-      toast.success(`Budget of $${totalBudget.toLocaleString()} applied to project`);
+      toast.success(`Budget staged for review on project`);
       onBudgetCreated?.();
       onOpenChange(false);
     } catch (error: any) {

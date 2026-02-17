@@ -1243,6 +1243,7 @@ export type Database = {
           monthly_maintenance: number | null
           monthly_rent: number | null
           name: string
+          pending_budget: Json | null
           project_type: Database["public"]["Enums"]["project_type"]
           purchase_price: number | null
           start_date: string
@@ -1284,6 +1285,7 @@ export type Database = {
           monthly_maintenance?: number | null
           monthly_rent?: number | null
           name: string
+          pending_budget?: Json | null
           project_type?: Database["public"]["Enums"]["project_type"]
           purchase_price?: number | null
           start_date?: string
@@ -1325,6 +1327,7 @@ export type Database = {
           monthly_maintenance?: number | null
           monthly_rent?: number | null
           name?: string
+          pending_budget?: Json | null
           project_type?: Database["public"]["Enums"]["project_type"]
           purchase_price?: number | null
           start_date?: string
