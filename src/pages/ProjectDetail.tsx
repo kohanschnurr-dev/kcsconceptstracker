@@ -1103,32 +1103,51 @@ export default function ProjectDetail() {
                     <FileText className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Quick Add Log</span>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex gap-2 items-center">
                     <Textarea
                       placeholder="Work performed today..."
                       value={quickLogWork}
                       onChange={(e) => setQuickLogWork(e.target.value)}
-                      rows={2}
-                      className="flex-1 min-h-[60px] resize-none"
+                      rows={1}
+                      className="flex-1 min-h-[36px] resize-none"
                       disabled={quickLogSubmitting}
                     />
-                    <div className="flex flex-col gap-2 shrink-0">
-                      <Input
-                        type="date"
-                        value={quickLogDate}
-                        onChange={(e) => setQuickLogDate(e.target.value)}
-                        className="w-[140px] text-xs"
-                        disabled={quickLogSubmitting}
-                      />
-                      <Button
-                        type="submit"
-                        size="sm"
-                        disabled={!quickLogWork.trim() || quickLogSubmitting}
-                        className="w-[140px]"
-                      >
-                        {quickLogSubmitting ? 'Saving...' : 'Add Log'}
-                      </Button>
-                    </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={quickLogSubmitting}
+                          className="shrink-0 gap-1.5 text-xs"
+                        >
+                          <Calendar className="h-3.5 w-3.5" />
+                          {format(parseDateString(quickLogDate), 'MMM d, yyyy')}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <CalendarComponent
+                          mode="single"
+                          selected={parseDateString(quickLogDate)}
+                          onSelect={(date) => {
+                            if (date) {
+                              const y = date.getFullYear();
+                              const m = String(date.getMonth() + 1).padStart(2, '0');
+                              const d = String(date.getDate()).padStart(2, '0');
+                              setQuickLogDate(`${y}-${m}-${d}`);
+                            }
+                          }}
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={!quickLogWork.trim() || quickLogSubmitting}
+                    >
+                      {quickLogSubmitting ? 'Saving...' : 'Add Log'}
+                    </Button>
                   </div>
                   <Collapsible open={quickLogShowIssues} onOpenChange={setQuickLogShowIssues}>
                     <CollapsibleTrigger asChild>
@@ -1142,8 +1161,8 @@ export default function ProjectDetail() {
                         placeholder="Any problems or concerns?"
                         value={quickLogIssues}
                         onChange={(e) => setQuickLogIssues(e.target.value)}
-                        rows={2}
-                        className="resize-none"
+                        rows={1}
+                        className="resize-none min-h-[36px]"
                         disabled={quickLogSubmitting}
                       />
                     </CollapsibleContent>
