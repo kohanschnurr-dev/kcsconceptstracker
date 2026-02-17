@@ -13,8 +13,8 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
     <DayPicker
       showOutsideDays={showOutsideDays}
       captionLayout="dropdown-buttons"
-      fromYear={currentYear - 5}
-      toYear={currentYear + 5}
+      fromYear={currentYear - 10}
+      toYear={currentYear + 10}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
@@ -22,7 +22,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium hidden",
         caption_dropdowns: "flex items-center gap-1",
-        dropdown: "appearance-none bg-transparent text-sm font-medium cursor-pointer border rounded px-1.5 py-0.5 hover:bg-secondary focus:outline-none focus:ring-1 focus:ring-primary",
+        dropdown: "appearance-none bg-popover text-popover-foreground text-sm font-medium cursor-pointer border border-border rounded px-1.5 py-0.5 hover:bg-secondary focus:outline-none focus:ring-1 focus:ring-primary calendar-dropdown",
         dropdown_month: "",
         dropdown_year: "",
         vhidden: "hidden",
