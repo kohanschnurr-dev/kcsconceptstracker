@@ -96,7 +96,12 @@ export default function Vendors() {
   });
 
   const getTradeLabel = (trade: string) => {
-    return getBudgetCategories().find(b => b.value === trade)?.label || trade;
+    const found = getBudgetCategories().find(b => b.value === trade)?.label
+      || getVendorTrades().find(t => t.value === trade)?.label;
+    if (found) return found;
+    return trade
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
   };
 
   const handleEditVendor = (vendor: Vendor) => {
