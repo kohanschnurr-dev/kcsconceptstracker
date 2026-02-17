@@ -73,6 +73,7 @@ export default function BudgetCalculator() {
   const [rentalFields, setRentalFields] = useState<RentalFieldValues>(defaultRentalFields);
   const [closingPct, setClosingPct] = useState<string>('2');
   const [holdingPct, setHoldingPct] = useState<string>('3');
+  const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
   
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
@@ -367,12 +368,14 @@ export default function BudgetCalculator() {
           .eq('id', existing.id);
         if (error) throw error;
         toast.success('Budget updated');
+        setTemplateRefreshKey(prev => prev + 1);
       } else {
         const { error } = await supabase
           .from('budget_templates')
           .insert({ ...templateData, user_id: user.id });
         if (error) throw error;
         toast.success('Budget saved to folder');
+        setTemplateRefreshKey(prev => prev + 1);
       }
       setCurrentTemplateName(trimmedName);
     } catch (error: any) {
@@ -486,6 +489,7 @@ export default function BudgetCalculator() {
               currentTemplateName={currentTemplateName}
               sqft={sqft}
               onSqftChange={setSqft}
+              refreshKey={templateRefreshKey}
             />
             <Button variant="outline" size="icon" onClick={handleClearAll} title="Clear all">
               <RotateCcw className="h-4 w-4" />
