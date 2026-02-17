@@ -73,6 +73,13 @@ export default function BudgetCalculator() {
   const [rentalFields, setRentalFields] = useState<RentalFieldValues>(defaultRentalFields);
   const [closingPct, setClosingPct] = useState<string>('2');
   const [holdingPct, setHoldingPct] = useState<string>('3');
+  const [sellClosingPct, setSellClosingPct] = useState<string>('6');
+  const [closingMode, setClosingMode] = useState<'pct' | 'flat'>('pct');
+  const [holdingMode, setHoldingMode] = useState<'pct' | 'flat'>('pct');
+  const [sellClosingMode, setSellClosingMode] = useState<'pct' | 'flat'>('pct');
+  const [closingFlat, setClosingFlat] = useState<string>('');
+  const [holdingFlat, setHoldingFlat] = useState<string>('');
+  const [sellClosingFlat, setSellClosingFlat] = useState<string>('');
   const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
   
   // Category budgets state
@@ -154,6 +161,13 @@ export default function BudgetCalculator() {
         }
         setClosingPct(meta?.closingPct ?? '2');
         setHoldingPct(meta?.holdingPct ?? '3');
+        setSellClosingPct(meta?.sellClosingPct ?? '6');
+        setClosingMode(meta?.closingMode ?? 'pct');
+        setHoldingMode(meta?.holdingMode ?? 'pct');
+        setSellClosingMode(meta?.sellClosingMode ?? 'pct');
+        setClosingFlat(meta?.closingFlat ?? '');
+        setHoldingFlat(meta?.holdingFlat ?? '');
+        setSellClosingFlat(meta?.sellClosingFlat ?? '');
         setIncludeSellClosingCosts(meta?.includeSellClosingCosts ?? true);
         if (meta?.rentalFields) {
           setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
@@ -186,10 +200,16 @@ export default function BudgetCalculator() {
     setRentalFields(prev => ({ ...prev, refiLoanAmount: newLoanAmount }));
   }, [arv, purchasePrice, rentalFields.refiLtv, rentalFields.refiLtvBase]);
 
-  // Profit calculations
-  const closingCostsBuy = purchasePriceNum * ((parseFloat(closingPct) || 0) / 100);
-  const closingCostsSell = includeSellClosingCosts ? arvNum * 0.06 : 0;
-  const holdingCosts = purchasePriceNum * ((parseFloat(holdingPct) || 0) / 100);
+  // Profit calculations - respect pct/flat modes
+  const closingCostsBuy = closingMode === 'pct'
+    ? purchasePriceNum * ((parseFloat(closingPct) || 0) / 100)
+    : (parseFloat(closingFlat) || 0);
+  const closingCostsSell = includeSellClosingCosts
+    ? (sellClosingMode === 'pct' ? arvNum * ((parseFloat(sellClosingPct) || 0) / 100) : (parseFloat(sellClosingFlat) || 0))
+    : 0;
+  const holdingCosts = holdingMode === 'pct'
+    ? purchasePriceNum * ((parseFloat(holdingPct) || 0) / 100)
+    : (parseFloat(holdingFlat) || 0);
   
   const totalInvestment = purchasePriceNum + totalBudget + closingCostsBuy + holdingCosts;
   const totalCosts = totalInvestment + closingCostsSell;
@@ -244,6 +264,13 @@ export default function BudgetCalculator() {
     }
     setClosingPct(meta?.closingPct ?? '2');
     setHoldingPct(meta?.holdingPct ?? '3');
+    setSellClosingPct(meta?.sellClosingPct ?? '6');
+    setClosingMode(meta?.closingMode ?? 'pct');
+    setHoldingMode(meta?.holdingMode ?? 'pct');
+    setSellClosingMode(meta?.sellClosingMode ?? 'pct');
+    setClosingFlat(meta?.closingFlat ?? '');
+    setHoldingFlat(meta?.holdingFlat ?? '');
+    setSellClosingFlat(meta?.sellClosingFlat ?? '');
     setIncludeSellClosingCosts(meta?.includeSellClosingCosts ?? true);
     if (meta?.rentalFields) {
       setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
@@ -271,6 +298,13 @@ export default function BudgetCalculator() {
     setRentalFields(defaultRentalFields);
     setClosingPct('2');
     setHoldingPct('3');
+    setSellClosingPct('6');
+    setClosingMode('pct');
+    setHoldingMode('pct');
+    setSellClosingMode('pct');
+    setClosingFlat('');
+    setHoldingFlat('');
+    setSellClosingFlat('');
     setIncludeSellClosingCosts(true);
     
     const cleared: Record<string, string> = {};
@@ -314,6 +348,13 @@ export default function BudgetCalculator() {
       type: calculatorType,
       closingPct,
       holdingPct,
+      sellClosingPct,
+      closingMode,
+      holdingMode,
+      sellClosingMode,
+      closingFlat,
+      holdingFlat,
+      sellClosingFlat,
       includeSellClosingCosts,
       rentalFields,
     };
@@ -537,6 +578,20 @@ export default function BudgetCalculator() {
             onClosingPctChange={setClosingPct}
             holdingPct={holdingPct}
             onHoldingPctChange={setHoldingPct}
+            sellClosingPct={sellClosingPct}
+            onSellClosingPctChange={setSellClosingPct}
+            closingMode={closingMode}
+            holdingMode={holdingMode}
+            sellClosingMode={sellClosingMode}
+            onClosingModeChange={setClosingMode}
+            onHoldingModeChange={setHoldingMode}
+            onSellClosingModeChange={setSellClosingMode}
+            closingFlat={closingFlat}
+            holdingFlat={holdingFlat}
+            sellClosingFlat={sellClosingFlat}
+            onClosingFlatChange={setClosingFlat}
+            onHoldingFlatChange={setHoldingFlat}
+            onSellClosingFlatChange={setSellClosingFlat}
           />
           
           {/* Budget Canvas - Primary Workspace */}
@@ -587,7 +642,7 @@ export default function BudgetCalculator() {
                                     <span className="font-mono">{formatCurrency(purchasePriceNum)}</span>
                                   </div>
                                   <div className="flex justify-between text-sm">
-                                    <span>Closing Costs ({closingPct}%)</span>
+                                    <span>Closing Costs {closingMode === 'pct' ? `(${closingPct}%)` : '(flat)'}</span>
                                     <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
                                   </div>
                                 </div>
@@ -602,7 +657,7 @@ export default function BudgetCalculator() {
                                     <span className="font-mono">{formatCurrency(totalBudget)}</span>
                                   </div>
                                   <div className="flex justify-between text-sm">
-                                    <span>Holding Costs ({holdingPct}%)</span>
+                                    <span>Holding Costs {holdingMode === 'pct' ? `(${holdingPct}%)` : '(flat)'}</span>
                                     <span className="font-mono">{formatCurrency(holdingCosts)}</span>
                                   </div>
                                 </div>
@@ -618,7 +673,7 @@ export default function BudgetCalculator() {
                                   </div>
                                   {includeSellClosingCosts && (
                                     <div className="flex justify-between text-sm">
-                                      <span>Selling Costs (6%)</span>
+                                      <span>Selling Costs {sellClosingMode === 'pct' ? `(${sellClosingPct}%)` : '(flat)'}</span>
                                       <span className="font-mono">-{formatCurrency(closingCostsSell)}</span>
                                     </div>
                                   )}
