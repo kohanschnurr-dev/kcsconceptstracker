@@ -1,33 +1,55 @@
 
 
-## Redesign Quick Add Log Form Layout
+## Add Vendor Type Filter
 
-### Changes
+### What's Changing
+A dropdown filter will be added next to the search bar on the Vendors page, letting users filter vendors by their trade/type (e.g., Plumbing, Electrical, General, etc.).
 
-**File: `src/pages/ProjectDetail.tsx`**
-
-1. Make the "Work performed today..." textarea thinner -- change from `rows={2}` to `rows={1}` and reduce `min-h` to keep it a single-line height.
-
-2. Restructure the layout so the work textarea, calendar date picker (using the Popover + Calendar component instead of a plain date input), and "Add Log" button all sit on the **same row**.
-
-3. Replace the native `<Input type="date">` with a Popover + Calendar picker that shows a calendar popout when clicked, displaying the selected date as a button.
-
-4. The issues textarea (inside the collapsible) will also become `rows={1}` to match the thinner style.
-
-### Layout
-
-```text
-[Quick Add Log]
-[ Work performed today...          ] [Feb 17, 2026 v] [Add Log]
-  Add issues?
-  [ Any problems or concerns... ] (when expanded, single row height)
-```
+### Design
+- A `Select` dropdown labeled "All Types" by default, placed inline next to the search input
+- Options populated from `getVendorTrades()` (same trade list used elsewhere)
+- Selecting a trade filters the vendor grid to only show vendors with that trade
+- Works in combination with the existing text search
+- An "All Types" option resets the filter
 
 ### Technical Detail
 
-- Import `Popover`, `PopoverTrigger`, `PopoverContent` and `Calendar` components (already available in the project)
-- Import `format` from `date-fns` and use `parseDateString`/`formatDateString` from `@/lib/dateUtils`
-- Replace the `<div className="flex flex-col gap-2 shrink-0">` wrapper with inline items on the same row
-- The calendar button shows the formatted date; clicking opens a calendar popout below it
-- On date select, update `quickLogDate` state and close the popover
+**File: `src/pages/Vendors.tsx`**
 
+1. Add state: `const [tradeFilter, setTradeFilter] = useState<string>('all');`
+
+2. Import `getVendorTrades` from `@/types` (alongside existing `getBudgetCategories`) and import `Select` components (already imported).
+
+3. Update `filteredVendors` to also check trade filter:
+```tsx
+const filteredVendors = vendors.filter((vendor) => {
+  const matchesSearch = vendor.name.toLowerCase().includes(search.toLowerCase()) ||
+    vendor.trades.some(t => t.toLowerCase().includes(search.toLowerCase()));
+  const matchesTrade = tradeFilter === 'all' || vendor.trades.includes(tradeFilter);
+  return matchesSearch && matchesTrade;
+});
+```
+
+4. Add a `Select` dropdown next to the search input (lines 150-158), changing the wrapper from `max-w-sm` to a flex row with both the search and the filter:
+```tsx
+<div className="flex flex-col sm:flex-row gap-3">
+  <div className="relative flex-1 max-w-sm">
+    <Search ... />
+    <Input ... />
+  </div>
+  <Select value={tradeFilter} onValueChange={setTradeFilter}>
+    <SelectTrigger className="w-[180px]">
+      <SelectValue placeholder="All Types" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">All Types</SelectItem>
+      {getVendorTrades().map(t => (
+        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
+```
+
+### Files
+- **Edit**: `src/pages/Vendors.tsx` -- Add trade filter state, Select dropdown, and updated filter logic
