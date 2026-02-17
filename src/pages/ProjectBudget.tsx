@@ -53,6 +53,7 @@ import { CategoryBudgetModal, DeleteCategoryDialog } from '@/components/project/
 import { ImportExpensesModal } from '@/components/project/ImportExpensesModal';
 import { ExpenseDetailModal } from '@/components/ExpenseDetailModal';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
+import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
@@ -158,6 +159,7 @@ export default function ProjectBudget() {
   const [selectedExpense, setSelectedExpense] = useState<DBExpense | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   
   // All Expenses collapsed state - show only 7 by default
   const [showAllExpenses, setShowAllExpenses] = useState(false);
@@ -630,7 +632,7 @@ export default function ProjectBudget() {
               <h1 className="text-2xl font-semibold">Budget & Expenses</h1>
               <p className="text-muted-foreground">{project.name} • {project.address}</p>
             </div>
-            <Button onClick={() => navigate(`/expenses`)}>
+            <Button onClick={() => setExpenseModalOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Expense
             </Button>
@@ -1531,6 +1533,13 @@ export default function ProjectBudget() {
         projectId={id!}
         existingCategories={categories}
         onImportComplete={refreshData}
+      />
+
+      <QuickExpenseModal
+        open={expenseModalOpen}
+        onOpenChange={setExpenseModalOpen}
+        projects={project ? [{ id: project.id, name: project.name, address: project.address, totalBudget: project.total_budget, startDate: project.start_date, status: project.status === 'on_hold' ? 'on-hold' : project.status as 'active' | 'complete', projectType: 'fix_flip', categories: [] }] : []}
+        onExpenseCreated={refreshData}
       />
     </MainLayout>
   );
