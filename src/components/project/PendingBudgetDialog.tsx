@@ -209,7 +209,7 @@ export function PendingBudgetDialog({ projectId, pendingBudget, existingCategori
           </Button>
           <Button onClick={handleAccept} disabled={isAccepting || isDismissing}>
             {isAccepting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
-            Accept Budget
+            Approve Budget
           </Button>
         </DialogFooter>
       </DialogContent>
