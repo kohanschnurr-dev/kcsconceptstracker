@@ -13,6 +13,8 @@ import { RentalFields, type RentalFieldValues } from '@/components/budget/Rental
 
 export type CalculatorType = 'fix_flip' | 'rental';
 
+type CostMode = 'pct' | 'flat';
+
 interface Project {
   id: string;
   name: string;
@@ -45,6 +47,33 @@ interface DealSidebarProps {
   onClosingPctChange: (value: string) => void;
   holdingPct: string;
   onHoldingPctChange: (value: string) => void;
+  sellClosingPct: string;
+  onSellClosingPctChange: (value: string) => void;
+  closingMode: CostMode;
+  holdingMode: CostMode;
+  sellClosingMode: CostMode;
+  onClosingModeChange: (mode: CostMode) => void;
+  onHoldingModeChange: (mode: CostMode) => void;
+  onSellClosingModeChange: (mode: CostMode) => void;
+  closingFlat: string;
+  holdingFlat: string;
+  sellClosingFlat: string;
+  onClosingFlatChange: (value: string) => void;
+  onHoldingFlatChange: (value: string) => void;
+  onSellClosingFlatChange: (value: string) => void;
+}
+
+function ModeToggle({ mode, onChange }: { mode: CostMode; onChange: (m: CostMode) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(mode === 'pct' ? 'flat' : 'pct')}
+      className="ml-1 px-1 py-0.5 text-[10px] font-mono rounded border border-border bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors leading-none"
+      title={mode === 'pct' ? 'Switch to flat dollar' : 'Switch to percentage'}
+    >
+      {mode === 'pct' ? '%' : '$'}
+    </button>
+  );
 }
 
 export function DealSidebar({
@@ -73,6 +102,20 @@ export function DealSidebar({
   onClosingPctChange,
   holdingPct,
   onHoldingPctChange,
+  sellClosingPct,
+  onSellClosingPctChange,
+  closingMode,
+  holdingMode,
+  sellClosingMode,
+  onClosingModeChange,
+  onHoldingModeChange,
+  onSellClosingModeChange,
+  closingFlat,
+  holdingFlat,
+  sellClosingFlat,
+  onClosingFlatChange,
+  onHoldingFlatChange,
+  onSellClosingFlatChange,
 }: DealSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isEditingCosts, setIsEditingCosts] = useState(false);
@@ -82,10 +125,16 @@ export function DealSidebar({
   const purchasePriceNum = parseFloat(purchasePrice) || 0;
   const arvNum = parseFloat(arv) || 0;
 
-  // Quick calculations - buy closing always included, sell closing toggleable
-  const closingCostsBuy = purchasePriceNum * ((parseFloat(closingPct) || 0) / 100);
-  const closingCostsSell = includeSellClosingCosts ? arvNum * 0.06 : 0;
-  const holdingCosts = purchasePriceNum * ((parseFloat(holdingPct) || 0) / 100);
+  // Compute costs respecting mode
+  const closingCostsBuy = closingMode === 'pct'
+    ? purchasePriceNum * ((parseFloat(closingPct) || 0) / 100)
+    : (parseFloat(closingFlat) || 0);
+  const closingCostsSell = includeSellClosingCosts
+    ? (sellClosingMode === 'pct' ? arvNum * ((parseFloat(sellClosingPct) || 0) / 100) : (parseFloat(sellClosingFlat) || 0))
+    : 0;
+  const holdingCosts = holdingMode === 'pct'
+    ? purchasePriceNum * ((parseFloat(holdingPct) || 0) / 100)
+    : (parseFloat(holdingFlat) || 0);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -117,6 +166,11 @@ export function DealSidebar({
       </div>
     );
   }
+
+  const costLabel = (label: string, mode: CostMode, pct: string) => {
+    if (mode === 'pct') return `${label} (${pct}%)`;
+    return `${label} (flat)`;
+  };
 
   return (
     <div className="w-80 border-r bg-muted/30 flex flex-col">
@@ -188,7 +242,7 @@ export function DealSidebar({
             </div>
           </div>
 
-          {/* Quick Estimates - Fix & Flip and BRRR only */}
+          {/* Quick Estimates - Fix & Flip only */}
           {showEstimatedCosts && (purchasePriceNum > 0 || arvNum > 0) && (
             <>
               <Separator />
@@ -211,30 +265,56 @@ export function DealSidebar({
                 <div className="space-y-1.5 text-sm">
                   {isEditingCosts ? (
                     <>
+                      {/* Closing Buy */}
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground text-xs">Closing (Buy)</span>
+                        <span className="text-muted-foreground text-xs flex items-center">
+                          Closing (Buy)
+                          <ModeToggle mode={closingMode} onChange={onClosingModeChange} />
+                        </span>
                         <div className="flex items-center gap-1">
                           <input
                             type="number"
-                            value={closingPct}
-                            onChange={(e) => onClosingPctChange(e.target.value)}
-                            className="w-14 h-6 text-xs font-mono text-right rounded border border-input bg-background px-1.5"
+                            value={closingMode === 'pct' ? closingPct : closingFlat}
+                            onChange={(e) => closingMode === 'pct' ? onClosingPctChange(e.target.value) : onClosingFlatChange(e.target.value)}
+                            className="w-16 h-6 text-xs font-mono text-right rounded border border-input bg-background px-1.5"
                           />
-                          <span className="text-xs text-muted-foreground">%</span>
+                          <span className="text-xs text-muted-foreground w-3">{closingMode === 'pct' ? '%' : '$'}</span>
                         </div>
                       </div>
+                      {/* Holding */}
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground text-xs">Holding</span>
+                        <span className="text-muted-foreground text-xs flex items-center">
+                          Holding
+                          <ModeToggle mode={holdingMode} onChange={onHoldingModeChange} />
+                        </span>
                         <div className="flex items-center gap-1">
                           <input
                             type="number"
-                            value={holdingPct}
-                            onChange={(e) => onHoldingPctChange(e.target.value)}
-                            className="w-14 h-6 text-xs font-mono text-right rounded border border-input bg-background px-1.5"
+                            value={holdingMode === 'pct' ? holdingPct : holdingFlat}
+                            onChange={(e) => holdingMode === 'pct' ? onHoldingPctChange(e.target.value) : onHoldingFlatChange(e.target.value)}
+                            className="w-16 h-6 text-xs font-mono text-right rounded border border-input bg-background px-1.5"
                           />
-                          <span className="text-xs text-muted-foreground">%</span>
+                          <span className="text-xs text-muted-foreground w-3">{holdingMode === 'pct' ? '%' : '$'}</span>
                         </div>
                       </div>
+                      {/* Closing Sell */}
+                      {includeSellClosingCosts && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-muted-foreground text-xs flex items-center">
+                            Closing (Sell)
+                            <ModeToggle mode={sellClosingMode} onChange={onSellClosingModeChange} />
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={sellClosingMode === 'pct' ? sellClosingPct : sellClosingFlat}
+                              onChange={(e) => sellClosingMode === 'pct' ? onSellClosingPctChange(e.target.value) : onSellClosingFlatChange(e.target.value)}
+                              className="w-16 h-6 text-xs font-mono text-right rounded border border-input bg-background px-1.5"
+                            />
+                            <span className="text-xs text-muted-foreground w-3">{sellClosingMode === 'pct' ? '%' : '$'}</span>
+                          </div>
+                        </div>
+                      )}
                       <Button variant="ghost" size="sm" className="w-full h-6 text-xs mt-1" onClick={() => setIsEditingCosts(false)}>
                         <Check className="h-3 w-3 mr-1" /> Done
                       </Button>
@@ -242,11 +322,11 @@ export function DealSidebar({
                   ) : (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Closing (Buy, {closingPct}%)</span>
+                        <span className="text-muted-foreground">{costLabel('Closing (Buy)', closingMode, closingPct)}</span>
                         <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Holding ({holdingPct}%)</span>
+                        <span className="text-muted-foreground">{costLabel('Holding', holdingMode, holdingPct)}</span>
                         <div className="flex items-center gap-1.5">
                           <span className="font-mono">{formatCurrency(holdingCosts)}</span>
                           <button
@@ -261,18 +341,18 @@ export function DealSidebar({
                       </div>
                     </>
                   )}
-                  {includeSellClosingCosts && (
+                  {includeSellClosingCosts && !isEditingCosts && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Closing (Sell, 6%)</span>
+                      <span className="text-muted-foreground">{costLabel('Closing (Sell)', sellClosingMode, sellClosingPct)}</span>
                       <span className="font-mono">{formatCurrency(closingCostsSell)}</span>
                     </div>
                   )}
-                  </div>
+                </div>
               </div>
             </>
           )}
 
-          {/* Rental-specific fields for Rental and BRRR modes */}
+          {/* Rental-specific fields */}
           {calculatorType === 'rental' && (
             <RentalFields values={rentalFields} onChange={onRentalFieldChange} arv={arvNum} purchasePrice={purchasePriceNum} />
           )}
