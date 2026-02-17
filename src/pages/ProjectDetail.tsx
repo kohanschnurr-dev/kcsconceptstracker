@@ -963,7 +963,7 @@ export default function ProjectDetail() {
             <TabsList className="flex-wrap h-auto">
               {effectiveTabOrder.map((tab) => (
                 <TabsTrigger key={tab} value={tab}>
-                  {tab === 'logs' ? `Logs (${dailyLogs.length})` : TAB_LABELS[tab]}
+                  {TAB_LABELS[tab]}
                 </TabsTrigger>
               ))}
             </TabsList>
