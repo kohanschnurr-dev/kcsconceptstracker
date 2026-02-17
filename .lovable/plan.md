@@ -1,56 +1,79 @@
 
 
-## Add / Remove / Reorder Rule Groups in Operation Rules
+## Redesign Operation Rules as Permanent Guidelines
 
-### Overview
-The rule groups ("Order of Operations", "Vendor Requirements") are currently hardcoded. This change makes them fully dynamic -- users can add new groups, delete groups, and drag to reorder them. The pattern follows the existing custom trade groups system used in the Budget Calculator.
+### What's Changing
+Rules are being transformed from a "checklist you complete" into **permanent operating principles** -- lessons learned from past mistakes that should always be followed. Think of them like company commandments, not a to-do list.
 
-### Storage
-Rule groups will be persisted in localStorage (key: `custom-rule-groups`) following the same pattern as trade groups (`custom-trade-groups`). No database changes needed since the `operation_codes.category` column is already a free-form string.
+### Key Changes
 
-### Changes
+1. **Remove checkboxes and completion logic entirely**
+   - No more checking off rules or marking them "done"
+   - Remove the "View Completed" collapsible history section
+   - Remove the `onToggleRule` prop and all completion-related code
 
-**New file: `src/lib/ruleGroups.ts`**
-- Define default groups: `order_of_operations` ("Order of Operations") and `vendor_requirements` ("Vendor Requirements")
-- `loadRuleGroups()` / `saveRuleGroups()` functions for localStorage persistence
-- `loadRuleGroupOrder()` / `saveRuleGroupOrder()` for custom sort order
-- Sync with settings via `triggerSettingsSync()` on save
+2. **Add a description field for context ("the why")**
+   - Each rule gets an optional description explaining the lesson behind it (e.g., "We lost $5K by skipping foundation inspection")
+   - The `description` column already exists in the database, so no migration needed
+   - The add-rule form gets a second input for the description
+   - The `onAddRule` callback is updated to accept `{ title, category, description }`
 
-**Modified file: `src/components/ops/RulesPopout.tsx`**
-- Add a "Manage Groups" toggle/section at the top of the dialog (gear icon button next to the title)
-- When in manage mode, show the list of groups with:
-  - Drag handles (GripVertical icon) for reordering via `@dnd-kit/sortable` (already installed)
-  - Delete button (Trash2 icon) on each group -- deleting a group reassigns its rules to the first remaining group
-  - "Add Group" input at the bottom to create new groups
-- Replace the hardcoded `SelectItem` list with the dynamic group list from `loadRuleGroups()`
-- Render active rules dynamically by iterating over the ordered groups instead of hardcoded `activeOrderOfOps` / `activeVendorReqs`
+3. **Pinned banner visual style**
+   - Each rule displays as a prominent card with a left accent border (orange/primary)
+   - Title is bold/medium weight, description shows below in muted text
+   - An AlertTriangle or Shield icon on each rule reinforces the "permanent guideline" feel
+   - Delete button remains (rules can still be removed if no longer relevant)
 
-### UI Flow
-1. User opens Operation Rules dialog
-2. A small gear icon next to "Operation Rules" title toggles group management mode
-3. In manage mode: groups are listed with drag handles and delete buttons, plus an "Add Group" input
-4. Back in normal mode: the category dropdown and section headers reflect the custom groups in the user's chosen order
+4. **Widget summary update**
+   - The compact Rules widget text changes from showing completed counts to just showing total rule count per group
+   - The small colored dots at the bottom of the widget change to always show as active (no more green = done / gray = pending distinction)
 
 ### Technical Details
 
+**Files to modify:**
+
+**`src/components/ops/RulesPopout.tsx`**
+- Remove `Checkbox` import, `onToggleRule` prop, `historyOpen` state, `completedRules` filter
+- Remove the completed/active split -- all rules are just "rules"
+- Update `renderRuleCard` to show a left-border accent card with Shield icon, bold title, and muted description below
+- Update the add-rule form to include a Textarea for description
+- Update `onAddRule` type to include optional `description` field
+
+**`src/components/ops/CompactDashboardWidgets.tsx`**
+- Remove `onToggleRule` from props interface and destructuring
+- Update the Rules widget dot indicators to all use the same active color (no completed/active distinction)
+- Simplify `rulesSummary` to just show total count
+
+**`src/pages/BusinessExpenses.tsx`**
+- Remove the `onToggleRule` handler
+- Update `onAddRule` to pass `description` to the insert
+- Keep `onDeleteRule` and `onUpdateRuleCategory` as-is
+
+### Visual Preview
+
 ```text
-RulesPopout
-+-- [Gear icon] toggles manageMode state
-+-- manageMode === true:
-|   +-- DndContext + SortableContext (vertical list)
-|   |   +-- Each group: [GripVertical] [Label] [Trash2]
-|   +-- Input + "Add" button for new group
-+-- manageMode === false:
-    +-- Add rule form (category Select uses dynamic groups)
-    +-- Active rules grouped by dynamic group order
-    +-- Completed rules collapsible
++----------------------------------------------+
+| Operation Rules                    [gear] [x] |
++----------------------------------------------+
+|                                                |
+| Order of Operations                            |
+|                                                |
+| | Foundation First                             |
+| | Never skip foundation inspection --          |
+| | we lost $5K learning this lesson.    [trash] |
+|                                                |
+| | Permits Before Demo                          |
+| | Always pull permits before starting          |
+| | any demolition work.                 [trash] |
+|                                                |
+| Vendor Requirements                            |
+|                                                |
+| | Insurance Verification                       |
+| | Verify all vendor insurance certs            |
+| | before allowing on-site work.        [trash] |
+|                                                |
+| [+ Add New Rule]                               |
++------------------------------------------------+
 ```
 
-- When a group is deleted, any rules with that category get updated to the first available group via `onUpdateRuleCategory` callback (new prop)
-- Group keys are generated as snake_case from the label (e.g., "Safety Checks" becomes "safety_checks")
-- The default two groups cannot be deleted if they are the only ones remaining (minimum 1 group required)
-
-### Files
-- **Create**: `src/lib/ruleGroups.ts`
-- **Edit**: `src/components/ops/RulesPopout.tsx`
-- **Edit**: `src/pages/BusinessExpenses.tsx` (pass new `onUpdateRuleCategory` prop)
+Each rule card has a left primary-colored border accent to give the "pinned banner" feel, with the title prominent and description underneath in smaller muted text.
