@@ -50,6 +50,7 @@ interface TemplatePickerProps {
   currentTemplateName?: string;
   sqft: string;
   onSqftChange: (value: string) => void;
+  refreshKey?: number;
 }
 
 interface BaselineTier {
@@ -75,7 +76,7 @@ const DEFAULT_CATEGORY_PRESETS = [
   { category: 'roofing', label: 'Roofing', pricePerSqft: 5.00 },
 ];
 
-export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateName, sqft, onSqftChange }: TemplatePickerProps) {
+export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateName, sqft, onSqftChange, refreshKey }: TemplatePickerProps) {
   const [savedTemplates, setSavedTemplates] = useState<BudgetTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [baselineTiers, setBaselineTiers] = useState<BaselineTier[]>(DEFAULT_BASELINE_TIERS);
@@ -116,7 +117,7 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     };
 
     fetchTemplates();
-  }, []);
+  }, [refreshKey]);
 
   // Load custom baselines from localStorage
   useEffect(() => {
