@@ -88,6 +88,10 @@ export default function Vendors() {
     }
   };
 
+  const usedTrades = Array.from(new Set(vendors.flatMap(v => v.trades)))
+    .map(value => ({ value, label: getTradeLabel(value) }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
   const filteredVendors = vendors.filter((vendor) => {
     const matchesSearch = vendor.name.toLowerCase().includes(search.toLowerCase()) ||
       vendor.trades.some(t => t.toLowerCase().includes(search.toLowerCase()));
@@ -178,7 +182,7 @@ export default function Vendors() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              {getVendorTrades().map(t => (
+              {usedTrades.map(t => (
                 <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
               ))}
             </SelectContent>
