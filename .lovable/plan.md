@@ -1,32 +1,53 @@
 
 
-## Fix: Project Autocomplete Dropdown Clipped Behind UI Elements
+## Add Editable Sell Closing Costs + %/$ Toggle to Estimated Costs
 
-### Problem
-In the Budget Calculator's "Apply" tab (inside the Deal Sidebar), the project search dropdown gets clipped/hidden behind other page elements. This happens because the sidebar has scrollable overflow, which creates a clipping boundary for the popover.
+### What's Changing
+The "Estimated Costs" section in the Budget Calculator sidebar currently hardcodes the Sell Closing at 6%. This update makes it editable (like Buy Closing and Holding already are) and adds a %/$ mode toggle so each cost field can be entered as either a percentage or a flat dollar amount.
 
-### Solution
-Update the `ProjectAutocomplete` component's `PopoverContent` to use `portal` container rendering and set a higher z-index. This ensures the dropdown renders at the document root level, escaping any overflow clipping from parent containers.
+### How It Works
+- Each cost row (Closing Buy, Holding, Closing Sell) gets a small `%` / `$` toggle button
+- In `%` mode, the user enters a percentage and sees the calculated dollar amount
+- In `$` mode, the user enters a flat dollar amount directly
+- The sell closing percentage defaults to 6% and becomes editable in the edit view
+- All values (including modes) persist when saving/restoring budgets
 
 ### Technical Detail
 
-**File: `src/components/ProjectAutocomplete.tsx`** (line 118-123)
+**File: `src/pages/BudgetCalculator.tsx`**
 
-Add `sideOffset` and ensure the popover escapes overflow containers by default:
+1. Add new state variables:
+   - `sellClosingPct` (string, default `'6'`)
+   - `closingMode` / `holdingMode` / `sellClosingMode` (type `'pct' | 'flat'`, default `'pct'`)
+   - `closingFlat` / `holdingFlat` / `sellClosingFlat` (string, default `''`)
 
-```tsx
-<PopoverContent 
-  className={cn(
-    'w-[--radix-popover-trigger-width] p-0 bg-popover border-border z-[200]',
-    className
-  )}
-  align="start"
-  sideOffset={4}
->
-```
+2. Update the sell closing cost calculation from hardcoded `arvNum * 0.06` to:
+   ```
+   sellClosingMode === 'pct' ? arvNum * (sellClosingPct / 100) : sellClosingFlat
+   ```
+   Similarly update buy closing and holding to respect their modes.
 
-The key change is bumping `z-50` to `z-[200]` so the dropdown renders above all page content including sidebars and modals. The Radix `Popover` already portals to the document body by default, so the main issue is z-index stacking.
+3. Update `getCategoryBudgetsObject()._meta` to include the new fields for persistence.
+
+4. Update the restore logic (lines ~155, ~245) to read the new fields from `_meta`.
+
+5. Update the reset logic (line ~272) to reset new fields.
+
+6. Pass new props down to `DealSidebar`.
+
+**File: `src/components/budget/DealSidebar.tsx`**
+
+1. Add new props: `sellClosingPct`, `onSellClosingPctChange`, `closingMode`, `holdingMode`, `sellClosingMode`, `onClosingModeChange`, `onHoldingModeChange`, `onSellClosingModeChange`, `closingFlat`, `holdingFlat`, `sellClosingFlat`, `onClosingFlatChange`, `onHoldingFlatChange`, `onSellClosingFlatChange`.
+
+2. Add a small inline `%`/`$` toggle next to each cost label (similar to the existing mode toggle in `ProfitCalculator`).
+
+3. In edit mode: show input with the appropriate unit based on mode. In display mode: show the label with the mode indicator and the calculated dollar value.
+
+4. Make the sell closing row editable (currently it's display-only at hardcoded 6%) -- it appears in the edit view alongside buy closing and holding.
+
+5. Recalculate `closingCostsSell` using the new mode/value instead of hardcoded `arvNum * 0.06`.
 
 ### Files
-- **Edit**: `src/components/ProjectAutocomplete.tsx` -- Increase z-index on PopoverContent
+- **Edit**: `src/pages/BudgetCalculator.tsx` -- Add state for sell closing pct, modes, flat values; update calculations and persistence
+- **Edit**: `src/components/budget/DealSidebar.tsx` -- Add %/$ toggles, make sell closing editable, accept new props
 
