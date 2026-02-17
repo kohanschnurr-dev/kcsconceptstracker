@@ -89,6 +89,7 @@ import { ProjectVendors } from '@/components/project/ProjectVendors';
 import { ProjectInfo } from '@/components/project/ProjectInfo';
 import { ExportReports } from '@/components/project/ExportReports';
 import { PendingBudgetBanner } from '@/components/project/PendingBudgetBanner';
+import { PendingBudgetDialog } from '@/components/project/PendingBudgetDialog';
 import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { useToast } from '@/hooks/use-toast';
@@ -594,12 +595,13 @@ export default function ProjectDetail() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        {/* Pending Budget Banner */}
+        {/* Pending Budget Dialog - auto-opens on page load */}
         {(project as any).pending_budget && (
-          <PendingBudgetBanner
+          <PendingBudgetDialog
             projectId={project.id}
             pendingBudget={(project as any).pending_budget}
             existingCategories={categories}
+            currentTotalBudget={totalBudget}
             onResolved={() => fetchProjectData(false)}
           />
         )}
