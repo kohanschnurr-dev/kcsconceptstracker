@@ -170,6 +170,12 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* Style calendar dropdown option elements for dark theme */
+.calendar-dropdown option {
+  background-color: hsl(220 18% 13%);
+  color: hsl(210 20% 95%);
+}
+
 /* Force native date picker to match dark theme */
 input[type="date"],
 input[type="datetime-local"],
