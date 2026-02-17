@@ -117,7 +117,7 @@ export function ProjectAutocomplete({
       </PopoverTrigger>
       <PopoverContent 
         className={cn(
-          'w-[--radix-popover-trigger-width] p-0 bg-popover border-border z-50',
+          'w-[--radix-popover-trigger-width] p-0 bg-popover border-border z-[200]',
           className
         )}
         align="start"
