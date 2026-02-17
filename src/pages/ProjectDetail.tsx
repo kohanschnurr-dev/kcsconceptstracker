@@ -88,6 +88,7 @@ import { ProjectTasks } from '@/components/project/ProjectTasks';
 import { ProjectVendors } from '@/components/project/ProjectVendors';
 import { ProjectInfo } from '@/components/project/ProjectInfo';
 import { ExportReports } from '@/components/project/ExportReports';
+import { PendingBudgetBanner } from '@/components/project/PendingBudgetBanner';
 import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { useToast } from '@/hooks/use-toast';
@@ -593,6 +594,15 @@ export default function ProjectDetail() {
   return (
     <MainLayout>
       <div className="space-y-6">
+        {/* Pending Budget Banner */}
+        {(project as any).pending_budget && (
+          <PendingBudgetBanner
+            projectId={project.id}
+            pendingBudget={(project as any).pending_budget}
+            existingCategories={categories}
+            onResolved={() => fetchProjectData(false)}
+          />
+        )}
         <AlertDialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>

@@ -1,0 +1,1 @@
+ALTER TABLE public.projects ADD COLUMN pending_budget jsonb DEFAULT NULL;

@@ -56,6 +56,7 @@ import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { formatDisplayDate } from '@/lib/dateUtils';
+import { PendingBudgetBanner } from '@/components/project/PendingBudgetBanner';
 
 const CHART_COLORS = [
   'hsl(32, 95%, 55%)',   // primary orange
@@ -616,6 +617,15 @@ export default function ProjectBudget() {
   return (
     <MainLayout>
       <div className="space-y-6">
+        {/* Pending Budget Banner */}
+        {(project as any).pending_budget && (
+          <PendingBudgetBanner
+            projectId={project.id}
+            pendingBudget={(project as any).pending_budget}
+            existingCategories={categories}
+            onResolved={refreshData}
+          />
+        )}
         {/* Header */}
         <div className="flex flex-col gap-4">
           <Button 
