@@ -171,6 +171,11 @@ input[type="number"] {
 }
 
 /* Style calendar dropdown option elements for dark theme */
+.calendar-dropdown {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 .calendar-dropdown option {
   background-color: hsl(220 18% 13%);
   color: hsl(210 20% 95%);
