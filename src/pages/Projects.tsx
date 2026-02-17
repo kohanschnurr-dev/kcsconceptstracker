@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FolderKanban, Home, Hammer, Building2, Handshake, Settings, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Search, FolderKanban, Home, Hammer, Building2, Handshake, Settings, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
 import { arrayMove } from '@dnd-kit/sortable';
+import { cn } from '@/lib/utils';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,7 @@ const TAB_CONFIG: Record<string, { label: string; icon: typeof Hammer; createLab
 export default function Projects() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { profile, updateTabOrder, starredProjects, isProjectStarred, toggleStarProject } = useProfile();
+  const { profile, updateTabOrder, starredProjects, isProjectStarred, toggleStarProject, hiddenProjectTabs, updateHiddenTabs } = useProfile();
   const [search, setSearch] = useState('');
   const [statusTab, setStatusTab] = useState('all');
   const [projects, setProjects] = useState<Project[]>([]);
@@ -49,12 +50,24 @@ export default function Projects() {
     return DEFAULT_TAB_ORDER;
   }, [profile?.project_tab_order]);
 
+  const visibleTabs = useMemo(() => {
+    return tabOrder.filter(tab => !hiddenProjectTabs.includes(tab));
+  }, [tabOrder, hiddenProjectTabs]);
+
   const [mainTab, setMainTab] = useState<ProjectType>(tabOrder[0]);
 
-  // Update mainTab when tabOrder loads from profile
+  // Update mainTab when tabOrder/visibility changes
   useEffect(() => {
-    setMainTab(tabOrder[0]);
-  }, [tabOrder]);
+    if (visibleTabs.length > 0 && !visibleTabs.includes(mainTab)) {
+      setMainTab(visibleTabs[0]);
+    }
+  }, [visibleTabs, mainTab]);
+
+  useEffect(() => {
+    if (visibleTabs.length > 0) {
+      setMainTab(visibleTabs[0]);
+    }
+  }, []);
 
   useEffect(() => {
     fetchProjects();
@@ -318,7 +331,7 @@ export default function Projects() {
         <Tabs value={mainTab} onValueChange={(v) => { setMainTab(v as ProjectType); setStatusTab('all'); }}>
           <div className="flex items-center gap-2">
             <TabsList>
-              {tabOrder.map((type) => {
+              {visibleTabs.map((type) => {
                 const config = TAB_CONFIG[type];
                 const counts = getStatusCounts(type);
                 const Icon = config.icon;
@@ -336,17 +349,35 @@ export default function Projects() {
                   <Settings className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-56 p-2" align="end">
-                <p className="text-xs text-muted-foreground mb-2 px-2">Tab Order</p>
+              <PopoverContent className="w-64 p-2" align="end">
+                <p className="text-xs text-muted-foreground mb-2 px-2">Tab Order & Visibility</p>
                 {tabOrder.map((type, index) => {
                   const Icon = TAB_CONFIG[type].icon;
+                  const isHidden = hiddenProjectTabs.includes(type);
+                  const visibleCount = tabOrder.filter(t => !hiddenProjectTabs.includes(t)).length;
+                  const isLastVisible = !isHidden && visibleCount <= 1;
                   return (
                     <div key={type} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted">
-                      <span className="text-sm flex items-center gap-2">
+                      <span className={cn("text-sm flex items-center gap-2", isHidden && "text-muted-foreground/50")}>
                         <Icon className="h-3.5 w-3.5" />
                         {TAB_CONFIG[type].label}
                       </span>
                       <div className="flex gap-0.5">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          disabled={isLastVisible}
+                          onClick={() => {
+                            const newHidden = isHidden
+                              ? hiddenProjectTabs.filter(t => t !== type)
+                              : [...hiddenProjectTabs, type];
+                            updateHiddenTabs.mutate(newHidden);
+                          }}
+                          title={isHidden ? 'Show tab' : 'Hide tab'}
+                        >
+                          {isHidden ? <EyeOff className="h-3 w-3 text-muted-foreground/50" /> : <Eye className="h-3 w-3" />}
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-6 w-6"
                           disabled={index === 0} onClick={() => moveTab(index, 'up')}>
                           <ArrowUp className="h-3 w-3" />
@@ -363,7 +394,7 @@ export default function Projects() {
             </Popover>
           </div>
 
-          {tabOrder.map((type) => (
+          {visibleTabs.map((type) => (
             <TabsContent key={type} value={type} className="mt-6">
               {renderProjectGrid(type)}
             </TabsContent>
