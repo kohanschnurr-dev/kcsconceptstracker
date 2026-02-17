@@ -36,11 +36,13 @@ function SortableTabItem({ id, label }: { id: string; label: string }) {
   );
 }
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Home } from 'lucide-react';
+import { Home, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 import {
   DropdownMenu,
@@ -192,7 +194,37 @@ export default function ProjectDetail() {
   const [deleteStep, setDeleteStep] = useState<0 | 1 | 2>(0);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [quickLogWork, setQuickLogWork] = useState('');
+  const [quickLogIssues, setQuickLogIssues] = useState('');
+  const [quickLogDate, setQuickLogDate] = useState(new Date().toISOString().split('T')[0]);
+  const [quickLogSubmitting, setQuickLogSubmitting] = useState(false);
+  const [quickLogShowIssues, setQuickLogShowIssues] = useState(false);
   const { toast } = useToast();
+
+  const handleQuickLogSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickLogWork.trim() || !id) return;
+    setQuickLogSubmitting(true);
+    try {
+      const { error } = await supabase.from('daily_logs').insert({
+        project_id: id,
+        date: quickLogDate,
+        work_performed: quickLogWork.trim(),
+        issues: quickLogIssues.trim() || null,
+      });
+      if (error) throw error;
+      setQuickLogWork('');
+      setQuickLogIssues('');
+      setQuickLogShowIssues(false);
+      setQuickLogDate(new Date().toISOString().split('T')[0]);
+      toast({ title: 'Log added', description: 'Daily log entry saved.' });
+      fetchProjectData(false);
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to save log.', variant: 'destructive' });
+    } finally {
+      setQuickLogSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (isEditing) nameInputRef.current?.focus();
@@ -1062,7 +1094,65 @@ export default function ProjectDetail() {
             <DocumentsGallery projectId={id!} />
           </TabsContent>
 
-          <TabsContent value="logs">
+          <TabsContent value="logs" className="space-y-4">
+            {/* Quick Add Log */}
+            <Card className="glass-card">
+              <CardContent className="pt-5 pb-4">
+                <form onSubmit={handleQuickLogSubmit} className="space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Quick Add Log</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <Textarea
+                      placeholder="Work performed today..."
+                      value={quickLogWork}
+                      onChange={(e) => setQuickLogWork(e.target.value)}
+                      rows={2}
+                      className="flex-1 min-h-[60px] resize-none"
+                      disabled={quickLogSubmitting}
+                    />
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <Input
+                        type="date"
+                        value={quickLogDate}
+                        onChange={(e) => setQuickLogDate(e.target.value)}
+                        className="w-[140px] text-xs"
+                        disabled={quickLogSubmitting}
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={!quickLogWork.trim() || quickLogSubmitting}
+                        className="w-[140px]"
+                      >
+                        {quickLogSubmitting ? 'Saving...' : 'Add Log'}
+                      </Button>
+                    </div>
+                  </div>
+                  <Collapsible open={quickLogShowIssues} onOpenChange={setQuickLogShowIssues}>
+                    <CollapsibleTrigger asChild>
+                      <button type="button" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+                        <AlertTriangle className="h-3 w-3" />
+                        {quickLogShowIssues ? 'Hide issues' : 'Add issues?'}
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      <Textarea
+                        placeholder="Any problems or concerns?"
+                        value={quickLogIssues}
+                        onChange={(e) => setQuickLogIssues(e.target.value)}
+                        rows={2}
+                        className="resize-none"
+                        disabled={quickLogSubmitting}
+                      />
+                    </CollapsibleContent>
+                  </Collapsible>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Existing Logs */}
             <Card className="glass-card">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg">Daily Logs</CardTitle>
