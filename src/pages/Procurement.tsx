@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -401,6 +402,7 @@ export default function Procurement() {
   };
 
   return (
+    <TooltipProvider>
     <MainLayout>
       <div className="space-y-6">
         {/* Header */}
@@ -569,24 +571,29 @@ export default function Procurement() {
                           <p className="font-medium">{item.name}</p>
                         </TableCell>
                         <TableCell className="text-center">
-                          <div>
-                            {getBundleNames(item.bundle_ids).map((name, idx) => (
-                              <span 
-                                key={idx} 
-                                className={cn(
-                                  "text-sm block",
-                                  (!item.bundle_ids || item.bundle_ids.length === 0) && "text-muted-foreground italic"
-                                )}
-                              >
-                                {name}
-                              </span>
-                            ))}
-                            {getBundleProjectNames(item.bundle_ids).length > 0 && (
-                              <p className="text-xs text-muted-foreground">
-                                → {getBundleProjectNames(item.bundle_ids).join(', ')}
-                              </p>
-                            )}
-                          </div>
+                          {(!item.bundle_ids || item.bundle_ids.length === 0) ? (
+                            <span className="text-sm text-muted-foreground italic">Unassigned</span>
+                          ) : item.bundle_ids.length === 1 ? (
+                            <div>
+                              <span className="text-sm">{getBundleNames(item.bundle_ids)[0]}</span>
+                              {getBundleProjectNames(item.bundle_ids).length > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  → {getBundleProjectNames(item.bundle_ids).join(', ')}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Badge variant="secondary">Multiple</Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {getBundleNames(item.bundle_ids).map((name, idx) => (
+                                  <p key={idx}>{name}</p>
+                                ))}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
@@ -739,5 +746,6 @@ export default function Procurement() {
         onSave={fetchData}
       />
     </MainLayout>
+    </TooltipProvider>
   );
 }
