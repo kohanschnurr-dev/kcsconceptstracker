@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { format, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
+import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import type { CalendarView } from '@/pages/Calendar';
 import { WeatherWidget } from './WeatherWidget';
 import { useProfile } from '@/hooks/useProfile';
@@ -92,9 +93,13 @@ export function CalendarHeader({
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-base font-semibold text-foreground min-w-[140px] text-center">
-            {getDateLabel()}
-          </span>
+          {view === 'monthly' ? (
+            <MonthYearPicker currentDate={currentDate} onDateChange={onDateChange} />
+          ) : (
+            <span className="text-base font-semibold text-foreground min-w-[140px] text-center">
+              {getDateLabel()}
+            </span>
+          )}
           <Button
             variant="ghost"
             size="sm"

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, startOfDay, isWithinInterval } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon } from 'lucide-react';
+import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -133,9 +134,11 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm font-medium text-foreground min-w-[120px] text-center">
-              {format(currentDate, 'MMMM yyyy')}
-            </span>
+            <MonthYearPicker
+              currentDate={currentDate}
+              onDateChange={setCurrentDate}
+              labelClassName="text-sm min-w-[120px]"
+            />
             <Button
               variant="ghost"
               size="icon"
