@@ -1,27 +1,24 @@
 
-
-## Fix Year Dropdown: Reduce Range to +/-3 Years, Add Scroll Constraint
+## Fix Calendar Dropdown Theme
 
 ### Problem
-The year dropdown currently spans 20 years (±10), creating an excessively long unstyled native dropdown list that looks terrible (as shown in the screenshot).
+The native month/year `<select>` dropdowns in the calendar are rendering with white backgrounds and dark text, breaking the dark theme (visible in the screenshot).
 
 ### Solution
-Two changes:
+Native `<select>` dropdown lists are notoriously hard to style with CSS alone. The most reliable cross-browser fix is to apply `color-scheme: dark` on the select elements themselves, which tells the browser to render the entire dropdown widget (including the opened option list) in dark mode.
 
-**1. `src/components/ui/calendar.tsx`** -- Change `fromYear` / `toYear` from ±10 to ±3:
-- `fromYear={currentYear - 3}`
-- `toYear={currentYear + 3}`
+### Files Changed
 
-This limits the dropdown to ~7 years total, which is compact and practical for most use cases.
+**`src/index.css`** -- Add `color-scheme: dark` to the `.calendar-dropdown` rule and ensure the select element itself gets dark rendering:
 
-**2. `src/index.css`** -- Add a `max-height` and `overflow-y: auto` rule on the native `<select>` dropdown so that if it ever has more options than expected, it scrolls instead of stretching the full height:
 ```css
 .calendar-dropdown {
   max-height: 200px;
   overflow-y: auto;
+  color-scheme: dark;
+  background-color: hsl(220 18% 13%);
+  color: hsl(210 20% 95%);
 }
 ```
 
-### Files Changed
-- **Edit**: `src/components/ui/calendar.tsx` -- Change ±10 to ±3 year range
-- **Edit**: `src/index.css` -- Add scroll constraint to `.calendar-dropdown`
+This forces the browser to use its built-in dark-mode rendering for the native select dropdown, matching the app's dark theme without fighting browser-specific option styling limitations.
