@@ -1,16 +1,27 @@
 
-## Fix Calendar Date Picker Dropdowns
+
+## Fix Year Dropdown: Reduce Range to +/-3 Years, Add Scroll Constraint
 
 ### Problem
-The month and year dropdowns in the date picker use native HTML `<select>` elements with `captionLayout="dropdown-buttons"`. These render as unstyled white dropdown lists that look broken against the dark theme (as seen in the screenshots).
+The year dropdown currently spans 20 years (±10), creating an excessively long unstyled native dropdown list that looks terrible (as shown in the screenshot).
 
 ### Solution
-Update `src/components/ui/calendar.tsx` to properly style the native dropdowns so they match the dark theme:
+Two changes:
 
-1. **Style the dropdown `<select>` elements** with dark background, proper text color, border styling, and themed scrollbar behavior so the open dropdown list matches the app's dark UI
-2. **Extend the year range** from +/-5 years to +/-10 years for easier long-range navigation
-3. **Add proper option styling** using CSS in `src/index.css` to style the `<option>` elements inside the dropdowns (since `<option>` elements can only be styled via limited CSS properties)
+**1. `src/components/ui/calendar.tsx`** -- Change `fromYear` / `toYear` from ±10 to ±3:
+- `fromYear={currentYear - 3}`
+- `toYear={currentYear + 3}`
+
+This limits the dropdown to ~7 years total, which is compact and practical for most use cases.
+
+**2. `src/index.css`** -- Add a `max-height` and `overflow-y: auto` rule on the native `<select>` dropdown so that if it ever has more options than expected, it scrolls instead of stretching the full height:
+```css
+.calendar-dropdown {
+  max-height: 200px;
+  overflow-y: auto;
+}
+```
 
 ### Files Changed
-- **Edit**: `src/components/ui/calendar.tsx` -- Update dropdown classNames with dark-theme-compatible styling (`bg-popover text-popover-foreground border-border`), extend year range to +/-10
-- **Edit**: `src/index.css` -- Add a small CSS rule to style `<option>` elements within the calendar dropdowns with dark backgrounds
+- **Edit**: `src/components/ui/calendar.tsx` -- Change ±10 to ±3 year range
+- **Edit**: `src/index.css` -- Add scroll constraint to `.calendar-dropdown`
