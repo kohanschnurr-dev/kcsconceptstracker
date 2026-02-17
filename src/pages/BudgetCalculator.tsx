@@ -442,62 +442,29 @@ export default function BudgetCalculator() {
     setIsSaving(true);
 
     try {
-      const { data: existingCategories, error: fetchError } = await supabase
-        .from('project_categories')
-        .select('id, category')
-        .eq('project_id', projectId);
-
-      if (fetchError) throw fetchError;
-
-      const existingCategoryMap = new Map(
-        existingCategories?.map(c => [c.category, c.id]) || []
-      );
-
-      const categoriesToUpdate = [];
-      const categoriesToInsert = [];
-
+      const categoryBudgetsObj: Record<string, number> = {};
       for (const cat of getBudgetCategories()) {
-        const budgetValue = parseFloat(categoryBudgets[cat.value]) || 0;
-        if (budgetValue > 0) {
-          const existingId = existingCategoryMap.get(cat.value);
-          if (existingId) {
-            categoriesToUpdate.push({
-              id: existingId,
-              estimated_budget: budgetValue,
-            });
-          } else {
-            categoriesToInsert.push({
-              project_id: projectId,
-              category: cat.value,
-              estimated_budget: budgetValue,
-            });
-          }
+        const val = parseFloat(categoryBudgets[cat.value]) || 0;
+        if (val > 0) {
+          categoryBudgetsObj[cat.value] = val;
         }
       }
 
-      for (const cat of categoriesToUpdate) {
-        const { error } = await supabase
-          .from('project_categories')
-          .update({ estimated_budget: cat.estimated_budget })
-          .eq('id', cat.id);
-        if (error) throw error;
-      }
+      const pendingPayload = {
+        total_budget: totalBudget,
+        category_budgets: categoryBudgetsObj,
+        applied_at: new Date().toISOString(),
+        template_name: currentTemplateName || budgetName || null,
+      };
 
-      if (categoriesToInsert.length > 0) {
-        const { error: insertError } = await supabase
-          .from('project_categories')
-          .insert(categoriesToInsert);
-        if (insertError) throw insertError;
-      }
-
-      const { error: updateError } = await supabase
+      const { error } = await supabase
         .from('projects')
-        .update({ total_budget: totalBudget })
+        .update({ pending_budget: pendingPayload } as any)
         .eq('id', projectId);
 
-      if (updateError) throw updateError;
+      if (error) throw error;
 
-      toast.success(`Budget of ${formatCurrency(totalBudget)} applied to project`);
+      toast.success(`Budget of ${formatCurrency(totalBudget)} staged for approval — view the project to accept`);
     } catch (error: any) {
       console.error('Error applying budget:', error);
       toast.error(error.message || 'Failed to apply budget');
