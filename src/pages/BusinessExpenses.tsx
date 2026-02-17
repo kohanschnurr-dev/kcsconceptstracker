@@ -97,7 +97,7 @@ export default function BusinessExpenses() {
   const { companyName } = useCompanySettings();
   const { starredProjects } = useProfile();
    const [goals, setGoals] = useState<{id: string; title: string; target_value: number; current_value: number | null; category: string | null; start_date: string | null; due_date: string | null; completed_at: string | null}[]>([]);
-   const [rules, setRules] = useState<{id: string; title: string; category: string | null; is_completed: boolean | null}[]>([]);
+   const [rules, setRules] = useState<{id: string; title: string; description: string | null; category: string | null; is_completed: boolean | null}[]>([]);
   // Form state for new expense
   const [formData, setFormData] = useState({
     amount: '',
@@ -177,7 +177,7 @@ export default function BusinessExpenses() {
            .eq('quarter', 'Q1 2026'),
          supabase
            .from('operation_codes')
-           .select('id, title, category, is_completed')
+           .select('id, title, description, category, is_completed')
            .eq('user_id', user.id)
            .order('order_index')
       ]);
@@ -610,23 +610,18 @@ export default function BusinessExpenses() {
                  setGoals(prev => prev.filter(g => g.id !== goalId));
                }
              }}
-            onAddRule={async (rule) => {
-             const { data: { user } } = await supabase.auth.getUser();
-             if (!user) return;
-             const { data } = await supabase.from('operation_codes').insert({
-               user_id: user.id,
-               title: rule.title,
-               category: rule.category,
-               order_index: rules.length,
-               is_completed: false,
-             }).select().single();
-             if (data) setRules(prev => [...prev, data]);
-           }}
-            onToggleRule={async (ruleId, completed) => {
-              const { error } = await supabase.from('operation_codes').update({ is_completed: completed }).eq('id', ruleId);
-              if (!error) {
-                setRules(prev => prev.map(r => r.id === ruleId ? { ...r, is_completed: completed } : r));
-              }
+             onAddRule={async (rule) => {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) return;
+              const { data } = await supabase.from('operation_codes').insert({
+                user_id: user.id,
+                title: rule.title,
+                description: rule.description || null,
+                category: rule.category,
+                order_index: rules.length,
+                is_completed: false,
+              }).select().single();
+              if (data) setRules(prev => [...prev, data]);
             }}
             onDeleteRule={async (ruleId) => {
               const { error } = await supabase.from('operation_codes').delete().eq('id', ruleId);

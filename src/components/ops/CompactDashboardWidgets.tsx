@@ -26,12 +26,13 @@ interface Goal {
   completed_at: string | null;
 }
  
- interface OperationCode {
-   id: string;
-   title: string;
-   category: string | null;
-   is_completed: boolean | null;
- }
+  interface OperationCode {
+    id: string;
+    title: string;
+    description: string | null;
+    category: string | null;
+    is_completed: boolean | null;
+  }
  
 interface CompactDashboardWidgetsProps {
   expenses: BusinessExpense[];
@@ -45,8 +46,7 @@ interface CompactDashboardWidgetsProps {
   onUpdateGoal?: (goalId: string, newValue: number) => Promise<void>;
   onCompleteGoal?: (goalId: string) => Promise<void>;
   onUncompleteGoal?: (goalId: string) => Promise<void>;
-  onAddRule?: (rule: { title: string; category: string }) => Promise<void>;
-  onToggleRule?: (ruleId: string, completed: boolean) => Promise<void>;
+  onAddRule?: (rule: { title: string; category: string; description?: string }) => Promise<void>;
   onDeleteRule?: (ruleId: string) => Promise<void>;
   onUpdateRuleCategory?: (ruleId: string, newCategory: string) => Promise<void>;
   onDeleteGoal?: (goalId: string) => Promise<void>;
@@ -65,7 +65,6 @@ export function CompactDashboardWidgets({
   onCompleteGoal,
   onUncompleteGoal,
   onAddRule,
-  onToggleRule,
   onDeleteRule,
   onUpdateRuleCategory,
   onDeleteGoal,
@@ -110,11 +109,10 @@ export function CompactDashboardWidgets({
      return { active, total: goals.length };
    }, [goals]);
  
-   // Rules summary
-   const rulesSummary = useMemo(() => {
-     const completed = rules.filter(r => r.is_completed).length;
-     return { completed, total: rules.length };
-   }, [rules]);
+    // Rules summary
+    const rulesSummary = useMemo(() => {
+      return { total: rules.length };
+    }, [rules]);
  
    const formatCurrency = (value: number) => {
      return new Intl.NumberFormat('en-US', {
@@ -234,17 +232,14 @@ export function CompactDashboardWidgets({
             <p className="text-xl font-semibold">
               {rules.length} {rules.length === 1 ? 'rule' : 'rules'}
             </p>
-           <div className="flex gap-1">
-             {rules.slice(0, 6).map((rule) => (
-               <div 
-                 key={rule.id} 
-                 className={cn(
-                   "h-2 w-2 rounded-sm",
-                   rule.is_completed ? "bg-emerald-500" : "bg-muted-foreground/30"
-                 )}
-               />
-             ))}
-           </div>
+            <div className="flex gap-1">
+              {rules.slice(0, 6).map((rule) => (
+                <div 
+                  key={rule.id} 
+                  className="h-2 w-2 rounded-sm bg-primary/70"
+                />
+              ))}
+            </div>
          </button>
        </div>
  
@@ -275,7 +270,6 @@ export function CompactDashboardWidgets({
           onOpenChange={setRulesOpen} 
           rules={rules}
           onAddRule={onAddRule}
-          onToggleRule={onToggleRule}
           onDeleteRule={onDeleteRule}
           onUpdateRuleCategory={onUpdateRuleCategory}
         />

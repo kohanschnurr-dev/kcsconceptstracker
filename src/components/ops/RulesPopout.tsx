@@ -5,14 +5,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -20,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, ChevronDown, RotateCcw, Trash2, Settings, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Settings, GripVertical, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { loadRuleGroups, saveRuleGroups, toSnakeCase, type RuleGroup } from '@/lib/ruleGroups';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
@@ -30,6 +25,7 @@ import { CSS } from '@dnd-kit/utilities';
 interface OperationCode {
   id: string;
   title: string;
+  description: string | null;
   category: string | null;
   is_completed: boolean | null;
 }
@@ -38,8 +34,7 @@ interface RulesPopoutProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   rules: OperationCode[];
-  onAddRule?: (rule: { title: string; category: string }) => Promise<void>;
-  onToggleRule?: (ruleId: string, completed: boolean) => Promise<void>;
+  onAddRule?: (rule: { title: string; category: string; description?: string }) => Promise<void>;
   onDeleteRule?: (ruleId: string) => Promise<void>;
   onUpdateRuleCategory?: (ruleId: string, newCategory: string) => Promise<void>;
 }
@@ -67,12 +62,12 @@ function SortableGroupRow({ group, canDelete, onDelete }: { group: RuleGroup; ca
   );
 }
 
-export function RulesPopout({ open, onOpenChange, rules, onAddRule, onToggleRule, onDeleteRule, onUpdateRuleCategory }: RulesPopoutProps) {
+export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule, onUpdateRuleCategory }: RulesPopoutProps) {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [manageMode, setManageMode] = useState(false);
   const [groups, setGroups] = useState<RuleGroup[]>(loadRuleGroups);
   const [newGroupLabel, setNewGroupLabel] = useState('');
@@ -95,15 +90,13 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onToggleRule
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  const activeRules = rules.filter(r => !r.is_completed);
-  const completedRules = rules.filter(r => r.is_completed);
-
   const handleSubmit = async () => {
     if (!title.trim() || !onAddRule) return;
     setIsSubmitting(true);
     try {
-      await onAddRule({ title: title.trim(), category });
+      await onAddRule({ title: title.trim(), category, description: description.trim() || undefined });
       setTitle('');
+      setDescription('');
       setShowForm(false);
     } finally {
       setIsSubmitting(false);
@@ -147,24 +140,18 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onToggleRule
     saveRuleGroups(reordered);
   };
 
-  const renderRuleCard = (rule: OperationCode, isCompleted = false) => (
-    <div key={rule.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
-      <Checkbox
-        checked={rule.is_completed || false}
-        onCheckedChange={(checked) => onToggleRule?.(rule.id, !!checked)}
-        disabled={!onToggleRule}
-      />
-      <span className={cn("text-sm flex-1", rule.is_completed && "line-through text-muted-foreground")}>
-        {rule.title}
-      </span>
-      {!isCompleted && onDeleteRule && (
-        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80" onClick={() => onDeleteRule(rule.id)}>
+  const renderRuleCard = (rule: OperationCode) => (
+    <div key={rule.id} className="flex gap-3 p-3 rounded-lg border-l-4 border-l-primary bg-card shadow-sm">
+      <Shield className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm">{rule.title}</p>
+        {rule.description && (
+          <p className="text-xs text-muted-foreground mt-1">{rule.description}</p>
+        )}
+      </div>
+      {onDeleteRule && (
+        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80 shrink-0" onClick={() => onDeleteRule(rule.id)}>
           <Trash2 className="h-3 w-3" />
-        </Button>
-      )}
-      {isCompleted && onToggleRule && (
-        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => onToggleRule(rule.id, false)} title="Reopen rule">
-          <RotateCcw className="h-3 w-3" />
         </Button>
       )}
     </div>
@@ -218,9 +205,15 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onToggleRule
               {showForm && (
                 <div className="space-y-3 p-3 rounded-lg border border-border/50 bg-muted/30">
                   <Input
-                    placeholder="Rule title"
+                    placeholder="Rule title (e.g., Foundation First)"
                     value={title}
                     onChange={e => setTitle(e.target.value)}
+                  />
+                  <Textarea
+                    placeholder="Why does this rule exist? What lesson was learned?"
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    className="min-h-[60px] resize-none"
                   />
                   <Select value={category} onValueChange={setCategory}>
                     <SelectTrigger>
@@ -246,9 +239,9 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onToggleRule
                 </div>
               )}
 
-              {/* Active rules grouped dynamically */}
+              {/* Rules grouped dynamically */}
               {groups.map(group => {
-                const groupRules = activeRules.filter(r => r.category === group.key);
+                const groupRules = rules.filter(r => r.category === group.key);
                 if (groupRules.length === 0) return null;
                 return (
                   <div key={group.key} className="space-y-3">
@@ -258,8 +251,8 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onToggleRule
                 );
               })}
 
-              {activeRules.length === 0 && !showForm && (
-                <p className="text-center text-muted-foreground py-8">No active rules</p>
+              {rules.length === 0 && !showForm && (
+                <p className="text-center text-muted-foreground py-8">No rules yet — add your first operating principle</p>
               )}
 
               {/* Add New Rule */}
@@ -268,21 +261,6 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onToggleRule
                   <Plus className="h-4 w-4 mr-2" />
                   Add New Rule
                 </Button>
-              )}
-
-              {/* Completed Rules History */}
-              {completedRules.length > 0 && (
-                <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
-                  <CollapsibleTrigger asChild>
-                    <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full">
-                      <ChevronDown className={cn("h-4 w-4 transition-transform", historyOpen && "rotate-180")} />
-                      View Completed ({completedRules.length})
-                    </button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-3 mt-3">
-                    {completedRules.map(rule => renderRuleCard(rule, true))}
-                  </CollapsibleContent>
-                </Collapsible>
               )}
             </>
           )}
