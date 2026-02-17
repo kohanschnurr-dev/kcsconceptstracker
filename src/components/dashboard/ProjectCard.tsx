@@ -182,14 +182,14 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
           {showBudgetProgress ? (
             <div>
-              <p className="text-xs text-muted-foreground">Profit</p>
+              <p className="text-xs text-muted-foreground">{isRental ? 'Equity Gain' : 'Profit'}</p>
               <p className={cn('font-mono font-semibold', !hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success')}>
                 {hasProfit ? formatCurrency(profit) : '—'}
               </p>
             </div>
           ) : (
             <div>
-              <p className="text-xs text-muted-foreground">Profit</p>
+              <p className="text-xs text-muted-foreground">{isRental ? 'Equity Gain' : 'Profit'}</p>
               <p className={cn('font-mono font-semibold', !hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success')}>
                 {hasProfit ? formatCurrency(profit) : '—'}
               </p>
