@@ -1,37 +1,16 @@
 
+## Fix Calendar Date Picker Dropdowns
 
-## Fix: Budget Approval Pop-up Not Appearing
+### Problem
+The month and year dropdowns in the date picker use native HTML `<select>` elements with `captionLayout="dropdown-buttons"`. These render as unstyled white dropdown lists that look broken against the dark theme (as seen in the screenshots).
 
-### Root Cause
-There are **two separate "Apply to Project" code paths**, but only one was updated to use the pending budget staging system:
+### Solution
+Update `src/components/ui/calendar.tsx` to properly style the native dropdowns so they match the dark theme:
 
-- `CreateBudgetModal.tsx` -- correctly writes to `pending_budget` (staging)
-- `BudgetCalculator.tsx` -- still **directly writes** to `project_categories`, bypassing the pending system entirely
+1. **Style the dropdown `<select>` elements** with dark background, proper text color, border styling, and themed scrollbar behavior so the open dropdown list matches the app's dark UI
+2. **Extend the year range** from +/-5 years to +/-10 years for easier long-range navigation
+3. **Add proper option styling** using CSS in `src/index.css` to style the `<option>` elements inside the dropdowns (since `<option>` elements can only be styled via limited CSS properties)
 
-The Budget Calculator page is the primary way budgets get applied, so the banner never appears.
-
-### Fix
-
-**File: `src/pages/BudgetCalculator.tsx`** -- Replace the `handleApplyToProject` function
-
-Instead of directly inserting/updating `project_categories` and `total_budget`, rewrite it to store the budget data into the `pending_budget` JSONB column, matching the pattern already used in `CreateBudgetModal.tsx`:
-
-```
-pending_budget = {
-  total_budget: <calculated total>,
-  category_budgets: { plumbing: 5000, electrical: 8000, ... },
-  applied_at: <now>,
-  template_name: <budget name or null>
-}
-```
-
-This is roughly a ~40-line function replacement -- removing the existing direct-write logic (fetching existing categories, looping through updates/inserts, updating total_budget) and replacing it with a single `.update({ pending_budget: payload })` call.
-
-### What Changes
-- **Edit**: `src/pages/BudgetCalculator.tsx` -- Rewrite `handleApplyToProject` to stage via `pending_budget` instead of direct-writing to `project_categories`
-
-### What to Test After
-1. Go to Budget Calculator, build a budget, and click "Apply to Project" on any project
-2. Navigate to that project's detail page or budget page -- you should now see the "New Budget Was Applied" banner
-3. Test "Accept" and "Dismiss" buttons on the banner
-4. Verify the old direct-apply behavior no longer happens (categories shouldn't change until you click Accept)
+### Files Changed
+- **Edit**: `src/components/ui/calendar.tsx` -- Update dropdown classNames with dark-theme-compatible styling (`bg-popover text-popover-foreground border-border`), extend year range to +/-10
+- **Edit**: `src/index.css` -- Add a small CSS rule to style `<option>` elements within the calendar dropdowns with dark backgrounds
