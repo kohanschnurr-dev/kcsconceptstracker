@@ -9,6 +9,7 @@ import { getBudgetCategories } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { ParsedRow, processCSVText, downloadSampleCSV, AI_IMPORT_PROMPT } from '@/lib/csvImportUtils';
 
 type BudgetCategoryEnum = Database['public']['Enums']['budget_category'];
 
@@ -20,117 +21,6 @@ interface ImportExpensesModalProps {
   onImportComplete: () => void;
 }
 
-interface ParsedRow {
-  date: string;
-  vendor: string;
-  category: string;
-  description: string;
-  amount: number;
-  paymentMethod: string;
-  expenseType: string;
-  notes: string;
-  matchedCategory: string | null;
-  suggestedCategory: string | null;
-  hasError: boolean;
-  errorMsg?: string;
-}
-
-// Simple CSV parser that handles quoted fields
-function parseCSV(text: string): string[][] {
-  const rows: string[][] = [];
-  let current = '';
-  let inQuotes = false;
-  let row: string[] = [];
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (inQuotes) {
-      if (ch === '"' && text[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else if (ch === '"') {
-        inQuotes = false;
-      } else {
-        current += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ',') {
-        row.push(current.trim());
-        current = '';
-      } else if (ch === '\n' || (ch === '\r' && text[i + 1] === '\n')) {
-        row.push(current.trim());
-        if (row.some(c => c !== '')) rows.push(row);
-        row = [];
-        current = '';
-        if (ch === '\r') i++;
-      } else {
-        current += ch;
-      }
-    }
-  }
-  row.push(current.trim());
-  if (row.some(c => c !== '')) rows.push(row);
-  return rows;
-}
-
-// Normalize for comparison
-function normalize(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-// Simple similarity score (longest common subsequence ratio)
-function similarity(a: string, b: string): number {
-  const an = normalize(a);
-  const bn = normalize(b);
-  if (!an || !bn) return 0;
-  const len = Math.max(an.length, bn.length);
-  let matches = 0;
-  let bi = 0;
-  for (let ai = 0; ai < an.length && bi < bn.length; ai++) {
-    if (an[ai] === bn[bi]) { matches++; bi++; }
-    else {
-      // try skipping in b
-      const nextInB = bn.indexOf(an[ai], bi);
-      if (nextInB !== -1 && nextInB - bi < 3) { matches++; bi = nextInB + 1; }
-    }
-  }
-  return matches / len;
-}
-
-function matchCategory(input: string, categories: { value: string; label: string }[]): { exact: string | null; suggested: string | null } {
-  const norm = normalize(input);
-  // Exact match on label
-  const exact = categories.find(c => normalize(c.label) === norm);
-  if (exact) return { exact: exact.value, suggested: null };
-  // Exact match on value
-  const exactVal = categories.find(c => normalize(c.value) === norm);
-  if (exactVal) return { exact: exactVal.value, suggested: null };
-  // Fuzzy
-  let bestScore = 0;
-  let bestCat: string | null = null;
-  for (const c of categories) {
-    const s = Math.max(similarity(input, c.label), similarity(input, c.value));
-    if (s > bestScore) { bestScore = s; bestCat = c.value; }
-  }
-  return { exact: null, suggested: bestScore > 0.4 ? bestCat : categories[0]?.value || null };
-}
-
-function parseDate(input: string): string | null {
-  // Try YYYY-MM-DD
-  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(input)) {
-    const [y, m, d] = input.split('-').map(Number);
-    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  }
-  // Try MM/DD/YYYY
-  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(input)) {
-    const [m, d, y] = input.split('/').map(Number);
-    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  }
-  return null;
-}
-
 export function ImportExpensesModal({ open, onOpenChange, projectId, existingCategories, onImportComplete }: ImportExpensesModalProps) {
   const [step, setStep] = useState<'upload' | 'preview'>('upload');
   const [rows, setRows] = useState<ParsedRow[]>([]);
@@ -140,34 +30,8 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
   const fileRef = useRef<HTMLInputElement>(null);
   const allCategories = getBudgetCategories();
 
-  const aiPrompt = `Role: You are a specialized construction bookkeeper for a DFW real estate developer. Your goal is to convert messy financial documents into clean, structured data for a master expense tracker.
-
-Task: Extract every individual expense from the uploaded file (PDF, Excel, or Image) and prepare it for a CSV export.
-
-Strict Extraction Rules:
-
-Identify All Data: Scan the entire document. Do not summarize; extract every line item separately.
-
-Date: Convert to MM/DD/YYYY.
-
-Category: Map each expense to exactly one of these: Appliances, Bathroom, Cabinets, Cleaning, Closing Costs, Concrete, Countertops, Demolition, Doors, Drain Line Repair, Drywall, Electrical, Exterior Finish, Fencing, Filler, Final Punch, Flooring, Food, Foundation, Framing, Garage, Gas, Hardware, HOA, HVAC, Inspections, Insulation, Insurance, Kitchen, Landscaping, Light Fixtures, Main Bathroom, Misc., Painting, Permits, Pest Control, Plumbing, Pool, Railing, Roofing, Staging, Taxes, Tile, Trash Hauling, Trims, Utilities, Variable, Water Heater, Wholesale Fee, Windows.
-
-Expense Type: Use 'product' for materials/retailers or 'labor' for contractors/service providers.
-
-Amount: Numerical only (no currency symbols or commas).
-
-Payment Method: card, check, cash, or transfer.
-
-Notes: Include project-specific details or credentials (e.g., "Licensed & insured").
-
-Output Format: Create a downloadable CSV file with these exact headers: Date,Vendor,Category,Description,Amount,Payment Method,Expense Type,Notes.
-
-If the file exceeds response limits, process it programmatically and ensure 100% of line items are extracted before generating the CSV. Do not partially complete.
-
-Please upload your file (PDF, Excel, or Receipt image) now.`;
-
   const handleCopyPrompt = async () => {
-    await navigator.clipboard.writeText(aiPrompt);
+    await navigator.clipboard.writeText(AI_IMPORT_PROMPT);
     setCopied(true);
     toast.success('Prompt copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
@@ -180,33 +44,17 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
     setIsDragging(false);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
 
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (file && (file.name.endsWith('.csv') || file.type === 'text/csv')) {
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        const text = ev.target?.result as string;
-        processCSV(text);
-      };
+      reader.onload = (ev) => processCSV(ev.target?.result as string);
       reader.readAsText(file);
-    } else {
-      toast.error('Please drop a CSV file');
-    }
+    } else { toast.error('Please drop a CSV file'); }
   };
 
   const handleClose = (val: boolean) => {
@@ -214,119 +62,19 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
     onOpenChange(val);
   };
 
-  const downloadSample = () => {
-    const catList = allCategories.map(c => c.label).join(', ');
-    const header = 'Date,Vendor,Category,Description,Amount,Payment Method,Expense Type,Notes';
-    const example1 = '2025-01-15,Home Depot,Flooring,LVP for living room,2450.00,card,product,';
-    const example2 = '2025-01-18,Mike\'s Plumbing,Plumbing,Rough-in for 2 bathrooms,3200.00,check,labor,Licensed & insured';
-    const example3 = '2025-02-01,Lowe\'s,Electrical,Panels and wiring,1875.50,card,product,';
-    const content = [
-      '# SAMPLE CSV - Delete these instruction lines before importing',
-      `# Valid Categories: ${catList}`,
-      '#',
-      '# Date: YYYY-MM-DD or MM/DD/YYYY',
-      '# Payment Method: cash, check, card, transfer (optional, defaults to card)',
-      '# Expense Type: product or labor (optional, defaults to product)',
-      '#',
-      header,
-      example1,
-      example2,
-      example3,
-    ].join('\n');
-    const blob = new Blob([content], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'expense_import_template.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success('Sample CSV downloaded');
-  };
-
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      processCSV(text);
-    };
+    reader.onload = (ev) => processCSV(ev.target?.result as string);
     reader.readAsText(file);
-    // Reset so same file can be selected again
     e.target.value = '';
   };
 
   const processCSV = (text: string) => {
-    // Strip comment lines
-    const cleaned = text.split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
-    const parsed = parseCSV(cleaned);
-    if (parsed.length < 2) {
-      toast.error('CSV must have a header row and at least one data row');
-      return;
-    }
-
-    // Detect header
-    const header = parsed[0].map(h => h.toLowerCase().trim());
-    const colMap = {
-      date: header.indexOf('date'),
-      vendor: header.indexOf('vendor'),
-      category: header.indexOf('category'),
-      description: header.indexOf('description'),
-      amount: Math.max(header.indexOf('amount'), header.indexOf('total')),
-      paymentMethod: Math.max(header.indexOf('payment method'), header.indexOf('paymentmethod'), header.indexOf('payment_method'), header.indexOf('payment')),
-      expenseType: Math.max(header.indexOf('expense type'), header.indexOf('expensetype'), header.indexOf('expense_type'), header.indexOf('type')),
-      notes: header.indexOf('notes'),
-    };
-
-    console.log('[CSV Import] Detected headers:', header, 'Column map:', colMap);
-
-    const missing: string[] = [];
-    if (colMap.date === -1) missing.push('Date');
-    if (colMap.amount === -1) missing.push('Amount (or Total)');
-    if (colMap.category === -1) missing.push('Category');
-    if (missing.length > 0) {
-      toast.error(`Missing required columns: ${missing.join(', ')}. Found: ${header.join(', ')}`);
-      return;
-    }
-
-    const dataRows = parsed.slice(1);
-    const result: ParsedRow[] = dataRows.map(cols => {
-      const get = (idx: number) => (idx >= 0 && idx < cols.length ? cols[idx] : '');
-      const rawDate = get(colMap.date);
-      const parsedDate = parseDate(rawDate);
-      const rawAmount = get(colMap.amount).replace(/[$,]/g, '');
-      const amount = parseFloat(rawAmount);
-      const rawCategory = get(colMap.category);
-      const { exact, suggested } = matchCategory(rawCategory, allCategories);
-      const pm = get(colMap.paymentMethod).toLowerCase();
-      const validPm = ['cash', 'check', 'card', 'transfer'].includes(pm) ? pm : 'card';
-      const rawExpenseType = get(colMap.expenseType).toLowerCase();
-      const expenseType = rawExpenseType === 'labor' ? 'labor' : 'product';
-
-      let hasError = false;
-      let errorMsg: string | undefined;
-      if (!parsedDate) { hasError = true; errorMsg = 'Invalid date'; }
-      if (isNaN(amount) || amount <= 0) { hasError = true; errorMsg = 'Invalid amount'; }
-
-      return {
-        date: parsedDate || rawDate,
-        vendor: get(colMap.vendor),
-        category: rawCategory,
-        description: get(colMap.description),
-        amount: isNaN(amount) ? 0 : amount,
-        paymentMethod: validPm,
-        expenseType,
-        notes: get(colMap.notes),
-        matchedCategory: exact,
-        suggestedCategory: exact ? null : suggested,
-        hasError,
-        errorMsg,
-      };
-    });
-
-    setRows(result);
+    const result = processCSVText(text, allCategories);
+    if (result.error) { toast.error(result.error); return; }
+    setRows(result.rows);
     setStep('preview');
   };
 
@@ -346,48 +94,29 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error('Not authenticated'); setImporting(false); return; }
 
-      // Find categories that need to be created (matched but not in existingCategories)
       const existingCatValues = new Set(existingCategories.map(c => c.category));
       const neededCats = [...new Set(rows.map(r => r.matchedCategory!))].filter(c => !existingCatValues.has(c));
 
-      // Register any custom category values in the DB enum first
       let newCatMap: Record<string, string> = {};
       if (neededCats.length > 0) {
-        for (const cat of neededCats) {
-          await supabase.rpc('add_budget_category', { new_value: cat });
-        }
-
-        // Then create the project_categories rows
+        for (const cat of neededCats) { await supabase.rpc('add_budget_category', { new_value: cat }); }
         const { data: newCats, error: catError } = await supabase
           .from('project_categories')
-          .insert(neededCats.map(cat => ({
-            project_id: projectId,
-            category: cat as BudgetCategoryEnum,
-            estimated_budget: 0,
-          })))
+          .insert(neededCats.map(cat => ({ project_id: projectId, category: cat as BudgetCategoryEnum, estimated_budget: 0 })))
           .select();
         if (catError) throw catError;
         newCats?.forEach(c => { newCatMap[c.category] = c.id; });
       }
 
-      // Build category lookup: value -> id
       const catLookup: Record<string, string> = {};
       existingCategories.forEach(c => { catLookup[c.category] = c.id; });
       Object.assign(catLookup, newCatMap);
 
-      // Batch insert expenses
       const expenseRows = rows.map(r => ({
-        project_id: projectId,
-        category_id: catLookup[r.matchedCategory!],
-        amount: r.amount,
-        date: r.date,
-        vendor_name: r.vendor || null,
-        description: r.description || null,
-        payment_method: r.paymentMethod as any,
-        status: 'actual' as any,
-        expense_type: r.expenseType,
-        notes: r.notes || null,
-        cost_type: 'construction',
+        project_id: projectId, category_id: catLookup[r.matchedCategory!],
+        amount: r.amount, date: r.date, vendor_name: r.vendor || null,
+        description: r.description || null, payment_method: r.paymentMethod as any,
+        status: 'actual' as any, expense_type: r.expenseType, notes: r.notes || null, cost_type: 'construction',
       }));
 
       const { error: insertError } = await supabase.from('expenses').insert(expenseRows);
@@ -399,9 +128,7 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
     } catch (err: any) {
       console.error('Import error:', err);
       toast.error('Import failed: ' + (err.message || 'Unknown error'));
-    } finally {
-      setImporting(false);
-    }
+    } finally { setImporting(false); }
   };
 
   const getCatLabel = (value: string) => allCategories.find(c => c.value === value)?.label || value;
@@ -430,7 +157,7 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
-                onClick={(e) => { e.stopPropagation(); downloadSample(); }}
+                onClick={(e) => { e.stopPropagation(); downloadSampleCSV(allCategories); toast.success('Sample CSV downloaded'); }}
                 className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-accent/50 transition-all cursor-pointer"
               >
                 <Download className="h-8 w-8 text-primary" />
@@ -447,9 +174,7 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
                 <Upload className="h-8 w-8 text-primary" />
                 <div className="text-center">
                   <p className="font-medium">Upload CSV File</p>
-                  <p className="text-sm text-muted-foreground">
-                    Drag & drop or click to select
-                  </p>
+                  <p className="text-sm text-muted-foreground">Drag & drop or click to select</p>
                 </div>
               </button>
             </div>
@@ -464,8 +189,7 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
                   <p className="text-xs text-muted-foreground">Copy this prompt into ChatGPT, Gemini, Claude, or other LLM, then upload your file (PDF, Excel, or receipt image). Save the output as a .csv file and upload it above.</p>
                 </div>
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="outline" size="sm"
                   onClick={(e) => { e.stopPropagation(); handleCopyPrompt(); }}
                   className="shrink-0 gap-1.5"
                 >
@@ -473,7 +197,7 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
                   {copied ? 'Copied!' : 'Copy Prompt'}
                 </Button>
               </div>
-              <pre className="text-xs text-muted-foreground bg-background rounded-md p-3 max-h-32 overflow-y-auto whitespace-pre-wrap border border-border">{aiPrompt}</pre>
+              <pre className="text-xs text-muted-foreground bg-background rounded-md p-3 max-h-32 overflow-y-auto whitespace-pre-wrap border border-border">{AI_IMPORT_PROMPT}</pre>
             </div>
 
             <div className="text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded-lg">
@@ -485,16 +209,13 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
 
         {step === 'preview' && (
           <div className="space-y-4">
-            {/* Summary badges */}
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline" className="gap-1 text-success border-success">
-                <CheckCircle2 className="h-3 w-3" />
-                {readyRows.length} ready
+                <CheckCircle2 className="h-3 w-3" />{readyRows.length} ready
               </Badge>
               {needsAttention.length > 0 && (
                 <Badge variant="outline" className="gap-1 text-warning border-warning">
-                  <AlertTriangle className="h-3 w-3" />
-                  {needsAttention.length} need attention
+                  <AlertTriangle className="h-3 w-3" />{needsAttention.length} need attention
                 </Badge>
               )}
               <Badge variant="secondary">
@@ -502,7 +223,6 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
               </Badge>
             </div>
 
-            {/* Preview table */}
             <div className="border rounded-lg overflow-auto max-h-[50vh]">
               <Table>
                 <TableHeader>
@@ -529,13 +249,9 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
                           <div className="space-y-1">
                             <span className="text-sm text-warning">"{row.category}"</span>
                             <Select value={row.suggestedCategory || ''} onValueChange={(v) => updateRowCategory(idx, v)}>
-                              <SelectTrigger className="h-7 text-xs w-[180px]">
-                                <SelectValue placeholder="Assign category..." />
-                              </SelectTrigger>
+                              <SelectTrigger className="h-7 text-xs w-[180px]"><SelectValue placeholder="Assign category..." /></SelectTrigger>
                               <SelectContent>
-                                {allCategories.map(c => (
-                                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                                ))}
+                                {allCategories.map(c => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}
                               </SelectContent>
                             </Select>
                           </div>
@@ -548,13 +264,9 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
                         <Badge variant="outline" className="text-xs capitalize">{row.expenseType}</Badge>
                       </TableCell>
                       <TableCell>
-                        {row.hasError ? (
-                          <Badge variant="destructive" className="text-xs">{row.errorMsg}</Badge>
-                        ) : row.matchedCategory ? (
-                          <CheckCircle2 className="h-4 w-4 text-success" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4 text-warning" />
-                        )}
+                        {row.hasError ? (<Badge variant="destructive" className="text-xs">{row.errorMsg}</Badge>)
+                          : row.matchedCategory ? (<CheckCircle2 className="h-4 w-4 text-success" />)
+                          : (<AlertTriangle className="h-4 w-4 text-warning" />)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -566,9 +278,7 @@ Please upload your file (PDF, Excel, or Receipt image) now.`;
 
         <DialogFooter>
           {step === 'preview' && (
-            <Button variant="outline" onClick={() => { setStep('upload'); setRows([]); }} className="mr-auto">
-              Back
-            </Button>
+            <Button variant="outline" onClick={() => { setStep('upload'); setRows([]); }} className="mr-auto">Back</Button>
           )}
           <Button variant="ghost" onClick={() => handleClose(false)}>Cancel</Button>
           {step === 'preview' && (
