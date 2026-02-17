@@ -1,35 +1,49 @@
 
 
-## Dynamic Trade Filter: Only Show Types in Use
+## Show "Multiple" for Items in 2+ Bundles with Hover Detail
 
-### Problem
-The trade filter dropdown currently lists all possible trade types from `getVendorTrades()`, including types no vendor has been assigned yet (e.g., "HOA" in the screenshot). This clutters the dropdown.
-
-### Solution
-Derive the filter options dynamically from the actual `vendors` array instead of the static `getVendorTrades()` list. Collect all unique trade values across all vendors, sort them alphabetically by their display label, and render only those in the dropdown.
+### What's Changing
+In the procurement table's Bundle column, when an item belongs to two or more bundles, it will display "Multiple" instead of listing them all. Hovering over "Multiple" will show a tooltip with the full list of bundle names.
 
 ### Technical Detail
 
-**File: `src/pages/Vendors.tsx`**
+**File: `src/pages/Procurement.tsx`**
 
-Add a computed list of unique trades derived from vendors, placed after the `vendors` state is populated:
-
+1. Add Tooltip imports at the top:
 ```tsx
-const usedTrades = Array.from(new Set(vendors.flatMap(v => v.trades)))
-  .map(value => ({ value, label: getTradeLabel(value) }))
-  .sort((a, b) => a.label.localeCompare(b.label));
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 ```
 
-Then update the Select dropdown to use `usedTrades` instead of `getVendorTrades()`:
+2. Replace the bundle cell rendering (lines 571-589) with logic that:
+   - Shows "Unassigned" (italic, muted) if no bundles
+   - Shows the single bundle name if exactly one bundle
+   - Shows a "Multiple" badge wrapped in a `Tooltip` if 2+ bundles, with the tooltip content listing all bundle names
 
 ```tsx
-<SelectContent>
-  <SelectItem value="all">All Types</SelectItem>
-  {usedTrades.map(t => (
-    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-  ))}
-</SelectContent>
+<TableCell className="text-center">
+  {(!item.bundle_ids || item.bundle_ids.length === 0) ? (
+    <span className="text-sm text-muted-foreground italic">Unassigned</span>
+  ) : item.bundle_ids.length === 1 ? (
+    <div>
+      <span className="text-sm">{getBundleNames(item.bundle_ids)[0]}</span>
+      {getBundleProjectNames(item.bundle_ids).length > 0 && (
+        <p className="text-xs text-muted-foreground">...</p>
+      )}
+    </div>
+  ) : (
+    <Tooltip>
+      <TooltipTrigger>
+        <Badge variant="secondary">Multiple</Badge>
+      </TooltipTrigger>
+      <TooltipContent>
+        {getBundleNames(item.bundle_ids).map(name => <p>{name}</p>)}
+      </TooltipContent>
+    </Tooltip>
+  )}
+</TableCell>
 ```
 
-This ensures only trades that exist on at least one vendor appear in the filter. As vendors are added/removed, the filter updates automatically.
+3. Wrap the Table (or the entire return) with `<TooltipProvider>` so tooltips work.
 
+### Files
+- **Edit**: `src/pages/Procurement.tsx` -- Add tooltip imports, update bundle cell rendering, wrap with TooltipProvider
