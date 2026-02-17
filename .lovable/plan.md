@@ -1,28 +1,49 @@
 
 
-## Move Gear Icon Away from Close Button
+## Add Quick Log Entry on the Logs Tab
 
-### Problem
-The gear (Settings) icon sits at the far right of the header via `justify-between`, placing it right next to the dialog's built-in X close button.
+### What's Changing
+A quick-add form will be added at the top of the Logs tab on the Project Detail page. Since the user is already viewing a specific project, the project will be pre-selected automatically -- they just type what work was done and hit save.
 
-### Solution
-Move the gear icon to sit inline next to the "Operation Rules" title text instead of being pushed to the far right. This gives clear visual separation from the X button.
+### Design
+The quick-add will appear as a compact inline form above the existing log list, similar in spirit to the Quick Task Input on the dashboard. It will include:
+- A text input for "Work Performed" (required)
+- An optional expandable area for "Issues Encountered"
+- Today's date pre-filled (editable)
+- A "Save" button
 
-**File: `src/components/ops/RulesPopout.tsx` (lines 164-169)**
+No project selector needed since the project is already known from the page context.
 
-Change the header layout from `justify-between` (which pushes the gear to the right edge) to a simple `gap-2` flex container where the gear sits right after the title:
+### Technical Details
 
-```tsx
-// Before
-<div className="flex items-center justify-between">
-  <DialogTitle>Operation Rules</DialogTitle>
-  <Button variant="ghost" size="icon" className="h-7 w-7" ...>
+**File: `src/pages/ProjectDetail.tsx`**
 
-// After
-<div className="flex items-center gap-2">
-  <DialogTitle>Operation Rules</DialogTitle>
-  <Button variant="ghost" size="icon" className="h-7 w-7" ...>
+Inside the `<TabsContent value="logs">` section, add a quick-add form above the "Daily Logs" card:
+
+- Add local state: `quickLogWork`, `quickLogIssues`, `quickLogDate`, `quickLogSubmitting`
+- On submit, insert into `daily_logs` table with the current project's `id` pre-set
+- On success, call `fetchProjectData(false)` to refresh the logs list and clear the form
+- The form will be a compact card with:
+  - A single-line `Input` or small `Textarea` for work performed
+  - A collapsible/optional issues field (small text button "Add issues?" toggles it)
+  - Date defaults to today, shown as a small date input
+  - "Add Log" button
+
+```text
+Logs Tab Layout:
++------------------------------------------------+
+| [+] Quick Add Log                              |
+| +--------------------------------------------+ |
+| | Work performed today...          [date] [+] | |
+| +--------------------------------------------+ |
+|                                                |
+| Daily Logs                        [View All]   |
+| +--------------------------------------------+ |
+| | Jan 31, 2026 ...                           | |
+| | Jan 30, 2026 ...                           | |
+| +--------------------------------------------+ |
++------------------------------------------------+
 ```
 
-This places the gear icon immediately after the title text with a small gap, well away from the X close button.
-
+### Files
+- **Edit**: `src/pages/ProjectDetail.tsx` -- Add quick-add form in the logs TabsContent, with inline state and submit handler
