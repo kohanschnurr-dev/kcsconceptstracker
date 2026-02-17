@@ -437,8 +437,14 @@ function ImportTab({
       </div>
 
       {!selectedProject && (
-        <div className="text-center py-8 text-muted-foreground text-sm">
-          Select a project above to begin importing expenses.
+        <div className="text-center py-8 space-y-3">
+          <p className="text-muted-foreground text-sm">
+            Select a project above to begin importing expenses.
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-medium">
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            Best for adding numerous expenses at once
+          </div>
         </div>
       )}
 
