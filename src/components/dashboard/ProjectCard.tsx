@@ -17,7 +17,7 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
   const isRental = project.projectType === 'rental';
   const isNewConstruction = project.projectType === 'new_construction';
   const isWholesaling = project.projectType === 'wholesaling';
-  const showBudgetProgress = !isRental;
+  const showBudgetProgress = !isRental && project.totalBudget > 0;
   const percentSpent = showBudgetProgress ? (totalSpent / project.totalBudget) * 100 : 0;
 
   const arv = project.arv || 0;
