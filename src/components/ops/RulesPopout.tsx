@@ -161,7 +161,7 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <DialogTitle>Operation Rules</DialogTitle>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setManageMode(!manageMode)} title="Manage Groups">
               <Settings className={cn("h-4 w-4", manageMode && "text-primary")} />
