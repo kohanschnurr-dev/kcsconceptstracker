@@ -1,35 +1,35 @@
 
 
-## Fix Raw Trade Values Showing for Removed Categories
+## Dynamic Trade Filter: Only Show Types in Use
 
 ### Problem
-When a trade value exists on a vendor but has been removed from the available trade categories list, `getTradeLabel()` falls back to showing the raw database value (e.g., `foundation_repair`) instead of a human-readable label.
+The trade filter dropdown currently lists all possible trade types from `getVendorTrades()`, including types no vendor has been assigned yet (e.g., "HOA" in the screenshot). This clutters the dropdown.
 
 ### Solution
-Update the `getTradeLabel` function in `src/pages/Vendors.tsx` to format the raw value as a readable string when no matching category label is found. The fallback will convert underscores to spaces and capitalize each word.
+Derive the filter options dynamically from the actual `vendors` array instead of the static `getVendorTrades()` list. Collect all unique trade values across all vendors, sort them alphabetically by their display label, and render only those in the dropdown.
 
 ### Technical Detail
 
-**File: `src/pages/Vendors.tsx` (line 98-100)**
+**File: `src/pages/Vendors.tsx`**
 
-Change:
+Add a computed list of unique trades derived from vendors, placed after the `vendors` state is populated:
+
 ```tsx
-const getTradeLabel = (trade: string) => {
-  return getBudgetCategories().find(b => b.value === trade)?.label || trade;
-};
+const usedTrades = Array.from(new Set(vendors.flatMap(v => v.trades)))
+  .map(value => ({ value, label: getTradeLabel(value) }))
+  .sort((a, b) => a.label.localeCompare(b.label));
 ```
 
-To:
+Then update the Select dropdown to use `usedTrades` instead of `getVendorTrades()`:
+
 ```tsx
-const getTradeLabel = (trade: string) => {
-  const found = getBudgetCategories().find(b => b.value === trade)?.label
-    || getVendorTrades().find(t => t.value === trade)?.label;
-  if (found) return found;
-  return trade
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase());
-};
+<SelectContent>
+  <SelectItem value="all">All Types</SelectItem>
+  {usedTrades.map(t => (
+    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+  ))}
+</SelectContent>
 ```
 
-This checks both `getBudgetCategories()` and `getVendorTrades()` for a label match, then falls back to formatting the raw string (e.g., `foundation_repair` becomes `Foundation Repair`).
+This ensures only trades that exist on at least one vendor appear in the filter. As vendors are added/removed, the filter updates automatically.
 
