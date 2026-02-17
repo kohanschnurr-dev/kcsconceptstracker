@@ -1,36 +1,32 @@
 
 
-## Fix: No Projects Found in Budget Calculator "Apply" Section
+## Fix: Project Autocomplete Dropdown Clipped Behind UI Elements
 
 ### Problem
-The "Apply to Project" dropdown shows "No projects found" because of a data mismatch:
-
-1. The `BudgetCalculator` fetches projects with only `id, name, address` from the database
-2. The `ProjectAutocomplete` component groups projects by `projectType` -- since that field is never fetched, every project gets filtered out of every group, resulting in an empty list
+In the Budget Calculator's "Apply" tab (inside the Deal Sidebar), the project search dropdown gets clipped/hidden behind other page elements. This happens because the sidebar has scrollable overflow, which creates a clipping boundary for the popover.
 
 ### Solution
-Add `project_type` to the select query in `BudgetCalculator.tsx` and map it to `projectType` (camelCase) so the `ProjectAutocomplete` component can properly group and display the projects.
+Update the `ProjectAutocomplete` component's `PopoverContent` to use `portal` container rendering and set a higher z-index. This ensures the dropdown renders at the document root level, escaping any overflow clipping from parent containers.
 
 ### Technical Detail
 
-**File: `src/pages/BudgetCalculator.tsx`** (line 101)
+**File: `src/components/ProjectAutocomplete.tsx`** (line 118-123)
 
-Change the select query from:
-```tsx
-.select('id, name, address')
-```
-to:
-```tsx
-.select('id, name, address, project_type')
-```
+Add `sideOffset` and ensure the popover escapes overflow containers by default:
 
-Then map the results to include the camelCase `projectType` property that `ProjectAutocomplete` expects:
 ```tsx
-setProjects((data || []).map(p => ({
-  ...p,
-  projectType: p.project_type,
-})));
+<PopoverContent 
+  className={cn(
+    'w-[--radix-popover-trigger-width] p-0 bg-popover border-border z-[200]',
+    className
+  )}
+  align="start"
+  sideOffset={4}
+>
 ```
 
-This is a one-line query fix plus a small mapping -- the `ProjectAutocomplete` component and everything else stays unchanged.
+The key change is bumping `z-50` to `z-[200]` so the dropdown renders above all page content including sidebars and modals. The Radix `Popover` already portals to the document body by default, so the main issue is z-index stacking.
+
+### Files
+- **Edit**: `src/components/ProjectAutocomplete.tsx` -- Increase z-index on PopoverContent
 
