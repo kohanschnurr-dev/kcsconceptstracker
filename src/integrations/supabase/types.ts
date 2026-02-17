@@ -802,6 +802,7 @@ export type Database = {
           created_at: string
           detail_tab_order: Json | null
           first_name: string | null
+          hidden_project_tabs: Json | null
           id: string
           last_name: string | null
           project_tab_order: Json | null
@@ -818,6 +819,7 @@ export type Database = {
           created_at?: string
           detail_tab_order?: Json | null
           first_name?: string | null
+          hidden_project_tabs?: Json | null
           id?: string
           last_name?: string | null
           project_tab_order?: Json | null
@@ -834,6 +836,7 @@ export type Database = {
           created_at?: string
           detail_tab_order?: Json | null
           first_name?: string | null
+          hidden_project_tabs?: Json | null
           id?: string
           last_name?: string | null
           project_tab_order?: Json | null

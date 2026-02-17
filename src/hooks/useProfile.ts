@@ -125,7 +125,23 @@ export function useProfile() {
 
   const starredProjects: string[] = Array.isArray(profile?.starred_projects) ? (profile.starred_projects as string[]) : [];
 
+  const hiddenProjectTabs: string[] = Array.isArray((profile as any)?.hidden_project_tabs) ? ((profile as any).hidden_project_tabs as string[]) : [];
+
   const isProjectStarred = (projectId: string) => starredProjects.includes(projectId);
+
+  const updateHiddenTabs = useMutation({
+    mutationFn: async (hiddenTabs: string[]) => {
+      if (!user) throw new Error('Not authenticated');
+      const { error } = await supabase
+        .from('profiles')
+        .update({ hidden_project_tabs: hiddenTabs } as any)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+    },
+  });
 
   const toggleStarProject = useMutation({
     mutationFn: async (projectId: string) => {
@@ -171,5 +187,7 @@ export function useProfile() {
     starredProjects,
     isProjectStarred,
     toggleStarProject,
+    hiddenProjectTabs,
+    updateHiddenTabs,
   };
 }
