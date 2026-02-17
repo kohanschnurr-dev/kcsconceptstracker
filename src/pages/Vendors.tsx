@@ -29,7 +29,14 @@ import {
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getBudgetCategories } from '@/types';
+import { getBudgetCategories, getVendorTrades } from '@/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 interface Vendor {
@@ -54,6 +61,7 @@ export default function Vendors() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [tradeFilter, setTradeFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchVendors();
@@ -80,10 +88,12 @@ export default function Vendors() {
     }
   };
 
-  const filteredVendors = vendors.filter((vendor) =>
-    vendor.name.toLowerCase().includes(search.toLowerCase()) ||
-    vendor.trades.some(t => t.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filteredVendors = vendors.filter((vendor) => {
+    const matchesSearch = vendor.name.toLowerCase().includes(search.toLowerCase()) ||
+      vendor.trades.some(t => t.toLowerCase().includes(search.toLowerCase()));
+    const matchesTrade = tradeFilter === 'all' || vendor.trades.includes(tradeFilter);
+    return matchesSearch && matchesTrade;
+  });
 
   const getTradeLabel = (trade: string) => {
     return getBudgetCategories().find(b => b.value === trade)?.label || trade;
@@ -146,15 +156,28 @@ export default function Vendors() {
           </Button>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search vendors..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        {/* Search & Filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search vendors..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={tradeFilter} onValueChange={setTradeFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {getVendorTrades().map(t => (
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Loading State */}
