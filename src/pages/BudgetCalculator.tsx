@@ -98,12 +98,12 @@ export default function BudgetCalculator() {
       try {
         const { data, error } = await supabase
           .from('projects')
-          .select('id, name, address')
+          .select('id, name, address, project_type')
           .eq('status', 'active')
           .order('name');
         
         if (error) throw error;
-        setProjects(data || []);
+        setProjects((data || []).map(p => ({ ...p, projectType: p.project_type })));
       } catch (error) {
         console.error('Error fetching projects:', error);
       } finally {
