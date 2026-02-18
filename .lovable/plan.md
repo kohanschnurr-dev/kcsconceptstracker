@@ -1,66 +1,65 @@
 
-## Add Contractor Projects to Profit Potential
+## Three Small UI Tweaks to the Profit Potential Table
 
-### Overview
-The Profit Potential page (`/profit`) and Dashboard Preferences currently only handle `fix_flip`, `rental`, `new_construction`, and `wholesaling`. Contractor projects use a fundamentally different financial model — **Gross Profit = Contract Value − Job Cost** (no ARV) — so they need special-cased handling throughout the pipeline.
-
----
-
-### What Needs to Change
-
-#### 1. `src/pages/ProfitBreakdown.tsx`
-
-**Constants & Types**
-- Add `'contractor'` to `ALL_TYPES` array.
-- Add `{ value: 'contractor', label: 'Contractor' }` to `TYPE_OPTIONS`.
-- Extend `ProjectProfit` interface with an optional `isContractor: boolean` flag and `contractValue` field.
-
-**Data Fetching (`fetchData`)**
-- Contractor projects currently fall into `unconfiguredList` because they have `arv = 0`. Change the logic: if `p.project_type === 'contractor'`, route them through a **separate contractor calculation path** regardless of ARV.
-- For contractor projects:
-  - `contractValue = p.purchase_price ?? 0`
-  - `totalSpent = sum of all category actual spend`
-  - `totalBudget = plannedBudget`
-  - `costBasis = totalBudget > 0 ? Math.max(totalBudget, totalSpent) : totalSpent`
-  - `grossProfit = contractValue - costBasis`
-  - Push to `configuredList` with `isContractor: true`, and `arv = contractValue` (for display purposes), setting `transactionCosts`, `holdingCosts` all to `0`.
-- Non-contractor projects with `arv <= 0` still go to `unconfiguredList` as before.
-
-**Table Rendering**
-- Contractor rows render differently in the table:
-  - **ARV** column → show "—" (or "Contract Value" label in small text + the dollar amount)
-  - **Purchase Price** column → show "—" (not applicable for contractors)
-  - **Construction Costs** column → relabel dynamically: show "Job Cost" badge for contractor rows
-  - **Transaction / Holding** columns → show "—" for contractors
-  - **Profit** column → show Gross Profit (color-coded)
-- Add a small `HardHat` icon badge next to contractor project names in the table for visual differentiation.
-
-**Totals Footer**
-- The `totalProfit` already sums `p.profit` — contractor gross profits will be included automatically once added to `configuredList`.
-- `totalARV`, `totalPurchase`, etc. will be slightly misleading for contractors, but since they'll show "—" per-row, the footer can keep summing only non-contractor values to stay accurate. Add a `totalContractorProfit` separate sum, or simply mark contractor profit as included in the grand `totalProfit`.
-
-#### 2. `src/components/settings/DashboardPreferencesCard.tsx`
-
-- Add `{ value: 'contractor', label: 'Contractor' }` to the `PROJECT_TYPES` array.
-- Add `'contractor'` to `DEFAULT_FILTERS.types` so it's on by default.
-
-#### 3. `src/pages/ProfitBreakdown.tsx` — `ALL_TYPES` & defaults
-
-- `ALL_TYPES` becomes `['fix_flip', 'rental', 'new_construction', 'wholesaling', 'contractor']`
-- `deriveSelectedTypes` will now include contractor in the full set.
+### What the user wants (from the screenshot + message)
+1. **Remove the HardHat icon** from contractor project name cells
+2. **Keep the `(actual)` / `(budget)` badge** on non-contractor rows — this is already working and should stay the same
+3. **Add an info tooltip `ⓘ`** to the "Construction Costs" column header that explains the logic: when `actual > budget`, actual is shown; otherwise the estimated budget is shown
 
 ---
 
-### Contractor Row Display Logic (Table)
+### Changes — `src/pages/ProfitBreakdown.tsx` only
 
-```text
-| Project Name 🪖  | Contract Value | — (Purchase) | Job Cost (budget/actual) | — | — | Gross Profit |
+#### 1. Remove HardHat icon from the name cell (line ~382-384)
+
+Current:
+```tsx
+<span className="flex items-center gap-1.5">
+  {p.isContractor && <HardHat className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+  {p.name}
+</span>
 ```
 
-The column headers stay the same for simplicity. Contractor-specific rows show "—" in ARV, Purchase Price, Transaction, and Holding columns, and show Contract Value in the ARV column with a small label.
+After:
+```tsx
+<span>{p.name}</span>
+```
+
+Also remove `HardHat` from the lucide import since it will no longer be used in JSX (check if it's used elsewhere — it's not, only in this one spot).
+
+#### 2. Add an `ⓘ` tooltip to the "Construction Costs" column header
+
+Import `Tooltip`, `TooltipContent`, `TooltipTrigger`, `TooltipProvider` from `@/components/ui/tooltip` and `Info` from `lucide-react`.
+
+Change the header cell from:
+```tsx
+<TableHead className="text-center">Construction Costs</TableHead>
+```
+
+To:
+```tsx
+<TableHead className="text-center">
+  <span className="inline-flex items-center gap-1 justify-center">
+    Construction Costs
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[220px] text-xs">
+          Shows whichever is higher: your estimated budget or actual spending. For completed projects, actual spending is always used.
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  </span>
+</TableHead>
+```
+
+#### 3. Keep `(actual)` / `(budget)` / `job cost` badges as-is
+
+The existing code on lines 397-400 already shows this — no change needed here. The screenshot confirms this should stay.
 
 ---
 
 ### Files to Modify
-- `src/pages/ProfitBreakdown.tsx` — main data + rendering logic
-- `src/components/settings/DashboardPreferencesCard.tsx` — add Contractor checkbox to preferences
+- `src/pages/ProfitBreakdown.tsx` — remove HardHat icon from name cell, add Info tooltip to Construction Costs header
