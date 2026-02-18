@@ -18,7 +18,7 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
   const isNewConstruction = project.projectType === 'new_construction';
   const isWholesaling = project.projectType === 'wholesaling';
   const isContractor = project.projectType === 'contractor';
-  const showBudgetProgress = !isRental && project.totalBudget > 0;
+  const showBudgetProgress = !isRental && !isContractor && project.totalBudget > 0;
   const percentSpent = showBudgetProgress ? (totalSpent / project.totalBudget) * 100 : 0;
 
   const contractValue = isContractor ? (project.purchasePrice || 0) : 0;
@@ -29,6 +29,9 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
     : 0;
   const contractorGrossProfit = contractValue - contractorCostBasis;
   const contractorHasData = isContractor && contractValue > 0;
+  const grossMarginPct = contractorHasData && contractorCostBasis > 0
+    ? (contractorGrossProfit / contractValue) * 100
+    : 0;
 
   const arv = project.arv || 0;
   const purchasePrice = project.purchasePrice || 0;
@@ -190,6 +193,46 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
             </div>
           );
         })()}
+
+        {isContractor && (
+          <div className="space-y-3 mb-4">
+            {/* Contract Value highlight */}
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Contract Value</p>
+              <p className="font-mono font-semibold text-lg text-primary">
+                {contractorHasData ? formatCurrency(contractValue) : '—'}
+              </p>
+            </div>
+
+            {/* Gross Margin progress bar */}
+            {contractorHasData && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Gross Margin</span>
+                  <span className={cn('font-mono font-medium',
+                    grossMarginPct >= 20 ? 'text-success' :
+                    grossMarginPct >= 10 ? 'text-warning' : 'text-destructive'
+                  )}>
+                    {grossMarginPct.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="progress-bar">
+                  <div
+                    className={cn('progress-fill',
+                      grossMarginPct >= 20 ? 'bg-success' :
+                      grossMarginPct >= 10 ? 'bg-warning' : 'bg-destructive'
+                    )}
+                    style={{ width: `${Math.min(Math.max(grossMarginPct, 0), 100)}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{formatCurrency(contractorGrossProfit)} gross profit</span>
+                  <span>{formatCurrency(contractorCostBasis)} job cost</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
           <div>
