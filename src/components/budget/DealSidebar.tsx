@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DollarSign, ChevronLeft, ChevronRight, Calculator, Folder, Save, FolderOpen, Loader2, Ruler, Pencil, Check, Settings, ArrowUp, ArrowDown } from 'lucide-react';
+import { DollarSign, ChevronLeft, ChevronRight, Calculator, Folder, Save, FolderOpen, Loader2, Ruler, Pencil, Check, Settings, ArrowUp, ArrowDown, HardHat, Wrench } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { arrayMove } from '@dnd-kit/sortable';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,13 @@ interface DealSidebarProps {
   onArvChange: (value: string) => void;
   sqft: string;
   onSqftChange: (value: string) => void;
+  // Contractor-specific
+  laborCost: string;
+  onLaborCostChange: (value: string) => void;
+  materialCost: string;
+  onMaterialCostChange: (value: string) => void;
+  overheadPct: string;
+  onOverheadPctChange: (value: string) => void;
   budgetName: string;
   onBudgetNameChange: (value: string) => void;
   budgetDescription: string;
@@ -92,6 +99,12 @@ export function DealSidebar({
   onArvChange,
   sqft,
   onSqftChange,
+  laborCost,
+  onLaborCostChange,
+  materialCost,
+  onMaterialCostChange,
+  overheadPct,
+  onOverheadPctChange,
   budgetName,
   onBudgetNameChange,
   budgetDescription,
@@ -146,6 +159,14 @@ export function DealSidebar({
 
   const purchasePriceNum = parseFloat(purchasePrice) || 0;
   const arvNum = parseFloat(arv) || 0;
+  const laborCostNum = parseFloat(laborCost) || 0;
+  const materialCostNum = parseFloat(materialCost) || 0;
+  const overheadPctNum = parseFloat(overheadPct) || 0;
+  const overheadAmount = arvNum * (overheadPctNum / 100);
+
+  // Labor / material split
+  const laborMaterialTotal = laborCostNum + materialCostNum;
+  const laborPct = laborMaterialTotal > 0 ? (laborCostNum / laborMaterialTotal) * 100 : 50;
 
   // Compute costs respecting mode
   const closingCostsBuy = closingMode === 'pct'
@@ -168,6 +189,7 @@ export function DealSidebar({
   };
 
   const showEstimatedCosts = calculatorType === 'fix_flip';
+  const isContractor = calculatorType === 'contractor';
 
   if (isCollapsed) {
     return (
@@ -182,7 +204,7 @@ export function DealSidebar({
         </Button>
         <div className="flex flex-col items-center gap-4 text-muted-foreground">
           <span title="Deal Parameters"><Calculator className="h-5 w-5" /></span>
-          <span title="Square Footage"><Ruler className="h-5 w-5" /></span>
+          {!isContractor && <span title="Square Footage"><Ruler className="h-5 w-5" /></span>}
           <span title="Saved Budgets"><Folder className="h-5 w-5" /></span>
         </div>
       </div>
@@ -253,24 +275,27 @@ export function DealSidebar({
 
           {/* Deal Inputs */}
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="purchasePrice" className="text-xs">Purchase Price</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="purchasePrice"
-                  type="number"
-                  placeholder="0"
-                  className="pl-8 font-mono"
-                  value={purchasePrice}
-                  onChange={(e) => onPurchasePriceChange(e.target.value)}
-                />
+            {/* Purchase Price — hidden in contractor mode */}
+            {!isContractor && (
+              <div className="space-y-2">
+                <Label htmlFor="purchasePrice" className="text-xs">Purchase Price</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="purchasePrice"
+                    type="number"
+                    placeholder="0"
+                    className="pl-8 font-mono"
+                    value={purchasePrice}
+                    onChange={(e) => onPurchasePriceChange(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="arv" className="text-xs">
-                {calculatorType === 'contractor' ? 'Contract Value' : 'After Repair Value (ARV)'}
+                {isContractor ? 'Contract Value' : 'After Repair Value (ARV)'}
               </Label>
               <div className="relative">
                 <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -285,18 +310,124 @@ export function DealSidebar({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="sqft" className="text-xs">Square Footage</Label>
-              <Input
-                id="sqft"
-                type="number"
-                placeholder="1500"
-                className="font-mono"
-                value={sqft}
-                onChange={(e) => onSqftChange(e.target.value)}
-              />
-            </div>
+            {/* Square Footage — hidden in contractor mode */}
+            {!isContractor && (
+              <div className="space-y-2">
+                <Label htmlFor="sqft" className="text-xs">Square Footage</Label>
+                <Input
+                  id="sqft"
+                  type="number"
+                  placeholder="1500"
+                  className="font-mono"
+                  value={sqft}
+                  onChange={(e) => onSqftChange(e.target.value)}
+                />
+              </div>
+            )}
           </div>
+
+          {/* Contractor-specific fields */}
+          {isContractor && (
+            <>
+              <Separator />
+              {/* Job Breakdown */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <HardHat className="h-3.5 w-3.5 text-muted-foreground" />
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Job Breakdown
+                  </h4>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="laborCost" className="text-xs">Labor Cost</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="laborCost"
+                        type="number"
+                        placeholder="0"
+                        className="pl-8 font-mono"
+                        value={laborCost}
+                        onChange={(e) => onLaborCostChange(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="materialCost" className="text-xs">Material Cost</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="materialCost"
+                        type="number"
+                        placeholder="0"
+                        className="pl-8 font-mono"
+                        value={materialCost}
+                        onChange={(e) => onMaterialCostChange(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Labor / Material Split Bar */}
+                  {laborMaterialTotal > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2 h-2 rounded-sm bg-primary/70" />
+                          Labor {laborPct.toFixed(0)}%
+                        </span>
+                        <span className="flex items-center gap-1">
+                          Material {(100 - laborPct).toFixed(0)}%
+                          <span className="inline-block w-2 h-2 rounded-sm bg-muted-foreground/40" />
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+                        <div
+                          className="h-full bg-primary/70 transition-all duration-300"
+                          style={{ width: `${laborPct}%` }}
+                        />
+                        <div className="h-full flex-1 bg-muted-foreground/20" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Overhead */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Overhead
+                  </h4>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="overheadPct" className="text-xs">Overhead %</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="overheadPct"
+                      type="number"
+                      placeholder="10"
+                      className="font-mono"
+                      value={overheadPct}
+                      onChange={(e) => onOverheadPctChange(e.target.value)}
+                    />
+                    <span className="text-sm text-muted-foreground shrink-0">%</span>
+                  </div>
+                  {arvNum > 0 && overheadPctNum > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      = <span className="font-mono font-medium text-foreground">{formatCurrency(overheadAmount)}</span> of contract
+                    </p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Quick Estimates - Fix & Flip only */}
           {showEstimatedCosts && (purchasePriceNum > 0 || arvNum > 0) && (
