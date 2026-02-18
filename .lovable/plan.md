@@ -1,116 +1,71 @@
 
-## Swap "Gross Profit" and Budget Progress on Contractor Project Cards
+## Fix: Contractor Gross Profit on Project Card Shows Wrong Value
 
-### What the User Wants
+### Root Cause
 
-For **Contractor** project cards only, swap two elements:
+There are two different `totalBudget` computations in the app:
 
-1. **Budget progress bar** — move it down to where the "Gross Profit" highlighted box currently sits (the `mb-4 p-3 rounded-lg bg-muted/50` block)
-2. **Gross Profit** — move it down to the footer stats row, replacing the generic "Profit" label that currently shows `—` for contractor projects (since `hasProfit` is false when `arv = 0`)
-
-The screenshot confirms: currently the card shows `Gross Profit` as a prominent highlighted box in the middle, and `Profit —` in the footer. The user wants `Budget` (progress) in the middle box and `Gross Profit` in the footer stat.
-
----
-
-### Current Layout (Contractor card)
-
-```
-[Budget progress bar]         ← showBudgetProgress = false for contractor, so hidden
-[Gross Profit box]            ← highlighted muted box, middle of card
-─────────────────────────────
-  Profit —   |   Start Date   ← footer, profit shows — because arv=0
-```
-
-### Target Layout (Contractor card)
-
-```
-[Budget progress bar]         ← show a contractor-specific budget bar here
-─────────────────────────────
-  Gross Profit $15,000  |  Start Date   ← footer shows gross profit instead
-```
-
----
-
-### Technical Changes — `src/components/dashboard/ProjectCard.tsx`
-
-#### 1. Show budget progress bar for contractor projects
-
-Currently `showBudgetProgress` is:
+**ProjectDetail.tsx (correct — used by Job P&L tab):**
 ```tsx
-const showBudgetProgress = !isRental && !isContractor && project.totalBudget > 0;
+const categoryTotal = categories.reduce((sum, cat) => sum + cat.estimated_budget, 0);
+const totalBudget = (project?.total_budget ?? 0) > 0 ? project!.total_budget : categoryTotal;
+```
+It prefers the `total_budget` DB column (set to $10,000) → Job P&L correctly shows Gross Profit = $15,000 - $10,000 = **$5,000**.
+
+**Projects.tsx (broken — used to build the Project object for cards):**
+```tsx
+const calculatedTotalBudget = projectCategories.reduce(
+  (sum, cat) => sum + cat.estimatedBudget, 0
+);
+// total_budget DB column is NEVER read
+totalBudget: calculatedTotalBudget,
+```
+If no individual category budgets exist (just a top-level `total_budget`), `calculatedTotalBudget = 0`. This makes `contractorCostBasis = 0`, so the card shows Gross Profit = $15,000 - $0 = **$15,000** (wrong).
+
+### The Fix — Two Files
+
+**1. `src/pages/Projects.tsx`** — Use `total_budget` DB column with category-sum fallback (same pattern as ProjectDetail):
+
+```tsx
+const calculatedTotalBudget = projectCategories.reduce(
+  (sum, cat) => sum + cat.estimatedBudget, 0
+);
+// Use project-level total_budget when set, else fall back to category sum
+const effectiveTotalBudget = (p.total_budget ?? 0) > 0 ? p.total_budget : calculatedTotalBudget;
+
+return {
+  ...
+  totalBudget: effectiveTotalBudget,  // was: calculatedTotalBudget
+  ...
+};
 ```
 
-The budget bar is hidden for contractors. We need to show it for contractors separately — or change the condition to `!isRental && project.totalBudget > 0` and let it show for contractors too.
+**2. `src/components/dashboard/ProjectCard.tsx`** — The status-aware gross profit logic (user's rule):
 
-The cleanest approach: add a separate `showContractorBudget` flag and render the budget bar inside the contractor's `isContractor` block, **above** the footer.
-
-Actually the simplest approach: change the `showBudgetProgress` condition to **include** contractors:
-```tsx
-const showBudgetProgress = !isRental && project.totalBudget > 0;
-// (remove !isContractor)
+The card already applies the correct rule:
 ```
+costBasis = totalBudget > 0 ? max(totalBudget, totalSpent) : totalSpent
+```
+- Active, expenses < budget → uses budget ✓
+- Active, expenses > budget → uses expenses ✓
+- Complete → should ALWAYS use expenses (actuals only)
 
-This makes the budget progress bar appear for contractor projects automatically in its existing position.
-
-#### 2. Remove the "Gross Profit" highlighted box for contractor
-
-Remove the `isContractor` IIFE block (lines 185–202) that renders the highlighted `Gross Profit` box — this block becomes unnecessary since Gross Profit moves to the footer.
-
-#### 3. Replace "Profit" with "Gross Profit" in the footer for contractor projects
-
-In the footer grid (lines 204–219), the left column currently shows `Profit` with a value of `—` for contractors (because `hasProfit` depends on `arv > 0`).
-
-Change the footer left column so that when `isContractor`:
-- Label = `"Gross Profit"`
-- Value = the calculated `grossProfit` (Contract Value − Cost Basis)
-
-The gross profit variables (`contractValue`, `costBasis`, `grossProfit`) currently live inside the IIFE block — move them up to the top of the component body so they're accessible in both the budget bar area and the footer.
-
----
-
-### Exact Code Changes
-
-**Step A** — Hoist contractor profit variables to top of component (near other derived values):
+The complete-project rule is missing. Add it:
 ```tsx
-const contractValue = isContractor ? (project.purchasePrice || 0) : 0;
 const contractorCostBasis = isContractor
-  ? (project.totalBudget > 0 ? Math.max(project.totalBudget, totalSpent) : totalSpent)
+  ? (project.status === 'complete'
+      ? totalSpent                                                      // completed: always actuals
+      : (project.totalBudget > 0
+          ? Math.max(project.totalBudget, totalSpent)                   // active: max(budget, actuals)
+          : totalSpent))                                                 // no budget set: actuals
   : 0;
-const contractorGrossProfit = contractValue - contractorCostBasis;
-const contractorHasData = isContractor && contractValue > 0;
 ```
-
-**Step B** — Update `showBudgetProgress` to include contractors:
-```tsx
-const showBudgetProgress = !isRental && project.totalBudget > 0;
-```
-
-**Step C** — Remove the `isContractor` IIFE block (lines 185–202) entirely.
-
-**Step D** — Update the footer left column to show Gross Profit for contractors:
-```tsx
-<div>
-  <p className="text-xs text-muted-foreground">
-    {isContractor ? 'Gross Profit' : isRental ? 'Equity Gain' : 'Profit'}
-  </p>
-  <p className={cn('font-mono font-semibold',
-    isContractor
-      ? (contractorHasData ? (contractorGrossProfit < 0 ? 'text-destructive' : 'text-success') : '')
-      : (!hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success')
-  )}>
-    {isContractor
-      ? (contractorHasData ? formatCurrency(contractorGrossProfit) : '—')
-      : (hasProfit ? formatCurrency(profit) : '—')}
-  </p>
-</div>
-```
-
----
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/components/dashboard/ProjectCard.tsx` | Hoist contractor profit vars, update `showBudgetProgress`, remove Gross Profit highlighted box, update footer to show Gross Profit for contractor cards |
+| `src/pages/Projects.tsx` | Read `p.total_budget` from DB and prefer it over category sum (matching ProjectDetail logic) |
+| `src/components/dashboard/ProjectCard.tsx` | Add `status === 'complete'` branch to contractor cost basis so completed jobs always use actual spend |
 
-No database changes, no new files.
+No database changes. The `total_budget` column already exists and is already populated correctly.
