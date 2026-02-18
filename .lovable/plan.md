@@ -1,171 +1,81 @@
 
-## Sidebar Notifications — Owner Activity Feed
+## Make Settings Match Bell & Sign Out Style
 
-### Vision
-An "away owner" gets a compact bell icon in the sidebar footer (between Settings and Sign Out). When clicked, it opens a slide-in panel — a chronological activity feed of everything their GCs (project managers) have done. Each card shows who did it, when, and links directly to the relevant page. Unread notifications leave a badge count on the bell that persists across sessions.
+### What's Happening Now
 
----
+The sidebar footer currently has two distinct behaviors for Settings:
 
-### Trigger Events (all 7)
-| Event | Source table | Notification copy |
-|---|---|---|
-| Order request submitted | `procurement_order_requests` | "**{name}** submitted an order request ({N} items)" |
-| Expense logged | `expenses` | "**{name}** logged a ${amount} expense on {project}" |
-| Daily log added | `daily_logs` | "**{name}** added a daily log for {project} on {date}" |
-| Task completed | `tasks` | "**{name}** completed a task: "{title}"" |
-| Project note added | `project_notes` | "**{name}** left a note on {project}" |
-| New project created | `projects` | "**{name}** created a new project: {name}" |
-| Project status changed | `projects` | "**{name}** changed {project} status to {status}" |
-| Direct message to owner | new `owner_messages` table | "**{name}** sent you a message: "{preview}"" |
+- **Expanded**: Settings gear icon appears as a small icon button floated to the right of the username (`Kohan Schnurr  ⚙`), inside a flex row
+- **Collapsed**: Settings shows as a centered icon-only `NavLink`
 
----
+The Bell and Sign Out are full-width rows (`flex items-center gap-3 px-3 py-2.5`) with icon on the left and label that fades in/out — consistent with the nav items above.
 
-### Architecture Decisions
+### The Fix
 
-**Option A — DB trigger-based**: A Postgres trigger on each source table INSERTs into a `notifications` table automatically. Pro: guaranteed capture regardless of which client wrote the data. Con: harder to include display context (project name, PM name) since triggers only see raw column values.
+Refactor the footer so **all three items** (Settings, Notifications bell, Sign Out) follow the same pattern:
 
-**Option B — App-side write**: When a PM action succeeds (e.g. after `submitOrder.mutateAsync`), the frontend also calls `supabase.from('notifications').insert(...)`. Pro: full context available (names, formatted strings). Con: if the user closes the tab during the mutation, the notification might not fire.
+1. Remove the split "username row with gear icon" layout entirely
+2. Move the username display to its own separate row above the three action rows — just text, full-width, fades in when expanded
+3. Make Settings a full-width `NavLink` row styled identically to the Bell button and Sign Out button:
+   - `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium w-full`
+   - `Settings` icon on the left (`h-5 w-5 flex-shrink-0`)
+   - "Settings" label text that fades with `transition-opacity` (same as nav items and Sign Out)
+   - Active state: `bg-primary/10 text-primary` when on `/settings`
+   - No separate collapsed-only icon — the same row works in both states (label just becomes invisible)
 
-**Decision: DB trigger-based** — more reliable, owner notifications should not depend on the PM staying on the page. Context (project name, member name) is embedded in the `payload` JSONB column at trigger time via a subquery.
+### Final Footer Layout (Expanded State)
 
----
-
-### Database Changes (1 migration)
-
-**New table: `notifications`**
-```sql
-CREATE TABLE public.notifications (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_id    uuid NOT NULL,          -- the owner who should see this
-  actor_id    uuid NOT NULL,          -- the PM who triggered it
-  event_type  text NOT NULL,          -- 'order_request' | 'expense' | 'daily_log' | 'task_completed' | 'project_note' | 'project_created' | 'project_status' | 'direct_message'
-  entity_id   uuid,                   -- FK to the source row (for navigation)
-  payload     jsonb NOT NULL DEFAULT '{}',  -- { actorName, projectName, amount, title, etc. }
-  is_read     boolean NOT NULL DEFAULT false,
-  created_at  timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-
--- Owner can read and update their own notifications
-CREATE POLICY "Owner can view notifications"
-  ON public.notifications FOR SELECT
-  USING (auth.uid() = owner_id);
-
-CREATE POLICY "Owner can mark notifications read"
-  ON public.notifications FOR UPDATE
-  USING (auth.uid() = owner_id);
-
--- Service role (triggers) can insert
-CREATE POLICY "Service can insert notifications"
-  ON public.notifications FOR INSERT
-  WITH CHECK (true);
+```text
+┌──────────────────────────────┐
+│  Kohan Schnurr               │  ← username, fades when expanded only
+│  ⚙  Settings                 │  ← same style as bell/sign out
+│  🔔 Notifications       (3)  │  ← existing (no change)
+│  ↪  Sign Out                 │  ← existing (no change)
+└──────────────────────────────┘
 ```
 
-**New table: `owner_messages`** (for direct PM → owner messages)
-```sql
-CREATE TABLE public.owner_messages (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  team_id     uuid NOT NULL,
-  sender_id   uuid NOT NULL,
-  message     text NOT NULL,
-  created_at  timestamptz NOT NULL DEFAULT now()
-);
+### Files to Modify
 
-ALTER TABLE public.owner_messages ENABLE ROW LEVEL SECURITY;
+| File | Change |
+|------|--------|
+| `src/components/layout/Sidebar.tsx` | Replace the dual Settings logic (collapsed icon + expanded inline gear) with a single unified full-width row, and move username to its own standalone row above it |
 
--- PMs can insert; owner can view all in their team
-CREATE POLICY "PMs can send messages" ON public.owner_messages
-  FOR INSERT WITH CHECK (auth.uid() = sender_id);
-CREATE POLICY "Owner can view team messages" ON public.owner_messages
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM teams WHERE id = team_id AND owner_id = auth.uid())
-  );
-CREATE POLICY "Sender can view their own messages" ON public.owner_messages
-  FOR SELECT USING (auth.uid() = sender_id);
-```
+### Specific Code Changes in `Sidebar.tsx`
 
-**Postgres triggers** (SECURITY DEFINER functions):
-- `fn_notify_order_request()` — fires AFTER INSERT on `procurement_order_requests`
-- `fn_notify_expense()` — fires AFTER INSERT on `expenses`
-- `fn_notify_daily_log()` — fires AFTER INSERT on `daily_logs`
-- `fn_notify_task_completed()` — fires AFTER UPDATE on `tasks` WHERE NEW.status = 'completed' AND OLD.status != 'completed'
-- `fn_notify_project_note()` — fires AFTER INSERT on `project_notes`
-- `fn_notify_project_created()` — fires AFTER INSERT on `projects`
-- `fn_notify_project_status()` — fires AFTER UPDATE on `projects` WHERE NEW.status != OLD.status
-- `fn_notify_direct_message()` — fires AFTER INSERT on `owner_messages`
+**Remove** (lines ~109–141):
+- The `isExpanded` conditional `div` that contains the username + inline Settings gear
+- The `!isExpanded` conditional `NavLink` for the collapsed Settings icon
 
-Each trigger function:
-1. Looks up the owner via `teams` table (e.g. `get_team_owner_id(NEW.user_id)`)
-2. Looks up the actor's profile name
-3. Inserts into `notifications` with a pre-built `payload` JSONB
+**Add**:
+1. Username-only row — shown when expanded, hidden when not (just like the current behavior, but no gear attached):
+   ```tsx
+   {user && (
+     <div className={cn(
+       "px-3 py-1 transition-opacity duration-300",
+       isExpanded ? "opacity-100" : "opacity-0 h-0 overflow-hidden py-0"
+     )}>
+       <span className="text-xs text-muted-foreground truncate block">{displayName || user.email}</span>
+     </div>
+   )}
+   ```
+2. Settings row matching Bell/Sign Out style:
+   ```tsx
+   <NavLink
+     to="/settings"
+     className={cn(
+       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium w-full transition-colors',
+       location.pathname === '/settings'
+         ? 'bg-primary/10 text-primary'
+         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+     )}
+     title={!isExpanded ? "Settings" : undefined}
+   >
+     <Settings className="h-5 w-5 flex-shrink-0" />
+     <span className={cn(
+       "whitespace-nowrap transition-opacity duration-300",
+       isExpanded ? "opacity-100" : "opacity-0"
+     )}>Settings</span>
+   </NavLink>
+   ```
 
----
-
-### New Files
-
-**`src/hooks/useNotifications.ts`**
-- Queries `notifications` WHERE `owner_id = user.id` ORDER BY `created_at DESC` LIMIT 50
-- Exposes `notifications`, `unreadCount`, `markRead(id)`, `markAllRead()`
-- Uses `staleTime: 0` so it's always fresh (the badge must be accurate)
-- Only enabled when `isOwner === true` (saves pointless queries for PMs)
-
-**`src/components/layout/NotificationsPanel.tsx`**
-- `Sheet` (slide-in from left, matching sidebar) — opens when bell is clicked
-- Header: "Notifications" + "Mark all read" button
-- Body: scrollable feed of `NotificationCard` components
-- Each card:
-  - Left: colored icon by event type (🛒 order, 💰 expense, 📋 log, ✅ task, 📝 note, 📁 project, 💬 message)
-  - Bold actor name + short description
-  - Relative timestamp ("2h ago")
-  - Faint unread dot (blue) on left edge if `is_read = false`
-  - Click the card → navigate to relevant route + mark as read
-
-**Navigation routes per event type:**
-| Type | Route |
-|---|---|
-| `order_request` | `/procurement` (opens order panel) |
-| `expense` | `/projects/{projectId}` → Expenses tab |
-| `daily_log` | `/logs` |
-| `task_completed` | `/projects/{projectId}` → Tasks tab |
-| `project_note` | `/projects/{projectId}` → Notes tab |
-| `project_created` | `/projects/{projectId}` |
-| `project_status` | `/projects/{projectId}` |
-| `direct_message` | stays in panel (shows full message inline) |
-
----
-
-### Sidebar Changes (`src/components/layout/Sidebar.tsx`)
-
-Add a bell button to the **footer**, between Settings and Sign Out:
-- Only rendered when `isOwner === true`
-- Collapsed state: centered bell icon with a red badge dot (e.g. `●` or small number) overlapping it
-- Expanded state: `Bell` icon + "Notifications" label + badge pill on right showing unread count
-- Clicking opens `NotificationsPanel` as a `Sheet`
-
-```
-[ Settings icon ]                  ← existing
-[ 🔔 Notifications  (3) ]          ← new, only for owners
-[ Sign Out ]                       ← existing
-```
-
----
-
-### Files to Create/Modify
-
-| Action | File |
-|---|---|
-| Create | `src/hooks/useNotifications.ts` |
-| Create | `src/components/layout/NotificationsPanel.tsx` |
-| Modify | `src/components/layout/Sidebar.tsx` — add bell button + panel |
-| DB Migration | `notifications` table + `owner_messages` table + 8 trigger functions |
-
----
-
-### Implementation Notes
-
-- **No PM UI changes needed** for most triggers — they're all automatic via DB triggers. The only new PM-facing UI is a small "Message Owner" button that could be added to any project page header (or the Procurement page) to send a direct message.
-- **Trigger safety**: each trigger function checks that the actor is NOT the owner themselves (owner actions don't self-notify).
-- **No duplicate notifications**: triggers use `ON CONFLICT DO NOTHING` where applicable.
-- **Performance**: `notifications` table gets an index on `(owner_id, is_read, created_at DESC)`.
-- **staleTime**: `useNotifications` uses 0 staleTime and will refetch on window focus so the badge is never stale.
+This is a surgical, low-risk change to one file — purely cosmetic/layout, no logic changes.
