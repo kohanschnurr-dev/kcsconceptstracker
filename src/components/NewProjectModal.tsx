@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Building2, MapPin, DollarSign, Calendar as CalendarIcon, Hammer, Handshake, HardHat, CopyCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Building2, MapPin, DollarSign, Calendar as CalendarIcon, Hammer, Handshake, HardHat, CopyCheck, Calculator } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   Dialog,
@@ -13,11 +14,19 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { getBudgetCategories, type ProjectType } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateString } from '@/lib/dateUtils';
+
+interface BudgetTemplate {
+  id: string;
+  name: string;
+  total_budget: number | null;
+  category_budgets: any;
+}
 
 interface NewProjectModalProps {
   open: boolean;
@@ -27,17 +36,50 @@ interface NewProjectModalProps {
 }
 
 export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultProjectType = 'fix_flip' }: NewProjectModalProps) {
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [totalBudget, setTotalBudget] = useState('');
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [projectType, setProjectType] = useState<ProjectType>(defaultProjectType);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savedBudgets, setSavedBudgets] = useState<BudgetTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<BudgetTemplate | null>(null);
 
   // Update project type when defaultProjectType changes
   useEffect(() => {
     setProjectType(defaultProjectType);
   }, [defaultProjectType]);
+
+  // Fetch saved budgets when modal opens
+  useEffect(() => {
+    if (!open) return;
+    const fetchBudgets = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('budget_templates')
+        .select('id, name, total_budget, category_budgets')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+      setSavedBudgets(data || []);
+    };
+    fetchBudgets();
+  }, [open]);
+
+  const handleTemplateSelect = (templateId: string) => {
+    if (templateId === 'none') {
+      setSelectedTemplate(null);
+      return;
+    }
+    const template = savedBudgets.find(b => b.id === templateId);
+    if (template) {
+      setSelectedTemplate(template);
+      if (template.total_budget) {
+        setTotalBudget(String(template.total_budget));
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +123,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
 
       if (projectError) throw projectError;
 
-      // Create default budget categories
+      // Create default budget categories (all at $0)
       const allCats = getBudgetCategories();
       const categories = allCats.map(cat => ({
         project_id: project.id,
@@ -95,6 +137,19 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
 
       if (categoriesError) throw categoriesError;
 
+      // If a saved budget template was selected, stage it as pending_budget
+      if (selectedTemplate) {
+        const { error: pendingError } = await supabase
+          .from('projects')
+          .update({
+            pending_budget: selectedTemplate.category_budgets,
+            total_budget: parseFloat(totalBudget),
+          })
+          .eq('id', project.id);
+
+        if (pendingError) throw pendingError;
+      }
+
       toast({
         title: 'Project created!',
         description: `${name} has been added to your projects.`,
@@ -106,6 +161,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
       setTotalBudget('');
       setStartDate(new Date());
       setProjectType(defaultProjectType);
+      setSelectedTemplate(null);
       onOpenChange(false);
       onProjectCreated?.();
     } catch (error: any) {
@@ -248,8 +304,36 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
             </div>
           </div>
 
-          <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Budget will be automatically distributed across {getBudgetCategories().length} categories. You can adjust individual amounts later.
+          {/* Saved Budget Picker */}
+          <div className="space-y-2">
+            <Label>Apply Saved Budget (optional)</Label>
+            <Select
+              value={selectedTemplate?.id || 'none'}
+              onValueChange={handleTemplateSelect}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="None — categories start at $0" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None — categories start at $0</SelectItem>
+                {savedBudgets.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name} {b.total_budget ? `($${b.total_budget.toLocaleString()})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button
+              type="button"
+              onClick={() => {
+                onOpenChange(false);
+                navigate('/budget-calculator');
+              }}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Calculator className="h-3 w-3" />
+              or build one in Budget Calculator
+            </button>
           </div>
 
           <div className="flex gap-2 pt-2">
