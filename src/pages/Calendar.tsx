@@ -262,6 +262,7 @@ export default function Calendar() {
               tasks={filteredTasks}
               onTaskClick={handleTaskClick}
               onTaskMove={handleTaskMove}
+              onDateChange={setCurrentDate}
             />
           )}
           {view === 'weekly' && (
