@@ -1,91 +1,95 @@
 
-## Make the Message Panel Bigger + Add Example Conversations to Team Tab
+## Add Click-to-Edit Dialog on Pipeline Task Rows
 
-### What Needs to Change
+### What the User Wants
 
-Two focused changes to `src/components/layout/FloatingMessageBubble.tsx`:
+Right now in the **Pipeline Tasks** card on a project page, task rows are only interactive via the checkbox (to mark complete). The user wants clicking anywhere on a task row to open a detail/edit dialog — mirroring the pattern used by Daily Log rows in the same project page, where clicking a row opens an edit dialog with full fields.
 
-1. **Bigger panel** — width `w-80` → `w-96` (320px → 384px), and fixed height/max-height `480px` → `580px`
-2. **Example conversations** — replace the plain empty state in the Team tab's owner list view with realistic, clearly-labeled mock conversations
+### Pattern Being Matched
 
----
+In `ProjectDetail.tsx`, daily log rows work like this:
+- Each row has edit (pencil) and delete (trash) icon buttons on the right
+- Clicking the pencil sets `editLog` state, which opens a `<Dialog>` with editable fields
+- There is also a separate `<AlertDialog>` for delete confirmation
 
-### Change 1 — Panel Size (lines 231 & 238)
-
-**Line 231** — width class:
-```
-'w-80 sm:w-80'  →  'w-96 sm:w-96'
-```
-
-**Line 238** — height style:
-```
-style={{ height: view === 'thread' ? '480px' : 'auto', maxHeight: '480px' }}
-→
-style={{ height: '580px', maxHeight: '580px' }}
-```
-Making the height always `580px` (not just in thread view) gives a consistent, spacious feel across both list and thread states.
+The **Pipeline Tasks** card will use the exact same UX pattern.
 
 ---
 
-### Change 2 — Example Conversations (lines 296–301)
+### Changes to `src/components/project/ProjectTasks.tsx`
 
-Replace the current empty state block:
+#### 1. Add new state variables
 ```tsx
-<div className="flex flex-col items-center justify-center py-12 ...">
-  <MessageCircle className="h-8 w-8 opacity-30" />
-  <p>No messages yet.</p>
-  <p className="text-xs">Team members can message you from their projects.</p>
-</div>
+const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
+const [editTitle, setEditTitle] = useState('');
+const [editPriority, setEditPriority] = useState<TaskPriority>('medium');
+const [editDueDate, setEditDueDate] = useState('');
+const [editStatus, setEditStatus] = useState<TaskStatus>('pending');
+const [isSaving, setIsSaving] = useState(false);
+const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
 ```
 
-With a styled example list showing 2 mock PM conversations + an explanatory banner:
+#### 2. Add handlers
+- `openEditDialog(task)` — sets all edit state and opens the dialog
+- `handleSaveEdit()` — calls `supabase.from('tasks').update(...)`, refreshes list, closes dialog
+- `handleDeleteTask()` — deletes via Supabase, removes from local state, closes confirm dialog
+
+#### 3. Make each task row clickable (whole row)
+Wrap the row `<div>` with `onClick={() => openEditDialog(task)}` and add `cursor-pointer` to the className. The checkbox will use `e.stopPropagation()` to prevent the row click firing when checking off.
+
+#### 4. Add "Edit Task" Dialog (after `<AddTaskModal>`)
+Fields:
+- **Title** — `<Input>`
+- **Priority** — `<Select>` (Low / Medium / High / Urgent)
+- **Due Date** — date `<Input type="date">` (simple, matching the daily log dialog style)
+- **Status** — `<Select>` (Pending / In Progress / Completed)
+- Footer: **Delete** button (opens confirm) | **Cancel** | **Save Changes**
+
+#### 5. Add Delete `<AlertDialog>`
+Same pattern as `ProjectDetail.tsx` daily log delete confirmation.
+
+---
+
+### New Imports Needed
 
 ```tsx
-<div className="flex flex-col">
-  {/* Banner */}
-  <div className="px-4 py-2 bg-muted/30 border-b border-border/50">
-    <span className="text-xs text-muted-foreground italic">
-      Example — invite team members to start chatting
-    </span>
-  </div>
-
-  {/* Mock PM 1 — Jose Rodriguez */}
-  <div className="w-full flex items-center gap-3 px-4 py-3 border-b border-border/50 opacity-55 cursor-default select-none">
-    <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold flex-shrink-0">JR</div>
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-foreground">Jose Rodriguez</span>
-        <span className="text-xs text-muted-foreground">2h ago</span>
-      </div>
-      <p className="text-xs text-muted-foreground truncate mt-0.5">Drywall delivery confirmed for Thursday 👍</p>
-    </div>
-  </div>
-
-  {/* Mock PM 2 — Mike Kowalski */}
-  <div className="w-full flex items-center gap-3 px-4 py-3 border-b border-border/50 opacity-55 cursor-default select-none">
-    <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold flex-shrink-0">MK</div>
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-foreground">Mike Kowalski</span>
-        <span className="text-xs text-muted-foreground">Yesterday</span>
-      </div>
-      <p className="text-xs text-muted-foreground truncate mt-0.5">Permit approved — framing starts Monday</p>
-    </div>
-  </div>
-
-  {/* Footer CTA */}
-  <div className="px-4 py-5 text-center">
-    <p className="text-xs text-muted-foreground">Real conversations appear here once team members message you.</p>
-  </div>
-</div>
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Trash2 } from 'lucide-react';
+import { TASK_STATUS_LABELS } from '@/types/task';
 ```
 
-The mock entries use `opacity-55`, `cursor-default`, and `select-none` so they're clearly non-interactive and distinguishable from real data.
+---
 
-Also remove the guard on line 213 that hides the FAB when `summaries.length === 0 && !ownerTeamId` — since the owner now always sees the example state, the bubble should always show for logged-in users:
-```tsx
-// Remove this line:
-if (!isPM && summaries.length === 0 && !ownerTeamId) return null;
+### Visual Result
+
+**Before** — task row, checkbox only interactive:
+```
+[ ] Tell Jose, Garage, Patio, Finishes...   Due Mar 3   [High] ⏱
+```
+
+**After** — entire row is clickable, clicking opens dialog:
+```
+[ ] Tell Jose, Garage, Patio, Finishes...   Due Mar 3   [High] ⏱
+     ↑ clicking anywhere on row (except checkbox) opens:
+
+┌─────────────────────────────────────┐
+│ Edit Task                      [X]  │
+│ ─────────────────────────────────── │
+│ Title                               │
+│ [Tell Jose, Garage, Patio...]       │
+│                                     │
+│ Priority           Status           │
+│ [High ▾]          [Pending ▾]      │
+│                                     │
+│ Due Date                            │
+│ [2025-03-03]                        │
+│ ─────────────────────────────────── │
+│ [🗑 Delete]     [Cancel] [Save]    │
+└─────────────────────────────────────┘
 ```
 
 ---
@@ -94,6 +98,6 @@ if (!isPM && summaries.length === 0 && !ownerTeamId) return null;
 
 | File | Change |
 |---|---|
-| `src/components/layout/FloatingMessageBubble.tsx` | Increase width to `w-96`, height to `580px`. Replace empty-state with 2 example PM conversation rows + explanatory banner. Remove the FAB-hiding guard for owners. |
+| `src/components/project/ProjectTasks.tsx` | Add click-to-edit behavior on rows, Edit Task dialog, Delete confirmation AlertDialog |
 
-No database changes, no new files — purely UI/layout.
+No new files, no database schema changes — tasks table already supports all required fields.
