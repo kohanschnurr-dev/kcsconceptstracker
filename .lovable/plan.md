@@ -1,145 +1,141 @@
 
-## PM Message Threads — Full Conversation Feature
+## Notification Preferences Settings Card
 
 ### What's Being Built
 
-Right now, the notification panel shows a one-liner preview of a PM's message. Clicking it does nothing (`direct_message` returns `null` for route). The owner has no way to reply.
+A new "Notification Preferences" card on the Settings page that lets the owner control which event types show up in their in-app notification bell. Since mobile push isn't wired to a native push service yet, the toggle will cover "In-App Notifications" per event type (the UI can be designed to extend to push later without any rework — just add a second column of toggles).
 
-The goal: clicking a `direct_message` notification (or a dedicated "Messages" section) opens a full **chat thread panel** — a slide-in view showing the full conversation history between the owner and each PM, with a reply input at the bottom.
-
----
-
-### Current Data Model Gap
-
-The `owner_messages` table only has:
-- `id`, `team_id`, `sender_id`, `message`, `created_at`
-
-It's one-directional — only PMs can send, owners can only read. To support replies, we need to add a `recipient_id` column (nullable — NULL means "to owner", a UUID means "owner replying to that PM"). This lets us store both directions in the same table and group messages by PM (thread).
-
-We also need the owner's RLS policies to allow them to **INSERT** reply messages.
+The user's concern: getting flooded with `expense` and `daily_log` notifications. Solution: per-event-type toggles so they can silence the noisy ones while keeping the important ones (order requests, messages, project status changes).
 
 ---
 
-### Database Changes
+### Architecture
 
-**Migration: Add `recipient_id` to `owner_messages` + owner INSERT policy**
+**Storage**: Preferences stored in `localStorage` under key `notification-preferences` and synced to the cloud via the existing `useSettingsSync` mechanism (same pattern as `dashboard-profit-filters`). The key gets added to the `SETTINGS_KEYS` array so it auto-syncs across devices.
 
-```sql
--- 1. Add recipient_id column (NULL = message to owner, UUID = owner reply to that PM)
-ALTER TABLE owner_messages ADD COLUMN IF NOT EXISTS recipient_id uuid;
+**Filtering**: The `useNotifications` hook gets a small update to read from `localStorage` and filter out suppressed event types before returning the `notifications` array to consumers. This means suppressed types won't appear in the panel and won't count toward the unread badge — exactly what the user wants.
 
--- 2. Allow owners to insert reply messages (sender = owner, recipient = PM's user_id)
-CREATE POLICY "Owner can reply to messages"
-ON owner_messages
-FOR INSERT
-TO authenticated
-WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM teams
-    WHERE teams.id = owner_messages.team_id
-      AND teams.owner_id = auth.uid()
-  )
-);
+**No DB changes needed** — preferences are user-controlled UI config, not server state.
 
--- 3. Allow PMs to see the owner's replies sent to them
-CREATE POLICY "PMs can view owner replies to them"
-ON owner_messages
-FOR SELECT
-TO authenticated
-USING (recipient_id = auth.uid());
+---
+
+### Event Types and Default Config
+
+All 8 event types from `Notification['event_type']`, all ON by default:
+
+| Event Type | Label | Default |
+|---|---|---|
+| `order_request` | Order Requests | ✅ On |
+| `expense` | Expenses | ✅ On |
+| `daily_log` | Daily Logs | ✅ On |
+| `task_completed` | Task Completions | ✅ On |
+| `project_note` | Project Notes | ✅ On |
+| `project_created` | New Projects | ✅ On |
+| `project_status` | Status Changes | ✅ On |
+| `direct_message` | Direct Messages | ✅ On |
+
+Users can toggle off `expense` and `daily_log` to stop the noise.
+
+---
+
+### New File: `src/components/settings/NotificationPreferencesCard.tsx`
+
+A Card component matching the style of `DashboardPreferencesCard`. Structure:
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ 🔔 Notification Preferences                              │
+│ Choose which activity types appear in your notification  │
+│ bell. Turned off types are silenced and won't count      │
+│ toward your unread badge.                                │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│  In-App Notifications                                    │
+│                                                          │
+│  [🛒] Order Requests         ————●  (ON)                │
+│  [💸] Expenses               ●————  (OFF)               │
+│  [📋] Daily Logs             ●————  (OFF)               │
+│  [✅] Task Completions       ————●  (ON)                │
+│  [📝] Project Notes          ————●  (ON)                │
+│  [📁] New Projects           ————●  (ON)                │
+│  [🔄] Status Changes         ————●  (ON)                │
+│  [💬] Direct Messages        ————●  (ON)                │
+│                                                          │
+│  [Turn all on]   [Turn all off]                          │
+└──────────────────────────────────────────────────────────┘
 ```
 
----
+Uses `Switch` component (already exists at `src/components/ui/switch.tsx`) — consistent with other preference cards. Each row shows the coloured icon from `EVENT_META` alongside the label and the toggle.
 
-### New File: `src/components/layout/MessageThreadPanel.tsx`
-
-A full chat-style sheet that slides in **on top of** (or replacing) the NotificationsPanel when a PM message is clicked. Features:
-
-- **Header**: Back arrow + PM name (from `payload.actorName` or team member profile) + "Close"
-- **Message list** (`ScrollArea`): Bubbles on left (PM) and right (owner), with timestamp under each
-- **Input bar**: `Textarea` (Cmd+Enter to send) + Send button
-- **Auto-scroll** to bottom on new messages
-- **Loading state** while fetching thread
-
-Message bubble styling:
-```
-PM (left):     [Jose Martinez]
-               ┌──────────────────────────────┐
-               │ Hey Kohan, just wrapped up…  │
-               └──────────────────────────────┘
-               2 minutes ago
-
-Owner (right):                     [You]
-                      ┌────────────────────┐
-                      │ Thanks Jose, loop  │
-                      │ me in please.      │
-                      └────────────────────┘
-                                  just now
-```
+State is read from/written to `localStorage` on every toggle change + calls `triggerSettingsSync()` to debounce-sync to cloud.
 
 ---
 
-### New Hook: `src/hooks/useMessageThread.ts`
+### Changes to `src/hooks/useSettingsSync.ts`
 
-Fetches all messages for a given team + PM sender (`actor_id` from notification payload), ordered by `created_at` ascending. Also exposes a `sendReply(text)` mutation that inserts a row with `sender_id = owner.id`, `recipient_id = pm.user_id`.
+Add `'notification-preferences'` to the `SETTINGS_KEYS` array so it auto-syncs across devices on login:
 
 ```ts
-// SELECT * FROM owner_messages
-// WHERE team_id = ? AND (sender_id = pm_id OR recipient_id = pm_id)
-// ORDER BY created_at ASC
+const SETTINGS_KEYS = [
+  // ... existing keys ...
+  'notification-preferences',
+];
 ```
 
 ---
 
-### Changes to `NotificationsPanel.tsx`
+### Changes to `src/hooks/useNotifications.ts`
 
-1. Add state: `const [threadActorId, setThreadActorId] = useState<string | null>(null)` and `threadActorName`
-2. When a `direct_message` notification is clicked → set `threadActorId` and `threadActorName` from the payload instead of navigating
-3. Render `<MessageThreadPanel>` conditionally inside the Sheet (panel-within-panel slide animation — the thread view replaces the notification list with a back button)
+Add a utility export `useNotificationPreferences()` that reads from localStorage. Then in `useNotifications`, filter the returned `notifications` array against the prefs before returning:
 
-The panel uses a simple view-stack: `view: 'notifications' | 'thread'`. When `view === 'thread'`, the notification list is hidden and the thread is shown with a ← back arrow to return.
+```ts
+export function loadNotificationPrefs(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem('notification-preferences');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  // Default: all ON
+  return {};
+}
+
+// Inside useNotifications:
+const prefs = loadNotificationPrefs();
+const filtered = notifications.filter(n => prefs[n.event_type] !== false);
+// use `filtered` for return value
+```
+
+This means `unreadCount` also reflects only the types the user cares about.
 
 ---
 
-### Changes to `MessageOwnerButton.tsx` (PM side)
+### Changes to `src/pages/Settings.tsx`
 
-Currently shows a one-shot Dialog. Upgrade to a proper **thread dialog** so PMs can see the owner's replies:
-- Fetch all messages where `sender_id = user.id OR recipient_id = user.id` for their `team_id`
-- Show them as a chat thread with the same bubble UI
-- Reply input stays at the bottom
+Import and render `<NotificationPreferencesCard />` after the `<ManageSourcesCard />` block (before `<ManageRolesCard />`), so it appears in the Manage section logically:
+
+```tsx
+import NotificationPreferencesCard from '@/components/settings/NotificationPreferencesCard';
+
+// In JSX, after ManageSourcesCard:
+<NotificationPreferencesCard />
+```
 
 ---
 
 ### Files to Create / Modify
 
 | File | Change |
-|------|--------|
-| **DB migration** | Add `recipient_id` column to `owner_messages`, add owner INSERT + PM SELECT policies |
-| `src/hooks/useMessageThread.ts` | New hook — fetch thread by PM actor_id, send reply mutation |
-| `src/components/layout/MessageThreadPanel.tsx` | New component — full chat thread UI |
-| `src/components/layout/NotificationsPanel.tsx` | Add view-stack state, wire `direct_message` click to open thread |
-| `src/components/project/MessageOwnerButton.tsx` | Upgrade from one-shot Dialog to full thread Dialog (PM sees replies) |
+|---|---|
+| `src/components/settings/NotificationPreferencesCard.tsx` | **New** — Switch-based UI for 8 event types |
+| `src/hooks/useSettingsSync.ts` | Add `notification-preferences` to `SETTINGS_KEYS` |
+| `src/hooks/useNotifications.ts` | Filter notifications by prefs before returning |
+| `src/pages/Settings.tsx` | Import and render `<NotificationPreferencesCard />` |
 
 ---
 
-### Visual Flow
+### Visual Outcome
 
-```
-[Bell Icon] clicked
-     ↓
-[Notifications Panel slides in from left]
-     │
-     ├── Order Request notification → navigates to /procurement
-     ├── Expense notification → navigates to project
-     └── 💬 "Jose sent you a message…" → [Thread view slides in]
-              ↓
-         [← Back]  Jose Martinez
-         ──────────────────────────────
-         José: Hey Kohan, just wrapped up...   [2min ago]
-
-                       You: Thanks! Loop me in.  [just now]
-
-         José: Will do, talk soon.              [1min ago]
-         ──────────────────────────────
-         [Type a reply…                ] [Send]
-```
+- Owner turns off `expense` and `daily_log` → those entries are silenced app-wide (no bell badge count, not shown in panel)
+- Settings persist across devices via cloud sync
+- Easy to re-enable anytime via the card
+- `direct_message` is always prominent since it's the most important
+- Future mobile push column can be added by duplicating the switch column with a phone icon header — no structural change needed
