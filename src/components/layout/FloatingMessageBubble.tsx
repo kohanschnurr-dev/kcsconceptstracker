@@ -210,7 +210,7 @@ export function FloatingMessageBubble() {
   if (!user) return null;
 
   // Don't show if owner has no team members and no messages
-  if (!isPM && summaries.length === 0 && !ownerTeamId) return null;
+  
 
   return (
     <>
@@ -228,14 +228,14 @@ export function FloatingMessageBubble() {
         className={cn(
           'fixed z-[60] transition-all duration-200 origin-bottom-right',
           'bottom-6 right-6',
-          'w-80 sm:w-80',
+          'w-96 sm:w-96',
           // On mobile: full width minus padding
           'max-w-[calc(100vw-2rem)]',
           isOpen
             ? 'opacity-100 scale-100 pointer-events-auto'
             : 'opacity-0 scale-95 pointer-events-none'
         )}
-        style={{ height: view === 'thread' ? '480px' : 'auto', maxHeight: '480px' }}
+        style={{ height: '580px', maxHeight: '580px' }}
       >
         <div className="bg-popover border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden h-full">
           {/* Panel Header */}
@@ -294,10 +294,33 @@ export function FloatingMessageBubble() {
                     {view === 'list' && (
                       <div className="flex flex-col">
                         {summaries.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-sm text-center px-6 gap-2">
-                            <MessageCircle className="h-8 w-8 opacity-30" />
-                            <p>No messages yet.</p>
-                            <p className="text-xs">Team members can message you from their projects.</p>
+                          <div className="flex flex-col">
+                            <div className="px-4 py-2 bg-muted/30 border-b border-border/50">
+                              <span className="text-xs text-muted-foreground italic">Example — invite team members to start chatting</span>
+                            </div>
+                            <div className="w-full flex items-center gap-3 px-4 py-3 border-b border-border/50 opacity-55 cursor-default select-none">
+                              <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold flex-shrink-0">JR</div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-sm font-medium text-foreground">Jose Rodriguez</span>
+                                  <span className="text-xs text-muted-foreground">2h ago</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">Drywall delivery confirmed for Thursday 👍</p>
+                              </div>
+                            </div>
+                            <div className="w-full flex items-center gap-3 px-4 py-3 border-b border-border/50 opacity-55 cursor-default select-none">
+                              <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold flex-shrink-0">MK</div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-sm font-medium text-foreground">Mike Kowalski</span>
+                                  <span className="text-xs text-muted-foreground">Yesterday</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">Permit approved — framing starts Monday</p>
+                              </div>
+                            </div>
+                            <div className="px-4 py-5 text-center">
+                              <p className="text-xs text-muted-foreground">Real conversations appear here once team members message you.</p>
+                            </div>
                           </div>
                         ) : (
                           summaries.map((s) => (
