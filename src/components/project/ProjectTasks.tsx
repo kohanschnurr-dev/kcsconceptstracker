@@ -139,7 +139,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
                     {task.title}
                   </p>
                 </div>
-                <div className="w-[100px] shrink-0 flex items-center gap-1">
+                <div className="w-[105px] shrink-0 flex items-center justify-end gap-1">
                   {task.dueDate && (
                     <>
                       <Calendar className="h-3 w-3 text-muted-foreground" />
