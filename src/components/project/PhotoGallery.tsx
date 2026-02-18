@@ -30,7 +30,6 @@ const PHOTO_CATEGORIES = [
   { value: 'before', label: 'Before' },
   { value: 'during', label: 'During' },
   { value: 'after', label: 'After' },
-  { value: 'general', label: 'General' },
 ];
 
 const DATE_FILTERS = [
