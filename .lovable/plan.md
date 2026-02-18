@@ -1,53 +1,42 @@
 
-## Fix Target Input — Allow Full Deletion While Typing
+## Fix: Auto-open First Tab in Saved Order
 
 ### Root Cause
 
-In `ContractorMarginGauge.tsx`, line 153:
+In `src/pages/BudgetCalculator.tsx` line 73:
 ```tsx
-onChange={(e) => setTempTarget(parseFloat(e.target.value) || marginTarget)}
+const [calculatorType, setCalculatorType] = useState<CalculatorType>('fix_flip');
 ```
 
-When the user clears the field, `parseFloat('')` returns `NaN`. The `|| marginTarget` fallback immediately resets it back to `20`, making it impossible to delete the value and type a fresh number.
+This always defaults to `'fix_flip'` (Sale) regardless of the saved tab order. The `DealSidebar` separately reads `budget-calculator-tab-order` from localStorage to render the tabs in the right order, but `BudgetCalculator` never consults that value to pick the initial active tab.
 
 ### Fix
 
-Change `tempTarget` from `number` to `string` so the raw input value (including empty string) is preserved while typing. Only parse to a number at commit time (on blur or ✓ click).
+Change the `calculatorType` initial state to read from `localStorage` using the same key (`budget-calculator-tab-order`) and use the first item in the saved array as the default. If nothing is saved, fall back to `'fix_flip'`.
 
-**Before:**
 ```tsx
-const [tempTarget, setTempTarget] = useState(marginTarget); // number
-// ...
-onChange={(e) => setTempTarget(parseFloat(e.target.value) || marginTarget)}
-onBlur={() => { onMarginTargetChange(tempTarget); setIsEditingTarget(false); }}
-onClick={() => { onMarginTargetChange(tempTarget); setIsEditingTarget(false); }}
+// Before
+const [calculatorType, setCalculatorType] = useState<CalculatorType>('fix_flip');
+
+// After
+const [calculatorType, setCalculatorType] = useState<CalculatorType>(() => {
+  try {
+    const saved = localStorage.getItem('budget-calculator-tab-order');
+    if (saved) {
+      const order = JSON.parse(saved) as CalculatorType[];
+      if (order.length > 0) return order[0];
+    }
+  } catch {}
+  return 'fix_flip';
+});
 ```
 
-**After:**
-```tsx
-const [tempTarget, setTempTarget] = useState(String(marginTarget)); // string
-
-// On open:
-onClick={() => { setTempTarget(String(marginTarget)); setIsEditingTarget(true); }}
-
-// On change — just store the raw string:
-onChange={(e) => setTempTarget(e.target.value)}
-
-// On commit — parse then clamp, fall back to current marginTarget if invalid:
-onBlur={() => {
-  const parsed = parseFloat(tempTarget);
-  const valid = !isNaN(parsed) ? Math.min(99, Math.max(1, parsed)) : marginTarget;
-  onMarginTargetChange(valid);
-  setIsEditingTarget(false);
-}}
-```
-
-The input's `value` prop stays as the raw string, so typing "3", "30", or clearing fully works without interference.
+This is a lazy initializer so it only runs once on mount — no performance impact.
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/components/budget/ContractorMarginGauge.tsx` | Change `tempTarget` to `string` state. Update `onChange` to store raw string. Parse only on blur/confirm with clamp + fallback. |
+| `src/pages/BudgetCalculator.tsx` | Change `calculatorType` useState from a hard-coded `'fix_flip'` to a lazy initializer that reads the first entry from the saved tab order in localStorage. |
 
-One file, four-line change. No props, no logic elsewhere.
+One file, one change. No other files touched.
