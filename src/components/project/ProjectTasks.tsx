@@ -212,7 +212,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={cn(
-                      "text-sm font-medium truncate",
+                      "text-sm font-medium line-clamp-1",
                       task.status === 'completed' && "line-through text-muted-foreground"
                     )}>
                       {task.title}
