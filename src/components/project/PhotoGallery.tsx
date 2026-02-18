@@ -259,14 +259,47 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
 
   return (
     <Card className="glass-card">
-      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Image className="h-5 w-5" />
-          Photo Gallery ({photos.length})
-        </CardTitle>
-        <div className="flex items-center gap-2 flex-wrap">
+      <CardHeader className="flex flex-col gap-3 pb-3">
+        {/* Row 1: Title + Actions */}
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Image className="h-5 w-5 shrink-0" />
+            Photo Gallery ({photos.length})
+          </CardTitle>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isSelectionMode ? (
+              <>
+                <Button variant="outline" size="sm" onClick={handleSelectAll} className="px-2 sm:px-3">
+                  <CheckSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">All</span>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleDeselectAll} className="px-2 sm:px-3">
+                  <X className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Clear</span>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={exitSelectionMode} className="px-2 sm:px-3">
+                  <span className="hidden sm:inline">Cancel</span>
+                  <X className="h-4 w-4 sm:hidden" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(true)} className="px-2 sm:px-3">
+                  <CheckSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Select</span>
+                </Button>
+                <Button size="sm" onClick={() => setIsUploadOpen(true)} className="px-2 sm:px-3">
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Add</span>
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+        {/* Row 2: Filters + Delete (when in selection mode) */}
+        <div className="flex items-center gap-2">
           <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-[110px]">
+            <SelectTrigger className="flex-1 sm:w-[110px] sm:flex-none">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -277,7 +310,7 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
             </SelectContent>
           </Select>
           <Select value={filterDate} onValueChange={setFilterDate}>
-            <SelectTrigger className="w-[130px]">
+            <SelectTrigger className="flex-1 sm:w-[130px] sm:flex-none">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -286,31 +319,17 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
               ))}
             </SelectContent>
           </Select>
-          {isSelectionMode ? (
-            <>
-              <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                <CheckSquare className="h-4 w-4 mr-1" />
-                Select All
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleDeselectAll}>
-                <X className="h-4 w-4 mr-1" />
-                Clear
-              </Button>
-              <Button variant="ghost" size="sm" onClick={exitSelectionMode}>
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(true)}>
-                <CheckSquare className="h-4 w-4 mr-1" />
-                Select
-              </Button>
-              <Button size="sm" onClick={() => setIsUploadOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Photos
-              </Button>
-            </>
+          {isSelectionMode && selectedIds.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+              className="shrink-0 px-2 sm:px-3"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Delete ({selectedIds.size})</span>
+            </Button>
           )}
         </div>
       </CardHeader>
