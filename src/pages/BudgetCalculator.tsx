@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MAOGauge } from '@/components/budget/MAOGauge';
+import { ContractorMarginGauge } from '@/components/budget/ContractorMarginGauge';
 import { BudgetCanvas } from '@/components/budget/BudgetCanvas';
 import { TemplatePicker } from '@/components/budget/TemplatePicker';
 import { DealSidebar, type CalculatorType } from '@/components/budget/DealSidebar';
@@ -509,15 +510,22 @@ export default function BudgetCalculator() {
           </div>
         </div>
 
-        {/* MAO Gauge - Sticky */}
+        {/* MAO / Margin Gauge - Sticky */}
         <div className="px-6 py-3 border-b bg-muted/30">
-          <MAOGauge
-            arv={arvNum}
-            currentBudget={totalBudget}
-            purchasePrice={purchasePriceNum}
-            maoPercentage={maoPercentage}
-            onPercentageChange={setMaoPercentage}
-          />
+          {calculatorType === 'contractor' ? (
+            <ContractorMarginGauge
+              contractValue={arvNum}
+              jobCost={totalBudget}
+            />
+          ) : (
+            <MAOGauge
+              arv={arvNum}
+              currentBudget={totalBudget}
+              purchasePrice={purchasePriceNum}
+              maoPercentage={maoPercentage}
+              onPercentageChange={setMaoPercentage}
+            />
+          )}
         </div>
 
         {/* Main Content Area */}
