@@ -1,45 +1,68 @@
 
-## Hide FAB Button When Panel Is Open
+## Add Click-Outside Backdrop to Close Team Messages Panel
 
 ### Problem
-As shown in the screenshot, the FAB button remains visible in the bottom-right corner even when the Team Messages panel is open and covering that same area. The user wants the FAB to disappear when the panel is pulled up.
+When the Team Messages panel is open, clicking anywhere outside of it passes straight through to the underlying page (tabs, cards, buttons, etc.). The user wants clicking outside to:
+1. Close the panel
+2. NOT trigger whatever is underneath (the click should be "consumed")
 
 ### Solution
-In `src/components/layout/FloatingMessageBubble.tsx`, add a conditional visibility class to the FAB button so it hides when `isOpen` is `true`.
+Add a full-screen invisible backdrop `<div>` that sits behind the panel but above the page content. When clicked, it calls `handleClose()` and stops the event from propagating to the page.
 
-The FAB button is rendered after the panel div (around line 240+). It currently always renders. We just need to add `isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'` to its className so it fades out when the panel is open.
+This is the same pattern used by modals, dropdowns, and drawers everywhere — a transparent overlay that intercepts clicks outside the floating element.
+
+### Visual Behavior
+
+```
+Before (click outside):
+┌─────────────────────────────────────┐
+│  Page content (clickable!)          │
+│                        ┌──────────┐ │
+│   [user clicks here]   │  Panel   │ │
+│        ↓               │          │ │
+│   Accidentally clicks  └──────────┘ │
+│   a tab / button / card             │
+└─────────────────────────────────────┘
+
+After (click outside):
+┌─────────────────────────────────────┐
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │  ← invisible backdrop z-[59]
+│  ░  [user clicks here]  ░┌────────┐ │
+│  ░        ↓             ░│ Panel  │ │  ← panel z-[60]
+│  ░   Backdrop catches   ░│        │ │
+│  ░   click → closes     ░└────────┘ │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+└─────────────────────────────────────┘
+```
 
 ### Exact Code Change
 
-**FAB button** — add conditional opacity based on `isOpen`:
+In `src/components/layout/FloatingMessageBubble.tsx`, inside the returned JSX (after the `<>` opening fragment), add a backdrop div **before** the panel div:
 
 ```tsx
-// Before
-className={cn(
-  'fixed bottom-6 right-6 z-[60]',
-  'h-14 w-14 rounded-full shadow-lg',
-  'bg-primary text-primary-foreground',
-  'flex items-center justify-center',
-  'transition-all duration-200 hover:scale-110 active:scale-95',
-  hasUnread && 'animate-pulse'
-)}
-
-// After
-className={cn(
-  'fixed bottom-6 right-6 z-[60]',
-  'h-14 w-14 rounded-full shadow-lg',
-  'bg-primary text-primary-foreground',
-  'flex items-center justify-center',
-  'transition-all duration-200 hover:scale-110 active:scale-95',
-  hasUnread && 'animate-pulse',
-  isOpen ? 'opacity-0 pointer-events-none scale-75' : 'opacity-100 scale-100'
+{/* Backdrop — closes panel on outside click, blocks pass-through */}
+{isOpen && (
+  <div
+    className="fixed inset-0 z-[59]"
+    onClick={handleClose}
+    aria-hidden="true"
+  />
 )}
 ```
 
-The `scale-75` + `opacity-0` gives a subtle shrink-fade effect as the panel opens, and `pointer-events-none` ensures the hidden button can't be accidentally clicked.
+- `fixed inset-0` — covers the entire viewport
+- `z-[59]` — sits just below the panel (`z-[60]`) but above all page content
+- `onClick={handleClose}` — closes the panel when clicked
+- No background color — completely invisible, just an event trap
+- `isOpen &&` — only mounted when the panel is visible (no cost when closed)
+
+### Why This Works
+- The backdrop sits between the page and the panel in z-order
+- Clicking the panel itself works normally (panel is `z-[60]`, above the backdrop)
+- Clicking anywhere outside the panel hits the backdrop first, fires `handleClose()`, and the event stops — the page never sees the click
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/components/layout/FloatingMessageBubble.tsx` | Add `isOpen ? 'opacity-0 pointer-events-none scale-75' : 'opacity-100 scale-100'` to FAB button className |
+| `src/components/layout/FloatingMessageBubble.tsx` | Add invisible backdrop `<div>` before the panel div, rendered only when `isOpen` is true |
