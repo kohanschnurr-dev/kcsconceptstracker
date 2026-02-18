@@ -225,17 +225,17 @@ export function ProfitCalculator({
         </div>
 
         {/* Results */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           <div
             className={cn(
-              "p-4 rounded-lg text-center cursor-pointer transition-colors hover:ring-1 hover:ring-foreground/20",
+              "p-2 sm:p-4 rounded-lg text-center cursor-pointer transition-colors hover:ring-1 hover:ring-foreground/20",
               estimatedProfit >= 0 ? "bg-success/10" : "bg-destructive/10"
             )}
             onClick={() => setExpandedBreakdown(expandedBreakdown === 'estimated' ? null : 'estimated')}
           >
             <p className="text-sm text-muted-foreground mb-1">Est. Profit</p>
             <p className={cn(
-              "text-2xl font-bold font-mono",
+              "text-lg sm:text-2xl font-bold font-mono",
               estimatedProfit >= 0 ? "text-success" : "text-destructive"
             )}>
               {formatCurrency(estimatedProfit)}
@@ -247,14 +247,14 @@ export function ProfitCalculator({
           </div>
           <div
             className={cn(
-              "p-4 rounded-lg text-center cursor-pointer transition-colors hover:ring-1 hover:ring-foreground/20",
+              "p-2 sm:p-4 rounded-lg text-center cursor-pointer transition-colors hover:ring-1 hover:ring-foreground/20",
               currentProfit >= 0 ? "bg-success/10" : "bg-destructive/10"
             )}
             onClick={() => setExpandedBreakdown(expandedBreakdown === 'current' ? null : 'current')}
           >
             <p className="text-sm text-muted-foreground mb-1">Current Profit</p>
             <p className={cn(
-              "text-2xl font-bold font-mono",
+              "text-lg sm:text-2xl font-bold font-mono",
               currentProfit >= 0 ? "text-success" : "text-destructive"
             )}>
               {formatCurrency(currentProfit)}
@@ -266,17 +266,17 @@ export function ProfitCalculator({
           </div>
           <div
             className={cn(
-              "p-4 rounded-lg text-center cursor-pointer transition-colors hover:ring-1 hover:ring-foreground/20",
+              "p-2 sm:p-4 rounded-lg text-center cursor-pointer transition-colors hover:ring-1 hover:ring-foreground/20",
               roi >= 0 ? "bg-primary/10" : "bg-destructive/10"
             )}
             onClick={() => setExpandedBreakdown(expandedBreakdown === 'roi' ? null : 'roi')}
           >
             <p className="text-sm text-muted-foreground mb-1">ROI</p>
             <p className={cn(
-              "text-2xl font-bold font-mono flex items-center justify-center gap-1",
+              "text-lg sm:text-2xl font-bold font-mono flex items-center justify-center gap-1",
               roi >= 0 ? "text-primary" : "text-destructive"
             )}>
-              <TrendingUp className="h-5 w-5" />
+              <TrendingUp className="hidden sm:block h-5 w-5" />
               {roi.toFixed(1)}%
             </p>
             <div className="flex items-center justify-center gap-1 mt-1">
