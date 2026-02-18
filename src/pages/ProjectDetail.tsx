@@ -395,9 +395,9 @@ export default function ProjectDetail() {
     fetchProjectData();
   }, [id]);
 
-  // Calculate total budget from sum of category budgets (not project.total_budget)
-  // This keeps it in sync with the Budget & Expenses page
-  const totalBudget = categories.reduce((sum, cat) => sum + Number(cat.estimated_budget), 0);
+  // Calculate total budget - prefer project-level total_budget when set, fall back to category sum
+  const categoryTotal = categories.reduce((sum, cat) => sum + Number(cat.estimated_budget), 0);
+  const totalBudget = (project?.total_budget ?? 0) > 0 ? project!.total_budget : categoryTotal;
   const totalSpent = categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
   const percentSpent = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
   const remaining = totalBudget - totalSpent;

@@ -30,7 +30,8 @@ import {
   Paperclip,
   Landmark,
   Home,
-  Hammer
+  Hammer,
+  Calculator
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -165,6 +166,9 @@ export default function ProjectBudget() {
   // All Expenses collapsed state - show only 7 by default
   const [showAllExpenses, setShowAllExpenses] = useState(false);
   const VISIBLE_EXPENSE_COUNT = 7;
+
+  // Show/hide $0 categories
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   // Budget quick-edit state
   const [budgetEditMode, setBudgetEditMode] = useState(false);
@@ -994,6 +998,31 @@ export default function ProjectBudget() {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="pt-0">
+                {/* Needs Allocation Banner */}
+                {totalBudget > 0 && categoryTotal === 0 && (
+                  <div className="flex items-center justify-between gap-4 p-4 mb-4 rounded-lg border border-primary/30 bg-primary/5">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="h-5 w-5 text-primary shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">
+                          {formatCurrency(totalBudget)} needs allocation
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Assign budgets to categories using the Budget Calculator or manually edit each category.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => navigate('/budget-calculator')}
+                    >
+                      <Calculator className="h-4 w-4 mr-2" />
+                      Open Budget Calculator
+                    </Button>
+                  </div>
+                )}
                 {categories.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Settings2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
@@ -1025,6 +1054,7 @@ export default function ProjectBudget() {
                       </TableHeader>
                       <TableBody>
                         {categories
+                          .filter(cat => showAllCategories || cat.estimated_budget > 0 || cat.actualSpent > 0)
                           .sort((a, b) => Number(b.estimated_budget) - Number(a.estimated_budget))
                           .map((cat) => {
                             const remaining = cat.estimated_budget - cat.actualSpent;
@@ -1166,6 +1196,20 @@ export default function ProjectBudget() {
                           })}
                       </TableBody>
                     </Table>
+                    {(() => {
+                      const hiddenCount = categories.filter(cat => cat.estimated_budget === 0 && cat.actualSpent === 0).length;
+                      if (hiddenCount > 0) {
+                        return (
+                          <button
+                            className="w-full text-center text-xs text-muted-foreground hover:text-foreground py-2 transition-colors"
+                            onClick={() => setShowAllCategories(prev => !prev)}
+                          >
+                            {showAllCategories ? 'Hide empty categories' : `Show all categories (${hiddenCount} hidden)`}
+                          </button>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 )}
               </CardContent>
