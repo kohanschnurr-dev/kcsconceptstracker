@@ -596,6 +596,7 @@ export type Database = {
           created_at: string
           id: string
           message: string
+          recipient_id: string | null
           sender_id: string
           team_id: string
         }
@@ -603,6 +604,7 @@ export type Database = {
           created_at?: string
           id?: string
           message: string
+          recipient_id?: string | null
           sender_id: string
           team_id: string
         }
@@ -610,6 +612,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string
+          recipient_id?: string | null
           sender_id?: string
           team_id?: string
         }

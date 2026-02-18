@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -22,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { type Notification, useNotifications } from '@/hooks/useNotifications';
+import { MessageThreadPanel } from './MessageThreadPanel';
 
 /* ── Icon + colour per event type ── */
 const EVENT_META: Record<
@@ -100,7 +102,7 @@ function getRoute(n: Notification): string | null {
     case 'project_status':
       return p.projectId ? `/projects/${p.projectId}` : '/projects';
     case 'direct_message':
-      return null; // stays in panel
+      return null; // opens thread view
     default:
       return null;
   }
@@ -111,10 +113,12 @@ function NotificationCard({
   notification,
   onMarkRead,
   onNavigate,
+  onOpenThread,
 }: {
   notification: Notification;
   onMarkRead: (id: string) => void;
   onNavigate: (route: string | null, id: string) => void;
+  onOpenThread: (actorId: string, actorName: string, teamId: string) => void;
 }) {
   const meta = EVENT_META[notification.event_type];
   const { Icon, colour } = meta;
@@ -124,7 +128,15 @@ function NotificationCard({
 
   const handleClick = () => {
     if (!notification.is_read) onMarkRead(notification.id);
-    onNavigate(route, notification.id);
+
+    if (notification.event_type === 'direct_message') {
+      const p = notification.payload as Record<string, string>;
+      const actorName = p.actorName || 'Team Member';
+      const teamId = p.teamId || '';
+      onOpenThread(notification.actor_id, actorName, teamId);
+    } else {
+      onNavigate(route, notification.id);
+    }
   };
 
   return (
@@ -156,6 +168,11 @@ function NotificationCard({
         <p className="text-sm text-foreground leading-snug break-words">{description}</p>
         <p className="mt-1 text-xs text-muted-foreground">{timeAgo}</p>
       </div>
+
+      {/* Thread indicator for messages */}
+      {notification.event_type === 'direct_message' && (
+        <span className="mt-1 flex-shrink-0 text-xs text-primary font-medium">View →</span>
+      )}
     </button>
   );
 }
@@ -170,6 +187,9 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
   const { notifications, unreadCount, isLoading, markRead, markAllRead } = useNotifications();
   const navigate = useNavigate();
 
+  const [view, setView] = useState<'notifications' | 'thread'>('notifications');
+  const [threadActor, setThreadActor] = useState<{ id: string; name: string; teamId: string } | null>(null);
+
   const handleNavigate = (route: string | null, _id: string) => {
     if (route) {
       onOpenChange(false);
@@ -177,55 +197,86 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
     }
   };
 
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-80 p-0 flex flex-col ml-16">
-        <SheetHeader className="px-4 py-4 border-b border-border flex-row items-center justify-between space-y-0">
-          <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-muted-foreground" />
-            <SheetTitle className="text-base">Notifications</SheetTitle>
-            {unreadCount > 0 && (
-              <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
-                {unreadCount}
-              </span>
-            )}
-          </div>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-muted-foreground h-7 px-2"
-              onClick={markAllRead}
-            >
-              <CheckCheck className="h-3.5 w-3.5 mr-1" />
-              Mark all read
-            </Button>
-          )}
-        </SheetHeader>
+  const handleOpenThread = (actorId: string, actorName: string, teamId: string) => {
+    setThreadActor({ id: actorId, name: actorName, teamId });
+    setView('thread');
+  };
 
-        <ScrollArea className="flex-1">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
-              Loading…
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-6 text-center gap-3">
-              <Bell className="h-10 w-10 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">No activity yet. When your team takes action, you'll see it here.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {notifications.map((n) => (
-                <NotificationCard
-                  key={n.id}
-                  notification={n}
-                  onMarkRead={markRead}
-                  onNavigate={handleNavigate}
-                />
-              ))}
-            </div>
-          )}
-        </ScrollArea>
+  const handleBack = () => {
+    setView('notifications');
+    setThreadActor(null);
+  };
+
+  // Reset view when panel closes
+  const handleOpenChange = (v: boolean) => {
+    if (!v) {
+      setView('notifications');
+      setThreadActor(null);
+    }
+    onOpenChange(v);
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent side="left" className="w-80 p-0 flex flex-col ml-16">
+        {view === 'thread' && threadActor ? (
+          <MessageThreadPanel
+            pmId={threadActor.id}
+            pmName={threadActor.name}
+            teamId={threadActor.teamId}
+            onBack={handleBack}
+          />
+        ) : (
+          <>
+            <SheetHeader className="px-4 py-4 border-b border-border flex-row items-center justify-between space-y-0">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <SheetTitle className="text-base">Notifications</SheetTitle>
+                {unreadCount > 0 && (
+                  <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+              {unreadCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground h-7 px-2"
+                  onClick={markAllRead}
+                >
+                  <CheckCheck className="h-3.5 w-3.5 mr-1" />
+                  Mark all read
+                </Button>
+              )}
+            </SheetHeader>
+
+            <ScrollArea className="flex-1">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+                  Loading…
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 px-6 text-center gap-3">
+                  <Bell className="h-10 w-10 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">No activity yet. When your team takes action, you'll see it here.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {notifications.map((n) => (
+                    <NotificationCard
+                      key={n.id}
+                      notification={n}
+                      onMarkRead={markRead}
+                      onNavigate={handleNavigate}
+                      onOpenThread={handleOpenThread}
+                    />
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );
