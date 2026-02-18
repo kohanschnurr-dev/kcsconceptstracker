@@ -100,6 +100,7 @@ import { DealTab } from '@/components/project/DealTab';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
 import { Input } from '@/components/ui/input';
+import { MessageOwnerButton } from '@/components/project/MessageOwnerButton';
 interface DBProject {
   id: string;
   name: string;
@@ -717,7 +718,7 @@ export default function ProjectDetail() {
           </Button>
           
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
+            <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 {isEditing ? (
                   <Input
@@ -888,6 +889,10 @@ export default function ProjectDetail() {
                   </span>
                 )}
               </div>
+            </div>
+            {/* Right side: PM-only actions */}
+            <div className="flex items-start shrink-0">
+              <MessageOwnerButton />
             </div>
           </div>
         </div>
