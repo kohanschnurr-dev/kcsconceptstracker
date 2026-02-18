@@ -24,7 +24,7 @@ interface ProfitFilters {
 }
 
 const DEFAULT_FILTERS: ProfitFilters = {
-  types: ['fix_flip', 'rental', 'new_construction', 'wholesaling'],
+  types: ['fix_flip', 'rental', 'new_construction', 'wholesaling', 'contractor'],
   statuses: ['active'],
   timeline: 'all',
 };
@@ -34,6 +34,7 @@ const PROJECT_TYPES = [
   { value: 'wholesaling', label: 'Wholesaling' },
   { value: 'rental', label: 'Rental' },
   { value: 'new_construction', label: 'New Construction' },
+  { value: 'contractor', label: 'Contractor' },
 ];
 
 const PROJECT_STATUSES = [
