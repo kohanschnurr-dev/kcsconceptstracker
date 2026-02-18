@@ -108,37 +108,28 @@ export function Sidebar() {
           <div className="border-t border-border space-y-2 p-2">
             {user && (
               <div className={cn(
-                "flex items-center justify-between px-3 py-2 transition-all duration-300",
+                "px-3 py-1 transition-all duration-300",
                 isExpanded ? "opacity-100" : "opacity-0 h-0 overflow-hidden py-0"
               )}>
-                <span className="text-xs text-muted-foreground truncate whitespace-nowrap">{displayName || user.email}</span>
-                <NavLink
-                  to="/settings"
-                  className={cn(
-                    'p-1.5 rounded-md transition-colors',
-                    location.pathname === '/settings'
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <Settings className="h-4 w-4" />
-                </NavLink>
+                <span className="text-xs text-muted-foreground truncate block">{displayName || user.email}</span>
               </div>
             )}
-            {!isExpanded && user && (
-              <NavLink
-                to="/settings"
-                className={cn(
-                  'flex justify-center p-2.5 rounded-lg transition-colors',
-                  location.pathname === '/settings'
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
-                title="Settings"
-              >
-                <Settings className="h-5 w-5" />
-              </NavLink>
-            )}
+            <NavLink
+              to="/settings"
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium w-full transition-colors',
+                location.pathname === '/settings'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+              title={!isExpanded ? "Settings" : undefined}
+            >
+              <Settings className="h-5 w-5 flex-shrink-0" />
+              <span className={cn(
+                "whitespace-nowrap transition-opacity duration-300",
+                isExpanded ? "opacity-100" : "opacity-0"
+              )}>Settings</span>
+            </NavLink>
 
             {/* Bell / Notifications — owners only */}
             {isOwner && (
