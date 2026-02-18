@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 interface ContractorMarginGaugeProps {
   contractValue: number;
   jobCost: number;
+  marginTarget: number;
+  onMarginTargetChange: (v: number) => void;
 }
 
 const formatCurrency = (value: number) =>
@@ -14,29 +16,41 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
-export function ContractorMarginGauge({ contractValue, jobCost }: ContractorMarginGaugeProps) {
+export function ContractorMarginGauge({
+  contractValue,
+  jobCost,
+  marginTarget,
+  onMarginTargetChange,
+}: ContractorMarginGaugeProps) {
   const grossProfit = contractValue - jobCost;
   const margin = contractValue > 0 ? (grossProfit / contractValue) * 100 : 0;
   const hasValidData = contractValue > 0;
 
+  const isGreen = margin >= marginTarget;
+  const isAmber = !isGreen && margin >= marginTarget * 0.6;
+  const isRed = !isGreen && !isAmber;
+
   const marginColor =
     !hasValidData ? 'text-muted-foreground' :
-    margin >= 20 ? 'text-green-500' :
-    margin >= 10 ? 'text-amber-500' :
+    isGreen ? 'text-green-500' :
+    isAmber ? 'text-amber-500' :
     'text-destructive';
 
   const bgColor =
     !hasValidData ? 'bg-muted/30 border-border' :
-    margin >= 20 ? 'bg-green-500/10 border-green-500/30' :
-    margin >= 10 ? 'bg-amber-500/10 border-amber-500/30' :
+    isGreen ? 'bg-green-500/10 border-green-500/30' :
+    isAmber ? 'bg-amber-500/10 border-amber-500/30' :
     'bg-destructive/10 border-destructive/30';
 
-  // Progress bar: 0–40% range maps to 0–100% bar width
-  const barPercent = hasValidData ? Math.min(100, Math.max(0, (margin / 40) * 100)) : 0;
+  // Progress bar: 0 → (marginTarget * 2) maps to 0 → 100%
+  // So the target is always at 50% of the bar
+  const barMax = marginTarget * 2;
+  const barPercent = hasValidData ? Math.min(100, Math.max(0, (margin / barMax) * 100)) : 0;
+  const targetMarkerPct = 50; // always 50% = midpoint = target
 
   const barColor =
-    margin >= 20 ? 'bg-green-500' :
-    margin >= 10 ? 'bg-amber-500' :
+    isGreen ? 'bg-green-500' :
+    isAmber ? 'bg-amber-500' :
     'bg-destructive';
 
   return (
@@ -85,8 +99,23 @@ export function ContractorMarginGauge({ contractValue, jobCost }: ContractorMarg
           </div>
         </div>
 
-        {/* Margin % — large display */}
+        {/* Margin % + editable target */}
         <div className="text-right">
+          <div className="flex items-center justify-end gap-1.5 mb-0.5">
+            <span className="text-xs text-muted-foreground">Target:</span>
+            <input
+              type="number"
+              value={marginTarget}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                if (!isNaN(v) && v > 0) onMarginTargetChange(v);
+              }}
+              className="w-10 h-5 text-xs font-mono text-center rounded border border-input bg-background px-1 focus:outline-none focus:ring-1 focus:ring-ring"
+              min={1}
+              max={99}
+            />
+            <span className="text-xs text-muted-foreground">%</span>
+          </div>
           <p className="text-xs text-muted-foreground uppercase tracking-wide">Gross Margin</p>
           <p className={cn('text-2xl font-bold font-mono', marginColor)}>
             {hasValidData ? `${margin.toFixed(1)}%` : '—'}
@@ -99,19 +128,23 @@ export function ContractorMarginGauge({ contractValue, jobCost }: ContractorMarg
         <div className="mt-3">
           <div className="flex justify-between text-xs text-muted-foreground mb-1">
             <span>Job Cost vs Contract Value</span>
-            <span>{margin.toFixed(1)}% margin</span>
+            <span className={marginColor}>{margin.toFixed(1)}% margin</span>
           </div>
-          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+          <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
             <div
               className={cn('h-full transition-all duration-300 rounded-full', barColor)}
               style={{ width: `${barPercent}%` }}
             />
+            {/* Target marker */}
+            <div
+              className="absolute top-0 h-full w-0.5 bg-foreground/40"
+              style={{ left: `${targetMarkerPct}%` }}
+            />
           </div>
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>0%</span>
-            <span className="text-amber-500">10%</span>
-            <span className="text-green-500">20%</span>
-            <span>40%+</span>
+            <span className={marginColor}>{marginTarget}% target</span>
+            <span>{marginTarget * 2}%+</span>
           </div>
         </div>
       )}

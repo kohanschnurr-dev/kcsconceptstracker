@@ -82,6 +82,11 @@ export default function BudgetCalculator() {
   const [holdingFlat, setHoldingFlat] = useState<string>('');
   const [sellClosingFlat, setSellClosingFlat] = useState<string>('');
   const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
+  // Contractor-specific state
+  const [laborCost, setLaborCost] = useState<string>('');
+  const [materialCost, setMaterialCost] = useState<string>('');
+  const [overheadPct, setOverheadPct] = useState<string>('10');
+  const [marginTarget, setMarginTarget] = useState<number>(20);
   
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
@@ -173,6 +178,10 @@ export default function BudgetCalculator() {
         if (meta?.rentalFields) {
           setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
         }
+        if (meta?.laborCost !== undefined) setLaborCost(meta.laborCost);
+        if (meta?.materialCost !== undefined) setMaterialCost(meta.materialCost);
+        if (meta?.overheadPct !== undefined) setOverheadPct(meta.overheadPct);
+        if (meta?.marginTarget !== undefined) setMarginTarget(meta.marginTarget);
 
         const newBudgets: Record<string, string> = {};
         getBudgetCategories().forEach(cat => {
@@ -276,6 +285,10 @@ export default function BudgetCalculator() {
     if (meta?.rentalFields) {
       setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
     }
+    if (meta?.laborCost !== undefined) setLaborCost(meta.laborCost);
+    if (meta?.materialCost !== undefined) setMaterialCost(meta.materialCost);
+    if (meta?.overheadPct !== undefined) setOverheadPct(meta.overheadPct);
+    if (meta?.marginTarget !== undefined) setMarginTarget(meta.marginTarget);
 
     const newBudgets: Record<string, string> = {};
     getBudgetCategories().forEach(cat => {
@@ -307,6 +320,10 @@ export default function BudgetCalculator() {
     setHoldingFlat('');
     setSellClosingFlat('');
     setIncludeSellClosingCosts(true);
+    setLaborCost('');
+    setMaterialCost('');
+    setOverheadPct('10');
+    setMarginTarget(20);
     
     const cleared: Record<string, string> = {};
     getBudgetCategories().forEach(cat => {
@@ -358,6 +375,10 @@ export default function BudgetCalculator() {
       sellClosingFlat,
       includeSellClosingCosts,
       rentalFields,
+      laborCost,
+      materialCost,
+      overheadPct,
+      marginTarget,
     };
     return budgets;
   };
@@ -515,7 +536,9 @@ export default function BudgetCalculator() {
           {calculatorType === 'contractor' ? (
             <ContractorMarginGauge
               contractValue={arvNum}
-              jobCost={totalBudget}
+              jobCost={totalBudget + (arvNum * ((parseFloat(overheadPct) || 0) / 100))}
+              marginTarget={marginTarget}
+              onMarginTargetChange={setMarginTarget}
             />
           ) : (
             <MAOGauge
@@ -538,6 +561,12 @@ export default function BudgetCalculator() {
             onArvChange={setArv}
             sqft={sqft}
             onSqftChange={setSqft}
+            laborCost={laborCost}
+            onLaborCostChange={setLaborCost}
+            materialCost={materialCost}
+            onMaterialCostChange={setMaterialCost}
+            overheadPct={overheadPct}
+            onOverheadPctChange={setOverheadPct}
             budgetName={budgetName}
             onBudgetNameChange={setBudgetName}
             budgetDescription={budgetDescription}
@@ -761,11 +790,19 @@ export default function BudgetCalculator() {
 
                       {calculatorType === 'contractor' && (() => {
                         const contractValue = arvNum;
-                        const jobCost = totalBudget;
+                        const overheadPctNum = parseFloat(overheadPct) || 0;
+                        const overheadAmount = contractValue * (overheadPctNum / 100);
+                        const laborCostNum = parseFloat(laborCost) || 0;
+                        const materialCostNum = parseFloat(materialCost) || 0;
+                        const jobCost = totalBudget + overheadAmount;
                         const grossProfit = contractValue - jobCost;
                         const margin = contractValue > 0 ? (grossProfit / contractValue) * 100 : 0;
                         const isProfitable = grossProfit >= 0;
-                        const goodMargin = margin >= 20;
+                        const isGoodMargin = margin >= marginTarget;
+                        const isAmber = !isGoodMargin && margin >= marginTarget * 0.6;
+                        const marginColor = isGoodMargin ? 'text-green-500' : isAmber ? 'text-amber-500' : 'text-destructive';
+                        const laborMaterialTotal = laborCostNum + materialCostNum;
+                        const laborPct = laborMaterialTotal > 0 ? (laborCostNum / laborMaterialTotal) * 100 : null;
                         return (
                           <Card>
                             <CardHeader>
@@ -775,7 +812,7 @@ export default function BudgetCalculator() {
                               </CardDescription>
                             </CardHeader>
                             <CardContent>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                 {/* Contract Column */}
                                 <div className="space-y-3">
                                   <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Contract</h4>
@@ -784,10 +821,18 @@ export default function BudgetCalculator() {
                                       <span>Contract Value</span>
                                       <span className="font-mono">{formatCurrency(contractValue)}</span>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                      <span>Purchase Price</span>
-                                      <span className="font-mono">{formatCurrency(purchasePriceNum)}</span>
-                                    </div>
+                                    {laborCostNum > 0 && (
+                                      <div className="flex justify-between text-sm text-muted-foreground">
+                                        <span>Labor Cost</span>
+                                        <span className="font-mono">{formatCurrency(laborCostNum)}</span>
+                                      </div>
+                                    )}
+                                    {materialCostNum > 0 && (
+                                      <div className="flex justify-between text-sm text-muted-foreground">
+                                        <span>Material Cost</span>
+                                        <span className="font-mono">{formatCurrency(materialCostNum)}</span>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
 
@@ -796,11 +841,17 @@ export default function BudgetCalculator() {
                                   <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Job Cost</h4>
                                   <div className="space-y-2">
                                     <div className="flex justify-between text-sm">
-                                      <span>Construction Budget</span>
-                                      <span className="font-mono">{formatCurrency(jobCost)}</span>
+                                      <span>Budget Canvas</span>
+                                      <span className="font-mono">{formatCurrency(totalBudget)}</span>
                                     </div>
-                                    <div className="flex justify-between text-sm text-muted-foreground">
-                                      <span>Total Allocated</span>
+                                    {overheadPctNum > 0 && (
+                                      <div className="flex justify-between text-sm text-muted-foreground">
+                                        <span>Overhead ({overheadPctNum}%)</span>
+                                        <span className="font-mono">{formatCurrency(overheadAmount)}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex justify-between text-sm font-medium border-t pt-1">
+                                      <span>Total Job Cost</span>
                                       <span className="font-mono">{formatCurrency(jobCost)}</span>
                                     </div>
                                   </div>
@@ -817,12 +868,39 @@ export default function BudgetCalculator() {
                                       </span>
                                     </div>
                                     <div className="flex justify-between text-sm font-medium">
-                                      <span>Margin</span>
-                                      <span className={`font-mono ${goodMargin ? 'text-green-500' : isProfitable ? 'text-amber-500' : 'text-destructive'}`}>
+                                      <span>Gross Margin</span>
+                                      <span className={`font-mono ${marginColor}`}>
                                         {contractValue > 0 ? margin.toFixed(1) : '0.0'}%
                                       </span>
                                     </div>
+                                    <div className="flex justify-between text-sm text-muted-foreground">
+                                      <span>Target</span>
+                                      <span className="font-mono">{marginTarget}%</span>
+                                    </div>
                                   </div>
+                                </div>
+
+                                {/* Split Column */}
+                                <div className="space-y-3">
+                                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Labor / Material</h4>
+                                  {laborPct !== null ? (
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between text-sm">
+                                        <span>Labor</span>
+                                        <span className="font-mono">{laborPct.toFixed(0)}%</span>
+                                      </div>
+                                      <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+                                        <div className="h-full bg-primary/70 transition-all" style={{ width: `${laborPct}%` }} />
+                                        <div className="h-full flex-1 bg-muted-foreground/20" />
+                                      </div>
+                                      <div className="flex justify-between text-sm">
+                                        <span>Material</span>
+                                        <span className="font-mono">{(100 - laborPct).toFixed(0)}%</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground">Enter labor & material costs in the sidebar to see the split.</p>
+                                  )}
                                 </div>
                               </div>
 
@@ -833,7 +911,7 @@ export default function BudgetCalculator() {
                                   <p className="text-2xl font-bold font-mono">{formatCurrency(contractValue)}</p>
                                 </div>
                                 <div className="p-4 rounded-lg bg-muted/50 text-center">
-                                  <p className="text-sm text-muted-foreground">Job Budget</p>
+                                  <p className="text-sm text-muted-foreground">Total Job Cost</p>
                                   <p className="text-2xl font-bold font-mono">{formatCurrency(jobCost)}</p>
                                 </div>
                                 <div className={`p-4 rounded-lg text-center ${isProfitable ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
