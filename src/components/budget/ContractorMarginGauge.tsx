@@ -70,15 +70,15 @@ export function ContractorMarginGauge({
 
   return (
     <div className={cn('rounded-lg border p-3 transition-colors', bgColor)}>
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-between sm:gap-3">
         {/* Contract Value */}
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-primary/20">
+          <div className="p-1 sm:p-1.5 rounded-lg bg-primary/20">
             <DollarSign className="h-4 w-4 text-primary" />
           </div>
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Contract Value</p>
-            <p className="text-lg font-bold font-mono text-primary">
+            <p className="text-base sm:text-lg font-bold font-mono text-primary">
               {hasValidData ? formatCurrency(contractValue) : '—'}
             </p>
           </div>
@@ -86,12 +86,12 @@ export function ContractorMarginGauge({
 
         {/* Job Cost */}
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-muted">
+          <div className="p-1 sm:p-1.5 rounded-lg bg-muted">
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </div>
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Job Cost</p>
-            <p className="text-lg font-bold font-mono text-foreground">
+            <p className="text-base sm:text-lg font-bold font-mono text-foreground">
               {formatCurrency(jobCost)}
             </p>
           </div>
@@ -108,7 +108,7 @@ export function ContractorMarginGauge({
           </div>
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Gross Profit</p>
-            <p className={cn('text-lg font-bold font-mono', hasValidData ? (grossProfit >= 0 ? 'text-green-500' : 'text-destructive') : 'text-muted-foreground')}>
+            <p className={cn('text-base sm:text-lg font-bold font-mono', hasValidData ? (grossProfit >= 0 ? 'text-green-500' : 'text-destructive') : 'text-muted-foreground')}>
               {hasValidData ? formatCurrency(grossProfit) : '—'}
             </p>
           </div>
@@ -121,7 +121,7 @@ export function ContractorMarginGauge({
           </div>
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Gross Margin</p>
-            <p className={cn('text-lg font-bold font-mono', marginColor)}>
+            <p className={cn('text-base sm:text-lg font-bold font-mono', marginColor)}>
               {hasValidData ? `${margin.toFixed(1)}%` : '—'}
             </p>
           </div>
