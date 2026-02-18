@@ -23,8 +23,13 @@ import {
   FolderOpen,
   Layers,
   Check,
-  X
+  X,
+  ShoppingBag,
+  Bell,
 } from 'lucide-react';
+import { SubmitOrderModal } from '@/components/procurement/SubmitOrderModal';
+import { OrderRequestsPanel } from '@/components/procurement/OrderRequestsPanel';
+import { useOrderRequests } from '@/hooks/useOrderRequests';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -130,6 +135,9 @@ export default function Procurement() {
   const [editingItem, setEditingItem] = useState<ProcurementItem | null>(null);
   const [editingBundle, setEditingBundle] = useState<Bundle | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [submitOrderOpen, setSubmitOrderOpen] = useState(false);
+  const [ordersPanelOpen, setOrdersPanelOpen] = useState(false);
+  const { isOwner, isManager, pendingCount } = useOrderRequests();
   const fetchData = async () => {
     if (!user) return;
     
@@ -414,6 +422,21 @@ export default function Procurement() {
             <p className="text-muted-foreground">Manage materials and product specifications across all projects</p>
           </div>
           <div className="flex gap-2">
+            {isOwner && (
+              <Button
+                variant="outline"
+                className="relative"
+                onClick={() => setOrdersPanelOpen(true)}
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                Orders
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
+                    {pendingCount}
+                  </span>
+                )}
+              </Button>
+            )}
             <Button variant="outline" onClick={() => { setEditingBundle(null); setBundleModalOpen(true); }}>
               <FolderOpen className="h-4 w-4 mr-2" />
               New Bundle
@@ -692,13 +715,13 @@ export default function Procurement() {
 
       {/* Bulk Selection Floating Bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-lg shadow-lg px-4 py-3 flex items-center gap-4">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 flex-wrap justify-center">
           <span className="text-sm font-medium whitespace-nowrap">
             {selectedIds.size} item{selectedIds.size > 1 ? 's' : ''} selected
           </span>
           <Popover>
             <PopoverTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" variant="outline">
                 <Plus className="h-4 w-4 mr-1" />
                 Assign to Project
               </Button>
@@ -722,6 +745,12 @@ export default function Procurement() {
               </div>
             </PopoverContent>
           </Popover>
+          {isManager && (
+            <Button size="sm" onClick={() => setSubmitOrderOpen(true)}>
+              <ShoppingBag className="h-4 w-4 mr-1" />
+              Request Order
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
             <X className="h-4 w-4" />
           </Button>
@@ -745,6 +774,29 @@ export default function Procurement() {
         projects={projects}
         onSave={fetchData}
       />
+
+      {/* Submit Order Modal (PM) */}
+      <SubmitOrderModal
+        open={submitOrderOpen}
+        onOpenChange={setSubmitOrderOpen}
+        selectedItems={sortedItems
+          .filter(item => selectedIds.has(item.id))
+          .map(item => ({
+            id: item.id,
+            name: item.name,
+            unit_price: item.unit_price,
+            quantity: item.quantity,
+            image_url: item.image_url,
+            source_url: item.source_url,
+            source_store: item.source_store,
+          }))}
+        onSuccess={() => setSelectedIds(new Set())}
+      />
+
+      {/* Order Requests Panel (Owner) */}
+      {isOwner && (
+        <OrderRequestsPanel open={ordersPanelOpen} onOpenChange={setOrdersPanelOpen} />
+      )}
     </MainLayout>
     </TooltipProvider>
   );

@@ -4,6 +4,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { 
@@ -15,8 +16,12 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Camera
+  Camera,
+  ShoppingBag,
+  X,
 } from 'lucide-react';
+import { SubmitOrderModal } from '@/components/procurement/SubmitOrderModal';
+import { useOrderRequests } from '@/hooks/useOrderRequests';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -104,6 +109,9 @@ export default function BundleDetail() {
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [bundleModalOpen, setBundleModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ProcurementItem | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [submitOrderOpen, setSubmitOrderOpen] = useState(false);
+  const { isManager } = useOrderRequests();
 
   const fetchData = async () => {
     if (!user || !id) return;
@@ -433,6 +441,16 @@ export default function BundleDetail() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10 text-center">
+                        <Checkbox
+                          checked={items.length > 0 && items.every(i => selectedIds.has(i.id))}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedIds(new Set(items.map(i => i.id)));
+                            else setSelectedIds(new Set());
+                          }}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
                       <TableHead className="w-16"></TableHead>
                       <TableHead>Item</TableHead>
                       <TableHead>Source</TableHead>
@@ -449,7 +467,21 @@ export default function BundleDetail() {
                       <TableRow 
                         key={item.id} 
                         className="hover:bg-muted/30"
+                        data-state={selectedIds.has(item.id) ? 'selected' : undefined}
                       >
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={selectedIds.has(item.id)}
+                            onCheckedChange={() => {
+                              setSelectedIds(prev => {
+                                const next = new Set(prev);
+                                if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                                return next;
+                              });
+                            }}
+                            aria-label={`Select ${item.name}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center">
                             {item.image_url ? (
@@ -552,6 +584,24 @@ export default function BundleDetail() {
         </Card>
       </div>
 
+      {/* Bulk Selection Floating Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 flex-wrap justify-center">
+          <span className="text-sm font-medium whitespace-nowrap">
+            {selectedIds.size} item{selectedIds.size > 1 ? 's' : ''} selected
+          </span>
+          {isManager && (
+            <Button size="sm" onClick={() => setSubmitOrderOpen(true)}>
+              <ShoppingBag className="h-4 w-4 mr-1" />
+              Request Order
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       <ProcurementItemModal
         open={itemModalOpen}
         onOpenChange={setItemModalOpen}
@@ -566,6 +616,24 @@ export default function BundleDetail() {
         bundle={bundle}
         projects={allProjects}
         onSave={fetchData}
+      />
+
+      {/* Submit Order Modal (PM) */}
+      <SubmitOrderModal
+        open={submitOrderOpen}
+        onOpenChange={setSubmitOrderOpen}
+        selectedItems={items
+          .filter(item => selectedIds.has(item.id))
+          .map(item => ({
+            id: item.id,
+            name: item.name,
+            unit_price: item.unit_price,
+            quantity: item.bundle_quantity || item.quantity,
+            image_url: item.image_url,
+            source_url: item.source_url,
+            source_store: item.source_store,
+          }))}
+        onSuccess={() => setSelectedIds(new Set())}
       />
 
     </MainLayout>
