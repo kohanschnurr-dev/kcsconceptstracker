@@ -197,11 +197,6 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
               <p className={cn('font-mono font-semibold text-lg', grossProfit < 0 ? 'text-destructive' : grossProfit > 0 ? 'text-success' : '')}>
                 {hasData ? formatCurrency(grossProfit) : '—'}
               </p>
-              {hasData && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {usingActuals ? 'Contract Value − Actual Costs' : 'Contract Value − Est. Job Cost'}
-                </p>
-              )}
             </div>
           );
         })()}
