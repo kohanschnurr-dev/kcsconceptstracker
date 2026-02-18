@@ -14,6 +14,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TASK_PRIORITY_COLORS, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/types/task';
+
+const PRIORITY_ICON_COLORS: Record<TaskPriority, string> = {
+  low: 'text-muted-foreground',
+  medium: 'text-blue-600',
+  high: 'text-orange-600',
+  urgent: 'text-red-600',
+};
 import type { TaskStatus, TaskPriority } from '@/types/task';
 import { AddTaskModal } from './AddTaskModal';
 
@@ -211,7 +218,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
                       {task.title}
                     </p>
                   </div>
-                  <div className="w-[105px] shrink-0 flex items-center justify-end gap-1">
+                  <div className="hidden sm:flex w-[105px] shrink-0 items-center justify-end gap-1">
                     {task.dueDate && (
                       <>
                         <Calendar className="h-3 w-3 text-muted-foreground" />
@@ -219,10 +226,13 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
                       </>
                     )}
                   </div>
-                  <div className="w-[90px] shrink-0 flex items-center justify-end gap-2">
+                  <div className="shrink-0 flex items-center justify-end gap-2 sm:w-[90px]">
+                    {/* Mobile: colored icon only */}
+                    <AlertCircle className={cn("h-4 w-4 sm:hidden", PRIORITY_ICON_COLORS[task.priorityLevel])} />
+                    {/* Desktop: full badge */}
                     <Badge 
                       variant="secondary" 
-                      className={cn("text-xs", TASK_PRIORITY_COLORS[task.priorityLevel])}
+                      className={cn("text-xs hidden sm:inline-flex", TASK_PRIORITY_COLORS[task.priorityLevel])}
                     >
                       {TASK_PRIORITY_LABELS[task.priorityLevel]}
                     </Badge>
