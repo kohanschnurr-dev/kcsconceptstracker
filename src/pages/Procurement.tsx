@@ -425,11 +425,11 @@ export default function Procurement() {
             {isOwner && (
               <Button
                 variant="outline"
-                className="relative"
+                className="relative px-2 sm:px-4"
                 onClick={() => setOrdersPanelOpen(true)}
               >
-                <Bell className="h-4 w-4 mr-2" />
-                Orders
+                <Bell className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Orders</span>
                 {pendingCount > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
                     {pendingCount}
@@ -437,13 +437,13 @@ export default function Procurement() {
                 )}
               </Button>
             )}
-            <Button variant="outline" onClick={() => { setEditingBundle(null); setBundleModalOpen(true); }}>
-              <FolderOpen className="h-4 w-4 mr-2" />
-              New Bundle
+            <Button variant="outline" className="px-2 sm:px-4" onClick={() => { setEditingBundle(null); setBundleModalOpen(true); }}>
+              <FolderOpen className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">New Bundle</span>
             </Button>
-            <Button onClick={() => { setEditingItem(null); setModalOpen(true); }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
+            <Button className="px-2 sm:px-4" onClick={() => { setEditingItem(null); setModalOpen(true); }}>
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Item</span>
             </Button>
           </div>
         </div>
@@ -478,8 +478,9 @@ export default function Procurement() {
         <Card className="glass-card">
           <CardContent className="pt-4">
             {/* Filters Row */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <div className="relative flex-1">
+            <div className="flex flex-col gap-2 mb-6">
+              {/* Row 1: Search */}
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search items, model numbers..."
@@ -488,43 +489,46 @@ export default function Procurement() {
                   className="pl-10"
                 />
               </div>
-              <Select value={filterBundle} onValueChange={setFilterBundle}>
-                <SelectTrigger className="w-full md:w-48">
-                  <Layers className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="All Bundles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Bundles</SelectItem>
-                  {bundles.map(b => (
-                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                  ))}
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-full md:w-48">
-                  <Package className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {uniqueCategories.map(cat => (
-                    <SelectItem key={cat} value={cat!}>{getCategoryLabel(cat)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full md:w-48">
-                  <ArrowUpDown className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Sort By" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name_asc">A-Z</SelectItem>
-                  <SelectItem value="name_desc">Z-A</SelectItem>
-                  <SelectItem value="price_low">Price: Low to High</SelectItem>
-                  <SelectItem value="price_high">Price: High to Low</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Row 2: Dropdowns side-by-side on mobile, inline on md+ */}
+              <div className="flex gap-2">
+                <Select value={filterBundle} onValueChange={setFilterBundle}>
+                  <SelectTrigger className="flex-1 h-9 min-w-0 md:w-48 md:flex-none">
+                    <Layers className="h-4 w-4 mr-1 shrink-0 hidden sm:block" />
+                    <SelectValue placeholder="Bundles" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Bundles</SelectItem>
+                    {bundles.map(b => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    ))}
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterCategory} onValueChange={setFilterCategory}>
+                  <SelectTrigger className="flex-1 h-9 min-w-0 md:w-48 md:flex-none">
+                    <Package className="h-4 w-4 mr-1 shrink-0 hidden sm:block" />
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {uniqueCategories.map(cat => (
+                      <SelectItem key={cat} value={cat!}>{getCategoryLabel(cat)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="flex-1 h-9 min-w-0 md:w-48 md:flex-none">
+                    <ArrowUpDown className="h-4 w-4 mr-1 shrink-0 hidden sm:block" />
+                    <SelectValue placeholder="Sort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name_asc">A-Z</SelectItem>
+                    <SelectItem value="name_desc">Z-A</SelectItem>
+                    <SelectItem value="price_low">Price: Low to High</SelectItem>
+                    <SelectItem value="price_high">Price: High to Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Items Header */}
@@ -549,7 +553,7 @@ export default function Procurement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-10 text-center">
+                      <TableHead className="w-8 sm:w-10 text-center">
                         <Checkbox
                           checked={allVisibleSelected}
                           onCheckedChange={toggleSelectAll}
@@ -557,13 +561,13 @@ export default function Procurement() {
                           className={someVisibleSelected && !allVisibleSelected ? 'opacity-50' : ''}
                         />
                       </TableHead>
-                      <TableHead className="w-16 text-center"></TableHead>
+                      <TableHead className="w-10 sm:w-16 text-center"></TableHead>
                       <TableHead>Item</TableHead>
-                      <TableHead className="text-center">Bundle</TableHead>
-                      <TableHead className="text-center">Source</TableHead>
-                      <TableHead className="text-center">Category</TableHead>
+                      <TableHead className="text-center hidden sm:table-cell">Bundle</TableHead>
+                      <TableHead className="text-center hidden sm:table-cell">Source</TableHead>
+                      <TableHead className="text-center hidden sm:table-cell">Category</TableHead>
                       <TableHead className="text-right">Price</TableHead>
-                      <TableHead className="text-center">Qty</TableHead>
+                      <TableHead className="text-center hidden sm:table-cell">Qty</TableHead>
                       <TableHead className="text-center"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -577,8 +581,8 @@ export default function Procurement() {
                             aria-label={`Select ${item.name}`}
                           />
                         </TableCell>
-                        <TableCell className="text-center">
-                          <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center mx-auto">
+                         <TableCell className="text-center p-1 sm:p-4">
+                          <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center mx-auto">
                             {item.image_url ? (
                               <img 
                                 src={item.image_url} 
@@ -586,14 +590,14 @@ export default function Procurement() {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <Package className="h-5 w-5 text-muted-foreground" />
+                              <Package className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <p className="font-medium">{item.name}</p>
+                          <p className="font-medium line-clamp-2">{item.name}</p>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center hidden sm:table-cell">
                           {(!item.bundle_ids || item.bundle_ids.length === 0) ? (
                             <span className="text-sm text-muted-foreground italic">Unassigned</span>
                           ) : item.bundle_ids.length === 1 ? (
@@ -618,7 +622,7 @@ export default function Procurement() {
                             </Tooltip>
                           )}
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center hidden sm:table-cell">
                           <div className="flex items-center justify-center gap-1">
                             <span className="text-sm">
                               {stores.find(s => s.value === item.source_store)?.label || item.source_store || '-'}
@@ -635,7 +639,7 @@ export default function Procurement() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center hidden sm:table-cell">
                           {getCategoryLabel(item.category) ? (
                             <Badge variant="secondary" className="text-xs">
                               {getCategoryLabel(item.category)}
@@ -645,11 +649,14 @@ export default function Procurement() {
                           )}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {formatCurrency(item.unit_price)}
+                          <div>
+                            <span>{formatCurrency(item.unit_price)}</span>
+                            <span className="text-xs text-muted-foreground sm:hidden"> ×{item.quantity}</span>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-center">{item.quantity}</TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
+                        <TableCell className="text-center hidden sm:table-cell">{item.quantity}</TableCell>
+                        <TableCell className="text-center p-1 sm:p-4">
+                          <div className="flex items-center justify-center gap-0.5 sm:gap-1">
                             <Button 
                               variant="ghost" 
                               size="icon" 
@@ -696,7 +703,7 @@ export default function Procurement() {
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="h-8 w-8 text-destructive"
+                              className="h-8 w-8 text-destructive hidden sm:inline-flex"
                               onClick={() => handleDelete(item.id)}
                             >
                               <Trash2 className="h-4 w-4" />
