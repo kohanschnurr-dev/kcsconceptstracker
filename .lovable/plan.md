@@ -1,100 +1,78 @@
 
-## Redesign the ContractorMarginGauge — Sleek Target + Gross Margin Display
+## Clean Up ContractorMarginGauge — Remove Inline Target, Match Header Style, Edit via Progress Bar
 
-### What's Wrong (from the screenshot)
+### What changes
 
-The top-right corner of the gauge has three separate pieces crammed together:
-- `Target:  [20]  %` (inline label + input + unit)
-- `GROSS MARGIN` (small caps label)
-- `80.0%` (large number)
-
-This creates visual clutter. The "Target:" label reads like a form field floating mid-air, disconnected from the metric it governs. The layout also feels misaligned — the three stats on the left are icon-driven cards, but the right side is just raw text.
+**Three precise changes to `src/components/budget/ContractorMarginGauge.tsx`:**
 
 ---
 
-### Redesign Goals
+#### 1. Remove the target sub-row from Gross Margin block
 
-1. **Integrate the target into the margin display** — instead of a standalone "Target: [20] %" row above the label, embed the editable target as a subtle inline annotation **below** the margin percentage, like a badge or a single-line inline control.
-2. **Add a circular/arc indicator or a cleaner badge** for the margin status — a small colored pill or ring next to the percentage gives instant visual status without noisy text.
-3. **Make the right stat block consistent** with the left three — same icon-card structure, same spacing.
-4. **Clean up the progress bar section** — remove the redundant `margin% margin` label on the right (it duplicates the big number above), tighten spacing.
+Delete the `● Target [input] %` row entirely from under the `80.0%` number. The Gross Margin block becomes clean — just the label + the number, exactly like the other three stat blocks.
+
+```
+Before:                          After:
+GROSS MARGIN                     GROSS MARGIN
+80.0%                            80.0%
+● Target [20] %     ←remove
+```
+
+Also bump the font size from `text-2xl` → `text-lg` to match Contract Value, Job Cost, and Gross Profit (all use `text-lg font-bold font-mono`).
 
 ---
 
-### New Layout Design
+#### 2. Make the progress bar target label inline-editable
 
+The center label below the bar currently reads `20% target` (static text). Change this to an **editable inline field** triggered by a pencil emoji:
+
+**Normal state** (not editing):
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  [$ icon] CONTRACT VALUE   [↗ icon] JOB COST   [✓ icon] GROSS PROFIT   [%]  │
-│  $50,000                   $10,000               $40,000             80.0%   │
-│                                                              ● Target: 20%   │
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
-│  0%                        ↑ target (20%)                             40%+  │
-└──────────────────────────────────────────────────────────────────────────────┘
+20% target ✏️
 ```
 
-The right stat block becomes:
-
+**Editing state** (click ✏️):
 ```
-[GAUGE icon]  GROSS MARGIN
-              80.0%
-              ● Target [20] %   ← small inline control, muted
+[  20  ] % target ✓
 ```
 
-This keeps the icon-card structure consistent with the other three stats but adds the editable target as a compact sub-line.
-
----
-
-### Specific Changes to `ContractorMarginGauge.tsx`
-
-#### A. Right stat block restructure
-
-Replace the current `div.text-right` with a proper icon-card like the other three:
+Implementation:
+- Add `isEditingTarget` local state (`useState(false)`)
+- Add `tempTarget` local state to hold the in-progress value
+- When not editing: render `{marginTarget}% target` + a `✏️` button that sets `isEditingTarget(true)`
+- When editing: render a small `<input>` (pre-filled with `marginTarget`) + `✓` button that calls `onMarginTargetChange(tempTarget)` and sets `isEditingTarget(false)`
+- On blur of the input, also commit + close
 
 ```tsx
-<div className="flex items-center gap-2">
-  {/* Status ring icon — colored by margin status */}
-  <div className={cn('p-1.5 rounded-lg', statusBgColor)}>
-    <Percent className={cn('h-4 w-4', marginColor)} />
-  </div>
-  <div>
-    <p className="text-xs text-muted-foreground uppercase tracking-wide">Gross Margin</p>
-    <p className={cn('text-2xl font-bold font-mono leading-none', marginColor)}>
-      {hasValidData ? `${margin.toFixed(1)}%` : '—'}
-    </p>
-    {/* Target inline — compact, below the number */}
-    <div className="flex items-center gap-1 mt-1">
-      <div className={cn('w-1.5 h-1.5 rounded-full', isGreen ? 'bg-green-500' : isAmber ? 'bg-amber-500' : 'bg-destructive')} />
-      <span className="text-xs text-muted-foreground">Target</span>
-      <input
-        type="number"
-        value={marginTarget}
-        onChange={...}
-        className="w-8 h-4 text-xs font-mono text-center rounded border border-input bg-background/80 px-0.5 focus:outline-none focus:ring-1 focus:ring-ring"
-        min={1} max={99}
-      />
-      <span className="text-xs text-muted-foreground">%</span>
-    </div>
-  </div>
-</div>
+{isEditingTarget ? (
+  <>
+    <input
+      autoFocus
+      type="number"
+      value={tempTarget}
+      onChange={(e) => setTempTarget(parseFloat(e.target.value) || marginTarget)}
+      onBlur={() => { onMarginTargetChange(tempTarget); setIsEditingTarget(false); }}
+      className="w-10 h-4 text-xs font-mono text-center rounded border border-input bg-background px-0.5 focus:outline-none focus:ring-1 focus:ring-ring"
+      min={1} max={99}
+    />
+    <span>% target</span>
+    <button onClick={() => { onMarginTargetChange(tempTarget); setIsEditingTarget(false); }}>✓</button>
+  </>
+) : (
+  <>
+    <span className={marginColor}>{marginTarget}% target</span>
+    <button onClick={() => { setTempTarget(marginTarget); setIsEditingTarget(true); }}>✏️</button>
+  </>
+)}
 ```
 
-Key improvements:
-- The `Percent` icon (`lucide-react`) gives the right stat a proper icon like the others
-- The target control moves **under** the big `80.0%` number as a small `● Target [20] %` inline row — it reads as metadata attached to the metric, not a standalone form field
-- The colored dot before "Target" communicates status at a glance without needing the word "margin" repeated twice
+---
 
-#### B. Progress bar cleanup
+#### 3. Add React `useState` import
 
-- Remove the right-side `{margin.toFixed(1)}% margin` label (duplicate of the large number above)
-- Keep only the left label `"Job Cost vs Contract Value"` — or simplify to `"Margin vs Target"`
-- The three values below the bar (`0%` / `20% target` / `40%+`) stay — they provide the scale context
-
-#### C. Icon import
-
-Add `Percent` to the lucide-react import line:
+The component currently has no imports from React. Add:
 ```tsx
-import { TrendingUp, CheckCircle2, AlertTriangle, DollarSign, Percent } from 'lucide-react';
+import { useState } from 'react';
 ```
 
 ---
@@ -103,6 +81,6 @@ import { TrendingUp, CheckCircle2, AlertTriangle, DollarSign, Percent } from 'lu
 
 | File | Change |
 |---|---|
-| `src/components/budget/ContractorMarginGauge.tsx` | Restructure the right stat block to use an icon-card layout. Move the target control below the margin %. Remove duplicate margin label from progress bar. |
+| `src/components/budget/ContractorMarginGauge.tsx` | Remove target sub-row. Match `text-lg` font size. Make bar center label editable via ✏️ pencil. Add `useState`. |
 
-Only one file needs to change. No props, no logic, no database changes.
+No prop changes. No other files touched.
