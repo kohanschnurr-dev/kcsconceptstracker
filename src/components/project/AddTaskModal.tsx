@@ -91,7 +91,6 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
               placeholder="Enter task description..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              autoFocus
             />
           </div>
 

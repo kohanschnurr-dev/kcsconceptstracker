@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, CalendarPlus, X, ListTodo, Target, CalendarIcon, Pencil } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, CalendarPlus, X, ListTodo, Target, CalendarIcon, Pencil, Loader2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +64,65 @@ interface DailyLog {
   };
 }
 
+function TaskPhotoUploader({ photos, onPhotosChange }: { photos: string[]; onPhotosChange: (urls: string[]) => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const uploadFile = useCallback(async (file: File) => {
+    setIsUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `task-photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from('project-photos').upload(path, file);
+      if (error) throw error;
+      const { data } = supabase.storage.from('project-photos').getPublicUrl(path);
+      onPhotosChange([...photos, data.publicUrl]);
+    } catch (e) {
+      console.error('Upload failed', e);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [photos, onPhotosChange]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadFile(file);
+    e.target.value = '';
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-1.5">
+        <Camera className="h-4 w-4" />
+        Photos (optional)
+      </Label>
+      <div className="flex flex-wrap gap-2">
+        {photos.map((url, i) => (
+          <div key={i} className="relative group w-16 h-16 rounded-lg overflow-hidden border bg-muted">
+            <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+            <button
+              type="button"
+              onClick={() => onPhotosChange(photos.filter((_, idx) => idx !== i))}
+              className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <X className="h-4 w-4 text-white" />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="w-16 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+        >
+          {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+        </button>
+      </div>
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+    </div>
+  );
+}
+
 export default function DailyLogs() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('checklist');
@@ -98,6 +157,7 @@ export default function DailyLogs() {
     dueDate: '',
     priorityLevel: 'medium' as TaskPriority,
     status: 'pending' as TaskStatus,
+    photoUrls: [] as string[],
   });
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
 
@@ -131,6 +191,7 @@ export default function DailyLogs() {
         endTime: t.end_time,
         projectId: t.project_id,
         projectName: t.projects?.name || null,
+        photoUrls: t.photo_urls || [],
         createdAt: t.created_at,
         updatedAt: t.updated_at,
       }));
@@ -417,6 +478,7 @@ export default function DailyLogs() {
       dueDate: task.dueDate || '',
       priorityLevel: task.priorityLevel,
       status: task.status,
+      photoUrls: task.photoUrls || [],
     });
     setDetailModalOpen(true);
   };
@@ -433,6 +495,7 @@ export default function DailyLogs() {
           due_date: editForm.dueDate || null,
           priority_level: editForm.priorityLevel,
           status: editForm.status,
+          photo_urls: editForm.photoUrls,
         })
         .eq('id', selectedTask.id);
 
@@ -1148,6 +1211,10 @@ export default function DailyLogs() {
                 onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
               />
             </div>
+            <TaskPhotoUploader
+              photos={editForm.photoUrls}
+              onPhotosChange={(urls) => setEditForm({ ...editForm, photoUrls: urls })}
+            />
             <div className="flex justify-between pt-4">
               <Button
                 variant="destructive"

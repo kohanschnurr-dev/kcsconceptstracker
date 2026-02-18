@@ -1778,6 +1778,7 @@ export type Database = {
           id: string
           is_daily: boolean
           is_scheduled: boolean
+          photo_urls: string[] | null
           priority_level: Database["public"]["Enums"]["task_priority"]
           project_id: string | null
           scheduled_date: string | null
@@ -1796,6 +1797,7 @@ export type Database = {
           id?: string
           is_daily?: boolean
           is_scheduled?: boolean
+          photo_urls?: string[] | null
           priority_level?: Database["public"]["Enums"]["task_priority"]
           project_id?: string | null
           scheduled_date?: string | null
@@ -1814,6 +1816,7 @@ export type Database = {
           id?: string
           is_daily?: boolean
           is_scheduled?: boolean
+          photo_urls?: string[] | null
           priority_level?: Database["public"]["Enums"]["task_priority"]
           project_id?: string | null
           scheduled_date?: string | null
