@@ -234,6 +234,11 @@ export default function ProjectDetail() {
   const [quickLogDate, setQuickLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [quickLogSubmitting, setQuickLogSubmitting] = useState(false);
   const [quickLogShowIssues, setQuickLogShowIssues] = useState(false);
+  const [deleteLogId, setDeleteLogId] = useState<string | null>(null);
+  const [editLog, setEditLog] = useState<DBDailyLog | null>(null);
+  const [editWork, setEditWork] = useState('');
+  const [editIssues, setEditIssues] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const { toast } = useToast();
 
   const handleQuickLogSubmit = async (e: React.FormEvent) => {
@@ -261,9 +266,40 @@ export default function ProjectDetail() {
     }
   };
 
-  useEffect(() => {
-    if (isEditing) nameInputRef.current?.focus();
-  }, [isEditing]);
+  const handleDeleteLog = async () => {
+    if (!deleteLogId) return;
+    const { error } = await supabase.from('daily_logs').delete().eq('id', deleteLogId);
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to delete log.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Log deleted' });
+      setDailyLogs((prev) => prev.filter((l) => l.id !== deleteLogId));
+    }
+    setDeleteLogId(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editLog) return;
+    setIsSavingEdit(true);
+    const { error } = await supabase
+      .from('daily_logs')
+      .update({ work_performed: editWork.trim() || null, issues: editIssues.trim() || null })
+      .eq('id', editLog.id);
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to save changes.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Log updated' });
+      setDailyLogs((prev) =>
+        prev.map((l) =>
+          l.id === editLog.id ? { ...l, work_performed: editWork.trim() || null, issues: editIssues.trim() || null } : l
+        )
+      );
+      setEditLog(null);
+    }
+    setIsSavingEdit(false);
+  };
+
+
 
   const saveField = async (field: 'name' | 'address', value: string) => {
     const trimmed = value.trim();
@@ -1252,9 +1288,33 @@ export default function ProjectDetail() {
                   <div className="space-y-4">
                     {dailyLogs.map((log) => (
                       <div key={log.id} className="p-4 rounded-lg bg-muted/50 border border-border">
-                        <div className="flex items-center gap-2 mb-2">
-                          <ClipboardList className="h-4 w-4 text-primary" />
-                          <span className="font-medium">{formatDate(log.date)}</span>
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <ClipboardList className="h-4 w-4 text-primary" />
+                            <span className="font-medium">{formatDate(log.date)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              onClick={() => {
+                                setEditLog(log);
+                                setEditWork(log.work_performed || '');
+                                setEditIssues(log.issues || '');
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => setDeleteLogId(log.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                         {log.work_performed && (
                           <div className="mb-2">
@@ -1276,6 +1336,64 @@ export default function ProjectDetail() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Delete Confirmation */}
+            <AlertDialog open={!!deleteLogId} onOpenChange={(open) => { if (!open) setDeleteLogId(null); }}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Daily Log?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. The log entry will be permanently deleted.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={handleDeleteLog}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Edit Log Dialog */}
+            <Dialog open={!!editLog} onOpenChange={(open) => { if (!open) setEditLog(null); }}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    Edit Log — {editLog ? formatDate(editLog.date) : ''}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Work Performed</label>
+                    <Textarea
+                      value={editWork}
+                      onChange={(e) => setEditWork(e.target.value)}
+                      placeholder="Describe the work completed..."
+                      rows={4}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Issues Encountered <span className="text-muted-foreground font-normal">(optional)</span></label>
+                    <Textarea
+                      value={editIssues}
+                      onChange={(e) => setEditIssues(e.target.value)}
+                      placeholder="Any problems or concerns?"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setEditLog(null)}>Cancel</Button>
+                  <Button onClick={handleSaveEdit} disabled={isSavingEdit}>
+                    {isSavingEdit ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="procurement">
