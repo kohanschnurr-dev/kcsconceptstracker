@@ -1,53 +1,51 @@
 
 
-## Add Saved Budget Picker and Quick Budget Link to New Project Modal
+## Show Total Budget and Add "Needs Allocation" Banner
 
-### What Changes
+### Problem
+Two issues after the new $0-category initialization:
 
-**1. Saved Budget Dropdown in the Modal**
-Replace the static info banner ("Budget will be automatically distributed across X categories...") with a saved budget selector. Users can pick from their saved budget templates to auto-fill the total budget and stage per-category allocations as a `pending_budget` on the newly created project.
+1. **Total Budget shows $0 on Project Detail page** -- it sums category budgets (all $0) instead of using the project-level `total_budget` field
+2. **Budget by Category shows 51 rows of $0** -- noisy and unhelpful when no budgets have been allocated
 
-**2. Quick Link to Budget Calculator**
-Add a small "Open Budget Calculator" link/button below the budget field. Clicking it closes the modal and navigates the user to `/budget-calculator` so they can build a detailed budget from scratch, then apply it to the project afterward.
+### Changes
 
-**3. Flow When a Saved Budget Is Selected**
-- The Total Budget field auto-fills with the template's `total_budget` (still editable)
-- On project creation, the template's `category_budgets` are written to the project's `pending_budget` column (same staging pattern used by the Budget Calculator and CreateBudgetModal)
-- When the user opens the project, the existing `PendingBudgetDialog` auto-opens for approval -- no new approval UI needed
+#### 1. Fix Total Budget display on Project Detail (`src/pages/ProjectDetail.tsx`)
 
-**4. Flow When No Budget Is Selected (default)**
-- Same as today: user enters a manual total budget, categories initialize at $0
-- The info banner updates to say "Categories start at $0. You can assign budgets later via the Budget Calculator."
+Update the `totalBudget` calculation (line ~398-400) to use the same logic as `ProjectBudget.tsx`: prefer `project.total_budget` when set, fall back to category sum.
 
----
+```
+Before:  const totalBudget = categories.reduce(...)
+After:   const categoryTotal = categories.reduce(...)
+         const totalBudget = (project?.total_budget ?? 0) > 0 ? project.total_budget : categoryTotal
+```
+
+This ensures the manually entered or template-applied total budget displays correctly.
+
+#### 2. Add "Needs Allocation" banner in Budget by Category section (`src/pages/ProjectBudget.tsx`)
+
+When `totalBudget > 0` but `categoryTotal === 0` (budget exists but no categories have allocations), show a banner inside the "Budget by Category" collapsible section with:
+- An alert icon and message: "**$X,XXX needs allocation** -- Assign budgets to categories using the Budget Calculator or manually edit each category."
+- A button to navigate to the Budget Calculator: "Open Budget Calculator"
+
+This replaces the current view of 51 rows of $0.00 with a clear call-to-action.
+
+#### 3. Hide $0-budget categories from the table (`src/pages/ProjectBudget.tsx`)
+
+When all categories have $0 budgets and $0 spent, only show the "Needs Allocation" banner (no table). When some categories have budgets and others don't:
+- Show categories that have a budget > 0 OR have actual spending > 0
+- Hide categories with both $0 budget and $0 spent -- they add no information
+
+Add a subtle toggle/link below the table: "Show all categories" to reveal hidden ones if needed.
 
 ### Technical Details
 
-#### File: `src/components/NewProjectModal.tsx`
+**File: `src/pages/ProjectDetail.tsx`**
+- Line ~398-400: Update `totalBudget` to check `project.total_budget` first
 
-**New state:**
-- `selectedTemplate` -- holds the picked `BudgetTemplate | null`
-
-**New imports:**
-- `useNavigate` from react-router-dom
-- `Calculator` icon from lucide-react
-
-**Fetch saved budgets:**
-- On modal open, query `budget_templates` for the current user (same query pattern as `TemplatePicker` and `SavedBudgetsPanel`)
-- Store in local state `savedBudgets`
-
-**UI changes (bottom section, replacing the info banner):**
-- A `Select` dropdown labeled "Apply Saved Budget (optional)" listing saved template names with their total amounts
-- A "None" option to clear selection
-- When a template is selected: auto-fill `totalBudget` with the template's `total_budget`
-- Below the select: a subtle link "or build one in Budget Calculator" that navigates to `/budget-calculator`
-
-**Submit logic update:**
-- After creating the project and inserting `project_categories` (all at $0), if `selectedTemplate` is set:
-  - Write `pending_budget` to the project with the template's `category_budgets` and `total_budget`
-  - This triggers the existing approval flow when the user views the project
-
-#### No other files need changes
-- The `PendingBudgetDialog` and `PendingBudgetBanner` already handle the `pending_budget` column
-- The budget approval merge logic already handles new vs existing categories
-
+**File: `src/pages/ProjectBudget.tsx`**
+- Line ~461-463: `categoryTotal` already computed; no change needed there
+- Lines ~965-994 (Category Breakdown header area): Add the "Needs Allocation" banner conditionally when `totalBudget > 0 && categoryTotal === 0`
+- Lines ~1027-1028 (category table body): Filter categories to only show those with `estimated_budget > 0 || actualSpent > 0` by default
+- Add `showAllCategories` state toggle to reveal hidden $0 categories
+- Import `Calculator` icon and `useNavigate` (already imported) for the banner button
