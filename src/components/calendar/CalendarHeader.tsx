@@ -76,27 +76,54 @@ export function CalendarHeader({
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
-    <div className="flex flex-wrap items-center gap-4 bg-card rounded-xl p-4 border border-border">
-      {/* Left section: Title + Navigation + Filters + Views */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-bold text-foreground whitespace-nowrap">Project Calendar</h1>
+    <div className="bg-card rounded-xl p-3 border border-border">
+      {/* ── Mobile layout (2 compact rows) ── */}
+      <div className="sm:hidden flex flex-col gap-2">
+        {/* Row 1: Title | View selector + Add button */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-4 w-4 text-primary shrink-0" />
+            <h1 className="text-sm font-bold text-foreground">Project Calendar</h1>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <Select value={view} onValueChange={(v) => onViewChange(v as CalendarView)}>
+              <SelectTrigger className="h-8 w-[82px] text-xs bg-card border-border text-foreground">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="monthly">
+                  <span className="flex items-center gap-1.5"><LayoutGrid className="h-3.5 w-3.5" />Month</span>
+                </SelectItem>
+                <SelectItem value="weekly">
+                  <span className="flex items-center gap-1.5"><List className="h-3.5 w-3.5" />Week</span>
+                </SelectItem>
+                <SelectItem value="gantt">
+                  <span className="flex items-center gap-1.5"><GanttChart className="h-3.5 w-3.5" />Gantt</span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {onAddEvent && <div className="flex-shrink-0">{onAddEvent}</div>}
+          </div>
         </div>
-        
+
+        {/* Row 2: Nav chevrons + MonthYearPicker + Project filter */}
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
             onClick={handlePrev}
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
           {view === 'monthly' ? (
-            <MonthYearPicker currentDate={currentDate} onDateChange={onDateChange} />
+            <MonthYearPicker
+              currentDate={currentDate}
+              onDateChange={onDateChange}
+              labelClassName="text-sm min-w-[110px] text-center"
+            />
           ) : (
-            <span className="text-base font-semibold text-foreground min-w-[140px] text-center">
+            <span className="text-xs font-semibold text-foreground min-w-[110px] text-center">
               {getDateLabel()}
             </span>
           )}
@@ -104,85 +131,111 @@ export function CalendarHeader({
             variant="ghost"
             size="sm"
             onClick={handleNext}
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3.5 w-3.5" />
           </Button>
-        </div>
-
-        {onProjectFilterChange && projects.length > 0 && (
-          <ProjectAutocomplete
-            projects={[{ id: 'all', name: 'All Projects', address: '' }, ...projects]}
-            value={selectedProjectId || 'all'}
-            onSelect={(value) => onProjectFilterChange(value === 'all' ? null : value)}
-            placeholder="All Projects"
-            triggerClassName="h-9 w-[220px] bg-card border-border text-foreground hover:bg-secondary"
-            className="bg-card border-border"
-          />
-        )}
-
-        <WeatherWidgetWithCity />
-
-        {/* Mobile view selector */}
-        <div className="sm:hidden">
-          <Select value={view} onValueChange={(v) => onViewChange(v as CalendarView)}>
-            <SelectTrigger className="h-9 w-[120px] bg-card border-border text-foreground">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-popover border-border z-50">
-              <SelectItem value="monthly">
-                <span className="flex items-center gap-2"><LayoutGrid className="h-4 w-4" />Month</span>
-              </SelectItem>
-              <SelectItem value="weekly">
-                <span className="flex items-center gap-2"><List className="h-4 w-4" />Week</span>
-              </SelectItem>
-              <SelectItem value="gantt">
-                <span className="flex items-center gap-2"><GanttChart className="h-4 w-4" />Gantt</span>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Desktop pill group */}
-        <div className="hidden sm:flex items-center gap-1 bg-secondary rounded-lg p-1">
-          <Button
-            variant={view === 'monthly' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onViewChange('monthly')}
-            className={view === 'monthly' 
-              ? 'h-8 bg-primary hover:bg-primary/90 text-primary-foreground' 
-              : 'h-8 text-muted-foreground hover:text-foreground hover:bg-secondary'}
-          >
-            <LayoutGrid className="h-4 w-4 mr-1" />
-            Month
-          </Button>
-          <Button
-            variant={view === 'weekly' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onViewChange('weekly')}
-            className={view === 'weekly' 
-              ? 'h-8 bg-primary hover:bg-primary/90 text-primary-foreground' 
-              : 'h-8 text-muted-foreground hover:text-foreground hover:bg-secondary'}
-          >
-            <List className="h-4 w-4 mr-1" />
-            Week
-          </Button>
-          <Button
-            variant={view === 'gantt' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onViewChange('gantt')}
-            className={view === 'gantt' 
-              ? 'h-8 bg-primary hover:bg-primary/90 text-primary-foreground' 
-              : 'h-8 text-muted-foreground hover:text-foreground hover:bg-secondary'}
-          >
-            <GanttChart className="h-4 w-4 mr-1" />
-            Gantt
-          </Button>
+          {onProjectFilterChange && projects.length > 0 && (
+            <ProjectAutocomplete
+              projects={[{ id: 'all', name: 'All Projects', address: '' }, ...projects]}
+              value={selectedProjectId || 'all'}
+              onSelect={(value) => onProjectFilterChange(value === 'all' ? null : value)}
+              placeholder="All Projects"
+              triggerClassName="h-8 flex-1 min-w-0 text-xs bg-card border-border text-foreground hover:bg-secondary"
+              className="bg-card border-border"
+            />
+          )}
         </div>
       </div>
 
-      {/* Add Button anchored right */}
-      {onAddEvent && <div className="ml-auto flex-shrink-0">{onAddEvent}</div>}
+      {/* ── Desktop layout (existing, unchanged) ── */}
+      <div className="hidden sm:flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-bold text-foreground whitespace-nowrap">Project Calendar</h1>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handlePrev}
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {view === 'monthly' ? (
+              <MonthYearPicker currentDate={currentDate} onDateChange={onDateChange} />
+            ) : (
+              <span className="text-base font-semibold text-foreground min-w-[140px] text-center">
+                {getDateLabel()}
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleNext}
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {onProjectFilterChange && projects.length > 0 && (
+            <ProjectAutocomplete
+              projects={[{ id: 'all', name: 'All Projects', address: '' }, ...projects]}
+              value={selectedProjectId || 'all'}
+              onSelect={(value) => onProjectFilterChange(value === 'all' ? null : value)}
+              placeholder="All Projects"
+              triggerClassName="h-9 w-[220px] bg-card border-border text-foreground hover:bg-secondary"
+              className="bg-card border-border"
+            />
+          )}
+
+          <WeatherWidgetWithCity />
+
+          {/* Desktop pill group */}
+          <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+            <Button
+              variant={view === 'monthly' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onViewChange('monthly')}
+              className={view === 'monthly'
+                ? 'h-8 bg-primary hover:bg-primary/90 text-primary-foreground'
+                : 'h-8 text-muted-foreground hover:text-foreground hover:bg-secondary'}
+            >
+              <LayoutGrid className="h-4 w-4 mr-1" />
+              Month
+            </Button>
+            <Button
+              variant={view === 'weekly' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onViewChange('weekly')}
+              className={view === 'weekly'
+                ? 'h-8 bg-primary hover:bg-primary/90 text-primary-foreground'
+                : 'h-8 text-muted-foreground hover:text-foreground hover:bg-secondary'}
+            >
+              <List className="h-4 w-4 mr-1" />
+              Week
+            </Button>
+            <Button
+              variant={view === 'gantt' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onViewChange('gantt')}
+              className={view === 'gantt'
+                ? 'h-8 bg-primary hover:bg-primary/90 text-primary-foreground'
+                : 'h-8 text-muted-foreground hover:text-foreground hover:bg-secondary'}
+            >
+              <GanttChart className="h-4 w-4 mr-1" />
+              Gantt
+            </Button>
+          </div>
+        </div>
+
+        {/* Add Button anchored right */}
+        {onAddEvent && <div className="ml-auto flex-shrink-0">{onAddEvent}</div>}
+      </div>
     </div>
   );
 }
