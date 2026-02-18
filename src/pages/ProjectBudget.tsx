@@ -11,6 +11,7 @@ import {
   Filter,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Calendar,
   CreditCard,
   FileText,
@@ -40,7 +41,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -981,6 +982,18 @@ export default function ProjectBudget() {
                   <Badge variant="outline" className="text-xs">
                     {categories.length} categories
                   </Badge>
+                  {(() => {
+                    const hiddenCount = categories.filter(cat => cat.estimated_budget === 0 && cat.actualSpent === 0).length;
+                    return hiddenCount > 0 && !showAllCategories ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowAllCategories(true); }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground hover:bg-muted/80 border border-border/50 transition-colors"
+                      >
+                        <Plus className="h-3 w-3" />
+                        {hiddenCount} unallocated
+                      </button>
+                    ) : null;
+                  })()}
                 </div>
                 <Button 
                   variant="outline" 
@@ -1195,21 +1208,25 @@ export default function ProjectBudget() {
                             );
                           })}
                       </TableBody>
+                      {(() => {
+                        const hiddenCount = categories.filter(cat => cat.estimated_budget === 0 && cat.actualSpent === 0).length;
+                        return showAllCategories && hiddenCount > 0 ? (
+                          <TableFooter className="bg-transparent">
+                            <TableRow className="hover:bg-transparent border-t border-dashed border-border/50">
+                              <TableCell colSpan={7} className="text-center py-2 bg-muted/20">
+                                <button
+                                  onClick={() => setShowAllCategories(false)}
+                                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mx-auto transition-colors"
+                                >
+                                  <ChevronUp className="h-3.5 w-3.5" />
+                                  Hide unallocated categories
+                                </button>
+                              </TableCell>
+                            </TableRow>
+                          </TableFooter>
+                        ) : null;
+                      })()}
                     </Table>
-                    {(() => {
-                      const hiddenCount = categories.filter(cat => cat.estimated_budget === 0 && cat.actualSpent === 0).length;
-                      if (hiddenCount > 0) {
-                        return (
-                          <button
-                            className="w-full text-center text-xs text-muted-foreground hover:text-foreground py-2 transition-colors"
-                            onClick={() => setShowAllCategories(prev => !prev)}
-                          >
-                            {showAllCategories ? 'Hide empty categories' : `Show all categories (${hiddenCount} hidden)`}
-                          </button>
-                        );
-                      }
-                      return null;
-                    })()}
                   </div>
                 )}
               </CardContent>
