@@ -629,7 +629,7 @@ export default function Procurement() {
                             </span>
                             {item.source_url && (
                               <a 
-                                href={item.source_url} 
+                                href={item.source_url.startsWith('http://') || item.source_url.startsWith('https://') ? item.source_url : `https://${item.source_url}`} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="text-primary hover:text-primary/80"

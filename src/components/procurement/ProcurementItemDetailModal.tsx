@@ -195,7 +195,7 @@ export function ProcurementItemDetailModal({
             <>
               <Separator />
               <a
-                href={item.source_url}
+                href={item.source_url && (item.source_url.startsWith('http://') || item.source_url.startsWith('https://')) ? item.source_url : `https://${item.source_url}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"

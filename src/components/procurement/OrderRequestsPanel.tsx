@@ -60,7 +60,7 @@ function LineItem({
             )}
             {item.item_source_url && (
               <a
-                href={item.item_source_url}
+                href={item.item_source_url.startsWith('http://') || item.item_source_url.startsWith('https://') ? item.item_source_url : `https://${item.item_source_url}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:text-primary/80"
