@@ -1,62 +1,45 @@
 
-## Fix: Move Team Messages Panel to Bottom Right, Covering the FAB When Open
+## Hide FAB Button When Panel Is Open
 
 ### Problem
-The panel is currently positioned at `bottom-20 right-6 lg:right-auto lg:left-[72px]` — on desktop this anchors it to the far left (just past the sidebar), which is wrong. The user wants:
-1. The panel anchored to the **bottom right corner** (same side as the FAB)
-2. When the panel is open, it should **cover the FAB** (sit over it, not above it)
+As shown in the screenshot, the FAB button remains visible in the bottom-right corner even when the Team Messages panel is open and covering that same area. The user wants the FAB to disappear when the panel is pulled up.
 
 ### Solution
+In `src/components/layout/FloatingMessageBubble.tsx`, add a conditional visibility class to the FAB button so it hides when `isOpen` is `true`.
 
-Two changes in `src/components/layout/FloatingMessageBubble.tsx`:
+The FAB button is rendered after the panel div (around line 240+). It currently always renders. We just need to add `isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'` to its className so it fades out when the panel is open.
 
-**1. Reposition the panel to bottom-right and cover the FAB**
+### Exact Code Change
 
-Currently the panel sits `bottom-20` (above the FAB). Instead:
-- Change to `bottom-6 right-6` — same position as the FAB
-- This makes the panel sit directly **on top of** the FAB button when open, covering it completely
-- Remove all the `lg:left-[72px]` and `lg:right-auto` overrides — keep it right-anchored always
+**FAB button** — add conditional opacity based on `isOpen`:
 
-**2. Restore the animation origin to bottom-right**
-
-Remove `lg:origin-bottom-left` since the panel is now right-anchored again. Keep `origin-bottom-right` so it scales from the FAB position.
-
-### Visual Result
-
-```
-Before (open):
-┌──────────────┐
-│ Team Messages│  ← panel at bottom-20 right-6 (above FAB)
-└──────────────┘
-       [FAB]       ← FAB still visible below panel at bottom-6 right-6
-
-After (open):
-┌──────────────┐
-│ Team Messages│
-│              │
-│              │
-│   (FAB is    │
-│   covered)   │
-└──────────────┘  ← panel at bottom-6 right-6, same spot as FAB
-```
-
-The panel completely overlays the FAB area — clean, familiar chat app UX (like WhatsApp Web, Intercom, etc).
-
-### Exact Code Changes
-
-**Panel div** (lines 211-214):
 ```tsx
 // Before
-'fixed z-[60] transition-all duration-200 origin-bottom-right lg:origin-bottom-left',
-'bottom-20 right-6 lg:right-auto lg:left-[72px]',
+className={cn(
+  'fixed bottom-6 right-6 z-[60]',
+  'h-14 w-14 rounded-full shadow-lg',
+  'bg-primary text-primary-foreground',
+  'flex items-center justify-center',
+  'transition-all duration-200 hover:scale-110 active:scale-95',
+  hasUnread && 'animate-pulse'
+)}
 
 // After
-'fixed z-[60] transition-all duration-200 origin-bottom-right',
-'bottom-6 right-6',
+className={cn(
+  'fixed bottom-6 right-6 z-[60]',
+  'h-14 w-14 rounded-full shadow-lg',
+  'bg-primary text-primary-foreground',
+  'flex items-center justify-center',
+  'transition-all duration-200 hover:scale-110 active:scale-95',
+  hasUnread && 'animate-pulse',
+  isOpen ? 'opacity-0 pointer-events-none scale-75' : 'opacity-100 scale-100'
+)}
 ```
+
+The `scale-75` + `opacity-0` gives a subtle shrink-fade effect as the panel opens, and `pointer-events-none` ensures the hidden button can't be accidentally clicked.
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/components/layout/FloatingMessageBubble.tsx` | Lines 212–213: simplify panel position to `bottom-6 right-6`, remove `lg:` overrides, restore `origin-bottom-right` |
+| `src/components/layout/FloatingMessageBubble.tsx` | Add `isOpen ? 'opacity-0 pointer-events-none scale-75' : 'opacity-100 scale-100'` to FAB button className |
