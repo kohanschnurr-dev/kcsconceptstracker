@@ -1,193 +1,108 @@
 
-## Contractor Mode — Deal Parameters Upgrade
+## Redesign the ContractorMarginGauge — Sleek Target + Gross Margin Display
 
-### What the user confirmed via questions:
-- **Contractor-specific fields to add**: Labor Cost, Material Cost, Overhead %
-- **Purchase Price**: Remove it — not needed in contractor mode
-- **Square Footage**: Hide it in contractor mode
-- **Margin target**: Make it user-adjustable (like MAO % in Sale mode)
+### What's Wrong (from the screenshot)
 
----
+The top-right corner of the gauge has three separate pieces crammed together:
+- `Target:  [20]  %` (inline label + input + unit)
+- `GROSS MARGIN` (small caps label)
+- `80.0%` (large number)
 
-### Overview of all changes
-
-The contractor sidebar currently mirrors the Sale sidebar with just a label rename ("Contract Value"). We need to make it distinct and purpose-built for a contractor's workflow.
-
-**Summary of changes:**
-
-| Area | Change |
-|---|---|
-| `DealSidebar.tsx` | Hide Purchase Price + Square Footage in contractor mode. Add contractor-specific section: Labor Cost, Material Cost, Overhead % inputs |
-| `BudgetCalculator.tsx` | Add `marginTarget` state + pass it to gauge. Wire overhead calculation into Job P&L. Pass labor/material split into analysis card |
-| `ContractorMarginGauge.tsx` | Accept `marginTarget` prop. Show editable target % like MAO gauge. Color thresholds react to user's custom target |
-| `DealSidebar` props | Add `laborCost`, `materialCost`, `overheadPct` state + handlers |
+This creates visual clutter. The "Target:" label reads like a form field floating mid-air, disconnected from the metric it governs. The layout also feels misaligned — the three stats on the left are icon-driven cards, but the right side is just raw text.
 
 ---
 
-### Detailed Plan
+### Redesign Goals
 
-#### 1. `BudgetCalculator.tsx` — New contractor state
-
-Add four new state variables near the other deal parameters:
-
-```tsx
-const [laborCost, setLaborCost] = useState<string>('');
-const [materialCost, setMaterialCost] = useState<string>('');
-const [overheadPct, setOverheadPct] = useState<string>('10');
-const [marginTarget, setMarginTarget] = useState<number>(20);
-```
-
-Add computed contractor values near the existing profit calculations:
-
-```tsx
-// Contractor-specific calculations
-const laborCostNum = parseFloat(laborCost) || 0;
-const materialCostNum = parseFloat(materialCost) || 0;
-const overheadPctNum = parseFloat(overheadPct) || 0;
-const overheadAmount = arvNum * (overheadPctNum / 100);
-// Job cost = budget canvas total + overhead
-const contractorJobCost = totalBudget + overheadAmount;
-const contractorGrossProfit = arvNum - contractorJobCost;
-const contractorMargin = arvNum > 0 ? (contractorGrossProfit / arvNum) * 100 : 0;
-```
-
-Pass new props to `DealSidebar`:
-```tsx
-laborCost={laborCost}
-onLaborCostChange={setLaborCost}
-materialCost={materialCost}
-onMaterialCostChange={setMaterialCost}
-overheadPct={overheadPct}
-onOverheadPctChange={setOverheadPct}
-```
-
-Pass `marginTarget` + `onMarginTargetChange` to `ContractorMarginGauge`:
-```tsx
-<ContractorMarginGauge
-  contractValue={arvNum}
-  jobCost={contractorJobCost}
-  marginTarget={marginTarget}
-  onMarginTargetChange={setMarginTarget}
-/>
-```
-
-Update the `getCategoryBudgetsObject` `_meta` to persist contractor fields so templates save/restore them:
-```tsx
-budgets._meta = {
-  ...existing,
-  laborCost, materialCost, overheadPct, marginTarget,
-};
-```
-
-Update the contractor analysis section in the collapsible to show the full breakdown:
-- **Contract** column: Contract Value, Labor Cost, Material Cost
-- **Job Cost** column: Budget Canvas Total, Overhead (% of contract), Total Job Cost
-- **Returns** column: Gross Profit, Gross Margin % (vs target), Labor/Material split %
-- **Summary cards** (3): Contract Value | Total Job Cost | Gross Profit (colored)
+1. **Integrate the target into the margin display** — instead of a standalone "Target: [20] %" row above the label, embed the editable target as a subtle inline annotation **below** the margin percentage, like a badge or a single-line inline control.
+2. **Add a circular/arc indicator or a cleaner badge** for the margin status — a small colored pill or ring next to the percentage gives instant visual status without noisy text.
+3. **Make the right stat block consistent** with the left three — same icon-card structure, same spacing.
+4. **Clean up the progress bar section** — remove the redundant `margin% margin` label on the right (it duplicates the big number above), tighten spacing.
 
 ---
 
-#### 2. `DealSidebar.tsx` — Contractor-specific fields
+### New Layout Design
 
-**Update `DealSidebarProps`** to add:
-```tsx
-laborCost: string;
-onLaborCostChange: (v: string) => void;
-materialCost: string;
-onMaterialCostChange: (v: string) => void;
-overheadPct: string;
-onOverheadPctChange: (v: string) => void;
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  [$ icon] CONTRACT VALUE   [↗ icon] JOB COST   [✓ icon] GROSS PROFIT   [%]  │
+│  $50,000                   $10,000               $40,000             80.0%   │
+│                                                              ● Target: 20%   │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  0%                        ↑ target (20%)                             40%+  │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Hide Purchase Price when `calculatorType === 'contractor'`:**
+The right stat block becomes:
+
+```
+[GAUGE icon]  GROSS MARGIN
+              80.0%
+              ● Target [20] %   ← small inline control, muted
+```
+
+This keeps the icon-card structure consistent with the other three stats but adds the editable target as a compact sub-line.
+
+---
+
+### Specific Changes to `ContractorMarginGauge.tsx`
+
+#### A. Right stat block restructure
+
+Replace the current `div.text-right` with a proper icon-card like the other three:
+
 ```tsx
-{calculatorType !== 'contractor' && (
-  <div className="space-y-2">
-    <Label>Purchase Price</Label>
-    ...
+<div className="flex items-center gap-2">
+  {/* Status ring icon — colored by margin status */}
+  <div className={cn('p-1.5 rounded-lg', statusBgColor)}>
+    <Percent className={cn('h-4 w-4', marginColor)} />
   </div>
-)}
-```
-
-**Hide Square Footage when `calculatorType === 'contractor'`:**
-```tsx
-{calculatorType !== 'contractor' && (
-  <div className="space-y-2">
-    <Label>Square Footage</Label>
-    ...
+  <div>
+    <p className="text-xs text-muted-foreground uppercase tracking-wide">Gross Margin</p>
+    <p className={cn('text-2xl font-bold font-mono leading-none', marginColor)}>
+      {hasValidData ? `${margin.toFixed(1)}%` : '—'}
+    </p>
+    {/* Target inline — compact, below the number */}
+    <div className="flex items-center gap-1 mt-1">
+      <div className={cn('w-1.5 h-1.5 rounded-full', isGreen ? 'bg-green-500' : isAmber ? 'bg-amber-500' : 'bg-destructive')} />
+      <span className="text-xs text-muted-foreground">Target</span>
+      <input
+        type="number"
+        value={marginTarget}
+        onChange={...}
+        className="w-8 h-4 text-xs font-mono text-center rounded border border-input bg-background/80 px-0.5 focus:outline-none focus:ring-1 focus:ring-ring"
+        min={1} max={99}
+      />
+      <span className="text-xs text-muted-foreground">%</span>
+    </div>
   </div>
-)}
-```
-
-**Add contractor fields section (shown only when `calculatorType === 'contractor'`):**
-
-After the Contract Value input, render a new separated section:
-
-```
-─────────────────────────
-  JOB BREAKDOWN          [optional live split donut preview]
-
-  Labor Cost   [$______]
-  Material Cost [$______]
-
-  ─────────────────────────
-  OVERHEAD
-
-  Overhead %   [___%]
-  = $X,XXX (computed from contract value)
-```
-
-The live overhead dollar amount is computed inline: `arvNum * (overheadPct / 100)`. This gives the contractor instant feedback on what overhead costs in real dollars.
-
-Also show a compact **Labor / Material split bar** — a simple ratio bar showing the % breakdown of labor vs materials:
-
-```tsx
-// If labor + material > 0, show a thin horizontal bar
-const total = laborCostNum + materialCostNum;
-const laborPct = total > 0 ? (laborCostNum / total) * 100 : 50;
-// Orange bar (labor) + remaining (material)
-```
-
----
-
-#### 3. `ContractorMarginGauge.tsx` — User-editable margin target
-
-Add props:
-```tsx
-marginTarget: number;
-onMarginTargetChange: (v: number) => void;
-```
-
-Add an inline editable target input (same UX as MAO % in MAOGauge — small `input` field inline with the label):
-
-```tsx
-<div className="flex items-center gap-1 text-xs text-muted-foreground">
-  <span>Target:</span>
-  <input
-    type="number"
-    value={marginTarget}
-    onChange={(e) => onMarginTargetChange(parseFloat(e.target.value) || 20)}
-    className="w-10 h-5 text-xs font-mono text-center rounded border border-input bg-background px-1"
-  />
-  <span>%</span>
 </div>
 ```
 
-Update color thresholds to be relative to `marginTarget`:
-- `margin >= marginTarget` → green
-- `margin >= marginTarget * 0.6` → amber  
-- below → red
+Key improvements:
+- The `Percent` icon (`lucide-react`) gives the right stat a proper icon like the others
+- The target control moves **under** the big `80.0%` number as a small `● Target [20] %` inline row — it reads as metadata attached to the metric, not a standalone form field
+- The colored dot before "Target" communicates status at a glance without needing the word "margin" repeated twice
 
-Update the progress bar: map `0 → marginTarget * 2` to `0 → 100%` of bar width, so the target is always at 50% of the bar visually. Add a target marker line.
+#### B. Progress bar cleanup
+
+- Remove the right-side `{margin.toFixed(1)}% margin` label (duplicate of the large number above)
+- Keep only the left label `"Job Cost vs Contract Value"` — or simplify to `"Margin vs Target"`
+- The three values below the bar (`0%` / `20% target` / `40%+`) stay — they provide the scale context
+
+#### C. Icon import
+
+Add `Percent` to the lucide-react import line:
+```tsx
+import { TrendingUp, CheckCircle2, AlertTriangle, DollarSign, Percent } from 'lucide-react';
+```
 
 ---
 
 ### Files to Modify
 
-| File | What changes |
+| File | Change |
 |---|---|
-| `src/pages/BudgetCalculator.tsx` | Add `laborCost`, `materialCost`, `overheadPct`, `marginTarget` state. Compute `contractorJobCost`. Pass new props to sidebar + gauge. Update contractor analysis card |
-| `src/components/budget/DealSidebar.tsx` | Accept new contractor props. Hide Purchase Price + Sqft in contractor mode. Add Job Breakdown + Overhead sections for contractor only |
-| `src/components/budget/ContractorMarginGauge.tsx` | Accept `marginTarget` + `onMarginTargetChange`. Make target editable inline. Update color thresholds dynamically |
+| `src/components/budget/ContractorMarginGauge.tsx` | Restructure the right stat block to use an icon-card layout. Move the target control below the margin %. Remove duplicate margin label from progress bar. |
 
-No database schema changes needed.
+Only one file needs to change. No props, no logic, no database changes.
