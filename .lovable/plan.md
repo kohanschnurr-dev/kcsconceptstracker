@@ -1,42 +1,40 @@
 
-## Fix: Auto-open First Tab in Saved Order
+## Fix: Add Contractor to Project Autocomplete
 
 ### Root Cause
 
-In `src/pages/BudgetCalculator.tsx` line 73:
+In `src/components/ProjectAutocomplete.tsx`, lines 73–78, the `PROJECT_TYPE_GROUPS` array that controls which project types appear in the grouped dropdown is missing `'contractor'`:
+
 ```tsx
-const [calculatorType, setCalculatorType] = useState<CalculatorType>('fix_flip');
+const PROJECT_TYPE_GROUPS: { type: string; label: string }[] = [
+  { type: 'fix_flip', label: 'Fix & Flips' },
+  { type: 'rental', label: 'Rentals' },
+  { type: 'new_construction', label: 'New Builds' },
+  { type: 'wholesaling', label: 'Wholesaling' },
+  // 'contractor' is missing!
+];
 ```
 
-This always defaults to `'fix_flip'` (Sale) regardless of the saved tab order. The `DealSidebar` separately reads `budget-calculator-tab-order` from localStorage to render the tabs in the right order, but `BudgetCalculator` never consults that value to pick the initial active tab.
+Because `groupedProjects` is built by filtering `filteredProjects` against this list, contractor projects are silently excluded.
 
 ### Fix
 
-Change the `calculatorType` initial state to read from `localStorage` using the same key (`budget-calculator-tab-order`) and use the first item in the saved array as the default. If nothing is saved, fall back to `'fix_flip'`.
+Add the missing `contractor` entry to `PROJECT_TYPE_GROUPS`:
 
 ```tsx
-// Before
-const [calculatorType, setCalculatorType] = useState<CalculatorType>('fix_flip');
-
-// After
-const [calculatorType, setCalculatorType] = useState<CalculatorType>(() => {
-  try {
-    const saved = localStorage.getItem('budget-calculator-tab-order');
-    if (saved) {
-      const order = JSON.parse(saved) as CalculatorType[];
-      if (order.length > 0) return order[0];
-    }
-  } catch {}
-  return 'fix_flip';
-});
+const PROJECT_TYPE_GROUPS: { type: string; label: string }[] = [
+  { type: 'fix_flip', label: 'Fix & Flips' },
+  { type: 'rental', label: 'Rentals' },
+  { type: 'new_construction', label: 'New Builds' },
+  { type: 'wholesaling', label: 'Wholesaling' },
+  { type: 'contractor', label: 'Contractor' },
+];
 ```
-
-This is a lazy initializer so it only runs once on mount — no performance impact.
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/pages/BudgetCalculator.tsx` | Change `calculatorType` useState from a hard-coded `'fix_flip'` to a lazy initializer that reads the first entry from the saved tab order in localStorage. |
+| `src/components/ProjectAutocomplete.tsx` | Add `{ type: 'contractor', label: 'Contractor' }` to the `PROJECT_TYPE_GROUPS` array. |
 
-One file, one change. No other files touched.
+One file, one line added.
