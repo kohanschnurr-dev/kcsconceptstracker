@@ -81,6 +81,7 @@ import { DocumentsGallery } from '@/components/project/DocumentsGallery';
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { CashFlowCalculator } from '@/components/project/CashFlowCalculator';
 import { HardMoneyLoanCalculator } from '@/components/project/HardMoneyLoanCalculator';
+import { ContractorFinancialsTab } from '@/components/project/ContractorFinancialsTab';
 
 import { ProjectCalendar } from '@/components/project/ProjectCalendar';
 import { ProjectTasks } from '@/components/project/ProjectTasks';
@@ -157,13 +158,14 @@ interface DBDailyLog {
 }
 
 const CORE_TABS = ['schedule', 'tasks', 'financials', 'documents', 'team', 'info', 'photos', 'logs', 'procurement'];
+const CONTRACTOR_CORE_TABS = ['schedule', 'tasks', 'financials', 'documents', 'info', 'photos', 'logs', 'procurement'];
 
 const DEFAULT_DETAIL_TAB_ORDER_BY_TYPE: Record<string, string[]> = {
   fix_flip: [...CORE_TABS, 'loan'],
   rental: [...CORE_TABS, 'loan', 'lease', 'cashflow'],
   wholesaling: [...CORE_TABS, 'loan', 'deal'],
   new_construction: [...CORE_TABS, 'loan', 'field', 'costcontrol'],
-  contractor: [...CORE_TABS, 'field', 'costcontrol'],
+  contractor: [...CONTRACTOR_CORE_TABS, 'field', 'costcontrol'],
 };
 
 const DEFAULT_DETAIL_TAB_ORDER = DEFAULT_DETAIL_TAB_ORDER_BY_TYPE['fix_flip'];
@@ -185,6 +187,18 @@ const TAB_LABELS: Record<string, string> = {
   field: 'Field',
   costcontrol: 'Cost Control',
 };
+
+const CONTRACTOR_TAB_LABEL_OVERRIDES: Record<string, string> = {
+  financials: 'Job P&L',
+  info: 'Job Info',
+};
+
+function getTabLabel(tab: string, projectType?: string): string {
+  if (projectType === 'contractor' && CONTRACTOR_TAB_LABEL_OVERRIDES[tab]) {
+    return CONTRACTOR_TAB_LABEL_OVERRIDES[tab];
+  }
+  return TAB_LABELS[tab] ?? tab;
+}
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -991,7 +1005,7 @@ export default function ProjectDetail() {
             <TabsList className="flex-wrap h-auto">
               {effectiveTabOrder.map((tab) => (
                 <TabsTrigger key={tab} value={tab}>
-                  {TAB_LABELS[tab]}
+                  {getTabLabel(tab, project.project_type)}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -1006,7 +1020,7 @@ export default function ProjectDetail() {
                 <DndContext sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
                   <SortableContext items={effectiveTabOrder} strategy={verticalListSortingStrategy}>
                     {effectiveTabOrder.map((tab) => (
-                      <SortableTabItem key={tab} id={tab} label={TAB_LABELS[tab]} />
+                      <SortableTabItem key={tab} id={tab} label={getTabLabel(tab, project.project_type)} />
                     ))}
                   </SortableContext>
                 </DndContext>
@@ -1027,37 +1041,56 @@ export default function ProjectDetail() {
           </TabsContent>
 
           <TabsContent value="financials" className="space-y-6">
-            <ProfitCalculator 
-              projectId={id!}
-              totalBudget={totalBudget}
-              totalSpent={constructionSpent}
-              initialPurchasePrice={project.purchase_price || 0}
-              initialArv={project.arv || 0}
-              initialClosingPct={(project as any).closing_costs_pct ?? defaultPreset?.closingPct ?? 6}
-              initialHoldingPct={(project as any).holding_costs_pct ?? defaultPreset?.holdingPct ?? 3}
-              initialClosingMode={(project as any).closing_costs_mode ?? 'pct'}
-              initialHoldingMode={(project as any).holding_costs_mode ?? 'pct'}
-              initialClosingFlat={(project as any).closing_costs_flat ?? defaultPreset?.closingFlat ?? 0}
-              initialHoldingFlat={(project as any).holding_costs_flat ?? defaultPreset?.holdingFlat ?? 0}
-              transactionCostActual={transactionCostActual}
-              holdingCostActual={holdingCostActual}
-              onSaved={() => fetchProjectData(false)}
-            />
-            
-            <ExportReports 
-              project={{
-                id: project.id,
-                name: project.name,
-                address: project.address,
-                total_budget: totalBudget,
-                start_date: project.start_date,
-                status: project.status,
-                purchase_price: project.purchase_price,
-                arv: project.arv,
-              }}
-              categories={categories}
-              expenses={allExpensesForExport}
-            />
+            {project.project_type === 'contractor' ? (
+              <ContractorFinancialsTab
+                projectId={id!}
+                totalSpent={constructionSpent}
+                totalBudget={totalBudget}
+                categories={categories}
+                expenses={allExpensesForExport}
+                projectName={project.name}
+                projectAddress={project.address}
+                projectStartDate={project.start_date}
+                projectStatus={project.status}
+                purchasePrice={project.purchase_price}
+                estLaborBudget={(project as any).est_labor_budget}
+                estMaterialsBudget={(project as any).est_materials_budget}
+                onSaved={() => fetchProjectData(false)}
+              />
+            ) : (
+              <>
+                <ProfitCalculator 
+                  projectId={id!}
+                  totalBudget={totalBudget}
+                  totalSpent={constructionSpent}
+                  initialPurchasePrice={project.purchase_price || 0}
+                  initialArv={project.arv || 0}
+                  initialClosingPct={(project as any).closing_costs_pct ?? defaultPreset?.closingPct ?? 6}
+                  initialHoldingPct={(project as any).holding_costs_pct ?? defaultPreset?.holdingPct ?? 3}
+                  initialClosingMode={(project as any).closing_costs_mode ?? 'pct'}
+                  initialHoldingMode={(project as any).holding_costs_mode ?? 'pct'}
+                  initialClosingFlat={(project as any).closing_costs_flat ?? defaultPreset?.closingFlat ?? 0}
+                  initialHoldingFlat={(project as any).holding_costs_flat ?? defaultPreset?.holdingFlat ?? 0}
+                  transactionCostActual={transactionCostActual}
+                  holdingCostActual={holdingCostActual}
+                  onSaved={() => fetchProjectData(false)}
+                />
+                <ExportReports 
+                  project={{
+                    id: project.id,
+                    name: project.name,
+                    address: project.address,
+                    total_budget: totalBudget,
+                    start_date: project.start_date,
+                    status: project.status,
+                    purchase_price: project.purchase_price,
+                    arv: project.arv,
+                  }}
+                  categories={categories}
+                  expenses={allExpensesForExport}
+                />
+              </>
+            )}
           </TabsContent>
 
           {isRental && (
@@ -1111,7 +1144,7 @@ export default function ProjectDetail() {
           </TabsContent>
 
           <TabsContent value="info">
-            <ProjectInfo projectId={id!} />
+            <ProjectInfo projectId={id!} projectType={project.project_type} />
           </TabsContent>
 
           <TabsContent value="photos">
@@ -1245,7 +1278,7 @@ export default function ProjectDetail() {
           </TabsContent>
 
           <TabsContent value="field">
-            <FieldTab projectId={id!} />
+            <FieldTab projectId={id!} projectType={project.project_type} />
           </TabsContent>
 
           <TabsContent value="costcontrol">

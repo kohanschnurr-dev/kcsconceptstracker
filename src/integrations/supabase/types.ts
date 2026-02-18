@@ -1228,6 +1228,8 @@ export type Database = {
           cover_photo_path: string | null
           cover_photo_position: string | null
           created_at: string
+          est_labor_budget: number | null
+          est_materials_budget: number | null
           hm_closing_costs: number | null
           hm_interest_only: boolean | null
           hm_interest_rate: number | null
@@ -1270,6 +1272,8 @@ export type Database = {
           cover_photo_path?: string | null
           cover_photo_position?: string | null
           created_at?: string
+          est_labor_budget?: number | null
+          est_materials_budget?: number | null
           hm_closing_costs?: number | null
           hm_interest_only?: boolean | null
           hm_interest_rate?: number | null
@@ -1312,6 +1316,8 @@ export type Database = {
           cover_photo_path?: string | null
           cover_photo_position?: string | null
           created_at?: string
+          est_labor_budget?: number | null
+          est_materials_budget?: number | null
           hm_closing_costs?: number | null
           hm_interest_only?: boolean | null
           hm_interest_rate?: number | null
