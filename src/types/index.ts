@@ -1,5 +1,5 @@
 export type ProjectStatus = 'active' | 'complete' | 'on-hold';
-export type ProjectType = 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling';
+export type ProjectType = 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling' | 'contractor';
 
 export type BudgetCategory = 
   | 'appliances'

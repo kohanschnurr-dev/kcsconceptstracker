@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, MapPin, DollarSign, Calendar as CalendarIcon, Hammer, Home, Handshake, CopyCheck } from 'lucide-react';
+import { Building2, MapPin, DollarSign, Calendar as CalendarIcon, Hammer, Home, Handshake, HardHat, CopyCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   Dialog,
@@ -136,7 +136,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
           <div className="space-y-2">
             <Label>Project Type</Label>
             <Tabs value={projectType} onValueChange={(v) => setProjectType(v as ProjectType)}>
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="fix_flip" className="gap-1 text-xs">
                   <Hammer className="h-4 w-4" />
                   <span className="hidden sm:inline">Fix & Flip</span>
@@ -152,6 +152,10 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
                 <TabsTrigger value="wholesaling" className="gap-1 text-xs">
                   <Handshake className="h-4 w-4" />
                   <span className="hidden sm:inline">Wholesale</span>
+                </TabsTrigger>
+                <TabsTrigger value="contractor" className="gap-1 text-xs">
+                  <HardHat className="h-4 w-4" />
+                  <span className="hidden sm:inline">Contractor</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -192,7 +196,9 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
                     ? "Oak Cliff Flip, Downtown Bungalow..." 
                     : projectType === 'wholesaling'
                       ? "123 Main St Contract, Quick Assignment..."
-                      : "Rental Property 1, Main St Duplex..."
+                      : projectType === 'contractor'
+                        ? "Smith Kitchen Remodel, Commercial TI..."
+                        : "Rental Property 1, Main St Duplex..."
               }
               value={name}
               onChange={(e) => setName(e.target.value)}
