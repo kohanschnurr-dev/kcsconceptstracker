@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-reac
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { NewEventModal } from '@/components/calendar/NewEventModal';
@@ -227,7 +228,35 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                   {format(day, 'd')}
                 </button>
 
-                <div className="space-y-0.5">
+                {/* Mobile: "X tasks" badge → popover */}
+                <div className="sm:hidden">
+                  {dayTasks.length > 0 && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="text-[9px] font-medium text-primary/80 hover:text-primary w-full text-center leading-tight mt-0.5 rounded hover:bg-primary/10 px-0.5 py-0.5 transition-colors">
+                          {dayTasks.length} task{dayTasks.length !== 1 ? 's' : ''}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-0 overflow-hidden z-50" align="center">
+                        <div className="px-3 py-2 border-b border-border bg-muted/30">
+                          <p className="text-xs font-semibold">{format(day, 'EEEE, MMM d')}</p>
+                          <p className="text-[10px] text-muted-foreground">{dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
+                          {dayTasks.map(task => (
+                            <DealCard key={task.id} task={task} compact onClick={() => {
+                              setSelectedTask(task);
+                              setPanelOpen(true);
+                            }} />
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+
+                {/* Desktop: existing colored DealCard layout */}
+                <div className="hidden sm:block space-y-0.5">
                   {visibleTasks.map(task => (
                     <DealCard
                       key={task.id}
