@@ -83,6 +83,7 @@ export default function BudgetCalculator() {
   const [sellClosingFlat, setSellClosingFlat] = useState<string>('');
   const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
   // Contractor-specific state
+  const [contractValue, setContractValue] = useState<string>('');
   const [laborCost, setLaborCost] = useState<string>('');
   const [materialCost, setMaterialCost] = useState<string>('');
   const [overheadPct, setOverheadPct] = useState<string>('10');
@@ -201,6 +202,7 @@ export default function BudgetCalculator() {
 
   const purchasePriceNum = parseFloat(purchasePrice) || 0;
   const arvNum = parseFloat(arv) || 0;
+  const contractValueNum = parseFloat(contractValue) || 0;
 
   // Keep refi loan amount in sync when ARV/Purchase Price or LTV changes
   useEffect(() => {
@@ -320,6 +322,7 @@ export default function BudgetCalculator() {
     setHoldingFlat('');
     setSellClosingFlat('');
     setIncludeSellClosingCosts(true);
+    setContractValue('');
     setLaborCost('');
     setMaterialCost('');
     setOverheadPct('10');
@@ -535,8 +538,8 @@ export default function BudgetCalculator() {
         <div className="px-6 py-3 border-b bg-muted/30">
           {calculatorType === 'contractor' ? (
             <ContractorMarginGauge
-              contractValue={arvNum}
-              jobCost={totalBudget + (arvNum * ((parseFloat(overheadPct) || 0) / 100))}
+              contractValue={contractValueNum}
+              jobCost={totalBudget + (contractValueNum * ((parseFloat(overheadPct) || 0) / 100))}
               marginTarget={marginTarget}
               onMarginTargetChange={setMarginTarget}
             />
@@ -557,8 +560,8 @@ export default function BudgetCalculator() {
             <DealSidebar
             purchasePrice={purchasePrice}
             onPurchasePriceChange={setPurchasePrice}
-            arv={arv}
-            onArvChange={setArv}
+            arv={calculatorType === 'contractor' ? contractValue : arv}
+            onArvChange={calculatorType === 'contractor' ? setContractValue : setArv}
             sqft={sqft}
             onSqftChange={setSqft}
             laborCost={laborCost}
