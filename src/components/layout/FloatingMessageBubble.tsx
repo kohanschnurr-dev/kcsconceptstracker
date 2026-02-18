@@ -290,7 +290,8 @@ export function FloatingMessageBubble() {
           'bg-primary text-primary-foreground',
           'flex items-center justify-center',
           'transition-all duration-200 hover:scale-110 active:scale-95',
-          hasUnread && 'animate-pulse'
+          hasUnread && 'animate-pulse',
+          isOpen ? 'opacity-0 pointer-events-none scale-75' : 'opacity-100 scale-100'
         )}
         aria-label="Team Messages"
       >
