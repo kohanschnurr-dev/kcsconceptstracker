@@ -1319,7 +1319,9 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
                 <>
                   <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">Drop image or click to browse</p>
-                  <p className="text-xs text-muted-foreground mt-1">Ctrl+V to paste</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <span className="font-medium">Win + Shift + S</span> to snip screen, then <span className="font-medium">Ctrl+V</span> to paste
+                  </p>
                 </>
               )}
             </div>
