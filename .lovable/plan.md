@@ -1,45 +1,91 @@
 
-## Remove Mobile Bottom Navigation Bar
+## Hide Due Date & Priority Label on Mobile — Pipeline Tasks
 
 ### What to Change
 
-In `MainLayout.tsx`, remove:
-1. The `MobileBottomNav` component block (lines 77–80)
-2. The `MobileBottomNav` import (line 4)
-3. The `expenseModalOpen` state and `projects` state + fetch — **only if** they are solely used for the bottom nav's `onAddClick`. The `QuickExpenseModal` (lines 82–88) uses them too, so those stay.
-4. The bottom padding on the main content (`pb-24` on line 72) — this was only needed to prevent content from being hidden behind the fixed bottom nav. Without the nav, it should be `pb-4` (or just removed for mobile).
+In the task list rows inside `src/components/project/ProjectTasks.tsx`, on mobile:
 
-Also in `MainLayout.tsx`, the `QuickExpenseModal` that was triggered by the bottom nav's `+` button will remain since the `expenseModalOpen` state still exists — but nothing will trigger it anymore on mobile. We can safely remove the `expenseModalOpen` state, `projects` state, the `useEffect` that fetches projects, and the `QuickExpenseModal` entirely **only if** no other part of `MainLayout` uses them. Since they were all wired solely through the bottom nav's `onAddClick`, they can all be removed together.
+- **Hide the due date column** (the 105px fixed-width div with the calendar icon + "Due Feb 18" text)
+- **Replace the priority Badge** (which shows the text label "High", "Medium", etc.) with a single colored `AlertCircle` icon that inherits the priority's color
+- **Keep the status icon** (the small check/clock/alert circle) visible
+
+On desktop (≥ 640px), everything stays exactly as it is now.
+
+### Priority Color Mapping
+
+The `TASK_PRIORITY_COLORS` map uses bg/text/border classes. For the icon, we derive a simple text color per priority:
+
+| Priority | Icon Color |
+|---|---|
+| `low` | `text-muted-foreground` |
+| `medium` | `text-blue-600` |
+| `high` | `text-orange-600` |
+| `urgent` | `text-red-600` |
+
+### Technical Changes
+
+#### `src/components/project/ProjectTasks.tsx`
+
+**1. Add a priority icon color map** near the existing `TASK_PRIORITY_COLORS` import:
+
+```tsx
+const PRIORITY_ICON_COLORS: Record<TaskPriority, string> = {
+  low: 'text-muted-foreground',
+  medium: 'text-blue-600',
+  high: 'text-orange-600',
+  urgent: 'text-red-600',
+};
+```
+
+**2. Due date column — hide on mobile:**
+
+```tsx
+// Before:
+<div className="w-[105px] shrink-0 flex items-center justify-end gap-1">
+
+// After:
+<div className="hidden sm:flex w-[105px] shrink-0 items-center justify-end gap-1">
+```
+
+**3. Priority badge column — show icon on mobile, badge on desktop:**
+
+```tsx
+// Before:
+<div className="w-[90px] shrink-0 flex items-center justify-end gap-2">
+  <Badge variant="secondary" className={cn("text-xs", TASK_PRIORITY_COLORS[task.priorityLevel])}>
+    {TASK_PRIORITY_LABELS[task.priorityLevel]}
+  </Badge>
+  {getStatusIcon(task.status)}
+</div>
+
+// After:
+<div className="shrink-0 flex items-center justify-end gap-2 sm:w-[90px]">
+  {/* Mobile: colored icon only */}
+  <AlertCircle className={cn("h-4 w-4 sm:hidden", PRIORITY_ICON_COLORS[task.priorityLevel])} />
+  {/* Desktop: full badge */}
+  <Badge variant="secondary" className={cn("text-xs hidden sm:inline-flex", TASK_PRIORITY_COLORS[task.priorityLevel])}>
+    {TASK_PRIORITY_LABELS[task.priorityLevel]}
+  </Badge>
+  {getStatusIcon(task.status)}
+</div>
+```
+
+### Visual Result
+
+**Mobile:**
+```
+[ ✓ ] Task title text here...          🔴  ⏰
+```
+*(no due date, no "High"/"Medium" label — just a colored priority icon + status icon)*
+
+**Desktop:**
+```
+[ ✓ ] Task title text here...   📅 Due Feb 18   [High]  ⏰
+```
+*(unchanged from current)*
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/components/layout/MainLayout.tsx` | 1. Remove `MobileBottomNav` import. 2. Remove `expenseModalOpen` state, `projects` state, and `useEffect` fetch. 3. Remove `MobileBottomNav` JSX block. 4. Remove `QuickExpenseModal` JSX block. 5. Change `pb-24` to `pb-4` on the main content wrapper. |
-
-### Code Change
-
-```tsx
-// Remove these imports:
-import { MobileBottomNav } from './MobileBottomNav';
-import { QuickExpenseModal } from '@/components/QuickExpenseModal';
-import type { Project, CategoryBudget } from '@/types';
-
-// Remove these states:
-const [expenseModalOpen, setExpenseModalOpen] = useState(false);
-const [projects, setProjects] = useState<Project[]>([]);
-
-// Remove the entire useEffect that fetches projects
-
-// Remove from JSX:
-<div className="lg:hidden">
-  <MobileBottomNav onAddClick={() => setExpenseModalOpen(true)} />
-</div>
-
-<QuickExpenseModal ... />
-
-// Change pb-24 → pb-4 on mobile:
-<div className="min-h-screen p-4 pt-20 pb-4 lg:p-8 lg:pt-8 lg:pb-8">
-```
-
-One file. Clean removal — no orphaned state or imports left behind.
+| `src/components/project/ProjectTasks.tsx` | 1. Add `PRIORITY_ICON_COLORS` map. 2. Add `hidden sm:flex` to due date div. 3. Replace Badge with icon on mobile using `sm:hidden` / `hidden sm:inline-flex`. |
