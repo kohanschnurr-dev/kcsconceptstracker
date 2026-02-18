@@ -519,6 +519,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          actor_id: string
+          created_at: string
+          entity_id: string | null
+          event_type: string
+          id: string
+          is_read: boolean
+          owner_id: string
+          payload: Json
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          entity_id?: string | null
+          event_type: string
+          id?: string
+          is_read?: boolean
+          owner_id: string
+          payload?: Json
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          entity_id?: string | null
+          event_type?: string
+          id?: string
+          is_read?: boolean
+          owner_id?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
       operation_codes: {
         Row: {
           category: string | null
@@ -555,6 +588,30 @@ export type Database = {
           title?: string
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      owner_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+          team_id?: string
         }
         Relationships: []
       }
@@ -1922,6 +1979,7 @@ export type Database = {
         Returns: undefined
       }
       add_budget_category: { Args: { new_value: string }; Returns: undefined }
+      get_actor_display_name: { Args: { p_user_id: string }; Returns: string }
       get_team_owner_id: { Args: { p_user_id: string }; Returns: string }
       get_user_team_id: { Args: { p_user_id: string }; Returns: string }
       is_team_member: {
