@@ -46,11 +46,12 @@ export function ContractorFinancialsTab({
   const [materialsBudget, setMaterialsBudget] = useState(estMaterialsBudget ?? 0);
   const [saving, setSaving] = useState(false);
 
-  // Derived values
-  const grossProfit = contractValue - totalSpent;
+  // Derived values — mirrors fix-and-flip rehab basis logic:
+  // Budget is the cost floor; actuals take over only when they exceed budget
+  const costBasis = totalBudget > 0 ? Math.max(totalBudget, totalSpent) : totalSpent;
+  const usingActuals = totalSpent > totalBudget && totalBudget > 0;
+  const grossProfit = contractValue - costBasis;
   const grossMarginPct = contractValue > 0 ? (grossProfit / contractValue) * 100 : 0;
-  const isOverBudget = totalSpent > contractValue && contractValue > 0;
-  const isOnBudget = totalSpent <= totalBudget && totalBudget > 0;
 
   const formatCurrency = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -71,7 +72,7 @@ export function ContractorFinancialsTab({
 
   const statusPill = () => {
     if (contractValue <= 0) return null;
-    if (isOverBudget) {
+    if (totalSpent > contractValue) {
       return (
         <Badge className="gap-1 bg-destructive/15 text-destructive border-destructive/30">
           <TrendingUp className="h-3 w-3" />
@@ -120,17 +121,25 @@ export function ContractorFinancialsTab({
           </CardContent>
         </Card>
 
-        {/* Total Costs - read-only from expenses */}
+        {/* Total Costs - shows cost basis (max of budget vs actual) */}
         <Card className="glass-card">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2 mb-3">
               <div className="h-8 w-8 rounded-lg bg-warning/10 flex items-center justify-center">
                 <TrendingUp className="h-4 w-4 text-warning" />
               </div>
-              <span className="text-sm font-medium text-muted-foreground">Total Costs</span>
+              <span className="text-sm font-medium text-muted-foreground">Est. Job Cost</span>
             </div>
-            <p className="text-xl font-semibold font-mono">{formatCurrency(totalSpent)}</p>
-            <p className="text-xs text-muted-foreground mt-1.5">Actual expenses tracked</p>
+            <p className="text-xl font-semibold font-mono">{formatCurrency(costBasis)}</p>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {usingActuals ? 'Actual costs (over budget)' : 'Budget (est. job cost)'}
+            </p>
+            {usingActuals && totalBudget > 0 && (
+              <p className="text-xs text-muted-foreground/60 mt-0.5">Budget: {formatCurrency(totalBudget)}</p>
+            )}
+            {!usingActuals && totalSpent > 0 && (
+              <p className="text-xs text-muted-foreground/60 mt-0.5">Actual spend: {formatCurrency(totalSpent)}</p>
+            )}
           </CardContent>
         </Card>
 
@@ -150,7 +159,9 @@ export function ContractorFinancialsTab({
             <p className={`text-xl font-semibold font-mono ${grossProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
               {formatCurrency(grossProfit)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1.5">Contract Value − Total Costs</p>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Contract Value − {usingActuals ? 'Actual Costs' : 'Est. Job Cost'}
+            </p>
           </CardContent>
         </Card>
 
