@@ -1,114 +1,157 @@
 
-## Contractor Project Card — Full Data & UI Overhaul
+## Feature: Project-Specific Custom Fields in Job Details / Property Info
 
-### What's Wrong Today
+### What the User Wants
 
-The contractor card currently uses the generic non-rental layout, which has two problems:
+The Settings → Manage Sources screen defines a **global template** of fields (e.g., Client Name, Permit #, Scope of Work for contractor jobs). These auto-populate on every project. But sometimes a specific project needs a one-off field — like "Plumbing Type" for a kitchen remodel — that doesn't belong on the global template.
 
-1. **Wrong progress bar**: `showBudgetProgress = !isRental && totalBudget > 0` — so any contractor project with a budget set shows a "Budget Progress" bar. For a contractor job, the meaningful progress metric is **Gross Margin %**, not budget spend %.
-2. **Contract Value is invisible**: The single most important number for a contractor job (the contract value, stored as `purchasePrice`) is never shown on the card.
-3. **Footer only shows Gross Profit** — no margin % context, so a $10k profit on a $20k job looks the same as $10k on a $200k job.
-4. **Progress bar labels say "spent / total"** — generic flip language that doesn't match contractor context.
+The solution: add a **"+ Add Field"** button at the bottom of the Job Details / Property Info card that lets users add project-specific fields. These extra fields appear only on that one project and are never added to Settings.
 
-### What the Card Should Show
+---
 
-```text
-┌─────────────────────────────────────────────────┐
-│  [⛑] Job Name                      [active]    │
-│  📍 123 Main Street                             │
-├─────────────────────────────────────────────────┤
-│  CONTRACT VALUE                                 │
-│  $48,500             ← big, prominent           │
-├─────────────────────────────────────────────────┤
-│  Gross Margin                         34.2%     │
-│  ████████████░░░░░░░ (color-coded bar)          │
-│  $16,500 gross profit · $32,000 job cost        │
-├─────────────────────────────────────────────────┤
-│  Gross Profit           │  Start Date           │
-│  $16,500 (green)        │  📅 Jan 15, 2025      │
-└─────────────────────────────────────────────────┘
+### Data Storage — No DB Changes Needed
+
+The `project_info` table already has a `custom_fields` JSONB column. Today it stores values from the global custom fields. We'll extend it to also store project-specific field **definitions** (label + key) alongside their values.
+
+We'll use a dedicated key inside `custom_fields` to store these definitions:
+
+```json
+{
+  "client_name": "John Smith",
+  "scope_of_work": "Full kitchen remodel",
+  "_project_fields": [
+    { "value": "plumbing_type", "label": "Plumbing Type" }
+  ]
+}
 ```
 
-Color thresholds for the margin bar (matching the Budget Calculator gauge):
-- Green (`bg-success`): margin ≥ 20%
-- Amber (`bg-warning`): margin 10–19%
-- Red (`bg-destructive`): margin < 10%
+The `_project_fields` array holds the metadata for any project-specific fields the user added. Their values are stored as normal keys alongside the rest.
 
-If no contract value is set, show dashes throughout (same pattern as other card types with no data).
+---
 
-### Technical Changes
+### UI Layout (After Change)
 
-#### 1. `src/components/dashboard/ProjectCard.tsx`
-
-**Add contractor-specific computed values:**
-```tsx
-const grossMarginPct = contractorHasData && contractorCostBasis > 0
-  ? (contractorGrossProfit / contractValue) * 100
-  : 0;
+```
+┌─────────────────────────────────────────────────────┐
+│  Job Details                                        │
+├─────────────────────────────────────────────────────┤
+│  [Global fields from Settings — always shown]       │
+│  Client Name: ___________  Client Email: _______    │
+│  Contract Type: _________  Permit #: ___________    │
+│  ...                                                │
+├─────────────────────────────────────────────────────┤
+│  ─── Project-Specific Fields ───                    │
+│  Plumbing Type: ___________  [✕ remove]             │
+│  Tile Material: ___________  [✕ remove]             │
+│                                                     │
+│  [+ Add Field]                   💾 Auto-saves      │
+└─────────────────────────────────────────────────────┘
 ```
 
-**Replace `showBudgetProgress` section** — wrap it so contractor projects skip the generic bar:
+When the user clicks **+ Add Field**:
+- An inline form slides in with a "Field label" text input and a "Add" button
+- On confirm, the field is immediately added to the grid and auto-saved into `_project_fields` in `custom_fields`
+- A small **✕** icon on each project-specific field chip lets the user remove it (and its value) from this project only
+
+---
+
+### Technical Details
+
+#### Changes to `src/components/project/ProjectInfo.tsx`
+
+**1. Load project-specific fields on mount**
+
+When fetching `project_info`, extract `_project_fields` from `custom_fields` and store them in a `projectFields` state array:
+
 ```tsx
-const showBudgetProgress = !isRental && !isContractor && project.totalBudget > 0;
+const [projectFields, setProjectFields] = useState<CategoryItem[]>([]);
+
+// Inside fetchInfo, after getting data:
+const rawCustom = (data as any).custom_fields || {};
+const projectFieldDefs: CategoryItem[] = rawCustom._project_fields || [];
+setProjectFields(projectFieldDefs);
 ```
 
-**Add a contractor-specific middle section** (parallel to the rental cash-flow block):
-```tsx
-{isContractor && (
-  <>
-    {/* Contract Value highlight */}
-    <div className="p-3 rounded-lg bg-muted/50">
-      <p className="text-xs text-muted-foreground">Contract Value</p>
-      <p className="font-mono font-semibold text-lg">
-        {contractorHasData ? formatCurrency(contractValue) : '—'}
-      </p>
-    </div>
+**2. Merge for rendering**
 
-    {/* Gross Margin progress bar */}
-    {contractorHasData && (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Gross Margin</span>
-          <span className={cn('font-mono font-medium',
-            grossMarginPct >= 20 ? 'text-success' :
-            grossMarginPct >= 10 ? 'text-warning' : 'text-destructive'
-          )}>
-            {grossMarginPct.toFixed(1)}%
-          </span>
-        </div>
-        <div className="progress-bar">
-          <div
-            className={cn('progress-fill',
-              grossMarginPct >= 20 ? 'bg-success' :
-              grossMarginPct >= 10 ? 'bg-warning' : 'bg-destructive'
-            )}
-            style={{ width: `${Math.min(Math.max(grossMarginPct, 0), 100)}%` }}
-          />
-        </div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{formatCurrency(contractorGrossProfit)} gross profit</span>
-          <span>{formatCurrency(contractorCostBasis)} job cost</span>
-        </div>
-      </div>
-    )}
-  </>
+The rendered grid stays the same structure — global fields from `activeFields` (Settings), then project-specific fields from `projectFields`, all sharing the same `fields` / `handleBlur` logic since values are all stored in `custom_fields`.
+
+**3. Save project-specific field definition**
+
+When a user adds a new project-specific field, save its definition into `_project_fields` inside `custom_fields` alongside the existing data:
+
+```tsx
+const handleAddProjectField = async (label: string) => {
+  const key = label.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  // Prevent duplicates
+  // Merge new field def into _project_fields and persist to DB
+  // Then update projectFields state
+};
+```
+
+**4. Remove project-specific field**
+
+Clicking ✕ on a project-specific field:
+- Removes it from `projectFields` state
+- Deletes its value from `fields`
+- Updates `custom_fields` in DB: removes the key and updates `_project_fields`
+
+**5. Inline "Add Field" UI**
+
+Below the grid, a collapsible inline form:
+```tsx
+const [addingField, setAddingField] = useState(false);
+const [newFieldLabel, setNewFieldLabel] = useState('');
+
+// Rendered below project-specific fields:
+{addingField ? (
+  <div className="flex items-center gap-2 col-span-full">
+    <Input
+      placeholder="Field label (e.g. Plumbing Type)"
+      value={newFieldLabel}
+      onChange={e => setNewFieldLabel(e.target.value)}
+      onKeyDown={e => e.key === 'Enter' && handleAddProjectField(newFieldLabel)}
+      autoFocus
+    />
+    <Button size="sm" onClick={() => handleAddProjectField(newFieldLabel)}>Add</Button>
+    <Button size="sm" variant="ghost" onClick={() => setAddingField(false)}>Cancel</Button>
+  </div>
+) : (
+  <Button variant="ghost" size="sm" className="col-span-full w-fit gap-1.5 text-muted-foreground" onClick={() => setAddingField(true)}>
+    <Plus className="h-3.5 w-3.5" /> Add Field
+  </Button>
 )}
 ```
 
-**Footer** — keep "Gross Profit" on the left and Start/Completed date on the right (no change needed, already correct).
+**6. Divider between global and project-specific fields**
+
+When `projectFields.length > 0` or `addingField` is true, show a subtle labeled divider:
+```tsx
+{(projectFields.length > 0 || addingField) && (
+  <div className="col-span-full flex items-center gap-2 mt-2">
+    <div className="h-px flex-1 bg-border" />
+    <span className="text-xs text-muted-foreground">Project-Specific</span>
+    <div className="h-px flex-1 bg-border" />
+  </div>
+)}
+```
+
+---
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/components/dashboard/ProjectCard.tsx` | 1. Add `grossMarginPct` calculation. 2. Exclude contractor from `showBudgetProgress`. 3. Add contractor middle section (Contract Value highlight + Gross Margin bar). |
+| `src/components/project/ProjectInfo.tsx` | 1. Add `projectFields` state. 2. Load `_project_fields` from `custom_fields` on fetch. 3. `handleAddProjectField` function. 4. `handleRemoveProjectField` function. 5. Render project-specific fields section with divider and remove buttons. 6. Inline "Add Field" form. |
 
-One file. No DB changes needed — `purchasePrice` (contract value), `totalBudget`, and `totalSpent` are already loaded.
+**One file. No DB migrations needed** — `custom_fields` JSONB already supports this.
 
-### Edge Cases Handled
+---
 
-- Contract value = 0: shows `—` everywhere, no bar renders
-- Job cost > contract value (negative margin): bar renders at 0%, color is red, gross profit shows in red
-- Completed project: cost basis = `totalSpent` (actual only), matching the Job P&L logic
-- Active project: cost basis = `max(totalBudget, totalSpent)`, matching the Job P&L logic
-- Cover photo variant: padding/layout is handled by the existing `coverPhotoUrl` wrapper — no special handling needed
+### Edge Cases
+
+- Duplicate label: if user types a label whose generated key already exists (in global OR project fields), show a brief inline error and block the add
+- Empty label: "Add" button is disabled when the input is blank
+- Removing a global field: not possible from the project page (that's a Settings action) — the ✕ only appears on project-specific fields
+- Key collision with `_project_fields`: reserved key, never rendered as a field itself
+- Multiline project-specific fields: since user defines the label, we can't know which should be multiline — default to single-line Input; the user can type long text naturally
