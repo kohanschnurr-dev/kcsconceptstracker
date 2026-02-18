@@ -1053,23 +1053,25 @@ export default function ProjectDetail() {
                 ))}
               </TabsList>
             </div>
-            <Popover open={reorderOpen} onOpenChange={setReorderOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                  <Settings className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-2" align="end">
-                <p className="text-xs text-muted-foreground mb-2 px-2">Tab Order</p>
-                <DndContext sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
-                  <SortableContext items={effectiveTabOrder} strategy={verticalListSortingStrategy}>
-                    {effectiveTabOrder.map((tab) => (
-                      <SortableTabItem key={tab} id={tab} label={getTabLabel(tab, project.project_type)} />
-                    ))}
-                  </SortableContext>
-                </DndContext>
-              </PopoverContent>
-            </Popover>
+            <div className="hidden sm:block shrink-0">
+              <Popover open={reorderOpen} onOpenChange={setReorderOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2" align="end">
+                  <p className="text-xs text-muted-foreground mb-2 px-2">Tab Order</p>
+                  <DndContext sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
+                    <SortableContext items={effectiveTabOrder} strategy={verticalListSortingStrategy}>
+                      {effectiveTabOrder.map((tab) => (
+                        <SortableTabItem key={tab} id={tab} label={getTabLabel(tab, project.project_type)} />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           <TabsContent value="tasks">
