@@ -1,66 +1,98 @@
 
-## Fix: Amazon (and any) Source URL Links Navigating to Project Instead of the Store
+## Two Changes: Remove autoFocus + Add Photo Attachment to Tasks
 
-### Root Cause
+### Change 1 — Remove `autoFocus` from Add Task Modal
 
-One procurement item in the database has `source_url = "amazon.com/gp/product/B0963M4H4J/..."` — **no `https://` prefix**. When the browser sees `<a href="amazon.com/...">`, it treats it as a **relative URL** and resolves it to `https://kcsconceptstracker.lovable.app/amazon.com/...`. React Router gets that path, doesn't recognize it, and the app either 404s or redirects.
+**The problem:** `autoFocus` on the Title input fires immediately when the modal opens, triggering the mobile keyboard before the user has oriented themselves on the screen.
 
-The database query confirms this:
-- ✅ Most rows: `https://www.amazon.com/dp/...` — works correctly
-- ❌ One row: `amazon.com/gp/product/...` — no protocol, breaks as relative path
+**The fix:** Remove `autoFocus` from the `<Input>` in `src/components/project/AddTaskModal.tsx` (line 94). The field is still tappable — users just tap into it when ready. No other change needed.
 
-This can happen whenever a user pastes a URL without typing `https://` first.
+---
 
-### Two-Part Fix
+### Change 2 — Photo Attachment on Tasks (hidden until you drill in)
 
-#### Part 1 — Sanitize `href` at render time (defensive, covers existing bad data)
+**Design philosophy:** Photos do NOT appear on the task row list or the Daily Log card. They are only visible and manageable inside the task detail/edit dialog — exactly as requested.
 
-In every place a `source_url` is rendered as an `<a>` tag, wrap the href to guarantee a protocol prefix:
+#### Step A — Database migration
+
+The `tasks` table has no `photo_urls` column. We need to add one:
+
+```sql
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS photo_urls text[] DEFAULT '{}';
+```
+
+No RLS changes needed — photos live on the task row, protected by existing task RLS policies.
+
+#### Step B — Update the Task types
+
+Add `photoUrls: string[]` to the `Task` interface in `src/types/task.ts` so TypeScript knows about the new field.
+
+#### Step C — Update data fetching
+
+In `src/pages/DailyLogs.tsx`, the task fetch query (`select('*, projects(name)')`) already fetches all columns, so `photo_urls` will come back automatically. Map `t.photo_urls` → `photoUrls` in the transform.
+
+In `src/components/project/ProjectTasks.tsx`, the fetch is `select('id, title, status, priority_level, due_date')` — an explicit column list. Add `photo_urls` to it and map it.
+
+#### Step D — Add photo upload UI inside the Task Detail modals only
+
+There are TWO places where tasks are edited in a detail dialog:
+
+**1. `src/pages/DailyLogs.tsx` — Task Detail Modal (lines 1086–1171)**
+
+Inside the dialog, after the existing fields (Title, Description, Priority, Status, Due Date), add a "Photos" section:
 
 ```tsx
-// Helper (inline or shared util)
-const safeUrl = (url: string) =>
-  url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
-
-// Usage
-<a href={safeUrl(item.source_url)} target="_blank" rel="noopener noreferrer">
+<div className="space-y-2">
+  <Label className="flex items-center gap-2">
+    <Camera className="h-4 w-4" />
+    Photos
+  </Label>
+  <PasteableTextarea
+    value=""  // photos only, no text
+    onChange={() => {}}
+    bucketName="project-photos"
+    folderPath="task-photos"
+    uploadedImages={editForm.photoUrls}
+    onImagesChange={(imgs) => setEditForm({ ...editForm, photoUrls: imgs })}
+    placeholder=""
+  />
+</div>
 ```
 
-Files to fix:
-- `src/pages/Procurement.tsx` — line 632: `href={item.source_url}` → `href={safeUrl(item.source_url)}`
-- `src/components/procurement/ProcurementItemDetailModal.tsx` — line 198: `href={item.source_url}`
-- `src/components/procurement/OrderRequestsPanel.tsx` — line 63: `href={item.item_source_url}`
+Actually — since we only want the image upload/preview part (not a textarea), we'll use a lightweight inline uploader: a camera icon button that opens a hidden `<input type="file" accept="image/*">`, an inline thumbnail strip showing attached photos, and paste-to-upload support. This is simpler and takes less space than a full PasteableTextarea.
 
-#### Part 2 — Sanitize `source_url` before saving (prevents bad data going forward)
+The section inside the detail dialog will look like:
+- Label: `📷 Photos (optional)`
+- A row of existing photo thumbnails (each tapable to remove)
+- A small "+ Attach Photo" button (triggers file picker)
+- Paste support on the dialog itself
 
-In `ProcurementItemModal.tsx`, the `source_url` is set from `urlInput.trim()` in multiple places. Add a small `ensureHttps()` helper and apply it before saving:
+When saved (`handleSaveDetail` / `handleSaveEdit`), include `photo_urls: editForm.photoUrls` in the Supabase update.
 
-```ts
-const ensureHttps = (url: string) => {
-  if (!url) return url;
-  return url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
-};
-```
+**2. `src/components/project/ProjectTasks.tsx` — Edit Task Dialog (lines 256–330)**
 
-Apply at all three `setFormData` calls where `source_url` is assigned:
-- Line 782: `source_url: ensureHttps(urlInput.trim())`
-- Line 893: `source_url: ensureHttps(urlInput.trim())`
-- Line 1045: `source_url: ensureHttps(urlInput.trim())`
+Same photo section added inside the dialog, same behavior.
 
-And when the user manually edits the Source URL input field (line 1363), apply on save (not on every keystroke — so the helper runs in `handleSave`):
-- In `handleSave` / `handleUpdate`, sanitize `formData.source_url` before passing to DB
+#### Step E — Update AddTaskModal (no photos on create)
 
-### Files to Modify
+We do NOT add photo upload to the Add Task Modal. The `autoFocus` removal is the only change there. Photos can be attached after creation via the edit dialog — this keeps the "Add Task" flow fast and keyboard-friendly.
+
+---
+
+### What the user will see
+
+- **Task list rows** — No change. No photo indicators. Clean and compact as before.
+- **Daily Log cards** — No change. Photo count badge still shows for logs (as today), but task photos are never surfaced there.
+- **Task detail dialog** — After tapping a task row to edit it, a "Photos" section appears at the bottom with thumbnails and an attach button. This is the ONLY place photos are visible.
+
+---
+
+### Files to Change
 
 | File | Change |
 |---|---|
-| `src/pages/Procurement.tsx` | Add `safeUrl` helper; apply to `href` at line 632 |
-| `src/components/procurement/ProcurementItemDetailModal.tsx` | Apply `safeUrl` to `href` at line 198 |
-| `src/components/procurement/OrderRequestsPanel.tsx` | Apply `safeUrl` to `href` at line 63 |
-| `src/components/procurement/ProcurementItemModal.tsx` | Add `ensureHttps` helper; apply to all `source_url` setFormData assignments and in save handler |
-
-### What This Fixes
-
-- Existing items with `amazon.com/...` (no protocol) stored in DB will now open Amazon correctly
-- Future items saved without `https://` will be auto-corrected before being stored
-- No database migration needed — the fix is purely in the frontend render and save paths
+| DB migration | `ALTER TABLE tasks ADD COLUMN photo_urls text[] DEFAULT '{}'` |
+| `src/types/task.ts` | Add `photoUrls: string[]` to Task interface |
+| `src/components/project/AddTaskModal.tsx` | Remove `autoFocus` from Input |
+| `src/pages/DailyLogs.tsx` | Map `photo_urls` in fetch transform; add photo section to Task Detail modal; import Camera icon |
+| `src/components/project/ProjectTasks.tsx` | Add `photo_urls` to fetch query; map it; add photo section to Edit Task dialog |
