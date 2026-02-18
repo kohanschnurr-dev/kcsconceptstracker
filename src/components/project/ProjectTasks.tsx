@@ -236,7 +236,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
                     >
                       {TASK_PRIORITY_LABELS[task.priorityLevel]}
                     </Badge>
-                    {getStatusIcon(task.status)}
+                    <span className="hidden sm:block">{getStatusIcon(task.status)}</span>
                   </div>
                 </div>
               ))}
