@@ -1,4 +1,4 @@
-import { TrendingUp, CheckCircle2, AlertTriangle, DollarSign } from 'lucide-react';
+import { TrendingUp, CheckCircle2, AlertTriangle, DollarSign, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ContractorMarginGaugeProps {
@@ -41,6 +41,17 @@ export function ContractorMarginGauge({
     isGreen ? 'bg-green-500/10 border-green-500/30' :
     isAmber ? 'bg-amber-500/10 border-amber-500/30' :
     'bg-destructive/10 border-destructive/30';
+
+  const statusBgColor =
+    !hasValidData ? 'bg-muted' :
+    isGreen ? 'bg-green-500/20' :
+    isAmber ? 'bg-amber-500/20' :
+    'bg-destructive/20';
+
+  const dotColor =
+    isGreen ? 'bg-green-500' :
+    isAmber ? 'bg-amber-500' :
+    'bg-destructive';
 
   // Progress bar: 0 → (marginTarget * 2) maps to 0 → 100%
   // So the target is always at 50% of the bar
@@ -99,27 +110,34 @@ export function ContractorMarginGauge({
           </div>
         </div>
 
-        {/* Margin % + editable target */}
-        <div className="text-right">
-          <div className="flex items-center justify-end gap-1.5 mb-0.5">
-            <span className="text-xs text-muted-foreground">Target:</span>
-            <input
-              type="number"
-              value={marginTarget}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                if (!isNaN(v) && v > 0) onMarginTargetChange(v);
-              }}
-              className="w-10 h-5 text-xs font-mono text-center rounded border border-input bg-background px-1 focus:outline-none focus:ring-1 focus:ring-ring"
-              min={1}
-              max={99}
-            />
-            <span className="text-xs text-muted-foreground">%</span>
+        {/* Gross Margin — icon-card with inline editable target */}
+        <div className="flex items-center gap-2">
+          <div className={cn('p-1.5 rounded-lg', statusBgColor)}>
+            <Percent className={cn('h-4 w-4', marginColor)} />
           </div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Gross Margin</p>
-          <p className={cn('text-2xl font-bold font-mono', marginColor)}>
-            {hasValidData ? `${margin.toFixed(1)}%` : '—'}
-          </p>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Gross Margin</p>
+            <p className={cn('text-2xl font-bold font-mono leading-none', marginColor)}>
+              {hasValidData ? `${margin.toFixed(1)}%` : '—'}
+            </p>
+            {/* Target inline — compact, below the number */}
+            <div className="flex items-center gap-1 mt-1">
+              <div className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', dotColor)} />
+              <span className="text-xs text-muted-foreground">Target</span>
+              <input
+                type="number"
+                value={marginTarget}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (!isNaN(v) && v > 0) onMarginTargetChange(v);
+                }}
+                className="w-8 h-4 text-xs font-mono text-center rounded border border-input bg-background/80 px-0.5 focus:outline-none focus:ring-1 focus:ring-ring"
+                min={1}
+                max={99}
+              />
+              <span className="text-xs text-muted-foreground">%</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -127,8 +145,7 @@ export function ContractorMarginGauge({
       {hasValidData && (
         <div className="mt-3">
           <div className="flex justify-between text-xs text-muted-foreground mb-1">
-            <span>Job Cost vs Contract Value</span>
-            <span className={marginColor}>{margin.toFixed(1)}% margin</span>
+            <span>Margin vs Target</span>
           </div>
           <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
             <div
