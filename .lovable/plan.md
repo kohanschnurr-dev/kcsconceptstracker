@@ -1,44 +1,55 @@
 
-## Fix Due Date Column Alignment in Pipeline Tasks
+## Fix: Make Calendar Icons Perfectly Vertically Aligned
 
-### Root Cause
+### The Real Root Cause
 
-The screenshot reveals the problem clearly: "Due Feb 18" and "Due Feb 17" don't start at the same horizontal position because the content inside the `w-[100px]` div is **left-aligned** by default. Since `flex-1` on the title expands and flex gap spacing is consistent, the *start* of the 100px box is consistent — but the content inside it is left-aligned, meaning visually the text appears in different spots row-to-row when it's a different length (though "Due Feb 18" vs "Due Feb 17" should be similar length).
+The current row layout (left to right) is:
+```
+[ ☐ ] [ Title flex-1 ] [ due date 105px ] [ badge + icon ]
+```
 
-More critically, the **icon + text** are left-aligned inside the box, but the box visually appears "floating" in the middle of a long row, making it feel misaligned against the badges.
+The problem is the **rightmost group** (`badge + icon`) has **variable width**. "High" badge is wider than "Medium" badge, which is wider than "Low". Since flex lays out left-to-right, the 105px due-date box starts at a different X position on rows with "High" vs "Medium" vs "Low" badges — so even though the content is right-aligned inside the box, the box itself moves.
 
-The real fix is twofold:
-1. **Right-align the due date content** within its fixed box so it always sits flush against the badge group — `justify-end` on the flex container
-2. **Increase the width** slightly to `w-[105px]` to ensure "Due Feb 18" always fits without wrapping
+### The Fix: Give the Badge Column a Fixed Width Too
 
-### The Fix
+Give the badge + icon column a fixed width (`w-[90px]`) so it never changes size. This anchors every column at a deterministic position:
 
-In `src/components/project/ProjectTasks.tsx`, change line 142:
+```
+[ ☐ ] [ Title flex-1 ] [ due date w-[105px] justify-end ] [ badge+icon w-[90px] justify-end ]
+       ^expands         ^always same x-start               ^always same width
+```
 
-**Before:**
+This guarantees the calendar icon always starts at the exact same horizontal position — every row, every priority level.
+
+### Exact Change in `src/components/project/ProjectTasks.tsx`
+
+**Line 150 — Before:**
 ```tsx
-<div className="w-[100px] shrink-0 flex items-center gap-1">
+<div className="flex items-center gap-2 shrink-0">
 ```
 
 **After:**
 ```tsx
-<div className="w-[105px] shrink-0 flex items-center justify-end gap-1">
+<div className="w-[90px] shrink-0 flex items-center justify-end gap-2">
 ```
 
-Adding `justify-end` pushes the calendar icon + "Due Feb 18" text to the **right edge** of the fixed-width column, so it always appears immediately to the left of the priority badge — perfectly aligned row over row regardless of title length.
+That's the only change needed. The due date column (`w-[105px] justify-end`) is already correct — it just needs the badge column to stop being variable width.
 
 ### Visual Result
 
 ```
-[ ☐ ] [ Tell Jose, Garage, Patio… ─── flex-1 ]  [📅 Due Feb 18] [High][ⓘ]
-[ ☐ ] [ Garage Studs etc, situation ─── flex-1 ] [             ] [High][ⓘ]
-[ ☐ ] [ Tell him about Concrete… ─── flex-1 ]   [📅 Due Feb 17] [Med ][ⓘ]
-[ ☐ ] [ Adding 2x4s by patio ─────── flex-1 ]   [             ] [Med ][ⓘ]
-                                                   ↑ right-aligned inside fixed 105px box
+Row 1: [ ☐ ] [ Tell Jose… ─────────── ] [📅 Due Feb 18] [  High 🔴  ]
+Row 2: [ ☐ ] [ Garage studs ──────── ] [              ] [  High 🔴  ]
+Row 3: [ ☐ ] [ Concrete situation ── ] [📅 Due Feb 17] [  Med  🟡  ]
+Row 4: [ ☐ ] [ Adding 2x4s ──────── ] [              ] [  Low  ⚪  ]
+                                         ↑ calendar icons
+                                           all at same X
 ```
 
-### File to Modify
+Every column is now fixed-width and the calendar emoji will form a perfect vertical line.
+
+### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/project/ProjectTasks.tsx` | Add `justify-end` to due date wrapper div (line 142) |
+| `src/components/project/ProjectTasks.tsx` | Add `w-[90px] justify-end` to the badge+icon wrapper div (line 150) |
