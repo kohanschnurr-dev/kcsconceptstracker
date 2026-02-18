@@ -801,7 +801,7 @@ export default function BudgetCalculator() {
                       )}
 
                       {calculatorType === 'contractor' && (() => {
-                        const contractValue = arvNum;
+                        const contractValue = contractValueNum;
                         const overheadPctNum = parseFloat(overheadPct) || 0;
                         const overheadAmount = contractValue * (overheadPctNum / 100);
                         const laborCostNum = parseFloat(laborCost) || 0;
