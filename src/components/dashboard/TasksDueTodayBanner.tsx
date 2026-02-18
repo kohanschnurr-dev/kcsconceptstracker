@@ -155,30 +155,31 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
       </div>
 
       {/* Three-Box Grid: equal columns */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {/* Left Box - View Calendar */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center gap-2 min-h-[100px]">
-          <Calendar className="h-6 w-6 text-primary" />
+        <div className="bg-muted/30 rounded-lg p-2 sm:p-3 border border-border/30 flex flex-col items-center gap-2 min-h-[90px]">
+          <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           <div className="flex-1" />
           <Button
             onClick={() => navigate('/calendar')}
             variant="outline"
             size="sm"
-            className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
+            className="gap-1 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full text-xs sm:text-sm px-1 sm:px-3"
           >
-            View Calendar
+            <span className="sm:hidden">Calendar</span>
+            <span className="hidden sm:inline">View Calendar</span>
           </Button>
         </div>
 
         {/* Middle Box - Tasks */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center gap-2 text-center min-h-[100px]">
-          <Clock className="h-6 w-6 text-primary" />
+        <div className="bg-muted/30 rounded-lg p-2 sm:p-3 border border-border/30 flex flex-col items-center gap-2 text-center min-h-[90px]">
+          <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           <div className="flex-1" />
           <Button
             onClick={() => navigate('/checklist')}
             variant="outline"
             size="sm"
-            className={`gap-2 w-full ${
+            className={`gap-1 w-full text-xs sm:text-sm px-1 sm:px-3 ${
               overdueCount > 0
                 ? 'border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive'
                 : tasksDueToday.length > 0
@@ -186,27 +187,46 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
                 : 'border-primary/30 text-primary hover:bg-primary/10 hover:text-primary'
             }`}
           >
-            {overdueCount > 0
-              ? `${overdueCount} Tasks Overdue`
-              : tasksDueToday.length > 0
-              ? `${tasksDueToday.length} Tasks Due`
-              : 'View Tasks'}
+            {overdueCount > 0 ? (
+              <>
+                <span className="sm:hidden">{overdueCount} Overdue</span>
+                <span className="hidden sm:inline">{overdueCount} Tasks Overdue</span>
+              </>
+            ) : tasksDueToday.length > 0 ? (
+              <>
+                <span className="sm:hidden">{tasksDueToday.length} Due</span>
+                <span className="hidden sm:inline">{tasksDueToday.length} Tasks Due</span>
+              </>
+            ) : (
+              <>
+                <span className="sm:hidden">Tasks</span>
+                <span className="hidden sm:inline">View Tasks</span>
+              </>
+            )}
           </Button>
         </div>
 
         {/* Right Box - Events */}
-        <div className="bg-muted/30 rounded-lg p-3 border border-border/30 flex flex-col items-center gap-2 text-center min-h-[100px]">
-          <Calendar className="h-6 w-6 text-primary" />
+        <div className="bg-muted/30 rounded-lg p-2 sm:p-3 border border-border/30 flex flex-col items-center gap-2 text-center min-h-[90px]">
+          <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           <div className="flex-1" />
           <Button
             onClick={() => navigate('/calendar?view=weekly')}
             variant="outline"
             size="sm"
-            className="gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full"
+            className="gap-1 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full text-xs sm:text-sm px-1 sm:px-3"
           >
-            {todayEvents.length > 0
-              ? `View ${todayEvents.length} Event${todayEvents.length !== 1 ? 's' : ''}`
-              : 'View Events'}
+            {todayEvents.length > 0 ? (
+              <>
+                <span className="sm:hidden">{todayEvents.length} Event{todayEvents.length !== 1 ? 's' : ''}</span>
+                <span className="hidden sm:inline">View {todayEvents.length} Event{todayEvents.length !== 1 ? 's' : ''}</span>
+              </>
+            ) : (
+              <>
+                <span className="sm:hidden">Events</span>
+                <span className="hidden sm:inline">View Events</span>
+              </>
+            )}
           </Button>
         </div>
       </div>

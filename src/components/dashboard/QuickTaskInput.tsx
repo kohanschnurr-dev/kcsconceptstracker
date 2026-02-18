@@ -65,7 +65,7 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
         <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Quick add task... (press Enter to save)"
+          placeholder="Quick add task..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="pl-9"
@@ -79,7 +79,7 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
             variant="outline"
             size="default"
             className={cn(
-              "shrink-0 gap-1 min-w-[44px] px-4",
+              "shrink-0 gap-1 min-w-[44px] px-2 sm:px-4",
               dueDate && "text-primary"
             )}
           >
@@ -110,7 +110,7 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
           )}
         </PopoverContent>
       </Popover>
-      <Button type="submit" disabled={!title.trim() || isSubmitting} size="default" className="min-w-[80px] px-5">
+      <Button type="submit" disabled={!title.trim() || isSubmitting} size="default" className="min-w-[60px] px-3 sm:min-w-[80px] sm:px-5">
         Add
       </Button>
     </form>
