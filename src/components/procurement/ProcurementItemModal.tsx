@@ -683,7 +683,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
       name: formData.name,
       category: formData.category || 'other',
       bundle_id: formData.bundle_ids.length > 0 ? formData.bundle_ids[0] : null,
-      source_url: formData.source_url || null,
+      source_url: (() => { const u = formData.source_url || ''; return u && !u.startsWith('http://') && !u.startsWith('https://') ? `https://${u}` : u || null; })(),
       source_store: formData.source_store,
       model_number: formData.model_number || null,
       unit_price: parseFloat(formData.unit_price),
@@ -779,7 +779,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
       setFormData(prev => ({
         ...prev,
         name: scraped.name || prev.name,
-        source_url: urlInput.trim(),
+        source_url: (() => { const u = urlInput.trim(); return u && !u.startsWith('http://') && !u.startsWith('https://') ? `https://${u}` : u; })(),
         source_store: storeValue as SourceStore,
         model_number: scraped.model_number || prev.model_number,
         unit_price: scraped.price?.toString() || prev.unit_price,
@@ -890,7 +890,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         unit_price: data.data.price?.toString() || prev.unit_price,
         model_number: data.data.model_number || prev.model_number,
         finish: data.data.finish || prev.finish,
-        source_url: urlInput.trim(),
+        source_url: (() => { const u = urlInput.trim(); return u && !u.startsWith('http://') && !u.startsWith('https://') ? `https://${u}` : u; })(),
         source_store: detectStoreFromUrl(urlInput),
         image_url: imageUrl || prev.image_url,
       }));
@@ -926,7 +926,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
       name: formData.name,
       category: formData.category || 'other',
       bundle_id: formData.bundle_ids.length > 0 ? formData.bundle_ids[0] : null, // Keep for backwards compat
-      source_url: formData.source_url || null,
+      source_url: (() => { const u = formData.source_url || ''; return u && !u.startsWith('http://') && !u.startsWith('https://') ? `https://${u}` : u || null; })(),
       source_store: formData.source_store,
       model_number: formData.model_number || null,
       unit_price: parseFloat(formData.unit_price),
@@ -1042,7 +1042,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
                 onClick={() => {
                   setFormData(prev => ({
                     ...prev,
-                    source_url: urlInput.trim(),
+                    source_url: (() => { const u = urlInput.trim(); return u && !u.startsWith('http://') && !u.startsWith('https://') ? `https://${u}` : u; })(),
                     source_store: detectStoreFromUrl(urlInput),
                   }));
                   setShowFallbackOptions(false);
