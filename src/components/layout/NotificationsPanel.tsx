@@ -218,7 +218,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="left" className="w-80 p-0 flex flex-col ml-16">
+      <SheetContent side="left" className="w-96 p-0 flex flex-col">
         {view === 'thread' && threadActor ? (
           <MessageThreadPanel
             pmId={threadActor.id}
