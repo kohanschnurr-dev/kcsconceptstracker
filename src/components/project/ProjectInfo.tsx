@@ -270,8 +270,10 @@ export function ProjectInfo({ projectId, projectType }: ProjectInfoProps) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Global fields */}
-          {activeFields.map(({ value: key, label }) => {
+          {/* Global fields — single-line first, multiline last (keeps 2-col pairs intact) */}
+          {[...activeFields.filter(f => !MULTILINE_FIELDS.has(f.value)),
+            ...activeFields.filter(f => MULTILINE_FIELDS.has(f.value))
+          ].map(({ value: key, label }) => {
             const isMultiline = MULTILINE_FIELDS.has(key);
             return (
               <div key={key} className={`space-y-1.5${isMultiline ? ' sm:col-span-2' : ''}`}>
