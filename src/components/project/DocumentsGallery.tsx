@@ -590,73 +590,90 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
       collisionDetection={pointerWithin}
     >
       <Card className="glass-card">
-        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-          {currentFolder ? (
-            <div className="flex flex-col gap-2">
-              {/* Breadcrumb Navigation */}
-              <Breadcrumb>
-                <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <BreadcrumbLink 
-                      className="cursor-pointer hover:text-primary"
-                      onClick={() => setCurrentFolderId(null)}
-                    >
-                      Documents
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                  {folderPath.map((folder, index) => (
-                    <span key={folder.id} className="contents">
-                      <BreadcrumbSeparator />
-                      <BreadcrumbItem>
-                        {index === folderPath.length - 1 ? (
-                          <BreadcrumbPage className="flex items-center gap-1">
-                            <Folder className="h-3.5 w-3.5 text-amber-500" />
-                            {folder.name}
-                          </BreadcrumbPage>
-                        ) : (
-                          <BreadcrumbLink 
-                            className="cursor-pointer hover:text-primary"
-                            onClick={() => setCurrentFolderId(folder.id)}
-                          >
-                            {folder.name}
-                          </BreadcrumbLink>
-                        )}
-                      </BreadcrumbItem>
-                    </span>
-                  ))}
-                </BreadcrumbList>
-              </Breadcrumb>
-              
-              <div className="flex items-center gap-3">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setCurrentFolderId(currentFolder.parent_id)}
-                  className="gap-1"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  {documents.length} {documents.length === 1 ? 'item' : 'items'}
-                </span>
+        <CardHeader className="flex flex-col gap-3 pb-3">
+          {/* Row 1: Title/breadcrumb + Action Buttons */}
+          <div className="flex items-center justify-between gap-2">
+            {currentFolder ? (
+              <div className="flex flex-col gap-1.5 min-w-0">
+                {/* Breadcrumb Navigation */}
+                <Breadcrumb>
+                  <BreadcrumbList>
+                    <BreadcrumbItem>
+                      <BreadcrumbLink 
+                        className="cursor-pointer hover:text-primary text-xs sm:text-sm"
+                        onClick={() => setCurrentFolderId(null)}
+                      >
+                        Documents
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    {folderPath.map((folder, index) => (
+                      <span key={folder.id} className="contents">
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                          {index === folderPath.length - 1 ? (
+                            <BreadcrumbPage className="flex items-center gap-1 text-xs sm:text-sm">
+                              <Folder className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                              <span className="truncate max-w-[120px] sm:max-w-none">{folder.name}</span>
+                            </BreadcrumbPage>
+                          ) : (
+                            <BreadcrumbLink 
+                              className="cursor-pointer hover:text-primary text-xs sm:text-sm"
+                              onClick={() => setCurrentFolderId(folder.id)}
+                            >
+                              {folder.name}
+                            </BreadcrumbLink>
+                          )}
+                        </BreadcrumbItem>
+                      </span>
+                    ))}
+                  </BreadcrumbList>
+                </Breadcrumb>
+                
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setCurrentFolderId(currentFolder.parent_id)}
+                    className="gap-1 h-7 px-2 text-xs"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Back
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {documents.length} {documents.length === 1 ? 'item' : 'items'}
+                  </span>
+                </div>
               </div>
+            ) : (
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FolderOpen className="h-5 w-5 shrink-0" />
+                <span>Documents <span className="text-muted-foreground font-normal text-base">({totalCount})</span></span>
+              </CardTitle>
+            )}
+
+            {/* Right side: icon-only on mobile, text on desktop */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button size="sm" variant="outline" onClick={() => setFolderModalOpen(true)} className="px-2 sm:px-3">
+                <FolderPlus className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">Folder</span>
+              </Button>
+              <Button size="sm" onClick={() => setUploadModalOpen(true)} className="px-2 sm:px-3">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">Add</span>
+              </Button>
             </div>
-          ) : (
-            <CardTitle className="text-lg flex items-center gap-2">
-              <FolderOpen className="h-5 w-5" />
-              Documents ({totalCount})
-            </CardTitle>
-          )}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Search Input */}
-            <div className="relative">
+          </div>
+
+          {/* Row 2: Search + Filters */}
+          <div className="flex items-center gap-2">
+            {/* Search takes all available space */}
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search documents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-8 w-[180px]"
+                className="pl-9 pr-8 w-full"
               />
               {searchQuery && (
                 <button 
@@ -667,10 +684,12 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
                 </button>
               )}
             </div>
+
+            {/* Date filter: icon only on mobile, full on desktop */}
             <Select value={filterDate} onValueChange={setFilterDate}>
-              <SelectTrigger className="w-[130px]">
-                <Clock className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Uploaded" />
+              <SelectTrigger className="w-8 sm:w-[130px] px-2 sm:px-3 gap-1 shrink-0">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline"><SelectValue placeholder="Uploaded" /></span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Time</SelectItem>
@@ -678,40 +697,6 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
                 <SelectItem value="30days">Last 30 Days</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-[140px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {DOCUMENT_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-                {customCategories.length > 0 && (
-                  <>
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1">
-                      Custom
-                    </div>
-                    {customCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat} className="italic">
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-            <Button size="sm" variant="outline" onClick={() => setFolderModalOpen(true)}>
-              <FolderPlus className="h-4 w-4 mr-1" />
-              Folder
-            </Button>
-            <Button size="sm" onClick={() => setUploadModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add
-            </Button>
           </div>
         </CardHeader>
         <CardContent 
