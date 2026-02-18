@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, MapPin, DollarSign, Calendar as CalendarIcon, Hammer, Home, Handshake, HardHat, CopyCheck } from 'lucide-react';
+import { Building2, MapPin, DollarSign, Calendar as CalendarIcon, Hammer, Handshake, HardHat, CopyCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   Dialog,
@@ -142,7 +142,6 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
                   <span className="hidden sm:inline">Fix & Flip</span>
                 </TabsTrigger>
                 <TabsTrigger value="rental" className="gap-1 text-xs">
-                  <Home className="h-4 w-4" />
                   <span className="hidden sm:inline">Rental</span>
                 </TabsTrigger>
                 <TabsTrigger value="new_construction" className="gap-1 text-xs">
