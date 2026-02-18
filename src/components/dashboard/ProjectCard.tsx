@@ -23,7 +23,9 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
 
   const contractValue = isContractor ? (project.purchasePrice || 0) : 0;
   const contractorCostBasis = isContractor
-    ? (project.totalBudget > 0 ? Math.max(project.totalBudget, totalSpent) : totalSpent)
+    ? (project.status === 'complete'
+        ? totalSpent
+        : (project.totalBudget > 0 ? Math.max(project.totalBudget, totalSpent) : totalSpent))
     : 0;
   const contractorGrossProfit = contractValue - contractorCostBasis;
   const contractorHasData = isContractor && contractValue > 0;
