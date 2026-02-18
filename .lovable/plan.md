@@ -1,53 +1,52 @@
 
-## Style the Due Date Display in Pipeline Tasks
+## Fix Due Date Alignment in Pipeline Tasks
 
-### What Needs to Change
+### The Problem
 
-Looking at the screenshot and the current code in `src/components/project/ProjectTasks.tsx`, the due date (`Feb 18`, `Feb 17`) is currently:
-- Colored (orange/amber) and small — blends into the priority badge visually
-- No label, just the calendar icon + date
-- Crammed into the same `shrink-0` flex group as the priority badge and status icon
+From the screenshot, two issues are visible:
+1. The due date appears **far right**, crowded next to the priority badge
+2. Rows with and without due dates are **misaligned** — the badge jumps left when there's no date
 
-The user wants:
-1. **Black text** instead of colored text
-2. **"Due" prefix** before the date (e.g., "Due Feb 18")
-3. **Its own dedicated space** — separated from the badge area so it doesn't feel squished
+The root cause: the due date `div` uses `min-w-[85px]` but only renders *when there's a date*. Tasks without a date skip it entirely, so the badge column is in a different position per row.
 
 ### The Fix
 
-In `ProjectTasks.tsx`, update the due date `div`:
-
-**Before:**
-```tsx
-<div className={cn("flex items-center gap-1 text-xs", getDueDateColor(task.dueDate))}>
-  <Calendar className="h-3 w-3" />
-  <span>{formatDisplayDateShort(task.dueDate)}</span>
-</div>
-```
-
-**After:**
-- Remove the color helper (always dark/black text: `text-foreground`)
-- Add "Due " as a prefix label
-- Move the due date out of the right-side badge group into a **separate `flex-shrink-0` section** between the title and the badge group, with its own `min-w` so it gets consistent spacing
-- Use `text-foreground` (dark/black in this theme) with a slightly muted calendar icon
-
-### Updated Row Layout
+**Give the due date a fixed-width column that always renders** — even when empty. This creates a consistent grid-like layout where every row has the same column structure:
 
 ```
-[ ☐ ] [ Title text ──────────── flex-1 ] [ Due Feb 18 ] [ High ] [ ⓘ ]
-         expands                            own column    badge   status
+[ ☐ ] [ Title ── flex-1 ] [ Due Feb 18  ] [ High ] [ ⓘ ]
+[ ☐ ] [ Title ── flex-1 ] [             ] [ High ] [ ⓘ ]
+                            ↑ always 100px wide
 ```
 
-The due date block will have:
-- `min-w-[80px]` so it always takes a consistent slot regardless of date length
-- `text-foreground text-xs font-medium` for black readable text
-- Calendar icon in `text-muted-foreground` so the icon is subtle but the text is black
-- "Due " as plain text prefix before the date
+**Key changes in `src/components/project/ProjectTasks.tsx`:**
 
-The `getDueDateColor` function can be removed since color is no longer needed.
+1. Move the due date `div` **outside** the conditional — always render the wrapper, just conditionally show content inside:
+   ```tsx
+   <div className="w-[100px] shrink-0 flex items-center gap-1">
+     {task.dueDate && (
+       <>
+         <Calendar className="h-3 w-3 text-muted-foreground" />
+         <span className="text-xs text-foreground font-medium">Due {formatDisplayDateShort(task.dueDate)}</span>
+       </>
+     )}
+   </div>
+   ```
+
+2. Change from `min-w-[85px]` to `w-[100px]` — fixed width, not minimum, so it always takes exactly that space.
+
+3. The badge group stays `shrink-0` on the far right, but now it's always at the same position because the due date column is always present.
+
+### Final Row Layout
+
+```
+[ ☐ ] [ Title text ─── flex-1 truncate ] [  Due Feb 18  ] [ High ] [ ⓘ ]
+[ ☐ ] [ Another title ─ flex-1 truncate ] [              ] [ High ] [ ⓘ ]
+       ^title fills all available space    ^always 100px   ^fixed right
+```
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/project/ProjectTasks.tsx` | Update due date rendering: black text, "Due" prefix, own spaced column; remove color helper |
+| `src/components/project/ProjectTasks.tsx` | Always render a fixed `w-[100px]` due date column; only show content inside when `dueDate` exists |
