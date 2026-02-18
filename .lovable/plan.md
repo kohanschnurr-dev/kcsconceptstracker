@@ -1,77 +1,77 @@
 
-## Make Project Detail Tabs Swipeable on Mobile
+## Fix Project Calendar for Mobile: Flawless UI
 
-### What the User Wants
+### Problems Identified (from screenshot)
 
-The screenshot shows the project detail tab bar on mobile with scroll arrows at the bottom. The user wants to swipe left/right on the tab content area to navigate between tabs — a standard mobile UX pattern (like native apps).
+The Project Schedule calendar inside `ProjectCalendar.tsx` has multiple mobile layout issues:
 
-### Approach
+1. **Header row is too cramped** — "Project Schedule" title, month nav (chevrons + picker), and "+ Add" button all compete on one tight row at mobile width (~375px). Elements get squeezed.
+2. **Legend is too tall** — The `CalendarLegend` wraps to 3 rows on mobile, consuming significant vertical space before the calendar even begins.
+3. **Day column headers are too wide** — "Sun", "Mon", etc. (3 characters) in 7 equal columns on narrow screens look tight. Should abbreviate to 1 letter ("S", "M", "T"...) on mobile.
+4. **Day cells are barely usable** — `min-h-[100px]` cells with `p-2` in 7 columns on a 375px screen = ~43px wide per cell. Event cards are unreadable.
+5. **Event title truncation** — `DealCard` compact mode uses `truncate` class which cuts mid-character.
+6. **No swipe to change months** — Users must tap tiny 32px chevron buttons. Should support swipe left/right to navigate months, same as the tabs fix done previously.
 
-Add a touch swipe handler directly on the `<Tabs>` wrapper in `ProjectDetail.tsx`. No new library needed — use native `touchstart`/`touchend` events via React's `onTouchStart`/`onTouchEnd` props. When a horizontal swipe is detected (>50px horizontal movement, less than 100px vertical to avoid conflict with vertical scrolling):
+### Solution
 
-- Swipe left → go to next tab
-- Swipe right → go to previous tab
+**File: `src/components/project/ProjectCalendar.tsx`**
 
-The active tab index is determined from `effectiveTabOrder` and the current `activeTab` value, so navigation wraps around the ordered list correctly.
+#### 1. Restructure the header into two rows on mobile
 
-### Implementation
-
-**File:** `src/pages/ProjectDetail.tsx`
-
-**1. Add touch state refs** (just above or near the `activeTab` state, ~line 223):
-```tsx
-const touchStartX = useRef<number>(0);
-const touchStartY = useRef<number>(0);
+```
+Row 1: [Calendar icon + "Project Schedule"]    [+ Add Event button]
+Row 2 (centered): [<]  February 2026  [>]
 ```
 
-**2. Add swipe handler** (near the other handlers, e.g. after `handleTabDragEnd`):
-```tsx
-const handleTouchStart = (e: React.TouchEvent) => {
-  touchStartX.current = e.touches[0].clientX;
-  touchStartY.current = e.touches[0].clientY;
-};
+This gives each element breathing room.
 
-const handleTouchEnd = (e: React.TouchEvent) => {
-  const dx = e.changedTouches[0].clientX - touchStartX.current;
-  const dy = e.changedTouches[0].clientY - touchStartY.current;
-  // Only trigger on clearly horizontal swipe (>50px horizontal, less vertical than horizontal)
-  if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
-  const currentIndex = effectiveTabOrder.indexOf(activeTab || effectiveTabOrder[0]);
-  if (dx < 0) {
-    // Swipe left → next tab
-    const next = effectiveTabOrder[Math.min(currentIndex + 1, effectiveTabOrder.length - 1)];
-    setActiveTab(next);
-  } else {
-    // Swipe right → previous tab
-    const prev = effectiveTabOrder[Math.max(currentIndex - 1, 0)];
-    setActiveTab(prev);
-  }
-};
-```
+#### 2. Make legend collapsible / compact on mobile
 
-**3. Attach handlers to the `<Tabs>` wrapper div** (line ~1045):
-```tsx
-<Tabs
-  value={activeTab || effectiveTabOrder[0]}
-  onValueChange={setActiveTab}
-  className="space-y-4"
->
-  {/* wrap the tab content area with touch handlers */}
-  <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-    ...all TabsContent panels...
-  </div>
-```
+Wrap the legend in a `details`-style toggle or show it as a 2-column grid with smaller text on mobile. The simplest fix: add `text-xs` and reduce the gap on mobile, keeping it in 2 columns using `grid-cols-2 sm:flex`.
 
-The `onTouchStart`/`onTouchEnd` handlers are placed on a `<div>` wrapping **only the TabsContent panels** (not the tab bar itself), so the swipe area is the content below the tabs. The tab bar stays as-is and continues to horizontally scroll.
+#### 3. Abbreviate day headers on mobile
 
-### Why No Library
+Replace `['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']` display with single letters on small screens using `hidden sm:inline` / `sm:hidden` on the full vs short labels.
 
-Touch events are available natively. Adding `embla-carousel` or `react-swipeable` just to detect left/right swipes on an existing Radix Tabs setup would add complexity — simple `touchstart`/`touchend` math is reliable, performant, and dependency-free.
+#### 4. Reduce cell min-height and padding on mobile
+
+Change `min-h-[100px] p-2` to `min-h-[60px] p-0.5 sm:p-2 sm:min-h-[100px]` so cells breathe at mobile width.
+
+#### 5. Fix event card truncation mid-word
+
+In `DealCard`'s compact mode (line 85, 95), change `truncate` → `line-clamp-1` on the title `<span>`.
+
+#### 6. Add swipe to navigate months
+
+Add `touchStartX` / `touchStartY` refs and `onTouchStart` / `onTouchEnd` handlers on the calendar grid wrapper. Swiping left advances to next month, right goes to previous month.
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/pages/ProjectDetail.tsx` | Add 2 `useRef` for touch tracking. Add `handleTouchStart` + `handleTouchEnd` functions. Wrap all `<TabsContent>` panels in a `<div>` with those handlers attached. |
+| `src/components/project/ProjectCalendar.tsx` | Restructure header into 2 rows. Add month-swipe touch handlers. Abbreviate day headers on mobile. Reduce cell padding/min-height for mobile. |
+| `src/components/calendar/DealCard.tsx` | Fix compact mode truncation: `truncate` → `line-clamp-1` on the title span. |
+| `src/components/calendar/CalendarLegend.tsx` | Make legend responsive: 2-column grid on mobile instead of flex-wrap. |
 
-No new dependencies. No other files needed.
+### Visual Layout After Fix (mobile)
+
+```text
+┌─────────────────────────────────────┐
+│ 📅 Project Schedule    [+ Add Event]│  ← Row 1: title left, button right
+│         ◀  February 2026  ▶         │  ← Row 2: centered nav
+│ ┌──────────────────────────────┐    │
+│ │ Acq/Admin  🟦  Structural 🟪│    │  ← Legend: 2-col grid, compact
+│ │ Rough-ins  🟧  Inspections 🟩│   │
+│ │ Int Finish 🟫  Milestones 🟡│    │
+│ └──────────────────────────────┘    │
+│  S   M   T   W   T   F   S         │  ← Single-letter headers
+│ ┌───┬───┬───┬───┬───┬───┬───┐      │
+│ │   │   │ 3 │ 4 │ 5 │   │   │      │  ← Tighter cells, still readable
+│ │   │   │[E]│[E]│   │   │   │      │
+│ ├───┼───┼───┼───┼───┼───┼───┤      │
+│ │ 8 │ 9 │10 │11 │12 │13 │14 │      │
+│ │   │[E]│[E]│[E]│   │[E]│   │      │
+└─────────────────────────────────────┘
+```
+
+Swiping left/right on the grid moves to next/previous month.
