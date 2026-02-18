@@ -475,10 +475,14 @@ export default function BudgetCalculator() {
 
   const subtitleText = calculatorType === 'fix_flip'
     ? 'Build and manage rehab budgets with real-time MAO tracking'
+    : calculatorType === 'contractor'
+    ? 'Contractor job budget and profit analysis'
     : 'Analyze rental income, expenses, and cash flow projections';
 
   const analysisTitle = calculatorType === 'fix_flip'
     ? 'Profit Breakdown'
+    : calculatorType === 'contractor'
+    ? 'Job P&L Analysis'
     : 'Cash Flow Analysis';
 
   return (
@@ -746,6 +750,95 @@ export default function BudgetCalculator() {
                           </Tabs>
                         </div>
                       )}
+
+                      {calculatorType === 'contractor' && (() => {
+                        const contractValue = arvNum;
+                        const jobCost = totalBudget;
+                        const grossProfit = contractValue - jobCost;
+                        const margin = contractValue > 0 ? (grossProfit / contractValue) * 100 : 0;
+                        const isProfitable = grossProfit >= 0;
+                        const goodMargin = margin >= 20;
+                        return (
+                          <Card>
+                            <CardHeader>
+                              <CardTitle>Job P&amp;L Analysis</CardTitle>
+                              <CardDescription>
+                                Contractor job budget and gross profit breakdown
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Contract Column */}
+                                <div className="space-y-3">
+                                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Contract</h4>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                      <span>Contract Value</span>
+                                      <span className="font-mono">{formatCurrency(contractValue)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span>Purchase Price</span>
+                                      <span className="font-mono">{formatCurrency(purchasePriceNum)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Job Cost Column */}
+                                <div className="space-y-3">
+                                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Job Cost</h4>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                      <span>Construction Budget</span>
+                                      <span className="font-mono">{formatCurrency(jobCost)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm text-muted-foreground">
+                                      <span>Total Allocated</span>
+                                      <span className="font-mono">{formatCurrency(jobCost)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Returns Column */}
+                                <div className="space-y-3">
+                                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Returns</h4>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between text-sm font-medium">
+                                      <span>Gross Profit</span>
+                                      <span className={`font-mono ${isProfitable ? 'text-green-500' : 'text-destructive'}`}>
+                                        {formatCurrency(grossProfit)}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between text-sm font-medium">
+                                      <span>Margin</span>
+                                      <span className={`font-mono ${goodMargin ? 'text-green-500' : isProfitable ? 'text-amber-500' : 'text-destructive'}`}>
+                                        {contractValue > 0 ? margin.toFixed(1) : '0.0'}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Summary Cards */}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+                                <div className="p-4 rounded-lg bg-muted/50 text-center">
+                                  <p className="text-sm text-muted-foreground">Contract Value</p>
+                                  <p className="text-2xl font-bold font-mono">{formatCurrency(contractValue)}</p>
+                                </div>
+                                <div className="p-4 rounded-lg bg-muted/50 text-center">
+                                  <p className="text-sm text-muted-foreground">Job Budget</p>
+                                  <p className="text-2xl font-bold font-mono">{formatCurrency(jobCost)}</p>
+                                </div>
+                                <div className={`p-4 rounded-lg text-center ${isProfitable ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
+                                  <p className="text-sm text-muted-foreground">Gross Profit</p>
+                                  <p className={`text-2xl font-bold font-mono ${isProfitable ? 'text-green-500' : 'text-destructive'}`}>
+                                    {formatCurrency(grossProfit)}
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })()}
                     </CollapsibleContent>
                   </Collapsible>
                 </div>

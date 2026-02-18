@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { DollarSign, ChevronLeft, ChevronRight, Calculator, Folder, Save, FolderOpen, Loader2, Ruler, Pencil, Check } from 'lucide-react';
+import { DollarSign, ChevronLeft, ChevronRight, Calculator, Folder, Save, FolderOpen, Loader2, Ruler, Pencil, Check, Settings, ArrowUp, ArrowDown } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { arrayMove } from '@dnd-kit/sortable';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -11,7 +13,14 @@ import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { RentalFields, type RentalFieldValues } from '@/components/budget/RentalFields';
 
-export type CalculatorType = 'fix_flip' | 'rental';
+export type CalculatorType = 'fix_flip' | 'rental' | 'contractor';
+
+const DEFAULT_CALC_TAB_ORDER: CalculatorType[] = ['fix_flip', 'rental', 'contractor'];
+const CALC_TAB_LABELS: Record<CalculatorType, string> = {
+  fix_flip: 'Sale',
+  rental: 'Rental',
+  contractor: 'Contractor',
+};
 
 type CostMode = 'pct' | 'flat';
 
@@ -121,6 +130,19 @@ export function DealSidebar({
   const [isEditingCosts, setIsEditingCosts] = useState(false);
   const [selectedProject, setSelectedProject] = useState('');
   const [activeTab, setActiveTab] = useState('save');
+  const [reorderOpen, setReorderOpen] = useState(false);
+  const [calcTabOrder, setCalcTabOrder] = useState<CalculatorType[]>(() => {
+    try {
+      const saved = localStorage.getItem('budget-calculator-tab-order');
+      if (saved) return JSON.parse(saved) as CalculatorType[];
+    } catch {}
+    return DEFAULT_CALC_TAB_ORDER;
+  });
+
+  const saveCalcTabOrder = (newOrder: CalculatorType[]) => {
+    setCalcTabOrder(newOrder);
+    localStorage.setItem('budget-calculator-tab-order', JSON.stringify(newOrder));
+  };
 
   const purchasePriceNum = parseFloat(purchasePrice) || 0;
   const arvNum = parseFloat(arv) || 0;
@@ -190,12 +212,44 @@ export function DealSidebar({
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
           {/* Type Selector */}
-          <Tabs value={calculatorType} onValueChange={(v) => onCalculatorTypeChange(v as CalculatorType)}>
-            <TabsList className="grid w-full grid-cols-2 h-9">
-              <TabsTrigger value="fix_flip" className="text-xs px-1">Sale</TabsTrigger>
-              <TabsTrigger value="rental" className="text-xs px-1">Rental</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-1">
+            <Tabs value={calculatorType} onValueChange={(v) => onCalculatorTypeChange(v as CalculatorType)} className="flex-1">
+              <TabsList className="grid w-full h-9" style={{ gridTemplateColumns: `repeat(${calcTabOrder.length}, 1fr)` }}>
+                {calcTabOrder.map((type) => (
+                  <TabsTrigger key={type} value={type} className="text-xs px-1">
+                    {CALC_TAB_LABELS[type]}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            <Popover open={reorderOpen} onOpenChange={setReorderOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                  <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-52 p-2" align="end">
+                <p className="text-xs text-muted-foreground mb-2 px-1">Tab Order</p>
+                {calcTabOrder.map((type, index) => (
+                  <div key={type} className="flex items-center justify-between px-1 py-1 rounded hover:bg-muted">
+                    <span className="text-sm">{CALC_TAB_LABELS[type]}</span>
+                    <div className="flex gap-0.5">
+                      <Button size="icon" variant="ghost" className="h-6 w-6"
+                        disabled={index === 0}
+                        onClick={() => saveCalcTabOrder(arrayMove(calcTabOrder, index, index - 1))}>
+                        <ArrowUp className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6"
+                        disabled={index === calcTabOrder.length - 1}
+                        onClick={() => saveCalcTabOrder(arrayMove(calcTabOrder, index, index + 1))}>
+                        <ArrowDown className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </PopoverContent>
+            </Popover>
+          </div>
 
           {/* Deal Inputs */}
           <div className="space-y-4">
@@ -215,7 +269,9 @@ export function DealSidebar({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="arv" className="text-xs">After Repair Value (ARV)</Label>
+              <Label htmlFor="arv" className="text-xs">
+                {calculatorType === 'contractor' ? 'Contract Value' : 'After Repair Value (ARV)'}
+              </Label>
               <div className="relative">
                 <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
