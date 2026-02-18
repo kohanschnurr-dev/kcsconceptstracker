@@ -70,7 +70,16 @@ export default function BudgetCalculator() {
   const [sqft, setSqft] = useState<string>('');
   const [activeBaselineRate, setActiveBaselineRate] = useState<number | null>(null);
   const [templateJustApplied, setTemplateJustApplied] = useState(false);
-  const [calculatorType, setCalculatorType] = useState<CalculatorType>('fix_flip');
+  const [calculatorType, setCalculatorType] = useState<CalculatorType>(() => {
+    try {
+      const saved = localStorage.getItem('budget-calculator-tab-order');
+      if (saved) {
+        const order = JSON.parse(saved) as CalculatorType[];
+        if (order.length > 0) return order[0];
+      }
+    } catch {}
+    return 'fix_flip';
+  });
   const [rentalFields, setRentalFields] = useState<RentalFieldValues>(defaultRentalFields);
   const [closingPct, setClosingPct] = useState<string>('2');
   const [holdingPct, setHoldingPct] = useState<string>('3');
