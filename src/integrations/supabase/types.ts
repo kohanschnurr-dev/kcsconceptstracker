@@ -795,6 +795,89 @@ export type Database = {
           },
         ]
       }
+      procurement_order_request_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_image_url: string | null
+          item_name: string
+          item_source_store: string | null
+          item_source_url: string | null
+          order_request_id: string
+          owner_decision: string | null
+          owner_notes: string | null
+          procurement_item_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_image_url?: string | null
+          item_name: string
+          item_source_store?: string | null
+          item_source_url?: string | null
+          order_request_id: string
+          owner_decision?: string | null
+          owner_notes?: string | null
+          procurement_item_id: string
+          quantity?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_image_url?: string | null
+          item_name?: string
+          item_source_store?: string | null
+          item_source_url?: string | null
+          order_request_id?: string
+          owner_decision?: string | null
+          owner_notes?: string | null
+          procurement_item_id?: string
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_order_request_items_order_request_id_fkey"
+            columns: ["order_request_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      procurement_order_requests: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          status: string
+          submitted_by: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          submitted_by: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          submitted_by?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           budget_presets: Json | null
@@ -1840,7 +1923,12 @@ export type Database = {
       }
       add_budget_category: { Args: { new_value: string }; Returns: undefined }
       get_team_owner_id: { Args: { p_user_id: string }; Returns: string }
+      get_user_team_id: { Args: { p_user_id: string }; Returns: string }
       is_team_member: {
+        Args: { p_team_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_team_owner: {
         Args: { p_team_id: string; p_user_id: string }
         Returns: boolean
       }
