@@ -82,7 +82,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
       <button
         onClick={onClick}
         className={cn(
-          'w-full text-left px-2 py-1 rounded text-xs truncate transition-all border',
+          'w-full text-left px-2 py-1 rounded text-xs transition-all border',
           'hover:ring-1 hover:ring-primary/50 cursor-grab active:cursor-grabbing',
           task.isCriticalPath 
             ? 'bg-red-500/30 text-red-300 border-red-500/50' 
@@ -92,7 +92,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
         <div className="flex items-center gap-1">
           {task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-red-400 shrink-0" />}
           {getCategoryIcon(task.eventCategory || 'due_diligence')}
-          <span className="truncate">{task.title}</span>
+          <span className="line-clamp-1 min-w-0">{task.title}</span>
           <span className={cn('w-2 h-2 rounded-full ml-auto shrink-0', getBudgetIndicator(task.budgetHealth))} />
         </div>
       </button>

@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, startOfDay, isWithinInterval } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { NewEventModal } from '@/components/calendar/NewEventModal';
@@ -26,6 +26,8 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
 
   const fetchEvents = async () => {
     const { data: eventsData, error } = await supabase
@@ -68,20 +70,13 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
   const getStatusFromCategory = (category: string): CalendarTask['status'] => {
     const group = getCategoryGroup(category);
     switch (group) {
-      case 'acquisition_admin':
-        return 'permitting';
-      case 'structural_exterior':
-        return 'demo';
-      case 'rough_ins':
-        return 'rough-in';
-      case 'inspections':
-        return 'permitting';
-      case 'interior_finishes':
-        return 'finish';
-      case 'milestones':
-        return 'complete';
-      default:
-        return 'rough-in';
+      case 'acquisition_admin': return 'permitting';
+      case 'structural_exterior': return 'demo';
+      case 'rough_ins': return 'rough-in';
+      case 'inspections': return 'permitting';
+      case 'interior_finishes': return 'finish';
+      case 'milestones': return 'complete';
+      default: return 'rough-in';
     }
   };
 
@@ -112,64 +107,87 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
     setSelectedTask(null);
   };
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const goToPrevMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  const goToNextMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+    if (dx < 0) goToNextMonth();
+    else goToPrevMonth();
+  };
+
+  const weekDaysFull = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDaysShort = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   return (
     <Card className="bg-background border-border">
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 space-y-2">
+        {/* Row 1: Title + Add button */}
         <div className="flex items-center justify-between">
-          {/* Left: Title */}
-          <CardTitle className="flex items-center gap-2 text-foreground">
-            <CalendarIcon className="h-5 w-5 text-primary" />
+          <div className="flex items-center gap-2 text-foreground font-semibold text-base sm:text-lg">
+            <CalendarIcon className="h-5 w-5 text-primary shrink-0" />
             Project Schedule
-          </CardTitle>
-          
-          {/* Center: Month Navigation */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <MonthYearPicker
-              currentDate={currentDate}
-              onDateChange={setCurrentDate}
-              labelClassName="text-sm min-w-[120px]"
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
-          
-          {/* Right: Add Event Button */}
           <NewEventModal
             projects={[{ id: projectId, name: projectName, address: projectAddress }]}
             onEventCreated={fetchEvents}
             defaultProjectId={projectId}
           />
         </div>
+
+        {/* Row 2: Month navigation centered */}
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goToPrevMonth}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <MonthYearPicker
+            currentDate={currentDate}
+            onDateChange={setCurrentDate}
+            labelClassName="text-sm min-w-[120px] text-center"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goToNextMonth}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Legend */}
         <CalendarLegend />
       </CardHeader>
+
       <CardContent>
         {/* Week day headers */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
-          {weekDays.map(day => (
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
+          {weekDaysFull.map((day, i) => (
             <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
-              {day}
+              <span className="hidden sm:inline">{day}</span>
+              <span className="sm:hidden">{weekDaysShort[i]}</span>
             </div>
           ))}
         </div>
 
-        {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-1">
+        {/* Calendar grid with swipe support */}
+        <div
+          className="grid grid-cols-7 gap-0.5 sm:gap-1"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           {days.map(day => {
             const dayTasks = getTasksForDay(day);
             const isCurrentMonth = isSameMonth(day, currentDate);
@@ -177,14 +195,14 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
             const isExpanded = expandedDay === dayKey;
             const visibleTasks = isExpanded ? dayTasks : dayTasks.slice(0, 3);
             const hasMore = dayTasks.length > 3;
-            
+
             return (
               <div
                 key={dayKey}
                 className={cn(
-                  'min-h-[100px] p-2 rounded border transition-colors',
-                  isCurrentMonth 
-                    ? 'bg-card/50 border-border' 
+                  'min-h-[60px] sm:min-h-[100px] p-0.5 sm:p-2 rounded border transition-colors',
+                  isCurrentMonth
+                    ? 'bg-card/50 border-border'
                     : 'bg-background/50 border-border/50',
                   isToday(day) && 'ring-1 ring-primary/50',
                   isExpanded && 'ring-1 ring-primary/50'
@@ -192,16 +210,14 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
               >
                 <button
                   onClick={() => {
-                    if (hasMore) {
-                      setExpandedDay(isExpanded ? null : dayKey);
-                    }
+                    if (hasMore) setExpandedDay(isExpanded ? null : dayKey);
                   }}
                   className={cn(
-                    'text-xs font-medium mb-1 w-7 h-7 rounded-full flex items-center justify-center transition-colors',
-                    isToday(day) 
-                      ? 'text-primary' 
-                      : isCurrentMonth 
-                        ? 'text-foreground' 
+                    'text-[10px] sm:text-xs font-medium mb-0.5 sm:mb-1 w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-colors',
+                    isToday(day)
+                      ? 'text-primary'
+                      : isCurrentMonth
+                        ? 'text-foreground'
                         : 'text-muted-foreground/60',
                     hasMore && 'hover:bg-secondary cursor-pointer',
                     isExpanded && 'bg-primary/20 text-primary'
@@ -210,7 +226,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                 >
                   {format(day, 'd')}
                 </button>
-                
+
                 <div className="space-y-0.5">
                   {visibleTasks.map(task => (
                     <DealCard
@@ -224,11 +240,11 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                     />
                   ))}
                   {hasMore && !isExpanded && (
-                    <button 
+                    <button
                       onClick={() => setExpandedDay(dayKey)}
                       className="text-[10px] text-muted-foreground text-center w-full hover:text-foreground transition-colors"
                     >
-                      +{dayTasks.length - 3} more
+                      +{dayTasks.length - 3}
                     </button>
                   )}
                 </div>
