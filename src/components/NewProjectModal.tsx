@@ -83,11 +83,10 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
 
       // Create default budget categories
       const allCats = getBudgetCategories();
-      const budgetPerCategory = parseFloat(totalBudget) / allCats.length;
       const categories = allCats.map(cat => ({
         project_id: project.id,
         category: cat.value,
-        estimated_budget: Math.round(budgetPerCategory),
+        estimated_budget: 0,
       }));
 
       const { error: categoriesError } = await supabase
