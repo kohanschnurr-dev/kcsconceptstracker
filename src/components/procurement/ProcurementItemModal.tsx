@@ -791,7 +791,14 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
       }));
 
       setScrapeSuccess(true);
-      toast.success('Product data extracted!');
+      const missingFields = [];
+      if (!scraped.price) missingFields.push('price');
+      if (!scraped.image_url) missingFields.push('image');
+      if (missingFields.length > 0) {
+        toast.success(`Product data extracted! Please enter ${missingFields.join(' & ')} manually.`);
+      } else {
+        toast.success('Product data extracted!');
+      }
       
       // Move to category step to confirm/change category
       setTimeout(() => setStep('category'), 500);

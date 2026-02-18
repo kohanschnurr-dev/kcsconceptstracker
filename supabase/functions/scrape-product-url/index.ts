@@ -250,6 +250,13 @@ function extractAmazonPrice(html: string): number | null {
 // Home Depot-specific price extraction from embedded JSON
 function extractHomeDepotPrice(html: string): number | null {
   const patterns = [
+    // Next.js __NEXT_DATA__ JSON blob — most reliable
+    /"nowPrice"\s*:\s*([\d.]+)/i,
+    /"originalPrice"\s*:\s*([\d.]+)/i,
+    /"wasPrice"\s*:\s*([\d.]+)/i,
+    /"specialPrice"\s*:\s*([\d.]+)/i,
+    /"storePrice"\s*:\s*([\d.]+)/i,
+    /"displayPrice"\s*:\s*"?\$?([\d,]+\.?\d*)"?/i,
     /"pricing"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i,
     /"pricing":\{"value":([\d.]+)/i,
     /"price"\s*:\s*([\d.]+)/i,
@@ -257,20 +264,27 @@ function extractHomeDepotPrice(html: string): number | null {
     /class="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/i,
     /price-format__main-price[^>]*>\s*\$?([\d,]+\.?\d*)/i,
     /price__dollars[^>]*>([\d,]+)/i,
+    // HD renders price as: "$XX" in a data attribute
+    /data-automation-id="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/i,
   ];
 
+  const candidates: number[] = [];
   for (const pattern of patterns) {
     const match = html.match(pattern);
     if (match && match[1]) {
       const price = parseFloat(match[1].replace(/,/g, ''));
-      if (price && price > 0 && price < 50000) {
-        console.log('Found Home Depot price via pattern:', pattern.toString().slice(0, 50));
-        return price;
+      if (price && price >= 5 && price < 50000) {
+        console.log('Found Home Depot price via pattern:', pattern.toString().slice(0, 60), '->', price);
+        candidates.push(price);
       }
     }
   }
-  
-  return null;
+
+  if (candidates.length === 0) return null;
+  // Return the most-common value, or the first if tied
+  const counts = new Map<number, number>();
+  for (const p of candidates) counts.set(p, (counts.get(p) || 0) + 1);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 }
 
 // Lowe's-specific price extraction from embedded JSON
@@ -312,8 +326,12 @@ function extractPriceFromMarkdown(markdown: string, store: string): number | nul
     { pattern: /(?:price|cost|buy now)[:\s]*\$?([\d,]+\.?\d*)/gi, score: 9 },
     // Sale/now pricing
     { pattern: /(?:now|sale|deal)[:\s]*\$?([\d,]+\.?\d*)/gi, score: 7 },
+    // HD markdown often shows price as: /\$249/ or $249.00 alone on a line
+    { pattern: /^\$(\d{2,4}(?:\.\d{2})?)\s*$/gm, score: 8 },
     // Standard $XX.XX format
     { pattern: /\$(\d{2,4}\.\d{2})/g, score: 5 },
+    // Bare number with context: "249.00" after a price label in markdown tables
+    { pattern: /(?:price|cost)[^$\n]{0,20}?([\d]{2,4}\.\d{2})/gi, score: 6 },
   ];
   
   for (const { pattern, score } of contextPatterns) {
@@ -420,32 +438,45 @@ function extractProductImage(html: string, url: string): string | null {
     }
   }
   
-  // Home Depot specific patterns
+  // Home Depot specific patterns — try og:image first (most reliable even on partial renders)
   if (store === 'home_depot') {
+    const ogMatch = decodedHtml.match(/property="og:image"[^>]+content="([^"]+)"/i) ||
+                    decodedHtml.match(/content="([^"]+)"[^>]+property="og:image"/i);
+    if (ogMatch && ogMatch[1] && ogMatch[1].startsWith('http')) {
+      console.log('HD og:image found');
+      return ogMatch[1];
+    }
     const hdPatterns = [
       /data-src="(https:\/\/images\.homedepot[^"]+)"/i,
       /src="(https:\/\/images\.homedepot[^"]+)"/i,
       /"src":"(https:\/\/images\.homedepot[^"]+)"/i,
+      /"imageUrl"\s*:\s*"(https:\/\/[^"]+\.(jpg|jpeg|png|webp)[^"]*)"/i,
+      /"primaryImage"\s*:\s*"(https:\/\/[^"]+)"/i,
+      /"canonicalUrl"\s*:\s*"(https:\/\/[^"]+\.(jpg|jpeg|png|webp))"/i,
     ];
     
     for (const pattern of hdPatterns) {
-      const match = html.match(pattern);
-      if (match && match[1]) {
+      const match = decodedHtml.match(pattern);
+      if (match && match[1] && match[1].startsWith('http')) {
         return match[1].replace(/\\/g, '');
       }
     }
   }
   
-  // Lowes specific patterns
+  // Lowes specific patterns — try og:image first
   if (store === 'lowes') {
+    const ogMatch = decodedHtml.match(/property="og:image"[^>]+content="([^"]+)"/i) ||
+                    decodedHtml.match(/content="([^"]+)"[^>]+property="og:image"/i);
+    if (ogMatch && ogMatch[1] && ogMatch[1].startsWith('http')) return ogMatch[1];
     const lowesPatterns = [
       /src="(https:\/\/mobileimages\.lowes[^"]+)"/i,
       /src="(https:\/\/images\.lowes[^"]+)"/i,
+      /"imageUrl"\s*:\s*"(https:\/\/[^"]+\.(jpg|jpeg|png|webp)[^"]*)"/i,
     ];
     
     for (const pattern of lowesPatterns) {
-      const match = html.match(pattern);
-      if (match && match[1]) {
+      const match = decodedHtml.match(pattern);
+      if (match && match[1] && match[1].startsWith('http')) {
         return match[1].replace(/\\/g, '');
       }
     }
@@ -844,25 +875,25 @@ Deno.serve(async (req) => {
     console.log('Scraping product URL:', formattedUrl);
     const store = detectStore(formattedUrl);
     
-    // HD and Lowes need JS rendering with waitFor; Amazon is bot-blocked regardless
+    // HD/Lowes: full page needed (onlyMainContent loses price data in their JS apps)
     const needsWaitFor = store === 'home_depot' || store === 'lowes';
     
-    // ── ATTEMPT 1: Single scrape with AI JSON + waitFor for JS stores ─────
-    const attempt1Timeout = needsWaitFor ? 22000 : 12000;
-    const attempt1WaitFor = store === 'home_depot' ? 4000 : store === 'lowes' ? 3000 : undefined;
-    console.log('Scraping store:', store, '| timeout:', attempt1Timeout, '| waitFor:', attempt1WaitFor);
+    // Single scrape — AI JSON + waitFor for JS-heavy stores
+    const attemptTimeout = needsWaitFor ? 20000 : 12000;
+    const attemptWaitFor = store === 'home_depot' ? 3000 : store === 'lowes' ? 2000 : undefined;
+    console.log('Scraping store:', store, '| timeout:', attemptTimeout, '| waitFor:', attemptWaitFor);
     
-    const { ok: ok1, data: data1 } = await firecrawlScrape(formattedUrl, apiKey, {
-      timeout: attempt1Timeout,
-      waitFor: attempt1WaitFor,
+    const { ok, data } = await firecrawlScrape(formattedUrl, apiKey, {
+      timeout: attemptTimeout,
+      waitFor: attemptWaitFor,
       onlyMainContent: false,
       withAiJson: true,
       withUserAgent: needsWaitFor,
     });
     
-    const markdown = data1?.data?.markdown || data1?.markdown || '';
-    const html = data1?.data?.html || data1?.html || '';
-    const aiExtracted: Record<string, any> | null = data1?.data?.json || data1?.json || null;
+    const markdown = data?.data?.markdown || data?.markdown || '';
+    const html = data?.data?.html || data?.html || '';
+    const aiExtracted: Record<string, any> | null = data?.data?.json || data?.json || null;
     
     if (aiExtracted) {
       console.log('AI extraction result:', JSON.stringify(aiExtracted).slice(0, 200));
@@ -871,7 +902,7 @@ Deno.serve(async (req) => {
     // Parse product data
     const productData = extractProductData(markdown, html, formattedUrl, aiExtracted);
     
-    console.log('Final product data — price:', productData.price, '| image:', productData.image_url ? 'YES' : 'NO', '| name:', productData.name?.slice(0, 80));
+    console.log('FINAL — price:', productData.price, '| image:', productData.image_url ? 'YES' : 'NO', '| name:', productData.name?.slice(0, 80));
     
     return new Response(
       JSON.stringify({ 
