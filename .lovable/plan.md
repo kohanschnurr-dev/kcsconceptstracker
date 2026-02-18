@@ -1,95 +1,108 @@
 
-## Add Click-to-Edit Dialog on Pipeline Task Rows
+## Swap "Gross Profit" and Budget Progress on Contractor Project Cards
 
 ### What the User Wants
 
-Right now in the **Pipeline Tasks** card on a project page, task rows are only interactive via the checkbox (to mark complete). The user wants clicking anywhere on a task row to open a detail/edit dialog — mirroring the pattern used by Daily Log rows in the same project page, where clicking a row opens an edit dialog with full fields.
+For **Contractor** project cards only, swap two elements:
 
-### Pattern Being Matched
+1. **Budget progress bar** — move it down to where the "Gross Profit" highlighted box currently sits (the `mb-4 p-3 rounded-lg bg-muted/50` block)
+2. **Gross Profit** — move it down to the footer stats row, replacing the generic "Profit" label that currently shows `—` for contractor projects (since `hasProfit` is false when `arv = 0`)
 
-In `ProjectDetail.tsx`, daily log rows work like this:
-- Each row has edit (pencil) and delete (trash) icon buttons on the right
-- Clicking the pencil sets `editLog` state, which opens a `<Dialog>` with editable fields
-- There is also a separate `<AlertDialog>` for delete confirmation
-
-The **Pipeline Tasks** card will use the exact same UX pattern.
+The screenshot confirms: currently the card shows `Gross Profit` as a prominent highlighted box in the middle, and `Profit —` in the footer. The user wants `Budget` (progress) in the middle box and `Gross Profit` in the footer stat.
 
 ---
 
-### Changes to `src/components/project/ProjectTasks.tsx`
+### Current Layout (Contractor card)
 
-#### 1. Add new state variables
+```
+[Budget progress bar]         ← showBudgetProgress = false for contractor, so hidden
+[Gross Profit box]            ← highlighted muted box, middle of card
+─────────────────────────────
+  Profit —   |   Start Date   ← footer, profit shows — because arv=0
+```
+
+### Target Layout (Contractor card)
+
+```
+[Budget progress bar]         ← show a contractor-specific budget bar here
+─────────────────────────────
+  Gross Profit $15,000  |  Start Date   ← footer shows gross profit instead
+```
+
+---
+
+### Technical Changes — `src/components/dashboard/ProjectCard.tsx`
+
+#### 1. Show budget progress bar for contractor projects
+
+Currently `showBudgetProgress` is:
 ```tsx
-const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
-const [editTitle, setEditTitle] = useState('');
-const [editPriority, setEditPriority] = useState<TaskPriority>('medium');
-const [editDueDate, setEditDueDate] = useState('');
-const [editStatus, setEditStatus] = useState<TaskStatus>('pending');
-const [isSaving, setIsSaving] = useState(false);
-const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+const showBudgetProgress = !isRental && !isContractor && project.totalBudget > 0;
 ```
 
-#### 2. Add handlers
-- `openEditDialog(task)` — sets all edit state and opens the dialog
-- `handleSaveEdit()` — calls `supabase.from('tasks').update(...)`, refreshes list, closes dialog
-- `handleDeleteTask()` — deletes via Supabase, removes from local state, closes confirm dialog
+The budget bar is hidden for contractors. We need to show it for contractors separately — or change the condition to `!isRental && project.totalBudget > 0` and let it show for contractors too.
 
-#### 3. Make each task row clickable (whole row)
-Wrap the row `<div>` with `onClick={() => openEditDialog(task)}` and add `cursor-pointer` to the className. The checkbox will use `e.stopPropagation()` to prevent the row click firing when checking off.
+The cleanest approach: add a separate `showContractorBudget` flag and render the budget bar inside the contractor's `isContractor` block, **above** the footer.
 
-#### 4. Add "Edit Task" Dialog (after `<AddTaskModal>`)
-Fields:
-- **Title** — `<Input>`
-- **Priority** — `<Select>` (Low / Medium / High / Urgent)
-- **Due Date** — date `<Input type="date">` (simple, matching the daily log dialog style)
-- **Status** — `<Select>` (Pending / In Progress / Completed)
-- Footer: **Delete** button (opens confirm) | **Cancel** | **Save Changes**
-
-#### 5. Add Delete `<AlertDialog>`
-Same pattern as `ProjectDetail.tsx` daily log delete confirmation.
-
----
-
-### New Imports Needed
-
+Actually the simplest approach: change the `showBudgetProgress` condition to **include** contractors:
 ```tsx
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2 } from 'lucide-react';
-import { TASK_STATUS_LABELS } from '@/types/task';
+const showBudgetProgress = !isRental && project.totalBudget > 0;
+// (remove !isContractor)
 ```
+
+This makes the budget progress bar appear for contractor projects automatically in its existing position.
+
+#### 2. Remove the "Gross Profit" highlighted box for contractor
+
+Remove the `isContractor` IIFE block (lines 185–202) that renders the highlighted `Gross Profit` box — this block becomes unnecessary since Gross Profit moves to the footer.
+
+#### 3. Replace "Profit" with "Gross Profit" in the footer for contractor projects
+
+In the footer grid (lines 204–219), the left column currently shows `Profit` with a value of `—` for contractors (because `hasProfit` depends on `arv > 0`).
+
+Change the footer left column so that when `isContractor`:
+- Label = `"Gross Profit"`
+- Value = the calculated `grossProfit` (Contract Value − Cost Basis)
+
+The gross profit variables (`contractValue`, `costBasis`, `grossProfit`) currently live inside the IIFE block — move them up to the top of the component body so they're accessible in both the budget bar area and the footer.
 
 ---
 
-### Visual Result
+### Exact Code Changes
 
-**Before** — task row, checkbox only interactive:
-```
-[ ] Tell Jose, Garage, Patio, Finishes...   Due Mar 3   [High] ⏱
+**Step A** — Hoist contractor profit variables to top of component (near other derived values):
+```tsx
+const contractValue = isContractor ? (project.purchasePrice || 0) : 0;
+const contractorCostBasis = isContractor
+  ? (project.totalBudget > 0 ? Math.max(project.totalBudget, totalSpent) : totalSpent)
+  : 0;
+const contractorGrossProfit = contractValue - contractorCostBasis;
+const contractorHasData = isContractor && contractValue > 0;
 ```
 
-**After** — entire row is clickable, clicking opens dialog:
+**Step B** — Update `showBudgetProgress` to include contractors:
+```tsx
+const showBudgetProgress = !isRental && project.totalBudget > 0;
 ```
-[ ] Tell Jose, Garage, Patio, Finishes...   Due Mar 3   [High] ⏱
-     ↑ clicking anywhere on row (except checkbox) opens:
 
-┌─────────────────────────────────────┐
-│ Edit Task                      [X]  │
-│ ─────────────────────────────────── │
-│ Title                               │
-│ [Tell Jose, Garage, Patio...]       │
-│                                     │
-│ Priority           Status           │
-│ [High ▾]          [Pending ▾]      │
-│                                     │
-│ Due Date                            │
-│ [2025-03-03]                        │
-│ ─────────────────────────────────── │
-│ [🗑 Delete]     [Cancel] [Save]    │
-└─────────────────────────────────────┘
+**Step C** — Remove the `isContractor` IIFE block (lines 185–202) entirely.
+
+**Step D** — Update the footer left column to show Gross Profit for contractors:
+```tsx
+<div>
+  <p className="text-xs text-muted-foreground">
+    {isContractor ? 'Gross Profit' : isRental ? 'Equity Gain' : 'Profit'}
+  </p>
+  <p className={cn('font-mono font-semibold',
+    isContractor
+      ? (contractorHasData ? (contractorGrossProfit < 0 ? 'text-destructive' : 'text-success') : '')
+      : (!hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success')
+  )}>
+    {isContractor
+      ? (contractorHasData ? formatCurrency(contractorGrossProfit) : '—')
+      : (hasProfit ? formatCurrency(profit) : '—')}
+  </p>
+</div>
 ```
 
 ---
@@ -98,6 +111,6 @@ import { TASK_STATUS_LABELS } from '@/types/task';
 
 | File | Change |
 |---|---|
-| `src/components/project/ProjectTasks.tsx` | Add click-to-edit behavior on rows, Edit Task dialog, Delete confirmation AlertDialog |
+| `src/components/dashboard/ProjectCard.tsx` | Hoist contractor profit vars, update `showBudgetProgress`, remove Gross Profit highlighted box, update footer to show Gross Profit for contractor cards |
 
-No new files, no database schema changes — tasks table already supports all required fields.
+No database changes, no new files.
