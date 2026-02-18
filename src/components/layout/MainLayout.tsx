@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { MobileBottomNav } from './MobileBottomNav';
 import { QuickExpenseModal } from '@/components/QuickExpenseModal';
+import { FloatingMessageBubble } from './FloatingMessageBubble';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
 import { useSettingsSync } from '@/hooks/useSettingsSync';
@@ -85,6 +86,9 @@ export function MainLayout({ children }: MainLayoutProps) {
         projects={projects}
         onExpenseCreated={() => window.location.reload()}
       />
+
+      {/* Floating Message Bubble */}
+      <FloatingMessageBubble />
     </div>
   );
 }
