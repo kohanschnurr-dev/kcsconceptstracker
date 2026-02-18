@@ -1,69 +1,45 @@
 
-## Hide View-Switcher Buttons on Mobile — Calendar Page
+## Remove Mobile Bottom Navigation Bar
 
-### What the User Means
+### What to Change
 
-On the Calendar page, the header contains Month / Week / Gantt view-switcher buttons that are always visible. On mobile, these crowd the header row alongside the title, date navigator, project filter, and weather widget — creating a cramped, wrapped layout. Since the user navigates primarily through the top-right area on mobile, these tab-style controls are redundant clutter on small screens.
+In `MainLayout.tsx`, remove:
+1. The `MobileBottomNav` component block (lines 77–80)
+2. The `MobileBottomNav` import (line 4)
+3. The `expenseModalOpen` state and `projects` state + fetch — **only if** they are solely used for the bottom nav's `onAddClick`. The `QuickExpenseModal` (lines 82–88) uses them too, so those stay.
+4. The bottom padding on the main content (`pb-24` on line 72) — this was only needed to prevent content from being hidden behind the fixed bottom nav. Without the nav, it should be `pb-4` (or just removed for mobile).
 
-On the home page (Index.tsx), there are no tab selectors — it is already clean on mobile.
-
-### What Changes
-
-The Month / Week / Gantt pill group in `CalendarHeader` will be hidden on mobile (`hidden sm:flex`) and replaced with a compact `Select` dropdown that appears only on mobile (`sm:hidden`). This keeps the view-switching ability without sacrificing header space.
-
-```
-Mobile (< 640px):
-┌──────────────────────────────────────────┐
-│ 📅 Project Calendar    ‹ Feb 2026 ›  [+] │
-│ [All Projects ▾]   🌤 72°               │
-│ [Month ▾]  ← compact select             │
-└──────────────────────────────────────────┘
-
-Desktop (≥ 640px):
-┌────────────────────────────────────────────────────────┐
-│ 📅 Project Calendar  ‹ Feb 2026 ›  [All Projects ▾]    │
-│ 🌤 72°   [ Month | Week | Gantt ]              [+ Add] │
-└────────────────────────────────────────────────────────┘
-```
-
-### Technical Changes
-
-#### `src/components/calendar/CalendarHeader.tsx`
-
-1. **Hide pill group on mobile**: add `hidden sm:flex` to the view-switcher `div`.
-2. **Add mobile `Select` dropdown**: rendered only on mobile (`sm:hidden`) using the existing `Select` component, with options Month / Week / Gantt and icons.
-
-```tsx
-{/* Mobile view selector */}
-<div className="sm:hidden">
-  <Select value={view} onValueChange={(v) => onViewChange(v as CalendarView)}>
-    <SelectTrigger className="h-9 w-[120px] bg-card border-border">
-      <SelectValue />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="monthly">
-        <span className="flex items-center gap-2"><LayoutGrid className="h-4 w-4" />Month</span>
-      </SelectItem>
-      <SelectItem value="weekly">
-        <span className="flex items-center gap-2"><List className="h-4 w-4" />Week</span>
-      </SelectItem>
-      <SelectItem value="gantt">
-        <span className="flex items-center gap-2"><GanttChart className="h-4 w-4" />Gantt</span>
-      </SelectItem>
-    </SelectContent>
-  </Select>
-</div>
-
-{/* Desktop pill group */}
-<div className="hidden sm:flex items-center gap-1 bg-secondary rounded-lg p-1">
-  {/* existing Month / Week / Gantt buttons unchanged */}
-</div>
-```
+Also in `MainLayout.tsx`, the `QuickExpenseModal` that was triggered by the bottom nav's `+` button will remain since the `expenseModalOpen` state still exists — but nothing will trigger it anymore on mobile. We can safely remove the `expenseModalOpen` state, `projects` state, the `useEffect` that fetches projects, and the `QuickExpenseModal` entirely **only if** no other part of `MainLayout` uses them. Since they were all wired solely through the bottom nav's `onAddClick`, they can all be removed together.
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/components/calendar/CalendarHeader.tsx` | 1. Wrap pill group in `hidden sm:flex`. 2. Add `sm:hidden` Select dropdown for mobile. |
+| `src/components/layout/MainLayout.tsx` | 1. Remove `MobileBottomNav` import. 2. Remove `expenseModalOpen` state, `projects` state, and `useEffect` fetch. 3. Remove `MobileBottomNav` JSX block. 4. Remove `QuickExpenseModal` JSX block. 5. Change `pb-24` to `pb-4` on the main content wrapper. |
 
-One file. No logic changes — the same `onViewChange` callback is used by both the pill group and the dropdown. The current view is preserved correctly since both read/write the same `view` prop.
+### Code Change
+
+```tsx
+// Remove these imports:
+import { MobileBottomNav } from './MobileBottomNav';
+import { QuickExpenseModal } from '@/components/QuickExpenseModal';
+import type { Project, CategoryBudget } from '@/types';
+
+// Remove these states:
+const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+const [projects, setProjects] = useState<Project[]>([]);
+
+// Remove the entire useEffect that fetches projects
+
+// Remove from JSX:
+<div className="lg:hidden">
+  <MobileBottomNav onAddClick={() => setExpenseModalOpen(true)} />
+</div>
+
+<QuickExpenseModal ... />
+
+// Change pb-24 → pb-4 on mobile:
+<div className="min-h-screen p-4 pt-20 pb-4 lg:p-8 lg:pt-8 lg:pb-8">
+```
+
+One file. Clean removal — no orphaned state or imports left behind.
