@@ -209,8 +209,8 @@ export function FloatingMessageBubble() {
       {/* Panel */}
       <div
         className={cn(
-          'fixed z-[60] transition-all duration-200 origin-bottom-right',
-          'bottom-20 right-6',
+          'fixed z-[60] transition-all duration-200 origin-bottom-right lg:origin-bottom-left',
+          'bottom-20 right-6 lg:right-auto lg:left-[72px]',
           'w-80 sm:w-80',
           // On mobile: full width minus padding
           'max-w-[calc(100vw-2rem)]',
