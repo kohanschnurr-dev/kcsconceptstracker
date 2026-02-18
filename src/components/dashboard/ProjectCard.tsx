@@ -18,8 +18,15 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
   const isNewConstruction = project.projectType === 'new_construction';
   const isWholesaling = project.projectType === 'wholesaling';
   const isContractor = project.projectType === 'contractor';
-  const showBudgetProgress = !isRental && !isContractor && project.totalBudget > 0;
+  const showBudgetProgress = !isRental && project.totalBudget > 0;
   const percentSpent = showBudgetProgress ? (totalSpent / project.totalBudget) * 100 : 0;
+
+  const contractValue = isContractor ? (project.purchasePrice || 0) : 0;
+  const contractorCostBasis = isContractor
+    ? (project.totalBudget > 0 ? Math.max(project.totalBudget, totalSpent) : totalSpent)
+    : 0;
+  const contractorGrossProfit = contractValue - contractorCostBasis;
+  const contractorHasData = isContractor && contractValue > 0;
 
   const arv = project.arv || 0;
   const purchasePrice = project.purchasePrice || 0;
@@ -182,41 +189,19 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
           );
         })()}
 
-        {isContractor && (() => {
-          const contractValue = project.purchasePrice || 0;
-          const contractorTotalSpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
-          const contractorTotalBudget = project.totalBudget;
-          const costBasis = contractorTotalBudget > 0 ? Math.max(contractorTotalBudget, contractorTotalSpent) : contractorTotalSpent;
-          const grossProfit = contractValue - costBasis;
-          const usingActuals = contractorTotalSpent > contractorTotalBudget && contractorTotalBudget > 0;
-          const hasData = contractValue > 0;
-
-          return (
-            <div className="mb-4 p-3 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground">Gross Profit</p>
-              <p className={cn('font-mono font-semibold text-lg', grossProfit < 0 ? 'text-destructive' : grossProfit > 0 ? 'text-success' : '')}>
-                {hasData ? formatCurrency(grossProfit) : '—'}
-              </p>
-            </div>
-          );
-        })()}
-
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-          {showBudgetProgress ? (
-            <div>
-              <p className="text-xs text-muted-foreground">{isRental ? 'Equity Gain' : 'Profit'}</p>
-              <p className={cn('font-mono font-semibold', !hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success')}>
-                {hasProfit ? formatCurrency(profit) : '—'}
-              </p>
-            </div>
-          ) : (
-            <div>
-              <p className="text-xs text-muted-foreground">{isRental ? 'Equity Gain' : 'Profit'}</p>
-              <p className={cn('font-mono font-semibold', !hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success')}>
-                {hasProfit ? formatCurrency(profit) : '—'}
-              </p>
-            </div>
-          )}
+          <div>
+            <p className="text-xs text-muted-foreground">{isContractor ? 'Gross Profit' : isRental ? 'Equity Gain' : 'Profit'}</p>
+            <p className={cn('font-mono font-semibold',
+              isContractor
+                ? (contractorHasData ? (contractorGrossProfit < 0 ? 'text-destructive' : 'text-success') : '')
+                : (!hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success')
+            )}>
+              {isContractor
+                ? (contractorHasData ? formatCurrency(contractorGrossProfit) : '—')
+                : (hasProfit ? formatCurrency(profit) : '—')}
+            </p>
+          </div>
           <div>
             <p className="text-xs text-muted-foreground">{project.completedDate ? 'Completed' : 'Start Date'}</p>
             <div className="flex items-center gap-1 text-sm">
