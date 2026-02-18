@@ -1,132 +1,59 @@
 
-## Rework Contractor Project: Financials → "Job Financials", Team under Field, Info rework
+## Fix Profit Calculation: Use Budget as Cost Basis (with Actual Override)
 
-### What's changing and why
+### The Logic Change
 
-Contractor projects currently share the same tab content as fix-and-flip projects, which makes no sense for a contractor's mental model:
-
-- **Financials tab** shows the Profit Calculator (ARV, Purchase Price, holding/transaction costs). A contractor doesn't buy or sell properties — they bid jobs and track margin against their contract value.
-- **Team tab** exists separately from Field — but for a contractor, their team IS their field operation. It belongs there contextually.
-- **Info tab** shows property condition details (foundation status, HVAC year, roof type) — things a property owner cares about, not a contractor managing a job.
-
----
-
-### Change 1 — Rename "Financials" → "Job P&L" for contractor projects
-
-**New tab label**: `Job P&L` (Profit & Loss)
-
-**New component**: `src/components/project/ContractorFinancialsTab.tsx`
-
-Instead of Purchase Price + ARV, a contractor thinks about:
-- **Contract Value** — What they were hired/paid to do the job for
-- **Total Costs** (auto-pulled from budget/expenses already tracked)
-- **Gross Profit** = Contract Value − Total Costs
-- **Gross Margin %** = Gross Profit / Contract Value
-- **Labor vs. Materials split** — two input fields for estimated labor and materials budgets
-- **Status indicator** — On budget / Over budget / Under budget
-
-Layout — a clean 2-column card grid:
-```text
-┌─────────────────────┬─────────────────────┐
-│  Contract Value     │  Total Costs        │
-│  $____________      │  $42,500 (actual)   │
-├─────────────────────┼─────────────────────┤
-│  Gross Profit       │  Gross Margin       │
-│  $7,500             │  15.0%              │
-└─────────────────────┴─────────────────────┘
-
-Est. Labor Budget: $_____   Est. Materials: $_____
-
-[Status pill: On Budget / Over Budget]
-[ExportReports component below]
+Currently, the component calculates:
+```
+Gross Profit = Contract Value - totalSpent (actual expenses only)
 ```
 
-All values auto-save to `project_contractor_financials` table (or the existing `projects` table using spare columns). We'll store `contract_value`, `est_labor_budget`, `est_materials_budget` on the project record itself (reusing `purchase_price` for `contract_value` and `arv` won't be used — we'll add a dedicated DB column via migration).
+The user wants the same logic as fix-and-flip projects, where the **cost basis** is whichever is higher — the estimated budget OR actual spend:
 
-Actually — to keep it clean without a new table, we'll:
-- Use `purchase_price` as `contract_value` (relabel it)
-- Store `est_labor_budget` and `est_materials_budget` in `custom_fields` JSONB on the project (or add 2 columns via migration)
-
-We'll add a small migration: `ALTER TABLE projects ADD COLUMN est_labor_budget numeric, ADD COLUMN est_materials_budget numeric;`
-
----
-
-### Change 2 — Move "Team" under "Field" tab for contractor projects
-
-The `Field` tab currently has 3 placeholder cards (Crew & Labor, Subcontractors, Permits & Inspections — all "Coming soon").
-
-For contractor projects, we'll:
-- **Rename Field tab label** → `"Field"` (keep same name, already good)
-- **Add Team section at top of Field tab** when `project_type === 'contractor'` — render `ProjectVendors` inline inside the Field tab as a "Team" section, before the coming-soon cards
-- **Remove "team" from contractor tab list** in `DEFAULT_DETAIL_TAB_ORDER_BY_TYPE`
-
-The Field tab will look like:
-```text
-  ┌────────────────────────────────────────┐
-  │ Team / Vendors (full ProjectVendors)   │
-  └────────────────────────────────────────┘
-  ┌──────────┐ ┌──────────┐ ┌──────────┐
-  │Crew&Labor│ │Subcontr. │ │Permits   │
-  │ coming.. │ │ coming.. │ │ coming.. │
-  └──────────┘ └──────────┘ └──────────┘
+```
+Cost Basis  = max(totalBudget, totalSpent)
+Gross Profit = Contract Value - Cost Basis
+Gross Margin = Gross Profit / Contract Value
 ```
 
-**Files touched**:
-- `src/components/project/FieldTab.tsx` — accept `projectId` and `projectType` props, render `<ProjectVendors>` at top when contractor
-- `src/pages/ProjectDetail.tsx` — update `DEFAULT_DETAIL_TAB_ORDER_BY_TYPE.contractor` to remove `'team'`, pass `projectType` to `FieldTab`, and add a `TabsContent value="field"` that passes those props
+This means:
+- While a job is in progress (actuals below budget), the **budget is the cost floor** — profit is projected based on what you expect to spend
+- Once actuals **exceed** the budget, the actual costs take over — profit erodes accordingly
+- This gives a realistic, conservative projection at all times
 
----
+### UI Updates
 
-### Change 3 — Rework "Info" tab for contractor mindset
+The **"Total Costs"** card will be updated to show the **Cost Basis** (the higher of budget vs. actual) rather than just raw actuals, with a sub-label that clarifies which is being used:
 
-Current "Property Info" fields: Foundation Status, Gas/Electric, Roof Year, Roof Type, HVAC Year, Condenser, Furnace, Drain Line Material, Window Status, Electrical Status, Plumbing Status.
+- If `totalSpent <= totalBudget`: label reads "Budget (est. job cost)"
+- If `totalSpent > totalBudget`: label reads "Actual Costs (over budget)"
 
-For a contractor, the "Info" tab should capture **Job Details**, not property condition:
+A small secondary line will show the raw actual spend for transparency: e.g. "Actual spend: $38,200"
 
-**New fields for contractor Info**:
-- **Client Name** — who hired them
-- **Client Phone** — contact number  
-- **Client Email** — contact email
-- **Contract Type** — e.g. Fixed Price, T&M, Cost Plus
-- **Scope of Work** — multiline text summary of what's in scope
-- **Project Manager** — internal PM assigned
-- **Site Contact** — on-site point of contact
-- **Permit #** — permit number if applicable
-- **Bond / Insurance #** — bond or insurance certificate reference
+The **"Gross Profit"** card sub-label will update to: `Contract Value − Est. Job Cost` or `Contract Value − Actual Costs` accordingly.
 
-This is a **contractor job card**, not a property condition sheet.
+The **status pill** logic also updates:
+- `totalSpent > contractValue` → "Over Contract" (red)
+- `totalSpent > totalBudget && totalBudget > 0` → "Over Budget" (orange, actuals now driving the number)
+- Otherwise → "On Budget" (green)
 
-**Implementation**: `ProjectInfo` currently is not type-aware. We'll make it accept a `projectType` prop. When `projectType === 'contractor'`, it renders a different set of fields stored in `custom_fields` JSONB (no schema change needed since it's all custom fields already). When any other type, behavior is unchanged.
+### Technical Changes
 
-The card title will change from "Property Info" → "Job Details" for contractor projects.
+**File: `src/components/project/ContractorFinancialsTab.tsx`** — lines 49–53 (derived values block):
 
----
+```tsx
+// Current (wrong):
+const grossProfit = contractValue - totalSpent;
 
-### Tab label changes for contractor
+// New (correct — mirrors fix-and-flip rehab basis logic):
+const costBasis = totalBudget > 0
+  ? Math.max(totalBudget, totalSpent)
+  : totalSpent;
+const usingActuals = totalSpent > totalBudget && totalBudget > 0;
+const grossProfit = contractValue - costBasis;
+const grossMarginPct = contractValue > 0 ? (grossProfit / contractValue) * 100 : 0;
+```
 
-Update `TAB_LABELS` in `ProjectDetail.tsx`:
-- Add conditional logic so when `project.project_type === 'contractor'`, `financials` label shows as `"Job P&L"` and `info` shows as `"Job Info"`
+Then the "Total Costs" card displays `costBasis` as the main figure with a contextual sub-label, and an optional secondary line showing `totalSpent` when they differ.
 
-Since `TAB_LABELS` is a static record, we'll create a helper function `getTabLabel(tab, projectType)` that overrides labels by type.
-
----
-
-### Technical Summary
-
-**Files to create**:
-- `src/components/project/ContractorFinancialsTab.tsx` — new Job P&L component
-
-**Files to modify**:
-- `src/pages/ProjectDetail.tsx`:
-  - Add `getTabLabel()` helper for type-specific labels
-  - Update `DEFAULT_DETAIL_TAB_ORDER_BY_TYPE.contractor` to remove `'team'`
-  - Add `TabsContent value="field"` pass-through that passes `projectType`
-  - Render `ContractorFinancialsTab` when `project_type === 'contractor'` in the `financials` TabsContent
-  - Pass `projectType` to `ProjectInfo`
-- `src/components/project/FieldTab.tsx` — add `projectType` prop, render `ProjectVendors` section at top for contractor
-- `src/components/project/ProjectInfo.tsx` — add `projectType` prop, show contractor-specific fields (client info, scope, contract type) instead of property condition fields
-
-**Database migration**:
-- Add `est_labor_budget numeric` and `est_materials_budget numeric` columns to `projects` table for the Job P&L calculator
-
-No existing data is affected. All other project types (fix_flip, rental, wholesaling, new_construction) are completely unchanged.
+No database changes needed. Only `ContractorFinancialsTab.tsx` is modified.
