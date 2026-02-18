@@ -1,157 +1,69 @@
 
-## Feature: Project-Specific Custom Fields in Job Details / Property Info
+## Hide View-Switcher Buttons on Mobile — Calendar Page
 
-### What the User Wants
+### What the User Means
 
-The Settings → Manage Sources screen defines a **global template** of fields (e.g., Client Name, Permit #, Scope of Work for contractor jobs). These auto-populate on every project. But sometimes a specific project needs a one-off field — like "Plumbing Type" for a kitchen remodel — that doesn't belong on the global template.
+On the Calendar page, the header contains Month / Week / Gantt view-switcher buttons that are always visible. On mobile, these crowd the header row alongside the title, date navigator, project filter, and weather widget — creating a cramped, wrapped layout. Since the user navigates primarily through the top-right area on mobile, these tab-style controls are redundant clutter on small screens.
 
-The solution: add a **"+ Add Field"** button at the bottom of the Job Details / Property Info card that lets users add project-specific fields. These extra fields appear only on that one project and are never added to Settings.
+On the home page (Index.tsx), there are no tab selectors — it is already clean on mobile.
 
----
+### What Changes
 
-### Data Storage — No DB Changes Needed
-
-The `project_info` table already has a `custom_fields` JSONB column. Today it stores values from the global custom fields. We'll extend it to also store project-specific field **definitions** (label + key) alongside their values.
-
-We'll use a dedicated key inside `custom_fields` to store these definitions:
-
-```json
-{
-  "client_name": "John Smith",
-  "scope_of_work": "Full kitchen remodel",
-  "_project_fields": [
-    { "value": "plumbing_type", "label": "Plumbing Type" }
-  ]
-}
-```
-
-The `_project_fields` array holds the metadata for any project-specific fields the user added. Their values are stored as normal keys alongside the rest.
-
----
-
-### UI Layout (After Change)
+The Month / Week / Gantt pill group in `CalendarHeader` will be hidden on mobile (`hidden sm:flex`) and replaced with a compact `Select` dropdown that appears only on mobile (`sm:hidden`). This keeps the view-switching ability without sacrificing header space.
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  Job Details                                        │
-├─────────────────────────────────────────────────────┤
-│  [Global fields from Settings — always shown]       │
-│  Client Name: ___________  Client Email: _______    │
-│  Contract Type: _________  Permit #: ___________    │
-│  ...                                                │
-├─────────────────────────────────────────────────────┤
-│  ─── Project-Specific Fields ───                    │
-│  Plumbing Type: ___________  [✕ remove]             │
-│  Tile Material: ___________  [✕ remove]             │
-│                                                     │
-│  [+ Add Field]                   💾 Auto-saves      │
-└─────────────────────────────────────────────────────┘
+Mobile (< 640px):
+┌──────────────────────────────────────────┐
+│ 📅 Project Calendar    ‹ Feb 2026 ›  [+] │
+│ [All Projects ▾]   🌤 72°               │
+│ [Month ▾]  ← compact select             │
+└──────────────────────────────────────────┘
+
+Desktop (≥ 640px):
+┌────────────────────────────────────────────────────────┐
+│ 📅 Project Calendar  ‹ Feb 2026 ›  [All Projects ▾]    │
+│ 🌤 72°   [ Month | Week | Gantt ]              [+ Add] │
+└────────────────────────────────────────────────────────┘
 ```
 
-When the user clicks **+ Add Field**:
-- An inline form slides in with a "Field label" text input and a "Add" button
-- On confirm, the field is immediately added to the grid and auto-saved into `_project_fields` in `custom_fields`
-- A small **✕** icon on each project-specific field chip lets the user remove it (and its value) from this project only
+### Technical Changes
 
----
+#### `src/components/calendar/CalendarHeader.tsx`
 
-### Technical Details
-
-#### Changes to `src/components/project/ProjectInfo.tsx`
-
-**1. Load project-specific fields on mount**
-
-When fetching `project_info`, extract `_project_fields` from `custom_fields` and store them in a `projectFields` state array:
+1. **Hide pill group on mobile**: add `hidden sm:flex` to the view-switcher `div`.
+2. **Add mobile `Select` dropdown**: rendered only on mobile (`sm:hidden`) using the existing `Select` component, with options Month / Week / Gantt and icons.
 
 ```tsx
-const [projectFields, setProjectFields] = useState<CategoryItem[]>([]);
+{/* Mobile view selector */}
+<div className="sm:hidden">
+  <Select value={view} onValueChange={(v) => onViewChange(v as CalendarView)}>
+    <SelectTrigger className="h-9 w-[120px] bg-card border-border">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="monthly">
+        <span className="flex items-center gap-2"><LayoutGrid className="h-4 w-4" />Month</span>
+      </SelectItem>
+      <SelectItem value="weekly">
+        <span className="flex items-center gap-2"><List className="h-4 w-4" />Week</span>
+      </SelectItem>
+      <SelectItem value="gantt">
+        <span className="flex items-center gap-2"><GanttChart className="h-4 w-4" />Gantt</span>
+      </SelectItem>
+    </SelectContent>
+  </Select>
+</div>
 
-// Inside fetchInfo, after getting data:
-const rawCustom = (data as any).custom_fields || {};
-const projectFieldDefs: CategoryItem[] = rawCustom._project_fields || [];
-setProjectFields(projectFieldDefs);
+{/* Desktop pill group */}
+<div className="hidden sm:flex items-center gap-1 bg-secondary rounded-lg p-1">
+  {/* existing Month / Week / Gantt buttons unchanged */}
+</div>
 ```
-
-**2. Merge for rendering**
-
-The rendered grid stays the same structure — global fields from `activeFields` (Settings), then project-specific fields from `projectFields`, all sharing the same `fields` / `handleBlur` logic since values are all stored in `custom_fields`.
-
-**3. Save project-specific field definition**
-
-When a user adds a new project-specific field, save its definition into `_project_fields` inside `custom_fields` alongside the existing data:
-
-```tsx
-const handleAddProjectField = async (label: string) => {
-  const key = label.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-  // Prevent duplicates
-  // Merge new field def into _project_fields and persist to DB
-  // Then update projectFields state
-};
-```
-
-**4. Remove project-specific field**
-
-Clicking ✕ on a project-specific field:
-- Removes it from `projectFields` state
-- Deletes its value from `fields`
-- Updates `custom_fields` in DB: removes the key and updates `_project_fields`
-
-**5. Inline "Add Field" UI**
-
-Below the grid, a collapsible inline form:
-```tsx
-const [addingField, setAddingField] = useState(false);
-const [newFieldLabel, setNewFieldLabel] = useState('');
-
-// Rendered below project-specific fields:
-{addingField ? (
-  <div className="flex items-center gap-2 col-span-full">
-    <Input
-      placeholder="Field label (e.g. Plumbing Type)"
-      value={newFieldLabel}
-      onChange={e => setNewFieldLabel(e.target.value)}
-      onKeyDown={e => e.key === 'Enter' && handleAddProjectField(newFieldLabel)}
-      autoFocus
-    />
-    <Button size="sm" onClick={() => handleAddProjectField(newFieldLabel)}>Add</Button>
-    <Button size="sm" variant="ghost" onClick={() => setAddingField(false)}>Cancel</Button>
-  </div>
-) : (
-  <Button variant="ghost" size="sm" className="col-span-full w-fit gap-1.5 text-muted-foreground" onClick={() => setAddingField(true)}>
-    <Plus className="h-3.5 w-3.5" /> Add Field
-  </Button>
-)}
-```
-
-**6. Divider between global and project-specific fields**
-
-When `projectFields.length > 0` or `addingField` is true, show a subtle labeled divider:
-```tsx
-{(projectFields.length > 0 || addingField) && (
-  <div className="col-span-full flex items-center gap-2 mt-2">
-    <div className="h-px flex-1 bg-border" />
-    <span className="text-xs text-muted-foreground">Project-Specific</span>
-    <div className="h-px flex-1 bg-border" />
-  </div>
-)}
-```
-
----
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/components/project/ProjectInfo.tsx` | 1. Add `projectFields` state. 2. Load `_project_fields` from `custom_fields` on fetch. 3. `handleAddProjectField` function. 4. `handleRemoveProjectField` function. 5. Render project-specific fields section with divider and remove buttons. 6. Inline "Add Field" form. |
+| `src/components/calendar/CalendarHeader.tsx` | 1. Wrap pill group in `hidden sm:flex`. 2. Add `sm:hidden` Select dropdown for mobile. |
 
-**One file. No DB migrations needed** — `custom_fields` JSONB already supports this.
-
----
-
-### Edge Cases
-
-- Duplicate label: if user types a label whose generated key already exists (in global OR project fields), show a brief inline error and block the add
-- Empty label: "Add" button is disabled when the input is blank
-- Removing a global field: not possible from the project page (that's a Settings action) — the ✕ only appears on project-specific fields
-- Key collision with `_project_fields`: reserved key, never rendered as a field itself
-- Multiline project-specific fields: since user defines the label, we can't know which should be multiline — default to single-line Input; the user can type long text naturally
+One file. No logic changes — the same `onViewChange` callback is used by both the pill group and the dropdown. The current view is preserved correctly since both read/write the same `view` prop.
