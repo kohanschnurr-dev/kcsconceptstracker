@@ -22,7 +22,8 @@ import {
   Settings,
   GripVertical,
   Pencil,
-  Trash2
+  Trash2,
+  Plus
 } from 'lucide-react';
 
 function SortableTabItem({ id, label }: { id: string; label: string }) {
@@ -1221,10 +1222,10 @@ export default function ProjectDetail() {
                           variant="outline"
                           size="sm"
                           disabled={quickLogSubmitting}
-                          className="shrink-0 gap-1.5 text-xs"
+                          className="shrink-0 gap-1.5 text-xs px-2 sm:px-3"
                         >
                           <Calendar className="h-3.5 w-3.5" />
-                          {format(parseDateString(quickLogDate), 'MMM d, yyyy')}
+                          <span className="hidden sm:inline">{format(parseDateString(quickLogDate), 'MMM d, yyyy')}</span>
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="end">
@@ -1247,8 +1248,16 @@ export default function ProjectDetail() {
                       type="submit"
                       size="sm"
                       disabled={!quickLogWork.trim() || quickLogSubmitting}
+                      className="shrink-0 px-2 sm:px-3"
                     >
-                      {quickLogSubmitting ? 'Saving...' : 'Add Log'}
+                      {quickLogSubmitting ? (
+                        <span className="hidden sm:inline">Saving...</span>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 sm:hidden" />
+                          <span className="hidden sm:inline">Add Log</span>
+                        </>
+                      )}
                     </Button>
                   </div>
                   <Collapsible open={quickLogShowIssues} onOpenChange={setQuickLogShowIssues}>
