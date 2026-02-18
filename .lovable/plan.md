@@ -1,71 +1,117 @@
 
-## Clean Up Expenses Mobile UI
+## Fix Procurement Mobile UI
 
-### Problems Identified
+### Problems in the Screenshot
 
-From the screenshot, the mobile Expenses page has two areas that need fixing:
+From the screenshot, the mobile Procurement page has several issues:
 
-**1. Filter bar — too many rows, too cluttered**
-- Search input, Projects dropdown, Categories dropdown, and Date Range button each wrap to their own rows
-- The summary line ("512 expenses • $394,993.49 • Export") wraps to yet another row
-- Result: ~4-5 rows of filter controls before any expense data
-
-**2. Table — too many columns for mobile**
-- 6 columns: Date, Vendor, Project, Category, Payment, Amount
-- On a ~375px screen, this forces horizontal scroll or text overflow
-- "Project" and "Category" columns are barely readable at that width
+1. **Header action buttons overflow** — "Orders", "New Bundle", and "+ Add Item" buttons are all in a row that clips past the right edge of the screen (the screenshot shows "+ Add It" cut off)
+2. **Filter rows are too tall** — Each filter (Bundles, Categories, Sort) takes its own full-width row, eating 3+ rows of vertical space below the search bar
+3. **Table has too many columns** — 9 columns (checkbox, image, item, bundle, source, category, price, qty, actions) are impossible to display on a ~375px screen. The screenshot shows only "Item" and "Bundle" visible before the right edge clips off
+4. **Summary cards are fine** — 2-column grid works well
 
 ### Solution
 
-#### Part 1: Compact the filter bar on mobile (`src/pages/Expenses.tsx`)
+#### Part 1: Compact the header action buttons on mobile
 
-Replace the current `flex flex-wrap` filter area with a mobile-specific 2-row layout:
+On mobile, show icon-only buttons (or very short labels) to prevent overflow:
+- "Orders" button → show just the bell icon + badge (no text on mobile)
+- "New Bundle" → show just the folder icon (no text on mobile)  
+- "+ Add Item" → keep "+" icon + "Add" text (short)
 
-**Row 1 (mobile):** Search bar (full width)  
-**Row 2 (mobile):** Projects filter + Categories filter + Date Range icon-only button (compact)  
-**Row 3 (mobile):** Summary count + amount + Export (tight, small text)
+#### Part 2: Compact the filter area on mobile
 
-Key changes:
-- Search bar gets its own full-width row on mobile (easier to type in)
-- Projects + Categories + Date Range all fit on row 2 using shorter trigger labels and `flex-1` sizing
-- Date Range button shows only the calendar icon on mobile (no text unless a date is set)
-- Summary row uses smaller text and tighter spacing
+Replace 4-row filter layout with 2 rows on mobile:
+- **Row 1**: Search bar (full width)
+- **Row 2**: All 3 dropdowns (Bundles, Categories, Sort) side-by-side using `flex-1` and icon-only triggers
 
-#### Part 2: Simplify the table on mobile (`src/components/expenses/GroupedExpenseRow.tsx`)
+#### Part 3: Simplify the table on mobile
 
-On mobile (below `sm:`), hide the **Project**, **Category**, and **Payment** columns — they're the least useful at a glance and cause the most crowding. Show only:
-- **Date** (compact)
-- **Vendor + description** (main info)
-- **Amount** (the most important number)
+On mobile (below `sm:`), hide heavy columns and keep only the essentials:
+- **Keep**: Image thumbnail (small), Item name, Price + Qty (combined), Actions (edit/delete only — compact)
+- **Hide on mobile**: Bundle column, Source column, Category column
+- The checkbox column for bulk selection stays (but shrinks)
 
-Also hide the corresponding `<th>` headers in `Expenses.tsx`.
-
-Use `hidden sm:table-cell` on the columns to hide/show responsively.
+Also reduce the image thumbnail from 12×12 to 10×10 on mobile.
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/pages/Expenses.tsx` | Restructure filter bar into mobile-optimized 2-row layout; hide Project/Category/Payment `<th>` on mobile |
-| `src/components/expenses/GroupedExpenseRow.tsx` | Add `hidden sm:table-cell` to Project, Category, Payment `<td>` columns on both single and grouped rows |
+| `src/pages/Procurement.tsx` | 1. Make header buttons icon-only on mobile. 2. Restructure filter area into 2 rows with compact dropdowns. 3. Hide Bundle/Source/Category table headers and cells on mobile. |
 
-### Visual Result (Mobile)
+### Technical Implementation
 
-**Before:**
-```
-[Search...                    ]   ← full row
-[All Projects ▾               ]   ← full row  
-[All Categories ▾] [Date Range]   ← another row
-[512 expenses • $394,993 Export]  ← another row
-| Date | Vendor | Project | Category | Payment | Amount |  ← 6 cols
+**Header buttons (mobile icon-only):**
+```tsx
+// Orders button
+<Button variant="outline" className="relative px-2 sm:px-4" onClick={() => setOrdersPanelOpen(true)}>
+  <Bell className="h-4 w-4 sm:mr-2" />
+  <span className="hidden sm:inline">Orders</span>
+  ...
+</Button>
+
+// New Bundle
+<Button variant="outline" className="px-2 sm:px-4" onClick={...}>
+  <FolderOpen className="h-4 w-4 sm:mr-2" />
+  <span className="hidden sm:inline">New Bundle</span>
+</Button>
+
+// Add Item
+<Button className="px-2 sm:px-4" onClick={...}>
+  <Plus className="h-4 w-4 sm:mr-2" />
+  <span className="hidden sm:inline">Add Item</span>
+</Button>
 ```
 
-**After:**
+**Filter rows (2 compact rows on mobile):**
+```tsx
+// Row 1: Search (unchanged, full width)
+// Row 2: 3 dropdowns side by side
+<div className="flex gap-2">
+  <Select ...> <SelectTrigger className="flex-1 h-9 min-w-0"> ... </SelectTrigger> </Select>
+  <Select ...> <SelectTrigger className="flex-1 h-9 min-w-0"> ... </SelectTrigger> </Select>
+  <Select ...> <SelectTrigger className="flex-1 h-9 min-w-0"> ... </SelectTrigger> </Select>
+</div>
 ```
-[Search...                        ]   ← row 1
-[Projects ▾] [Categories ▾] [📅]      ← row 2
-[512 exp • $394,993  ↓ Export]        ← row 3
-| Date | Vendor           | Amount |  ← 3 cols, readable
+On mobile, hide the icons inside SelectTrigger (or keep them since they're small).
+
+**Table columns (hide on mobile):**
+```tsx
+<TableHead className="text-center hidden sm:table-cell">Bundle</TableHead>
+<TableHead className="text-center hidden sm:table-cell">Source</TableHead>
+<TableHead className="text-center hidden sm:table-cell">Category</TableHead>
+
+// Corresponding cells:
+<TableCell className="text-center hidden sm:table-cell">...</TableCell>
 ```
 
-Clean, scannable, no horizontal overflow.
+**Image cell — smaller on mobile:**
+```tsx
+<div className="w-8 h-8 sm:w-12 sm:h-12 rounded-md overflow-hidden ...">
+```
+
+**Actions cell — hide delete on mobile to save space:**
+Keep edit and the project-assign `+` button; hide the delete button on mobile (`hidden sm:inline-flex`). This saves ~32px per row.
+
+### Visual Result
+
+**Before (mobile):**
+```
+[Orders] [New Bundle] [+ Add It...] ← clips off
+[Search                            ]
+[All Bundles ▾                     ]
+[All Categories ▾                  ]
+[A-Z ▾                             ]
+| ☐ | img | Item | Bundle | → clips
+```
+
+**After (mobile):**
+```
+[🔔] [📁] [+ Add]                   ← all visible
+[Search                            ]
+[Bundles ▾] [Categories ▾] [A-Z ▾]
+| ☐ | img | Item Name    | $Price |
+```
+
+Clean, no clipping, no horizontal scroll.
