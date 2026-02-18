@@ -1,25 +1,53 @@
 
-## Replace Pencil Emoji with Lucide Icon
+## Fix Target Input — Allow Full Deletion While Typing
 
-### Change
-In `src/components/budget/ContractorMarginGauge.tsx`, swap the `✏️` emoji button for a `Pencil` icon from `lucide-react` — small, grey, and styled consistently with the rest of the UI.
+### Root Cause
 
-### Specific edits
-
-**1. Add `Pencil` to the lucide import:**
+In `ContractorMarginGauge.tsx`, line 153:
 ```tsx
-import { TrendingUp, CheckCircle2, AlertTriangle, DollarSign, Percent, Pencil } from 'lucide-react';
+onChange={(e) => setTempTarget(parseFloat(e.target.value) || marginTarget)}
 ```
 
-**2. Replace the emoji button with the icon:**
-```tsx
-// Before
-<button onClick={...} className="leading-none opacity-60 hover:opacity-100 transition-opacity">✏️</button>
+When the user clears the field, `parseFloat('')` returns `NaN`. The `|| marginTarget` fallback immediately resets it back to `20`, making it impossible to delete the value and type a fresh number.
 
-// After
-<button onClick={...} className="leading-none opacity-50 hover:opacity-100 transition-opacity">
-  <Pencil className="h-3 w-3" />
-</button>
+### Fix
+
+Change `tempTarget` from `number` to `string` so the raw input value (including empty string) is preserved while typing. Only parse to a number at commit time (on blur or ✓ click).
+
+**Before:**
+```tsx
+const [tempTarget, setTempTarget] = useState(marginTarget); // number
+// ...
+onChange={(e) => setTempTarget(parseFloat(e.target.value) || marginTarget)}
+onBlur={() => { onMarginTargetChange(tempTarget); setIsEditingTarget(false); }}
+onClick={() => { onMarginTargetChange(tempTarget); setIsEditingTarget(false); }}
 ```
 
-That's the only change — one import addition, one emoji swap. No logic, no layout, no other files.
+**After:**
+```tsx
+const [tempTarget, setTempTarget] = useState(String(marginTarget)); // string
+
+// On open:
+onClick={() => { setTempTarget(String(marginTarget)); setIsEditingTarget(true); }}
+
+// On change — just store the raw string:
+onChange={(e) => setTempTarget(e.target.value)}
+
+// On commit — parse then clamp, fall back to current marginTarget if invalid:
+onBlur={() => {
+  const parsed = parseFloat(tempTarget);
+  const valid = !isNaN(parsed) ? Math.min(99, Math.max(1, parsed)) : marginTarget;
+  onMarginTargetChange(valid);
+  setIsEditingTarget(false);
+}}
+```
+
+The input's `value` prop stays as the raw string, so typing "3", "30", or clearing fully works without interference.
+
+### Files to Modify
+
+| File | Change |
+|---|---|
+| `src/components/budget/ContractorMarginGauge.tsx` | Change `tempTarget` to `string` state. Update `onChange` to store raw string. Parse only on blur/confirm with clamp + fallback. |
+
+One file, four-line change. No props, no logic elsewhere.
