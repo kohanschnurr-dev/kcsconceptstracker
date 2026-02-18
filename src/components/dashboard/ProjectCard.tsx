@@ -1,4 +1,4 @@
-import { MapPin, Calendar, Home, Hammer, Building2, Handshake, Star } from 'lucide-react';
+import { MapPin, Calendar, Home, Hammer, Building2, Handshake, Star, HardHat } from 'lucide-react';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
   const isRental = project.projectType === 'rental';
   const isNewConstruction = project.projectType === 'new_construction';
   const isWholesaling = project.projectType === 'wholesaling';
+  const isContractor = project.projectType === 'contractor';
   const showBudgetProgress = !isRental && project.totalBudget > 0;
   const percentSpent = showBudgetProgress ? (totalSpent / project.totalBudget) * 100 : 0;
 
@@ -103,6 +104,8 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
                 <Home className="h-4 w-4 text-muted-foreground shrink-0" />
               ) : isWholesaling ? (
                 <Handshake className="h-4 w-4 text-muted-foreground shrink-0" />
+              ) : isContractor ? (
+                <HardHat className="h-4 w-4 text-muted-foreground shrink-0" />
               ) : (
                 <Hammer className="h-4 w-4 text-muted-foreground shrink-0" />
               )}
