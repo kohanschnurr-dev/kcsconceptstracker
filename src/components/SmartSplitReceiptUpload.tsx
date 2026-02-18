@@ -87,7 +87,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const uploadZoneRef = useRef<HTMLDivElement>(null);
-  const mobileScanInputRef = useRef<HTMLInputElement>(null);
+  
   const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
   const [editableQuantities, setEditableQuantities] = useState<Record<number, number>>({});
   const [selectedProject, setSelectedProject] = useState<string>('');
@@ -932,57 +932,8 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const pendingCount = pendingReceipts.filter(r => r.status === 'pending').length;
   const matchedCount = matchedReceipts.length;
 
-  // Mobile scan - opens camera directly
-  const handleMobileScan = () => {
-    mobileScanInputRef.current?.click();
-  };
-
   return (
     <>
-      {/* Mobile Quick Scan Button - visible only on mobile, outside collapsible */}
-      {isMobile && (
-        <>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={async (e) => {
-              const files = Array.from(e.target.files || []);
-              if (files.length === 0) return;
-              
-              // Auto-expand to show progress
-              setIsExpanded(true);
-              
-              if (files.length === 1) {
-                await handleFileUpload(files[0]);
-              } else {
-                await processMultipleFiles(files);
-              }
-              // Reset input so the same file can be selected again
-              e.target.value = '';
-            }}
-            className="hidden"
-            ref={mobileScanInputRef}
-          />
-          <Button
-            className="w-full gap-2 h-12 text-base mb-4"
-            onClick={handleMobileScan}
-            disabled={isUploading || isParsing}
-          >
-            {isUploading || isParsing ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                {uploadProgress ? `Processing ${uploadProgress.current}/${uploadProgress.total}...` : 'Processing...'}
-              </>
-            ) : (
-              <>
-                <Camera className="h-5 w-5" />
-                Scan Receipt
-              </>
-            )}
-          </Button>
-        </>
-      )}
 
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <div className="glass-card overflow-hidden border-2 border-dashed border-primary/20">
