@@ -1,55 +1,109 @@
 
-## Fix: Make Calendar Icons Perfectly Vertically Aligned
+## Add Delete & Edit to Daily Logs (with Confirmation)
 
-### The Real Root Cause
+### Where Logs Appear
 
-The current row layout (left to right) is:
-```
-[ ☐ ] [ Title flex-1 ] [ due date 105px ] [ badge + icon ]
-```
+Daily logs are rendered in two places:
+1. **`src/pages/DailyLogs.tsx`** — the main "Daily Logs & Tasks" page, full log cards (lines 487–534)
+2. **`src/pages/ProjectDetail.tsx`** — the "Logs" tab on each project detail page (lines 1252–1274)
 
-The problem is the **rightmost group** (`badge + icon`) has **variable width**. "High" badge is wider than "Medium" badge, which is wider than "Low". Since flex lays out left-to-right, the 105px due-date box starts at a different X position on rows with "High" vs "Medium" vs "Low" badges — so even though the content is right-aligned inside the box, the box itself moves.
+Both need delete and edit support.
 
-### The Fix: Give the Badge Column a Fixed Width Too
+### What Gets Built
 
-Give the badge + icon column a fixed width (`w-[90px]`) so it never changes size. This anchors every column at a deterministic position:
+**Delete** — A trash icon button on each log card. Clicking it opens a confirmation `AlertDialog` ("Are you sure you want to delete this log? This cannot be undone."). Only on confirming does the DELETE hit the database.
 
-```
-[ ☐ ] [ Title flex-1 ] [ due date w-[105px] justify-end ] [ badge+icon w-[90px] justify-end ]
-       ^expands         ^always same x-start               ^always same width
-```
+**Edit** — A pencil icon button on each log card. Clicking it opens a `Dialog` with two textareas: "Work Performed" and "Issues Encountered" (both pre-filled with existing values). A "Save" button calls `UPDATE` on `daily_logs`. Date is shown but not editable (dates are reference data; editing them would corrupt log history).
 
-This guarantees the calendar icon always starts at the exact same horizontal position — every row, every priority level.
+### Changes — `src/pages/DailyLogs.tsx`
 
-### Exact Change in `src/components/project/ProjectTasks.tsx`
-
-**Line 150 — Before:**
-```tsx
-<div className="flex items-center gap-2 shrink-0">
+**New state:**
+```ts
+const [deleteLogId, setDeleteLogId] = useState<string | null>(null);
+const [editLog, setEditLog] = useState<DailyLog | null>(null);
+const [editWork, setEditWork] = useState('');
+const [editIssues, setEditIssues] = useState('');
+const [isSavingEdit, setIsSavingEdit] = useState(false);
 ```
 
-**After:**
-```tsx
-<div className="w-[90px] shrink-0 flex items-center justify-end gap-2">
+**New handlers:**
+```ts
+const handleDeleteLog = async () => { /* DELETE from daily_logs */ };
+const handleSaveEdit = async () => { /* UPDATE daily_logs */ };
 ```
 
-That's the only change needed. The due date column (`w-[105px] justify-end`) is already correct — it just needs the badge column to stop being variable width.
-
-### Visual Result
-
+**Each log card** — add a small icon row in the top-right (replacing the existing Issue badge area with a flex group):
 ```
-Row 1: [ ☐ ] [ Tell Jose… ─────────── ] [📅 Due Feb 18] [  High 🔴  ]
-Row 2: [ ☐ ] [ Garage studs ──────── ] [              ] [  High 🔴  ]
-Row 3: [ ☐ ] [ Concrete situation ── ] [📅 Due Feb 17] [  Med  🟡  ]
-Row 4: [ ☐ ] [ Adding 2x4s ──────── ] [              ] [  Low  ⚪  ]
-                                         ↑ calendar icons
-                                           all at same X
+[ 📅 Jan 31, 2026   Project Name ]   [  ✏  🗑  ]  [Issue badge if applicable]
 ```
 
-Every column is now fixed-width and the calendar emoji will form a perfect vertical line.
+Two icons: `Pencil` (edit) and `Trash2` (delete), both `ghost` size `icon` buttons.
+
+**Add at the bottom of the tab** (or as portals):
+- `AlertDialog` — fires when `deleteLogId` is set, confirmation text, "Delete" button calls `handleDeleteLog`
+- `Dialog` — fires when `editLog` is set, two textareas, "Save Changes" button calls `handleSaveEdit`
+
+### Changes — `src/pages/ProjectDetail.tsx`
+
+Same approach applied to the smaller log cards in the project detail "Logs" tab (lines 1252–1274):
+
+**New state** (alongside existing `dailyLogs` state — approx line 160):
+```ts
+const [deleteLogId, setDeleteLogId] = useState<string | null>(null);
+const [editLog, setEditLog] = useState<...> | null>(null);
+```
+
+**New handlers** + same AlertDialog + Dialog components added inside the Logs TabsContent.
+
+The project detail cards are simpler (no photo count, no project name since we're already in the project context) — same icon row pattern in top-right of each card.
+
+### Imports to Add
+
+Both files need:
+```ts
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Pencil, Trash2 } from 'lucide-react'; // Trash2 already imported in DailyLogs.tsx
+```
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/project/ProjectTasks.tsx` | Add `w-[90px] justify-end` to the badge+icon wrapper div (line 150) |
+| `src/pages/DailyLogs.tsx` | Add edit + delete state, handlers, icon buttons on log cards, AlertDialog + Edit Dialog |
+| `src/pages/ProjectDetail.tsx` | Add edit + delete state, handlers, icon buttons on log cards, AlertDialog + Edit Dialog |
+
+### Visual Result (each log card)
+
+```
+┌──────────────────────────────────────────────────────┐
+│  📅 Jan 31, 2026   Roofing Project      [✏] [🗑]    │
+│                                                       │
+│  Work Performed:                                      │
+│  Foundation & HVAC done, Roofing Started              │
+└──────────────────────────────────────────────────────┘
+```
+
+Delete confirmation:
+```
+┌─────────────────────────────────┐
+│  Delete Daily Log?              │
+│  This cannot be undone.         │
+│                                 │
+│  [Cancel]  [Delete]             │
+└─────────────────────────────────┘
+```
+
+Edit dialog:
+```
+┌─────────────────────────────────┐
+│  Edit Log — Jan 31, 2026        │
+│                                 │
+│  Work Performed                 │
+│  [Foundation & HVAC done…     ] │
+│                                 │
+│  Issues (optional)              │
+│  [                            ] │
+│                                 │
+│  [Cancel]  [Save Changes]       │
+└─────────────────────────────────┘
+```
