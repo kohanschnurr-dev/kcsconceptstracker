@@ -206,6 +206,15 @@ export function FloatingMessageBubble() {
 
   return (
     <>
+      {/* Backdrop — closes panel on outside click, blocks pass-through */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-[59]"
+          onClick={handleClose}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Panel */}
       <div
         className={cn(
