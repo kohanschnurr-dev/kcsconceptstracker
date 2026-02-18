@@ -935,19 +935,19 @@ export default function ProjectDetail() {
         </div>
 
         {/* Summary Cards - Clickable - Navigate to Budget Page */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <Card 
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-primary/50"
             onClick={() => navigate(`/projects/${id}/budget`)}
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <DollarSign className="h-5 w-5 text-primary" />
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Budget</p>
-                  <p className="text-xl font-semibold font-mono">{formatCurrency(totalBudget)}</p>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Total Budget</p>
+                  <p className="text-base sm:text-xl font-semibold font-mono truncate">{formatCurrency(totalBudget)}</p>
                 </div>
               </div>
             </CardContent>
@@ -957,14 +957,14 @@ export default function ProjectDetail() {
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-warning/50"
             onClick={() => navigate(`/projects/${id}/budget`)}
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                  <TrendingUp className="h-5 w-5 text-warning" />
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-warning" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Spent</p>
-                  <p className="text-xl font-semibold font-mono">{formatCurrency(totalSpent)}</p>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Total Spent</p>
+                  <p className="text-base sm:text-xl font-semibold font-mono truncate">{formatCurrency(totalSpent)}</p>
                 </div>
               </div>
             </CardContent>
@@ -974,22 +974,22 @@ export default function ProjectDetail() {
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-success/50"
             onClick={() => navigate(`/projects/${id}/budget`)}
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <div className={cn(
-                  "h-10 w-10 rounded-lg flex items-center justify-center",
+                  "h-8 w-8 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0",
                   remaining >= 0 ? "bg-success/10" : "bg-destructive/10"
                 )}>
                   {remaining >= 0 ? (
-                    <TrendingDown className="h-5 w-5 text-success" />
+                    <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-success" />
                   ) : (
-                    <TrendingUp className="h-5 w-5 text-destructive" />
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-destructive" />
                   )}
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Remaining</p>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Remaining</p>
                   <p className={cn(
-                    "text-xl font-semibold font-mono",
+                    "text-base sm:text-xl font-semibold font-mono truncate",
                     remaining >= 0 ? "text-success" : "text-destructive"
                   )}>
                     {formatCurrency(remaining)}
@@ -1003,14 +1003,14 @@ export default function ProjectDetail() {
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-muted-foreground/50"
             onClick={() => setActiveTab('procurement')}
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                  <ShoppingCart className="h-5 w-5 text-muted-foreground" />
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Procurement</p>
-                  <p className="text-xl font-semibold">{procurementCount}</p>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Procurement</p>
+                  <p className="text-base sm:text-xl font-semibold">{procurementCount}</p>
                 </div>
               </div>
             </CardContent>
@@ -1043,14 +1043,16 @@ export default function ProjectDetail() {
 
         {/* Tabs for detailed views - Schedule first (most used for active projects) */}
         <Tabs value={activeTab || effectiveTabOrder[0]} onValueChange={setActiveTab} className="space-y-4">
-          <div className="flex items-center gap-2">
-            <TabsList className="flex-wrap h-auto">
-              {effectiveTabOrder.map((tab) => (
-                <TabsTrigger key={tab} value={tab}>
-                  {getTabLabel(tab, project.project_type)}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="overflow-x-auto scrollbar-none flex-1 min-w-0">
+              <TabsList className="flex h-10 w-max justify-start gap-0.5 min-w-full">
+                {effectiveTabOrder.map((tab) => (
+                  <TabsTrigger key={tab} value={tab} className="shrink-0">
+                    {getTabLabel(tab, project.project_type)}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
             <Popover open={reorderOpen} onOpenChange={setReorderOpen}>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">

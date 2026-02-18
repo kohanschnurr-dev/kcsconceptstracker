@@ -183,9 +183,9 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
         </CardTitle>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" disabled={availableVendors.length === 0}>
-              <Plus className="h-4 w-4 mr-1" />
-              Assign Vendor
+            <Button size="sm" disabled={availableVendors.length === 0} className="px-2 sm:px-3">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Assign Vendor</span>
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -276,7 +276,8 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                           className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                         >
                           <Mail className="h-3 w-3" />
-                          {pv.vendor.email}
+                          <span className="hidden sm:inline">{pv.vendor.email}</span>
+                          <span className="sm:hidden">Email</span>
                         </a>
                       )}
                     </div>

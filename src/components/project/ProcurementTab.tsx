@@ -409,12 +409,12 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
             )}
           </div>
         </TableCell>
-        <TableCell>
+        <TableCell className="hidden sm:table-cell">
           <Badge variant="secondary" className="text-xs">
             {getCategoryName(item)}
           </Badge>
         </TableCell>
-        <TableCell>
+        <TableCell className="hidden sm:table-cell">
           {item.finish && (
             <span className="text-sm">{item.finish}</span>
           )}
@@ -614,23 +614,25 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <CardContent className="pt-0">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-16"></TableHead>
-                            <TableHead>Item</TableHead>
-                            <TableHead>Category</TableHead>
-                            <TableHead>Finish</TableHead>
-                            <TableHead className="text-right">Price</TableHead>
-                            <TableHead className="text-center">Qty</TableHead>
-                            <TableHead className="text-right">Total</TableHead>
-                            <TableHead></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {phaseItems.map(renderItemRow)}
-                        </TableBody>
-                      </Table>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-16"></TableHead>
+                              <TableHead>Item</TableHead>
+                              <TableHead className="hidden sm:table-cell">Category</TableHead>
+                              <TableHead className="hidden sm:table-cell">Finish</TableHead>
+                              <TableHead className="text-right">Price</TableHead>
+                              <TableHead className="text-center">Qty</TableHead>
+                              <TableHead className="text-right">Total</TableHead>
+                              <TableHead></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {phaseItems.map(renderItemRow)}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </CardContent>
                   </CollapsibleContent>
                 </Card>
@@ -641,23 +643,25 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
       ) : (
         <Card className="glass-card">
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16"></TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Finish</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-center">Qty</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredItems.map(renderItemRow)}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-16"></TableHead>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="hidden sm:table-cell">Category</TableHead>
+                    <TableHead className="hidden sm:table-cell">Finish</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-center">Qty</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredItems.map(renderItemRow)}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
