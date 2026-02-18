@@ -222,6 +222,8 @@ export default function ProjectDetail() {
   const [procurementCount, setProcurementCount] = useState(0);
   const [activeTab, setActiveTab] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [nameValue, setNameValue] = useState('');
   const [addressValue, setAddressValue] = useState('');
@@ -1074,6 +1076,24 @@ export default function ProjectDetail() {
             </div>
           </div>
 
+          <div
+            onTouchStart={(e) => {
+              touchStartX.current = e.touches[0].clientX;
+              touchStartY.current = e.touches[0].clientY;
+            }}
+            onTouchEnd={(e) => {
+              const dx = e.changedTouches[0].clientX - touchStartX.current;
+              const dy = e.changedTouches[0].clientY - touchStartY.current;
+              if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+              const order = effectiveTabOrder;
+              const currentIndex = order.indexOf(activeTab || order[0]);
+              if (dx < 0) {
+                setActiveTab(order[Math.min(currentIndex + 1, order.length - 1)]);
+              } else {
+                setActiveTab(order[Math.max(currentIndex - 1, 0)]);
+              }
+            }}
+          >
           <TabsContent value="tasks">
             <ProjectTasks projectId={id!} projectName={project.name} />
           </TabsContent>
@@ -1428,6 +1448,7 @@ export default function ProjectDetail() {
           <TabsContent value="deal">
             <DealTab projectId={id!} />
           </TabsContent>
+          </div>
         </Tabs>
       </div>
     </MainLayout>
