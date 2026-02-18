@@ -1,43 +1,53 @@
 
-## Fix Budget Category Allocation on Project Creation
 
-### The Problem
-When you create a new project with a total budget (e.g., $10,000), the system divides it **evenly across all 51 expense categories** -- giving each one ~$196. This creates a noisy, unhelpful "Budget by Category" view where every category has the same meaningless amount.
+## Add Saved Budget Picker and Quick Budget Link to New Project Modal
 
-### The Fix
-Stop auto-allocating the total budget across categories at project creation. Instead:
+### What Changes
 
-1. **Create the project with** `total_budget` **set as entered** (unchanged)
-2. **Create project categories with $0 estimated budget** -- they exist as containers for future expenses, but no budget is pre-allocated
-3. The "Budget by Category" section will show $0 for each category until you either:
-   - Manually set budgets per category via "Add Category" / edit
-   - Apply a budget from the Budget Calculator (which sends specific per-category amounts)
+**1. Saved Budget Dropdown in the Modal**
+Replace the static info banner ("Budget will be automatically distributed across X categories...") with a saved budget selector. Users can pick from their saved budget templates to auto-fill the total budget and stage per-category allocations as a `pending_budget` on the newly created project.
 
-This way, the total budget lives at the project level as your high-level number, and category-level budgets only appear when you intentionally assign them.
+**2. Quick Link to Budget Calculator**
+Add a small "Open Budget Calculator" link/button below the budget field. Clicking it closes the modal and navigates the user to `/budget-calculator` so they can build a detailed budget from scratch, then apply it to the project afterward.
+
+**3. Flow When a Saved Budget Is Selected**
+- The Total Budget field auto-fills with the template's `total_budget` (still editable)
+- On project creation, the template's `category_budgets` are written to the project's `pending_budget` column (same staging pattern used by the Budget Calculator and CreateBudgetModal)
+- When the user opens the project, the existing `PendingBudgetDialog` auto-opens for approval -- no new approval UI needed
+
+**4. Flow When No Budget Is Selected (default)**
+- Same as today: user enters a manual total budget, categories initialize at $0
+- The info banner updates to say "Categories start at $0. You can assign budgets later via the Budget Calculator."
+
+---
 
 ### Technical Details
 
-**File: `src/components/NewProjectModal.tsx` (lines 84-91)**
+#### File: `src/components/NewProjectModal.tsx`
 
-Current code:
-```ts
-const allCats = getBudgetCategories();
-const budgetPerCategory = parseFloat(totalBudget) / allCats.length;
-const categories = allCats.map(cat => ({
-  project_id: project.id,
-  category: cat.value,
-  estimated_budget: Math.round(budgetPerCategory),
-}));
-```
+**New state:**
+- `selectedTemplate` -- holds the picked `BudgetTemplate | null`
 
-Changed to:
-```ts
-const allCats = getBudgetCategories();
-const categories = allCats.map(cat => ({
-  project_id: project.id,
-  category: cat.value,
-  estimated_budget: 0,
-}));
-```
+**New imports:**
+- `useNavigate` from react-router-dom
+- `Calculator` icon from lucide-react
 
-No other files need changes -- the existing `totalBudget` logic in `ProjectBudget.tsx` already handles the case where `project.total_budget > 0` and category totals are $0 (it uses the project-level total as the display budget).
+**Fetch saved budgets:**
+- On modal open, query `budget_templates` for the current user (same query pattern as `TemplatePicker` and `SavedBudgetsPanel`)
+- Store in local state `savedBudgets`
+
+**UI changes (bottom section, replacing the info banner):**
+- A `Select` dropdown labeled "Apply Saved Budget (optional)" listing saved template names with their total amounts
+- A "None" option to clear selection
+- When a template is selected: auto-fill `totalBudget` with the template's `total_budget`
+- Below the select: a subtle link "or build one in Budget Calculator" that navigates to `/budget-calculator`
+
+**Submit logic update:**
+- After creating the project and inserting `project_categories` (all at $0), if `selectedTemplate` is set:
+  - Write `pending_budget` to the project with the template's `category_budgets` and `total_budget`
+  - This triggers the existing approval flow when the user views the project
+
+#### No other files need changes
+- The `PendingBudgetDialog` and `PendingBudgetBanner` already handle the `pending_budget` column
+- The budget approval merge logic already handles new vs existing categories
+
