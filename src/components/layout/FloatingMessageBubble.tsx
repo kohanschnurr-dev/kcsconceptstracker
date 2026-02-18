@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, ArrowLeft, Loader2 } from 'lucide-react';
+import { MessageCircle, X, ArrowLeft, Loader2, Send } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -11,7 +11,7 @@ import { MessageThreadPanel } from './MessageThreadPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send } from 'lucide-react';
+import { SupportChatPanel } from './SupportChatPanel';
 
 // ─── PM Thread View (inline for PM users) ───────────────────────────────────
 
@@ -178,6 +178,7 @@ export function FloatingMessageBubble() {
   const pmUnread = 0;
 
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'team' | 'support'>('team');
   const [view, setView] = useState<'list' | 'thread'>('list');
   const [selectedPm, setSelectedPm] = useState<{ id: string; name: string } | null>(null);
 
@@ -191,6 +192,13 @@ export function FloatingMessageBubble() {
       setView('list');
       setSelectedPm(null);
     }, 200);
+  };
+
+  // Reset team view when switching tabs
+  const handleTabChange = (tab: 'team' | 'support') => {
+    setActiveTab(tab);
+    setView('list');
+    setSelectedPm(null);
   };
 
   const handleOpenPmThread = (pmId: string, pmName: string) => {
@@ -234,55 +242,87 @@ export function FloatingMessageBubble() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card flex-shrink-0">
             <div className="flex items-center gap-2">
               <MessageCircle className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">
-                {isPM ? 'Message Owner' : 'Team Messages'}
-              </span>
+              <span className="text-sm font-semibold text-foreground">Messages</span>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClose}>
               <X className="h-4 w-4" />
             </Button>
           </div>
 
+          {/* Tab switcher */}
+          <div className="flex border-b border-border flex-shrink-0">
+            <button
+              onClick={() => handleTabChange('team')}
+              className={cn(
+                'flex-1 py-2 text-xs font-medium transition-colors',
+                activeTab === 'team'
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Team
+            </button>
+            <button
+              onClick={() => handleTabChange('support')}
+              className={cn(
+                'flex-1 py-2 text-xs font-medium transition-colors',
+                activeTab === 'support'
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Support
+            </button>
+          </div>
+
           {/* Content */}
           <div className="flex-1 overflow-hidden">
-            {/* PM view: direct thread */}
-            {isPM && pmTeamId && (
-              <PmThreadView teamId={pmTeamId} />
-            )}
+            {/* Support tab */}
+            {activeTab === 'support' && <SupportChatPanel />}
 
-            {/* Owner view: list or thread */}
-            {!isPM && (
+            {/* Team tab */}
+            {activeTab === 'team' && (
               <>
-                {view === 'list' && (
-                  <div className="flex flex-col">
-                    {summaries.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-sm text-center px-6 gap-2">
-                        <MessageCircle className="h-8 w-8 opacity-30" />
-                        <p>No messages yet.</p>
-                        <p className="text-xs">Team members can message you from their projects.</p>
-                      </div>
-                    ) : (
-                      summaries.map((s) => (
-                        <PmListItem
-                          key={s.pmId}
-                          pmName={s.pmName}
-                          lastMessage={s.lastMessage}
-                          lastMessageAt={s.lastMessageAt}
-                          unreadCount={s.unreadCount}
-                          onClick={() => handleOpenPmThread(s.pmId, s.pmName)}
-                        />
-                      ))
-                    )}
-                  </div>
+                {/* PM view: direct thread */}
+                {isPM && pmTeamId && (
+                  <PmThreadView teamId={pmTeamId} />
                 )}
 
-                {view === 'thread' && selectedPm && ownerTeamId && (
-                  <MessageThreadPanel
-                    pmId={selectedPm.id}
-                    pmName={selectedPm.name}
-                    teamId={ownerTeamId}
-                    onBack={() => setView('list')}
-                  />
+                {/* Owner view: list or thread */}
+                {!isPM && (
+                  <>
+                    {view === 'list' && (
+                      <div className="flex flex-col">
+                        {summaries.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-sm text-center px-6 gap-2">
+                            <MessageCircle className="h-8 w-8 opacity-30" />
+                            <p>No messages yet.</p>
+                            <p className="text-xs">Team members can message you from their projects.</p>
+                          </div>
+                        ) : (
+                          summaries.map((s) => (
+                            <PmListItem
+                              key={s.pmId}
+                              pmName={s.pmName}
+                              lastMessage={s.lastMessage}
+                              lastMessageAt={s.lastMessageAt}
+                              unreadCount={s.unreadCount}
+                              onClick={() => handleOpenPmThread(s.pmId, s.pmName)}
+                            />
+                          ))
+                        )}
+                      </div>
+                    )}
+
+                    {view === 'thread' && selectedPm && ownerTeamId && (
+                      <MessageThreadPanel
+                        pmId={selectedPm.id}
+                        pmName={selectedPm.name}
+                        teamId={ownerTeamId}
+                        onBack={() => setView('list')}
+                      />
+                    )}
+                  </>
                 )}
               </>
             )}
