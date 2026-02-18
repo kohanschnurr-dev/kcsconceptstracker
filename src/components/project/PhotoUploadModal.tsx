@@ -31,12 +31,11 @@ const PHOTO_CATEGORIES = [
   { value: 'before', label: 'Before' },
   { value: 'during', label: 'During' },
   { value: 'after', label: 'After' },
-  { value: 'general', label: 'General' },
 ];
 
 export function PhotoUploadModal({ projectId, isOpen, onClose, onUploadComplete }: PhotoUploadModalProps) {
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
-  const [globalCategory, setGlobalCategory] = useState('general');
+  const [globalCategory, setGlobalCategory] = useState('before');
   const [globalCaption, setGlobalCaption] = useState('');
   const [photoDate, setPhotoDate] = useState<Date>(new Date());
   const [applyGlobalCaption, setApplyGlobalCaption] = useState(true);
@@ -185,7 +184,7 @@ export function PhotoUploadModal({ projectId, isOpen, onClose, onUploadComplete 
     pendingFiles.forEach(pf => URL.revokeObjectURL(pf.preview));
     setPendingFiles([]);
     setGlobalCaption('');
-    setGlobalCategory('general');
+    setGlobalCategory('before');
     setPhotoDate(new Date());
     setIsUploading(false);
     setUploadProgress({ current: 0, total: 0 });
@@ -199,7 +198,7 @@ export function PhotoUploadModal({ projectId, isOpen, onClose, onUploadComplete 
     pendingFiles.forEach(pf => URL.revokeObjectURL(pf.preview));
     setPendingFiles([]);
     setGlobalCaption('');
-    setGlobalCategory('general');
+    setGlobalCategory('before');
     setPhotoDate(new Date());
     onClose();
   };
