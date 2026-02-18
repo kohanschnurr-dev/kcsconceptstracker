@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TrendingUp, CheckCircle2, AlertTriangle, DollarSign, Percent } from 'lucide-react';
+import { TrendingUp, CheckCircle2, AlertTriangle, DollarSign, Percent, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ContractorMarginGaugeProps {
@@ -165,10 +165,10 @@ export function ContractorMarginGauge({
               ) : (
                 <>
                   <span className={marginColor}>{marginTarget}% target</span>
-                  <button
+                <button
                     onClick={() => { setTempTarget(marginTarget); setIsEditingTarget(true); }}
-                    className="leading-none opacity-60 hover:opacity-100 transition-opacity"
-                  >✏️</button>
+                    className="leading-none opacity-50 hover:opacity-100 transition-opacity"
+                  ><Pencil className="h-3 w-3" /></button>
                 </>
               )}
             </span>
