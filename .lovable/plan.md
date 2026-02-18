@@ -1,51 +1,72 @@
 
+## Improve the "Show Empty Categories" Toggle UI
 
-## Show Total Budget and Add "Needs Allocation" Banner
+### Current Problem
+The toggle is a plain text link at the bottom of the table: `"Show all categories (X hidden)"`. It blends into the page and feels disconnected from the table it controls.
 
-### Problem
-Two issues after the new $0-category initialization:
+### Better UI Approach
 
-1. **Total Budget shows $0 on Project Detail page** -- it sums category budgets (all $0) instead of using the project-level `total_budget` field
-2. **Budget by Category shows 51 rows of $0** -- noisy and unhelpful when no budgets have been allocated
+Replace the plain text button with a **styled chip/badge** in the **table header row**, right next to the column headers. This is a common pattern (similar to GitHub's "X hidden items" in issue lists or Notion's collapsed items).
 
-### Changes
+Specifically:
 
-#### 1. Fix Total Budget display on Project Detail (`src/pages/ProjectDetail.tsx`)
+1. **Move the control to the table header area** -- Add a small toggle chip on the right side of the "Budget by Category" `CollapsibleTrigger` header bar (next to the category count), OR place it as a footer row inside the table itself styled as a distinct "dimmed" row.
 
-Update the `totalBudget` calculation (line ~398-400) to use the same logic as `ProjectBudget.tsx`: prefer `project.total_budget` when set, fall back to category sum.
+2. **Best option -- a subtle badge in the table footer area**, styled as a full-width row with a dashed border-top and a softer background:
+   - Shows: `⊕ Show 38 unallocated categories` when collapsed
+   - Shows: `⊖ Hide unallocated categories` when expanded
+   - Uses `ChevronDown` / `ChevronUp` icon
+   - Styled with `text-muted-foreground`, `bg-muted/30`, `border-t border-dashed`
 
-```
-Before:  const totalBudget = categories.reduce(...)
-After:   const categoryTotal = categories.reduce(...)
-         const totalBudget = (project?.total_budget ?? 0) > 0 ? project.total_budget : categoryTotal
-```
+3. **Alternatively (and even cleaner)** -- place a small pill badge directly in the section **header** (`CollapsibleTrigger` area), alongside the existing category count chip:
+   - e.g., `[12 categories] [+38 unallocated]`
+   - Clicking the `+38 unallocated` pill toggles `showAllCategories`
+   - This keeps the table itself clean with no footer row
 
-This ensures the manually entered or template-applied total budget displays correctly.
+### Chosen Approach: Badge in the Section Header + Styled Footer Row
 
-#### 2. Add "Needs Allocation" banner in Budget by Category section (`src/pages/ProjectBudget.tsx`)
+**Header badge** (pill in the CollapsibleTrigger):
+- When `hiddenCount > 0` and `!showAllCategories`: show a small amber/muted pill `+38 unallocated`
+- Clicking it (stopPropagation so it doesn't toggle the collapsible) sets `showAllCategories = true`
 
-When `totalBudget > 0` but `categoryTotal === 0` (budget exists but no categories have allocations), show a banner inside the "Budget by Category" collapsible section with:
-- An alert icon and message: "**$X,XXX needs allocation** -- Assign budgets to categories using the Budget Calculator or manually edit each category."
-- A button to navigate to the Budget Calculator: "Open Budget Calculator"
-
-This replaces the current view of 51 rows of $0.00 with a clear call-to-action.
-
-#### 3. Hide $0-budget categories from the table (`src/pages/ProjectBudget.tsx`)
-
-When all categories have $0 budgets and $0 spent, only show the "Needs Allocation" banner (no table). When some categories have budgets and others don't:
-- Show categories that have a budget > 0 OR have actual spending > 0
-- Hide categories with both $0 budget and $0 spent -- they add no information
-
-Add a subtle toggle/link below the table: "Show all categories" to reveal hidden ones if needed.
+**Table footer row** (when `showAllCategories === true`):
+- A `<tfoot>` row with a "Hide unallocated categories" link in muted style
+- Only shown when categories are expanded
 
 ### Technical Details
 
-**File: `src/pages/ProjectDetail.tsx`**
-- Line ~398-400: Update `totalBudget` to check `project.total_budget` first
-
 **File: `src/pages/ProjectBudget.tsx`**
-- Line ~461-463: `categoryTotal` already computed; no change needed there
-- Lines ~965-994 (Category Breakdown header area): Add the "Needs Allocation" banner conditionally when `totalBudget > 0 && categoryTotal === 0`
-- Lines ~1027-1028 (category table body): Filter categories to only show those with `estimated_budget > 0 || actualSpent > 0` by default
-- Add `showAllCategories` state toggle to reveal hidden $0 categories
-- Import `Calculator` icon and `useNavigate` (already imported) for the banner button
+
+1. **CollapsibleTrigger area** (~line 975): Add a badge pill when `hiddenCount > 0 && !showAllCategories`:
+```tsx
+{hiddenCount > 0 && !showAllCategories && (
+  <button
+    onClick={(e) => { e.stopPropagation(); setShowAllCategories(true); }}
+    className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground hover:bg-muted/80 border border-border/50"
+  >
+    <Plus className="h-3 w-3" />
+    {hiddenCount} unallocated
+  </button>
+)}
+```
+
+2. **Remove the current plain text button** at the bottom (~lines 1199-1215)
+
+3. **Add a `<TableFooter>` row** when `showAllCategories && hiddenCount > 0`:
+```tsx
+<TableFooter>
+  <TableRow>
+    <TableCell colSpan={5} className="text-center py-2">
+      <button
+        onClick={() => setShowAllCategories(false)}
+        className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mx-auto"
+      >
+        <ChevronUp className="h-3.5 w-3.5" />
+        Hide unallocated categories
+      </button>
+    </TableCell>
+  </TableRow>
+</TableFooter>
+```
+
+This creates a clear visual hierarchy: the header pill invites discovery, and the footer link provides the collapse action after expansion.
