@@ -139,12 +139,14 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
                     {task.title}
                   </p>
                 </div>
-                {task.dueDate && (
-                  <div className="flex items-center gap-1 text-xs text-foreground font-medium min-w-[85px] shrink-0">
-                    <Calendar className="h-3 w-3 text-muted-foreground" />
-                    <span>Due {formatDisplayDateShort(task.dueDate)}</span>
-                  </div>
-                )}
+                <div className="w-[100px] shrink-0 flex items-center gap-1">
+                  {task.dueDate && (
+                    <>
+                      <Calendar className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-foreground font-medium">Due {formatDisplayDateShort(task.dueDate)}</span>
+                    </>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge 
                     variant="secondary" 
