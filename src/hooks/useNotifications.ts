@@ -1,0 +1,89 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTeam } from '@/hooks/useTeam';
+
+export interface Notification {
+  id: string;
+  owner_id: string;
+  actor_id: string;
+  event_type:
+    | 'order_request'
+    | 'expense'
+    | 'daily_log'
+    | 'task_completed'
+    | 'project_note'
+    | 'project_created'
+    | 'project_status'
+    | 'direct_message';
+  entity_id: string | null;
+  payload: Record<string, unknown>;
+  is_read: boolean;
+  created_at: string;
+}
+
+export function useNotifications() {
+  const { user } = useAuth();
+  const { team } = useTeam();
+  const queryClient = useQueryClient();
+
+  // Only owners have a team where they are the owner_id
+  const isOwner = !!team && team.owner_id === user?.id;
+
+  const { data: notifications = [], isLoading } = useQuery({
+    queryKey: ['notifications', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('owner_id', user!.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      return (data ?? []) as Notification[];
+    },
+    enabled: !!user && isOwner,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  const markRead = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id)
+        .eq('owner_id', user!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+    },
+  });
+
+  const markAllRead = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('owner_id', user!.id)
+        .eq('is_read', false);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+    },
+  });
+
+  return {
+    notifications,
+    unreadCount,
+    isLoading,
+    isOwner,
+    markRead: (id: string) => markRead.mutate(id),
+    markAllRead: () => markAllRead.mutate(),
+  };
+}
