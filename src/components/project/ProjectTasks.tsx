@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ListTodo, Check, Clock, AlertCircle, Plus, Calendar, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ListTodo, Check, Clock, AlertCircle, Plus, Calendar, Trash2, Camera, X, Loader2 } from 'lucide-react';
 import { parseDateString, formatDisplayDateShort } from '@/lib/dateUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TASK_PRIORITY_COLORS, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/types/task';
+import type { TaskStatus, TaskPriority } from '@/types/task';
+import { AddTaskModal } from './AddTaskModal';
 
 const PRIORITY_ICON_COLORS: Record<TaskPriority, string> = {
   low: 'text-muted-foreground',
@@ -21,8 +23,65 @@ const PRIORITY_ICON_COLORS: Record<TaskPriority, string> = {
   high: 'text-orange-600',
   urgent: 'text-red-600',
 };
-import type { TaskStatus, TaskPriority } from '@/types/task';
-import { AddTaskModal } from './AddTaskModal';
+
+function TaskPhotoUploader({ photos, onPhotosChange }: { photos: string[]; onPhotosChange: (urls: string[]) => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const uploadFile = useCallback(async (file: File) => {
+    setIsUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `task-photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from('project-photos').upload(path, file);
+      if (error) throw error;
+      const { data } = supabase.storage.from('project-photos').getPublicUrl(path);
+      onPhotosChange([...photos, data.publicUrl]);
+    } catch (e) {
+      console.error('Upload failed', e);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [photos, onPhotosChange]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadFile(file);
+    e.target.value = '';
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-1.5">
+        <Camera className="h-4 w-4" />
+        Photos (optional)
+      </Label>
+      <div className="flex flex-wrap gap-2">
+        {photos.map((url, i) => (
+          <div key={i} className="relative group w-16 h-16 rounded-lg overflow-hidden border bg-muted">
+            <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+            <button
+              type="button"
+              onClick={() => onPhotosChange(photos.filter((_, idx) => idx !== i))}
+              className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <X className="h-4 w-4 text-white" />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="w-16 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+        >
+          {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+        </button>
+      </div>
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+    </div>
+  );
+}
 
 interface ProjectTask {
   id: string;
@@ -30,6 +89,7 @@ interface ProjectTask {
   status: TaskStatus;
   priorityLevel: TaskPriority;
   dueDate: string | null;
+  photoUrls: string[];
 }
 
 interface ProjectTasksProps {
@@ -49,6 +109,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
   const [editPriority, setEditPriority] = useState<TaskPriority>('medium');
   const [editDueDate, setEditDueDate] = useState('');
   const [editStatus, setEditStatus] = useState<TaskStatus>('pending');
+  const [editPhotoUrls, setEditPhotoUrls] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
 
@@ -60,7 +121,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, title, status, priority_level, due_date')
+        .select('id, title, status, priority_level, due_date, photo_urls')
         .eq('project_id', projectId)
         .in('status', ['pending', 'in_progress'])
         .order('priority_level', { ascending: false })
@@ -75,6 +136,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
         status: t.status as TaskStatus,
         priorityLevel: t.priority_level as TaskPriority,
         dueDate: t.due_date,
+        photoUrls: (t as any).photo_urls || [],
       })));
     } catch (error) {
       console.error('Error fetching project tasks:', error);
@@ -89,6 +151,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
     setEditPriority(task.priorityLevel);
     setEditDueDate(task.dueDate ?? '');
     setEditStatus(task.status);
+    setEditPhotoUrls(task.photoUrls || []);
   };
 
   const handleSaveEdit = async () => {
@@ -102,6 +165,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
           priority_level: editPriority,
           due_date: editDueDate || null,
           status: editStatus,
+          photo_urls: editPhotoUrls,
         })
         .eq('id', selectedTask.id);
 
@@ -307,6 +371,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
                 onChange={(e) => setEditDueDate(e.target.value)}
               />
             </div>
+            <TaskPhotoUploader photos={editPhotoUrls} onPhotosChange={setEditPhotoUrls} />
           </div>
           <DialogFooter className="flex-row items-center justify-between sm:justify-between gap-2">
             <Button

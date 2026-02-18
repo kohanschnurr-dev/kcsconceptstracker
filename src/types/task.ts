@@ -17,6 +17,7 @@ export interface Task {
   endTime: string | null;
   projectId: string | null;
   projectName?: string | null;
+  photoUrls: string[];
   createdAt: string;
   updatedAt: string;
 }

@@ -75,6 +75,7 @@ export function CommandCenter() {
         startTime: t.start_time,
         endTime: t.end_time,
         projectId: t.project_id,
+        photoUrls: t.photo_urls || [],
         createdAt: t.created_at,
         updatedAt: t.updated_at,
       }));
