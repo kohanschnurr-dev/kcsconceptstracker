@@ -1,138 +1,133 @@
 
-## Fix Main Calendar Page Mobile UI
+## Fix Budget Calculator Mobile UI
 
-### What's Wrong (from the screenshot)
+### Problems Identified (from screenshot)
 
-The main Calendar page (`/calendar`) uses `MonthlyView.tsx` which renders full `DealCard` components inside every calendar cell on mobile. At ~375px wide, each cell is only ~50px wide — far too narrow for the card text and icons, causing overflow, squishing, and an unreadable layout.
+The screenshot shows a mobile (~390px) view with these issues:
 
-The header also has crowding issues: the "Project Calendar" title + view selector + "+ Add Project Event" button all compete for one row.
+1. **Header is too tall and crowded**: "Budget Calculator" title wraps to two lines, subtitle text wraps to three lines ("Contractor job / budget and profit / analysis"), and the "Load Template" button + reset icon compete for space. The title area takes up ~100px of precious vertical space.
 
-### What Already Works (the reference)
+2. **ContractorMarginGauge / MAOGauge wraps badly**: The gauge uses `flex-wrap` with 4 stat cards, each with a label+value. On mobile these wrap into 2×2 or even 3+1 grids that look unaligned. The labels like "CONTRACT VALUE", "JOB COST", "GROSS PROFIT", "GROSS MARGIN" are all uppercase and take too much space.
 
-`ProjectCalendar.tsx` (in the project detail Schedule tab) already has an excellent mobile pattern:
-- **Single-letter day headers**: S, M, T, W, T, F, S on mobile
-- **Compact 60px cells** on mobile (vs 100px desktop)
-- **"X tasks" badge → Popover** on mobile instead of rendering cards in the cell
-- **Swipe gestures** to navigate months
+3. **DealSidebar is a full-width 320px panel**: On mobile, the sidebar sits alongside the BudgetCanvas in a `flex` row — so the BudgetCanvas gets **zero width**. On desktop this works as a left sidebar; on mobile, it completely occupies the screen with no canvas visible.
 
-### Plan: Port the ProjectCalendar mobile pattern into MonthlyView
+4. **The main layout `flex flex-col h-[calc(100vh-4rem)]` with nested `flex flex-1 overflow-hidden`**: This inner flex row (sidebar + canvas) renders both side-by-side regardless of screen size, making the canvas invisible on mobile.
 
-#### 1. `src/components/calendar/MonthlyView.tsx`
+### Solution Architecture
 
-The MonthlyView currently uses full `DealCard` components for all screen sizes. Add responsive mobile behavior:
+The fix requires a **mobile-first layout restructuring** across two files:
 
-**Day header row**: Show single-letter day labels (`S`, `M`, `T`, `W`, `T`, `F`, `S`) on mobile instead of `Sun`, `Mon`, etc.
+#### Fix 1: `src/pages/BudgetCalculator.tsx` — Mobile Layout
 
-**Cell height**: Reduce from `min-h-[140px]` to `min-h-[60px] sm:min-h-[140px]` on mobile.
+**Header**: On mobile, compress to one row:
+- Left: Just "Budget Calculator" (smaller, `text-xl sm:text-2xl`) — drop the subtitle on mobile
+- Right: Template picker (compact) + reset button
 
-**Cell padding**: Reduce from `p-2` to `p-0.5 sm:p-2`.
+**Gauge section**: Reduce padding on mobile (`px-3 sm:px-6`, `py-2 sm:py-3`)
 
-**Date number**: Reduce to `text-[10px] sm:text-sm`.
+**Main content area**: Change from `flex overflow-hidden` to a **stacked mobile layout**:
+- On **mobile**: `flex-col` — sidebar on top (full-width, collapsed by default), canvas below (scrollable)
+- On **desktop**: `flex-row overflow-hidden` (existing behavior)
 
-**Mobile card rendering**: Replace the current card rendering inside cells with the same popover pattern from `ProjectCalendar`:
-- Mobile (`sm:hidden`): Show a small "X tasks" badge that opens a Popover with the full list of DealCards
-- Desktop (`hidden sm:block`): Keep the existing DealCard rendering with the "+N more" popover
-
-**Touch swipe support**: Add `onTouchStart`/`onTouchEnd` handlers to the calendar grid to swipe between months (same as ProjectCalendar).
-
-**Ring styling**: Use `ring-1` instead of `ring-2` on mobile for today's highlight.
-
-#### 2. `src/components/calendar/CalendarHeader.tsx`
-
-Looking at the screenshot, the header has two issues on mobile:
-1. The "+ Add Project Event" button text is too long — it pushes past the row
-2. The view selector + add button need to fit next to "Project Calendar"
-
-The header already has a mobile layout (`sm:hidden`) — but the `onAddEvent` slot renders the full `NewEventModal` button which has long text "+ Add Project Event". 
-
-Fix: In the mobile row 1, wrap the `onAddEvent` slot and override the button's text via CSS on small screens. Since `NewEventModal` is passed as a React node, instead apply a responsive CSS override at the layout level:
-
-Add `[&_button]:text-xs [&_button]:px-2 sm:[&_button]:text-sm sm:[&_button]:px-4` to the wrapper `div` on the mobile row — this will make the "Add Project Event" button compact without changing `NewEventModal.tsx` directly.
-
-Alternatively (cleaner), pass the mobile add button size via a prop to the header. But since the button text "+  Add Project Event" is the problem, the simplest fix is to show just "＋ Add" on mobile using a `<span className="sm:hidden">Add</span><span className="hidden sm:inline">Add Project Event</span>` inside `NewEventModal.tsx`.
-
-#### 3. `src/components/calendar/NewEventModal.tsx` (minor)
-
-Add responsive button text:
 ```tsx
-// Trigger button inside NewEventModal
-<Plus className="h-4 w-4 sm:mr-2" />
-<span className="hidden sm:inline">Add Project Event</span>
-<span className="sm:hidden">Add</span>
+// Mobile: flex-col, Desktop: flex-row
+<div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+  <DealSidebar ... />
+  <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+    ...
+  </div>
+</div>
+```
+
+On mobile, the `DealSidebar` needs to render differently — instead of a fixed-width `w-80` side panel, it should render as a **collapsible full-width section** at the top. We'll do this by passing an `isMobile` prop or detecting screen width.
+
+The cleanest approach: use a `useIsMobile()` hook and pass it to `DealSidebar`. When mobile:
+- Sidebar renders as a collapsible accordion-style panel (full width, default collapsed) 
+- Canvas renders below it, full-width, scrollable
+
+#### Fix 2: `src/components/budget/DealSidebar.tsx` — Mobile Rendering
+
+Add an `isMobile` prop. When `isMobile=true`:
+- Collapse button becomes a full-width toggle at the top of the panel instead of a left-side `w-12` strip
+- When collapsed on mobile: shows a compact summary bar (e.g., "Deal Parameters — Contract Value: $0  [▼ Expand]") 
+- When expanded on mobile: renders the full sidebar content as a scrollable section above the canvas
+- The sidebar renders full-width `w-full` instead of `w-80`
+- The `isCollapsed` state defaults to `true` on mobile to save space
+
+#### Fix 3: `src/components/budget/ContractorMarginGauge.tsx` — Mobile Gauge
+
+The 4 stat cards currently use `flex items-center justify-between gap-3 flex-wrap`. On mobile at 390px, each card is ~160px+ wide, causing wrapping into 2×2:
+
+Fix: On mobile, use a **2×2 CSS grid** instead of flex-wrap, with smaller values:
+```tsx
+<div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-between sm:gap-3">
+```
+- Reduce icon wrapper from `p-1.5` to `p-1 sm:p-1.5`
+- Reduce value `text-lg` to `text-base sm:text-lg`
+
+#### Fix 4: `src/components/budget/MAOGauge.tsx` — Mobile Gauge
+
+Same treatment — the 4 flex items wrap messily. Apply same 2×2 grid on mobile:
+```tsx
+<div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-between sm:gap-3 flex-wrap">
 ```
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/components/calendar/MonthlyView.tsx` | Add mobile cell compaction, single-letter day headers, "X tasks" badge + Popover for mobile, touch swipe for month navigation |
-| `src/components/calendar/NewEventModal.tsx` | Shorten trigger button text on mobile to just "Add" |
+| `src/pages/BudgetCalculator.tsx` | Compress header for mobile; change content area to `flex-col md:flex-row`; pass `isMobile` to DealSidebar |
+| `src/components/budget/DealSidebar.tsx` | Accept `isMobile` prop; when mobile render as collapsible full-width top section (`w-full` vs `w-80`); default collapsed on mobile |
+| `src/components/budget/ContractorMarginGauge.tsx` | 2×2 grid on mobile for stat cards; reduce font sizes |
+| `src/components/budget/MAOGauge.tsx` | 2×2 grid on mobile for stat cards; reduce font sizes |
 
-### Technical Snippet — MonthlyView mobile cell pattern
+### Technical Snippet — Mobile Sidebar Toggle
 
 ```tsx
-// Day headers — single letter on mobile
-const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const weekDaysShort = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+// DealSidebar.tsx — mobile collapsed state (compact header bar)
+if (isMobile && isCollapsed) {
+  return (
+    <div className="border-b bg-muted/30">
+      <button
+        className="flex items-center justify-between w-full px-4 py-3 text-sm font-semibold"
+        onClick={() => setIsCollapsed(false)}
+      >
+        <span className="flex items-center gap-2">
+          <Calculator className="h-4 w-4" />
+          Deal Parameters
+        </span>
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      </button>
+    </div>
+  );
+}
 
-{weekDays.map((day, i) => (
-  <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
-    <span className="hidden sm:inline">{day}</span>
-    <span className="sm:hidden">{weekDaysShort[i]}</span>
-  </div>
-))}
-
-// Cell height reduced on mobile
-<DroppableDay> → min-h-[60px] sm:min-h-[140px], p-0.5 sm:p-2
-
-// Mobile: badge → popover
-<div className="sm:hidden">
-  {dayTasks.length > 0 && (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button className="text-[9px] font-medium text-primary/80 hover:text-primary 
-                           w-full text-center rounded hover:bg-primary/10 px-0.5 py-0.5">
-          {dayTasks.length} task{dayTasks.length !== 1 ? 's' : ''}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 p-0 overflow-hidden z-50" align="center">
-        <div className="px-3 py-2 border-b border-border bg-muted/30">
-          <p className="text-xs font-semibold">{format(day, 'EEEE, MMM d')}</p>
-          <p className="text-[10px] text-muted-foreground">{dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}</p>
-        </div>
-        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
-          {dayTasks.map(task => (
-            <DealCard key={task.id} task={task} compact onClick={() => onTaskClick(task)} />
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
-  )}
-</div>
-
-// Desktop: existing DealCard layout
-<div className="hidden sm:block space-y-1">
-  {dayTasks.slice(0, 3).map(task => (
-    <DraggableCard key={task.id} task={task} onTaskClick={() => onTaskClick(task)} />
-  ))}
-  {dayTasks.length > 3 && ( /* existing "+N more" popover */ )}
-</div>
+// When expanded on mobile — full-width instead of w-80
+<div className={cn(
+  "bg-muted/30 border-b flex flex-col",
+  isMobile ? "w-full max-h-[60vh]" : "w-80 border-r h-full"
+)}>
 ```
 
 ### Visual Result
 
 **Before (mobile):**
 ```
-Sun  Mon  Tue  Wed  Thu  Fri  Sat   ← 3-letter headers too wide
-[140px tall cells with squished DealCards overflowing]
+[Budget Calculator    ]   [Load Template ▾] [↺]
+[Contractor job budget]
+[and profit analysis  ]
+[CONTRACT VALUE  JOB COST]
+[GROSS PROFIT GROSS MARGIN] ← wraps badly
+[← sidebar takes full width, canvas = 0px]
 ```
 
 **After (mobile):**
 ```
-S    M    T    W    T    F    S      ← single-letter, fits perfectly
-[60px compact cells]
- 1    2    3    4    5    6    7
-      2    1         3              ← "X tasks" badges (tap → popover)
+[Budget Calculator] [Load Template ▾] [↺]
+[▣ $0  ↑ $0  ✓ $0  % 0%]   ← clean 2×2 grid
+[Deal Parameters              ▼]  ← collapsed pill
+[======= Budget Canvas (full width) =======]
+[  Category cards, scrollable, all visible  ]
 ```
 
-Clean, matches the project detail Schedule tab mobile experience exactly.
+Clean, functional, matches the professional mobile experience of the rest of the app.
