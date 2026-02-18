@@ -1,138 +1,54 @@
 
-## Floating Message Bubble — Bottom-Right Chat Widget
+## Fix: Shift Floating Message Bubble Away from Sidebar
 
-### What's Being Built
+### Problem
+The FAB sits at `right-6` (24px from screen right) and the panel at `right-6` with `w-80` (320px). On desktop the sidebar is only 64px wide on the left — the issue isn't left overlap but that the panel opens over the main content area in a way that visually bleeds onto the sidebar. Looking at the screenshot, the panel is anchored to the right but the user wants it shifted further left so it clears the content better.
 
-A persistent floating action button (FAB) fixed to the bottom-right corner of every page, visible app-wide. It adapts based on who is logged in:
+The real fix: the panel needs to be **wider** and positioned **further from the right edge** so it sits cleanly in the main content area. The current `w-80` (320px) is relatively narrow — bumping to `w-96` (384px) and shifting the right anchor to something like `right-6 lg:right-8` while also adjusting the `origin` makes it feel more intentional.
 
-- **Owner view**: Opens a conversation list showing all PMs with their last message + unread count. Clicking a PM opens their full thread (reusing `MessageThreadPanel`).
-- **PM view**: Opens the direct conversation with the owner (same UI the PM already has in `MessageOwnerButton`, but now always accessible from anywhere in the app).
+However, looking at the screenshot more carefully — the panel is opening over the sidebar icons. The fix is to add `lg:right-8` offset to both the FAB and panel to push them into the main content area (away from the left sidebar), but the user said "go further to the left" — meaning they want the panel to open more toward the left side of the screen, not just the right edge.
 
-The `MessageOwnerButton` on the project header can stay for quick access in context, but the FAB gives global persistent access — especially useful on mobile and across non-project pages.
+The best approach: change the panel's **left anchor strategy** — instead of `right-6`, use `left-1/2 -translate-x-1/2` on mobile and on desktop use a fixed left offset from the sidebar `lg:left-24` so it doesn't obscure the sidebar. Or more simply: position the panel to **open from the FAB upward and leftward** using `right` offset that matches the sidebar width + some padding.
 
----
+### What to Change
 
-### Visual Design
+**`src/components/layout/FloatingMessageBubble.tsx`** — two edits:
 
+1. **Panel div** — change from `bottom-20 right-6` to position it further left. Use `bottom-20 right-6 lg:left-20 lg:right-auto` so on desktop it anchors from the **left** side (just past the sidebar at 64px = `ml-16`), giving it the full width of the content area to expand into. Set `origin-bottom-left` on desktop.
+
+   Actually the cleanest approach is: keep `right-6` for mobile, but on `lg:` use `lg:right-auto lg:left-20` which anchors the panel just to the right of the sidebar. Width stays `w-80` but now it opens into the content area rather than the right edge.
+
+2. **FAB button** — stays `fixed bottom-6 right-6` (it's fine on right edge), but the **panel** shifts to open from the left of the FAB toward the center.
+
+   Even simpler: just change `right-6` on the panel to `right-20 lg:right-auto lg:left-[76px]` — panel anchors to just after the sidebar.
+
+### Concrete Change
+
+**Panel positioning** (line 212-214 area):
 ```
-                                    ┌─────────────────────────────┐
-                                    │  💬  Team Messages       ✕  │
-                                    ├─────────────────────────────┤
-                                    │  Jose Martinez          2   │
-                                    │  "Hey Kohan, just wrapped…" │
-                                    │  10 min ago                 │
-                                    ├─────────────────────────────┤
-                                    │  Maria Chen                 │
-                                    │  "Materials delivered ✓"    │
-                                    │  2 hr ago                   │
-                                    └─────────────────────────────┘
+// Before
+'bottom-20 right-6',
 
-                                              ┌──────┐
-                                              │ 💬 2 │  ← FAB (bottom-right)
-                                              └──────┘
+// After  
+'bottom-20 right-6 lg:right-auto lg:left-[72px]',
 ```
+And change `origin-bottom-right` → `origin-bottom-left` on desktop:
+```
+// Before
+'fixed z-[60] transition-all duration-200 origin-bottom-right',
 
-When a PM is selected from the list → the panel slides to their thread (same `MessageThreadPanel` component already built). Back arrow returns to the list.
-
-For PMs, clicking the FAB opens the thread directly (no list needed — only one owner to talk to).
-
----
-
-### Architecture
-
-**New component**: `src/components/layout/FloatingMessageBubble.tsx`
-
-This is a self-contained component that:
-
-1. Reads `useIsPM()` to determine role
-2. For owners: reads `useTeam()` to get members list, then queries `owner_messages` for the latest message per PM + unread count
-3. Shows a floating button with a badge for total unread messages
-4. Manages an open/closed popover-style panel (not a Sheet — it grows upward from the button)
-5. Has a 2-view stack: `'list'` (all PMs) → `'thread'` (specific PM thread)
-6. Reuses `useMessageThread` hook directly for the thread view
-
-**View for Owners**:
-- Fetches all `team_members` for their team
-- For each member, fetches the latest `owner_messages` row and count of unread (messages sent by the PM where `recipient_id IS NULL` and not yet replied to)
-- Shows each PM as a row with avatar initial, name, message preview, time, and unread badge
-- Clicking a row opens `MessageThreadPanel` inline in the expanded panel
-
-**View for PMs**:
-- Uses `useIsPM()` to get `teamId`
-- Calls `fetchPmThread` directly to load the conversation with the owner
-- Shows thread immediately when panel opens (no list step needed)
-
-**Unread count badge on FAB**:
-- For owners: count of `owner_messages` rows where `recipient_id IS NULL` and the owner has not replied after the latest PM message (approximate — can be done by checking if there's any PM message newer than the latest owner reply)
-- Simpler approach: track a `last_seen_at` in localStorage per PM thread, and count messages newer than that timestamp — zero extra DB queries
-
----
-
-### New Hook: `useTeamMessages.ts` (owner-side summary)
-
-A lightweight hook that fetches a summary of all PM conversations for the owner:
-
-```ts
-// For each team member, get:
-// - their profile info (name)
-// - the last message in their thread
-// - count of their messages after the owner's last reply
-
-interface PmThreadSummary {
-  pmId: string;
-  pmName: string;
-  lastMessage: string;
-  lastMessageAt: string;
-  unreadCount: number;
-}
+// After
+'fixed z-[60] transition-all duration-200 origin-bottom-right lg:origin-bottom-left',
 ```
 
-Implemented with a single query:
-```sql
-SELECT * FROM owner_messages
-WHERE team_id = ?
-ORDER BY created_at DESC
-```
-Then grouping client-side by sender (PM messages vs owner replies), to compute lastMessage and unread per PM.
+This anchors the panel just 72px from the left (right after the 64px sidebar) on desktop, so it opens **into the main content area** from the left side — no sidebar overlap, plenty of room, and the FAB button stays in its familiar bottom-right corner position.
 
-Realtime subscription on the `owner_messages` table to auto-update the list when a PM sends a new message.
+The panel width stays `w-80` which is 320px — enough to be usable, and it won't conflict with the sidebar since it starts at `left-[72px]`.
 
----
-
-### Files to Create / Modify
+### Files to Modify
 
 | File | Change |
-|------|--------|
-| `src/hooks/useTeamMessages.ts` | **New** — owner-side summary of all PM thread previews with unread counts |
-| `src/components/layout/FloatingMessageBubble.tsx` | **New** — the FAB + popover panel with list view and thread view |
-| `src/components/layout/MainLayout.tsx` | Add `<FloatingMessageBubble />` just before closing `</div>` — renders for all authenticated users |
+|---|---|
+| `src/components/layout/FloatingMessageBubble.tsx` | Change panel `right-6` to `lg:right-auto lg:left-[72px]` and add `lg:origin-bottom-left` |
 
-No DB changes needed — all data already exists in `owner_messages` and `team_members`.
-
----
-
-### Component Structure
-
-```
-FloatingMessageBubble
-├── FAB button (fixed bottom-right, shows unread badge)
-└── Panel (popover expanding upward from button, w-80, h-96)
-    ├── Header: "Team Messages" + close button
-    ├── [Owner view - list]
-    │   ├── PM row: avatar initial, name, last message preview, time, unread dot
-    │   └── ... (one row per team member)
-    └── [Owner/PM view - thread]
-        └── MessageThreadPanel (reused, with back button)
-```
-
-The panel uses `position: fixed` with `bottom-20` and `right-4` (above the FAB), with a smooth scale + opacity transition on open/close. On mobile, it expands to fill more of the screen width.
-
----
-
-### Positioning
-
-- FAB: `fixed bottom-6 right-6 z-50` — above all content, below modals/sheets
-- Panel: `fixed bottom-20 right-6 z-50 w-80` — grows upward from FAB position
-- On mobile (`< lg`): `right-4` and `w-[calc(100vw-2rem)]` for full-width feel
-
-The FAB button is a circle with the chat bubble icon + a red unread badge in the top-right corner (similar to a typical messaging app). It uses `bg-primary` with a pulse animation when there are new unread messages.
+This is a one-line positioning change — no logic changes needed.
