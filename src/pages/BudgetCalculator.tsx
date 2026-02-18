@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -519,16 +520,18 @@ export default function BudgetCalculator() {
     ? 'Job P&L Analysis'
     : 'Cash Flow Analysis';
 
+  const isMobile = useIsMobile();
+
   return (
     <MainLayout>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-background">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Budget Calculator</h1>
-            <p className="text-muted-foreground text-sm">{subtitleText}</p>
+        <div className="flex items-center justify-between px-3 sm:px-6 py-2 sm:py-4 border-b bg-background gap-2">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">Budget Calculator</h1>
+            <p className="text-muted-foreground text-xs sm:text-sm hidden sm:block">{subtitleText}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <TemplatePicker
               onSelectTemplate={handleSelectTemplate}
               onCreateNew={handleClearAll}
@@ -544,7 +547,7 @@ export default function BudgetCalculator() {
         </div>
 
         {/* MAO / Margin Gauge - Sticky */}
-        <div className="px-6 py-3 border-b bg-muted/30">
+        <div className="px-3 sm:px-6 py-2 sm:py-3 border-b bg-muted/30">
           {calculatorType === 'contractor' ? (
             <ContractorMarginGauge
               contractValue={contractValueNum}
@@ -564,9 +567,10 @@ export default function BudgetCalculator() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
           {/* Deal Sidebar - Left Panel */}
             <DealSidebar
+            isMobile={isMobile}
             purchasePrice={purchasePrice}
             onPurchasePriceChange={setPurchasePrice}
             arv={calculatorType === 'contractor' ? contractValue : arv}
@@ -615,7 +619,7 @@ export default function BudgetCalculator() {
           />
           
           {/* Budget Canvas - Primary Workspace */}
-          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-y-auto md:overflow-hidden flex flex-col min-h-0">
             <ScrollArea className="flex-1">
               <div className="p-4">
                 {/* Category Cards Grid */}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DollarSign, ChevronLeft, ChevronRight, Calculator, Folder, Save, FolderOpen, Loader2, Ruler, Pencil, Check, Settings, ArrowUp, ArrowDown, HardHat, Wrench } from 'lucide-react';
+import { DollarSign, ChevronLeft, ChevronRight, ChevronDown, Calculator, Folder, Save, FolderOpen, Loader2, Ruler, Pencil, Check, Settings, ArrowUp, ArrowDown, HardHat, Wrench } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { arrayMove } from '@dnd-kit/sortable';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ interface Project {
 }
 
 interface DealSidebarProps {
+  isMobile?: boolean;
   purchasePrice: string;
   onPurchasePriceChange: (value: string) => void;
   arv: string;
@@ -93,6 +94,7 @@ function ModeToggle({ mode, onChange }: { mode: CostMode; onChange: (m: CostMode
 }
 
 export function DealSidebar({
+  isMobile = false,
   purchasePrice,
   onPurchasePriceChange,
   arv,
@@ -139,7 +141,7 @@ export function DealSidebar({
   onHoldingFlatChange,
   onSellClosingFlatChange,
 }: DealSidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(isMobile);
   const [isEditingCosts, setIsEditingCosts] = useState(false);
   const [selectedProject, setSelectedProject] = useState('');
   const [activeTab, setActiveTab] = useState('save');
@@ -192,6 +194,22 @@ export function DealSidebar({
   const isContractor = calculatorType === 'contractor';
 
   if (isCollapsed) {
+    if (isMobile) {
+      return (
+        <div className="border-b bg-muted/30">
+          <button
+            className="flex items-center justify-between w-full px-4 py-3 text-sm font-semibold"
+            onClick={() => setIsCollapsed(false)}
+          >
+            <span className="flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-muted-foreground" />
+              Deal Parameters
+            </span>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="w-12 border-r bg-muted/30 flex flex-col items-center py-4">
         <Button
@@ -217,7 +235,7 @@ export function DealSidebar({
   };
 
   return (
-    <div className="w-80 border-r bg-muted/30 flex flex-col">
+    <div className={isMobile ? "w-full border-b bg-muted/30 flex flex-col max-h-[60vh]" : "w-80 border-r bg-muted/30 flex flex-col"}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <h3 className="font-semibold text-sm">Deal Parameters</h3>
@@ -227,7 +245,7 @@ export function DealSidebar({
           onClick={() => setIsCollapsed(true)}
           className="h-8 w-8"
         >
-          <ChevronLeft className="h-4 w-4" />
+          {isMobile ? <ChevronDown className="h-4 w-4 rotate-180" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
       </div>
 

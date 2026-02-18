@@ -99,7 +99,7 @@ export function MAOGauge({
       hasValidData && isOverMAO && "bg-destructive/10 border-destructive/30",
       hasValidData && !purchasePrice && "bg-amber-500/10 border-amber-500/30"
     )}>
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-between sm:gap-3">
         {/* MAO Target */}
         <div className="flex items-center gap-2">
           <div className={cn(
@@ -116,7 +116,7 @@ export function MAOGauge({
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Max Offer</p>
             <p className={cn(
-              "text-lg font-bold font-mono",
+              "text-base sm:text-lg font-bold font-mono",
               !hasValidData && "text-muted-foreground",
               hasValidData && "text-foreground"
             )}>
@@ -132,7 +132,7 @@ export function MAOGauge({
           </div>
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Construction Budget</p>
-            <p className="text-lg font-bold font-mono text-primary">
+            <p className="text-base sm:text-lg font-bold font-mono text-primary">
               {formatCurrency(currentBudget)}
             </p>
           </div>
@@ -158,7 +158,7 @@ export function MAOGauge({
                   {isUnderMAO ? 'Under MAO' : 'Over MAO'}
                 </p>
                 <p className={cn(
-                  "text-lg font-bold font-mono",
+                  "text-base sm:text-lg font-bold font-mono",
                   isUnderMAO && "text-green-500",
                   isOverMAO && "text-destructive"
                 )}>
@@ -173,7 +173,7 @@ export function MAOGauge({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Purchase Price</p>
-                <p className="text-lg font-bold font-mono text-muted-foreground">
+                <p className="text-base sm:text-lg font-bold font-mono text-muted-foreground">
                   {purchasePrice > 0 ? formatCurrency(purchasePrice) : 'Enter value →'}
                 </p>
               </div>
