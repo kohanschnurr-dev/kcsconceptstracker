@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { 
   startOfMonth, 
   endOfMonth, 
@@ -11,7 +11,9 @@ import {
   startOfDay,
   isWithinInterval,
   differenceInDays,
-  addDays
+  addDays,
+  addMonths,
+  subMonths,
 } from 'date-fns';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
@@ -24,6 +26,7 @@ interface MonthlyViewProps {
   tasks: CalendarTask[];
   onTaskClick: (task: CalendarTask) => void;
   onTaskMove: (taskId: string, newStartDate: Date, newEndDate: Date) => void;
+  onDateChange?: (date: Date) => void;
 }
 
 function DraggableCard({ task, onTaskClick }: { task: CalendarTask; onTaskClick: () => void }) {
@@ -63,11 +66,12 @@ function DroppableDay({
     <div
       ref={setNodeRef}
       className={cn(
-        'min-h-[140px] p-2 rounded-lg border transition-colors',
+        'p-0.5 sm:p-2 rounded-lg border transition-colors',
+        'min-h-[60px] sm:min-h-[140px]',
         isCurrentMonth 
           ? 'bg-card/50 border-border' 
           : 'bg-background/50 border-border/50',
-        isToday(day) && 'ring-2 ring-primary/50',
+        isToday(day) && 'ring-1 sm:ring-2 ring-primary/50',
         isOver && 'ring-2 ring-primary/50 bg-primary/5'
       )}
     >
@@ -76,8 +80,9 @@ function DroppableDay({
   );
 }
 
-export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: MonthlyViewProps) {
+export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDateChange }: MonthlyViewProps) {
   const [activeTask, setActiveTask] = useState<CalendarTask | null>(null);
+  const touchStartX = useRef<number | null>(null);
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -124,15 +129,34 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
     onTaskMove(task.id, targetDate, newEndDate);
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || !onDateChange) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 50) {
+      onDateChange(dx < 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
+    }
+    touchStartX.current = null;
+  };
+
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDaysShort = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex flex-col h-full p-4">
+      <div
+        className="flex flex-col h-full p-4"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="grid grid-cols-7 gap-1 mb-2">
-          {weekDays.map(day => (
+          {weekDays.map((day, i) => (
             <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
-              {day}
+              <span className="hidden sm:inline">{day}</span>
+              <span className="sm:hidden">{weekDaysShort[i]}</span>
             </div>
           ))}
         </div>
@@ -145,7 +169,8 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
             return (
               <DroppableDay key={day.toISOString()} day={day} isCurrentMonth={isCurrentMonth}>
                 <div className={cn(
-                  'text-sm font-medium mb-1',
+                  'font-medium mb-0.5',
+                  'text-[10px] sm:text-sm',
                   isToday(day) 
                     ? 'text-primary' 
                     : isCurrentMonth 
@@ -155,7 +180,36 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove }: Mon
                   {format(day, 'd')}
                 </div>
                 
-                <div className="space-y-1">
+                {/* Mobile: compact badge → popover */}
+                <div className="sm:hidden">
+                  {dayTasks.length > 0 && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="text-[9px] font-medium text-primary/80 hover:text-primary w-full text-center rounded hover:bg-primary/10 px-0.5 py-0.5 leading-tight">
+                          {dayTasks.length}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-0 overflow-hidden z-50" align="center">
+                        <div className="px-3 py-2 border-b border-border bg-muted/30">
+                          <p className="text-xs font-semibold text-foreground">
+                            {format(day, 'EEEE, MMM d')}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
+                          {dayTasks.map(task => (
+                            <DealCard key={task.id} task={task} compact onClick={() => onTaskClick(task)} />
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+
+                {/* Desktop: full DealCard rendering */}
+                <div className="hidden sm:block space-y-1">
                   {dayTasks.slice(0, 3).map(task => (
                     <DraggableCard
                       key={task.id}
