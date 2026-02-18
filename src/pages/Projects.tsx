@@ -152,12 +152,13 @@ export default function Projects() {
           (sum, cat) => sum + cat.estimatedBudget,
           0
         );
+        const effectiveTotalBudget = (p.total_budget ?? 0) > 0 ? p.total_budget : calculatedTotalBudget;
 
         return {
           id: p.id,
           name: p.name,
           address: p.address,
-          totalBudget: calculatedTotalBudget,
+          totalBudget: effectiveTotalBudget,
           startDate: p.start_date,
           status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
           projectType: (p.project_type || 'fix_flip') as ProjectType,
