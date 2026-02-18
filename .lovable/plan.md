@@ -1,46 +1,120 @@
 
-## Hide Tab Reorder Gear on Mobile
+## Update Mobile Menu: Settings & Notifications — Match Sidebar Pattern
 
-### What & Why
+### Problem
 
-The gear icon (⚙) next to the tab bar opens a drag-to-reorder popover for rearranging tabs. On mobile, the tab bar already scrolls horizontally — the tab order is carried over from whatever the user set on desktop (it's stored in the user profile), so the gear provides no unique value on a small screen and wastes precious horizontal space.
+The mobile "Menu" sheet (`MobileNav.tsx`) has an inconsistent footer compared to the desktop sidebar:
 
-### The Fix
+| | Desktop Sidebar | Mobile Menu (current) |
+|---|---|---|
+| Username | Small text row | Tiny text + gear icon crammed inline |
+| Settings | Full nav row (icon + label) | Hidden as a gear icon next to username |
+| Notifications | Full nav row (icon + label + badge) | **Completely absent** |
+| Sign Out | Full nav row | Full nav row ✓ |
 
-**File:** `src/pages/ProjectDetail.tsx` — lines 1056–1072
+The screenshot confirms it: the mobile footer shows `Kohan Schnurr` with a settings gear jammed to the right — no Notifications row at all.
 
-The `<Popover>` that contains the gear button and the entire drag-to-reorder panel simply needs `hidden sm:flex` (or `hidden sm:block`) so it disappears on mobile and reappears on `sm:` and above.
+### Fix
 
+Rewrite the footer section of `MobileNav.tsx` to exactly mirror the sidebar's footer rows:
+
+1. **Username row** — standalone text-only row (same as sidebar's expanded state)
+2. **Settings row** — full `NavLink` row: icon + "Settings" label, active highlight
+3. **Notifications row** — full `button` row: bell icon + "Notifications" label + unread badge (owners only), opens `NotificationsPanel`
+4. **Sign Out row** — existing full row, unchanged
+
+### Technical Changes
+
+**File:** `src/components/layout/MobileNav.tsx`
+
+**Imports to add:**
+- `Bell` from `lucide-react`
+- `useNotifications` from `@/hooks/useNotifications`
+- `NotificationsPanel` from `@/components/layout/NotificationsPanel`
+- Remove `Settings` from nav footer (it becomes its own row, same import but used differently)
+
+**New state:**
 ```tsx
-// Before (line 1056):
-<Popover open={reorderOpen} onOpenChange={setReorderOpen}>
-  <PopoverTrigger asChild>
-    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-      <Settings className="h-4 w-4 text-muted-foreground" />
-    </Button>
-  </PopoverTrigger>
-  ...
-</Popover>
+const [notifOpen, setNotifOpen] = useState(false);
+```
 
-// After: wrap in a hidden-on-mobile container
-<div className="hidden sm:block shrink-0">
-  <Popover open={reorderOpen} onOpenChange={setReorderOpen}>
-    <PopoverTrigger asChild>
-      <Button variant="ghost" size="icon" className="h-8 w-8">
-        <Settings className="h-4 w-4 text-muted-foreground" />
-      </Button>
-    </PopoverTrigger>
-    ...popover content unchanged...
-  </Popover>
+**Hook:**
+```tsx
+const { unreadCount, isOwner } = useNotifications();
+```
+
+**New footer block (replaces lines 88–114):**
+```tsx
+<div className="border-t border-border p-2 space-y-1">
+  {/* Username */}
+  {user && (
+    <div className="px-3 py-1.5">
+      <span className="text-xs text-muted-foreground truncate block">
+        {displayName || user.email}
+      </span>
+    </div>
+  )}
+
+  {/* Settings — full row */}
+  <NavLink
+    to="/settings"
+    onClick={() => setOpen(false)}
+    className={cn(
+      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+      location.pathname === '/settings'
+        ? 'bg-primary/10 text-primary'
+        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+    )}
+  >
+    <Settings className="h-5 w-5" />
+    Settings
+  </NavLink>
+
+  {/* Notifications — owners only, full row with badge */}
+  {isOwner && (
+    <button
+      onClick={() => { setOpen(false); setNotifOpen(true); }}
+      className="relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium w-full transition-colors text-muted-foreground hover:bg-muted hover:text-foreground"
+    >
+      <span className="relative">
+        <Bell className="h-5 w-5" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-0.5 leading-none">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </span>
+      <span className="flex flex-1 items-center justify-between">
+        <span>Notifications</span>
+        {unreadCount > 0 && (
+          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold px-1.5">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </span>
+    </button>
+  )}
+
+  {/* Sign Out */}
+  <button
+    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium w-full transition-colors text-muted-foreground hover:bg-muted hover:text-foreground"
+    onClick={handleSignOut}
+  >
+    <LogOut className="h-5 w-5" />
+    Sign Out
+  </button>
 </div>
 ```
 
-The tab order (set on desktop) is already persisted to the user profile and read via `getDetailTabOrder` — mobile automatically inherits it. No logic changes needed.
+**After the `</Sheet>` closing tag, render the panel:**
+```tsx
+<NotificationsPanel open={notifOpen} onOpenChange={setNotifOpen} />
+```
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/pages/ProjectDetail.tsx` | Wrap the `<Popover>` (gear button + reorder panel, lines 1056–1072) in `<div className="hidden sm:block shrink-0">` |
+| `src/components/layout/MobileNav.tsx` | Add `Bell` import, `useNotifications` hook, `notifOpen` state, `NotificationsPanel` import. Rewrite footer block: username row → Settings full row → Notifications full row (owners only, with badge) → Sign Out. Render `NotificationsPanel` alongside the menu `Sheet`. |
 
-One wrapper `<div>`. No logic, no data, no other files.
+No other files needed — `NotificationsPanel` and `useNotifications` already exist and work correctly.
