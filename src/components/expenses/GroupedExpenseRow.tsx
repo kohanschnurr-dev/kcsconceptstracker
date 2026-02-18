@@ -95,13 +95,13 @@ export function GroupedExpenseRow({
             </div>
           </div>
         </td>
-        <td className="!text-center">{getProjectName(expense.project_id)}</td>
-        <td className="!text-center">
+        <td className="!text-center hidden sm:table-cell">{getProjectName(expense.project_id)}</td>
+        <td className="!text-center hidden sm:table-cell">
           <Badge variant="secondary" className="text-xs">
             {getCategoryLabel(expense.category_id, expense.project_id)}
           </Badge>
         </td>
-        <td className="!text-center capitalize">{expense.payment_method}</td>
+        <td className="!text-center capitalize hidden sm:table-cell">{expense.payment_method}</td>
         <td className="!text-center">
           <div className="flex items-center justify-center gap-2">
             {expense.receipt_url && (
@@ -166,13 +166,13 @@ export function GroupedExpenseRow({
             </div>
           </div>
         </td>
-        <td className="!text-center">{getProjectName(parentExpense.project_id)}</td>
-        <td className="!text-center">
+        <td className="!text-center hidden sm:table-cell">{getProjectName(parentExpense.project_id)}</td>
+        <td className="!text-center hidden sm:table-cell">
           <Badge variant="secondary" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">
             Multiple
           </Badge>
         </td>
-        <td className="!text-center capitalize">{parentExpense.payment_method}</td>
+        <td className="!text-center capitalize hidden sm:table-cell">{parentExpense.payment_method}</td>
         <td className="!text-center">
           <div className="flex items-center justify-center gap-2">
         {hasReceipt && (
@@ -219,13 +219,13 @@ export function GroupedExpenseRow({
               )}
             </div>
           </td>
-          <td className="!text-center text-muted-foreground text-sm">—</td>
-          <td className="!text-center">
+          <td className="!text-center text-muted-foreground text-sm hidden sm:table-cell">—</td>
+          <td className="!text-center hidden sm:table-cell">
             <Badge variant="secondary" className="text-xs">
               {getCategoryLabel(expense.category_id, expense.project_id)}
             </Badge>
           </td>
-          <td className="!text-center text-muted-foreground text-sm">—</td>
+          <td className="!text-center text-muted-foreground text-sm hidden sm:table-cell">—</td>
           <td className="!text-center">
             <span className="font-mono text-sm">
               {formatCurrency(expense.amount)}

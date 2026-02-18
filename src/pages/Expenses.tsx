@@ -436,28 +436,30 @@ export default function Expenses() {
         {/* Expenses Table */}
         <Collapsible open={expensesTableOpen} onOpenChange={setExpensesTableOpen}>
           <div className="glass-card overflow-hidden">
-            <div className="flex flex-wrap items-center gap-3 p-4 border-b border-border/30">
-              {/* Toggle */}
-              <CollapsibleTrigger asChild>
-                <div className="flex items-center gap-2 cursor-pointer hover:text-foreground/80 transition-colors">
-                  <ChevronDown className={`h-4 w-4 transition-transform ${expensesTableOpen ? '' : '-rotate-90'}`} />
-                </div>
-              </CollapsibleTrigger>
-              
-              {/* Filters - prevent toggle on click */}
-              <div className="flex flex-wrap items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
-                <div className="relative min-w-[180px] max-w-[240px]">
+            <div className="p-4 border-b border-border/30 space-y-2" onClick={(e) => e.stopPropagation()}>
+              {/* Row 1: Toggle + Search (full width on mobile) */}
+              <div className="flex items-center gap-2">
+                <CollapsibleTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-pointer hover:text-foreground/80 transition-colors flex-shrink-0">
+                    <ChevronDown className={`h-4 w-4 transition-transform ${expensesTableOpen ? '' : '-rotate-90'}`} />
+                  </div>
+                </CollapsibleTrigger>
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-9"
+                    className="pl-9 h-9 w-full"
                   />
                 </div>
+              </div>
+
+              {/* Row 2: Project + Category + Date Range */}
+              <div className="flex items-center gap-2">
                 <Select value={projectFilter} onValueChange={setProjectFilter}>
-                  <SelectTrigger className="w-[140px] h-9">
-                    <SelectValue placeholder="All Projects" />
+                  <SelectTrigger className="flex-1 h-9 min-w-0">
+                    <SelectValue placeholder="Projects" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Projects</SelectItem>
@@ -469,8 +471,8 @@ export default function Expenses() {
                   </SelectContent>
                 </Select>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-[140px] h-9">
-                    <SelectValue placeholder="All Categories" />
+                  <SelectTrigger className="flex-1 h-9 min-w-0">
+                    <SelectValue placeholder="Categories" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px] overflow-y-auto">
                     <SelectItem value="all">All Categories</SelectItem>
@@ -483,20 +485,20 @@ export default function Expenses() {
                 </Select>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 h-9">
+                    <Button variant="outline" size="sm" className="h-9 flex-shrink-0 gap-1.5">
                       <Calendar className="h-4 w-4" />
                       {dateRange?.from ? (
-                        dateRange.to ? (
-                          <span>{format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}</span>
-                        ) : (
-                          <span>{format(dateRange.from, 'MMM d')}</span>
-                        )
+                        <span className="hidden sm:inline">
+                          {dateRange.to
+                            ? `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d')}`
+                            : format(dateRange.from, 'MMM d')}
+                        </span>
                       ) : (
-                        <span>Date Range</span>
+                        <span className="hidden sm:inline">Date Range</span>
                       )}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0" align="end">
                     <CalendarComponent
                       mode="range"
                       selected={dateRange}
@@ -505,9 +507,9 @@ export default function Expenses() {
                     />
                     {dateRange && (
                       <div className="p-2 border-t">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="w-full"
                           onClick={() => setDateRange(undefined)}
                         >
@@ -518,25 +520,24 @@ export default function Expenses() {
                   </PopoverContent>
                 </Popover>
                 {hasActiveFilters && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={resetFilters}
-                    className="h-9 text-muted-foreground hover:text-foreground"
+                    className="h-9 flex-shrink-0 text-muted-foreground hover:text-foreground px-2"
                   >
-                    <X className="h-4 w-4 mr-1" />
-                    Reset
+                    <X className="h-4 w-4" />
                   </Button>
                 )}
               </div>
-              
-              {/* Summary */}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+
+              {/* Row 3: Summary + Export */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{filteredExpenses.length} expenses</span>
                 <span>•</span>
                 <span className="font-mono font-medium">{formatCurrency(totalExpenses)}</span>
-                <Button variant="ghost" size="sm" className="gap-1 h-7 ml-1" onClick={exportToCSV}>
-                  <Download className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="sm" className="gap-1 h-6 ml-auto px-2 text-xs" onClick={exportToCSV}>
+                  <Download className="h-3 w-3" />
                   Export
                 </Button>
               </div>
@@ -549,9 +550,9 @@ export default function Expenses() {
                     <tr className="bg-muted/30">
                       <th>Date</th>
                       <th>Vendor</th>
-                      <th className="!text-center">Project</th>
-                      <th className="!text-center">Category</th>
-                      <th className="!text-center">Payment</th>
+                      <th className="!text-center hidden sm:table-cell">Project</th>
+                      <th className="!text-center hidden sm:table-cell">Category</th>
+                      <th className="!text-center hidden sm:table-cell">Payment</th>
                       <th className="!text-center">Amount</th>
                     </tr>
                   </thead>
