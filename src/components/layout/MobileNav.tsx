@@ -11,7 +11,8 @@ import {
   Briefcase,
   Calculator,
   CalendarDays,
-  Settings
+  Settings,
+  Bell,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -20,14 +21,18 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useNotifications } from '@/hooks/useNotifications';
+import { NotificationsPanel } from '@/components/layout/NotificationsPanel';
 import kcsLogo from '@/assets/kcs-logo.png';
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { displayName } = useProfile();
   const { companyName, logoUrl } = useCompanySettings();
+  const { unreadCount, isOwner } = useNotifications();
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -85,35 +90,64 @@ export function MobileNav() {
             })}
           </nav>
           
-          <div className="border-t border-border p-4 space-y-2">
+          <div className="border-t border-border p-2 space-y-1">
             {user && (
-              <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-xs text-muted-foreground truncate">{displayName || user.email}</span>
-                <NavLink
-                  to="/settings"
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    'p-1.5 rounded-md transition-colors',
-                    location.pathname === '/settings'
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <Settings className="h-4 w-4" />
-                </NavLink>
+              <div className="px-3 py-1.5">
+                <span className="text-xs text-muted-foreground truncate block">
+                  {displayName || user.email}
+                </span>
               </div>
             )}
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+
+            <NavLink
+              to="/settings"
+              onClick={() => setOpen(false)}
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                location.pathname === '/settings'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Settings className="h-5 w-5" />
+              Settings
+            </NavLink>
+
+            {isOwner && (
+              <button
+                onClick={() => { setOpen(false); setNotifOpen(true); }}
+                className="relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium w-full transition-colors text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <span className="relative">
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-0.5 leading-none">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </span>
+                <span className="flex flex-1 items-center justify-between">
+                  <span>Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold px-1.5">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </span>
+              </button>
+            )}
+
+            <button
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium w-full transition-colors text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={handleSignOut}
             >
               <LogOut className="h-5 w-5" />
               Sign Out
-            </Button>
+            </button>
           </div>
         </SheetContent>
       </Sheet>
+      <NotificationsPanel open={notifOpen} onOpenChange={setNotifOpen} />
     </header>
   );
 }
