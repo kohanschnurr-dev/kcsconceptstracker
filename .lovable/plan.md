@@ -1,141 +1,138 @@
 
-## Notification Preferences Settings Card
+## Floating Message Bubble — Bottom-Right Chat Widget
 
 ### What's Being Built
 
-A new "Notification Preferences" card on the Settings page that lets the owner control which event types show up in their in-app notification bell. Since mobile push isn't wired to a native push service yet, the toggle will cover "In-App Notifications" per event type (the UI can be designed to extend to push later without any rework — just add a second column of toggles).
+A persistent floating action button (FAB) fixed to the bottom-right corner of every page, visible app-wide. It adapts based on who is logged in:
 
-The user's concern: getting flooded with `expense` and `daily_log` notifications. Solution: per-event-type toggles so they can silence the noisy ones while keeping the important ones (order requests, messages, project status changes).
+- **Owner view**: Opens a conversation list showing all PMs with their last message + unread count. Clicking a PM opens their full thread (reusing `MessageThreadPanel`).
+- **PM view**: Opens the direct conversation with the owner (same UI the PM already has in `MessageOwnerButton`, but now always accessible from anywhere in the app).
+
+The `MessageOwnerButton` on the project header can stay for quick access in context, but the FAB gives global persistent access — especially useful on mobile and across non-project pages.
+
+---
+
+### Visual Design
+
+```
+                                    ┌─────────────────────────────┐
+                                    │  💬  Team Messages       ✕  │
+                                    ├─────────────────────────────┤
+                                    │  Jose Martinez          2   │
+                                    │  "Hey Kohan, just wrapped…" │
+                                    │  10 min ago                 │
+                                    ├─────────────────────────────┤
+                                    │  Maria Chen                 │
+                                    │  "Materials delivered ✓"    │
+                                    │  2 hr ago                   │
+                                    └─────────────────────────────┘
+
+                                              ┌──────┐
+                                              │ 💬 2 │  ← FAB (bottom-right)
+                                              └──────┘
+```
+
+When a PM is selected from the list → the panel slides to their thread (same `MessageThreadPanel` component already built). Back arrow returns to the list.
+
+For PMs, clicking the FAB opens the thread directly (no list needed — only one owner to talk to).
 
 ---
 
 ### Architecture
 
-**Storage**: Preferences stored in `localStorage` under key `notification-preferences` and synced to the cloud via the existing `useSettingsSync` mechanism (same pattern as `dashboard-profit-filters`). The key gets added to the `SETTINGS_KEYS` array so it auto-syncs across devices.
+**New component**: `src/components/layout/FloatingMessageBubble.tsx`
 
-**Filtering**: The `useNotifications` hook gets a small update to read from `localStorage` and filter out suppressed event types before returning the `notifications` array to consumers. This means suppressed types won't appear in the panel and won't count toward the unread badge — exactly what the user wants.
+This is a self-contained component that:
 
-**No DB changes needed** — preferences are user-controlled UI config, not server state.
+1. Reads `useIsPM()` to determine role
+2. For owners: reads `useTeam()` to get members list, then queries `owner_messages` for the latest message per PM + unread count
+3. Shows a floating button with a badge for total unread messages
+4. Manages an open/closed popover-style panel (not a Sheet — it grows upward from the button)
+5. Has a 2-view stack: `'list'` (all PMs) → `'thread'` (specific PM thread)
+6. Reuses `useMessageThread` hook directly for the thread view
 
----
+**View for Owners**:
+- Fetches all `team_members` for their team
+- For each member, fetches the latest `owner_messages` row and count of unread (messages sent by the PM where `recipient_id IS NULL` and not yet replied to)
+- Shows each PM as a row with avatar initial, name, message preview, time, and unread badge
+- Clicking a row opens `MessageThreadPanel` inline in the expanded panel
 
-### Event Types and Default Config
+**View for PMs**:
+- Uses `useIsPM()` to get `teamId`
+- Calls `fetchPmThread` directly to load the conversation with the owner
+- Shows thread immediately when panel opens (no list step needed)
 
-All 8 event types from `Notification['event_type']`, all ON by default:
-
-| Event Type | Label | Default |
-|---|---|---|
-| `order_request` | Order Requests | ✅ On |
-| `expense` | Expenses | ✅ On |
-| `daily_log` | Daily Logs | ✅ On |
-| `task_completed` | Task Completions | ✅ On |
-| `project_note` | Project Notes | ✅ On |
-| `project_created` | New Projects | ✅ On |
-| `project_status` | Status Changes | ✅ On |
-| `direct_message` | Direct Messages | ✅ On |
-
-Users can toggle off `expense` and `daily_log` to stop the noise.
-
----
-
-### New File: `src/components/settings/NotificationPreferencesCard.tsx`
-
-A Card component matching the style of `DashboardPreferencesCard`. Structure:
-
-```
-┌──────────────────────────────────────────────────────────┐
-│ 🔔 Notification Preferences                              │
-│ Choose which activity types appear in your notification  │
-│ bell. Turned off types are silenced and won't count      │
-│ toward your unread badge.                                │
-├──────────────────────────────────────────────────────────┤
-│                                                          │
-│  In-App Notifications                                    │
-│                                                          │
-│  [🛒] Order Requests         ————●  (ON)                │
-│  [💸] Expenses               ●————  (OFF)               │
-│  [📋] Daily Logs             ●————  (OFF)               │
-│  [✅] Task Completions       ————●  (ON)                │
-│  [📝] Project Notes          ————●  (ON)                │
-│  [📁] New Projects           ————●  (ON)                │
-│  [🔄] Status Changes         ————●  (ON)                │
-│  [💬] Direct Messages        ————●  (ON)                │
-│                                                          │
-│  [Turn all on]   [Turn all off]                          │
-└──────────────────────────────────────────────────────────┘
-```
-
-Uses `Switch` component (already exists at `src/components/ui/switch.tsx`) — consistent with other preference cards. Each row shows the coloured icon from `EVENT_META` alongside the label and the toggle.
-
-State is read from/written to `localStorage` on every toggle change + calls `triggerSettingsSync()` to debounce-sync to cloud.
+**Unread count badge on FAB**:
+- For owners: count of `owner_messages` rows where `recipient_id IS NULL` and the owner has not replied after the latest PM message (approximate — can be done by checking if there's any PM message newer than the latest owner reply)
+- Simpler approach: track a `last_seen_at` in localStorage per PM thread, and count messages newer than that timestamp — zero extra DB queries
 
 ---
 
-### Changes to `src/hooks/useSettingsSync.ts`
+### New Hook: `useTeamMessages.ts` (owner-side summary)
 
-Add `'notification-preferences'` to the `SETTINGS_KEYS` array so it auto-syncs across devices on login:
+A lightweight hook that fetches a summary of all PM conversations for the owner:
 
 ```ts
-const SETTINGS_KEYS = [
-  // ... existing keys ...
-  'notification-preferences',
-];
-```
+// For each team member, get:
+// - their profile info (name)
+// - the last message in their thread
+// - count of their messages after the owner's last reply
 
----
-
-### Changes to `src/hooks/useNotifications.ts`
-
-Add a utility export `useNotificationPreferences()` that reads from localStorage. Then in `useNotifications`, filter the returned `notifications` array against the prefs before returning:
-
-```ts
-export function loadNotificationPrefs(): Record<string, boolean> {
-  try {
-    const raw = localStorage.getItem('notification-preferences');
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  // Default: all ON
-  return {};
+interface PmThreadSummary {
+  pmId: string;
+  pmName: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  unreadCount: number;
 }
-
-// Inside useNotifications:
-const prefs = loadNotificationPrefs();
-const filtered = notifications.filter(n => prefs[n.event_type] !== false);
-// use `filtered` for return value
 ```
 
-This means `unreadCount` also reflects only the types the user cares about.
-
----
-
-### Changes to `src/pages/Settings.tsx`
-
-Import and render `<NotificationPreferencesCard />` after the `<ManageSourcesCard />` block (before `<ManageRolesCard />`), so it appears in the Manage section logically:
-
-```tsx
-import NotificationPreferencesCard from '@/components/settings/NotificationPreferencesCard';
-
-// In JSX, after ManageSourcesCard:
-<NotificationPreferencesCard />
+Implemented with a single query:
+```sql
+SELECT * FROM owner_messages
+WHERE team_id = ?
+ORDER BY created_at DESC
 ```
+Then grouping client-side by sender (PM messages vs owner replies), to compute lastMessage and unread per PM.
+
+Realtime subscription on the `owner_messages` table to auto-update the list when a PM sends a new message.
 
 ---
 
 ### Files to Create / Modify
 
 | File | Change |
-|---|---|
-| `src/components/settings/NotificationPreferencesCard.tsx` | **New** — Switch-based UI for 8 event types |
-| `src/hooks/useSettingsSync.ts` | Add `notification-preferences` to `SETTINGS_KEYS` |
-| `src/hooks/useNotifications.ts` | Filter notifications by prefs before returning |
-| `src/pages/Settings.tsx` | Import and render `<NotificationPreferencesCard />` |
+|------|--------|
+| `src/hooks/useTeamMessages.ts` | **New** — owner-side summary of all PM thread previews with unread counts |
+| `src/components/layout/FloatingMessageBubble.tsx` | **New** — the FAB + popover panel with list view and thread view |
+| `src/components/layout/MainLayout.tsx` | Add `<FloatingMessageBubble />` just before closing `</div>` — renders for all authenticated users |
+
+No DB changes needed — all data already exists in `owner_messages` and `team_members`.
 
 ---
 
-### Visual Outcome
+### Component Structure
 
-- Owner turns off `expense` and `daily_log` → those entries are silenced app-wide (no bell badge count, not shown in panel)
-- Settings persist across devices via cloud sync
-- Easy to re-enable anytime via the card
-- `direct_message` is always prominent since it's the most important
-- Future mobile push column can be added by duplicating the switch column with a phone icon header — no structural change needed
+```
+FloatingMessageBubble
+├── FAB button (fixed bottom-right, shows unread badge)
+└── Panel (popover expanding upward from button, w-80, h-96)
+    ├── Header: "Team Messages" + close button
+    ├── [Owner view - list]
+    │   ├── PM row: avatar initial, name, last message preview, time, unread dot
+    │   └── ... (one row per team member)
+    └── [Owner/PM view - thread]
+        └── MessageThreadPanel (reused, with back button)
+```
+
+The panel uses `position: fixed` with `bottom-20` and `right-4` (above the FAB), with a smooth scale + opacity transition on open/close. On mobile, it expands to fill more of the screen width.
+
+---
+
+### Positioning
+
+- FAB: `fixed bottom-6 right-6 z-50` — above all content, below modals/sheets
+- Panel: `fixed bottom-20 right-6 z-50 w-80` — grows upward from FAB position
+- On mobile (`< lg`): `right-4` and `w-[calc(100vw-2rem)]` for full-width feel
+
+The FAB button is a circle with the chat bubble icon + a red unread badge in the top-right corner (similar to a typical messaging app). It uses `bg-primary` with a pulse animation when there are new unread messages.
