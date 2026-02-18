@@ -84,16 +84,6 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
     }
   };
 
-  const getDueDateColor = (dueDate: string): string => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const due = parseDateString(dueDate);
-    const diffDays = Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) return 'text-red-500';
-    if (diffDays === 0) return 'text-amber-500';
-    if (diffDays <= 7) return 'text-orange-400';
-    return 'text-muted-foreground';
-  };
 
   const getStatusIcon = (status: TaskStatus) => {
     switch (status) {
@@ -149,13 +139,13 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
                     {task.title}
                   </p>
                 </div>
+                {task.dueDate && (
+                  <div className="flex items-center gap-1 text-xs text-foreground font-medium min-w-[85px] shrink-0">
+                    <Calendar className="h-3 w-3 text-muted-foreground" />
+                    <span>Due {formatDisplayDateShort(task.dueDate)}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 shrink-0">
-                  {task.dueDate && (
-                    <div className={cn("flex items-center gap-1 text-xs", getDueDateColor(task.dueDate))}>
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatDisplayDateShort(task.dueDate)}</span>
-                    </div>
-                  )}
                   <Badge 
                     variant="secondary" 
                     className={cn("text-xs", TASK_PRIORITY_COLORS[task.priorityLevel])}
