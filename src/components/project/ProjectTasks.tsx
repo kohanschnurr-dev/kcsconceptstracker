@@ -147,7 +147,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
                     </>
                   )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="w-[90px] shrink-0 flex items-center justify-end gap-2">
                   <Badge 
                     variant="secondary" 
                     className={cn("text-xs", TASK_PRIORITY_COLORS[task.priorityLevel])}
