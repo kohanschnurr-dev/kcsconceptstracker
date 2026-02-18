@@ -8,7 +8,7 @@ export interface CategoryItem {
   isCustom?: boolean;
 }
 
-export type CategoryType = 'calendar' | 'budget' | 'monthly' | 'business' | 'stores' | 'propertyInfo';
+export type CategoryType = 'calendar' | 'budget' | 'monthly' | 'business' | 'stores' | 'propertyInfo' | 'jobInfo';
 
 const STORAGE_KEYS: Record<CategoryType, string> = {
   calendar: 'custom-calendar-categories',
@@ -17,6 +17,7 @@ const STORAGE_KEYS: Record<CategoryType, string> = {
   business: 'custom-business-categories',
   stores: 'procurement-source-stores',
   propertyInfo: 'custom-property-info-fields',
+  jobInfo: 'custom-job-info-fields',
 };
 
 function loadFromStorage<T>(key: string, fallback: T): T {
