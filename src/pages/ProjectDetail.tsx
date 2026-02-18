@@ -730,6 +730,15 @@ export default function ProjectDetail() {
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
                 )}
+                {!isEditing && (
+                  <button
+                    className="p-1 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                    onClick={() => setDeleteStep(1)}
+                    aria-label="Delete project"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild disabled={updatingStatus}>
                     <button className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-full">
@@ -865,17 +874,6 @@ export default function ProjectDetail() {
                   </span>
                 )}
               </div>
-            </div>
-            <div className="flex items-start gap-2 shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setDeleteStep(1)}
-              >
-                <Trash2 className="h-4 w-4 mr-1.5" />
-                Delete Project
-              </Button>
             </div>
           </div>
         </div>
