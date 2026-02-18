@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, FolderKanban, Home, Hammer, Building2, Handshake, HardHat, Settings, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
 import { arrayMove } from '@dnd-kit/sortable';
@@ -35,6 +35,8 @@ const TAB_CONFIG: Record<string, { label: string; icon: typeof Hammer; createLab
 export default function Projects() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
   const { profile, updateTabOrder, starredProjects, isProjectStarred, toggleStarProject, hiddenProjectTabs, updateHiddenTabs } = useProfile();
   const [search, setSearch] = useState('');
   const [statusTab, setStatusTab] = useState('all');
@@ -402,11 +404,33 @@ export default function Projects() {
             </Popover>
           </div>
 
+          <div
+            onTouchStart={(e) => {
+              touchStartX.current = e.touches[0].clientX;
+              touchStartY.current = e.touches[0].clientY;
+            }}
+            onTouchEnd={(e) => {
+              const dx = e.changedTouches[0].clientX - touchStartX.current;
+              const dy = e.changedTouches[0].clientY - touchStartY.current;
+              if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+              const currentIndex = visibleTabs.indexOf(mainTab);
+              if (dx < 0) {
+                const next = visibleTabs[Math.min(currentIndex + 1, visibleTabs.length - 1)];
+                setMainTab(next);
+                setStatusTab('all');
+              } else {
+                const prev = visibleTabs[Math.max(currentIndex - 1, 0)];
+                setMainTab(prev);
+                setStatusTab('all');
+              }
+            }}
+          >
           {visibleTabs.map((type) => (
             <TabsContent key={type} value={type} className="mt-6">
               {renderProjectGrid(type)}
             </TabsContent>
           ))}
+          </div>
         </Tabs>
       </div>
 
