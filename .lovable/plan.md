@@ -1,63 +1,40 @@
 
-## Fix Profit Calculator Results Overflow on Mobile
+## Fix: Two Exclamation Points on Mobile Task Rows
 
-### Problem
+### Root Cause
 
-The three result cards (Est. Profit, Current Profit, ROI) in `ProfitCalculator.tsx` use:
-- `grid grid-cols-3 gap-4` — fixed 3-column grid regardless of screen width
-- `text-2xl font-bold font-mono` — large currency values like `$25,364` that don't fit in 1/3 of a narrow mobile screen
-- `gap-4` — 16px gaps eat into already tight card space
+In `src/components/project/ProjectTasks.tsx`, the right-side column of each task row renders two elements side by side:
 
-On a 390px wide mobile screen, each card gets ~118px — not enough for `$25,364` in `text-2xl`.
+1. `AlertCircle` — the colored priority icon (mobile-only, added in the last change)
+2. `getStatusIcon(task.status)` — the status icon (always visible)
 
-### Solution
+When a task has a status like `pending` or `overdue`, `getStatusIcon` also returns an `AlertCircle`-style icon. Combined with the priority icon, this produces two `!` icons on mobile — one right after the other.
 
-Two responsive changes in `src/components/project/ProfitCalculator.tsx`:
+### Fix
 
-**1. Shrink the font size on mobile:**
-Change `text-2xl` → `text-lg sm:text-2xl` on all three profit value paragraphs. This keeps large bold numbers on tablet/desktop while fitting on mobile.
+Wrap the `getStatusIcon` output in a `hidden sm:block` span so it only shows on desktop. On mobile, the colored priority `AlertCircle` alone is sufficient — its color already communicates urgency.
 
-**2. Reduce the gap on mobile:**
-Change `gap-4` → `gap-2 sm:gap-4` on the grid container so cards have a bit more width on mobile.
+### Change
 
-**3. Reduce card padding on mobile:**
-Change `p-4` → `p-2 sm:p-4` on all three result cards so content has more room to breathe inside narrow columns.
-
-**4. Hide the TrendingUp icon on mobile for ROI card:**
-The ROI value row uses `flex items-center justify-center gap-1` with a `TrendingUp` icon + `10.6%` text. On mobile the icon steals space — hide it with `hidden sm:inline`.
-
-### Files to Modify
-
-| File | Change |
-|---|---|
-| `src/components/project/ProfitCalculator.tsx` | 1. `gap-4` → `gap-2 sm:gap-4` on the grid. 2. `p-4` → `p-2 sm:p-4` on all 3 result cards. 3. `text-2xl` → `text-lg sm:text-2xl` on all 3 value paragraphs. 4. `hidden sm:block` on the `TrendingUp` icon in the ROI card. |
-
-### Technical Snippet
+**File:** `src/components/project/ProjectTasks.tsx` — lines 229–240
 
 ```tsx
-// Grid container
-<div className="grid grid-cols-3 gap-2 sm:gap-4">
+// Before:
+<div className="shrink-0 flex items-center justify-end gap-2 sm:w-[90px]">
+  <AlertCircle className={cn("h-4 w-4 sm:hidden", PRIORITY_ICON_COLORS[task.priorityLevel])} />
+  <Badge ...>{TASK_PRIORITY_LABELS[task.priorityLevel]}</Badge>
+  {getStatusIcon(task.status)}   ← always shown, including on mobile
+</div>
 
-// Each result card
-<div className={cn(
-  "p-2 sm:p-4 rounded-lg text-center cursor-pointer ...",
-  ...
-)}>
-
-// Currency values (Est. Profit & Current Profit)
-<p className={cn(
-  "text-lg sm:text-2xl font-bold font-mono",
-  ...
-)}>
-
-// ROI value + icon
-<p className={cn(
-  "text-lg sm:text-2xl font-bold font-mono flex items-center justify-center gap-1",
-  ...
-)}>
-  <TrendingUp className="hidden sm:block h-5 w-5" />
-  {roi.toFixed(1)}%
-</p>
+// After:
+<div className="shrink-0 flex items-center justify-end gap-2 sm:w-[90px]">
+  <AlertCircle className={cn("h-4 w-4 sm:hidden", PRIORITY_ICON_COLORS[task.priorityLevel])} />
+  <Badge ...>{TASK_PRIORITY_LABELS[task.priorityLevel]}</Badge>
+  <span className="hidden sm:block">{getStatusIcon(task.status)}</span>  ← desktop only
+</div>
 ```
 
-No logic changes — purely responsive styling.
+**Mobile result:** one colored `!` icon (priority)
+**Desktop result:** full badge + status icon (unchanged)
+
+One line change. No logic, no data changes.
