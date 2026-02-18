@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { TrendingUp, CheckCircle2, AlertTriangle, DollarSign, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +23,9 @@ export function ContractorMarginGauge({
   marginTarget,
   onMarginTargetChange,
 }: ContractorMarginGaugeProps) {
+  const [isEditingTarget, setIsEditingTarget] = useState(false);
+  const [tempTarget, setTempTarget] = useState(marginTarget);
+
   const grossProfit = contractValue - jobCost;
   const margin = contractValue > 0 ? (grossProfit / contractValue) * 100 : 0;
   const hasValidData = contractValue > 0;
@@ -110,33 +114,16 @@ export function ContractorMarginGauge({
           </div>
         </div>
 
-        {/* Gross Margin — icon-card with inline editable target */}
+        {/* Gross Margin — clean icon-card, no inline target */}
         <div className="flex items-center gap-2">
           <div className={cn('p-1.5 rounded-lg', statusBgColor)}>
             <Percent className={cn('h-4 w-4', marginColor)} />
           </div>
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Gross Margin</p>
-            <p className={cn('text-2xl font-bold font-mono leading-none', marginColor)}>
+            <p className={cn('text-lg font-bold font-mono', marginColor)}>
               {hasValidData ? `${margin.toFixed(1)}%` : '—'}
             </p>
-            {/* Target inline — compact, below the number */}
-            <div className="flex items-center gap-1 mt-1">
-              <div className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', dotColor)} />
-              <span className="text-xs text-muted-foreground">Target</span>
-              <input
-                type="number"
-                value={marginTarget}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  if (!isNaN(v) && v > 0) onMarginTargetChange(v);
-                }}
-                className="w-8 h-4 text-xs font-mono text-center rounded border border-input bg-background/80 px-0.5 focus:outline-none focus:ring-1 focus:ring-ring"
-                min={1}
-                max={99}
-              />
-              <span className="text-xs text-muted-foreground">%</span>
-            </div>
           </div>
         </div>
       </div>
@@ -144,15 +131,11 @@ export function ContractorMarginGauge({
       {/* Progress Bar */}
       {hasValidData && (
         <div className="mt-3">
-          <div className="flex justify-between text-xs text-muted-foreground mb-1">
-            <span>Margin vs Target</span>
-          </div>
           <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
             <div
               className={cn('h-full transition-all duration-300 rounded-full', barColor)}
               style={{ width: `${barPercent}%` }}
             />
-            {/* Target marker */}
             <div
               className="absolute top-0 h-full w-0.5 bg-foreground/40"
               style={{ left: `${targetMarkerPct}%` }}
@@ -160,7 +143,35 @@ export function ContractorMarginGauge({
           </div>
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>0%</span>
-            <span className={marginColor}>{marginTarget}% target</span>
+            <span className="flex items-center gap-1">
+              {isEditingTarget ? (
+                <>
+                  <input
+                    autoFocus
+                    type="number"
+                    value={tempTarget}
+                    onChange={(e) => setTempTarget(parseFloat(e.target.value) || marginTarget)}
+                    onBlur={() => { onMarginTargetChange(tempTarget); setIsEditingTarget(false); }}
+                    className="w-10 h-4 text-xs font-mono text-center rounded border border-input bg-background px-0.5 focus:outline-none focus:ring-1 focus:ring-ring"
+                    min={1}
+                    max={99}
+                  />
+                  <span>% target</span>
+                  <button
+                    onClick={() => { onMarginTargetChange(tempTarget); setIsEditingTarget(false); }}
+                    className="leading-none"
+                  >✓</button>
+                </>
+              ) : (
+                <>
+                  <span className={marginColor}>{marginTarget}% target</span>
+                  <button
+                    onClick={() => { setTempTarget(marginTarget); setIsEditingTarget(true); }}
+                    className="leading-none opacity-60 hover:opacity-100 transition-opacity"
+                  >✏️</button>
+                </>
+              )}
+            </span>
             <span>{marginTarget * 2}%+</span>
           </div>
         </div>
