@@ -1029,7 +1029,7 @@ export default function ProjectBudget() {
                       variant="outline"
                       size="sm"
                       className="shrink-0"
-                      onClick={() => navigate('/budget-calculator')}
+                      onClick={() => navigate('/calculator')}
                     >
                       <Calculator className="h-4 w-4 mr-2" />
                       Open Budget Calculator
