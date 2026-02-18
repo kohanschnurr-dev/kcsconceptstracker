@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FolderKanban, Home, Hammer, Building2, Handshake, Settings, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
+import { Plus, Search, FolderKanban, Home, Hammer, Building2, Handshake, HardHat, Settings, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
 import { arrayMove } from '@dnd-kit/sortable';
 import { cn } from '@/lib/utils';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -22,13 +22,14 @@ interface DBCategory {
   estimated_budget: number;
 }
 
-const DEFAULT_TAB_ORDER: ProjectType[] = ['fix_flip', 'rental', 'new_construction', 'wholesaling'];
+const DEFAULT_TAB_ORDER: ProjectType[] = ['fix_flip', 'rental', 'new_construction', 'wholesaling', 'contractor'];
 
 const TAB_CONFIG: Record<string, { label: string; icon: typeof Hammer; createLabel: string }> = {
   fix_flip: { label: 'Fix & Flips', icon: Hammer, createLabel: 'Flip' },
   rental: { label: 'Rentals', icon: Home, createLabel: 'Rental' },
   new_construction: { label: 'New Builds', icon: Building2, createLabel: 'Build' },
   wholesaling: { label: 'Wholesaling', icon: Handshake, createLabel: 'Deal' },
+  contractor: { label: 'Contractor', icon: HardHat, createLabel: 'Job' },
 };
 
 export default function Projects() {
@@ -44,7 +45,13 @@ export default function Projects() {
 
   const tabOrder = useMemo<ProjectType[]>(() => {
     const saved = profile?.project_tab_order as string[] | null;
-    if (saved && Array.isArray(saved) && saved.length === 4) {
+    if (saved && Array.isArray(saved) && saved.length >= 4) {
+      // Append any new default tabs not in saved order
+      const merged = [...saved as ProjectType[]];
+      for (const tab of DEFAULT_TAB_ORDER) {
+        if (!merged.includes(tab)) merged.push(tab);
+      }
+      return merged as ProjectType[];
       return saved as ProjectType[];
     }
     return DEFAULT_TAB_ORDER;

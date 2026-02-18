@@ -92,6 +92,10 @@ import { PendingBudgetBanner } from '@/components/project/PendingBudgetBanner';
 import { PendingBudgetDialog } from '@/components/project/PendingBudgetDialog';
 import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
+import { FieldTab } from '@/components/project/FieldTab';
+import { CostControlTab } from '@/components/project/CostControlTab';
+import { LeaseTab } from '@/components/project/LeaseTab';
+import { DealTab } from '@/components/project/DealTab';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
 import { Input } from '@/components/ui/input';
@@ -100,7 +104,7 @@ interface DBProject {
   name: string;
   address: string;
   status: 'active' | 'complete' | 'on_hold';
-  project_type: 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling';
+  project_type: 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling' | 'contractor';
   total_budget: number;
   start_date: string;
   purchase_price?: number;
@@ -152,7 +156,17 @@ interface DBDailyLog {
   contractors_on_site: string[] | null;
 }
 
-const DEFAULT_DETAIL_TAB_ORDER = ['schedule', 'tasks', 'documents', 'photos', 'logs', 'financials', 'cashflow', 'loan', 'team', 'info', 'procurement'];
+const CORE_TABS = ['schedule', 'tasks', 'financials', 'documents', 'team', 'info', 'photos', 'logs', 'procurement'];
+
+const DEFAULT_DETAIL_TAB_ORDER_BY_TYPE: Record<string, string[]> = {
+  fix_flip: [...CORE_TABS, 'loan'],
+  rental: [...CORE_TABS, 'loan', 'lease', 'cashflow'],
+  wholesaling: [...CORE_TABS, 'loan', 'deal'],
+  new_construction: [...CORE_TABS, 'loan', 'field', 'costcontrol'],
+  contractor: [...CORE_TABS, 'field', 'costcontrol'],
+};
+
+const DEFAULT_DETAIL_TAB_ORDER = DEFAULT_DETAIL_TAB_ORDER_BY_TYPE['fix_flip'];
 
 const TAB_LABELS: Record<string, string> = {
   schedule: 'Schedule',
@@ -166,6 +180,10 @@ const TAB_LABELS: Record<string, string> = {
   team: 'Team',
   info: 'Info',
   procurement: 'Procurement',
+  lease: 'Lease',
+  deal: 'Deal',
+  field: 'Field',
+  costcontrol: 'Cost Control',
 };
 
 export default function ProjectDetail() {
@@ -537,17 +555,16 @@ export default function ProjectDetail() {
 
   const effectiveTabOrder = useMemo(() => {
     if (!project) return DEFAULT_DETAIL_TAB_ORDER;
-    const order = getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
-    // Hide cashflow tab for non-rental projects
-    if (project.project_type !== 'rental') {
-      return order.filter(tab => tab !== 'cashflow');
-    }
-    return order;
+    const typeDefault = DEFAULT_DETAIL_TAB_ORDER_BY_TYPE[project.project_type] || DEFAULT_DETAIL_TAB_ORDER;
+    const order = getDetailTabOrder(project.project_type, typeDefault);
+    // Only show tabs that belong to this project type
+    return order.filter(tab => typeDefault.includes(tab));
   }, [project?.project_type, profile?.detail_tab_order]);
 
   const moveDetailTab = (index: number, direction: 'up' | 'down') => {
     if (!project) return;
-    const fullOrder = getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
+    const typeDefault = DEFAULT_DETAIL_TAB_ORDER_BY_TYPE[project.project_type] || DEFAULT_DETAIL_TAB_ORDER;
+    const fullOrder = getDetailTabOrder(project.project_type, typeDefault);
     const newOrder = arrayMove(fullOrder, index, direction === 'up' ? index - 1 : index + 1);
     updateDetailTabOrder.mutate({ projectType: project.project_type, tabOrder: newOrder });
   };
@@ -561,7 +578,8 @@ export default function ProjectDetail() {
     const oldIndex = effectiveTabOrder.indexOf(active.id as string);
     const newIndex = effectiveTabOrder.indexOf(over.id as string);
     if (oldIndex === -1 || newIndex === -1) return;
-    const fullOrder = getDetailTabOrder(project.project_type, DEFAULT_DETAIL_TAB_ORDER);
+    const typeDefault = DEFAULT_DETAIL_TAB_ORDER_BY_TYPE[project.project_type] || DEFAULT_DETAIL_TAB_ORDER;
+    const fullOrder = getDetailTabOrder(project.project_type, typeDefault);
     const newOrder = arrayMove(fullOrder, oldIndex, newIndex);
     updateDetailTabOrder.mutate({ projectType: project.project_type, tabOrder: newOrder });
   };
@@ -1226,6 +1244,22 @@ export default function ProjectDetail() {
 
           <TabsContent value="procurement">
             <ProcurementTab projectId={id!} categories={categories} />
+          </TabsContent>
+
+          <TabsContent value="field">
+            <FieldTab projectId={id!} />
+          </TabsContent>
+
+          <TabsContent value="costcontrol">
+            <CostControlTab projectId={id!} />
+          </TabsContent>
+
+          <TabsContent value="lease">
+            <LeaseTab projectId={id!} />
+          </TabsContent>
+
+          <TabsContent value="deal">
+            <DealTab projectId={id!} />
           </TabsContent>
         </Tabs>
       </div>
