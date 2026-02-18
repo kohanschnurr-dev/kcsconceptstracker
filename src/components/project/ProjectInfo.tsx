@@ -28,7 +28,7 @@ export const DEFAULT_PROPERTY_FIELDS: CategoryItem[] = [
   { value: 'plumbing_status', label: 'Plumbing Status' },
 ];
 
-const CONTRACTOR_FIELDS: CategoryItem[] = [
+export const CONTRACTOR_FIELDS: CategoryItem[] = [
   { value: 'client_name', label: 'Client Name' },
   { value: 'client_phone', label: 'Client Phone' },
   { value: 'client_email', label: 'Client Email' },
@@ -78,7 +78,7 @@ export function ProjectInfo({ projectId, projectType }: ProjectInfoProps) {
   const isContractor = projectType === 'contractor';
 
   const activeFields = isContractor
-    ? CONTRACTOR_FIELDS
+    ? getCustomItems('jobInfo', CONTRACTOR_FIELDS)
     : getCustomItems('propertyInfo', DEFAULT_PROPERTY_FIELDS);
 
   useEffect(() => {
