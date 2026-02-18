@@ -1,59 +1,36 @@
 
-## Fix Profit Calculation: Use Budget as Cost Basis (with Actual Override)
+## Add Persistent HardHat Icon for Contractor Projects
 
-### The Logic Change
+### Problem
+`ProjectCard` renders project-type icons with a simple if/else chain. The contractor type (`project.projectType === 'contractor'`) has no explicit branch, so it falls through to the catch-all `else` and displays a `Hammer` icon — the same as fix-and-flip. Contractor projects should always show the `HardHat` icon, which is already the established icon for that type in `Projects.tsx` and the new project modal.
 
-Currently, the component calculates:
-```
-Gross Profit = Contract Value - totalSpent (actual expenses only)
-```
+### Files to Change
 
-The user wants the same logic as fix-and-flip projects, where the **cost basis** is whichever is higher — the estimated budget OR actual spend:
+**`src/components/dashboard/ProjectCard.tsx`** — 3 small changes:
 
-```
-Cost Basis  = max(totalBudget, totalSpent)
-Gross Profit = Contract Value - Cost Basis
-Gross Margin = Gross Profit / Contract Value
-```
-
-This means:
-- While a job is in progress (actuals below budget), the **budget is the cost floor** — profit is projected based on what you expect to spend
-- Once actuals **exceed** the budget, the actual costs take over — profit erodes accordingly
-- This gives a realistic, conservative projection at all times
-
-### UI Updates
-
-The **"Total Costs"** card will be updated to show the **Cost Basis** (the higher of budget vs. actual) rather than just raw actuals, with a sub-label that clarifies which is being used:
-
-- If `totalSpent <= totalBudget`: label reads "Budget (est. job cost)"
-- If `totalSpent > totalBudget`: label reads "Actual Costs (over budget)"
-
-A small secondary line will show the raw actual spend for transparency: e.g. "Actual spend: $38,200"
-
-The **"Gross Profit"** card sub-label will update to: `Contract Value − Est. Job Cost` or `Contract Value − Actual Costs` accordingly.
-
-The **status pill** logic also updates:
-- `totalSpent > contractValue` → "Over Contract" (red)
-- `totalSpent > totalBudget && totalBudget > 0` → "Over Budget" (orange, actuals now driving the number)
-- Otherwise → "On Budget" (green)
-
-### Technical Changes
-
-**File: `src/components/project/ContractorFinancialsTab.tsx`** — lines 49–53 (derived values block):
+1. **Import** `HardHat` alongside the existing lucide imports (line 1)
+2. **Add** `isContractor` boolean alongside `isRental`, `isNewConstruction`, `isWholesaling` (line 19)
+3. **Insert** the contractor branch in the icon render block (lines 100–108) — before the `isWholesaling` check so the chain reads cleanly:
 
 ```tsx
-// Current (wrong):
-const grossProfit = contractValue - totalSpent;
+// Line 1 — updated import
+import { MapPin, Calendar, Home, Hammer, Building2, Handshake, Star, HardHat } from 'lucide-react';
 
-// New (correct — mirrors fix-and-flip rehab basis logic):
-const costBasis = totalBudget > 0
-  ? Math.max(totalBudget, totalSpent)
-  : totalSpent;
-const usingActuals = totalSpent > totalBudget && totalBudget > 0;
-const grossProfit = contractValue - costBasis;
-const grossMarginPct = contractValue > 0 ? (grossProfit / contractValue) * 100 : 0;
+// Line 19 — new boolean
+const isContractor = project.projectType === 'contractor';
+
+// Lines 100–108 — icon render (updated chain)
+{isNewConstruction ? (
+  <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+) : isRental ? (
+  <Home className="h-4 w-4 text-muted-foreground shrink-0" />
+) : isWholesaling ? (
+  <Handshake className="h-4 w-4 text-muted-foreground shrink-0" />
+) : isContractor ? (
+  <HardHat className="h-4 w-4 text-muted-foreground shrink-0" />
+) : (
+  <Hammer className="h-4 w-4 text-muted-foreground shrink-0" />
+)}
 ```
 
-Then the "Total Costs" card displays `costBasis` as the main figure with a contextual sub-label, and an optional secondary line showing `totalSpent` when they differ.
-
-No database changes needed. Only `ContractorFinancialsTab.tsx` is modified.
+No other files need changing — the `HardHat` icon is already used consistently everywhere else for contractor projects (`Projects.tsx` tab, `NewProjectModal`, `FieldTab`).
