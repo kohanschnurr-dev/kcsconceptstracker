@@ -75,6 +75,7 @@ export function ProjectAutocomplete({
     { type: 'rental', label: 'Rentals' },
     { type: 'new_construction', label: 'New Builds' },
     { type: 'wholesaling', label: 'Wholesaling' },
+    { type: 'contractor', label: 'Contractor' },
   ];
 
   const groupedProjects = useMemo(() => {
