@@ -19,6 +19,7 @@ const SETTINGS_KEYS = [
   'profit-calculator-presets',
   'profit-calculator-default-preset',
   'custom-rule-groups',
+  'notification-preferences',
 ];
 
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;

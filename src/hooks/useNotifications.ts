@@ -22,6 +22,14 @@ export interface Notification {
   created_at: string;
 }
 
+export function loadNotificationPrefs(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem('notification-preferences');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+}
+
 export function useNotifications() {
   const { user } = useAuth();
   const { team } = useTeam();
@@ -30,7 +38,7 @@ export function useNotifications() {
   // Only owners have a team where they are the owner_id
   const isOwner = !!team && team.owner_id === user?.id;
 
-  const { data: notifications = [], isLoading } = useQuery({
+  const { data: rawNotifications = [], isLoading } = useQuery({
     queryKey: ['notifications', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -47,6 +55,10 @@ export function useNotifications() {
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
+
+  // Filter by user preferences (types toggled off are suppressed)
+  const prefs = loadNotificationPrefs();
+  const notifications = rawNotifications.filter(n => prefs[n.event_type] !== false);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 

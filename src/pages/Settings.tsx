@@ -41,6 +41,7 @@ import ManageRolesCard from '@/components/settings/ManageRolesCard';
 import ColorPaletteCard from '@/components/settings/ColorPaletteCard';
 import DashboardPreferencesCard from '@/components/settings/DashboardPreferencesCard';
 import FinancialPresetsCard from '@/components/settings/FinancialPresetsCard';
+import NotificationPreferencesCard from '@/components/settings/NotificationPreferencesCard';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -377,6 +378,9 @@ export default function Settings() {
 
           {/* Manage Sources Section */}
           <ManageSourcesCard />
+
+          {/* Notification Preferences */}
+          <NotificationPreferencesCard />
 
           {/* Manage Roles Section */}
           <ManageRolesCard />
