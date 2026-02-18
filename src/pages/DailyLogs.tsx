@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, CalendarPlus, X, ListTodo, Target, CalendarIcon } from 'lucide-react';
+import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, CalendarPlus, X, ListTodo, Target, CalendarIcon, Pencil } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,9 +25,20 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -63,6 +74,11 @@ export default function DailyLogs() {
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteLogId, setDeleteLogId] = useState<string | null>(null);
+  const [editLog, setEditLog] = useState<DailyLog | null>(null);
+  const [editWork, setEditWork] = useState('');
+  const [editIssues, setEditIssues] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Tasks/Checklist state
   const [allTasks, setAllTasks] = useState<Task[]>([]);
@@ -184,6 +200,39 @@ export default function DailyLogs() {
       day: 'numeric',
       year: 'numeric',
     });
+  };
+
+  const handleDeleteLog = async () => {
+    if (!deleteLogId) return;
+    const { error } = await supabase.from('daily_logs').delete().eq('id', deleteLogId);
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to delete log.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Log deleted' });
+      setLogs((prev) => prev.filter((l) => l.id !== deleteLogId));
+    }
+    setDeleteLogId(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editLog) return;
+    setIsSavingEdit(true);
+    const { error } = await supabase
+      .from('daily_logs')
+      .update({ work_performed: editWork.trim() || null, issues: editIssues.trim() || null })
+      .eq('id', editLog.id);
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to save changes.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Log updated' });
+      setLogs((prev) =>
+        prev.map((l) =>
+          l.id === editLog.id ? { ...l, work_performed: editWork.trim() || null, issues: editIssues.trim() || null } : l
+        )
+      );
+      setEditLog(null);
+    }
+    setIsSavingEdit(false);
   };
 
   const filteredLogs = logs.filter((log) =>
@@ -490,7 +539,7 @@ export default function DailyLogs() {
                     return (
                       <div
                         key={log.id}
-                        className="glass-card p-5 hover:border-primary/50 transition-all cursor-pointer"
+                        className="glass-card p-5 hover:border-primary/50 transition-all"
                       >
                         <div className="flex items-start justify-between mb-4">
                           <div>
@@ -500,12 +549,34 @@ export default function DailyLogs() {
                             </div>
                             <h3 className="font-semibold">{log.projects?.name || 'Unknown Project'}</h3>
                           </div>
-                          {hasIssues && (
-                            <Badge className="bg-warning/20 text-warning border-warning/30 gap-1">
-                              <AlertTriangle className="h-3 w-3" />
-                              Issue
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {hasIssues && (
+                              <Badge className="bg-warning/20 text-warning border-warning/30 gap-1 mr-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                Issue
+                              </Badge>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={() => {
+                                setEditLog(log);
+                                setEditWork(log.work_performed || '');
+                                setEditIssues(log.issues || '');
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => setDeleteLogId(log.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
 
                         <div className="space-y-4">
@@ -553,7 +624,63 @@ export default function DailyLogs() {
             )}
           </TabsContent>
 
-          {/* Checklist Tab */}
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={!!deleteLogId} onOpenChange={(open) => { if (!open) setDeleteLogId(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Daily Log?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. The log entry will be permanently deleted.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={handleDeleteLog}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Edit Log Dialog */}
+          <Dialog open={!!editLog} onOpenChange={(open) => { if (!open) setEditLog(null); }}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>
+                  Edit Log — {editLog ? formatDate(editLog.date) : ''}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Work Performed</label>
+                  <Textarea
+                    value={editWork}
+                    onChange={(e) => setEditWork(e.target.value)}
+                    placeholder="Describe the work completed..."
+                    rows={4}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Issues Encountered <span className="text-muted-foreground font-normal">(optional)</span></label>
+                  <Textarea
+                    value={editIssues}
+                    onChange={(e) => setEditIssues(e.target.value)}
+                    placeholder="Any problems or concerns?"
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditLog(null)}>Cancel</Button>
+                <Button onClick={handleSaveEdit} disabled={isSavingEdit}>
+                  {isSavingEdit ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <TabsContent value="checklist" className="mt-6 space-y-6">
             {/* Sub-tabs for Daily Sprint vs Master Pipeline */}
             <Tabs value={checklistTab} onValueChange={setChecklistTab} className="w-full">
