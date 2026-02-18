@@ -123,7 +123,28 @@ export function CalendarHeader({
 
         <WeatherWidgetWithCity />
 
-        <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+        {/* Mobile view selector */}
+        <div className="sm:hidden">
+          <Select value={view} onValueChange={(v) => onViewChange(v as CalendarView)}>
+            <SelectTrigger className="h-9 w-[120px] bg-card border-border text-foreground">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border-border z-50">
+              <SelectItem value="monthly">
+                <span className="flex items-center gap-2"><LayoutGrid className="h-4 w-4" />Month</span>
+              </SelectItem>
+              <SelectItem value="weekly">
+                <span className="flex items-center gap-2"><List className="h-4 w-4" />Week</span>
+              </SelectItem>
+              <SelectItem value="gantt">
+                <span className="flex items-center gap-2"><GanttChart className="h-4 w-4" />Gantt</span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop pill group */}
+        <div className="hidden sm:flex items-center gap-1 bg-secondary rounded-lg p-1">
           <Button
             variant={view === 'monthly' ? 'default' : 'ghost'}
             size="sm"
