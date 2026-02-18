@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, AlertCircle, Loader2, HardHat } from 'lucide-react';
+import { ArrowLeft, TrendingUp, AlertCircle, Loader2, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import DashboardPreferencesCard from '@/components/settings/DashboardPreferencesCard';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -368,7 +369,21 @@ export default function ProfitBreakdown() {
                 <TableHead>Project</TableHead>
                 <TableHead className="text-center">ARV</TableHead>
                 <TableHead className="text-center">Purchase Price</TableHead>
-                <TableHead className="text-center">Construction Costs</TableHead>
+                <TableHead className="text-center">
+                  <span className="inline-flex items-center gap-1 justify-center">
+                    Construction Costs
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[220px] text-xs">
+                          Shows whichever is higher: your estimated budget or actual spending. For completed projects, actual spending is always used.
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </span>
+                </TableHead>
                 <TableHead className="text-center">Transaction Costs</TableHead>
                 <TableHead className="text-center">Holding Costs</TableHead>
                 <TableHead className="text-center">Profit</TableHead>
@@ -378,10 +393,7 @@ export default function ProfitBreakdown() {
               {filteredConfigured.map((p) => (
                 <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/projects/${p.id}`)}>
                   <TableCell className="font-medium">
-                    <span className="flex items-center gap-1.5">
-                      {p.isContractor && <HardHat className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                      {p.name}
-                    </span>
+                    <span>{p.name}</span>
                   </TableCell>
                   <TableCell className="text-center">
                     {p.isContractor ? (
