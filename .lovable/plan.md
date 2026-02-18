@@ -1,97 +1,100 @@
 
-## Simplify Mobile Calendar: Replace Event Boxes with "X tasks" Badge
+## Fix CalendarHeader Mobile Layout
 
-### What the User Wants
+### Problems in the Screenshot
 
-On mobile, the calendar cells are tiny (roughly 43px wide each in 7 columns). Showing multiple colored `DealCard` boxes inside each cell makes them unreadable and visually cluttered. The user wants to:
+The `CalendarHeader` on mobile stacks everything linearly inside `flex flex-wrap` with `gap-4`, resulting in:
 
-- **Remove** the colored event boxes from inside the day cells on mobile
-- **Replace** them with a simple clickable badge like "3 tasks" (or "1 task") that opens the task detail view
+1. **Row 1**: "Project Calendar" title + left/right nav + MonthYearPicker — all crowded
+2. **Row 2**: "All Projects" dropdown — full width, fine but wasteful
+3. **Row 3**: Weather widget (Fort Worth 5-day forecast) — takes significant vertical space
+4. **Row 4**: View selector dropdown (Month) — separate row
+5. **Row 5**: "+ Add Project Event" button — separate row at the bottom
 
-On desktop (`sm:` and up), the current colored card layout stays as-is.
+This wastes ~280px of vertical height before the calendar even renders.
 
-### Solution
+### Target Mobile Layout (2 compact rows)
 
-The change is entirely within `src/components/project/ProjectCalendar.tsx`. No other files need to change.
+```
+Row 1: [📅 Project Calendar]          [Month ▾] [+ Add]
+Row 2: [<]  February 2026  [>]   [All Projects ▾]
+        (weather hidden or collapsed on mobile)
+```
 
-#### On mobile (default, below `sm:` breakpoint):
-- Hide the `DealCard` components entirely
-- Show a single compact badge below the date number: `"2 tasks"` if there are tasks, nothing if the day is empty
-- Tapping the badge (or anywhere on the cell) opens the `TaskDetailPanel` with the first task, OR shows an inline expanded list via the existing `expandedDay` state
+- Title stays left, view selector + add button go right on **row 1**
+- Navigation (prev/next/month picker) + project filter on **row 2**  
+- Weather widget hidden on mobile (it's a nice-to-have, saves lots of space)
 
-#### Better UX approach:
-Instead of opening just one task, tapping "X tasks" on a day should open a **bottom sheet / popover** listing all tasks for that day so the user can pick which to open — similar to what the desktop `MonthlyView` already does with a `Popover`.
+### Changes to `src/components/calendar/CalendarHeader.tsx`
 
-We already have `Popover` from Radix UI in the project. We can use the same popover pattern from `MonthlyView.tsx` for the mobile "X tasks" tap:
+**1. Restructure into mobile-specific two-row layout vs desktop single-row layout**
+
+On mobile (below `sm:`):
+- **Row 1**: Title left | View selector + Add button right (inline, compact)
+- **Row 2**: Chevron + MonthYearPicker + Chevron + Project filter (all inline)
+- Weather widget: hidden (`hidden sm:flex`) — too much space on mobile
+
+On desktop (`sm:` and up): keep existing layout exactly as-is using `hidden sm:flex` wrappers
+
+**2. Compact the Add button text on mobile**
+
+The "+ Add Project Event" button is wide. On mobile show "+ Add" only (or keep the full text if it fits in the new layout — it will since it shares row 1 only with a small view selector).
+
+### Technical Implementation
+
+Wrap the entire header in a responsive structure:
 
 ```tsx
-// Mobile cell — just show a compact badge
-<div className="sm:hidden">
-  {dayTasks.length > 0 && (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button className="text-[9px] font-medium text-primary/80 hover:text-primary w-full text-center leading-tight mt-0.5 rounded hover:bg-primary/10 px-0.5 py-0.5 transition-colors">
-          {dayTasks.length} task{dayTasks.length !== 1 ? 's' : ''}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 p-0 overflow-hidden z-50" align="center">
-        <div className="px-3 py-2 border-b border-border bg-muted/30">
-          <p className="text-xs font-semibold">{format(day, 'EEEE, MMM d')}</p>
-          <p className="text-[10px] text-muted-foreground">{dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}</p>
-        </div>
-        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
-          {dayTasks.map(task => (
-            <DealCard key={task.id} task={task} compact onClick={() => {
-              setSelectedTask(task);
-              setPanelOpen(true);
-            }} />
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
-  )}
+{/* Mobile layout */}
+<div className="sm:hidden flex flex-col gap-2">
+  {/* Row 1: Title + View selector + Add */}
+  <div className="flex items-center justify-between gap-2">
+    <div className="flex items-center gap-1.5">
+      <Calendar className="h-4 w-4 text-primary shrink-0" />
+      <h1 className="text-sm font-bold text-foreground">Project Calendar</h1>
+    </div>
+    <div className="flex items-center gap-1.5 flex-shrink-0">
+      <Select value={view} onValueChange={...}>
+        <SelectTrigger className="h-8 w-[90px] text-xs bg-card border-border">
+          <SelectValue />
+        </SelectTrigger>
+        ...
+      </Select>
+      {onAddEvent}
+    </div>
+  </div>
+  {/* Row 2: Nav + Project filter */}
+  <div className="flex items-center gap-1.5">
+    <Button variant="ghost" size="icon" onClick={handlePrev} className="h-7 w-7">
+      <ChevronLeft className="h-3.5 w-3.5" />
+    </Button>
+    <MonthYearPicker currentDate={currentDate} onDateChange={onDateChange} labelClassName="text-sm min-w-[110px] text-center" />
+    <Button variant="ghost" size="icon" onClick={handleNext} className="h-7 w-7">
+      <ChevronRight className="h-3.5 w-3.5" />
+    </Button>
+    {onProjectFilterChange && projects.length > 0 && (
+      <ProjectAutocomplete ... triggerClassName="h-8 flex-1 min-w-0 text-xs" />
+    )}
+  </div>
 </div>
 
-// Desktop — existing DealCard layout (unchanged)
-<div className="hidden sm:block space-y-0.5">
-  {visibleTasks.map(task => (
-    <DealCard ... />
-  ))}
-  {hasMore && !isExpanded && ...}
+{/* Desktop layout (existing, unchanged) */}
+<div className="hidden sm:flex flex-wrap items-center gap-4">
+  ... existing code ...
 </div>
 ```
+
+**3. Remove duplicate view selector**
+
+The existing code renders the mobile view selector (`sm:hidden Select`) inside the `flex flex-wrap` left section. In the new layout it moves to row 1 alongside the add button. The old one gets removed.
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `src/components/project/ProjectCalendar.tsx` | Import `Popover`, `PopoverTrigger`, `PopoverContent`. Replace the day cell event rendering with: mobile shows "X tasks" badge → Popover; desktop (`sm:block`) shows the existing `DealCard` list. |
+| `src/components/calendar/CalendarHeader.tsx` | Restructure into mobile 2-row layout (hidden on desktop) + wrap existing layout in `hidden sm:flex`. Move view selector to mobile row 1. Hide weather widget on mobile. |
 
-### What stays the same
-- Desktop layout: colored DealCard boxes per cell, exactly as before
-- Legend, header, swipe navigation — untouched
-- `TaskDetailPanel` opened when a task is selected from the popover list
+### Result
 
-### Visual Before/After (Mobile)
-
-**Before:**
-```
-┌─────┐
-│  3  │
-│[███]│  ← colored boxes stacked, unreadable
-│[███]│
-│[███]│
-│ +2  │
-└─────┘
-```
-
-**After:**
-```
-┌─────┐
-│  3  │
-│3    │  ← "3 tasks" small text badge → tap → popover list
-│tasks│
-└─────┘
-```
-
-Clean, readable, tappable — tapping opens a popover showing all tasks for that day with full DealCard detail, then tapping a task opens the TaskDetailPanel.
+Before (mobile): ~280px header height, 5 stacked rows  
+After (mobile): ~80px header height, 2 compact rows — calendar visible immediately
