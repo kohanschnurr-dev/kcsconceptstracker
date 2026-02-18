@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +11,7 @@ import { getCustomItems, type CategoryItem } from '@/hooks/useCustomCategories';
 
 interface ProjectInfoProps {
   projectId: string;
+  projectType?: string;
 }
 
 export const DEFAULT_PROPERTY_FIELDS: CategoryItem[] = [
@@ -26,6 +28,20 @@ export const DEFAULT_PROPERTY_FIELDS: CategoryItem[] = [
   { value: 'plumbing_status', label: 'Plumbing Status' },
 ];
 
+const CONTRACTOR_FIELDS: CategoryItem[] = [
+  { value: 'client_name', label: 'Client Name' },
+  { value: 'client_phone', label: 'Client Phone' },
+  { value: 'client_email', label: 'Client Email' },
+  { value: 'contract_type', label: 'Contract Type' },
+  { value: 'project_manager', label: 'Project Manager' },
+  { value: 'site_contact', label: 'Site Contact' },
+  { value: 'permit_number', label: 'Permit #' },
+  { value: 'bond_insurance', label: 'Bond / Insurance #' },
+  { value: 'scope_of_work', label: 'Scope of Work' },
+];
+
+const MULTILINE_FIELDS = new Set(['scope_of_work']);
+
 const BUILT_IN_KEYS = new Set(DEFAULT_PROPERTY_FIELDS.map(f => f.value));
 
 const PLACEHOLDER_MAP: Record<string, string> = {
@@ -40,9 +56,18 @@ const PLACEHOLDER_MAP: Record<string, string> = {
   window_status: 'e.g. Original single-pane',
   electrical_status: 'e.g. 200 amp, updated panel',
   plumbing_status: 'e.g. Copper supply, PVC waste',
+  client_name: 'e.g. John Smith',
+  client_phone: 'e.g. (555) 123-4567',
+  client_email: 'e.g. john@example.com',
+  contract_type: 'e.g. Fixed Price, T&M, Cost Plus',
+  scope_of_work: 'Describe what is in scope for this job...',
+  project_manager: 'e.g. Jane Doe',
+  site_contact: 'e.g. Bob Johnson',
+  permit_number: 'e.g. 2024-BLD-00123',
+  bond_insurance: 'e.g. Policy #ABC123',
 };
 
-export function ProjectInfo({ projectId }: ProjectInfoProps) {
+export function ProjectInfo({ projectId, projectType }: ProjectInfoProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -50,7 +75,11 @@ export function ProjectInfo({ projectId }: ProjectInfoProps) {
   const [loading, setLoading] = useState(true);
   const [existingId, setExistingId] = useState<string | null>(null);
 
-  const activeFields = getCustomItems('propertyInfo', DEFAULT_PROPERTY_FIELDS);
+  const isContractor = projectType === 'contractor';
+
+  const activeFields = isContractor
+    ? CONTRACTOR_FIELDS
+    : getCustomItems('propertyInfo', DEFAULT_PROPERTY_FIELDS);
 
   useEffect(() => {
     const fetchInfo = async () => {
@@ -64,11 +93,11 @@ export function ProjectInfo({ projectId }: ProjectInfoProps) {
         console.error('Error fetching project info:', error);
       } else if (data) {
         const loaded: Record<string, string> = {};
-        // Load built-in columns
-        for (const key of BUILT_IN_KEYS) {
-          loaded[key] = (data as any)[key] || '';
+        if (!isContractor) {
+          for (const key of BUILT_IN_KEYS) {
+            loaded[key] = (data as any)[key] || '';
+          }
         }
-        // Load custom fields from JSONB
         const customFields = (data as any).custom_fields || {};
         for (const [key, val] of Object.entries(customFields)) {
           loaded[key] = (val as string) || '';
@@ -81,13 +110,13 @@ export function ProjectInfo({ projectId }: ProjectInfoProps) {
     };
 
     fetchInfo();
-  }, [projectId]);
+  }, [projectId, isContractor]);
 
   const handleBlur = async (key: string) => {
     if (fields[key] === savedFields[key]) return;
     if (!user) return;
 
-    const isBuiltIn = BUILT_IN_KEYS.has(key);
+    const isBuiltIn = !isContractor && BUILT_IN_KEYS.has(key);
 
     if (existingId) {
       if (isBuiltIn) {
@@ -101,7 +130,6 @@ export function ProjectInfo({ projectId }: ProjectInfoProps) {
           return;
         }
       } else {
-        // Update custom_fields JSONB
         const { data: current } = await supabase
           .from('project_info')
           .select('custom_fields')
@@ -152,24 +180,40 @@ export function ProjectInfo({ projectId }: ProjectInfoProps) {
   return (
     <Card className="glass-card relative">
       <CardHeader>
-        <CardTitle className="text-lg">Property Info</CardTitle>
+        <CardTitle className="text-lg">
+          {isContractor ? 'Job Details' : 'Property Info'}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {activeFields.map(({ value: key, label }) => (
-            <div key={key} className="space-y-1.5">
-              <Label htmlFor={key} className="text-xs text-muted-foreground">
-                {label}
-              </Label>
-              <Input
-                id={key}
-                value={fields[key] || ''}
-                placeholder={PLACEHOLDER_MAP[key] || `Enter ${label.toLowerCase()}`}
-                onChange={(e) => setFields(prev => ({ ...prev, [key]: e.target.value }))}
-                onBlur={() => handleBlur(key)}
-              />
-            </div>
-          ))}
+          {activeFields.map(({ value: key, label }) => {
+            const isMultiline = MULTILINE_FIELDS.has(key);
+            return (
+              <div key={key} className={`space-y-1.5${isMultiline ? ' sm:col-span-2' : ''}`}>
+                <Label htmlFor={key} className="text-xs text-muted-foreground">
+                  {label}
+                </Label>
+                {isMultiline ? (
+                  <Textarea
+                    id={key}
+                    value={fields[key] || ''}
+                    placeholder={PLACEHOLDER_MAP[key] || `Enter ${label.toLowerCase()}`}
+                    className="min-h-[80px] resize-none"
+                    onChange={(e) => setFields(prev => ({ ...prev, [key]: e.target.value }))}
+                    onBlur={() => handleBlur(key)}
+                  />
+                ) : (
+                  <Input
+                    id={key}
+                    value={fields[key] || ''}
+                    placeholder={PLACEHOLDER_MAP[key] || `Enter ${label.toLowerCase()}`}
+                    onChange={(e) => setFields(prev => ({ ...prev, [key]: e.target.value }))}
+                    onBlur={() => handleBlur(key)}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
         <div className="flex items-center gap-1.5 justify-end mt-4 text-xs text-muted-foreground/60">
           <Save className="h-3 w-3" />
