@@ -24,7 +24,7 @@ export function ContractorMarginGauge({
   onMarginTargetChange,
 }: ContractorMarginGaugeProps) {
   const [isEditingTarget, setIsEditingTarget] = useState(false);
-  const [tempTarget, setTempTarget] = useState(marginTarget);
+  const [tempTarget, setTempTarget] = useState(String(marginTarget));
 
   const grossProfit = contractValue - jobCost;
   const margin = contractValue > 0 ? (grossProfit / contractValue) * 100 : 0;
@@ -146,19 +146,29 @@ export function ContractorMarginGauge({
             <span className="flex items-center gap-1">
               {isEditingTarget ? (
                 <>
-                  <input
+                <input
                     autoFocus
                     type="number"
                     value={tempTarget}
-                    onChange={(e) => setTempTarget(parseFloat(e.target.value) || marginTarget)}
-                    onBlur={() => { onMarginTargetChange(tempTarget); setIsEditingTarget(false); }}
+                    onChange={(e) => setTempTarget(e.target.value)}
+                    onBlur={() => {
+                      const parsed = parseFloat(tempTarget);
+                      const valid = !isNaN(parsed) ? Math.min(99, Math.max(1, parsed)) : marginTarget;
+                      onMarginTargetChange(valid);
+                      setIsEditingTarget(false);
+                    }}
                     className="w-10 h-4 text-xs font-mono text-center rounded border border-input bg-background px-0.5 focus:outline-none focus:ring-1 focus:ring-ring"
                     min={1}
                     max={99}
                   />
                   <span>% target</span>
                   <button
-                    onClick={() => { onMarginTargetChange(tempTarget); setIsEditingTarget(false); }}
+                    onClick={() => {
+                      const parsed = parseFloat(tempTarget);
+                      const valid = !isNaN(parsed) ? Math.min(99, Math.max(1, parsed)) : marginTarget;
+                      onMarginTargetChange(valid);
+                      setIsEditingTarget(false);
+                    }}
                     className="leading-none"
                   >✓</button>
                 </>
@@ -166,7 +176,7 @@ export function ContractorMarginGauge({
                 <>
                   <span className={marginColor}>{marginTarget}% target</span>
                 <button
-                    onClick={() => { setTempTarget(marginTarget); setIsEditingTarget(true); }}
+                    onClick={() => { setTempTarget(String(marginTarget)); setIsEditingTarget(true); }}
                     className="leading-none opacity-50 hover:opacity-100 transition-opacity"
                   ><Pencil className="h-3 w-3" /></button>
                 </>
