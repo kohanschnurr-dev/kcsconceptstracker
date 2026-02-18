@@ -1,76 +1,44 @@
 
-## Add "Message Owner" Button to Project Detail Header
+## Fix Due Date Column Alignment in Pipeline Tasks
 
-### How the System Already Works
+### Root Cause
 
-The backend is already fully wired:
-- `owner_messages` table exists with `team_id`, `sender_id`, and `message` columns
-- `fn_notify_direct_message` trigger fires automatically on every INSERT into `owner_messages`, creating a notification in the owner's feed with `event_type: 'direct_message'`
-- `NotificationsPanel` already renders `direct_message` notifications with a message preview
+The screenshot reveals the problem clearly: "Due Feb 18" and "Due Feb 17" don't start at the same horizontal position because the content inside the `w-[100px]` div is **left-aligned** by default. Since `flex-1` on the title expands and flex gap spacing is consistent, the *start* of the 100px box is consistent — but the content inside it is left-aligned, meaning visually the text appears in different spots row-to-row when it's a different length (though "Due Feb 18" vs "Due Feb 17" should be similar length).
 
-The only missing piece is the **frontend UI**: a button and dialog for PMs to compose and send a message.
+More critically, the **icon + text** are left-aligned inside the box, but the box visually appears "floating" in the middle of a long row, making it feel misaligned against the badges.
 
-### Who Should See the Button
+The real fix is twofold:
+1. **Right-align the due date content** within its fixed box so it always sits flush against the badge group — `justify-end` on the flex container
+2. **Increase the width** slightly to `w-[105px]` to ensure "Due Feb 18" always fits without wrapping
 
-The "Message Owner" button should only appear for **Project Managers** (team members who are NOT the owner). Owners do not need to message themselves.
+### The Fix
 
-Detection logic:
-- Use `useTeam()` — if the current user is in `team_members` but NOT the `team.owner_id`, they are a PM
-- Since `useTeam()` returns the owner's team (it queries `teams` where `owner_id = user.id`), a PM's call to `useTeam()` returns no team owned by them but they have a `team_members` entry
-- Instead, query `team_members` to find if the current user is a member and get the `team_id`, then use `team_id` for the message insert
+In `src/components/project/ProjectTasks.tsx`, change line 142:
 
-### Implementation Plan
-
-#### 1. Create `src/hooks/useIsPM.ts` (new hook)
-A lightweight hook that determines:
-- Whether the current user is a PM (has a `team_members` entry)
-- The `team_id` they belong to (needed to insert into `owner_messages`)
-
-```ts
-// Query: SELECT team_id FROM team_members WHERE user_id = auth.uid() LIMIT 1
-// Returns: { isPM: boolean, teamId: string | null }
+**Before:**
+```tsx
+<div className="w-[100px] shrink-0 flex items-center gap-1">
 ```
 
-#### 2. Create `src/components/project/MessageOwnerButton.tsx` (new component)
-A self-contained button + dialog component placed in the project header:
-
-- Renders only when `isPM === true`
-- Shows a `MessageCircle` icon button labeled "Message Owner"
-- Opens a `Dialog` with:
-  - A `Textarea` for the message body (required, min 1 char)
-  - "Send" and "Cancel" buttons
-  - Loading state while sending
-- On submit: INSERTs into `owner_messages` with `{ team_id, sender_id: user.id, message }` 
-- The DB trigger `fn_notify_direct_message` fires automatically, creating the notification
-- On success: shows a toast "Message sent to owner", closes the dialog
-
-#### 3. Update `src/pages/ProjectDetail.tsx`
-Import and place `<MessageOwnerButton />` in the project header area — specifically in the right side of the `sm:flex-row sm:items-start sm:justify-between` row (where the right side currently has empty space next to the status badge area).
-
-Position: in the top-right header group, alongside the existing reorder/settings button area on line ~891.
-
-### Visual Placement
-
-```
-[ ← Back to Projects ]
-
-[ Project Name ✏ 🗑  Active ▾ ]          [ Message Owner ]  [ ⚙ Reorder Tabs ]
-[ 📍 Address   📅 Started Jan 1 ]
+**After:**
+```tsx
+<div className="w-[105px] shrink-0 flex items-center justify-end gap-1">
 ```
 
-The button appears in the right side of the `sm:justify-between` header row, only visible to PMs.
+Adding `justify-end` pushes the calendar icon + "Due Feb 18" text to the **right edge** of the fixed-width column, so it always appears immediately to the left of the priority badge — perfectly aligned row over row regardless of title length.
 
-### Technical Notes
+### Visual Result
 
-- No schema changes needed — `owner_messages` table and its trigger already exist and are correctly configured
-- RLS on `owner_messages` allows `INSERT` where `sender_id = auth.uid()` — PMs can insert without issue
-- The notification is created by the server-side trigger, not client code, so it's reliable
-- The `fn_notify_direct_message` trigger skips inserting if `owner_id = sender_id`, so no issue if an owner somehow triggers it
+```
+[ ☐ ] [ Tell Jose, Garage, Patio… ─── flex-1 ]  [📅 Due Feb 18] [High][ⓘ]
+[ ☐ ] [ Garage Studs etc, situation ─── flex-1 ] [             ] [High][ⓘ]
+[ ☐ ] [ Tell him about Concrete… ─── flex-1 ]   [📅 Due Feb 17] [Med ][ⓘ]
+[ ☐ ] [ Adding 2x4s by patio ─────── flex-1 ]   [             ] [Med ][ⓘ]
+                                                   ↑ right-aligned inside fixed 105px box
+```
 
-### Files to Create/Modify
+### File to Modify
 
-| File | Action | Change |
-|------|--------|--------|
-| `src/hooks/useIsPM.ts` | Create | Hook to detect if current user is a team PM and get their team_id |
-| `src/components/project/MessageOwnerButton.tsx` | Create | Button + Dialog component for composing and sending a message |
-| `src/pages/ProjectDetail.tsx` | Modify | Import and place `<MessageOwnerButton />` in header right side |
+| File | Change |
+|------|--------|
+| `src/components/project/ProjectTasks.tsx` | Add `justify-end` to due date wrapper div (line 142) |
