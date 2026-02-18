@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, AlertCircle, Loader2, HardHat } from 'lucide-react';
 import DashboardPreferencesCard from '@/components/settings/DashboardPreferencesCard';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { resolveTimeline, isDateInRange, type TimelinePreset } from '@/lib/timel
 
 type StatusFilter = 'all' | 'active' | 'complete';
 
-const ALL_TYPES = ['fix_flip', 'rental', 'new_construction', 'wholesaling'];
+const ALL_TYPES = ['fix_flip', 'rental', 'new_construction', 'wholesaling', 'contractor'];
 const ALL_TYPES_SET = new Set(ALL_TYPES);
 const ALL_STATUSES = ['active', 'complete'];
 
@@ -55,6 +55,8 @@ interface ProjectProfit {
   status: string;
   projectType: string;
   startDate?: string;
+  isContractor?: boolean;
+  contractValue?: number;
 }
 
 interface UnconfiguredProject {
@@ -77,6 +79,7 @@ const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'rental', label: 'Rental' },
   { value: 'new_construction', label: 'New Construction' },
   { value: 'wholesaling', label: 'Wholesaling' },
+  { value: 'contractor', label: 'Contractor' },
 ];
 
 export default function ProfitBreakdown() {
@@ -182,6 +185,29 @@ export default function ProfitBreakdown() {
         const arv = p.arv ?? 0;
         const purchasePrice = p.purchase_price ?? 0;
 
+        // Contractor projects use a different financial model
+        if (p.project_type === 'contractor') {
+          const contractValue = purchasePrice; // purchase_price stores contract value for contractors
+          const projectCats = categories.filter((c) => c.project_id === p.id);
+          const plannedBudget = projectCats.reduce((s, c) => s + Number(c.estimated_budget), 0);
+          const totalSpent = projectCats.reduce((s, c) => s + (constructionByCategory[c.id] || 0), 0);
+          const costBasis = plannedBudget > 0 ? Math.max(plannedBudget, totalSpent) : totalSpent;
+          const costSource = totalSpent > plannedBudget ? 'actual' as const : 'budget' as const;
+          const grossProfit = contractValue - costBasis;
+
+          configuredList.push({
+            id: p.id, name: p.name,
+            arv: contractValue, purchasePrice: 0,
+            plannedBudget, actualSpent: totalSpent,
+            costBasis, costSource,
+            loanCosts: 0, monthlyCosts: 0, transactionCosts: 0, holdingCosts: 0,
+            profit: grossProfit,
+            status: p.status, projectType: p.project_type, startDate: p.start_date,
+            isContractor: true, contractValue,
+          });
+          return;
+        }
+
         if (arv <= 0) {
           unconfiguredList.push({ id: p.id, name: p.name, status: p.status, projectType: p.project_type, startDate: p.start_date });
           return;
@@ -265,13 +291,14 @@ export default function ProfitBreakdown() {
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 
   const totalProfit = filteredConfigured.reduce((s, p) => s + p.profit, 0);
-  const totalARV = filteredConfigured.reduce((s, p) => s + p.arv, 0);
-  const totalPurchase = filteredConfigured.reduce((s, p) => s + p.purchasePrice, 0);
+  const nonContractor = filteredConfigured.filter(p => !p.isContractor);
+  const totalARV = nonContractor.reduce((s, p) => s + p.arv, 0);
+  const totalPurchase = nonContractor.reduce((s, p) => s + p.purchasePrice, 0);
   const totalCost = filteredConfigured.reduce((s, p) => s + p.costBasis, 0);
   const totalLoan = filteredConfigured.reduce((s, p) => s + p.loanCosts, 0);
   const totalMonthly = filteredConfigured.reduce((s, p) => s + p.monthlyCosts, 0);
-  const totalTransaction = filteredConfigured.reduce((s, p) => s + p.transactionCosts, 0);
-  const totalHolding = filteredConfigured.reduce((s, p) => s + p.holdingCosts, 0);
+  const totalTransaction = nonContractor.reduce((s, p) => s + p.transactionCosts, 0);
+  const totalHolding = nonContractor.reduce((s, p) => s + p.holdingCosts, 0);
 
   if (isLoading) {
     return (
@@ -350,15 +377,38 @@ export default function ProfitBreakdown() {
             <TableBody>
               {filteredConfigured.map((p) => (
                 <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/projects/${p.id}`)}>
-                  <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell className="text-center">{fmt(p.arv)}</TableCell>
-                  <TableCell className="text-center">{fmt(p.purchasePrice)}</TableCell>
+                  <TableCell className="font-medium">
+                    <span className="flex items-center gap-1.5">
+                      {p.isContractor && <HardHat className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                      {p.name}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {p.isContractor ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : fmt(p.arv)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {p.isContractor ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : fmt(p.purchasePrice)}
+                  </TableCell>
                   <TableCell className="text-center">
                     <span>{fmt(p.costBasis)}</span>
-                    <span className="ml-1.5 text-xs text-muted-foreground">({p.costSource})</span>
+                    <span className="ml-1.5 text-xs text-muted-foreground">
+                      {p.isContractor ? 'job cost' : `(${p.costSource})`}
+                    </span>
                   </TableCell>
-                  <TableCell className="text-center">{fmt(p.transactionCosts)}</TableCell>
-                  <TableCell className="text-center">{fmt(p.holdingCosts)}</TableCell>
+                  <TableCell className="text-center">
+                    {p.isContractor ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : fmt(p.transactionCosts)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {p.isContractor ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : fmt(p.holdingCosts)}
+                  </TableCell>
                   <TableCell className={`text-center font-semibold ${p.profit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
                     {fmt(p.profit)}
                   </TableCell>
