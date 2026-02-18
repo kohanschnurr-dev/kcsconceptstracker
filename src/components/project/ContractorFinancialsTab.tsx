@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Save, TrendingUp, TrendingDown, DollarSign, Percent, Loader2 } from 'lucide-react';
+import { Save, TrendingUp, DollarSign, Percent, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ExportReports } from '@/components/project/ExportReports';
@@ -90,7 +90,7 @@ export function ContractorFinancialsTab({
     }
     return (
       <Badge className="gap-1 bg-success/15 text-success border-success/30">
-        <TrendingDown className="h-3 w-3" />
+        <TrendingUp className="h-3 w-3 rotate-180" />
         On Budget
       </Badge>
     );
@@ -148,11 +148,7 @@ export function ContractorFinancialsTab({
           <CardContent className="pt-5">
             <div className="flex items-center gap-2 mb-3">
               <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${grossProfit >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
-                {grossProfit >= 0 ? (
-                  <TrendingDown className="h-4 w-4 text-success" />
-                ) : (
-                  <TrendingUp className="h-4 w-4 text-destructive" />
-                )}
+                <DollarSign className={`h-4 w-4 ${grossProfit >= 0 ? 'text-success' : 'text-destructive'}`} />
               </div>
               <span className="text-sm font-medium text-muted-foreground">Gross Profit</span>
             </div>

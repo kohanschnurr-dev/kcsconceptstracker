@@ -18,7 +18,7 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
   const isNewConstruction = project.projectType === 'new_construction';
   const isWholesaling = project.projectType === 'wholesaling';
   const isContractor = project.projectType === 'contractor';
-  const showBudgetProgress = !isRental && project.totalBudget > 0;
+  const showBudgetProgress = !isRental && !isContractor && project.totalBudget > 0;
   const percentSpent = showBudgetProgress ? (totalSpent / project.totalBudget) * 100 : 0;
 
   const arv = project.arv || 0;
@@ -178,6 +178,30 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
               <p className={cn('font-mono font-semibold text-lg', annualCashFlow < 0 ? 'text-destructive' : annualCashFlow > 0 ? 'text-success' : '')}>
                 {hasData ? formatCurrency(annualCashFlow) : '—'}
               </p>
+            </div>
+          );
+        })()}
+
+        {isContractor && (() => {
+          const contractValue = project.purchasePrice || 0;
+          const contractorTotalSpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
+          const contractorTotalBudget = project.totalBudget;
+          const costBasis = contractorTotalBudget > 0 ? Math.max(contractorTotalBudget, contractorTotalSpent) : contractorTotalSpent;
+          const grossProfit = contractValue - costBasis;
+          const usingActuals = contractorTotalSpent > contractorTotalBudget && contractorTotalBudget > 0;
+          const hasData = contractValue > 0;
+
+          return (
+            <div className="mb-4 p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground">Gross Profit</p>
+              <p className={cn('font-mono font-semibold text-lg', grossProfit < 0 ? 'text-destructive' : grossProfit > 0 ? 'text-success' : '')}>
+                {hasData ? formatCurrency(grossProfit) : '—'}
+              </p>
+              {hasData && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {usingActuals ? 'Contract Value − Actual Costs' : 'Contract Value − Est. Job Cost'}
+                </p>
+              )}
             </div>
           );
         })()}
