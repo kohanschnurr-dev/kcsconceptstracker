@@ -1,163 +1,72 @@
 
-# Generate Documents from Folders — Contractor Projects (Documents Tab)
+# Replace "Scope of Work" Button with "Generate" Dropdown on the Vendors Page
 
-## Overview
+## What Changes
 
-On contractor projects, the Documents tab will surface a **"Generate"** button in the toolbar that opens a dropdown with three AI document types:
-- **Scope of Work** (reuses the existing `ScopeOfWorkSheet` component, pre-seeded with the project's vendor list)
-- **Invoice** (new AI sheet)
-- **Receipt** (new AI sheet)
-
-This is only shown when `project.project_type === 'contractor'`.
-
----
-
-## Where the "Generate" Button Lives
-
-Inside `DocumentsGallery.tsx`, the card header already has two action buttons (`+ Folder`, `+ Add`). A third **"Generate"** button with a `Sparkles` icon is added next to them, but **only rendered when the project is a contractor type**.
-
-To know the project type inside `DocumentsGallery`, we need to pass it as a prop:
-
-```tsx
-// Before:
-<DocumentsGallery projectId={id!} />
-
-// After:
-<DocumentsGallery projectId={id!} projectType={project.project_type} />
-```
-
----
-
-## Generate Dropdown Menu
-
-Clicking "Generate" opens a `DropdownMenu` with three items:
+The standalone **"Scope of Work"** button in the Vendors page header is replaced with a **"Generate"** dropdown button that has three items — exactly matching the Documents tab behavior on contractor projects.
 
 ```
-⚡ Sparkles icon  "Generate"  ▾
-────────────────────────────────
+Before:   [ Scope of Work ]  [ + Add Vendor ]
+After:    [ ✦ Generate ▾ ]   [ + Add Vendor ]
+
+Dropdown items:
   📄 Scope of Work
   💵 Invoice
   🧾 Receipt
 ```
 
-Each item opens its corresponding sheet/modal.
-
 ---
 
-## Document Type Sheets
+## File to Change
 
-### 1. Scope of Work — Reuse Existing
+Only **one file** changes: `src/pages/Vendors.tsx`
 
-The existing `ScopeOfWorkSheet` from `src/components/vendors/ScopeOfWorkSheet.tsx` is reused with zero changes. We just need to:
-- Load the project's vendor list from `project_vendors` + `vendors` join inside the Documents tab
-- Pass `vendors` into `ScopeOfWorkSheet`
+### Changes needed
 
-### 2. Invoice Generator — New Component
+**1. Imports (lines 1–3):**
+- Add `Sparkles`, `Receipt` to the lucide-react import (remove `FileText` since it's absorbed into the dropdown)
+- Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuTrigger` from `@/components/ui/dropdown-menu` (already imported at line 10)
+- Import `GenerateInvoiceSheet` and `GenerateReceiptSheet`
 
-**File:** `src/components/project/GenerateInvoiceSheet.tsx`
+**2. State (around line 66):**
+- Keep `scopeSheetOpen` / `setScopeSheetOpen`
+- Add `invoiceOpen` / `setInvoiceOpen`
+- Add `receiptOpen` / `setReceiptOpen`
 
-A right-side Sheet with sections:
-
-**INVOICE INFO**
-- Company Name (pre-filled from `useCompanySettings`)
-- Client / Property Name
-- Invoice Number (e.g. INV-001)
-- Invoice Date (today)
-- Due Date
-
-**JOB DETAILS**
-- Project Name (pre-filled from project)
-- Project Address (pre-filled from project)
-- Description of Work
-
-**LINE ITEMS** (dynamic rows)
-- Add line item: Description | Qty | Unit Price → auto-calculates row total
-- "+ Add Line Item" button
-- Running subtotal, tax (% toggle), and total shown below
-
-**PAYMENT INFO**
-- Payment Method (select: Check / Wire / Zelle / Venmo / Cash / Other)
-- Payment Instructions / Notes (textarea)
-
-**OUTPUT SETTINGS**
-- Same Length/Tone toggles as Scope of Work
-
-Generate Button → calls same edge function pattern → formatted plain-text output with Copy button
-
-### 3. Receipt Generator — New Component
-
-**File:** `src/components/project/GenerateReceiptSheet.tsx`
-
-A simpler sheet:
-
-**RECEIPT INFO**
-- Company / Vendor Name (pre-filled from company settings)
-- Receipt Date (today)
-- Receipt Number
-
-**JOB DETAILS**
-- Project Name (pre-filled)
-- Description of Work / Services
-
-**LINE ITEMS** (same dynamic pattern as Invoice)
-- Description | Qty | Unit Price | Total
-
-**PAYMENT**
-- Amount Paid
-- Payment Method
-- Payment Date
-- Notes
-
-Generate Button → AI-formatted receipt document → Copy
-
----
-
-## New Edge Functions
-
-Both Invoice and Receipt use the same Lovable AI gateway pattern as `generate-scope-of-work`.
-
-**`supabase/functions/generate-invoice/index.ts`**  
-- Model: `google/gemini-3-flash-preview`
-- System prompt instructs AI to write a professional contractor invoice in plain text with clear formatting
-- Input: all form fields including line items array
-
-**`supabase/functions/generate-receipt/index.ts`**  
-- Model: `google/gemini-3-flash-preview`
-- System prompt writes a professional payment receipt
-- Input: all form fields
-
-Both get `verify_jwt = false` entries added to `supabase/config.toml`.
-
----
-
-## Files to Change
-
-| File | Change |
-|---|---|
-| `src/components/project/DocumentsGallery.tsx` | Add `projectType` prop, `Generate` dropdown button (contractor-only), vendor load, sheet state |
-| `src/pages/ProjectDetail.tsx` | Pass `projectType={project.project_type}` to `DocumentsGallery` |
-| `src/components/project/GenerateInvoiceSheet.tsx` | New — Invoice generator UI |
-| `src/components/project/GenerateReceiptSheet.tsx` | New — Receipt generator UI |
-| `supabase/functions/generate-invoice/index.ts` | New — AI edge function |
-| `supabase/functions/generate-receipt/index.ts` | New — AI edge function |
-| `supabase/config.toml` | Add `verify_jwt = false` for both new functions |
-
----
-
-## UI Placement Detail
-
-```
-DocumentsGallery header (right side):
-[ ✦ Generate ▾ ]  [ 📁 Folder ]  [ + Add ]
+**3. Header button (lines 165–168):** Replace the single `<Button>` with a `DropdownMenu`:
+```tsx
+<DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="outline" className="gap-2">
+      <Sparkles className="h-4 w-4" />
+      Generate
+    </Button>
+  </DropdownMenuTrigger>
+  <DropdownMenuContent align="end">
+    <DropdownMenuItem onClick={() => setScopeSheetOpen(true)} className="gap-2">
+      <FileText className="h-4 w-4" /> Scope of Work
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => setInvoiceOpen(true)} className="gap-2">
+      <FileText className="h-4 w-4" /> Invoice
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => setReceiptOpen(true)} className="gap-2">
+      <Receipt className="h-4 w-4" /> Receipt
+    </DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
 ```
 
-The Generate button uses `variant="outline"` with a `Sparkles` icon. On mobile, it shows icon-only. On desktop, shows "Generate" text. The dropdown appears on click.
+**4. Sheets (around lines 336–340):** Keep the existing `<ScopeOfWorkSheet>` and add two new ones:
+```tsx
+<GenerateInvoiceSheet open={invoiceOpen} onOpenChange={setInvoiceOpen} />
+<GenerateReceiptSheet open={receiptOpen} onOpenChange={setReceiptOpen} />
+```
 
 ---
 
 ## What Does NOT Change
 
-- Folder system, drag-and-drop, uploads — untouched
-- `ScopeOfWorkSheet` — reused with zero edits (the vendor list is fetched inside `DocumentsGallery`)
-- Non-contractor project types — the Generate button is not shown at all
-- The Vendors page Scope of Work button — untouched
+- All vendor card logic, modals, filters — untouched
+- `ScopeOfWorkSheet` component — untouched
+- `GenerateInvoiceSheet` / `GenerateReceiptSheet` — already exist, just reused
+- The generate-invoice and generate-receipt edge functions — already deployed
