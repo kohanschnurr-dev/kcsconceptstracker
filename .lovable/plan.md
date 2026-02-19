@@ -1,66 +1,54 @@
 
-## Fix: Nuke All Broken company-logos INSERT Policies and Replace Them Correctly
+## Fix: PDF Generation Freezing the App
 
-### What Is Actually Wrong (Definitive)
+### Root Cause
 
-The database query reveals **two conflicting broken INSERT policies** on the `company-logos` bucket:
+In `src/lib/pdfExport.ts`, the generated popup window runs `window.print()` automatically via a `<script>` tag after a 600ms timeout. The browser's print dialog is **synchronous and modal** — when it fires, it freezes the JavaScript event loop of the **parent tab** as well, causing the app to appear frozen until the user dismisses the dialog or closes the popup. This is why two refreshes are needed.
 
-- `"Users can upload their own logo"` — WITH CHECK using `foldername(name)[1]` → BROKEN
-- `"Users can upload their own company logo"` — WITH CHECK using `foldername(name)[1]` → ALSO BROKEN
+### The Fix
 
-The previous migration dropped and re-created the first one, but the second one (`"Users can upload their own company logo"`) was left in place and is still blocking. `storage.foldername(name)[1]` does not work reliably during INSERT — Postgres evaluates the `WITH CHECK` before the row (and thus `name`) is finalized, so the condition always fails silently.
+Instead of auto-triggering `window.print()` in a popup, switch to a **Blob URL + `<iframe>` print** approach that is completely isolated from the parent tab's thread:
 
-Every other working bucket in this project (`expense-receipts`, `project-documents`, `project-photos`, `bundle-covers`) uses the correct pattern:
+1. Build the HTML string exactly as today
+2. Create a `Blob` from it with `text/html` MIME type
+3. Create an object URL from the Blob (`URL.createObjectURL`)
+4. Open the URL in a new tab with `window.open(blobUrl, '_blank')` — the new tab handles its own print dialog without touching the parent thread
 
-```sql
-WITH CHECK (bucket_id = 'X' AND auth.role() = 'authenticated')
+This is the cleanest fix and requires changes only to `src/lib/pdfExport.ts`. No changes to callers (`GenerateInvoiceSheet.tsx`, `GenerateReceiptSheet.tsx`, `ScopeOfWorkSheet.tsx`, `Vendors.tsx`).
+
+### Technical Details
+
+**Current (broken) approach:**
+```typescript
+const win = window.open('', '_blank');
+if (win) {
+  win.document.write(html); // writes HTML to blank window
+  win.document.close();
+  // popup script runs window.print() → freezes parent tab
+}
 ```
 
-There are also **duplicate UPDATE and DELETE policies** (`"Users can update their own logo"` AND `"Users can update their own company logo"`) that need cleaning up.
-
-**`logo_url` in `company_settings` is `null`** — confirmed. The bucket has zero files. Nothing has ever successfully uploaded.
-
-### The Fix — One Migration Only
-
-Drop **every** existing policy for `company-logos` (all duplicates and broken ones) and replace with four clean policies using the correct authenticated pattern:
-
-```sql
--- Drop all existing company-logos policies (both duplicates)
-DROP POLICY IF EXISTS "Users can upload their own logo" ON storage.objects;
-DROP POLICY IF EXISTS "Users can upload their own company logo" ON storage.objects;
-DROP POLICY IF EXISTS "Users can update their own logo" ON storage.objects;
-DROP POLICY IF EXISTS "Users can update their own company logo" ON storage.objects;
-DROP POLICY IF EXISTS "Users can delete their own logo" ON storage.objects;
-DROP POLICY IF EXISTS "Users can delete their own company logo" ON storage.objects;
-DROP POLICY IF EXISTS "Logos are publicly accessible" ON storage.objects;
-DROP POLICY IF EXISTS "Company logos are publicly accessible" ON storage.objects;
-
--- Re-create clean, correct policies
-CREATE POLICY "company_logos_select"
-  ON storage.objects FOR SELECT
-  USING (bucket_id = 'company-logos');
-
-CREATE POLICY "company_logos_insert"
-  ON storage.objects FOR INSERT
-  WITH CHECK (bucket_id = 'company-logos' AND auth.role() = 'authenticated');
-
-CREATE POLICY "company_logos_update"
-  ON storage.objects FOR UPDATE
-  USING (bucket_id = 'company-logos' AND auth.role() = 'authenticated');
-
-CREATE POLICY "company_logos_delete"
-  ON storage.objects FOR DELETE
-  USING (bucket_id = 'company-logos' AND auth.role() = 'authenticated');
+**New approach:**
+```typescript
+const blob = new Blob([html], { type: 'text/html' });
+const url = URL.createObjectURL(blob);
+const win = window.open(url, '_blank');
+// The popup handles its own print() without blocking parent
+// Revoke the URL after a short delay to free memory
+if (win) {
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
 ```
 
-### No Code Changes Needed
+The `<script>` inside the HTML still runs `window.print()` in the **popup tab only** — it cannot reach the parent window's event loop when opened from a Blob URL because Blob URL windows are treated as cross-origin by the browser.
 
-- `useCompanySettings.ts` — upload logic is correct
-- `Settings.tsx` — error handling is correct
-- `pdfExport.ts` — logo rendering is correct (shows logo when `logoUrl` is truthy, emoji fallback otherwise)
+### Files to Change
 
-### After the Fix
+- `src/lib/pdfExport.ts` — only the last 6 lines of the `generatePDF` function (replace `window.open('')` + `document.write` with Blob URL approach)
 
-1. Go to Settings → upload your KCS Concepts logo → "Logo uploaded successfully" toast appears
-2. Generate any PDF (Invoice, Receipt, Scope of Work)
-3. Logo appears in the top-right of the colored header bar
+### What Changes for the User
+
+- Clicking "Generate PDF" opens a new tab with the PDF preview (same as before)
+- Print dialog opens automatically in **that tab only**
+- The main app tab remains fully responsive — no freeze, no refresh needed
+- Closing the PDF tab returns to the app normally
