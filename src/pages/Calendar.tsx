@@ -250,8 +250,8 @@ export default function Calendar() {
           }
         />
 
-        {/* Category Legend */}
-        <div className="bg-background rounded-lg p-4 border border-border">
+        {/* Category Legend (desktop only; mobile legend is inside CalendarHeader) */}
+        <div className="hidden sm:block bg-background rounded-lg p-4 border border-border">
           <CalendarLegend />
         </div>
 

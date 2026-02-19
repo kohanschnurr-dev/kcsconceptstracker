@@ -12,6 +12,7 @@ import { format, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import type { CalendarView } from '@/pages/Calendar';
 import { WeatherWidget } from './WeatherWidget';
+import { CalendarLegend } from './CalendarLegend';
 import { useProfile } from '@/hooks/useProfile';
 
 interface Project {
@@ -77,13 +78,13 @@ export function CalendarHeader({
 
   return (
     <div className="bg-card rounded-xl p-3 border border-border">
-      {/* ── Mobile layout (2 compact rows) ── */}
+      {/* ── Mobile layout (3 rows + legend) ── */}
       <div className="sm:hidden flex flex-col gap-2">
         {/* Row 1: Title | View selector + Add button */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
-            <Calendar className="h-4 w-4 text-primary shrink-0" />
-            <h1 className="text-sm font-bold text-foreground">Project Calendar</h1>
+            <Calendar className="h-5 w-5 text-primary shrink-0" />
+            <h1 className="text-base font-bold text-foreground">Project Calendar</h1>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <Select value={view} onValueChange={(v) => onViewChange(v as CalendarView)}>
@@ -106,24 +107,24 @@ export function CalendarHeader({
           </div>
         </div>
 
-        {/* Row 2: Nav chevrons + MonthYearPicker + Project filter */}
-        <div className="flex items-center gap-1">
+        {/* Row 2: Month navigation centered, full width */}
+        <div className="flex items-center justify-center gap-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={handlePrev}
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
           >
-            <ChevronLeft className="h-3.5 w-3.5" />
+            <ChevronLeft className="h-4 w-4" />
           </Button>
           {view === 'monthly' ? (
             <MonthYearPicker
               currentDate={currentDate}
               onDateChange={onDateChange}
-              labelClassName="text-sm min-w-[110px] text-center"
+              labelClassName="text-sm min-w-[130px] text-center"
             />
           ) : (
-            <span className="text-xs font-semibold text-foreground min-w-[110px] text-center">
+            <span className="text-sm font-semibold text-foreground min-w-[130px] text-center">
               {getDateLabel()}
             </span>
           )}
@@ -131,20 +132,27 @@ export function CalendarHeader({
             variant="ghost"
             size="sm"
             onClick={handleNext}
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
           >
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ChevronRight className="h-4 w-4" />
           </Button>
-          {onProjectFilterChange && projects.length > 0 && (
-            <ProjectAutocomplete
-              projects={[{ id: 'all', name: 'All Projects', address: '' }, ...projects]}
-              value={selectedProjectId || 'all'}
-              onSelect={(value) => onProjectFilterChange(value === 'all' ? null : value)}
-              placeholder="All Projects"
-              triggerClassName="h-8 flex-1 min-w-0 text-xs bg-card border-border text-foreground hover:bg-secondary"
-              className="bg-card border-border"
-            />
-          )}
+        </div>
+
+        {/* Row 3: Project filter, full width */}
+        {onProjectFilterChange && projects.length > 0 && (
+          <ProjectAutocomplete
+            projects={[{ id: 'all', name: 'All Projects', address: '' }, ...projects]}
+            value={selectedProjectId || 'all'}
+            onSelect={(value) => onProjectFilterChange(value === 'all' ? null : value)}
+            placeholder="All Projects"
+            triggerClassName="h-9 w-full text-xs bg-card border-border text-foreground hover:bg-secondary"
+            className="bg-card border-border"
+          />
+        )}
+
+        {/* Integrated legend on mobile */}
+        <div className="pt-1 border-t border-border">
+          <CalendarLegend />
         </div>
       </div>
 
