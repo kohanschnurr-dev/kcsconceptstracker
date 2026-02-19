@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2, FileText, Sparkles, Download } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2, FileText, Sparkles, Download, Receipt } from 'lucide-react';
 import { ScopeOfWorkSheet } from '@/components/vendors/ScopeOfWorkSheet';
 import { GenerateInvoiceSheet } from '@/components/project/GenerateInvoiceSheet';
+import { GenerateReceiptSheet } from '@/components/project/GenerateReceiptSheet';
 import { generatePDF } from '@/lib/pdfExport';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -69,6 +70,7 @@ export default function Vendors() {
   const [tradeFilter, setTradeFilter] = useState<string>('all');
   const [scopeSheetOpen, setScopeSheetOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   useEffect(() => {
     fetchVendors();
@@ -207,6 +209,9 @@ export default function Vendors() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setInvoiceOpen(true)} className="gap-2">
                   <FileText className="h-4 w-4" /> Invoice
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setReceiptOpen(true)} className="gap-2">
+                  <Receipt className="h-4 w-4" /> Receipt
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleGenerateVendorPDF} className="gap-2">
                   <Download className="h-4 w-4" /> Generate PDF
@@ -387,7 +392,7 @@ export default function Vendors() {
       />
 
       <GenerateInvoiceSheet open={invoiceOpen} onOpenChange={setInvoiceOpen} />
-      
+      <GenerateReceiptSheet open={receiptOpen} onOpenChange={setReceiptOpen} />
 
       {/* Vendor Contact Card Dialog */}
       <Dialog open={!!selectedVendor} onOpenChange={(open) => !open && setSelectedVendor(null)}>
