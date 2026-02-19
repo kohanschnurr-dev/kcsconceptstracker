@@ -1,237 +1,156 @@
 
-# AI Document PDF Export — Themed, Branded, Professional
+# Replace "Receipt" with "Generate PDF" in the Vendors Page Dropdown
 
-## What's Being Built
+## What the User Wants
 
-After the AI generates a document (Invoice, Receipt, or Scope of Work), a **"Download PDF"** button appears alongside the existing "Copy" button. Clicking it opens a styled, branded print preview in a new browser tab that the user can save as PDF using the browser's native "Save as PDF" option — no extra npm packages needed.
+On the Vendors page, the Generate dropdown currently has:
+- Scope of Work
+- Invoice
+- **Receipt** ← replace this
 
-The PDF output will include:
-- Company logo (if set in Settings)
-- Company name
-- Document content formatted in a clean, readable layout
-- Accent color from the user's active color palette applied to the header bar and section dividers
-
----
-
-## Technical Approach
-
-### Why Browser Print (not jsPDF)
-
-- No new dependencies to install
-- Perfect text rendering and font handling
-- Reliable across all operating systems
-- Browser's "Save as PDF" produces true vector PDF
-
-### How It Works
-
-A `generatePDF(content, options)` utility function is created in `src/lib/pdfExport.ts`. It:
-
-1. Reads the active palette's primary color from the document's CSS variables at the moment the button is clicked
-2. Constructs a full HTML document string with:
-   - Inline styles (no external CSS dependencies)
-   - Logo displayed at the top-right as an `<img>` with a max height constraint
-   - Company name in the header bar styled with the accent color
-   - Document type label (Invoice / Receipt / Scope of Work)
-   - The generated plain-text content rendered in a styled monospace block
-   - Footer with company name and generation date
-3. Opens a new tab with `window.open()`, writes the HTML, and calls `window.print()` after a short delay (to ensure images load)
-
-### Palette Color Extraction
-
-```typescript
-// Read active palette primary color from computed CSS
-function getActivePrimaryHsl(): string {
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue('--primary').trim();
-  return raw ? `hsl(${raw})` : '#b87f3b'; // fallback amber
-}
-```
-
-This means whatever palette the user has active (Ember, Cobalt, Pearl, etc.) — that accent color flows into the PDF header automatically.
-
-### Logo Handling
-
-The `logoUrl` from `useCompanySettings` is a public Supabase Storage URL. It's embedded directly in the HTML as an `<img src="...">` tag. Because the print window is a new tab (same origin makes no difference for public URLs), the image loads correctly before `print()` is called.
-
-If no logo is set, the header only shows the company name, centered.
+They want **"Generate PDF"** instead — a one-click action that immediately exports a professional, themed PDF of the vendor list without any AI form or sheet.
 
 ---
 
-## PDF Document Layout
+## How It Works
 
-```
-┌─────────────────────────────────────────────────────┐
-│  [LOGO]              COMPANY NAME         [DocType] │  ← colored header bar
-│                                                     │  (accent color background)
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  [Generated document text in clean mono font]       │
-│                                                     │
-│  Section headers in bold                            │
-│  Content in regular weight                          │
-│                                                     │
-├─────────────────────────────────────────────────────┤
-│  Company Name · Generated on Feb 19, 2026           │  ← footer
-└─────────────────────────────────────────────────────┘
-```
+Clicking "Generate PDF" will:
+1. Format all current vendors into a clean plain-text / structured document string
+2. Call the existing `generatePDF()` utility (which already handles branding, theming, logo, and print) — no new utility needed
+3. Open the browser's print dialog pointing at a styled vendor list PDF
+
+The PDF content will include each vendor's:
+- Name
+- Trade(s)
+- Phone & Email
+- Rating (★ stars)
+- Pricing model
+- W9 status
+- Notes (if any)
 
 ---
 
 ## Files to Change
 
-| File | Change |
-|---|---|
-| `src/lib/pdfExport.ts` | New — `generatePDF(text, options)` utility function |
-| `src/components/project/GenerateInvoiceSheet.tsx` | Add "Download PDF" button + import pdfExport |
-| `src/components/project/GenerateReceiptSheet.tsx` | Add "Download PDF" button + import pdfExport |
-| `src/components/vendors/ScopeOfWorkSheet.tsx` | Add "Download PDF" button + import pdfExport |
+Only **one file** changes: `src/pages/Vendors.tsx`
 
-No edge functions change. No new dependencies. No database changes.
+### Changes
 
----
+**1. Import additions:**
+- Add `generatePDF` from `@/lib/pdfExport`
+- Add `useCompanySettings` hook
+- Remove `Receipt` from lucide-react imports (no longer needed)
+- Remove `GenerateReceiptSheet` import
+- Add `Download` to lucide-react imports
 
-## The `pdfExport.ts` Utility
+**2. State:**
+- Remove `receiptOpen` / `setReceiptOpen` state
+- Add `const { settings, companyName } = useCompanySettings()`
 
-```typescript
-interface PdfOptions {
-  docType: 'Invoice' | 'Receipt' | 'Scope of Work';
-  companyName: string;
-  logoUrl?: string | null;
-}
-
-export function generatePDF(content: string, options: PdfOptions) {
-  const primaryColor = getActivePrimaryHsl();
-  const isLight = isLightColor(primaryColor); // determines text color on header
-  const headerTextColor = isLight ? '#1a1a1a' : '#ffffff';
-
-  const logoHtml = options.logoUrl
-    ? `<img src="${options.logoUrl}" style="max-height:48px; max-width:160px; object-fit:contain;" />`
-    : '';
-
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${options.docType} — ${options.companyName}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #1a1a1a; background: #fff; }
-    .header { background: ${primaryColor}; color: ${headerTextColor}; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; }
-    .header-left { display: flex; align-items: center; gap: 16px; }
-    .header-company { font-size: 18px; font-weight: 700; }
-    .header-type { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; opacity: 0.85; }
-    .content { padding: 32px; }
-    .doc-text { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.7; white-space: pre-wrap; color: #1a1a1a; }
-    .footer { border-top: 1px solid #e5e5e5; padding: 16px 32px; display: flex; justify-content: space-between; color: #888; font-size: 11px; margin-top: 24px; }
-    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="header-left">
-      ${logoHtml}
-      <span class="header-company">${options.companyName}</span>
-    </div>
-    <span class="header-type">${options.docType}</span>
-  </div>
-  <div class="content">
-    <div class="doc-text">${escapeHtml(content)}</div>
-  </div>
-  <div class="footer">
-    <span>${options.companyName}</span>
-    <span>Generated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-  </div>
-  <script>
-    window.onload = function() {
-      setTimeout(function() { window.print(); }, 400);
-    };
-  </script>
-</body>
-</html>`;
-
-  const win = window.open('', '_blank');
-  if (win) {
-    win.document.write(html);
-    win.document.close();
-  }
-}
-```
-
-### Color Utilities
-
-To determine if the primary color is light or dark (so we can pick white or black header text):
+**3. New handler function — `handleGenerateVendorPDF`:**
 
 ```typescript
-function getActivePrimaryHsl(): string {
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue('--primary').trim();
-  return raw ? `hsl(${raw})` : '#b87f3b';
-}
+const handleGenerateVendorPDF = () => {
+  const lines: string[] = [];
+  lines.push(`VENDOR DIRECTORY`);
+  lines.push(`Total: ${filteredVendors.length} vendor(s)\n`);
+  lines.push('─'.repeat(60));
 
-function isLightColor(hslString: string): boolean {
-  // Extract lightness from "hsl(H S% L%)"
-  const match = hslString.match(/hsl\([\d.]+\s+[\d.]+%\s+([\d.]+)%\)/);
-  if (match) return parseFloat(match[1]) > 60;
-  return false;
-}
-```
+  filteredVendors.forEach((vendor, i) => {
+    lines.push(`\n${i + 1}. ${vendor.name.toUpperCase()}`);
+    if (vendor.trades.length > 0) {
+      lines.push(`   Trades: ${vendor.trades.map(getTradeLabel).join(', ')}`);
+    }
+    if (vendor.phone) lines.push(`   Phone: ${vendor.phone}`);
+    if (vendor.email) lines.push(`   Email: ${vendor.email}`);
+    lines.push(`   Rating: ${'★'.repeat(vendor.reliability_rating || 0)}${'☆'.repeat(5 - (vendor.reliability_rating || 0))}`);
+    lines.push(`   Pricing: ${vendor.pricing_model === 'flat' ? 'Flat Rate' : vendor.pricing_model === 'hourly' ? 'Hourly' : 'Not set'}`);
+    lines.push(`   W9 on File: ${vendor.has_w9 ? 'Yes' : 'No'}`);
+    if (vendor.notes) lines.push(`   Notes: ${vendor.notes}`);
+    lines.push('   ' + '─'.repeat(56));
+  });
 
----
-
-## Button UI in Each Sheet
-
-In the generated output section of each sheet, next to "Copy" and "Clear":
-
-```tsx
-import { Download } from 'lucide-react';
-import { generatePDF } from '@/lib/pdfExport';
-
-// In the output actions row:
-<Button
-  variant="outline"
-  size="sm"
-  onClick={() => generatePDF(generated, {
-    docType: 'Invoice',
+  generatePDF(lines.join('\n'), {
+    docType: 'Receipt',  // We'll rename this label in options
     companyName: companyName || 'Your Company',
     logoUrl: settings?.logo_url,
-  })}
-  className="gap-1.5 h-7 text-xs"
->
-  <Download className="h-3 w-3" />
-  PDF
-</Button>
+  });
+};
 ```
 
-The button sits between Copy and Clear in the action bar, so the layout becomes:
+> Note: We'll update `PdfOptions.docType` to accept a `'Vendor Directory'` string, or simply pass a custom label. The simplest path is to pass `docType: 'Vendor Directory'` — which requires updating the `PdfOptions` type in `pdfExport.ts` to allow that value.
+
+**4. Dropdown item replacement:**
+
+```tsx
+// Remove:
+<DropdownMenuItem onClick={() => setReceiptOpen(true)} className="gap-2">
+  <Receipt className="h-4 w-4" /> Receipt
+</DropdownMenuItem>
+
+// Replace with:
+<DropdownMenuItem onClick={handleGenerateVendorPDF} className="gap-2">
+  <Download className="h-4 w-4" /> Generate PDF
+</DropdownMenuItem>
 ```
-[ Copy ]  [ PDF ]  [ Clear ]
+
+**5. Remove the `<GenerateReceiptSheet>` JSX** from the render (line 362).
+
+---
+
+## Update to `pdfExport.ts`
+
+The `docType` union type needs one addition:
+
+```typescript
+// Before:
+docType: 'Invoice' | 'Receipt' | 'Scope of Work';
+
+// After:
+docType: 'Invoice' | 'Receipt' | 'Scope of Work' | 'Vendor Directory';
+```
+
+And the icon map in `pdfExport.ts` needs an entry:
+```typescript
+'Vendor Directory': '&#128101;', // 👥 people icon
 ```
 
 ---
 
-## What Does NOT Change
+## What the PDF Looks Like
 
-- The AI generation logic (edge functions) — untouched
-- The form fields, state management — untouched
-- The text output block — untouched
-- No new npm packages installed
-- No database changes
+```
+┌──────────────────────────────────────────────────────┐
+│  [LOGO]     ACME CONSTRUCTION         👥 VENDOR DIR  │  ← themed header
+├──────────────────────────────────────────────────────┤
+│  Prepared by Acme Construction    Generated Feb 19   │  ← meta bar
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│  VENDOR DIRECTORY                                    │
+│  Total: 8 vendor(s)                                  │
+│  ────────────────────────────────────────────────    │
+│                                                      │
+│  1. JOHN SMITH PLUMBING                              │
+│     Trades: Plumbing, HVAC                           │
+│     Phone: (555) 123-4567                            │
+│     Email: john@smithplumbing.com                    │
+│     Rating: ★★★★☆                                   │
+│     Pricing: Hourly                                  │
+│     W9 on File: Yes                                  │
+│     ────────────────────────────                     │
+│                                                      │
+│  2. ELITE ELECTRICAL ...                             │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Palette Color Coverage
+## Summary of File Changes
 
-All 10 palettes are covered automatically since we read from computed CSS at runtime:
+| File | Change |
+|---|---|
+| `src/pages/Vendors.tsx` | Replace Receipt dropdown item + state + sheet with Generate PDF handler |
+| `src/lib/pdfExport.ts` | Add `'Vendor Directory'` to docType union + icon map |
 
-| Palette | Primary Color (approx) | Header Style |
-|---|---|---|
-| Ember | Warm amber | White text |
-| Graphite | Steel gray | White text |
-| Slate | Steel blue | White text |
-| Onyx | Indigo | White text |
-| Titanium | Light gray | Dark text |
-| Midnight | Teal | White text |
-| Cobalt | Blue | White text |
-| Ivory | Warm tan | White text |
-| Pearl | Blue-gray | White text |
-| Linen | Near-black | White text |
+No edge functions. No database changes. No new components.
