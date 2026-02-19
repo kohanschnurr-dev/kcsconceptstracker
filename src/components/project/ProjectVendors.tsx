@@ -138,6 +138,8 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
   const [assignLineItems, setAssignLineItems] = useState<LineItem[]>([]);
   const [assignNewDesc, setAssignNewDesc] = useState('');
   const [assignNewAmount, setAssignNewAmount] = useState('');
+  const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
+  const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null);
 
   const fetchData = async () => {
     const { data: assignedData, error: assignedError } = await supabase
@@ -393,21 +395,48 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                       onUpdate={fetchData}
                     />
 
-                    <Collapsible className="mt-3">
-                      <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                        <ChevronDown className="h-3 w-3" />
-                        <FileText className="h-3 w-3" />
-                        Notes
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-1">
+                    <div className="mt-3">
+                      {editingNotesId === pv.id ? (
                         <Textarea
+                          autoFocus
                           placeholder="General notes about this vendor on this project..."
                           defaultValue={pv.notes || ''}
-                          onBlur={(e) => updateNotes(pv.id, e.target.value)}
+                          onBlur={(e) => {
+                            updateNotes(pv.id, e.target.value);
+                            setEditingNotesId(null);
+                          }}
                           className="text-sm min-h-[60px] resize-none"
                         />
-                      </CollapsibleContent>
-                    </Collapsible>
+                      ) : pv.notes ? (
+                        <div>
+                          <p
+                            className={cn(
+                              "text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors whitespace-pre-wrap",
+                              expandedNotesId !== pv.id && "line-clamp-2"
+                            )}
+                            onClick={() => setEditingNotesId(pv.id)}
+                          >
+                            {pv.notes}
+                          </p>
+                          {pv.notes.split('\n').length > 2 || pv.notes.length > 120 ? (
+                            <button
+                              onClick={() => setExpandedNotesId(expandedNotesId === pv.id ? null : pv.id)}
+                              className="text-xs text-primary hover:underline mt-0.5"
+                            >
+                              {expandedNotesId === pv.id ? 'Show less' : 'Show more'}
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setEditingNotesId(pv.id)}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <FileText className="h-3 w-3" />
+                          + Add notes
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <Button
                     variant="ghost"
