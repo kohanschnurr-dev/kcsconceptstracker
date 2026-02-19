@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2, FileText, Sparkles, Receipt } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2, FileText, Sparkles, Download } from 'lucide-react';
 import { ScopeOfWorkSheet } from '@/components/vendors/ScopeOfWorkSheet';
 import { GenerateInvoiceSheet } from '@/components/project/GenerateInvoiceSheet';
-import { GenerateReceiptSheet } from '@/components/project/GenerateReceiptSheet';
+import { generatePDF } from '@/lib/pdfExport';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +57,7 @@ interface Vendor {
 
 export default function Vendors() {
   const { toast } = useToast();
+  const { settings, companyName } = useCompanySettings();
   const [search, setSearch] = useState('');
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,7 +69,6 @@ export default function Vendors() {
   const [tradeFilter, setTradeFilter] = useState<string>('all');
   const [scopeSheetOpen, setScopeSheetOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
-  const [receiptOpen, setReceiptOpen] = useState(false);
 
   useEffect(() => {
     fetchVendors();
@@ -101,6 +102,33 @@ export default function Vendors() {
     return trade
       .replace(/_/g, ' ')
       .replace(/\b\w/g, c => c.toUpperCase());
+  };
+
+  const handleGenerateVendorPDF = () => {
+    const lines: string[] = [];
+    lines.push('VENDOR DIRECTORY');
+    lines.push(`Total: ${filteredVendors.length} vendor(s)\n`);
+    lines.push('─'.repeat(60));
+
+    filteredVendors.forEach((vendor, i) => {
+      lines.push(`\n${i + 1}. ${vendor.name.toUpperCase()}`);
+      if (vendor.trades.length > 0) {
+        lines.push(`   Trades: ${vendor.trades.map(getTradeLabel).join(', ')}`);
+      }
+      if (vendor.phone) lines.push(`   Phone: ${vendor.phone}`);
+      if (vendor.email) lines.push(`   Email: ${vendor.email}`);
+      lines.push(`   Rating: ${'★'.repeat(vendor.reliability_rating || 0)}${'☆'.repeat(5 - (vendor.reliability_rating || 0))}`);
+      lines.push(`   Pricing: ${vendor.pricing_model === 'flat' ? 'Flat Rate' : vendor.pricing_model === 'hourly' ? 'Hourly' : 'Not set'}`);
+      lines.push(`   W9 on File: ${vendor.has_w9 ? 'Yes' : 'No'}`);
+      if (vendor.notes) lines.push(`   Notes: ${vendor.notes}`);
+      lines.push('   ' + '─'.repeat(56));
+    });
+
+    generatePDF(lines.join('\n'), {
+      docType: 'Vendor Directory',
+      companyName: companyName || 'Your Company',
+      logoUrl: settings?.logo_url,
+    });
   };
 
   const usedTrades = Array.from(new Set(vendors.flatMap(v => v.trades)))
@@ -180,8 +208,8 @@ export default function Vendors() {
                 <DropdownMenuItem onClick={() => setInvoiceOpen(true)} className="gap-2">
                   <FileText className="h-4 w-4" /> Invoice
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setReceiptOpen(true)} className="gap-2">
-                  <Receipt className="h-4 w-4" /> Receipt
+                <DropdownMenuItem onClick={handleGenerateVendorPDF} className="gap-2">
+                  <Download className="h-4 w-4" /> Generate PDF
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -359,7 +387,7 @@ export default function Vendors() {
       />
 
       <GenerateInvoiceSheet open={invoiceOpen} onOpenChange={setInvoiceOpen} />
-      <GenerateReceiptSheet open={receiptOpen} onOpenChange={setReceiptOpen} />
+      
 
       {/* Vendor Contact Card Dialog */}
       <Dialog open={!!selectedVendor} onOpenChange={(open) => !open && setSelectedVendor(null)}>
