@@ -380,10 +380,25 @@ export function getActivePalette(): PaletteKey {
 
 const LIGHT_PALETTES: PaletteKey[] = ['ivory', 'pearl', 'linen'];
 
+const ALL_PALETTE_VARS = [
+  '--background', '--foreground', '--card', '--card-foreground',
+  '--popover', '--popover-foreground', '--primary', '--primary-foreground',
+  '--secondary', '--secondary-foreground', '--muted', '--muted-foreground',
+  '--accent', '--accent-foreground', '--destructive', '--destructive-foreground',
+  '--success', '--success-foreground', '--warning', '--warning-foreground',
+  '--border', '--input', '--ring', '--radius',
+  '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5',
+  '--sidebar-background', '--sidebar-foreground', '--sidebar-primary',
+  '--sidebar-primary-foreground', '--sidebar-accent', '--sidebar-accent-foreground',
+  '--sidebar-border', '--sidebar-ring',
+];
+
 export function applyPalette(key: PaletteKey) {
   const palette = palettes.find((p) => p.key === key);
   if (!palette) return;
   const root = document.documentElement;
+  // Clear all palette vars first to prevent stale overrides from previous palette
+  ALL_PALETTE_VARS.forEach((prop) => root.style.removeProperty(prop));
   Object.entries(palette.variables).forEach(([prop, value]) => {
     root.style.setProperty(prop, value);
   });
