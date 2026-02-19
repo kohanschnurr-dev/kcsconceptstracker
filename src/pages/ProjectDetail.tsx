@@ -1047,9 +1047,13 @@ export default function ProjectDetail() {
         <Tabs value={activeTab || effectiveTabOrder[0]} onValueChange={setActiveTab} className="space-y-4">
           <div className="flex items-center gap-2 min-w-0">
             <div className="overflow-x-auto scrollbar-none flex-1 min-w-0">
-              <TabsList className="flex h-10 w-max justify-start gap-0.5 min-w-full">
+              <TabsList className="flex h-10 w-max justify-start gap-0 min-w-full bg-transparent p-0 border-b border-border rounded-none">
                 {effectiveTabOrder.map((tab) => (
-                  <TabsTrigger key={tab} value={tab} className="shrink-0">
+                  <TabsTrigger
+                    key={tab}
+                    value={tab}
+                    className="shrink-0 rounded-none border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground bg-transparent"
+                  >
                     {getTabLabel(tab, project.project_type)}
                   </TabsTrigger>
                 ))}
