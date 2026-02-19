@@ -506,7 +506,7 @@ export function CreateBudgetModal({
                     projects={projects}
                     value={selectedProject}
                     onSelect={setSelectedProject}
-                    placeholder={isLoading ? "Loading projects..." : "Search projects..."}
+                    placeholder={isLoading ? "Loading projects..." : "Search"}
                   />
                   <div className="flex gap-2">
                     <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>

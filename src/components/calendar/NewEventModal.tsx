@@ -242,7 +242,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
               projects={projects}
               value={projectId}
               onSelect={setProjectId}
-              placeholder="Search projects..."
+              placeholder="Search"
               triggerClassName="bg-card border-border text-foreground hover:bg-secondary"
             />
           </div>

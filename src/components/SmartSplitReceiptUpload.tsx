@@ -1400,7 +1400,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                       projects={projects}
                       value={selectedProject}
                       onSelect={setSelectedProject}
-                      placeholder="Search projects..."
+                      placeholder="Search"
                     />
 
                     <div className="flex items-center gap-3">
