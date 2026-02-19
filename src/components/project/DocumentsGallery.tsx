@@ -2,16 +2,17 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   FolderOpen,
   Plus, 
-  Filter, 
   Loader2, 
   Clock,
   ArrowLeft,
   FolderPlus,
   Folder,
   Upload,
-  ChevronRight,
   Search,
-  X
+  X,
+  Sparkles,
+  FileText,
+  Receipt,
 } from 'lucide-react';
 import { 
   DndContext, 
@@ -33,6 +34,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -52,6 +59,9 @@ import { CreateFolderModal } from './CreateFolderModal';
 import { DraggableDocumentCard } from './DraggableDocumentCard';
 import { DraggableDroppableFolder } from './DraggableDroppableFolder';
 import { RootDropZone } from './RootDropZone';
+import { ScopeOfWorkSheet } from '@/components/vendors/ScopeOfWorkSheet';
+import { GenerateInvoiceSheet } from './GenerateInvoiceSheet';
+import { GenerateReceiptSheet } from './GenerateReceiptSheet';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -107,15 +117,30 @@ interface DocumentFolder {
   updated_at: string;
 }
 
+interface Vendor {
+  id: string;
+  name: string;
+  trades: string[];
+  phone: string | null;
+  email: string | null;
+  has_w9: boolean;
+  reliability_rating: number | null;
+  pricing_model: 'flat' | 'hourly' | null;
+  notes: string | null;
+}
+
 interface DocumentsGalleryProps {
   projectId: string;
+  projectType?: string;
+  projectName?: string;
+  projectAddress?: string;
 }
 
 const getCategoryLabel = (value: string) => {
   return DOCUMENT_CATEGORIES.find(c => c.value === value)?.label || value;
 };
 
-export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
+export function DocumentsGallery({ projectId, projectType, projectName = '', projectAddress = '' }: DocumentsGalleryProps) {
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [allDocuments, setAllDocuments] = useState<ProjectDocument[]>([]);
   const [folders, setFolders] = useState<DocumentFolder[]>([]);
@@ -142,6 +167,12 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Generate sheet states (contractor only)
+  const [sowOpen, setSowOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [projectVendors, setProjectVendors] = useState<Vendor[]>([]);
 
   const currentFolder = useMemo(() => 
     folders.find(f => f.id === currentFolderId) || null
@@ -267,9 +298,21 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
     setLoading(false);
   };
 
+  const fetchProjectVendors = async () => {
+    if (projectType !== 'contractor') return;
+    const { data } = await supabase
+      .from('project_vendors')
+      .select('vendor_id, vendors(*)')
+      .eq('project_id', projectId);
+    if (data) {
+      setProjectVendors(data.map((pv: any) => pv.vendors).filter(Boolean) as Vendor[]);
+    }
+  };
+
   useEffect(() => {
     fetchFolders();
-  }, [projectId]);
+    fetchProjectVendors();
+  }, [projectId, projectType]);
 
   useEffect(() => {
     fetchDocuments();
@@ -653,6 +696,31 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
 
             {/* Right side: icon-only on mobile, text on desktop */}
             <div className="flex items-center gap-1.5 shrink-0">
+              {/* Generate dropdown — contractor projects only */}
+              {projectType === 'contractor' && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" className="px-2 sm:px-3 gap-1.5">
+                      <Sparkles className="h-4 w-4" />
+                      <span className="hidden sm:inline">Generate</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setSowOpen(true)} className="gap-2">
+                      <FileText className="h-4 w-4" />
+                      Scope of Work
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setInvoiceOpen(true)} className="gap-2">
+                      <FileText className="h-4 w-4" />
+                      Invoice
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setReceiptOpen(true)} className="gap-2">
+                      <Receipt className="h-4 w-4" />
+                      Receipt
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <Button size="sm" variant="outline" onClick={() => setFolderModalOpen(true)} className="px-2 sm:px-3">
                 <FolderPlus className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">Folder</span>
@@ -918,6 +986,26 @@ export function DocumentsGallery({ projectId }: DocumentsGalleryProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* AI Document Generation Sheets — contractor projects only */}
+      <ScopeOfWorkSheet
+        open={sowOpen}
+        onOpenChange={setSowOpen}
+        vendors={projectVendors}
+      />
+
+      <GenerateInvoiceSheet
+        open={invoiceOpen}
+        onOpenChange={setInvoiceOpen}
+        projectName={projectName}
+        projectAddress={projectAddress}
+      />
+
+      <GenerateReceiptSheet
+        open={receiptOpen}
+        onOpenChange={setReceiptOpen}
+        projectName={projectName}
+      />
     </DndContext>
   );
 }

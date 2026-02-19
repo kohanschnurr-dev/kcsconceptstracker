@@ -1222,7 +1222,7 @@ export default function ProjectDetail() {
           </TabsContent>
 
           <TabsContent value="documents">
-            <DocumentsGallery projectId={id!} />
+            <DocumentsGallery projectId={id!} projectType={project.project_type} projectName={project.name} projectAddress={project.address} />
           </TabsContent>
 
           <TabsContent value="logs" className="space-y-4">
