@@ -1,86 +1,153 @@
 
-# Fix PDF Dead Space & Single-Page Layout
+# Remove AI Generation — Use Form Data Directly for PDF
 
-## Root Causes Identified
+## What's Changing
 
-From the screenshot, three specific bugs are causing the problems:
+Right now, all three sheets (Invoice, Receipt, Scope of Work) send the form data to an AI edge function, which writes a text document, and that text is then parsed and rendered as a PDF. The user wants to skip the AI entirely — the PDF should be built directly from what was typed into the form.
 
-### 1. `min-height: 100vh` on `.page`
-The page wrapper forces itself to be at least the full viewport height. When content is short (a simple receipt), this creates a massive empty gray block below the content before the footer.
+This means replacing the current approach:
 
-**Fix:** Remove `min-height: 100vh` entirely. The page should only be as tall as its content.
-
-### 2. Blank lines in AI output creating `height:10px` spacers
-The `renderContent` function converts every empty line into `<div style="height:10px;"></div>`. The AI output typically has multiple blank lines between sections, and between the last section and the total. These stack up into the visible dead space gap.
-
-**Fix:** Collapse consecutive empty lines — only emit one spacer per group of blank lines (deduplicate). Also reduce the spacer height from `10px` to `4px`.
-
-### 3. Total box appended after all content
-The total lines are pulled out of the flow and appended at the very end of `renderContent`. If the AI output has blank lines after the last real section but before the total, those spacers appear as a gap above the total box.
-
-**Fix:** Keep detecting total lines separately (for special styling), but don't append the box after all content — instead, insert it inline where the total line was detected in the text flow. This eliminates the gap between the last content and the total.
-
-### 4. `content-wrapper` padding is too large
-Current: `padding: 36px 44px 40px` — this adds 76px of vertical breathing room around the card, visible as the gray background area.
-
-**Fix:** Reduce to `padding: 20px 36px 24px`.
-
-### 5. Footer padding creates second-page bleed
-`padding: 16px 0 36px` on the footer adds 52px below the footer text, which on short documents can push the last pixel onto page 2.
-
-**Fix:** Reduce to `padding: 12px 0 16px`.
-
-## Changes to `src/lib/pdfExport.ts`
-
-### A. `renderContent` — deduplicate blank lines & inline total box
-
-Current behavior:
 ```
-line 1 content
-[empty spacer 10px]
-[empty spacer 10px]   ← stacks up
-[empty spacer 10px]
-line 2 content
+Form fields → AI edge function → plain text → renderContent() → PDF
 ```
 
-New behavior:
+With:
+
 ```
-line 1 content
-[empty spacer 4px]   ← only one, collapsed
-line 2 content
-```
-
-The total box insertion changes from "always appended at end" to "inserted inline in position", so it appears immediately after the last content line with no gap.
-
-### B. CSS changes
-
-| Property | Current | New |
-|---|---|---|
-| `.page` `min-height` | `100vh` | removed |
-| `.content-wrapper` padding | `36px 44px 40px` | `20px 36px 24px` |
-| `.content-card` padding | `36px 40px` | `24px 32px` |
-| `.footer` padding | `16px 0 36px` | `12px 0 16px` |
-| `.header` padding | `28px 44px` | `20px 36px` |
-| `.meta-bar` padding | `11px 44px` | `8px 36px` |
-| Section header `margin-top` | `24px` | `16px` |
-| Empty spacer height | `10px` | `4px` |
-| Total box `margin-top` | `28px` | `12px` |
-
-### C. `@page` print rule — enforce portrait
-
-Add `size: A4 portrait` to the `@page` rule inside `@media print`, and also add `min-height: unset` to `.page` within print media to eliminate any remaining forced height.
-
-```css
-@page { size: A4 portrait; margin: 0; }
-@media print {
-  .page { min-height: unset; }
-}
+Form fields → buildStructuredContent() → PDF
 ```
 
-## Result
+## Files to Change
 
-- No dead gray space between content and total box
-- No forced second page for short documents
-- Portrait orientation locked
-- Total box appears inline, right after the last content section
-- Documents with many line items still naturally flow to page 2
+- `src/components/project/GenerateInvoiceSheet.tsx`
+- `src/components/project/GenerateReceiptSheet.tsx`
+- `src/components/vendors/ScopeOfWorkSheet.tsx`
+
+No edge functions or `pdfExport.ts` need to change.
+
+## How Each Sheet Will Build Its Content String
+
+Instead of calling `supabase.functions.invoke(...)`, `handleGenerate` will synchronously build a plain-text string from the form fields — formatted exactly like the AI used to output — and call `generatePDF()` immediately.
+
+### Invoice
+
+```
+INVOICE
+
+Invoice Number:  INV-001
+Invoice Date:    2025-02-19
+Due Date:        2025-03-05
+
+FROM
+Company:  KCS Concepts
+
+TO
+Client:   John Smith
+
+PROJECT
+Project:   123 Main St Rehab
+Address:   123 Main St, City, ST
+
+DESCRIPTION OF WORK
+Full kitchen renovation including demo, framing, and finish work.
+
+LINE ITEMS
+  Demolition: 1 x $500.00 = $500.00
+  Framing:    2 x $350.00 = $700.00
+
+SUBTOTAL: $1,200.00
+TAX (8%): $96.00
+TOTAL DUE: $1,296.00
+
+PAYMENT INFORMATION
+Payment Method: Check
+Notes: Make checks payable to KCS Concepts LLC
+```
+
+### Receipt
+
+```
+PAYMENT RECEIPT
+
+Receipt Number: RCP-001
+Receipt Date:   2025-02-19
+
+FROM
+Vendor:   KCS Concepts
+
+FOR PROJECT
+Project:  123 Main St Rehab
+
+DESCRIPTION OF WORK / SERVICES
+Plumbing rough-in and fixture installation.
+
+LINE ITEMS
+  Rough-in: 1 x $800.00 = $800.00
+  Fixtures: 3 x $120.00 = $360.00
+
+TOTAL PAID: $1,160.00
+
+PAYMENT DETAILS
+Payment Method: Zelle
+Payment Date:   2025-02-19
+Notes: Payment confirmed via Zelle to vendor
+```
+
+### Scope of Work
+
+```
+SCOPE OF WORK
+
+Company:    KCS Concepts
+Contractor: Reliable Electric LLC
+Customer:   123 Main St, City, ST
+Date:       2025-02-19
+Job Number: JOB-2025-012
+
+TRADE / TRADE TYPE
+Electrical, Low Voltage
+
+JOB TITLE
+Panel upgrade and outlet installation
+
+LOCATION / AREA
+Basement and main floor
+
+KEY QUANTITIES
+2 panels, 12 outlets
+
+WORK TO BE PERFORMED
+Remove old 100A panel
+Install new 200A panel
+Run new circuits to kitchen and laundry
+Install 12 new outlets per code
+
+ALSO INCLUDED
+Debris removal
+Final cleanup
+
+NOT INCLUDED / EXCLUSIONS
+Permits
+Drywall repairs
+
+MATERIALS
+Contractor provides all materials
+
+SPECIAL NOTES
+Access via side gate. Work scheduled for mornings only.
+```
+
+## UI Cleanup
+
+- Remove `isGenerating` state (no async operation needed — it's instant)
+- Remove `Loader2` and `Sparkles` icon imports (replace button icon with `FileText`)
+- Remove `supabase` import from all three sheets
+- Remove `Output Settings` section (Length/Tone toggles) from Invoice and Scope of Work sheets — they were only relevant to AI generation
+- Update button label: "Generate Invoice PDF", "Generate Receipt PDF", "Generate Scope of Work PDF" — using `FileText` icon
+- The button becomes a regular synchronous click, no `disabled` loading state needed (keep vendor required check on Scope of Work)
+
+## Technical Details
+
+- Omit any section whose fields are all empty (e.g., no exclusions → skip "NOT INCLUDED" header)
+- Line items with no description or price are skipped
+- The content string is passed directly to `generatePDF()` — the existing `renderContent()` parser already handles ALL CAPS section headers, key:value pairs, and total lines correctly, so the output will look polished without any changes to `pdfExport.ts`
