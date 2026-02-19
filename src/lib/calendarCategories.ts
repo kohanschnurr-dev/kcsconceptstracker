@@ -16,11 +16,12 @@ export interface CalendarCategory {
   groupLabel: string;
 }
 
-export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: string; bgClass: string; textClass: string; borderClass: string }> = {
+export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: string; bgClass: string; swatchClass: string; textClass: string; borderClass: string }> = {
   acquisition_admin: {
     label: 'Acquisition/Admin',
     color: 'blue',
     bgClass: 'bg-blue-500/20',
+    swatchClass: 'bg-blue-500',
     textClass: 'text-foreground',
     borderClass: 'border-blue-500/30',
   },
@@ -28,6 +29,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     label: 'Structural/Exterior',
     color: 'red',
     bgClass: 'bg-red-500/20',
+    swatchClass: 'bg-red-500',
     textClass: 'text-foreground',
     borderClass: 'border-red-500/30',
   },
@@ -35,6 +37,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     label: 'Rough-ins',
     color: 'orange',
     bgClass: 'bg-orange-500/20',
+    swatchClass: 'bg-orange-500',
     textClass: 'text-foreground',
     borderClass: 'border-orange-500/30',
   },
@@ -42,6 +45,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     label: 'Inspections',
     color: 'purple',
     bgClass: 'bg-purple-500/20',
+    swatchClass: 'bg-purple-500',
     textClass: 'text-foreground',
     borderClass: 'border-purple-500/30',
   },
@@ -49,6 +53,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     label: 'Interior Finishes',
     color: 'green',
     bgClass: 'bg-emerald-500/20',
+    swatchClass: 'bg-emerald-500',
     textClass: 'text-foreground',
     borderClass: 'border-emerald-500/30',
   },
@@ -56,6 +61,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     label: 'Milestones',
     color: 'gold',
     bgClass: 'bg-amber-500/20',
+    swatchClass: 'bg-amber-500',
     textClass: 'text-foreground',
     borderClass: 'border-amber-500/30',
   },
