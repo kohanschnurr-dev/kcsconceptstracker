@@ -297,7 +297,7 @@ function ExpenseForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Vendor</Label>
-          <Input placeholder="Home Depot, contractor..." value={vendor} onChange={(e) => setVendor(e.target.value)} />
+          <Input placeholder="" value={vendor} onChange={(e) => setVendor(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Payment</Label>
