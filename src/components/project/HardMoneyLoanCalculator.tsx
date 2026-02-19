@@ -335,7 +335,7 @@ export function HardMoneyLoanCalculator({
             </div>
 
             {/* Interest Rate + Loan Term — same row */}
-            <div className="grid grid-cols-[1fr_2fr] gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_2fr] gap-4">
               <div className="space-y-2">
                 <Label htmlFor="interest-rate">Annual Interest Rate</Label>
                 <div className="relative">
@@ -624,7 +624,7 @@ export function HardMoneyLoanCalculator({
           {/* Right Column - Results */}
           <div className="space-y-4">
             {/* KPI Cards */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="p-3 rounded-sm bg-primary/10 border border-primary/30 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Monthly Payment</p>
                 <p className="text-lg font-bold font-mono text-primary">
@@ -666,7 +666,7 @@ export function HardMoneyLoanCalculator({
                   {formatCurrency(calculations.totalLoanCost)}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-between gap-1 text-sm text-muted-foreground">
                 <span>Points: {formatCurrency(calculations.pointsCost)}</span>
                 <span>Interest: {formatCurrency(calculations.totalInterest)}</span>
                 <span>Closing: {formatCurrency(closingCosts)}</span>
