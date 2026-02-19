@@ -1,70 +1,163 @@
 
-# Fix Desktop Tab Bar Styling on Project Detail Page
+# Generate Documents from Folders — Contractor Projects (Documents Tab)
 
-## Problem
+## Overview
 
-The current `TabsList` in `src/pages/ProjectDetail.tsx` (line 1050) renders with the default shadcn tab styling: a gray rounded pill container with small pill-shaped active triggers. On desktop, this looks cramped and visually heavy — like a segmented control rather than a proper tab bar.
+On contractor projects, the Documents tab will surface a **"Generate"** button in the toolbar that opens a dropdown with three AI document types:
+- **Scope of Work** (reuses the existing `ScopeOfWorkSheet` component, pre-seeded with the project's vendor list)
+- **Invoice** (new AI sheet)
+- **Receipt** (new AI sheet)
 
-The screenshot shows it rendering like a navigation pill group on a wide page, which clashes with the card-based layout around it.
+This is only shown when `project.project_type === 'contractor'`.
 
-## Solution
+---
 
-Replace the default pill-style tabs with a clean **underline-style tab bar** — the most common, professional look for desktop navigation tabs. This means:
+## Where the "Generate" Button Lives
 
-- No gray background container on the `TabsList`
-- Active tab shows a bottom border/underline in the primary color
-- Inactive tabs are plain text, getting a subtle hover state
-- The overall bar sits on a bottom border line for visual structure
+Inside `DocumentsGallery.tsx`, the card header already has two action buttons (`+ Folder`, `+ Add`). A third **"Generate"** button with a `Sparkles` icon is added next to them, but **only rendered when the project is a contractor type**.
 
-## Technical Changes
+To know the project type inside `DocumentsGallery`, we need to pass it as a prop:
 
-### 1. `src/pages/ProjectDetail.tsx` — TabsList & TabsTrigger styling
-
-**Current (line 1050):**
 ```tsx
-<TabsList className="flex h-10 w-max justify-start gap-0.5 min-w-full">
-  {effectiveTabOrder.map((tab) => (
-    <TabsTrigger key={tab} value={tab} className="shrink-0">
-      {getTabLabel(tab, project.project_type)}
-    </TabsTrigger>
-  ))}
-</TabsList>
+// Before:
+<DocumentsGallery projectId={id!} />
+
+// After:
+<DocumentsGallery projectId={id!} projectType={project.project_type} />
 ```
 
-**After:**
-```tsx
-<TabsList className="flex h-10 w-max justify-start gap-0 min-w-full bg-transparent p-0 border-b border-border rounded-none">
-  {effectiveTabOrder.map((tab) => (
-    <TabsTrigger
-      key={tab}
-      value={tab}
-      className="shrink-0 rounded-none border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors
-        data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none
-        hover:text-foreground bg-transparent"
-    >
-      {getTabLabel(tab, project.project_type)}
-    </TabsTrigger>
-  ))}
-</TabsList>
+---
+
+## Generate Dropdown Menu
+
+Clicking "Generate" opens a `DropdownMenu` with three items:
+
+```
+⚡ Sparkles icon  "Generate"  ▾
+────────────────────────────────
+  📄 Scope of Work
+  💵 Invoice
+  🧾 Receipt
 ```
 
-**Key CSS changes:**
-- `bg-transparent p-0 rounded-none` — removes the pill container background
-- `border-b border-border` — adds a subtle line under the whole tab bar
-- On triggers: `border-b-2 border-transparent` by default, flips to `border-primary` when active
-- `data-[state=active]:bg-transparent data-[state=active]:shadow-none` — removes the active white pill highlight from the default shadcn style
-- `text-muted-foreground` default, `text-foreground` when active or hovered
+Each item opens its corresponding sheet/modal.
 
-This is a **single-file, single-location change** — only the `TabsList` and `TabsTrigger` className props at lines ~1050-1055 need updating.
+---
 
-### Files to Change
+## Document Type Sheets
+
+### 1. Scope of Work — Reuse Existing
+
+The existing `ScopeOfWorkSheet` from `src/components/vendors/ScopeOfWorkSheet.tsx` is reused with zero changes. We just need to:
+- Load the project's vendor list from `project_vendors` + `vendors` join inside the Documents tab
+- Pass `vendors` into `ScopeOfWorkSheet`
+
+### 2. Invoice Generator — New Component
+
+**File:** `src/components/project/GenerateInvoiceSheet.tsx`
+
+A right-side Sheet with sections:
+
+**INVOICE INFO**
+- Company Name (pre-filled from `useCompanySettings`)
+- Client / Property Name
+- Invoice Number (e.g. INV-001)
+- Invoice Date (today)
+- Due Date
+
+**JOB DETAILS**
+- Project Name (pre-filled from project)
+- Project Address (pre-filled from project)
+- Description of Work
+
+**LINE ITEMS** (dynamic rows)
+- Add line item: Description | Qty | Unit Price → auto-calculates row total
+- "+ Add Line Item" button
+- Running subtotal, tax (% toggle), and total shown below
+
+**PAYMENT INFO**
+- Payment Method (select: Check / Wire / Zelle / Venmo / Cash / Other)
+- Payment Instructions / Notes (textarea)
+
+**OUTPUT SETTINGS**
+- Same Length/Tone toggles as Scope of Work
+
+Generate Button → calls same edge function pattern → formatted plain-text output with Copy button
+
+### 3. Receipt Generator — New Component
+
+**File:** `src/components/project/GenerateReceiptSheet.tsx`
+
+A simpler sheet:
+
+**RECEIPT INFO**
+- Company / Vendor Name (pre-filled from company settings)
+- Receipt Date (today)
+- Receipt Number
+
+**JOB DETAILS**
+- Project Name (pre-filled)
+- Description of Work / Services
+
+**LINE ITEMS** (same dynamic pattern as Invoice)
+- Description | Qty | Unit Price | Total
+
+**PAYMENT**
+- Amount Paid
+- Payment Method
+- Payment Date
+- Notes
+
+Generate Button → AI-formatted receipt document → Copy
+
+---
+
+## New Edge Functions
+
+Both Invoice and Receipt use the same Lovable AI gateway pattern as `generate-scope-of-work`.
+
+**`supabase/functions/generate-invoice/index.ts`**  
+- Model: `google/gemini-3-flash-preview`
+- System prompt instructs AI to write a professional contractor invoice in plain text with clear formatting
+- Input: all form fields including line items array
+
+**`supabase/functions/generate-receipt/index.ts`**  
+- Model: `google/gemini-3-flash-preview`
+- System prompt writes a professional payment receipt
+- Input: all form fields
+
+Both get `verify_jwt = false` entries added to `supabase/config.toml`.
+
+---
+
+## Files to Change
 
 | File | Change |
 |---|---|
-| `src/pages/ProjectDetail.tsx` | Update `TabsList` and `TabsTrigger` class names at lines 1050–1054 |
+| `src/components/project/DocumentsGallery.tsx` | Add `projectType` prop, `Generate` dropdown button (contractor-only), vendor load, sheet state |
+| `src/pages/ProjectDetail.tsx` | Pass `projectType={project.project_type}` to `DocumentsGallery` |
+| `src/components/project/GenerateInvoiceSheet.tsx` | New — Invoice generator UI |
+| `src/components/project/GenerateReceiptSheet.tsx` | New — Receipt generator UI |
+| `supabase/functions/generate-invoice/index.ts` | New — AI edge function |
+| `supabase/functions/generate-receipt/index.ts` | New — AI edge function |
+| `supabase/config.toml` | Add `verify_jwt = false` for both new functions |
 
-### What stays the same
-- Tab order, drag-to-reorder, settings gear — untouched
-- Mobile horizontal scrolling behavior — untouched  
-- Tab content rendering — untouched
-- All other page layout — untouched
+---
+
+## UI Placement Detail
+
+```
+DocumentsGallery header (right side):
+[ ✦ Generate ▾ ]  [ 📁 Folder ]  [ + Add ]
+```
+
+The Generate button uses `variant="outline"` with a `Sparkles` icon. On mobile, it shows icon-only. On desktop, shows "Generate" text. The dropdown appears on click.
+
+---
+
+## What Does NOT Change
+
+- Folder system, drag-and-drop, uploads — untouched
+- `ScopeOfWorkSheet` — reused with zero edits (the vendor list is fetched inside `DocumentsGallery`)
+- Non-contractor project types — the Generate button is not shown at all
+- The Vendors page Scope of Work button — untouched
