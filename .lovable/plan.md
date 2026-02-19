@@ -1,62 +1,74 @@
 
-## Fix Calendar Dropdown Theme Styling
 
-### The Problem
+## Add Receipt Photo AI Analysis + Upload Tips Popup
 
-The calendar date-picker dropdowns ("February", "2026") and the "today" highlight are not properly following the active color palette. On iOS/mobile specifically, the native `<select>` dropdown options render with system-default light backgrounds regardless of the dark theme, because the CSS only targets the `<select>` element itself — not the `<option>` children.
+### What This Does
 
-The screenshot shows the Ivory palette (a light palette), where the dropdowns appear with minimal distinction from the background, and the "today" cell (19) has a muted brownish color that blends in. The styling needs to properly inherit from the active palette's CSS variables across all palettes and on mobile.
+Two additions to the "Add Expense" modal (the Single Expense tab):
 
-### Root Cause
+1. **Receipt Photo AI Analysis**: When a user uploads a receipt photo via the "Add Receipt Photo" button, the image is sent to the existing `parse-receipt-image` edge function (already built for SmartSplit) to extract vendor, amount, date, and description -- auto-filling the expense form fields. This brings the same AI parsing power from SmartSplit into the quick expense flow.
 
-The "calendar skipping mode" was added in `src/components/ui/calendar.tsx` via `captionLayout="dropdown-buttons"` with `fromYear`/`toYear`. The dropdown `<select>` element is styled with the `calendar-dropdown` CSS class, but:
+2. **"Tips for a Good Receipt" Popup**: A one-time guidance dialog that appears the first time a user taps "Add Receipt Photo." It shows simple tips (good lighting, flat surface, full receipt visible, etc.) with a "Don't remind me again" checkbox. The preference is stored in `localStorage` so it never shows again once dismissed.
 
-1. The `.calendar-dropdown` rule in `src/index.css` (line 174) does NOT style `<option>` elements inside it
-2. On iOS, native `<select>` pickers completely ignore CSS on options — the `color-scheme` property must be correctly inherited to get the right picker appearance
-3. The CSS rule currently sets `color-scheme: inherit` but does not include an `<option>` fallback for desktop browsers
+---
 
-### Changes
+### How It Works
 
-**File 1: `src/index.css`** — Enhance the `.calendar-dropdown` CSS rules
+When the user taps "Add Receipt Photo":
+1. Check `localStorage` for `kcs-receipt-tips-dismissed`
+2. If NOT dismissed, show the tips dialog first. User can check "Don't remind me again" and tap "Got it" to proceed to the camera/file picker
+3. If already dismissed, go straight to the file picker
+4. After a photo is selected, show a preview AND a "Scan Receipt" button
+5. Tapping "Scan Receipt" sends the image to `parse-receipt-image` (same edge function SmartSplit uses)
+6. Extracted fields (vendor, amount, date, description, payment method) auto-fill the form
+7. A success toast confirms what was extracted
 
-- Add `option` styling inside `.calendar-dropdown` so desktop browsers render dropdown options with theme-appropriate background and text colors
-- Ensure `color-scheme: inherit` is reliably set so iOS/mobile native pickers render in the correct light/dark mode
-- Add explicit focus/hover states for the dropdown to use palette accent colors
-
-The updated CSS block:
-
-```css
-.calendar-dropdown {
-  max-height: 200px;
-  overflow-y: auto;
-  color-scheme: inherit;
-  background-color: hsl(var(--popover));
-  color: hsl(var(--popover-foreground));
-}
-
-.calendar-dropdown option {
-  background-color: hsl(var(--popover));
-  color: hsl(var(--popover-foreground));
-}
-
-.calendar-dropdown option:checked {
-  background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
-}
-```
-
-**File 2: `src/components/ui/calendar.tsx`** — Improve dropdown class styling
-
-- Update the `dropdown` class to include stronger palette-aware styling: use `bg-secondary` as the resting background (instead of `bg-popover` which can be too similar to the card background on light palettes), and ensure `text-foreground` is explicit
-- Ensure `day_today` uses a distinct but not overpowering style: keep `bg-accent text-accent-foreground` but add a ring to make it stand out from regular days without clashing with `day_selected`
-
-Updated classNames:
-- `dropdown`: Change from `bg-popover text-popover-foreground` to `bg-secondary text-foreground` for better contrast on both light and dark palettes, keep all other classes unchanged
-- `day_today`: Add `ring-1 ring-primary/30` alongside existing `bg-accent text-accent-foreground` so today stands out even when accent is subtle
+---
 
 ### Files to Change
 
-1. `src/index.css` — add `option` and `option:checked` rules inside `.calendar-dropdown`
-2. `src/components/ui/calendar.tsx` — update `dropdown` and `day_today` classNames for better palette adherence
+**File 1: `src/components/QuickExpenseModal.tsx`** (ExpenseForm component only)
 
-These are 2 small edits. No new files, no schema changes, no new dependencies.
+Changes inside the `ExpenseForm` function:
+
+- Add state: `showReceiptTips` (boolean), `isParsingImage` (boolean)
+- Add a `handleReceiptPhotoClick` function that checks localStorage before opening file picker
+- Add a `handleParseReceiptImage` function that:
+  - Converts the file to base64
+  - Calls `supabase.functions.invoke('parse-receipt-image', { body: { image_base64 } })`
+  - Auto-fills vendor, amount, date, description, paymentMethod, includeTax from the response
+- Replace the simple "Add Receipt Photo" button area (lines 279-295) with:
+  - Same file input + preview, but add a "Scan Receipt" button below the preview image
+  - The "Add Receipt Photo" button calls `handleReceiptPhotoClick` instead of directly opening the file picker
+- Add a small `Dialog` for the receipt tips popup containing:
+  - 4-5 short tips with icons (good lighting, lay flat, capture full receipt, avoid glare, ensure text is readable)
+  - A checkbox: "Don't remind me again"
+  - A "Got it" button that saves the preference to localStorage and opens the file picker
+
+**No new files, no new dependencies, no database changes.**
+
+### Technical Details
+
+Receipt tips dialog structure:
+```
+Dialog (controlled by showReceiptTips state)
+  - Title: "Tips for a Great Receipt Photo"
+  - Tip list (4 items with simple bullet icons):
+    - Lay the receipt flat on a solid surface
+    - Ensure the entire receipt is visible in frame
+    - Use good lighting and avoid shadows or glare
+    - Make sure all text and numbers are readable
+  - Footer:
+    - Checkbox + "Don't show this again" label
+    - "Got it" button
+```
+
+localStorage key: `kcs-receipt-tips-dismissed` (stores `"true"` when checked)
+
+The "Scan Receipt" button appears below the receipt preview image, styled as a secondary action:
+```
+[receipt preview image]
+[X delete] [Sparkles icon] Scan Receipt  (button, calls parse-receipt-image)
+```
+
+The auto-fill logic reuses the same field-setting pattern already in `handleParseReceiptText` (lines 88-115), just with the image endpoint instead of text.
