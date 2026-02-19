@@ -1,33 +1,32 @@
 
 
-## Fix Edit Task Dialog for Mobile + Add Notes & Photo Upload
+## Replace Project Type Tabs with Underline Style
 
-### Problems
-1. On mobile, the Edit Task dialog opens as a centered modal that can look awkward (partially covered, hard to interact with). It should use a Drawer (bottom sheet) on mobile instead.
-2. The dialog is missing a **Notes** field (the `description` column exists in the database but isn't shown).
-3. Photo upload is already present but could be more visible.
+### Problem
+The project type tabs (Fix & Flips, Rentals, etc.) on the Projects page use the default pill/segmented control style (`TabsList`), which scrolls awkwardly on mobile -- the rounded container clips oddly and the horizontal overflow isn't smooth.
+
+### Solution
+Replace the `TabsList` + `TabsTrigger` combo with custom underline-style buttons, matching the pattern already used on the Project Detail page. This gives a clean, horizontally scrollable row without the pill container.
 
 ### Changes
 
-**`src/components/project/ProjectTasks.tsx`**
+**`src/pages/Projects.tsx`** (lines 341-355)
 
-1. **Use Drawer on mobile, Dialog on desktop**: Import `useIsMobile` hook and conditionally render either a `Drawer` (vaul) or `Dialog` for the edit form. This follows the pattern used elsewhere in the app.
+Replace the `<TabsList>` wrapper and its `<TabsTrigger>` children with plain `<button>` elements styled with `border-b-2 border-transparent` (inactive) and `border-primary text-foreground` (active), inside a horizontally scrollable `div` with `overflow-x-auto scrollbar-hide`. The outer `<Tabs>` component stays for managing `TabsContent`, but the triggers become custom buttons calling `setMainTab()`.
 
-2. **Add a Notes/Description field**: 
-   - Add `editDescription` state alongside existing edit states
-   - Fetch `description` in the query (already exists in DB)
-   - Add `description` to the `ProjectTask` interface
-   - Add a `Textarea` field labeled "Notes" between Due Date and Photos
-   - Save `description` in the update call
+Specific styling per tab button:
+- `shrink-0 border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors`
+- Active state: `border-primary text-foreground`
+- Each button still shows the icon + label + count
 
-3. **Populate description on open**: In `openEditDialog`, set `editDescription` from the task.
+The Settings gear button stays positioned after the scrollable row (hidden on mobile per existing memory).
 
 ### Technical Details
 
-- Use `useIsMobile()` from `@/hooks/use-mobile`
-- On mobile: wrap edit form in `Drawer` / `DrawerContent` from vaul (already installed)
-- On desktop: keep existing `Dialog` / `DialogContent`
-- Extract the edit form into a shared variable to avoid duplication
-- Add `description` to the Supabase select query and update call
-- No database migration needed -- `description` column already exists on `tasks` table
+- Remove `TabsList` and `TabsTrigger` imports if no longer used elsewhere in the file (they're still used for the status sub-tabs, so keep imports)
+- The main type tabs become `<button>` elements in a `<div className="flex overflow-x-auto scrollbar-hide gap-1 border-b">`
+- Each button calls `setMainTab(type)` and `setStatusTab('all')` on click
+- Active state determined by `mainTab === type`
+- `TabsContent` blocks remain unchanged
+- The status sub-tabs (All / Active / Complete) keep the existing pill style since they're short and don't overflow
 
