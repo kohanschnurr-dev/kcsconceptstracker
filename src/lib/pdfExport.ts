@@ -383,14 +383,16 @@ export function generatePDF(content: string, options: PdfOptions): void {
 
   <div class="header">
     <div class="header-left">
-      ${options.logoUrl ? `<div class="header-logo-wrap">${logoHtml}</div>` : ''}
       <div class="header-text">
         <div class="header-company">${escapeHtml(options.companyName)}</div>
         <div class="header-tagline">Professional Document</div>
       </div>
     </div>
     <div class="header-right">
-      <div class="doc-icon">${docIcon}</div>
+      ${options.logoUrl
+        ? `<div class="header-logo-wrap">${logoHtml}</div>`
+        : `<div class="doc-icon">${docIcon}</div>`
+      }
       <div class="doc-badge">${escapeHtml(options.docType)}</div>
     </div>
   </div>
