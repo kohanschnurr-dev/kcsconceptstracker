@@ -179,9 +179,11 @@ input[type="number"] {
   color: hsl(210 20% 95%);
 }
 
-/* Force native date picker to match dark theme */
+/* Native date/time pickers inherit color-scheme from root (set by applyPalette) */
 input[type="date"],
 input[type="datetime-local"],
 input[type="time"] {
-  color-scheme: dark;
+  color-scheme: inherit;
+  background-color: hsl(var(--input));
+  color: hsl(var(--foreground));
 }
