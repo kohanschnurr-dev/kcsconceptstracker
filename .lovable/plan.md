@@ -1,23 +1,26 @@
 
 
-## Change All Project Search Placeholders to "Search"
+## Fix Date and Amount Layout on Mobile
 
-Every project search input currently shows "Search projects..." or similar. All instances will be updated to just say "Search".
+The Amount and Date fields are currently in a `grid grid-cols-2 gap-4` layout (line 283 of `QuickExpenseModal.tsx`). On mobile screens, this makes both fields too narrow -- the date picker gets squeezed and the amount input is cramped.
 
-### Files to Change
+### Change
 
-| File | Current Text | Line(s) |
-|---|---|---|
-| `src/components/ProjectAutocomplete.tsx` | Default prop `'Search projects...'` | 41 |
-| `src/components/ProjectAutocomplete.tsx` | CommandInput `"Search projects..."` | 128 |
-| `src/components/QuickExpenseModal.tsx` | `"Search projects..."` | 262 |
-| `src/components/SmartSplitReceiptUpload.tsx` | `"Search projects..."` | 1403 |
-| `src/components/calendar/NewEventModal.tsx` | `"Search projects..."` | 245 |
-| `src/components/NewDailyLogModal.tsx` | `"Search projects..."` | 125 |
-| `src/components/CreateBudgetModal.tsx` | `"Search projects..."` (and loading variant) | 509 |
-| `src/pages/BusinessExpenses.tsx` | `"Search projects..."` | 884 |
-| `src/pages/Projects.tsx` | `"Search projects..."` | 334 |
+**File: `src/components/QuickExpenseModal.tsx`** (line 283)
 
-All 9 occurrences across 8 files will be changed to `"Search"`.
+Change the Amount/Date row from always being 2 columns to stacking vertically on mobile:
 
-For CreateBudgetModal, the loading state placeholder `"Loading projects..."` will remain unchanged since that serves a different purpose.
+- Change `grid grid-cols-2 gap-4` to `grid grid-cols-1 sm:grid-cols-2 gap-4`
+
+This makes Amount and Date each take full width on mobile (stacked), and sit side-by-side on larger screens.
+
+### Technical Detail
+
+Single class change on line 283:
+```
+- <div className="grid grid-cols-2 gap-4">
++ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+```
+
+Only the Amount/Date row is affected. The Project/Category and Vendor/Payment rows will remain as 2-column grids since they work fine at that width.
+
