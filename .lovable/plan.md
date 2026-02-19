@@ -1,66 +1,56 @@
 
-## Change: Calendar Icon → Due Date Picker (Daily Logs Page)
+## Fix: Calendar Glitch in Daily Logs Due Date Picker
 
-### What's Changing
+### Root Cause (Confirmed from Console Logs)
 
-The `CalendarPlus` icon button currently instant-assigns a task to "today's sprint" (`scheduled_date = today`). The user wants it to open a **date picker popover** to set or change the task's **due date** instead.
+The browser console shows this exact error:
 
-This change applies to both views on the page:
-- **Desktop table view** (line 1100–1109)
-- **Mobile card view** (line 948–957)
+> `Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?`
+> `Check the render method of DailyLogs.`
+> `at Calendar`
 
-### How It Will Work
+The `Calendar` component in `src/components/ui/calendar.tsx` is defined as a plain `function Calendar(...)` — it does **not** use `React.forwardRef`. When Radix UI's `Popover` tries to pass a `ref` to it (which happens when `initialFocus` is set and the popover is inside a table cell `<td>`), React throws this warning and the component behavior becomes unpredictable — causing the visible glitch/freeze.
 
-1. User clicks the calendar icon next to any task
-2. A popover opens with a date picker (same style as the "Add Task" date picker already on this page)
-3. User picks a date → due date is saved to the database instantly
-4. Popover closes, the Due Date column updates to show the new date
-5. If a date is already set, the picker opens pre-selected on that date
-6. A "Clear date" option allows removing the due date
+This is the known fix documented in the shadcn datepicker guidance: `pointer-events-auto` is already there, but the `Calendar` component itself needs to be wrapped with `React.forwardRef` so Radix can correctly attach the ref without errors.
 
-### Technical Details
+### The Fix
 
-**New state needed:**
+**File: `src/components/ui/calendar.tsx`**
+
+Wrap the `Calendar` function with `React.forwardRef` so it properly accepts the ref that Radix's Popover passes to it:
+
 ```typescript
-const [dueDatePickerTaskId, setDueDatePickerTaskId] = useState<string | null>(null);
+// BEFORE
+function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+  ...
+}
+Calendar.displayName = "Calendar";
+
+// AFTER  
+const Calendar = React.forwardRef<
+  HTMLDivElement,
+  CalendarProps
+>(({ className, classNames, showOutsideDays = true, ...props }, _ref) => {
+  ...
+  return <DayPicker ... />;
+});
+Calendar.displayName = "Calendar";
 ```
 
-**New handler:**
-```typescript
-const handleUpdateDueDate = async (task: Task, date: Date | undefined) => {
-  const { error } = await supabase
-    .from('tasks')
-    .update({ due_date: date ? format(date, 'yyyy-MM-dd') : null })
-    .eq('id', task.id);
-  if (!error) {
-    fetchTasks();
-    setDueDatePickerTaskId(null);
-  }
-};
-```
+This is a one-file, minimal change that fixes the ref warning at the source, which resolves the glitch in every calendar usage across the app (Daily Logs, Add Task modal, QuickTaskInput, etc.).
 
-**Button replacement (both mobile + desktop):**
+### Why This Fixes It
 
-Replace the plain `<Button onClick={() => handleAssignToToday(task)}>` with a `<Popover>` wrapping a `<Calendar>` picker — exactly the same pattern already used in the "Add Task" area of this same page (line 808–829).
-
-The `CalendarPlus` icon stays, but the tooltip changes from "Assign to Today" to "Set Due Date".
+- Radix UI's `PopoverContent` internally tries to give a ref to its children for focus management
+- Without `forwardRef`, React cannot pass the ref → throws the warning → causes rendering instability inside table rows → visible glitch
+- With `forwardRef`, the ref is accepted cleanly (we just ignore it with `_ref` since `DayPicker` manages its own DOM), and Radix's focus management works correctly
 
 ### Files to Change
 
-- `src/pages/DailyLogs.tsx` only
-  - Add `dueDatePickerTaskId` state variable
-  - Add `handleUpdateDueDate` function
-  - Replace `CalendarPlus` button with `Popover + Calendar` in the **mobile card view** (around line 948)
-  - Replace `CalendarPlus` button with `Popover + Calendar` in the **desktop table view** (around line 1100)
-  - Remove `handleAssignToToday` function (no longer needed for this button)
-  - Add `Popover`, `PopoverContent`, `PopoverTrigger` to imports (already imported — check first)
-
-### Imports Check
-
-`Popover`, `PopoverContent`, `PopoverTrigger` are already imported (used in the Add Task area at line ~808). `Calendar` component is already imported. `format` from `date-fns` is already imported. No new dependencies needed.
+- `src/components/ui/calendar.tsx` — wrap `Calendar` with `React.forwardRef` (single change, ~5 lines affected)
 
 ### What Stays the Same
 
-- The `handleUnassignFromDay` function and the `X` button in the Daily Sprint tab remain unchanged
-- The "Today" badge on tasks still shows when `scheduledDate === todayStr`
-- Everything else on the page is untouched
+- All existing Calendar usage across the app continues to work identically
+- No changes to `DailyLogs.tsx`, `AddTaskModal.tsx`, `QuickTaskInput.tsx`, or any other caller
+- The `pointer-events-auto` class and all other props/classNames remain unchanged
