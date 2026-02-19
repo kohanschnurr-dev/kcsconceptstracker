@@ -79,14 +79,17 @@ export function useCompanySettings() {
     const fileExt = file.name.split('.').pop();
     const filePath = `${user.id}/logo.${fileExt}`;
 
-    // Delete existing logo if any
+    // Delete existing logo if any (ignore errors)
     await supabase.storage.from('company-logos').remove([filePath]);
 
     const { error: uploadError } = await supabase.storage
       .from('company-logos')
       .upload(filePath, file, { upsert: true });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Storage upload failed:', uploadError);
+      throw new Error(uploadError.message);
+    }
 
     const { data: { publicUrl } } = supabase.storage
       .from('company-logos')

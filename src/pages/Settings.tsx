@@ -111,9 +111,9 @@ export default function Settings() {
       const url = await uploadLogo(file);
       await updateSettings.mutateAsync({ logoUrl: url });
       toast.success('Logo uploaded successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Logo upload error:', error);
-      toast.error('Failed to upload logo');
+      toast.error(error?.message || 'Failed to upload logo');
     } finally {
       setIsUploadingLogo(false);
       if (fileInputRef.current) {
