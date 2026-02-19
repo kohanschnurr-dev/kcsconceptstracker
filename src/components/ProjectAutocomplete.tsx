@@ -38,7 +38,7 @@ export function ProjectAutocomplete({
   projects,
   value,
   onSelect,
-  placeholder = 'Search projects...',
+  placeholder = 'Search',
   filterActive = false,
   className,
   triggerClassName,
@@ -125,7 +125,7 @@ export function ProjectAutocomplete({
       >
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Search projects..."
+            placeholder="Search"
             value={searchQuery}
             onValueChange={setSearchQuery}
             className="h-9"

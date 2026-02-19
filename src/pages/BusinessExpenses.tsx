@@ -881,7 +881,7 @@ export default function BusinessExpenses() {
                 projects={projects}
                 value={formData.projectId}
                 onSelect={(id) => setFormData({ ...formData, projectId: formData.projectId === id ? '' : id })}
-                placeholder="Search projects..."
+                placeholder="Search"
               />
             </div>
 

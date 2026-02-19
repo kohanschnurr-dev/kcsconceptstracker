@@ -259,7 +259,7 @@ function ExpenseForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Project</Label>
-          <ProjectAutocomplete projects={projects} value={selectedProject} onSelect={setSelectedProject} placeholder="Search projects..." filterActive={true} />
+          <ProjectAutocomplete projects={projects} value={selectedProject} onSelect={setSelectedProject} placeholder="Search" filterActive={true} />
         </div>
         <div className="space-y-2">
           <Label>Category</Label>

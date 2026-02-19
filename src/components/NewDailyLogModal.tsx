@@ -122,7 +122,7 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
                 projects={projects}
                 value={selectedProject}
                 onSelect={setSelectedProject}
-                placeholder="Search projects..."
+                placeholder="Search"
               />
             </div>
 
