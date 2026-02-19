@@ -52,40 +52,94 @@ function isTotalLine(line: string): boolean {
   );
 }
 
+function buildTotalBox(items: {label: string; amount: string}[], primaryColor: string, primaryRaw: string): string {
+  return `
+    <div style="
+      margin-top:12px;
+      background: hsl(${primaryRaw}/0.08);
+      border:1.5px solid hsl(${primaryRaw}/0.3);
+      border-radius:10px;
+      padding:14px 20px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    ">
+      ${items.map((item, i) => `
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          ${i < items.length - 1 ? `border-bottom:1px solid hsl(${primaryRaw}/0.15);padding-bottom:8px;` : ''}
+        ">
+          <span style="
+            font-size:${i === items.length - 1 ? '12px' : '11px'};
+            font-weight:700;
+            letter-spacing:0.12em;
+            text-transform:uppercase;
+            color:${primaryColor};
+            font-family:'Inter','Segoe UI',sans-serif;
+          ">${escapeHtml(item.label)}</span>
+          <span style="
+            font-size:${i === items.length - 1 ? '20px' : '15px'};
+            font-weight:800;
+            color:#1a1a1a;
+            font-family:'Inter','Segoe UI',sans-serif;
+            letter-spacing:-0.5px;
+          ">${escapeHtml(item.amount)}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 function renderContent(content: string, primaryColor: string, primaryRaw: string): string {
   const lines = content.split('\n');
   const htmlParts: string[] = [];
-  const totalLines: string[] = [];
+  let lastWasBlank = false;
+  const pendingTotalItems: {label: string; amount: string}[] = [];
 
   for (const line of lines) {
     const trimmed = line.trim();
 
     if (!trimmed) {
-      htmlParts.push('<div style="height:10px;"></div>');
+      if (!lastWasBlank) {
+        htmlParts.push('<div style="height:4px;"></div>');
+      }
+      lastWasBlank = true;
       continue;
     }
+    lastWasBlank = false;
 
     if (isDividerLine(trimmed)) {
-      htmlParts.push(`<hr style="border:none;border-top:1px solid hsl(${primaryRaw}/0.2);margin:16px 0;" />`);
+      htmlParts.push(`<hr style="border:none;border-top:1px solid hsl(${primaryRaw}/0.2);margin:10px 0;" />`);
       continue;
     }
 
     if (isTotalLine(trimmed)) {
-      totalLines.push(trimmed);
+      const dollarMatch = trimmed.match(/\$[\d,]+\.?\d*/);
+      const amount = dollarMatch ? dollarMatch[0] : '';
+      const label = trimmed.replace(/\$[\d,]+\.?\d*/, '').replace(/[:]+$/, '').trim() || 'TOTAL AMOUNT';
+      pendingTotalItems.push({ label, amount });
       continue;
+    }
+
+    // If we collected total items and now hit a non-total line, flush them inline
+    if (pendingTotalItems.length > 0) {
+      htmlParts.push(buildTotalBox(pendingTotalItems, primaryColor, primaryRaw));
+      pendingTotalItems.length = 0;
     }
 
     if (isSectionHeader(trimmed)) {
       htmlParts.push(`
-        <div style="margin-top:24px;margin-bottom:8px;">
+        <div style="margin-top:16px;margin-bottom:6px;">
           <div style="
-            font-size:10.5px;
+            font-size:10px;
             font-weight:700;
             letter-spacing:0.15em;
             text-transform:uppercase;
             color:${primaryColor};
             font-family:'Inter','Segoe UI',sans-serif;
-            padding-bottom:6px;
+            padding-bottom:5px;
             border-bottom:1.5px solid hsl(${primaryRaw}/0.25);
           ">${escapeHtml(trimmed)}</div>
         </div>
@@ -98,11 +152,10 @@ function renderContent(content: string, primaryColor: string, primaryRaw: string
     if (colonIdx > 0 && colonIdx < 30 && colonIdx < trimmed.length - 1) {
       const key = trimmed.substring(0, colonIdx).trim();
       const val = trimmed.substring(colonIdx + 1).trim();
-      // Only treat as key:value if key has no spaces (label-style)
       if (!key.includes('  ') && key.split(' ').length <= 4) {
         htmlParts.push(`
-          <div style="display:flex;gap:12px;padding:4px 0;line-height:1.6;font-size:13.5px;color:#2C2C2C;font-family:'Inter','Segoe UI',sans-serif;">
-            <span style="min-width:140px;font-weight:600;color:#555;flex-shrink:0;">${escapeHtml(key)}</span>
+          <div style="display:flex;gap:12px;padding:2px 0;line-height:1.5;font-size:12.5px;color:#2C2C2C;font-family:'Inter','Segoe UI',sans-serif;">
+            <span style="min-width:130px;font-weight:600;color:#555;flex-shrink:0;">${escapeHtml(key)}</span>
             <span style="color:#2C2C2C;">${escapeHtml(val)}</span>
           </div>
         `);
@@ -110,58 +163,15 @@ function renderContent(content: string, primaryColor: string, primaryRaw: string
       }
     }
 
-    htmlParts.push(`<p style="margin:4px 0;line-height:1.75;font-size:13.5px;color:#2C2C2C;font-family:'Inter','Segoe UI',sans-serif;">${escapeHtml(trimmed)}</p>`);
+    htmlParts.push(`<p style="margin:2px 0;line-height:1.6;font-size:12.5px;color:#2C2C2C;font-family:'Inter','Segoe UI',sans-serif;">${escapeHtml(trimmed)}</p>`);
   }
 
-  let totalBox = '';
-  if (totalLines.length > 0) {
-    const items = totalLines.map(t => {
-      const dollarMatch = t.match(/\$[\d,]+\.?\d*/);
-      const amount = dollarMatch ? dollarMatch[0] : '';
-      const label = t.replace(/\$[\d,]+\.?\d*/, '').replace(/[:]+$/, '').trim() || 'TOTAL AMOUNT';
-      return { label, amount };
-    });
-
-    totalBox = `
-      <div style="
-        margin-top:28px;
-        background: hsl(${primaryRaw}/0.08);
-        border:1.5px solid hsl(${primaryRaw}/0.3);
-        border-radius:10px;
-        padding:20px 28px;
-        display:flex;
-        flex-direction:column;
-        gap:10px;
-      ">
-        ${items.map((item, i) => `
-          <div style="
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            ${i < items.length - 1 ? `border-bottom:1px solid hsl(${primaryRaw}/0.15);padding-bottom:10px;` : ''}
-          ">
-            <span style="
-              font-size:${i === items.length - 1 ? '12px' : '11px'};
-              font-weight:700;
-              letter-spacing:0.12em;
-              text-transform:uppercase;
-              color:${primaryColor};
-              font-family:'Inter','Segoe UI',sans-serif;
-            ">${escapeHtml(item.label)}</span>
-            <span style="
-              font-size:${i === items.length - 1 ? '22px' : '16px'};
-              font-weight:800;
-              color:#1a1a1a;
-              font-family:'Inter','Segoe UI',sans-serif;
-              letter-spacing:-0.5px;
-            ">${escapeHtml(item.amount)}</span>
-          </div>
-        `).join('')}
-      </div>
-    `;
+  // Flush any remaining total items at the end
+  if (pendingTotalItems.length > 0) {
+    htmlParts.push(buildTotalBox(pendingTotalItems, primaryColor, primaryRaw));
   }
 
-  return htmlParts.join('\n') + totalBox;
+  return htmlParts.join('\n');
 }
 
 export function generatePDF(content: string, options: PdfOptions): void {
@@ -203,7 +213,7 @@ export function generatePDF(content: string, options: PdfOptions): void {
 
     body {
       font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-      font-size: 13.5px;
+      font-size: 12.5px;
       color: #2C2C2C;
       background: #F9F7F4;
       -webkit-print-color-adjust: exact;
@@ -216,31 +226,30 @@ export function generatePDF(content: string, options: PdfOptions): void {
       margin: 0 auto;
       background: #ffffff;
       box-shadow: 0 4px 40px rgba(0,0,0,0.10);
-      min-height: 100vh;
     }
 
     /* ── HEADER ─────────────────────────────────────────── */
     .header {
       background: ${primaryColor};
       color: ${headerTextColor};
-      padding: 28px 44px;
+      padding: 20px 36px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 24px;
+      gap: 20px;
     }
 
     .header-left {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 16px;
       flex: 1;
     }
 
     .header-logo-wrap {
       background: rgba(255,255,255,0.15);
-      border-radius: 10px;
-      padding: 8px 12px;
+      border-radius: 8px;
+      padding: 6px 10px;
       display: flex;
       align-items: center;
       flex-shrink: 0;
@@ -249,11 +258,11 @@ export function generatePDF(content: string, options: PdfOptions): void {
     .header-text {
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 2px;
     }
 
     .header-company {
-      font-size: 22px;
+      font-size: 18px;
       font-weight: 800;
       letter-spacing: -0.4px;
       line-height: 1.1;
@@ -261,7 +270,7 @@ export function generatePDF(content: string, options: PdfOptions): void {
     }
 
     .header-tagline {
-      font-size: 11px;
+      font-size: 10px;
       opacity: 0.65;
       font-weight: 400;
       font-style: italic;
@@ -272,12 +281,12 @@ export function generatePDF(content: string, options: PdfOptions): void {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 8px;
+      gap: 6px;
       flex-shrink: 0;
     }
 
     .doc-icon {
-      font-size: 32px;
+      font-size: 24px;
       opacity: 0.85;
       line-height: 1;
     }
@@ -285,23 +294,23 @@ export function generatePDF(content: string, options: PdfOptions): void {
     .doc-badge {
       background: rgba(255,255,255,0.20);
       color: ${headerTextColor};
-      padding: 6px 16px;
+      padding: 5px 14px;
       border-radius: 999px;
-      font-size: 10.5px;
+      font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1.8px;
+      letter-spacing: 1.6px;
       border: 1px solid rgba(255,255,255,0.25);
     }
 
     /* ── META BAR ───────────────────────────────────────── */
     .meta-bar {
       background: hsl(${primaryRaw} / 0.07);
-      padding: 11px 44px;
+      padding: 8px 36px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 11px;
+      font-size: 10.5px;
       color: #666;
       border-bottom: 1.5px solid hsl(${primaryRaw} / 0.15);
       font-weight: 500;
@@ -310,7 +319,7 @@ export function generatePDF(content: string, options: PdfOptions): void {
 
     /* ── CONTENT WRAPPER ────────────────────────────────── */
     .content-wrapper {
-      padding: 36px 44px 40px;
+      padding: 20px 36px 24px;
       background: #F9F7F4;
     }
 
@@ -320,19 +329,19 @@ export function generatePDF(content: string, options: PdfOptions): void {
       border-radius: 10px;
       box-shadow: 0 2px 20px rgba(0,0,0,0.07);
       border-left: 4px solid ${primaryColor};
-      padding: 36px 40px;
+      padding: 24px 32px;
     }
 
     /* ── FOOTER ─────────────────────────────────────────── */
     .footer {
-      margin: 0 44px;
-      padding: 16px 0 36px;
+      margin: 0 36px;
+      padding: 12px 0 16px;
       border-top: 1.5px solid hsl(${primaryRaw} / 0.18);
       display: flex;
       justify-content: space-between;
       align-items: center;
       color: #999;
-      font-size: 10.5px;
+      font-size: 10px;
       font-weight: 500;
     }
 
@@ -363,8 +372,9 @@ export function generatePDF(content: string, options: PdfOptions): void {
       .page {
         box-shadow: none;
         max-width: 100%;
+        min-height: unset;
       }
-      @page { margin: 0; }
+      @page { size: A4 portrait; margin: 0; }
     }
   </style>
 </head>
