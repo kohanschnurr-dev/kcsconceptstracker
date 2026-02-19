@@ -160,6 +160,7 @@ export default function DailyLogs() {
     photoUrls: [] as string[],
   });
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const [dueDatePickerTaskId, setDueDatePickerTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLogs();
@@ -376,22 +377,21 @@ export default function DailyLogs() {
     }
   };
 
-  const handleAssignToToday = async (task: Task) => {
+  const handleUpdateDueDate = async (task: Task, date: Date | undefined) => {
     try {
       const { error } = await supabase
         .from('tasks')
-        .update({ 
-          scheduled_date: todayStr  // Only set date, keep is_daily unchanged
-        })
+        .update({ due_date: date ? format(date, 'yyyy-MM-dd') : null })
         .eq('id', task.id);
 
       if (error) throw error;
 
-      toast({ title: 'Assigned to Today', description: `"${task.title}" added to today's sprint` });
+      toast({ title: date ? 'Due date set' : 'Due date cleared', description: date ? `Due: ${format(date, 'MMM d, yyyy')}` : `"${task.title}" due date removed` });
       fetchTasks();
+      setDueDatePickerTaskId(null);
     } catch (error) {
-      console.error('Error assigning task:', error);
-      toast({ title: 'Error', description: 'Failed to assign task', variant: 'destructive' });
+      console.error('Error updating due date:', error);
+      toast({ title: 'Error', description: 'Failed to update due date', variant: 'destructive' });
     }
   };
 
@@ -945,16 +945,35 @@ export default function DailyLogs() {
                         )}
                       </div>
                       <div className="flex flex-col gap-1 shrink-0">
-                        {checklistTab === 'master' && task.status !== 'completed' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 text-primary hover:text-primary/80"
-                            onClick={() => handleAssignToToday(task)}
-                            title="Assign to Today"
-                          >
-                            <CalendarPlus className="h-4 w-4" />
-                          </Button>
+                        {task.status !== 'completed' && (
+                          <Popover open={dueDatePickerTaskId === task.id} onOpenChange={(open) => setDueDatePickerTaskId(open ? task.id : null)}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 text-primary hover:text-primary/80"
+                                title="Set Due Date"
+                              >
+                                <CalendarPlus className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="end">
+                              <CalendarPicker
+                                mode="single"
+                                selected={task.dueDate ? new Date(task.dueDate + 'T00:00:00') : undefined}
+                                onSelect={(date) => handleUpdateDueDate(task, date)}
+                                className="p-3 pointer-events-auto"
+                                initialFocus
+                              />
+                              {task.dueDate && (
+                                <div className="px-3 pb-3">
+                                  <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => handleUpdateDueDate(task, undefined)}>
+                                    Clear date
+                                  </Button>
+                                </div>
+                              )}
+                            </PopoverContent>
+                          </Popover>
                         )}
                         {checklistTab === 'daily' && !task.isDaily && (
                           <Button
@@ -1097,16 +1116,35 @@ export default function DailyLogs() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            {checklistTab === 'master' && task.status !== 'completed' && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-primary hover:text-primary/80"
-                                onClick={() => handleAssignToToday(task)}
-                                title="Assign to Today"
-                              >
-                                <CalendarPlus className="h-4 w-4" />
-                              </Button>
+                            {task.status !== 'completed' && (
+                              <Popover open={dueDatePickerTaskId === task.id} onOpenChange={(open) => setDueDatePickerTaskId(open ? task.id : null)}>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-primary hover:text-primary/80"
+                                    title="Set Due Date"
+                                  >
+                                    <CalendarPlus className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="end">
+                                  <CalendarPicker
+                                    mode="single"
+                                    selected={task.dueDate ? new Date(task.dueDate + 'T00:00:00') : undefined}
+                                    onSelect={(date) => handleUpdateDueDate(task, date)}
+                                    className="p-3 pointer-events-auto"
+                                    initialFocus
+                                  />
+                                  {task.dueDate && (
+                                    <div className="px-3 pb-3">
+                                      <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => handleUpdateDueDate(task, undefined)}>
+                                        Clear date
+                                      </Button>
+                                    </div>
+                                  )}
+                                </PopoverContent>
+                              </Popover>
                             )}
                             {checklistTab === 'daily' && !task.isDaily && (
                               <Button
