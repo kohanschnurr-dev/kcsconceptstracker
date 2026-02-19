@@ -179,6 +179,16 @@ input[type="number"] {
   color: hsl(var(--popover-foreground));
 }
 
+.calendar-dropdown option {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+.calendar-dropdown option:checked {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
 /* Native date/time pickers inherit color-scheme from root (set by applyPalette) */
 input[type="date"],
 input[type="datetime-local"],

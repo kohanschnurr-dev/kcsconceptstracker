@@ -23,7 +23,7 @@ const Calendar = React.forwardRef<HTMLDivElement, CalendarProps>(
           caption: "flex justify-center pt-1 relative items-center",
           caption_label: "text-sm font-medium hidden",
           caption_dropdowns: "flex items-center gap-1",
-          dropdown: "appearance-none bg-popover text-popover-foreground text-sm font-medium cursor-pointer border border-border rounded px-1.5 py-0.5 hover:bg-secondary focus:outline-none focus:ring-1 focus:ring-primary calendar-dropdown",
+          dropdown: "appearance-none bg-secondary text-foreground text-sm font-medium cursor-pointer border border-border rounded px-1.5 py-0.5 hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-1 focus:ring-primary calendar-dropdown",
           dropdown_month: "",
           dropdown_year: "",
           vhidden: "hidden",
@@ -43,7 +43,7 @@ const Calendar = React.forwardRef<HTMLDivElement, CalendarProps>(
           day_range_end: "day-range-end",
           day_selected:
             "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-          day_today: "bg-accent text-accent-foreground",
+          day_today: "bg-accent text-accent-foreground ring-1 ring-primary/30",
           day_outside:
             "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
           day_disabled: "text-muted-foreground opacity-50",
