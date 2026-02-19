@@ -1,56 +1,59 @@
 
-## Fix: Calendar Glitch in Daily Logs Due Date Picker
+## Fix: Amazon Scraping Returning "General Item" with No Price/Image
 
-### Root Cause (Confirmed from Console Logs)
+### Root Cause (Confirmed from Live Logs)
 
-The browser console shows this exact error:
+The edge function logs show exactly what's happening:
 
-> `Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?`
-> `Check the render method of DailyLogs.`
-> `at Calendar`
+```
+Firecrawl response: status=408 success=false mdLen=0 htmlLen=0 aiJson=null
+FINAL — price: null | image: NO | name: General Item
+```
 
-The `Calendar` component in `src/components/ui/calendar.tsx` is defined as a plain `function Calendar(...)` — it does **not** use `React.forwardRef`. When Radix UI's `Popover` tries to pass a `ref` to it (which happens when `initialFocus` is set and the popover is inside a table cell `<td>`), React throws this warning and the component behavior becomes unpredictable — causing the visible glitch/freeze.
+**Firecrawl is timing out on every Amazon request (HTTP 408).** Amazon's anti-bot infrastructure is significantly more aggressive than Home Depot or Lowe's and requires more time to render. The current code gives Amazon only a **12-second timeout with no `waitFor` delay and no custom User-Agent** — which is exactly what makes HD/Lowe's fail when not given special treatment.
 
-This is the known fix documented in the shadcn datepicker guidance: `pointer-events-auto` is already there, but the `Calendar` component itself needs to be wrapped with `React.forwardRef` so Radix can correctly attach the ref without errors.
+Looking at line 879-892:
+```typescript
+const needsWaitFor = store === 'home_depot' || store === 'lowes'; // Amazon excluded!
+const attemptTimeout = needsWaitFor ? 20000 : 12000;             // Amazon gets 12s
+const attemptWaitFor = store === 'home_depot' ? 3000 : ...       // Amazon gets undefined
+// withUserAgent: needsWaitFor                                    // Amazon gets no UA header
+```
+
+Amazon needs the same (or stronger) treatment as HD/Lowe's.
 
 ### The Fix
 
-**File: `src/components/ui/calendar.tsx`**
-
-Wrap the `Calendar` function with `React.forwardRef` so it properly accepts the ref that Radix's Popover passes to it:
+**File: `supabase/functions/scrape-product-url/index.ts`** — update the scraping configuration block (lines 879–892) to include Amazon in the "needs special treatment" group:
 
 ```typescript
 // BEFORE
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
-  ...
-}
-Calendar.displayName = "Calendar";
+const needsWaitFor = store === 'home_depot' || store === 'lowes';
+const attemptTimeout = needsWaitFor ? 20000 : 12000;
+const attemptWaitFor = store === 'home_depot' ? 3000 : store === 'lowes' ? 2000 : undefined;
 
-// AFTER  
-const Calendar = React.forwardRef<
-  HTMLDivElement,
-  CalendarProps
->(({ className, classNames, showOutsideDays = true, ...props }, _ref) => {
-  ...
-  return <DayPicker ... />;
-});
-Calendar.displayName = "Calendar";
+// AFTER
+const needsWaitFor = store === 'home_depot' || store === 'lowes' || store === 'amazon';
+const attemptTimeout = store === 'amazon' ? 25000 : needsWaitFor ? 20000 : 12000;
+const attemptWaitFor = store === 'amazon' ? 3000 : store === 'home_depot' ? 3000 : store === 'lowes' ? 2000 : undefined;
 ```
 
-This is a one-file, minimal change that fixes the ref warning at the source, which resolves the glitch in every calendar usage across the app (Daily Logs, Add Task modal, QuickTaskInput, etc.).
+This gives Amazon:
+- **25 second timeout** (Firecrawl needs time to bypass bot-detection)
+- **3 second `waitFor`** (lets the JS-rendered price load)
+- **Custom User-Agent header** (looks like a real Chrome browser)
 
-### Why This Fixes It
+### Why Amazon Is Harder Than HD/Lowe's
 
-- Radix UI's `PopoverContent` internally tries to give a ref to its children for focus management
-- Without `forwardRef`, React cannot pass the ref → throws the warning → causes rendering instability inside table rows → visible glitch
-- With `forwardRef`, the ref is accepted cleanly (we just ignore it with `_ref` since `DayPicker` manages its own DOM), and Radix's focus management works correctly
+Amazon uses CloudFront + sophisticated bot fingerprinting. Firecrawl's stealth mode requires extra time to spoof headers, handle redirects, and wait for deferred JS to hydrate the price/image elements. 12 seconds simply isn't enough — 25 seconds gives Firecrawl's headless browser enough runway.
 
 ### Files to Change
 
-- `src/components/ui/calendar.tsx` — wrap `Calendar` with `React.forwardRef` (single change, ~5 lines affected)
+- `supabase/functions/scrape-product-url/index.ts` — 3 lines changed in the scraping config block (lines 879–892)
 
 ### What Stays the Same
 
-- All existing Calendar usage across the app continues to work identically
-- No changes to `DailyLogs.tsx`, `AddTaskModal.tsx`, `QuickTaskInput.tsx`, or any other caller
-- The `pointer-events-auto` class and all other props/classNames remain unchanged
+- All extraction logic (AI JSON, HTML regex, markdown regex) is unchanged
+- HD and Lowe's behavior is unchanged
+- The screenshot/paste fallback still works as the backup when scraping fails
+- No frontend changes needed
