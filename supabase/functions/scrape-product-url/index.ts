@@ -875,12 +875,12 @@ Deno.serve(async (req) => {
     console.log('Scraping product URL:', formattedUrl);
     const store = detectStore(formattedUrl);
     
-    // HD/Lowes: full page needed (onlyMainContent loses price data in their JS apps)
-    const needsWaitFor = store === 'home_depot' || store === 'lowes';
+    // HD/Lowes/Amazon: full page needed (onlyMainContent loses price data in their JS apps)
+    const needsWaitFor = store === 'home_depot' || store === 'lowes' || store === 'amazon';
     
-    // Single scrape — AI JSON + waitFor for JS-heavy stores
-    const attemptTimeout = needsWaitFor ? 20000 : 12000;
-    const attemptWaitFor = store === 'home_depot' ? 3000 : store === 'lowes' ? 2000 : undefined;
+    // Single scrape — AI JSON + waitFor for JS-heavy stores; Amazon gets extra time for bot-detection bypass
+    const attemptTimeout = store === 'amazon' ? 25000 : needsWaitFor ? 20000 : 12000;
+    const attemptWaitFor = store === 'amazon' ? 3000 : store === 'home_depot' ? 3000 : store === 'lowes' ? 2000 : undefined;
     console.log('Scraping store:', store, '| timeout:', attemptTimeout, '| waitFor:', attemptWaitFor);
     
     const { ok, data } = await firecrawlScrape(formattedUrl, apiKey, {
