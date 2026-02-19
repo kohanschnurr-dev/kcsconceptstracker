@@ -340,19 +340,29 @@ export default function Projects() {
 
         <Tabs value={mainTab} onValueChange={(v) => { setMainTab(v as ProjectType); setStatusTab('all'); }}>
           <div className="flex items-center gap-2">
-            <TabsList>
+            <div className="flex overflow-x-auto scrollbar-hide gap-1 border-b border-border flex-1">
               {visibleTabs.map((type) => {
                 const config = TAB_CONFIG[type];
                 const counts = getStatusCounts(type);
                 const Icon = config.icon;
+                const isActive = mainTab === type;
                 return (
-                  <TabsTrigger key={type} value={type} className="gap-1.5">
+                  <button
+                    key={type}
+                    onClick={() => { setMainTab(type); setStatusTab('all'); }}
+                    className={cn(
+                      "shrink-0 inline-flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                      isActive
+                        ? "border-primary text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
                     <Icon className="h-4 w-4" />
                     {config.label} ({counts.total})
-                  </TabsTrigger>
+                  </button>
                 );
               })}
-            </TabsList>
+            </div>
             <Popover open={reorderOpen} onOpenChange={setReorderOpen}>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
