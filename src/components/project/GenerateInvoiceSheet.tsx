@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Copy, Check, Trash2, FileText, Sparkles, Plus, X } from 'lucide-react';
+import { Loader2, Copy, Check, Trash2, FileText, Sparkles, Plus, X, Download } from 'lucide-react';
+import { generatePDF } from '@/lib/pdfExport';
 import {
   Sheet,
   SheetContent,
@@ -464,6 +465,19 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
                     <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5 h-7 text-xs">
                       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                       {copied ? 'Copied!' : 'Copy'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => generatePDF(generated, {
+                        docType: 'Invoice',
+                        companyName: settings?.company_name || 'Your Company',
+                        logoUrl: settings?.logo_url,
+                      })}
+                      className="gap-1.5 h-7 text-xs"
+                    >
+                      <Download className="h-3 w-3" />
+                      PDF
                     </Button>
                     <Button
                       variant="ghost"
