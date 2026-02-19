@@ -323,7 +323,15 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg bg-background border-border overflow-y-auto">
         <SheetHeader className="pb-4 border-b border-border">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDeleteDialogOpen(true)}
+              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
             <div className="flex-1">
               {isEditingTitle ? (
                 <Input
@@ -345,14 +353,6 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
               )}
               <p className="text-sm text-muted-foreground mt-1">{task.projectName}</p>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setDeleteDialogOpen(true)}
-              className="h-8 w-8 mr-4 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
           </div>
         </SheetHeader>
 
