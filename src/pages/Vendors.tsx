@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2, FileText } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2, FileText, Sparkles, Receipt } from 'lucide-react';
 import { ScopeOfWorkSheet } from '@/components/vendors/ScopeOfWorkSheet';
+import { GenerateInvoiceSheet } from '@/components/project/GenerateInvoiceSheet';
+import { GenerateReceiptSheet } from '@/components/project/GenerateReceiptSheet';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +66,8 @@ export default function Vendors() {
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [tradeFilter, setTradeFilter] = useState<string>('all');
   const [scopeSheetOpen, setScopeSheetOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   useEffect(() => {
     fetchVendors();
@@ -162,10 +166,25 @@ export default function Vendors() {
             <p className="text-muted-foreground mt-1">Manage your contractors</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="gap-2" onClick={() => setScopeSheetOpen(true)}>
-              <FileText className="h-4 w-4" />
-              Scope of Work
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Generate
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setScopeSheetOpen(true)} className="gap-2">
+                  <FileText className="h-4 w-4" /> Scope of Work
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setInvoiceOpen(true)} className="gap-2">
+                  <FileText className="h-4 w-4" /> Invoice
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setReceiptOpen(true)} className="gap-2">
+                  <Receipt className="h-4 w-4" /> Receipt
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button className="gap-2" onClick={() => setModalOpen(true)}>
               <Plus className="h-4 w-4" />
               Add Vendor
@@ -338,6 +357,9 @@ export default function Vendors() {
         onOpenChange={setScopeSheetOpen}
         vendors={vendors}
       />
+
+      <GenerateInvoiceSheet open={invoiceOpen} onOpenChange={setInvoiceOpen} />
+      <GenerateReceiptSheet open={receiptOpen} onOpenChange={setReceiptOpen} />
 
       {/* Vendor Contact Card Dialog */}
       <Dialog open={!!selectedVendor} onOpenChange={(open) => !open && setSelectedVendor(null)}>
