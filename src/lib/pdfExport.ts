@@ -1,5 +1,5 @@
 export interface PdfOptions {
-  docType: 'Invoice' | 'Receipt' | 'Scope of Work';
+  docType: 'Invoice' | 'Receipt' | 'Scope of Work' | 'Vendor Directory';
   companyName: string;
   logoUrl?: string | null;
 }
@@ -54,6 +54,7 @@ export function generatePDF(content: string, options: PdfOptions): void {
     Invoice: '&#128196;',
     Receipt: '&#129534;',
     'Scope of Work': '&#128203;',
+    'Vendor Directory': '&#128101;',
   };
   const docIcon = docTypeIconMap[options.docType] || '&#128196;';
 
