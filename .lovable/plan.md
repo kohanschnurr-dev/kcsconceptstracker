@@ -1,153 +1,81 @@
 
-# Remove AI Generation — Use Form Data Directly for PDF
+## Replace the Document Icon with the Company Logo in the PDF Header
 
-## What's Changing
+### What the User Is Saying
 
-Right now, all three sheets (Invoice, Receipt, Scope of Work) send the form data to an AI edge function, which writes a text document, and that text is then parsed and rendered as a PDF. The user wants to skip the AI entirely — the PDF should be built directly from what was typed into the form.
+The screenshot shows the PDF header has a receipt emoji icon (🧾) in the top-right of the colored header bar. The user wants their **company logo from Settings** to appear there instead of that generic emoji.
 
-This means replacing the current approach:
+### Root Cause
 
-```
-Form fields → AI edge function → plain text → renderContent() → PDF
-```
+In `src/lib/pdfExport.ts`, the header is split into two sides:
+- **Left side** (`header-left`): Shows the logo (if set) + company name text
+- **Right side** (`header-right`): Shows the doc emoji icon + document type badge (e.g. "RECEIPT")
 
-With:
+The current logic (lines 182–184 and 386–394) puts the logo on the **left** next to the company name. The user wants it to **replace the emoji on the right side** — making the logo the prominent visual on the right, and moving the document type badge below it.
 
-```
-Form fields → buildStructuredContent() → PDF
-```
+### The Fix — One file only: `src/lib/pdfExport.ts`
 
-## Files to Change
-
-- `src/components/project/GenerateInvoiceSheet.tsx`
-- `src/components/project/GenerateReceiptSheet.tsx`
-- `src/components/vendors/ScopeOfWorkSheet.tsx`
-
-No edge functions or `pdfExport.ts` need to change.
-
-## How Each Sheet Will Build Its Content String
-
-Instead of calling `supabase.functions.invoke(...)`, `handleGenerate` will synchronously build a plain-text string from the form fields — formatted exactly like the AI used to output — and call `generatePDF()` immediately.
-
-### Invoice
+**New header layout:**
 
 ```
-INVOICE
-
-Invoice Number:  INV-001
-Invoice Date:    2025-02-19
-Due Date:        2025-03-05
-
-FROM
-Company:  KCS Concepts
-
-TO
-Client:   John Smith
-
-PROJECT
-Project:   123 Main St Rehab
-Address:   123 Main St, City, ST
-
-DESCRIPTION OF WORK
-Full kitchen renovation including demo, framing, and finish work.
-
-LINE ITEMS
-  Demolition: 1 x $500.00 = $500.00
-  Framing:    2 x $350.00 = $700.00
-
-SUBTOTAL: $1,200.00
-TAX (8%): $96.00
-TOTAL DUE: $1,296.00
-
-PAYMENT INFORMATION
-Payment Method: Check
-Notes: Make checks payable to KCS Concepts LLC
+[LEFT]                          [RIGHT]
+Company Name                    [Company Logo Image]
+Professional Document           RECEIPT  (badge below logo)
 ```
 
-### Receipt
+If no logo is set, fall back to the current emoji icon behavior (nothing breaks).
 
-```
-PAYMENT RECEIPT
+#### Specific changes:
 
-Receipt Number: RCP-001
-Receipt Date:   2025-02-19
+1. **Remove logo from `header-left`** — the left side will only show the company name text (no logo wrap div on the left)
 
-FROM
-Vendor:   KCS Concepts
+2. **Replace `doc-icon` div with the logo image on the right side** — when `logoUrl` is present:
+   - Show `<img src="...">` styled to fit cleanly in the header-right area (white background pill/rounded container, max-height ~48px)
+   - The "RECEIPT" / "INVOICE" badge stays below it as is
 
-FOR PROJECT
-Project:  123 Main St Rehab
+3. **Fallback** — when no `logoUrl`, keep showing the emoji icon exactly as before
 
-DESCRIPTION OF WORK / SERVICES
-Plumbing rough-in and fixture installation.
+#### CSS adjustments:
+- The `header-logo-wrap` class on the right needs a white or semi-white background to make the logo pop against the colored header
+- Give the logo image a `max-height: 48px; max-width: 110px` to stay proportional
 
-LINE ITEMS
-  Rough-in: 1 x $800.00 = $800.00
-  Fixtures: 3 x $120.00 = $360.00
+#### Code change summary:
 
-TOTAL PAID: $1,160.00
+```html
+<!-- BEFORE: right side -->
+<div class="header-right">
+  <div class="doc-icon">🧾</div>           ← emoji
+  <div class="doc-badge">RECEIPT</div>
+</div>
 
-PAYMENT DETAILS
-Payment Method: Zelle
-Payment Date:   2025-02-19
-Notes: Payment confirmed via Zelle to vendor
-```
-
-### Scope of Work
-
-```
-SCOPE OF WORK
-
-Company:    KCS Concepts
-Contractor: Reliable Electric LLC
-Customer:   123 Main St, City, ST
-Date:       2025-02-19
-Job Number: JOB-2025-012
-
-TRADE / TRADE TYPE
-Electrical, Low Voltage
-
-JOB TITLE
-Panel upgrade and outlet installation
-
-LOCATION / AREA
-Basement and main floor
-
-KEY QUANTITIES
-2 panels, 12 outlets
-
-WORK TO BE PERFORMED
-Remove old 100A panel
-Install new 200A panel
-Run new circuits to kitchen and laundry
-Install 12 new outlets per code
-
-ALSO INCLUDED
-Debris removal
-Final cleanup
-
-NOT INCLUDED / EXCLUSIONS
-Permits
-Drywall repairs
-
-MATERIALS
-Contractor provides all materials
-
-SPECIAL NOTES
-Access via side gate. Work scheduled for mornings only.
+<!-- AFTER: right side -->
+<div class="header-right">
+  <!-- Show logo if available, otherwise show emoji -->
+  ${options.logoUrl
+    ? `<div class="header-logo-wrap"><img src="${options.logoUrl}" style="max-height:48px;max-width:110px;object-fit:contain;" /></div>`
+    : `<div class="doc-icon">${docIcon}</div>`
+  }
+  <div class="doc-badge">${options.docType}</div>
+</div>
 ```
 
-## UI Cleanup
+And remove the logo from the left side entirely:
+```html
+<!-- BEFORE: left side -->
+<div class="header-left">
+  ${options.logoUrl ? `<div class="header-logo-wrap">${logoHtml}</div>` : ''}
+  <div class="header-text">...</div>
+</div>
 
-- Remove `isGenerating` state (no async operation needed — it's instant)
-- Remove `Loader2` and `Sparkles` icon imports (replace button icon with `FileText`)
-- Remove `supabase` import from all three sheets
-- Remove `Output Settings` section (Length/Tone toggles) from Invoice and Scope of Work sheets — they were only relevant to AI generation
-- Update button label: "Generate Invoice PDF", "Generate Receipt PDF", "Generate Scope of Work PDF" — using `FileText` icon
-- The button becomes a regular synchronous click, no `disabled` loading state needed (keep vendor required check on Scope of Work)
+<!-- AFTER: left side -->
+<div class="header-left">
+  <div class="header-text">...</div>      ← logo removed from here
+</div>
+```
 
-## Technical Details
+### Result
 
-- Omit any section whose fields are all empty (e.g., no exclusions → skip "NOT INCLUDED" header)
-- Line items with no description or price are skipped
-- The content string is passed directly to `generatePDF()` — the existing `renderContent()` parser already handles ALL CAPS section headers, key:value pairs, and total lines correctly, so the output will look polished without any changes to `pdfExport.ts`
+- Company logo appears in the top-right of the colored header bar (where the emoji was)
+- If no logo is uploaded in Settings, the emoji icon gracefully shows as fallback
+- No changes needed to any sheet components — the `logoUrl` is already being passed correctly from `useCompanySettings`
+- Works for Invoice, Receipt, and Scope of Work PDFs
