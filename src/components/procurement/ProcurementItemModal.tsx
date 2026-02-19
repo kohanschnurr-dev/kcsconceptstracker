@@ -368,7 +368,7 @@ interface Props {
   onSave: () => void;
 }
 
-type Step = 'url' | 'category' | 'details';
+type Step = 'url' | 'screenshot' | 'category' | 'details';
 
 interface ScrapedData {
   name: string;
@@ -508,7 +508,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     }
   };
 
-  // Handle paste events for image upload (details step) or screenshot parsing (url step with fallback)
+  // Handle paste events for image upload (details step) or screenshot parsing (screenshot step)
   useEffect(() => {
     if (!open) return;
     
@@ -521,8 +521,8 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           e.preventDefault();
           const file = clipboardItem.getAsFile();
           if (file) {
-            // If on URL step with fallback showing - parse as product screenshot
-            if (step === 'url' && showFallbackOptions) {
+            // If on screenshot step - parse as product screenshot
+            if (step === 'screenshot') {
               await handleScreenshotUpload(file);
             } 
             // If on details step - upload as product image
@@ -537,7 +537,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [open, step, showFallbackOptions]);
+  }, [open, step]);
 
   // Parse specs from notes field (stored as JSON)
   const parseSpecsFromNotes = (notes: string | null): { specs: Record<string, string>; cleanNotes: string } => {
@@ -744,78 +744,16 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
     return () => clearTimeout(timeoutId);
   }, [formData, item, step, open]);
 
-  const handleScrapeUrl = async () => {
-    if (!urlInput.trim()) {
-      setStep('category');
-      return;
-    }
-
-    setScraping(true);
-    setShowFallbackOptions(false);
-    setScrapeSuccess(false);
-
-    // Create abort controller with 10s client-side timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('scrape-product-url', {
-        body: { url: urlInput.trim() },
-      });
-
-      clearTimeout(timeoutId);
-
-      if (error) throw error;
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to scrape URL');
-      }
-
-      const scraped: ScrapedData = data.data;
-      const detectedCategory = detectCategory(scraped.name);
-      const storeValue = stores.find(s => s.value === scraped.source_store)?.value || 'other';
-
-      // Update form with scraped data
-      setFormData(prev => ({
-        ...prev,
-        name: scraped.name || prev.name,
-        source_url: (() => { const u = urlInput.trim(); return u && !u.startsWith('http://') && !u.startsWith('https://') ? `https://${u}` : u; })(),
-        source_store: storeValue as SourceStore,
-        model_number: scraped.model_number || prev.model_number,
-        unit_price: scraped.price?.toString() || prev.unit_price,
-        finish: scraped.finish || prev.finish,
-        lead_time_days: scraped.lead_time_days?.toString() || prev.lead_time_days,
-        category: detectedCategory,
-        specs: { ...prev.specs, ...scraped.specs },
-        image_url: scraped.image_url || prev.image_url,
-      }));
-
-      setScrapeSuccess(true);
-      const missingFields = [];
-      if (!scraped.price) missingFields.push('price');
-      if (!scraped.image_url) missingFields.push('image');
-      if (missingFields.length > 0) {
-        toast.success(`Product data extracted! Please enter ${missingFields.join(' & ')} manually.`);
-      } else {
-        toast.success('Product data extracted!');
-      }
-      
-      // Move to category step to confirm/change category
-      setTimeout(() => setStep('category'), 500);
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      console.error('Scrape error:', err);
-      
-      // Check if it was a timeout abort
-      if (err?.name === 'AbortError') {
-        toast.error('Scraping timed out. Try pasting a screenshot instead.');
-      }
-      
-      // Show friendly fallback options
-      setShowFallbackOptions(true);
-    } finally {
-      setScraping(false);
-    }
+  const handleNextFromUrl = () => {
+    // Save URL to form data and move to screenshot step — no scraping
+    const u = urlInput.trim();
+    const normalizedUrl = u && !u.startsWith('http://') && !u.startsWith('https://') ? `https://${u}` : u;
+    setFormData(prev => ({
+      ...prev,
+      source_url: normalizedUrl,
+      source_store: u ? detectStoreFromUrl(u) : prev.source_store,
+    }));
+    setStep('screenshot');
   };
 
   // Detect store from URL
@@ -1022,8 +960,8 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         </div>
         <h3 className="font-semibold">Paste Product URL</h3>
         <p className="text-sm text-muted-foreground">
-          Paste a link from Amazon, Home Depot, Lowe's, or other retailers.<br />
-          We'll extract the product details automatically.
+          Paste a link from Amazon, Home Depot, Lowe's, or any other retailer.<br />
+          The URL will be saved as a reference link for the item.
         </p>
       </div>
 
@@ -1031,105 +969,96 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         <Input
           value={urlInput}
           onChange={(e) => setUrlInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleNextFromUrl()}
           placeholder="https://www.homedepot.com/p/..."
           className="text-center"
-          disabled={scraping}
+          autoFocus
         />
-        
-        {showFallbackOptions && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm bg-muted p-3 rounded-lg">
-              <LinkIcon className="h-4 w-4 flex-shrink-0" />
-              <span>Couldn't auto-extract from this page. No worries!</span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              {/* Enter Manually Card */}
-              <button
-                onClick={() => {
-                  setFormData(prev => ({
-                    ...prev,
-                    source_url: (() => { const u = urlInput.trim(); return u && !u.startsWith('http://') && !u.startsWith('https://') ? `https://${u}` : u; })(),
-                    source_store: detectStoreFromUrl(urlInput),
-                  }));
-                  setShowFallbackOptions(false);
-                  setStep('category');
-                }}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors"
-              >
-                <Pencil className="h-6 w-6 text-muted-foreground" />
-                <span className="font-medium">Enter Manually</span>
-                <span className="text-xs text-muted-foreground text-center">Type in the details yourself</span>
-              </button>
-              
-              {/* Upload Screenshot Card */}
-              <button
-                onClick={() => screenshotInputRef.current?.click()}
-                disabled={parsingScreenshot}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
-              >
-                {parsingScreenshot ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                ) : (
-                  <Camera className="h-6 w-6 text-muted-foreground" />
-                )}
-                <span className="font-medium">Upload Screenshot</span>
-                <span className="text-xs text-muted-foreground text-center">Ctrl+V to paste or click to browse</span>
-              </button>
-            </div>
-            
-            <input
-              type="file"
-              ref={screenshotInputRef}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleScreenshotUpload(file);
-                e.target.value = '';
-              }}
-              accept="image/*"
-              className="hidden"
-            />
-          </div>
-        )}
 
-        {scrapeSuccess && (
-          <div className="flex items-center gap-2 text-green-600 text-sm bg-green-500/10 p-2 rounded">
-            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-            <span>Product data extracted successfully!</span>
-          </div>
-        )}
-
-        <Button 
-          onClick={handleScrapeUrl} 
-          className="w-full" 
-          disabled={scraping}
-        >
-          {scraping ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Extracting product data...
-            </>
-          ) : (
-            <>
-              <LinkIcon className="h-4 w-4 mr-2" />
-              {urlInput.trim() ? 'Extract Product Data' : 'Skip & Enter Manually'}
-            </>
-          )}
+        <Button onClick={handleNextFromUrl} className="w-full">
+          Next →
         </Button>
       </div>
 
       <div className="text-center">
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setStep('category')}
-          disabled={scraping}
         >
-          Or enter details manually →
+          Skip & Enter Manually →
         </Button>
       </div>
     </div>
   );
+
+  const renderScreenshotStep = () => (
+    <div className="space-y-6 py-4">
+      <div className="text-center space-y-2">
+        <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <Camera className="h-6 w-6 text-primary" />
+        </div>
+        <h3 className="font-semibold">Upload a Screenshot</h3>
+        <p className="text-sm text-muted-foreground">
+          Take a screenshot of the product page and upload it —<br />
+          we'll pull the name, price, and image automatically.
+        </p>
+      </div>
+
+      {/* Upload zone */}
+      <button
+        onClick={() => !parsingScreenshot && screenshotInputRef.current?.click()}
+        disabled={parsingScreenshot}
+        className={cn(
+          "w-full flex flex-col items-center gap-3 p-10 rounded-xl border-2 border-dashed transition-colors",
+          parsingScreenshot
+            ? "border-primary/40 bg-primary/5 cursor-default"
+            : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer"
+        )}
+      >
+        {parsingScreenshot ? (
+          <>
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="text-sm font-medium text-primary">Parsing screenshot...</span>
+            <span className="text-xs text-muted-foreground">This usually takes a few seconds</span>
+          </>
+        ) : (
+          <>
+            <Upload className="h-8 w-8 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Click to browse or drag &amp; drop</p>
+              <p className="text-xs text-muted-foreground mt-1">Or press <kbd className="px-1.5 py-0.5 text-xs rounded bg-muted border border-border font-mono">Ctrl+V</kbd> to paste from clipboard</p>
+            </div>
+          </>
+        )}
+      </button>
+
+      <input
+        type="file"
+        ref={screenshotInputRef}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleScreenshotUpload(file);
+          e.target.value = '';
+        }}
+        accept="image/*"
+        className="hidden"
+      />
+
+      <div className="text-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setStep('category')}
+          disabled={parsingScreenshot}
+        >
+          Skip →
+        </Button>
+      </div>
+    </div>
+  );
+
+
 
   const renderCategoryStep = () => (
     <div className="space-y-4 py-4">
@@ -1499,8 +1428,9 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   const getDialogTitle = () => {
     if (item) return 'Edit Item';
     switch (step) {
-      case 'url': return 'Add from URL';
-      case 'category': return 'Select Category';
+      case 'url': return 'Add Item — Step 1 of 3: Product URL';
+      case 'screenshot': return 'Add Item — Step 2 of 3: Screenshot';
+      case 'category': return 'Add Item — Step 3 of 3: Category';
       case 'details': return 'Add Procurement Item';
     }
   };
@@ -1514,12 +1444,19 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           </DialogHeader>
 
           {step === 'url' && renderUrlStep()}
+          {step === 'screenshot' && renderScreenshotStep()}
           {step === 'category' && renderCategoryStep()}
           {step === 'details' && renderDetailsStep()}
 
           <DialogFooter>
-            {step === 'category' && !item && (
+            {step === 'screenshot' && !item && (
               <Button variant="outline" onClick={() => setStep('url')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            )}
+            {step === 'category' && !item && (
+              <Button variant="outline" onClick={() => setStep('screenshot')}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
@@ -1541,8 +1478,8 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
                   </>
                 ) : lastSaved ? (
                   <>
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <span className="text-green-600">Saved</span>
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                    <span className="text-success">Saved</span>
                   </>
                 ) : null}
               </div>
@@ -1561,6 +1498,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Edit Stores Dialog */}
       <Dialog open={editStoresOpen} onOpenChange={setEditStoresOpen}>
