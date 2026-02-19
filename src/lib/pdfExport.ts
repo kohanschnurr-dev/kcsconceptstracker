@@ -385,7 +385,7 @@ export function generatePDF(content: string, options: PdfOptions): void {
     <div class="header-left">
       <div class="header-text">
         <div class="header-company">${escapeHtml(options.companyName)}</div>
-        <div class="header-tagline">Professional Document</div>
+        
       </div>
     </div>
     <div class="header-right">
@@ -398,7 +398,6 @@ export function generatePDF(content: string, options: PdfOptions): void {
   </div>
 
   <div class="meta-bar">
-    <span>Prepared by <strong>${escapeHtml(options.companyName)}</strong></span>
     <span>Generated on ${dateStr}</span>
   </div>
 
