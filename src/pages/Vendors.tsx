@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2, FileText } from 'lucide-react';
+import { ScopeOfWorkSheet } from '@/components/vendors/ScopeOfWorkSheet';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +63,7 @@ export default function Vendors() {
   const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [tradeFilter, setTradeFilter] = useState<string>('all');
+  const [scopeSheetOpen, setScopeSheetOpen] = useState(false);
 
   useEffect(() => {
     fetchVendors();
@@ -159,10 +161,16 @@ export default function Vendors() {
             <h1 className="text-2xl font-semibold">Vendors</h1>
             <p className="text-muted-foreground mt-1">Manage your contractors</p>
           </div>
-          <Button className="gap-2" onClick={() => setModalOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Add Vendor
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setScopeSheetOpen(true)}>
+              <FileText className="h-4 w-4" />
+              Scope of Work
+            </Button>
+            <Button className="gap-2" onClick={() => setModalOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add Vendor
+            </Button>
+          </div>
         </div>
 
         {/* Search & Filter */}
@@ -323,6 +331,12 @@ export default function Vendors() {
         onOpenChange={handleModalClose}
         onVendorCreated={fetchVendors}
         vendor={editingVendor}
+      />
+
+      <ScopeOfWorkSheet
+        open={scopeSheetOpen}
+        onOpenChange={setScopeSheetOpen}
+        vendors={vendors}
       />
 
       {/* Vendor Contact Card Dialog */}
