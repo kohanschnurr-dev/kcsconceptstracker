@@ -66,6 +66,7 @@ import {
   getCategoryLabel,
   getCategoryStyles,
   getCategoryGroup,
+  CATEGORY_CHECKLIST_PRESETS,
 } from '@/lib/calendarCategories';
 
 interface TaskDetailPanelProps {
@@ -486,7 +487,32 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
               </Button>
             </div>
 
-            {/* Checklist items */}
+            {/* Quick-add preset chips */}
+            {(() => {
+              const presets = CATEGORY_CHECKLIST_PRESETS[editedCategory] || [];
+              const existingLabels = new Set(editedChecklist.map(i => i.label.toLowerCase()));
+              const available = presets.filter(p => !existingLabels.has(p.toLowerCase()));
+              if (available.length === 0) return null;
+              return (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  <span className="text-xs text-muted-foreground mr-1 self-center">Quick add:</span>
+                  {available.map(preset => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        const newItem = { id: `item-${Date.now()}-${Math.random()}`, label: preset, completed: false };
+                        setEditedChecklist(prev => [...prev, newItem]);
+                        markAsChanged();
+                      }}
+                      className="text-xs px-2 py-1 rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary transition-colors"
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             <div className="space-y-2">
               {editedChecklist.map(item => (
                 <div
