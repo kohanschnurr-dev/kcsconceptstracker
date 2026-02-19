@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Receipt, Sparkles, Plus, X } from 'lucide-react';
+import { FileText, Plus, X } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfExport';
 import {
   Sheet,
@@ -21,9 +21,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 
 interface GenerateReceiptSheetProps {
   open: boolean;
@@ -55,28 +52,17 @@ const newLineItem = (): LineItem => ({
 });
 
 export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: GenerateReceiptSheetProps) {
-  const { toast } = useToast();
   const { settings } = useCompanySettings();
 
-  // Receipt Info
   const [vendorName, setVendorName] = useState('');
   const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split('T')[0]);
   const [receiptNumber, setReceiptNumber] = useState('RCP-001');
-
-  // Job Details
   const [projName, setProjName] = useState(projectName);
   const [descriptionOfWork, setDescriptionOfWork] = useState('');
-
-  // Line Items
   const [lineItems, setLineItems] = useState<LineItem[]>([newLineItem()]);
-
-  // Payment
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
-
-  // Result
-  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     if (settings?.company_name) setVendorName(settings.company_name);
@@ -113,46 +99,56 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
 
   const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
+  const handleGenerate = () => {
+    const lines: string[] = ['PAYMENT RECEIPT', ''];
 
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-receipt', {
-        body: {
-          vendorName,
-          receiptDate,
-          receiptNumber,
-          projectName: projName,
-          descriptionOfWork,
-          lineItems: lineItems.map(item => ({
-            description: item.description,
-            qty: parseFloat(item.qty) || 1,
-            unitPrice: parseFloat(item.unitPrice) || 0,
-            total: (parseFloat(item.qty) || 1) * (parseFloat(item.unitPrice) || 0),
-          })),
-          total,
-          paymentMethod,
-          paymentDate,
-          notes,
-        },
-      });
+    if (receiptNumber) lines.push(`Receipt Number: ${receiptNumber}`);
+    if (receiptDate) lines.push(`Receipt Date: ${receiptDate}`);
 
-      if (error) throw error;
-      if (data?.error) {
-        toast({ title: 'Error', description: data.error, variant: 'destructive' });
-        return;
-      }
-      const receiptText = data?.receipt || '';
-      generatePDF(receiptText, {
-        docType: 'Receipt',
-        companyName: settings?.company_name || vendorName || 'Your Company',
-        logoUrl: settings?.logo_url,
-      });
-    } catch (err: any) {
-      toast({ title: 'Generation failed', description: err.message || 'Something went wrong.', variant: 'destructive' });
-    } finally {
-      setIsGenerating(false);
+    if (vendorName) {
+      lines.push('', 'FROM');
+      lines.push(`Vendor: ${vendorName}`);
     }
+
+    if (projName) {
+      lines.push('', 'FOR PROJECT');
+      lines.push(`Project: ${projName}`);
+    }
+
+    if (descriptionOfWork) {
+      lines.push('', 'DESCRIPTION OF WORK / SERVICES');
+      lines.push(descriptionOfWork);
+    }
+
+    const validItems = lineItems.filter(item => item.description || parseFloat(item.unitPrice) > 0);
+    if (validItems.length > 0) {
+      lines.push('', 'LINE ITEMS');
+      validItems.forEach(item => {
+        const qty = parseFloat(item.qty) || 1;
+        const price = parseFloat(item.unitPrice) || 0;
+        const itemTotal = qty * price;
+        if (item.description || price > 0) {
+          lines.push(`  ${item.description || 'Item'}: ${qty} x ${fmt(price)} = ${fmt(itemTotal)}`);
+        }
+      });
+    }
+
+    lines.push('');
+    lines.push(`TOTAL PAID: ${fmt(total)}`);
+
+    if (paymentMethod || paymentDate || notes) {
+      lines.push('', 'PAYMENT DETAILS');
+      if (paymentMethod) lines.push(`Payment Method: ${paymentMethod}`);
+      if (paymentDate) lines.push(`Payment Date: ${paymentDate}`);
+      if (notes) lines.push(`Notes: ${notes}`);
+    }
+
+    const content = lines.join('\n');
+    generatePDF(content, {
+      docType: 'Receipt',
+      companyName: settings?.company_name || vendorName || 'Your Company',
+      logoUrl: settings?.logo_url,
+    });
   };
 
   return (
@@ -161,11 +157,11 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
         <SheetHeader className="px-6 py-4 border-b shrink-0">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Receipt className="h-4 w-4 text-primary" />
+              <FileText className="h-4 w-4 text-primary" />
             </div>
             <div>
               <SheetTitle className="text-base">Receipt Generator</SheetTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">AI-powered payment receipt</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Build a payment receipt PDF</p>
             </div>
           </div>
         </SheetHeader>
@@ -322,12 +318,9 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
             </div>
 
             {/* GENERATE BUTTON */}
-            <Button onClick={handleGenerate} disabled={isGenerating} className="w-full gap-2" size="lg">
-              {isGenerating ? (
-                <><Loader2 className="h-4 w-4 animate-spin" />Generating…</>
-              ) : (
-                <><Sparkles className="h-4 w-4" />Generate Receipt PDF</>
-              )}
+            <Button onClick={handleGenerate} className="w-full gap-2" size="lg">
+              <FileText className="h-4 w-4" />
+              Generate Receipt PDF
             </Button>
 
             <div className="h-4" />

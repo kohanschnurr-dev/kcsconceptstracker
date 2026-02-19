@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, FileText, Sparkles, Plus, X } from 'lucide-react';
+import { FileText, Plus, X } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfExport';
 import {
   Sheet,
@@ -21,9 +21,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 
 interface GenerateInvoiceSheetProps {
   open: boolean;
@@ -39,44 +36,11 @@ interface LineItem {
   unitPrice: string;
 }
 
-type DocLength = 'brief' | 'standard' | 'detailed';
-type Tone = 'simple' | 'standard' | 'professional';
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="mb-3">
       <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">{children}</p>
       <Separator className="mt-1.5" />
-    </div>
-  );
-}
-
-function ToggleGroup<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T;
-  onChange: (v: T) => void;
-  options: { value: T; label: string }[];
-}) {
-  return (
-    <div className="flex gap-1.5 p-1 rounded-lg bg-muted">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={cn(
-            'flex-1 py-1.5 text-sm rounded-md font-medium transition-all duration-150',
-            value === opt.value
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          {opt.label}
-        </button>
-      ))}
     </div>
   );
 }
@@ -89,35 +53,20 @@ const newLineItem = (): LineItem => ({
 });
 
 export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', projectAddress = '' }: GenerateInvoiceSheetProps) {
-  const { toast } = useToast();
   const { settings } = useCompanySettings();
 
-  // Invoice Info
   const [companyName, setCompanyName] = useState('');
   const [clientName, setClientName] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('INV-001');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState('');
-
-  // Job Details
   const [projName, setProjName] = useState(projectName);
   const [projAddress, setProjAddress] = useState(projectAddress);
   const [descriptionOfWork, setDescriptionOfWork] = useState('');
-
-  // Line Items
   const [lineItems, setLineItems] = useState<LineItem[]>([newLineItem()]);
   const [taxRate, setTaxRate] = useState('');
-
-  // Payment Info
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
-
-  // Output settings
-  const [docLength, setDocLength] = useState<DocLength>('standard');
-  const [tone, setTone] = useState<Tone>('professional');
-
-  // Result
-  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     if (settings?.company_name) setCompanyName(settings.company_name);
@@ -139,8 +88,6 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
       setTaxRate('');
       setPaymentMethod('');
       setPaymentNotes('');
-      setDocLength('standard');
-      setTone('professional');
     }
     onOpenChange(val);
   };
@@ -154,9 +101,7 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
   };
 
   const subtotal = lineItems.reduce((sum, item) => {
-    const qty = parseFloat(item.qty) || 0;
-    const price = parseFloat(item.unitPrice) || 0;
-    return sum + qty * price;
+    return sum + (parseFloat(item.qty) || 0) * (parseFloat(item.unitPrice) || 0);
   }, 0);
 
   const taxAmount = taxRate ? subtotal * (parseFloat(taxRate) / 100) : 0;
@@ -164,53 +109,66 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
 
   const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
+  const handleGenerate = () => {
+    const lines: string[] = ['INVOICE', ''];
 
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-invoice', {
-        body: {
-          companyName,
-          clientName,
-          invoiceNumber,
-          invoiceDate,
-          dueDate,
-          projectName: projName,
-          projectAddress: projAddress,
-          descriptionOfWork,
-          lineItems: lineItems.map(item => ({
-            description: item.description,
-            qty: parseFloat(item.qty) || 1,
-            unitPrice: parseFloat(item.unitPrice) || 0,
-            total: (parseFloat(item.qty) || 1) * (parseFloat(item.unitPrice) || 0),
-          })),
-          taxRate: taxRate ? parseFloat(taxRate) : null,
-          subtotal,
-          taxAmount,
-          total,
-          paymentMethod,
-          paymentNotes,
-          docLength,
-          tone,
-        },
-      });
+    if (invoiceNumber) lines.push(`Invoice Number: ${invoiceNumber}`);
+    if (invoiceDate) lines.push(`Invoice Date: ${invoiceDate}`);
+    if (dueDate) lines.push(`Due Date: ${dueDate}`);
 
-      if (error) throw error;
-      if (data?.error) {
-        toast({ title: 'Error', description: data.error, variant: 'destructive' });
-        return;
-      }
-      const invoiceText = data?.invoice || '';
-      generatePDF(invoiceText, {
-        docType: 'Invoice',
-        companyName: settings?.company_name || companyName || 'Your Company',
-        logoUrl: settings?.logo_url,
-      });
-    } catch (err: any) {
-      toast({ title: 'Generation failed', description: err.message || 'Something went wrong.', variant: 'destructive' });
-    } finally {
-      setIsGenerating(false);
+    if (companyName) {
+      lines.push('', 'FROM');
+      lines.push(`Company: ${companyName}`);
     }
+
+    if (clientName) {
+      lines.push('', 'TO');
+      lines.push(`Client: ${clientName}`);
+    }
+
+    if (projName || projAddress) {
+      lines.push('', 'PROJECT');
+      if (projName) lines.push(`Project: ${projName}`);
+      if (projAddress) lines.push(`Address: ${projAddress}`);
+    }
+
+    if (descriptionOfWork) {
+      lines.push('', 'DESCRIPTION OF WORK');
+      lines.push(descriptionOfWork);
+    }
+
+    const validItems = lineItems.filter(item => item.description || parseFloat(item.unitPrice) > 0);
+    if (validItems.length > 0) {
+      lines.push('', 'LINE ITEMS');
+      validItems.forEach(item => {
+        const qty = parseFloat(item.qty) || 1;
+        const price = parseFloat(item.unitPrice) || 0;
+        const itemTotal = qty * price;
+        if (item.description || price > 0) {
+          lines.push(`  ${item.description || 'Item'}: ${qty} x ${fmt(price)} = ${fmt(itemTotal)}`);
+        }
+      });
+    }
+
+    lines.push('');
+    lines.push(`SUBTOTAL: ${fmt(subtotal)}`);
+    if (taxRate && parseFloat(taxRate) > 0) {
+      lines.push(`TAX (${taxRate}%): ${fmt(taxAmount)}`);
+    }
+    lines.push(`TOTAL DUE: ${fmt(total)}`);
+
+    if (paymentMethod || paymentNotes) {
+      lines.push('', 'PAYMENT INFORMATION');
+      if (paymentMethod) lines.push(`Payment Method: ${paymentMethod}`);
+      if (paymentNotes) lines.push(`Notes: ${paymentNotes}`);
+    }
+
+    const content = lines.join('\n');
+    generatePDF(content, {
+      docType: 'Invoice',
+      companyName: settings?.company_name || companyName || 'Your Company',
+      logoUrl: settings?.logo_url,
+    });
   };
 
   return (
@@ -223,7 +181,7 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
             </div>
             <div>
               <SheetTitle className="text-base">Invoice Generator</SheetTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">AI-powered contractor invoice</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Build a contractor invoice PDF</p>
             </div>
           </div>
         </SheetHeader>
@@ -288,7 +246,6 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
             <div>
               <SectionLabel>Line Items</SectionLabel>
               <div className="space-y-2">
-                {/* Header */}
                 <div className="grid grid-cols-[1fr_60px_90px_32px] gap-2 px-0.5">
                   <p className="text-xs font-medium text-muted-foreground">Description</p>
                   <p className="text-xs font-medium text-muted-foreground">Qty</p>
@@ -347,7 +304,6 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
                   Add Line Item
                 </Button>
 
-                {/* Totals */}
                 <div className="mt-3 space-y-1.5 border-t pt-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
@@ -409,44 +365,10 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
               </div>
             </div>
 
-            {/* OUTPUT SETTINGS */}
-            <div>
-              <SectionLabel>Output Settings</SectionLabel>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Length</Label>
-                  <ToggleGroup
-                    value={docLength}
-                    onChange={v => setDocLength(v as DocLength)}
-                    options={[
-                      { value: 'brief', label: 'Brief' },
-                      { value: 'standard', label: 'Standard' },
-                      { value: 'detailed', label: 'Detailed' },
-                    ]}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Tone</Label>
-                  <ToggleGroup
-                    value={tone}
-                    onChange={v => setTone(v as Tone)}
-                    options={[
-                      { value: 'simple', label: 'Simple' },
-                      { value: 'standard', label: 'Standard' },
-                      { value: 'professional', label: 'Professional' },
-                    ]}
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* GENERATE BUTTON */}
-            <Button onClick={handleGenerate} disabled={isGenerating} className="w-full gap-2" size="lg">
-              {isGenerating ? (
-                <><Loader2 className="h-4 w-4 animate-spin" />Generating…</>
-              ) : (
-                <><Sparkles className="h-4 w-4" />Generate Invoice PDF</>
-              )}
+            <Button onClick={handleGenerate} className="w-full gap-2" size="lg">
+              <FileText className="h-4 w-4" />
+              Generate Invoice PDF
             </Button>
 
             <div className="h-4" />
