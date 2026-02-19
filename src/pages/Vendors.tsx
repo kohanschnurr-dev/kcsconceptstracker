@@ -213,9 +213,6 @@ export default function Vendors() {
                 <DropdownMenuItem onClick={() => setReceiptOpen(true)} className="gap-2">
                   <Receipt className="h-4 w-4" /> Receipt
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleGenerateVendorPDF} className="gap-2">
-                  <Download className="h-4 w-4" /> Generate PDF
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button className="gap-2" onClick={() => setModalOpen(true)}>
