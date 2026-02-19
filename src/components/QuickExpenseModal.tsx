@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles, Package, Wrench, Download, FileSpreadsheet, Copy, Check, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles, Package, Wrench, Download, FileSpreadsheet, Copy, Check, CheckCircle2, AlertTriangle, Sun, Maximize, Eye, Layers } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Drawer,
@@ -12,7 +12,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,6 +77,9 @@ function ExpenseForm({
   const [showTextInput, setShowTextInput] = useState(false);
   const [receiptText, setReceiptText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
+  const [showReceiptTips, setShowReceiptTips] = useState(false);
+  const [isParsingImage, setIsParsingImage] = useState(false);
+  const [dontRemindChecked, setDontRemindChecked] = useState(false);
 
   const calculateTax = () => {
     const baseAmount = parseFloat(amount) || 0;
@@ -111,6 +117,52 @@ function ExpenseForm({
       toast({ title: 'Parse failed', description: error.message || 'Could not parse receipt text.', variant: 'destructive' });
     } finally {
       setIsParsing(false);
+    }
+  };
+
+  const handleReceiptPhotoClick = () => {
+    const dismissed = localStorage.getItem('kcs-receipt-tips-dismissed') === 'true';
+    if (dismissed) {
+      fileInputRef.current?.click();
+    } else {
+      setShowReceiptTips(true);
+    }
+  };
+
+  const handleTipsGotIt = () => {
+    if (dontRemindChecked) {
+      localStorage.setItem('kcs-receipt-tips-dismissed', 'true');
+    }
+    setShowReceiptTips(false);
+    setDontRemindChecked(false);
+    setTimeout(() => fileInputRef.current?.click(), 200);
+  };
+
+  const handleParseReceiptImage = async () => {
+    if (!receiptFile || !receiptPreview) return;
+    setIsParsingImage(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-receipt-image', {
+        body: { image_base64: receiptPreview },
+      });
+      if (error) throw error;
+      if (data?.data) {
+        const parsed = data.data;
+        if (parsed.vendor_name) setVendor(parsed.vendor_name);
+        if (parsed.purchase_date) setDate(parsed.purchase_date);
+        if (parsed.total_amount) setAmount(parsed.total_amount.toString());
+        if (parsed.tax_amount && parsed.tax_amount > 0) setIncludeTax(false); // tax already included in total
+        if (parsed.line_items?.length > 0) {
+          const desc = parsed.line_items.map((li: any) => li.item_name).join(', ');
+          setDescription(desc.substring(0, 200));
+        }
+        toast({ title: 'Receipt scanned', description: `Extracted ${parsed.line_items?.length || 0} items from ${parsed.vendor_name || 'receipt'}.` });
+      }
+    } catch (error: any) {
+      console.error('Error parsing receipt image:', error);
+      toast({ title: 'Scan failed', description: error.message || 'Could not parse receipt image.', variant: 'destructive' });
+    } finally {
+      setIsParsingImage(false);
     }
   };
 
@@ -281,18 +333,61 @@ function ExpenseForm({
         <Label>Receipt (optional)</Label>
         <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
         {receiptPreview ? (
-          <div className="relative">
-            <img src={receiptPreview} alt="Receipt preview" className="w-full h-32 object-cover rounded-lg border border-border" />
-            <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => { setReceiptFile(null); setReceiptPreview(null); }}>
-              <X className="h-4 w-4" />
+          <div className="space-y-2">
+            <div className="relative">
+              <img src={receiptPreview} alt="Receipt preview" className="w-full h-32 object-cover rounded-lg border border-border" />
+              <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => { setReceiptFile(null); setReceiptPreview(null); }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button type="button" variant="secondary" size="sm" className="w-full gap-1.5" onClick={handleParseReceiptImage} disabled={isParsingImage}>
+              {isParsingImage ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" />Scanning...</>) : (<><Sparkles className="h-3.5 w-3.5" />Scan Receipt</>)}
             </Button>
           </div>
         ) : (
-          <Button type="button" variant="outline" className="w-full gap-2" onClick={() => fileInputRef.current?.click()}>
+          <Button type="button" variant="outline" className="w-full gap-2" onClick={handleReceiptPhotoClick}>
             <Camera className="h-4 w-4" />Add Receipt Photo
           </Button>
         )}
       </div>
+
+      {/* Receipt Tips Dialog */}
+      <Dialog open={showReceiptTips} onOpenChange={setShowReceiptTips}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5 text-primary" />
+              Tips for a Great Receipt Photo
+            </DialogTitle>
+            <DialogDescription>Follow these tips for the best AI scan results.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex items-start gap-3 p-2 rounded-lg bg-muted/50">
+              <Layers className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div><p className="text-sm font-medium">Lay it flat</p><p className="text-xs text-muted-foreground">Place the receipt on a solid, flat surface</p></div>
+            </div>
+            <div className="flex items-start gap-3 p-2 rounded-lg bg-muted/50">
+              <Maximize className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div><p className="text-sm font-medium">Capture the full receipt</p><p className="text-xs text-muted-foreground">Ensure all edges and text are visible in frame</p></div>
+            </div>
+            <div className="flex items-start gap-3 p-2 rounded-lg bg-muted/50">
+              <Sun className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div><p className="text-sm font-medium">Good lighting</p><p className="text-xs text-muted-foreground">Avoid shadows, glare, and low-light conditions</p></div>
+            </div>
+            <div className="flex items-start gap-3 p-2 rounded-lg bg-muted/50">
+              <Eye className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div><p className="text-sm font-medium">Text must be readable</p><p className="text-xs text-muted-foreground">Make sure all numbers and text are sharp and clear</p></div>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-3 sm:gap-0">
+            <div className="flex items-center gap-2">
+              <Checkbox id="dont-remind" checked={dontRemindChecked} onCheckedChange={(c) => setDontRemindChecked(c === true)} />
+              <label htmlFor="dont-remind" className="text-sm text-muted-foreground cursor-pointer">Don't show this again</label>
+            </div>
+            <Button onClick={handleTipsGotIt}>Got it</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {amount && (
         <div className="flex items-center justify-between p-4 rounded-lg bg-primary/10 border border-primary/20">
