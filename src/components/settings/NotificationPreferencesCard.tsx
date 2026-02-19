@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Bell, ShoppingCart, Receipt, ClipboardList, CheckSquare, StickyNote, FolderPlus, RefreshCw, MessageCircle } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Bell, ShoppingCart, Receipt, ClipboardList, CheckSquare, StickyNote, FolderPlus, RefreshCw, MessageCircle, ChevronDown } from 'lucide-react';
 import { triggerSettingsSync } from '@/hooks/useSettingsSync';
 
 const STORAGE_KEY = 'notification-preferences';
@@ -57,6 +58,7 @@ function loadPrefs(): NotifPrefs {
 
 export default function NotificationPreferencesCard() {
   const [prefs, setPrefs] = useState<NotifPrefs>(loadPrefs);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const handleSync = () => setPrefs(loadPrefs());
@@ -91,66 +93,76 @@ export default function NotificationPreferencesCard() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bell className="h-5 w-5" />
-          Notification Preferences
-        </CardTitle>
-        <CardDescription>
-          Choose which activity types appear in your notification bell. Turned-off types are silenced and won't count toward your unread badge.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div>
-          <Label className="text-xs text-muted-foreground uppercase tracking-wide mb-3 block">
-            In-App Notifications
-          </Label>
-          <div className="space-y-1">
-            {EVENT_META.map(({ key, label, description, icon: Icon, iconClass }) => (
-              <div
-                key={key}
-                className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-md bg-muted ${iconClass}`}>
-                    <Icon className="h-4 w-4" />
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg select-none">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Notification Preferences
+              </CardTitle>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+            </div>
+            <CardDescription>
+              Choose which activity types appear in your notification bell. Turned-off types are silenced and won't count toward your unread badge.
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-5">
+            <div>
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide mb-3 block">
+                In-App Notifications
+              </Label>
+              <div className="space-y-1">
+                {EVENT_META.map(({ key, label, description, icon: Icon, iconClass }) => (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-md bg-muted ${iconClass}`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium leading-none">{label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={prefs[key]}
+                      onCheckedChange={() => toggle(key)}
+                      aria-label={`Toggle ${label} notifications`}
+                    />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium leading-none">{label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-                  </div>
-                </div>
-                <Switch
-                  checked={prefs[key]}
-                  onCheckedChange={() => toggle(key)}
-                  aria-label={`Toggle ${label} notifications`}
-                />
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        <div className="flex gap-2 pt-1">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={turnAllOn}
-            disabled={allOn}
-            className="text-xs"
-          >
-            Turn all on
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={turnAllOff}
-            disabled={allOff}
-            className="text-xs"
-          >
-            Turn all off
-          </Button>
-        </div>
-      </CardContent>
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={turnAllOn}
+                disabled={allOn}
+                className="text-xs"
+              >
+                Turn all on
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={turnAllOff}
+                disabled={allOff}
+                className="text-xs"
+              >
+                Turn all off
+              </Button>
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
+
