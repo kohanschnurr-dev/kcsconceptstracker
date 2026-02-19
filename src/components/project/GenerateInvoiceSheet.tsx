@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Copy, Check, Trash2, FileText, Sparkles, Plus, X, Download } from 'lucide-react';
+import { Loader2, FileText, Sparkles, Plus, X } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfExport';
 import {
   Sheet,
@@ -118,8 +118,6 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
 
   // Result
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generated, setGenerated] = useState('');
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (settings?.company_name) setCompanyName(settings.company_name);
@@ -143,8 +141,6 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
       setPaymentNotes('');
       setDocLength('standard');
       setTone('professional');
-      setGenerated('');
-      setCopied(false);
     }
     onOpenChange(val);
   };
@@ -170,7 +166,6 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
 
   const handleGenerate = async () => {
     setIsGenerating(true);
-    setGenerated('');
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-invoice', {
@@ -205,19 +200,17 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
         toast({ title: 'Error', description: data.error, variant: 'destructive' });
         return;
       }
-      setGenerated(data?.invoice || '');
+      const invoiceText = data?.invoice || '';
+      generatePDF(invoiceText, {
+        docType: 'Invoice',
+        companyName: settings?.company_name || companyName || 'Your Company',
+        logoUrl: settings?.logo_url,
+      });
     } catch (err: any) {
       toast({ title: 'Generation failed', description: err.message || 'Something went wrong.', variant: 'destructive' });
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(generated);
-    setCopied(true);
-    toast({ title: 'Copied!', description: 'Invoice copied to clipboard.' });
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -452,49 +445,9 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
               {isGenerating ? (
                 <><Loader2 className="h-4 w-4 animate-spin" />Generating…</>
               ) : (
-                <><Sparkles className="h-4 w-4" />Generate Invoice</>
+                <><Sparkles className="h-4 w-4" />Generate Invoice PDF</>
               )}
             </Button>
-
-            {/* GENERATED OUTPUT */}
-            {generated && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Generated Invoice</p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5 h-7 text-xs">
-                      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => generatePDF(generated, {
-                        docType: 'Invoice',
-                        companyName: settings?.company_name || 'Your Company',
-                        logoUrl: settings?.logo_url,
-                      })}
-                      className="gap-1.5 h-7 text-xs"
-                    >
-                      <Download className="h-3 w-3" />
-                      PDF
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setGenerated('')}
-                      className="gap-1.5 h-7 text-xs text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-                <div className="bg-muted/40 border rounded-lg p-4 font-mono text-xs whitespace-pre-wrap leading-relaxed text-foreground/90 max-h-[500px] overflow-y-auto">
-                  {generated}
-                </div>
-              </div>
-            )}
 
             <div className="h-4" />
           </div>

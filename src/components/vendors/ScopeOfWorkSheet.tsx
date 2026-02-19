@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Copy, Check, Trash2, FileText, Sparkles, Download } from 'lucide-react';
+import { Loader2, FileText, Sparkles } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfExport';
 import {
   Sheet,
@@ -121,8 +121,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
 
   // Result
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedScope, setGeneratedScope] = useState('');
-  const [copied, setCopied] = useState(false);
 
   const selectedVendor = vendors.find((v) => v.id === selectedVendorId);
 
@@ -161,8 +159,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
       setSpecialNotes('');
       setScopeLength('standard');
       setTone('standard');
-      setGeneratedScope('');
-      setCopied(false);
     }
     onOpenChange(val);
   };
@@ -180,7 +176,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
   const handleGenerate = async () => {
     if (!selectedVendorId) return;
     setIsGenerating(true);
-    setGeneratedScope('');
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-scope-of-work', {
@@ -211,7 +206,12 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
         return;
       }
 
-      setGeneratedScope(data?.scope || '');
+      const scopeText = data?.scope || '';
+      generatePDF(scopeText, {
+        docType: 'Scope of Work',
+        companyName: settings?.company_name || companyName || 'Your Company',
+        logoUrl: settings?.logo_url,
+      });
     } catch (err: any) {
       toast({
         title: 'Generation failed',
@@ -221,13 +221,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(generatedScope);
-    setCopied(true);
-    toast({ title: 'Copied!', description: 'Scope of work copied to clipboard.' });
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -453,50 +446,10 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
               ) : (
                 <>
                   <Sparkles className="h-4 w-4" />
-                  Generate Scope of Work
+                  Generate Scope of Work PDF
                 </>
               )}
             </Button>
-
-            {/* GENERATED OUTPUT */}
-            {generatedScope && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Generated Document</p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5 h-7 text-xs">
-                      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => generatePDF(generatedScope, {
-                        docType: 'Scope of Work',
-                        companyName: settings?.company_name || 'Your Company',
-                        logoUrl: settings?.logo_url,
-                      })}
-                      className="gap-1.5 h-7 text-xs"
-                    >
-                      <Download className="h-3 w-3" />
-                      PDF
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setGeneratedScope('')}
-                      className="gap-1.5 h-7 text-xs text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-                <div className="bg-muted/40 border rounded-lg p-4 font-mono text-xs whitespace-pre-wrap leading-relaxed text-foreground/90 max-h-[500px] overflow-y-auto">
-                  {generatedScope}
-                </div>
-              </div>
-            )}
 
             {/* Bottom padding */}
             <div className="h-4" />
