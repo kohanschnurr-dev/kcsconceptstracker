@@ -1,26 +1,45 @@
 
 
-## Fix Date and Amount Layout on Mobile
+## Clean Up Calendar Mobile UI
 
-The Amount and Date fields are currently in a `grid grid-cols-2 gap-4` layout (line 283 of `QuickExpenseModal.tsx`). On mobile screens, this makes both fields too narrow -- the date picker gets squeezed and the amount input is cramped.
+The current mobile calendar header crams too many elements into tight rows, making the month navigation and calendar icon feel tiny. Here's the redesign:
 
-### Change
+### Current Issues (from screenshot)
+- "Project Calendar" title with tiny calendar icon feels cramped on Row 1
+- Month navigation (February 2026) + "All Projects" filter squeezed together on Row 2
+- The legend section takes up a lot of vertical space as a separate card
 
-**File: `src/components/QuickExpenseModal.tsx`** (line 283)
+### Proposed Mobile Layout (3 rows)
 
-Change the Amount/Date row from always being 2 columns to stacking vertically on mobile:
+**Row 1**: "Project Calendar" title (larger icon) | View selector + Add button (unchanged)
 
-- Change `grid grid-cols-2 gap-4` to `grid grid-cols-1 sm:grid-cols-2 gap-4`
+**Row 2**: Month navigation centered, full width -- chevrons + month/year picker spread out with more breathing room
 
-This makes Amount and Date each take full width on mobile (stacked), and sit side-by-side on larger screens.
+**Row 3**: Project filter, full width
 
-### Technical Detail
+**Legend**: Merge the legend INTO the header card on mobile (remove the separate bordered card) to reduce vertical sections. On desktop, keep it separate.
 
-Single class change on line 283:
-```
-- <div className="grid grid-cols-2 gap-4">
-+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-```
+### Technical Changes
 
-Only the Amount/Date row is affected. The Project/Category and Vendor/Payment rows will remain as 2-column grids since they work fine at that width.
+**1. `src/components/calendar/CalendarHeader.tsx`** -- Mobile layout (lines 81-148)
+
+- Increase calendar icon from `h-4 w-4` to `h-5 w-5`
+- Increase title text from `text-sm` to `text-base`
+- Split Row 2 into two rows:
+  - New Row 2: Month navigation centered with `justify-center` and larger touch targets (`h-8 w-8` chevrons)
+  - New Row 3: Project filter as full-width standalone row
+- Add CalendarLegend component inside the mobile header card (after Row 3)
+
+**2. `src/pages/Calendar.tsx`** -- Legend section (lines 253-256)
+
+- Hide the separate legend card on mobile: change wrapping div to `hidden sm:block bg-background rounded-lg p-4 border border-border`
+- This avoids duplicate legends since mobile will show it inside the header
+
+**3. `src/components/calendar/CalendarLegend.tsx`** -- No changes needed, already responsive
+
+### Result
+- Larger, more readable title and icon
+- Month navigation has full width and bigger tap targets
+- Project filter gets its own full-width row instead of being squeezed
+- Legend integrated into header card on mobile, reducing visual sections from 3 boxes to 2
 
