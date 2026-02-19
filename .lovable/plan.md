@@ -1,71 +1,105 @@
 
-## Redesign: Two-Step Add Item Flow (URL → Screenshot)
+## Fix: Calendar Month/Year Dropdown Ignoring Theme Colors
 
-### What's Changing
+### Root Cause
 
-The current flow is: URL → (scrape) → Category → Details
+The screenshot shows the calendar's month/year select dropdowns rendering with a white/light background and black text regardless of the active palette.
 
-The new flow will be: URL (paste & save for reference) → Screenshot (optional, AI extracts data) → Category → Details
+There are two connected problems:
 
-Scraping is completely removed from the new item flow. The URL is saved as a reference link only. The screenshot step is the new primary data extraction method.
+**Problem 1 — `calendar-dropdown` CSS class is hardcoded to Ember dark values**
 
-### Step 1: URL Step (Mostly Unchanged)
-
-- Same UI as today (matches the reference image the user provided)
-- User pastes a URL into the input field
-- Clicking **"Next"** saves the URL to `formData.source_url` and navigates to the new screenshot step — no scraping call is made
-- "Skip & Enter Manually" still exists to skip both steps and go straight to category
-
-### Step 2: Screenshot Step (New)
-
-A new `'screenshot'` step is added to the `Step` type between `'url'` and `'category'`.
-
-The UI will show:
-- A camera/upload icon at the top
-- Title: **"Upload a Screenshot"**
-- Subtitle: *"Take a screenshot of the product page and upload it — we'll pull the name, price, and image automatically."*
-- A large dashed upload zone (click to browse or Ctrl+V to paste)
-- A "Parsing..." loading state with spinner when AI is processing
-- A green success badge when data is extracted
-- A **"Skip"** button at the bottom to go straight to category without uploading
-- A **back arrow** to return to the URL step
-
-When a screenshot is uploaded/pasted:
-1. AI parses it via the existing `parse-product-screenshot` edge function
-2. Form data is populated (name, price, model, image)
-3. After success → automatically advances to the category step
-
-### New State & Types
-
-```typescript
-// Add 'screenshot' between 'url' and 'category'
-type Step = 'url' | 'screenshot' | 'category' | 'details';
+In `src/index.css`, the `.calendar-dropdown` class has:
+```css
+.calendar-dropdown {
+  background-color: hsl(220 18% 13%);   /* Hardcoded Ember dark card color */
+  color: hsl(210 20% 95%);              /* Hardcoded Ember light foreground */
+}
 ```
 
-No new state variables are needed — `parsingScreenshot`, `screenshotInputRef`, and `handleScreenshotUpload` already exist and do exactly what's needed here.
+This is not theme-aware at all. Switching to any other palette — dark or light — leaves the dropdown hardcoded to Ember's specific HSL values. On light palettes (Ivory, Pearl, Linen) it's especially broken: a near-white calendar gets a dark navy dropdown.
 
-### Changes to Existing Logic
+**Problem 2 — `color-scheme` on `<html>` doesn't propagate into the `<select>` element's native dropdown UI**
 
-- **`handleScrapeUrl` → replaced by `handleNextFromUrl`**: Simply saves the URL to `formData` and sets `setStep('screenshot')`. No API call.
-- **`showFallbackOptions` state**: No longer needed — the fallback options (screenshot card, enter manually) become a dedicated step instead of a conditional UI block. The state is kept for now but the fallback UI block inside `renderUrlStep` is removed.
-- **URL step button**: Changes from "Extract Product Data" to **"Next →"** always (regardless of whether URL is filled in).
-- **Paste listener**: The existing `useEffect` paste handler already checks `step === 'url' && showFallbackOptions` — this condition changes to `step === 'screenshot'` to trigger screenshot parsing on the new step.
+The native `<option>` popup rendered by the browser (the part that appears when you click the month/year selector) uses the OS color scheme, not CSS variables. This is why it can flash white/black even when the surrounding calendar looks correct.
 
-### What Stays the Same
+**Problem 3 — `applyPalette()` doesn't reset variables that were set by a previous palette**
 
-- The `renderCategoryStep` and `renderDetailsStep` are completely unchanged
-- The `handleScreenshotUpload` function is completely unchanged
-- Edit mode still skips directly to `'details'` step — no change
-- The existing fallback options code is removed (no longer needed)
-- The screenshot `<input>` ref and its file handler are moved into `renderScreenshotStep`
+When switching from a light palette (Ivory/Pearl/Linen — which define their own `--foreground`, `--card-foreground` etc. overriding the `shared` object) back to a dark palette, the old palette's inline style overrides persist because `applyPalette()` only calls `setProperty` on keys present in the new palette — it never clears stale inline properties. This means after cycling through palettes, leftover color values can bleed through.
+
+### The Fix
+
+**File 1: `src/index.css`** — Replace the hardcoded `calendar-dropdown` colors with CSS variable references:
+
+```css
+/* BEFORE */
+.calendar-dropdown {
+  max-height: 200px;
+  overflow-y: auto;
+  color-scheme: dark;
+  background-color: hsl(220 18% 13%);
+  color: hsl(210 20% 95%);
+}
+
+/* AFTER */
+.calendar-dropdown {
+  max-height: 200px;
+  overflow-y: auto;
+  color-scheme: inherit;
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+```
+
+This makes the dropdown always match the active palette's popover color. Setting `color-scheme: inherit` propagates the root `color-scheme` value (set by `applyPalette()` as `light` or `dark`) into the select so the native browser dropdown also respects it.
+
+**File 2: `src/lib/colorPalettes.ts`** — Fix `applyPalette()` to clear all known CSS variables before applying new ones, preventing stale values from light→dark or dark→light palette switches:
+
+```typescript
+// Add a complete list of all CSS variable keys used across all palettes
+const ALL_PALETTE_VARS = [
+  '--background', '--foreground', '--card', '--card-foreground',
+  '--popover', '--popover-foreground', '--primary', '--primary-foreground',
+  '--secondary', '--secondary-foreground', '--muted', '--muted-foreground',
+  '--accent', '--accent-foreground', '--destructive', '--destructive-foreground',
+  '--success', '--success-foreground', '--warning', '--warning-foreground',
+  '--border', '--input', '--ring', '--radius',
+  '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5',
+  '--sidebar-background', '--sidebar-foreground', '--sidebar-primary',
+  '--sidebar-primary-foreground', '--sidebar-accent', '--sidebar-accent-foreground',
+  '--sidebar-border', '--sidebar-ring',
+];
+
+export function applyPalette(key: PaletteKey) {
+  const palette = palettes.find((p) => p.key === key);
+  if (!palette) return;
+  const root = document.documentElement;
+  // Clear all palette vars first to prevent stale overrides from previous palette
+  ALL_PALETTE_VARS.forEach((prop) => root.style.removeProperty(prop));
+  // Apply new palette
+  Object.entries(palette.variables).forEach(([prop, value]) => {
+    root.style.setProperty(prop, value);
+  });
+  // ... rest unchanged
+}
+```
+
+### Why This Fixes All Palettes
+
+| Palette | Before | After |
+|---|---|---|
+| Ember (dark) | Calendar dropdown shows Ember-specific dark (coincidentally correct) | Uses `--popover` CSS var — still correct |
+| Graphite/Slate/Onyx/Titanium/Midnight/Cobalt (dark) | Calendar dropdown shows wrong Ember dark hue | Uses correct palette's `--popover` color |
+| Ivory/Pearl/Linen (light) | Calendar dropdown shows dark navy background on light palette | Uses correct light popover color |
 
 ### Files to Change
 
-- `src/components/procurement/ProcurementItemModal.tsx` only:
-  1. Update `Step` type to include `'screenshot'`
-  2. Replace `handleScrapeUrl` with a simple `handleNextFromUrl` function (no API call)
-  3. Update the URL step render to remove fallback options block and change button label/handler
-  4. Add `renderScreenshotStep()` function with the new upload UI
-  5. Update the paste listener `useEffect` condition (`step === 'screenshot'` instead of `step === 'url' && showFallbackOptions`)
-  6. Add `renderScreenshotStep()` to the step switcher in the JSX
-  7. Update dialog title to show "Add Item — Step 2 of 3" style indicator (optional breadcrumb)
+- `src/index.css` — 2 line changes in `.calendar-dropdown` rule (lines 145–152)
+- `src/lib/colorPalettes.ts` — Add `ALL_PALETTE_VARS` constant + update `applyPalette()` to clear stale properties before applying (lines 383–398)
+
+### What Stays the Same
+
+- All palette color values unchanged
+- All `Calendar` component classNames unchanged
+- All `applyPalette()` behavior unchanged except for the pre-clear step
+- The `LIGHT_PALETTES` / `color-scheme` logic unchanged
