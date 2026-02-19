@@ -378,6 +378,8 @@ export function getActivePalette(): PaletteKey {
   return 'ember';
 }
 
+const LIGHT_PALETTES: PaletteKey[] = ['ivory', 'pearl', 'linen'];
+
 export function applyPalette(key: PaletteKey) {
   const palette = palettes.find((p) => p.key === key);
   if (!palette) return;
@@ -385,6 +387,9 @@ export function applyPalette(key: PaletteKey) {
   Object.entries(palette.variables).forEach(([prop, value]) => {
     root.style.setProperty(prop, value);
   });
+  // Set color-scheme so native date/time pickers match the palette
+  const isLight = LIGHT_PALETTES.includes(key);
+  root.style.setProperty('color-scheme', isLight ? 'light' : 'dark');
   try {
     localStorage.setItem(STORAGE_KEY, key);
   } catch {}
