@@ -308,6 +308,7 @@ function ExpenseForm({
               <SelectItem value="check">Check</SelectItem>
               <SelectItem value="cash">Cash</SelectItem>
               <SelectItem value="transfer">Transfer</SelectItem>
+              <SelectItem value="financed">Financed</SelectItem>
             </SelectContent>
           </Select>
         </div>
