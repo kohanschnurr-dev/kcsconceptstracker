@@ -50,7 +50,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Task, TaskStatus, TaskPriority } from '@/types/task';
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/types/task';
 import { format, isToday, startOfDay } from 'date-fns';
-import { formatDisplayDate } from '@/lib/dateUtils';
+import { formatDisplayDate, parseDateString } from '@/lib/dateUtils';
 
 interface DailyLog {
   id: string;
@@ -386,9 +386,15 @@ export default function DailyLogs() {
 
       if (error) throw error;
 
+      // Optimistically update state immediately for instant UI response
+      setAllTasks(prev => prev.map(t =>
+        t.id === task.id
+          ? { ...t, dueDate: date ? format(date, 'yyyy-MM-dd') : null }
+          : t
+      ));
       toast({ title: date ? 'Due date set' : 'Due date cleared', description: date ? `Due: ${format(date, 'MMM d, yyyy')}` : `"${task.title}" due date removed` });
-      fetchTasks();
       setDueDatePickerTaskId(null);
+      fetchTasks(); // background sync
     } catch (error) {
       console.error('Error updating due date:', error);
       toast({ title: 'Error', description: 'Failed to update due date', variant: 'destructive' });
@@ -501,9 +507,15 @@ export default function DailyLogs() {
 
       if (error) throw error;
 
+      // Optimistically update state immediately for instant UI response
+      setAllTasks(prev => prev.map(t =>
+        t.id === selectedTask.id
+          ? { ...t, title: editForm.title.trim(), description: editForm.description.trim() || null, dueDate: editForm.dueDate || null, priorityLevel: editForm.priorityLevel, status: editForm.status }
+          : t
+      ));
       toast({ title: 'Task updated' });
       setDetailModalOpen(false);
-      fetchTasks();
+      fetchTasks(); // background sync
     } catch (error) {
       console.error('Error updating task:', error);
       toast({ title: 'Error', description: 'Failed to update task', variant: 'destructive' });
@@ -940,7 +952,7 @@ export default function DailyLogs() {
                         </div>
                         {task.dueDate && (
                           <p className="text-xs text-muted-foreground mt-2">
-                            Due: {format(new Date(task.dueDate), 'MMM d, yyyy')}
+                            Due: {format(parseDateString(task.dueDate), 'MMM d, yyyy')}
                           </p>
                         )}
                       </div>
@@ -1109,7 +1121,7 @@ export default function DailyLogs() {
                         </TableCell>
                         <TableCell>
                           {task.dueDate ? (
-                            <span className="text-sm">{format(new Date(task.dueDate), 'MMM d, yyyy')}</span>
+                            <span className="text-sm">{format(parseDateString(task.dueDate), 'MMM d, yyyy')}</span>
                           ) : (
                             <span className="text-sm text-muted-foreground">—</span>
                           )}
