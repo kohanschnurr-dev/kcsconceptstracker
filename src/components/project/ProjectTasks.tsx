@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ListTodo, Check, Clock, AlertCircle, Plus, Calendar, Trash2, Camera, X, Loader2 } from 'lucide-react';
+import { ListTodo, Check, Clock, AlertCircle, Plus, Calendar, Trash2, Camera, X, Loader2, FileText } from 'lucide-react';
 import { parseDateString, formatDisplayDateShort } from '@/lib/dateUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,11 +7,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { TASK_PRIORITY_COLORS, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/types/task';
 import type { TaskStatus, TaskPriority } from '@/types/task';
@@ -86,6 +89,7 @@ function TaskPhotoUploader({ photos, onPhotosChange }: { photos: string[]; onPho
 interface ProjectTask {
   id: string;
   title: string;
+  description: string | null;
   status: TaskStatus;
   priorityLevel: TaskPriority;
   dueDate: string | null;
@@ -99,6 +103,7 @@ interface ProjectTasksProps {
 
 export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -106,6 +111,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
   // Edit dialog state
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [editPriority, setEditPriority] = useState<TaskPriority>('medium');
   const [editDueDate, setEditDueDate] = useState('');
   const [editStatus, setEditStatus] = useState<TaskStatus>('pending');
@@ -121,7 +127,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, title, status, priority_level, due_date, photo_urls')
+        .select('id, title, description, status, priority_level, due_date, photo_urls')
         .eq('project_id', projectId)
         .in('status', ['pending', 'in_progress'])
         .order('priority_level', { ascending: false })
@@ -133,6 +139,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
       setTasks((data || []).map(t => ({
         id: t.id,
         title: t.title,
+        description: t.description ?? null,
         status: t.status as TaskStatus,
         priorityLevel: t.priority_level as TaskPriority,
         dueDate: t.due_date,
@@ -148,6 +155,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
   const openEditDialog = (task: ProjectTask) => {
     setSelectedTask(task);
     setEditTitle(task.title);
+    setEditDescription(task.description ?? '');
     setEditPriority(task.priorityLevel);
     setEditDueDate(task.dueDate ?? '');
     setEditStatus(task.status);
@@ -162,6 +170,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
         .from('tasks')
         .update({
           title: editTitle,
+          description: editDescription || null,
           priority_level: editPriority,
           due_date: editDueDate || null,
           status: editStatus,
@@ -236,6 +245,92 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
     }
   };
 
+  const editFormContent = (
+    <div className="space-y-4 py-2">
+      <div className="space-y-1.5">
+        <Label htmlFor="edit-title">Title</Label>
+        <Input
+          id="edit-title"
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          placeholder="Task title"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Priority</Label>
+          <Select value={editPriority} onValueChange={(v) => setEditPriority(v as TaskPriority)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="urgent">Urgent</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Status</Label>
+          <Select value={editStatus} onValueChange={(v) => setEditStatus(v as TaskStatus)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="edit-due-date">Due Date</Label>
+        <Input
+          id="edit-due-date"
+          type="date"
+          value={editDueDate}
+          onChange={(e) => setEditDueDate(e.target.value)}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="flex items-center gap-1.5">
+          <FileText className="h-4 w-4" />
+          Notes
+        </Label>
+        <Textarea
+          value={editDescription}
+          onChange={(e) => setEditDescription(e.target.value)}
+          placeholder="Add notes about this task..."
+          className="min-h-[80px] resize-none"
+        />
+      </div>
+      <TaskPhotoUploader photos={editPhotoUrls} onPhotosChange={setEditPhotoUrls} />
+    </div>
+  );
+
+  const editFooterContent = (
+    <div className="flex items-center justify-between w-full gap-2">
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={() => {
+          if (selectedTask) setDeleteTaskId(selectedTask.id);
+        }}
+      >
+        <Trash2 className="h-4 w-4 mr-1" />
+        Delete
+      </Button>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => setSelectedTask(null)}>Cancel</Button>
+        <Button onClick={handleSaveEdit} disabled={isSaving}>
+          {isSaving ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <Card className="glass-card">
@@ -291,9 +386,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
                     )}
                   </div>
                   <div className="shrink-0 flex items-center justify-end gap-2 sm:w-[90px]">
-                    {/* Mobile: colored icon only */}
                     <AlertCircle className={cn("h-4 w-4 sm:hidden", PRIORITY_ICON_COLORS[task.priorityLevel])} />
-                    {/* Desktop: full badge */}
                     <Badge 
                       variant="secondary" 
                       className={cn("text-xs hidden sm:inline-flex", TASK_PRIORITY_COLORS[task.priorityLevel])}
@@ -317,82 +410,34 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
         />
       </Card>
 
-      {/* Edit Task Dialog */}
-      <Dialog open={!!selectedTask} onOpenChange={(open) => { if (!open) setSelectedTask(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-title">Title</Label>
-              <Input
-                id="edit-title"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                placeholder="Task title"
-              />
+      {/* Edit Task - Drawer on mobile, Dialog on desktop */}
+      {isMobile ? (
+        <Drawer open={!!selectedTask} onOpenChange={(open) => { if (!open) setSelectedTask(null); }}>
+          <DrawerContent className="max-h-[85vh]">
+            <DrawerHeader>
+              <DrawerTitle>Edit Task</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 overflow-y-auto flex-1">
+              {editFormContent}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Priority</Label>
-                <Select value={editPriority} onValueChange={(v) => setEditPriority(v as TaskPriority)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Status</Label>
-                <Select value={editStatus} onValueChange={(v) => setEditStatus(v as TaskStatus)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-due-date">Due Date</Label>
-              <Input
-                id="edit-due-date"
-                type="date"
-                value={editDueDate}
-                onChange={(e) => setEditDueDate(e.target.value)}
-              />
-            </div>
-            <TaskPhotoUploader photos={editPhotoUrls} onPhotosChange={setEditPhotoUrls} />
-          </div>
-          <DialogFooter className="flex-row items-center justify-between sm:justify-between gap-2">
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                if (selectedTask) setDeleteTaskId(selectedTask.id);
-              }}
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Delete
-            </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setSelectedTask(null)}>Cancel</Button>
-              <Button onClick={handleSaveEdit} disabled={isSaving}>
-                {isSaving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DrawerFooter>
+              {editFooterContent}
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={!!selectedTask} onOpenChange={(open) => { if (!open) setSelectedTask(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Task</DialogTitle>
+            </DialogHeader>
+            {editFormContent}
+            <DialogFooter className="flex-row items-center justify-between sm:justify-between gap-2">
+              {editFooterContent}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTaskId} onOpenChange={(open) => { if (!open) setDeleteTaskId(null); }}>
