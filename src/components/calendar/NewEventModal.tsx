@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { format, addMonths, addYears, differenceInCalendarDays } from 'date-fns';
-import { Plus, AlertTriangle, Zap, CalendarRange, Check, ChevronsUpDown, Repeat } from 'lucide-react';
+import { Plus, AlertTriangle, Zap, CalendarRange, Check, ChevronsUpDown, Repeat, Circle, X } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Dialog,
@@ -37,6 +37,7 @@ import {
   getCalendarCategories,
   getCategoryStyles,
   getCategoryLabel,
+  CATEGORY_CHECKLIST_PRESETS,
   type CategoryGroup,
   type CalendarCategory,
 } from '@/lib/calendarCategories';
@@ -66,6 +67,8 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
   const [isMultiDay, setIsMultiDay] = useState(false);
   const [isCriticalPath, setIsCriticalPath] = useState(false);
   const [notes, setNotes] = useState('');
+  const [checklist, setChecklist] = useState<{ id: string; label: string; completed: boolean }[]>([]);
+  const [newChecklistItem, setNewChecklistItem] = useState('');
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
@@ -101,6 +104,8 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
     setIsMultiDay(false);
     setIsCriticalPath(false);
     setNotes('');
+    setChecklist([]);
+    setNewChecklistItem('');
     setIsRecurring(false);
     setRecurrenceFrequency('monthly');
     setRecurrenceUntilType('indefinite');
@@ -149,6 +154,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
       trade: null as string | null,
       is_critical_path: isCriticalPath,
       notes: notes || null,
+      checklist: checklist.length > 0 ? checklist : null,
     };
 
     let eventsToInsert: any[] = [];
@@ -578,6 +584,92 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
               <p className="text-xs text-muted-foreground">
                 Highlight this event in red on the calendar
               </p>
+            </div>
+          </div>
+
+          {/* Checklist */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">Checklist</Label>
+            
+            {/* Quick-add preset chips */}
+            {(() => {
+              const presets = CATEGORY_CHECKLIST_PRESETS[category] || [];
+              const existingLabels = new Set(checklist.map(i => i.label.toLowerCase()));
+              const available = presets.filter(p => !existingLabels.has(p.toLowerCase()));
+              if (available.length === 0 && checklist.length === 0) return (
+                <p className="text-xs text-muted-foreground">
+                  {category ? 'No presets for this category. Add custom items below.' : 'Select a category to see suggested tasks.'}
+                </p>
+              );
+              return available.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {available.map(preset => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        setChecklist(prev => [...prev, { id: `item-${Date.now()}-${Math.random()}`, label: preset, completed: false }]);
+                      }}
+                      className="text-xs px-2 py-1 rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary transition-colors"
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+              ) : null;
+            })()}
+
+            {/* Added checklist items */}
+            {checklist.length > 0 && (
+              <div className="space-y-1">
+                {checklist.map(item => (
+                  <div key={item.id} className="flex items-center gap-2 px-2 py-1.5 rounded bg-card/50 group">
+                    <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="flex-1 text-sm text-foreground">{item.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => setChecklist(prev => prev.filter(i => i.id !== item.id))}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Manual input */}
+            <div className="flex items-center gap-2">
+              <Input
+                value={newChecklistItem}
+                onChange={(e) => setNewChecklistItem(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (newChecklistItem.trim()) {
+                      setChecklist(prev => [...prev, { id: `item-${Date.now()}`, label: newChecklistItem.trim(), completed: false }]);
+                      setNewChecklistItem('');
+                    }
+                  }
+                }}
+                placeholder="Add custom task..."
+                className="flex-1 bg-card border-border text-foreground text-sm"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (newChecklistItem.trim()) {
+                    setChecklist(prev => [...prev, { id: `item-${Date.now()}`, label: newChecklistItem.trim(), completed: false }]);
+                    setNewChecklistItem('');
+                  }
+                }}
+                disabled={!newChecklistItem.trim()}
+                className="h-9 w-9 border-border text-muted-foreground hover:text-primary hover:border-primary"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
           </div>
 

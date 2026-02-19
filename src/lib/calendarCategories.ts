@@ -142,6 +142,50 @@ export function getCategoryStyles(categoryValue: string) {
   return CATEGORY_GROUPS[group];
 }
 
+// Checklist presets per category
+export const CATEGORY_CHECKLIST_PRESETS: Record<string, string[]> = {
+  // Acquisition/Admin
+  due_diligence: ['Property walkthrough', 'Comps pulled', 'Scope of work drafted', 'Title search'],
+  underwriting: ['Run numbers', 'Verify ARV', 'Confirm rehab budget', 'Lender pre-approval'],
+  closing: ['Title clear', 'Funding confirmed', 'Docs signed', 'Keys received'],
+  permitting: ['Application submitted', 'Plans approved', 'Permit posted', 'Inspections scheduled'],
+  order: ['Items selected', 'PO submitted', 'Delivery confirmed', 'Tracking received'],
+  item_arrived: ['Verify quantity', 'Check for damage', 'Store on site', 'Notify crew'],
+  // Structural/Exterior
+  demo: ['Dumpster ordered', 'Utilities disconnected', 'Permits pulled', 'Hazmat check', 'Demo complete walkthrough'],
+  foundation_piers: ['Engineering report', 'Piers installed', 'Foundation leveled', 'Grade beams poured'],
+  roofing: ['Materials delivered', 'Tear-off complete', 'Underlayment', 'Shingles installed', 'Gutters', 'Final inspection'],
+  garage: ['Door ordered', 'Framing complete', 'Door installed', 'Opener installed'],
+  grading: ['Survey complete', 'Drainage plan', 'Grade set', 'Sod/seed'],
+  siding: ['Materials delivered', 'Old siding removed', 'Wrap installed', 'Siding installed', 'Trim complete'],
+  windows: ['Windows ordered', 'Old windows removed', 'New windows installed', 'Flashing/trim', 'Caulked/sealed'],
+  exterior_paint: ['Power wash', 'Scrape/prep', 'Prime', 'Paint', 'Touch-up'],
+  // Rough-ins
+  plumbing_rough: ['Water lines', 'Drain lines', 'Gas lines', 'Pressure test', 'Stub-outs'],
+  electrical_rough: ['Panel installed', 'Wiring run', 'Boxes set', 'Low voltage', 'Label circuits'],
+  hvac_rough: ['Ductwork', 'Line set', 'Condensate drain', 'Thermostat wire', 'Equipment set'],
+  framing: ['Layout', 'Walls framed', 'Headers set', 'Blocking', 'Sheathing'],
+  // Inspections
+  city_rough_in: ['Schedule inspection', 'Prep site', 'Inspector on site', 'Corrections noted', 'Passed'],
+  third_party: ['Schedule inspection', 'Report received', 'Issues addressed'],
+  foundation_pre_pour: ['Forms set', 'Rebar inspected', 'Plumbing verified', 'Ready to pour'],
+  final_green_tag: ['Final walkthrough', 'All trades signed off', 'CO received'],
+  // Interior Finishes
+  drywall: ['Hang', 'Tape/bed', 'Texture', 'Touch-up'],
+  painting: ['Prime', 'First coat', 'Second coat', 'Touch-up', 'Trim/doors'],
+  tile: ['Layout', 'Set tile', 'Grout', 'Seal'],
+  flooring: ['Acclimate', 'Underlayment', 'Install', 'Transitions', 'Final clean'],
+  cabinetry: ['Template', 'Cabinets delivered', 'Uppers installed', 'Lowers installed', 'Hardware'],
+  countertops: ['Template', 'Fabrication', 'Install', 'Backsplash', 'Seal'],
+  // Milestones
+  purchase: ['Earnest money', 'Inspection period', 'Appraisal', 'Close'],
+  stage_clean: ['Deep clean', 'Stage furniture', 'Photos scheduled', 'Listing prep'],
+  listing_date: ['MLS listing live', 'Sign in yard', 'Lockbox on', 'Showings enabled'],
+  open_house: ['Marketing sent', 'Refreshments', 'Sign-in sheet', 'Follow-up calls'],
+  sale_closing: ['Buyer financing confirmed', 'Final walkthrough', 'Docs signed', 'Funds received'],
+  refinancing: ['Appraisal ordered', 'Docs submitted', 'Rate locked', 'Closing scheduled'],
+};
+
 // Group categories for the dropdown
 export function getGroupedCategories(): Record<CategoryGroup, CalendarCategory[]> {
   return getCalendarCategories().reduce((acc, category) => {
