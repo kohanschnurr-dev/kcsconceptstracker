@@ -1,40 +1,73 @@
 
 
-## Fix Calendar Legend Colors and Mobile Space
+## Add Selectable Checklist Presets for Calendar Events
 
 ### Problem
-1. **Invisible colors**: Legend swatches use `bg-blue-500/20` (20% opacity) -- nearly invisible on light palettes like Ivory
-2. **Too much space**: The 2-column legend grid with 7 items eats vertical real estate on mobile
+Currently, adding checklist items to a calendar event requires typing each one manually into a text input. This is tedious on mobile -- users have to tap into the field, type, and hit the + button for every item.
+
+### Solution
+Add a preset checklist system where tapping a category auto-suggests relevant checklist items as tappable chips/buttons. Users tap to add, tap again to remove. They can still type custom items too.
 
 ### Changes
 
-**1. `src/lib/calendarCategories.ts`** -- Increase swatch opacity
+**1. `src/lib/calendarCategories.ts`** -- Add checklist presets map
 
-Add a new `swatchClass` field to each category group with higher opacity for the legend dots (while keeping the existing low-opacity `bgClass` for task cards where subtlety is needed):
+Add a new exported constant `CATEGORY_CHECKLIST_PRESETS` that maps category values to suggested checklist items. Examples:
 
-| Group | Current `bgClass` | New `swatchClass` |
-|---|---|---|
-| acquisition_admin | `bg-blue-500/20` | `bg-blue-500` |
-| structural_exterior | `bg-red-500/20` | `bg-red-500` |
-| rough_ins | `bg-orange-500/20` | `bg-orange-500` |
-| inspections | `bg-purple-500/20` | `bg-purple-500` |
-| interior_finishes | `bg-emerald-500/20` | `bg-emerald-500` |
-| milestones | `bg-amber-500/20` | `bg-amber-500` |
+| Category | Preset Items |
+|---|---|
+| demo | Dumpster ordered, Utilities disconnected, Permits pulled, Hazmat check, Demo complete walkthrough |
+| roofing | Materials delivered, Tear-off complete, Underlayment, Shingles installed, Gutters, Final inspection |
+| plumbing_rough | Water lines, Drain lines, Gas lines, Pressure test, Stub-outs |
+| electrical_rough | Panel installed, Wiring run, Boxes set, Low voltage, Label circuits |
+| drywall | Hang, Tape/bed, Texture, Touch-up |
+| painting | Prime, First coat, Second coat, Touch-up, Trim/doors |
+| tile | Layout, Set tile, Grout, Seal |
+| flooring | Acclimate, Underlayment, Install, Transitions, Final clean |
+| permitting | Application submitted, Plans approved, Permit posted, Inspections scheduled |
+| closing | Title clear, Funding confirmed, Docs signed, Keys received |
+| stage_clean | Deep clean, Stage furniture, Photos scheduled, Listing prep |
+| And more for each category... |
 
-Using solid colors for the small legend dots makes them clearly visible on both light and dark palettes.
+**2. `src/components/calendar/TaskDetailPanel.tsx`** -- Add preset chips UI
 
-**2. `src/components/calendar/CalendarLegend.tsx`** -- Use new swatch classes + compact mobile layout
+Below the "Add a task..." input (around line 487), add a section that shows preset items for the current category as tappable chips:
 
-- Use `swatchClass` instead of `bgClass` for the legend dot squares
-- On mobile, switch to a horizontal scrollable row (`flex overflow-x-auto`) instead of a 2-column grid, so the legend takes only one line
-- Keep the desktop layout as a wrapping flex row (unchanged behavior)
+- Show only presets that are NOT already in the checklist (to avoid duplicates)
+- Each chip is a small outlined button with a + icon
+- Tapping a chip instantly adds it to the checklist (no typing needed)
+- Section has a label like "Quick add:" and wraps horizontally
+- If all presets are already added, hide the section
 
-**3. `src/components/calendar/CalendarHeader.tsx`** -- No changes needed
+**3. `src/components/calendar/NewEventModal.tsx`** -- Add checklist section to creation flow
 
-The legend container already has minimal padding (`pt-1 border-t`). The CalendarLegend component itself becoming more compact will automatically fix the space issue.
+Currently the new event modal has no checklist at all -- users can only add checklist items after creating the event. Add a checklist section to the creation form (before Notes) with:
 
-### Result
-- Legend dots become solid colors -- clearly visible on every palette (dark and light)
-- Legend takes one horizontal scrollable line on mobile instead of a 4-row grid
-- Task cards continue using subtle 20% opacity backgrounds (unchanged)
+- Same preset chips based on selected category
+- Same manual input for custom items
+- Checklist gets saved with the event on creation
 
+This means users can set up their checklist during event creation instead of having to open the event detail after.
+
+### Technical Detail
+
+The preset data structure in `calendarCategories.ts`:
+```
+export const CATEGORY_CHECKLIST_PRESETS: Record<string, string[]> = {
+  demo: ['Dumpster ordered', 'Utilities disconnected', ...],
+  roofing: ['Materials delivered', 'Tear-off complete', ...],
+  // ... one entry per category
+};
+```
+
+The chip component pattern (in both TaskDetailPanel and NewEventModal):
+```
+{availablePresets.map(preset => (
+  <button onClick={() => addPresetItem(preset)} 
+    className="text-xs px-2 py-1 rounded-full border ...">
+    + {preset}
+  </button>
+))}
+```
+
+The NewEventModal will need new state for `checklist` array and include it in the insert payload on `handleSubmit`.
