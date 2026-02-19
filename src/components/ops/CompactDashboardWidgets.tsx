@@ -1,7 +1,8 @@
  import { useState, useMemo } from 'react';
  import { DollarSign, Grid3X3, Target, ListChecks } from 'lucide-react';
  import { AreaChart, Area, ResponsiveContainer } from 'recharts';
- import { format, subDays, startOfDay, isSameDay } from 'date-fns';
+import { format, subDays, startOfDay, isSameDay } from 'date-fns';
+import { parseDateString } from '@/lib/dateUtils';
  import { SpendingPopout } from './SpendingPopout';
  import { CategoriesPopout } from './CategoriesPopout';
  import { GoalsPopout } from './GoalsPopout';
@@ -80,7 +81,7 @@ export function CompactDashboardWidgets({
      const data = [];
      for (let i = 29; i >= 0; i--) {
        const date = subDays(today, i);
-       const dayExpenses = expenses.filter(e => isSameDay(new Date(e.date), date));
+       const dayExpenses = expenses.filter(e => isSameDay(parseDateString(e.date), date));
        const total = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
        data.push({ date: format(date, 'MMM d'), amount: total });
      }

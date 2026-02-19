@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Task, TaskPriority } from '@/types/task';
 import { TASK_PRIORITY_COLORS, TASK_PRIORITY_LABELS } from '@/types/task';
 import { isPast, isToday } from 'date-fns';
+import { parseDateString } from '@/lib/dateUtils';
 import { cn } from '@/lib/utils';
 
 interface UrgentTasksWidgetProps {
@@ -151,7 +152,7 @@ export function UrgentTasksWidget({ refreshKey }: UrgentTasksWidgetProps) {
     
     // If same priority, sort by due date (overdue first)
     if (a.dueDate && b.dueDate) {
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      return parseDateString(a.dueDate).getTime() - parseDateString(b.dueDate).getTime();
     }
     if (a.dueDate) return -1;
     if (b.dueDate) return 1;

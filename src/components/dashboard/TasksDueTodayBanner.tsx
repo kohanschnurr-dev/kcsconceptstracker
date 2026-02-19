@@ -93,12 +93,12 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
 
       // Filter tasks due today
       const dueToday = transformed.filter(
-        (t) => t.dueDate && isToday(new Date(t.dueDate))
+        (t) => t.dueDate && isToday(parseDateString(t.dueDate))
       );
 
       // Count overdue tasks (past due date, not completed)
       const overdue = transformed.filter(
-        (t) => t.dueDate && isPast(new Date(t.dueDate)) && !isToday(new Date(t.dueDate))
+        (t) => t.dueDate && isPast(parseDateString(t.dueDate)) && !isToday(parseDateString(t.dueDate))
       );
 
       setTasksDueToday(dueToday);
