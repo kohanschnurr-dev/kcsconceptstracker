@@ -1,127 +1,86 @@
 
-# Premium PDF Template Redesign — Full Theme-Aware Overhaul
+# Fix PDF Dead Space & Single-Page Layout
 
-## What's Changing
+## Root Causes Identified
 
-The single file `src/lib/pdfExport.ts` gets a complete visual redesign. The monospace "typewriter" block is replaced with a structured, card-based layout using modern sans-serif typography, proper section headers, a highlighted payment summary box, and a clean footer — all while staying 100% driven by the user's active color palette read at runtime from CSS variables.
+From the screenshot, three specific bugs are causing the problems:
 
----
+### 1. `min-height: 100vh` on `.page`
+The page wrapper forces itself to be at least the full viewport height. When content is short (a simple receipt), this creates a massive empty gray block below the content before the footer.
 
-## Design System (Theme-Responsive)
+**Fix:** Remove `min-height: 100vh` entirely. The page should only be as tall as its content.
 
-All colors are derived from the active palette's CSS variables at the moment the PDF button is clicked:
+### 2. Blank lines in AI output creating `height:10px` spacers
+The `renderContent` function converts every empty line into `<div style="height:10px;"></div>`. The AI output typically has multiple blank lines between sections, and between the last section and the total. These stack up into the visible dead space gap.
 
-| CSS Variable | Role in PDF |
-|---|---|
-| `--primary` (HSL) | Header background, section label color, left accent border, footer dot |
-| `--accent` (HSL) | Payment summary box background (lightened tint via opacity) |
-| Computed text contrast | White or dark text on header — auto-detected via lightness check |
+**Fix:** Collapse consecutive empty lines — only emit one spacer per group of blank lines (deduplicate). Also reduce the spacer height from `10px` to `4px`.
 
-The user's prompt mentions specific hex values like `#7D6A3F` — those are disregarded in favor of the live theme variables, as instructed ("keep it theme colored").
+### 3. Total box appended after all content
+The total lines are pulled out of the flow and appended at the very end of `renderContent`. If the AI output has blank lines after the last real section but before the total, those spacers appear as a gap above the total box.
 
----
+**Fix:** Keep detecting total lines separately (for special styling), but don't append the box after all content — instead, insert it inline where the total line was detected in the text flow. This eliminates the gap between the last content and the total.
 
-## New Visual Layout
+### 4. `content-wrapper` padding is too large
+Current: `padding: 36px 44px 40px` — this adds 76px of vertical breathing room around the card, visible as the gray background area.
 
-```text
-┌────────────────────────────────────────────────────────────────┐
-│  [LOGO 120px wide]    COMPANY NAME               [DOC BADGE]  │  ← primary-colored header
-│                       Professional Document                    │
-├────────────────────────────────────────────────────────────────┤
-│  Prepared by Company Name                  Generated Feb 2026  │  ← meta bar (accent tint)
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │ ▌  [4px primary border left]                             │ │  ← white card, shadow
-│  │                                                          │ │
-│  │  SECTION LABEL  ─────────────────────────────────────    │ │  ← ALL CAPS, gold, tracking
-│  │  content text in clean sans-serif, charcoal, 14px       │ │
-│  │  line-height 1.7, generous padding                      │ │
-│  │                                                          │ │
-│  │  ┌──────────────────────────────────────────────────┐   │ │
-│  │  │  TOTAL AMOUNT PAID            $X,XXX.00          │   │ │  ← payment box, accent tint
-│  │  └──────────────────────────────────────────────────┘   │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                                │
-├────────────────────────────────────────────────────────────────┤
-│  ● Company Name · Document Type              Generated Feb 19  │  ← footer
-└────────────────────────────────────────────────────────────────┘
+**Fix:** Reduce to `padding: 20px 36px 24px`.
+
+### 5. Footer padding creates second-page bleed
+`padding: 16px 0 36px` on the footer adds 52px below the footer text, which on short documents can push the last pixel onto page 2.
+
+**Fix:** Reduce to `padding: 12px 0 16px`.
+
+## Changes to `src/lib/pdfExport.ts`
+
+### A. `renderContent` — deduplicate blank lines & inline total box
+
+Current behavior:
+```
+line 1 content
+[empty spacer 10px]
+[empty spacer 10px]   ← stacks up
+[empty spacer 10px]
+line 2 content
 ```
 
----
-
-## Key Visual Improvements
-
-### Typography
-- **No more monospace/Courier.** Body text uses `'Segoe UI', 'Inter', 'Helvetica Neue', Arial`.
-- Section headers: all-caps, `0.15em` letter-spacing, 11px, primary color.
-- Body content: `#2C2C2C`, 13.5px, `line-height: 1.75`.
-
-### Content Parsing — Smart Section Detection
-The plain-text content generated by the AI often contains section headers in patterns like `--- SERVICES ---` or `TOTAL: $1,200`. The new renderer scans each line and applies formatting rules:
-
-- **Line that is ALL CAPS and short (< 60 chars):** Rendered as a styled section header with a divider below.
-- **Line that starts with `TOTAL` or contains `$` near the end:** Rendered inside the gold-tinted payment summary box.
-- **Divider lines (`---`, `===`, `───`):** Converted to a styled `<hr>` rule.
-- **All other lines:** Clean paragraph text.
-
-This transforms the existing AI output into a visually rich document without changing the edge functions.
-
-### Payment Summary Box
-Any line detected as a "total" line is pulled into a highlighted box:
-```html
-<div class="total-box">
-  <span class="total-label">TOTAL AMOUNT PAID</span>
-  <span class="total-amount">$1,200.00</span>
-</div>
+New behavior:
 ```
-Styled with: light primary-tint background (`primaryColor` at 10% opacity), `1px solid` border at 25% opacity, rounded corners (`8px`).
-
-### Card & Shadow
-The entire content area wraps in a white card with `box-shadow: 0 2px 16px rgba(0,0,0,0.08)` and a `4px solid ${primaryColor}` left border — giving it the "professional document" feel from the prompt.
-
-### Header
-- Logo renders at `max-width: 120px` with `max-height: 52px`, `object-fit: contain`.
-- If no logo: company name alone is displayed centered.
-- Document type badge: pill shape, `rgba(255,255,255,0.22)` background, white text, `1.2em` letter-spacing.
-- Company tagline "Professional Document" in small italic below company name.
-
-### Meta Bar
-- Light accent-tinted strip between header and content.
-- "Prepared by X" on the left, "Generated on [date]" on the right.
-- Thin bottom border using primary at 20% opacity.
-
-### Footer
-- Thin divider line (primary at 20% opacity).
-- Left: colored bullet dot + company name + document type.
-- Right: generated date.
-- Muted gray `#888`, 10.5px.
-
----
-
-## Font Loading Strategy
-Google Fonts are loaded via a `<link>` in the print window head. This requires network access, but print windows always have it. If fonts fail to load, the browser falls back to the system sans-serif stack — no breakage.
-
-```html
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+line 1 content
+[empty spacer 4px]   ← only one, collapsed
+line 2 content
 ```
 
----
+The total box insertion changes from "always appended at end" to "inserted inline in position", so it appears immediately after the last content line with no gap.
 
-## File Changed
+### B. CSS changes
 
-Only `src/lib/pdfExport.ts` — no other files touch this.
+| Property | Current | New |
+|---|---|---|
+| `.page` `min-height` | `100vh` | removed |
+| `.content-wrapper` padding | `36px 44px 40px` | `20px 36px 24px` |
+| `.content-card` padding | `36px 40px` | `24px 32px` |
+| `.footer` padding | `16px 0 36px` | `12px 0 16px` |
+| `.header` padding | `28px 44px` | `20px 36px` |
+| `.meta-bar` padding | `11px 44px` | `8px 36px` |
+| Section header `margin-top` | `24px` | `16px` |
+| Empty spacer height | `10px` | `4px` |
+| Total box `margin-top` | `28px` | `12px` |
 
-The `generatePDF` function signature and `PdfOptions` interface stay identical, so all three call sites (Invoice sheet, Receipt sheet, Scope of Work sheet) and the Vendors PDF handler work without any changes.
+### C. `@page` print rule — enforce portrait
 
----
+Add `size: A4 portrait` to the `@page` rule inside `@media print`, and also add `min-height: unset` to `.page` within print media to eliminate any remaining forced height.
 
-## What Does NOT Change
-- `GenerateInvoiceSheet.tsx` — untouched
-- `GenerateReceiptSheet.tsx` — untouched
-- `ScopeOfWorkSheet.tsx` — untouched
-- `src/pages/Vendors.tsx` — untouched
-- Edge functions — untouched
-- No new npm packages
-- No database changes
+```css
+@page { size: A4 portrait; margin: 0; }
+@media print {
+  .page { min-height: unset; }
+}
+```
+
+## Result
+
+- No dead gray space between content and total box
+- No forced second page for short documents
+- Portrait orientation locked
+- Total box appears inline, right after the last content section
+- Documents with many line items still naturally flow to page 2
