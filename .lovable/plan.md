@@ -1,54 +1,66 @@
 
-## Fix: PDF Generation Freezing the App
+## Change: Calendar Icon → Due Date Picker (Daily Logs Page)
 
-### Root Cause
+### What's Changing
 
-In `src/lib/pdfExport.ts`, the generated popup window runs `window.print()` automatically via a `<script>` tag after a 600ms timeout. The browser's print dialog is **synchronous and modal** — when it fires, it freezes the JavaScript event loop of the **parent tab** as well, causing the app to appear frozen until the user dismisses the dialog or closes the popup. This is why two refreshes are needed.
+The `CalendarPlus` icon button currently instant-assigns a task to "today's sprint" (`scheduled_date = today`). The user wants it to open a **date picker popover** to set or change the task's **due date** instead.
 
-### The Fix
+This change applies to both views on the page:
+- **Desktop table view** (line 1100–1109)
+- **Mobile card view** (line 948–957)
 
-Instead of auto-triggering `window.print()` in a popup, switch to a **Blob URL + `<iframe>` print** approach that is completely isolated from the parent tab's thread:
+### How It Will Work
 
-1. Build the HTML string exactly as today
-2. Create a `Blob` from it with `text/html` MIME type
-3. Create an object URL from the Blob (`URL.createObjectURL`)
-4. Open the URL in a new tab with `window.open(blobUrl, '_blank')` — the new tab handles its own print dialog without touching the parent thread
-
-This is the cleanest fix and requires changes only to `src/lib/pdfExport.ts`. No changes to callers (`GenerateInvoiceSheet.tsx`, `GenerateReceiptSheet.tsx`, `ScopeOfWorkSheet.tsx`, `Vendors.tsx`).
+1. User clicks the calendar icon next to any task
+2. A popover opens with a date picker (same style as the "Add Task" date picker already on this page)
+3. User picks a date → due date is saved to the database instantly
+4. Popover closes, the Due Date column updates to show the new date
+5. If a date is already set, the picker opens pre-selected on that date
+6. A "Clear date" option allows removing the due date
 
 ### Technical Details
 
-**Current (broken) approach:**
+**New state needed:**
 ```typescript
-const win = window.open('', '_blank');
-if (win) {
-  win.document.write(html); // writes HTML to blank window
-  win.document.close();
-  // popup script runs window.print() → freezes parent tab
-}
+const [dueDatePickerTaskId, setDueDatePickerTaskId] = useState<string | null>(null);
 ```
 
-**New approach:**
+**New handler:**
 ```typescript
-const blob = new Blob([html], { type: 'text/html' });
-const url = URL.createObjectURL(blob);
-const win = window.open(url, '_blank');
-// The popup handles its own print() without blocking parent
-// Revoke the URL after a short delay to free memory
-if (win) {
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-}
+const handleUpdateDueDate = async (task: Task, date: Date | undefined) => {
+  const { error } = await supabase
+    .from('tasks')
+    .update({ due_date: date ? format(date, 'yyyy-MM-dd') : null })
+    .eq('id', task.id);
+  if (!error) {
+    fetchTasks();
+    setDueDatePickerTaskId(null);
+  }
+};
 ```
 
-The `<script>` inside the HTML still runs `window.print()` in the **popup tab only** — it cannot reach the parent window's event loop when opened from a Blob URL because Blob URL windows are treated as cross-origin by the browser.
+**Button replacement (both mobile + desktop):**
+
+Replace the plain `<Button onClick={() => handleAssignToToday(task)}>` with a `<Popover>` wrapping a `<Calendar>` picker — exactly the same pattern already used in the "Add Task" area of this same page (line 808–829).
+
+The `CalendarPlus` icon stays, but the tooltip changes from "Assign to Today" to "Set Due Date".
 
 ### Files to Change
 
-- `src/lib/pdfExport.ts` — only the last 6 lines of the `generatePDF` function (replace `window.open('')` + `document.write` with Blob URL approach)
+- `src/pages/DailyLogs.tsx` only
+  - Add `dueDatePickerTaskId` state variable
+  - Add `handleUpdateDueDate` function
+  - Replace `CalendarPlus` button with `Popover + Calendar` in the **mobile card view** (around line 948)
+  - Replace `CalendarPlus` button with `Popover + Calendar` in the **desktop table view** (around line 1100)
+  - Remove `handleAssignToToday` function (no longer needed for this button)
+  - Add `Popover`, `PopoverContent`, `PopoverTrigger` to imports (already imported — check first)
 
-### What Changes for the User
+### Imports Check
 
-- Clicking "Generate PDF" opens a new tab with the PDF preview (same as before)
-- Print dialog opens automatically in **that tab only**
-- The main app tab remains fully responsive — no freeze, no refresh needed
-- Closing the PDF tab returns to the app normally
+`Popover`, `PopoverContent`, `PopoverTrigger` are already imported (used in the Add Task area at line ~808). `Calendar` component is already imported. `format` from `date-fns` is already imported. No new dependencies needed.
+
+### What Stays the Same
+
+- The `handleUnassignFromDay` function and the `X` button in the Daily Sprint tab remain unchanged
+- The "Today" badge on tasks still shows when `scheduledDate === todayStr`
+- Everything else on the page is untouched
