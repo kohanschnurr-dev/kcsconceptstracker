@@ -1,139 +1,62 @@
 
-## Backend Multi-Tenancy: Team-Aware Data Access
+## Fix Calendar Dropdown Theme Styling
 
-### What You're Describing (And What Currently Breaks It)
+### The Problem
 
-Your model is correct and already partially built:
-- **Owner** = the company lead. They create the account and own all data.
-- **Team Members (PMs)** = invited via email, they join the owner's team. They should see and interact with the same data as the owner — projects, expenses, vendors, tasks, etc.
-- **Company isolation** = Company A members can NEVER see Company B's data. Period.
+The calendar date-picker dropdowns ("February", "2026") and the "today" highlight are not properly following the active color palette. On iOS/mobile specifically, the native `<select>` dropdown options render with system-default light backgrounds regardless of the dark theme, because the CSS only targets the `<select>` element itself — not the `<option>` children.
 
-**The problem today:** Every single data table has RLS policies that only allow `auth.uid() = user_id`. When a PM logs in, their `auth.uid()` does NOT match the owner's `user_id`, so they see **zero data** — blank projects list, blank expenses, nothing.
+The screenshot shows the Ivory palette (a light palette), where the dropdowns appear with minimal distinction from the background, and the "today" cell (19) has a muted brownish color that blends in. The styling needs to properly inherit from the active palette's CSS variables across all palettes and on mobile.
 
-The infrastructure to fix this already exists in the database:
-- `teams` table — links owners to their team
-- `team_members` table — links PMs to their team
-- `get_team_owner_id(user_id uuid)` — a security-definer function that, given a PM's user ID, returns their owner's user ID
+### Root Cause
 
-This function is the key. It is already written and safe from RLS recursion. It is just not being used in any data table policies yet.
+The "calendar skipping mode" was added in `src/components/ui/calendar.tsx` via `captionLayout="dropdown-buttons"` with `fromYear`/`toYear`. The dropdown `<select>` element is styled with the `calendar-dropdown` CSS class, but:
 
----
+1. The `.calendar-dropdown` rule in `src/index.css` (line 174) does NOT style `<option>` elements inside it
+2. On iOS, native `<select>` pickers completely ignore CSS on options — the `color-scheme` property must be correctly inherited to get the right picker appearance
+3. The CSS rule currently sets `color-scheme: inherit` but does not include an `<option>` fallback for desktop browsers
 
-### The Security Chain (How It Works)
+### Changes
 
-```text
-PM (user_id = PM_uid) logs in
-  ↓
-RLS policy on `projects` checks:
-  projects.user_id = get_team_owner_id(auth.uid())
-  → get_team_owner_id(PM_uid) = OWNER_uid
-  → projects.user_id = OWNER_uid  ✓  → access granted
-  
-Company B's PM logs in:
-  → get_team_owner_id(Company_B_PM_uid) = Company_B_OWNER_uid
-  → Company_A projects.user_id = Company_A_OWNER_uid ≠ Company_B_OWNER_uid  ✗  → blocked
+**File 1: `src/index.css`** — Enhance the `.calendar-dropdown` CSS rules
+
+- Add `option` styling inside `.calendar-dropdown` so desktop browsers render dropdown options with theme-appropriate background and text colors
+- Ensure `color-scheme: inherit` is reliably set so iOS/mobile native pickers render in the correct light/dark mode
+- Add explicit focus/hover states for the dropdown to use palette accent colors
+
+The updated CSS block:
+
+```css
+.calendar-dropdown {
+  max-height: 200px;
+  overflow-y: auto;
+  color-scheme: inherit;
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+.calendar-dropdown option {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+.calendar-dropdown option:checked {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
 ```
 
-Cross-company isolation is mathematically guaranteed by this chain.
+**File 2: `src/components/ui/calendar.tsx`** — Improve dropdown class styling
 
----
+- Update the `dropdown` class to include stronger palette-aware styling: use `bg-secondary` as the resting background (instead of `bg-popover` which can be too similar to the card background on light palettes), and ensure `text-foreground` is explicit
+- Ensure `day_today` uses a distinct but not overpowering style: keep `bg-accent text-accent-foreground` but add a ring to make it stand out from regular days without clashing with `day_selected`
 
-### What the Migration Covers
+Updated classNames:
+- `dropdown`: Change from `bg-popover text-popover-foreground` to `bg-secondary text-foreground` for better contrast on both light and dark palettes, keep all other classes unchanged
+- `day_today`: Add `ring-1 ring-primary/30` alongside existing `bg-accent text-accent-foreground` so today stands out even when accent is subtle
 
-One SQL migration adds new SELECT (and limited write) policies on all 17 data tables. **Existing owner policies are never touched** — owners continue working exactly as before.
+### Files to Change
 
-**Tables that need team-member READ access (SELECT):**
+1. `src/index.css` — add `option` and `option:checked` rules inside `.calendar-dropdown`
+2. `src/components/ui/calendar.tsx` — update `dropdown` and `day_today` classNames for better palette adherence
 
-| Table | How isolation is checked |
-|---|---|
-| `projects` | `projects.user_id = get_team_owner_id(auth.uid())` |
-| `expenses` | via project → `projects.user_id = get_team_owner_id(...)` |
-| `tasks` | `tasks.user_id = get_team_owner_id(auth.uid())` |
-| `vendors` | `vendors.user_id = get_team_owner_id(auth.uid())` |
-| `business_expenses` | `business_expenses.user_id = get_team_owner_id(...)` |
-| `calendar_events` | `calendar_events.user_id = get_team_owner_id(...)` |
-| `daily_logs` | via project |
-| `daily_log_tasks` | via daily_log → project |
-| `project_notes` | via project |
-| `project_photos` | via project |
-| `project_documents` | via project |
-| `document_folders` | via project |
-| `project_milestones` | via project |
-| `project_vendors` | via project |
-| `project_categories` | via project |
-| `project_info` | via project |
-| `procurement_items` | `procurement_items.user_id = get_team_owner_id(...)` |
-| `procurement_bundles` | `procurement_bundles.user_id = get_team_owner_id(...)` |
-| `procurement_item_bundles` | via procurement_items |
-| `project_procurement_items` | via project |
-| `loan_payments` | `loan_payments.user_id = get_team_owner_id(...)` |
-| `budget_templates` | `budget_templates.user_id = get_team_owner_id(...)` |
-| `quickbooks_expenses` | `quickbooks_expenses.user_id = get_team_owner_id(...)` |
-
-**Tables that also need team-member WRITE access (INSERT/UPDATE):**
-
-| Table | Why |
-|---|---|
-| `expenses` | PMs add expenses to projects |
-| `daily_logs` | PMs submit daily field logs |
-| `daily_log_tasks` | PMs manage tasks within their logs |
-| `project_notes` | PMs add notes to projects |
-| `project_photos` | PMs upload site photos |
-| `project_documents` | PMs upload documents |
-| `project_milestones` | PMs update milestone progress |
-| `tasks` | PMs create and update their own tasks |
-
-**Tables that stay owner-only (no PM access):**
-
-| Table | Reason |
-|---|---|
-| `business_expenses` | Owner's company overhead — not PM's concern |
-| `quickbooks_tokens` | OAuth credentials — owner-only |
-| `pending_receipts` | QB receipt matching — owner-only |
-| `profiles` | Personal profile — each user owns their own |
-| `company_settings` | Owner's company identity |
-| `teams`, `team_members`, `team_invitations` | Already correctly scoped |
-| `notifications` | Already correctly scoped (owner sees them) |
-| `loan_presets`, `budget_templates` | Owner's financial templates |
-| `operation_codes`, `quarterly_goals` | Owner's personal productivity data |
-
----
-
-### Write Policy Rules for PMs
-
-For INSERT, PMs must write data into the **owner's** projects only. The pattern is:
-
-```sql
--- PMs can add expenses to their owner's projects
-CREATE POLICY "Team members can insert expenses for owner projects"
-ON public.expenses FOR INSERT
-WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.projects p
-    WHERE p.id = expenses.project_id
-      AND p.user_id = public.get_team_owner_id(auth.uid())
-  )
-);
-```
-
-For `tasks`, since each task has its own `user_id`, PMs insert tasks as themselves (their own `user_id`). The task gets associated to an owner's project via `project_id`.
-
----
-
-### What This Migration Does NOT Change
-
-- No schema changes (no new columns, no new tables, no type changes)
-- No existing policies are dropped or modified
-- No frontend code changes
-- No new database functions needed — `get_team_owner_id` already exists
-- `profiles`, `teams`, `company_settings` remain strictly personal
-
----
-
-### Files Changed
-
-**1 new migration file:** `supabase/migrations/[timestamp]_team_member_data_access.sql`
-
-Contains approximately 40 new RLS policies covering all 23 data tables listed above. Zero schema modifications.
-
-After this migration, a PM who logs in will see exactly the same projects, expenses, vendors, tasks, calendar events, and documents as their owner — and will be completely blocked from seeing any data belonging to other companies.
+These are 2 small edits. No new files, no schema changes, no new dependencies.
