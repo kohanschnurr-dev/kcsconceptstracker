@@ -412,7 +412,7 @@ export function PhotoGallery({ projectId }: PhotoGalleryProps) {
                         {/* Set as Cover Button - appears on hover, hidden in selection mode */}
                         {!isCover && !isSelectionMode && (
                           <button
-                            className="absolute top-2 right-2 text-xs px-2 py-1 rounded bg-background/90 text-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-primary-foreground"
+                            className="absolute top-2 right-2 text-xs px-2 py-1 rounded bg-background/90 text-foreground sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-primary-foreground"
                             onClick={(e) => {
                               e.stopPropagation();
                               setAsCoverPhoto(photo);
