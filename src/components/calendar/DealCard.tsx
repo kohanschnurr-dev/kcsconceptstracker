@@ -66,14 +66,6 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
     return `${styles.bgClass} ${styles.textClass} ${styles.borderClass}`;
   };
 
-  const getBudgetIndicator = (health: CalendarTask['budgetHealth']) => {
-    switch (health) {
-      case 'green': return 'bg-emerald-500';
-      case 'yellow': return 'bg-amber-500';
-      case 'red': return 'bg-red-500';
-    }
-  };
-
   const categoryStyles = getCategoryStyles(task.eventCategory || 'due_diligence');
   const categoryLabel = getCategoryLabel(task.eventCategory || 'due_diligence');
 
@@ -93,7 +85,6 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
           {task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-red-400 shrink-0" />}
           {getCategoryIcon(task.eventCategory || 'due_diligence')}
           <span className="line-clamp-1 min-w-0">{task.title}</span>
-          <span className={cn('w-2 h-2 rounded-full ml-auto shrink-0', getBudgetIndicator(task.budgetHealth))} />
         </div>
       </button>
     );
@@ -125,7 +116,6 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
             <p className="text-xs text-muted-foreground truncate">{task.projectName}</p>
           </div>
         </div>
-        <span className={cn('w-3 h-3 rounded-full shrink-0', getBudgetIndicator(task.budgetHealth))} />
       </div>
       
       <div className="flex items-center justify-between">
