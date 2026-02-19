@@ -1,18 +1,23 @@
 
 
-## Remove Vendor Placeholder Text
+## Change All Project Search Placeholders to "Search"
 
-The Vendor input field already starts empty -- the "Home Depot, contrac..." text visible in the screenshot is the placeholder hint, not a default value. You want it to show a blank field on start with no hint text.
+Every project search input currently shows "Search projects..." or similar. All instances will be updated to just say "Search".
 
-### Change
+### Files to Change
 
-**File: `src/components/QuickExpenseModal.tsx`** (line 300)
+| File | Current Text | Line(s) |
+|---|---|---|
+| `src/components/ProjectAutocomplete.tsx` | Default prop `'Search projects...'` | 41 |
+| `src/components/ProjectAutocomplete.tsx` | CommandInput `"Search projects..."` | 128 |
+| `src/components/QuickExpenseModal.tsx` | `"Search projects..."` | 262 |
+| `src/components/SmartSplitReceiptUpload.tsx` | `"Search projects..."` | 1403 |
+| `src/components/calendar/NewEventModal.tsx` | `"Search projects..."` | 245 |
+| `src/components/NewDailyLogModal.tsx` | `"Search projects..."` | 125 |
+| `src/components/CreateBudgetModal.tsx` | `"Search projects..."` (and loading variant) | 509 |
+| `src/pages/BusinessExpenses.tsx` | `"Search projects..."` | 884 |
+| `src/pages/Projects.tsx` | `"Search projects..."` | 334 |
 
-- Change the `placeholder` prop on the Vendor input from `"Home Depot, contractor..."` to an empty string or a minimal prompt like `"Vendor name"` (keeping it simple and neutral)
-- Specifically: remove the example names so it just says nothing or a generic label
+All 9 occurrences across 8 files will be changed to `"Search"`.
 
-### Technical Detail
-
-One line change:
-- Line 300: Change `placeholder="Home Depot, contractor..."` to `placeholder=""`
-
+For CreateBudgetModal, the loading state placeholder `"Loading projects..."` will remain unchanged since that serves a different purpose.
