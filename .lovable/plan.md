@@ -1,98 +1,146 @@
 
-## Two Changes: Remove autoFocus + Add Photo Attachment to Tasks
+# Scope of Work Generator — Entry Point: Header Button (Next to "+ Add Vendor")
 
-### Change 1 — Remove `autoFocus` from Add Task Modal
+## What changes
 
-**The problem:** `autoFocus` on the Title input fires immediately when the modal opens, triggering the mobile keyboard before the user has oriented themselves on the screen.
+The "Generate Scope of Work" button sits in the page header next to the existing "+ Add Vendor" button. Clicking it opens a Sheet where the user first picks a vendor, then fills in the form, then generates the document via AI.
 
-**The fix:** Remove `autoFocus` from the `<Input>` in `src/components/project/AddTaskModal.tsx` (line 94). The field is still tappable — users just tap into it when ready. No other change needed.
+This means:
+- No changes to vendor cards or dropdowns
+- No changes to the vendor contact dialog
+- One clean entry point in the header
+- Vendor is selected *inside* the Sheet (not pre-selected from a card)
 
 ---
 
-### Change 2 — Photo Attachment on Tasks (hidden until you drill in)
+## Header (after change)
 
-**Design philosophy:** Photos do NOT appear on the task row list or the Daily Log card. They are only visible and manageable inside the task detail/edit dialog — exactly as requested.
-
-#### Step A — Database migration
-
-The `tasks` table has no `photo_urls` column. We need to add one:
-
-```sql
-ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS photo_urls text[] DEFAULT '{}';
+```
+[ + Add Vendor ]  [ Generate Scope of Work ]
 ```
 
-No RLS changes needed — photos live on the task row, protected by existing task RLS policies.
+Both buttons sit in the `flex` header row at lines 157–166 of `src/pages/Vendors.tsx`. The new button uses `variant="outline"` with a `FileText` icon to visually distinguish it from the primary Add Vendor button.
 
-#### Step B — Update the Task types
+---
 
-Add `photoUrls: string[]` to the `Task` interface in `src/types/task.ts` so TypeScript knows about the new field.
+## New Component: `ScopeOfWorkSheet.tsx`
 
-#### Step C — Update data fetching
+**File:** `src/components/vendors/ScopeOfWorkSheet.tsx`
 
-In `src/pages/DailyLogs.tsx`, the task fetch query (`select('*, projects(name)')`) already fetches all columns, so `photo_urls` will come back automatically. Map `t.photo_urls` → `photoUrls` in the transform.
+A right-side Sheet (`side="right"`, `sm:max-w-2xl`, full-width on mobile) with a `ScrollArea` wrapping all content.
 
-In `src/components/project/ProjectTasks.tsx`, the fetch is `select('id, title, status, priority_level, due_date')` — an explicit column list. Add `photo_urls` to it and map it.
+### Props
+```ts
+interface ScopeOfWorkSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  vendors: Vendor[]; // all vendors passed in so user can pick inside
+}
+```
 
-#### Step D — Add photo upload UI inside the Task Detail modals only
+### Form Sections (in order)
 
-There are TWO places where tasks are edited in a detail dialog:
+**1. VENDOR** *(top — must pick first)*
+- Select dropdown: vendor name. Once selected, trades auto-populate the Job Details section.
 
-**1. `src/pages/DailyLogs.tsx` — Task Detail Modal (lines 1086–1171)**
+**2. DOCUMENT INFO** *(optional)*
+- Company Name — pre-filled from company settings (hook)
+- Customer / Property Name
+- Date — pre-filled with today's date
+- Quote / Job Number
 
-Inside the dialog, after the existing fields (Title, Description, Priority, Status, Due Date), add a "Photos" section:
+**3. JOB DETAILS**
+- Trade Type — auto-filled from selected vendor's trades (shown as chips the user can deselect/add to)
+- Job Title — free text, e.g. "Water heater replacement"
+- Location / Area — free text, e.g. "Garage, Back yard"
+- Key Quantities — free text, e.g. "2 fixtures, 3 acres"
+
+**4. SCOPE OF WORK**
+- Work Items — textarea, one per line
+- Also Included — textarea, one per line
+- Not Included / Exclusions — textarea, one per line
+
+**5. MATERIALS & NOTES**
+- Materials Responsibility — Select: "Contractor provides all materials" / "Owner provides all materials" / "Split — see notes"
+- Special Notes — textarea
+
+**6. OUTPUT SETTINGS**
+- Scope Length — 3-button toggle: **Brief** | **Standard** *(default)* | **Detailed**
+- Tone — 3-button toggle: **Simple** | **Standard** *(default)* | **Professional**
+
+**7. Generate Button**
+- Full-width primary: "Generate Scope of Work"
+- Disabled until a vendor is selected
+- Shows spinner + "Generating..." while loading
+
+**8. Generated Output** *(appears after generation)*
+- Formatted block: `bg-muted/50 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap`
+- Two action buttons: **Copy to Clipboard** (with toast) and **Clear**
+
+---
+
+## Section Header Styling
 
 ```tsx
-<div className="space-y-2">
-  <Label className="flex items-center gap-2">
-    <Camera className="h-4 w-4" />
-    Photos
-  </Label>
-  <PasteableTextarea
-    value=""  // photos only, no text
-    onChange={() => {}}
-    bucketName="project-photos"
-    folderPath="task-photos"
-    uploadedImages={editForm.photoUrls}
-    onImagesChange={(imgs) => setEditForm({ ...editForm, photoUrls: imgs })}
-    placeholder=""
-  />
-</div>
+<p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
+  Document Info
+</p>
+<Separator className="mt-1 mb-3" />
 ```
 
-Actually — since we only want the image upload/preview part (not a textarea), we'll use a lightweight inline uploader: a camera icon button that opens a hidden `<input type="file" accept="image/*">`, an inline thumbnail strip showing attached photos, and paste-to-upload support. This is simpler and takes less space than a full PasteableTextarea.
+This matches the visual style from the screenshots — labeled section dividers.
 
-The section inside the detail dialog will look like:
-- Label: `📷 Photos (optional)`
-- A row of existing photo thumbnails (each tapable to remove)
-- A small "+ Attach Photo" button (triggers file picker)
-- Paste support on the dialog itself
+## Toggle Button Styling
 
-When saved (`handleSaveDetail` / `handleSaveEdit`), include `photo_urls: editForm.photoUrls` in the Supabase update.
-
-**2. `src/components/project/ProjectTasks.tsx` — Edit Task Dialog (lines 256–330)**
-
-Same photo section added inside the dialog, same behavior.
-
-#### Step E — Update AddTaskModal (no photos on create)
-
-We do NOT add photo upload to the Add Task Modal. The `autoFocus` removal is the only change there. Photos can be attached after creation via the edit dialog — this keeps the "Add Task" flow fast and keyboard-friendly.
-
----
-
-### What the user will see
-
-- **Task list rows** — No change. No photo indicators. Clean and compact as before.
-- **Daily Log cards** — No change. Photo count badge still shows for logs (as today), but task photos are never surfaced there.
-- **Task detail dialog** — After tapping a task row to edit it, a "Photos" section appears at the bottom with thumbnails and an attach button. This is the ONLY place photos are visible.
+```tsx
+<button
+  onClick={() => setScopeLength('brief')}
+  className={cn(
+    "flex-1 py-2 text-sm rounded-md border transition-colors",
+    scopeLength === 'brief'
+      ? "bg-primary text-primary-foreground border-primary"
+      : "bg-transparent text-muted-foreground border-border hover:bg-muted"
+  )}
+>
+  Brief
+</button>
+```
 
 ---
 
-### Files to Change
+## New Edge Function: `generate-scope-of-work`
+
+**File:** `supabase/functions/generate-scope-of-work/index.ts`
+
+- Model: `google/gemini-3-flash-preview` (fast, balanced)
+- Takes all form fields in request body
+- System prompt crafts a professional construction Scope of Work
+- Tone and Length are injected into the system prompt
+- Plain text response (no tool calling needed)
+- Handles 429/402 errors and surfaces them back to client
+
+**`supabase/config.toml`** — add:
+```toml
+[functions.generate-scope-of-work]
+verify_jwt = false
+```
+
+---
+
+## Files to Change
 
 | File | Change |
 |---|---|
-| DB migration | `ALTER TABLE tasks ADD COLUMN photo_urls text[] DEFAULT '{}'` |
-| `src/types/task.ts` | Add `photoUrls: string[]` to Task interface |
-| `src/components/project/AddTaskModal.tsx` | Remove `autoFocus` from Input |
-| `src/pages/DailyLogs.tsx` | Map `photo_urls` in fetch transform; add photo section to Task Detail modal; import Camera icon |
-| `src/components/project/ProjectTasks.tsx` | Add `photo_urls` to fetch query; map it; add photo section to Edit Task dialog |
+| `supabase/functions/generate-scope-of-work/index.ts` | New — AI edge function |
+| `supabase/config.toml` | Add entry for new function |
+| `src/components/vendors/ScopeOfWorkSheet.tsx` | New — full Sheet UI |
+| `src/pages/Vendors.tsx` | Add button to header + sheet state + pass vendors list to sheet |
+
+---
+
+## What stays the same
+
+- Vendor cards — no changes
+- Vendor `⋮` dropdown — no changes
+- Contact card dialog — no changes
+- Add Vendor modal — no changes
