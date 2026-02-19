@@ -1296,6 +1296,7 @@ export default function ProjectBudget() {
                   <SelectItem value="check">Check</SelectItem>
                   <SelectItem value="card">Card</SelectItem>
                   <SelectItem value="transfer">Transfer</SelectItem>
+                  <SelectItem value="financed">Financed</SelectItem>
                 </SelectContent>
               </Select>
               

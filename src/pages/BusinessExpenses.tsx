@@ -72,7 +72,7 @@ interface DBBusinessExpense {
   category: string;
   vendor_name: string | null;
   description: string | null;
-  payment_method: 'cash' | 'check' | 'card' | 'transfer' | null;
+  payment_method: 'cash' | 'check' | 'card' | 'transfer' | 'financed' | null;
   includes_tax: boolean;
   tax_amount: number | null;
   notes: string | null;
@@ -943,6 +943,7 @@ export default function BusinessExpenses() {
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="check">Check</SelectItem>
                   <SelectItem value="transfer">Transfer</SelectItem>
+                  <SelectItem value="financed">Financed</SelectItem>
                 </SelectContent>
               </Select>
             </div>

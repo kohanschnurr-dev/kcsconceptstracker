@@ -209,6 +209,7 @@ export function EditExpenseModal({ expense, categories, open, onOpenChange, onEx
                   <SelectItem value="check">Check</SelectItem>
                   <SelectItem value="card">Card</SelectItem>
                   <SelectItem value="transfer">Transfer</SelectItem>
+                  <SelectItem value="financed">Financed</SelectItem>
                 </SelectContent>
               </Select>
             </div>

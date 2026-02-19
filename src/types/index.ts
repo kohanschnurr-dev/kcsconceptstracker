@@ -108,7 +108,7 @@ export type VendorTrade =
   | 'general';
 
 export type ExpenseStatus = 'estimate' | 'actual';
-export type PaymentMethod = 'cash' | 'check' | 'card' | 'transfer';
+export type PaymentMethod = 'cash' | 'check' | 'card' | 'transfer' | 'financed';
 
 export interface Project {
   id: string;

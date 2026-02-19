@@ -29,7 +29,7 @@ interface DBExpense {
   amount: number;
   date: string;
   vendor_name: string | null;
-  payment_method: 'cash' | 'check' | 'card' | 'transfer' | null;
+  payment_method: 'cash' | 'check' | 'card' | 'transfer' | 'financed' | null;
   status: 'estimate' | 'actual';
   description: string | null;
   includes_tax: boolean;
