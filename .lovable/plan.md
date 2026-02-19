@@ -1,45 +1,40 @@
 
 
-## Clean Up Calendar Mobile UI
+## Fix Calendar Legend Colors and Mobile Space
 
-The current mobile calendar header crams too many elements into tight rows, making the month navigation and calendar icon feel tiny. Here's the redesign:
+### Problem
+1. **Invisible colors**: Legend swatches use `bg-blue-500/20` (20% opacity) -- nearly invisible on light palettes like Ivory
+2. **Too much space**: The 2-column legend grid with 7 items eats vertical real estate on mobile
 
-### Current Issues (from screenshot)
-- "Project Calendar" title with tiny calendar icon feels cramped on Row 1
-- Month navigation (February 2026) + "All Projects" filter squeezed together on Row 2
-- The legend section takes up a lot of vertical space as a separate card
+### Changes
 
-### Proposed Mobile Layout (3 rows)
+**1. `src/lib/calendarCategories.ts`** -- Increase swatch opacity
 
-**Row 1**: "Project Calendar" title (larger icon) | View selector + Add button (unchanged)
+Add a new `swatchClass` field to each category group with higher opacity for the legend dots (while keeping the existing low-opacity `bgClass` for task cards where subtlety is needed):
 
-**Row 2**: Month navigation centered, full width -- chevrons + month/year picker spread out with more breathing room
+| Group | Current `bgClass` | New `swatchClass` |
+|---|---|---|
+| acquisition_admin | `bg-blue-500/20` | `bg-blue-500` |
+| structural_exterior | `bg-red-500/20` | `bg-red-500` |
+| rough_ins | `bg-orange-500/20` | `bg-orange-500` |
+| inspections | `bg-purple-500/20` | `bg-purple-500` |
+| interior_finishes | `bg-emerald-500/20` | `bg-emerald-500` |
+| milestones | `bg-amber-500/20` | `bg-amber-500` |
 
-**Row 3**: Project filter, full width
+Using solid colors for the small legend dots makes them clearly visible on both light and dark palettes.
 
-**Legend**: Merge the legend INTO the header card on mobile (remove the separate bordered card) to reduce vertical sections. On desktop, keep it separate.
+**2. `src/components/calendar/CalendarLegend.tsx`** -- Use new swatch classes + compact mobile layout
 
-### Technical Changes
+- Use `swatchClass` instead of `bgClass` for the legend dot squares
+- On mobile, switch to a horizontal scrollable row (`flex overflow-x-auto`) instead of a 2-column grid, so the legend takes only one line
+- Keep the desktop layout as a wrapping flex row (unchanged behavior)
 
-**1. `src/components/calendar/CalendarHeader.tsx`** -- Mobile layout (lines 81-148)
+**3. `src/components/calendar/CalendarHeader.tsx`** -- No changes needed
 
-- Increase calendar icon from `h-4 w-4` to `h-5 w-5`
-- Increase title text from `text-sm` to `text-base`
-- Split Row 2 into two rows:
-  - New Row 2: Month navigation centered with `justify-center` and larger touch targets (`h-8 w-8` chevrons)
-  - New Row 3: Project filter as full-width standalone row
-- Add CalendarLegend component inside the mobile header card (after Row 3)
-
-**2. `src/pages/Calendar.tsx`** -- Legend section (lines 253-256)
-
-- Hide the separate legend card on mobile: change wrapping div to `hidden sm:block bg-background rounded-lg p-4 border border-border`
-- This avoids duplicate legends since mobile will show it inside the header
-
-**3. `src/components/calendar/CalendarLegend.tsx`** -- No changes needed, already responsive
+The legend container already has minimal padding (`pt-1 border-t`). The CalendarLegend component itself becoming more compact will automatically fix the space issue.
 
 ### Result
-- Larger, more readable title and icon
-- Month navigation has full width and bigger tap targets
-- Project filter gets its own full-width row instead of being squeezed
-- Legend integrated into header card on mobile, reducing visual sections from 3 boxes to 2
+- Legend dots become solid colors -- clearly visible on every palette (dark and light)
+- Legend takes one horizontal scrollable line on mobile instead of a 4-row grid
+- Task cards continue using subtle 20% opacity backgrounds (unchanged)
 
