@@ -1,156 +1,127 @@
 
-# Replace "Receipt" with "Generate PDF" in the Vendors Page Dropdown
+# Premium PDF Template Redesign — Full Theme-Aware Overhaul
 
-## What the User Wants
+## What's Changing
 
-On the Vendors page, the Generate dropdown currently has:
-- Scope of Work
-- Invoice
-- **Receipt** ← replace this
-
-They want **"Generate PDF"** instead — a one-click action that immediately exports a professional, themed PDF of the vendor list without any AI form or sheet.
+The single file `src/lib/pdfExport.ts` gets a complete visual redesign. The monospace "typewriter" block is replaced with a structured, card-based layout using modern sans-serif typography, proper section headers, a highlighted payment summary box, and a clean footer — all while staying 100% driven by the user's active color palette read at runtime from CSS variables.
 
 ---
 
-## How It Works
+## Design System (Theme-Responsive)
 
-Clicking "Generate PDF" will:
-1. Format all current vendors into a clean plain-text / structured document string
-2. Call the existing `generatePDF()` utility (which already handles branding, theming, logo, and print) — no new utility needed
-3. Open the browser's print dialog pointing at a styled vendor list PDF
+All colors are derived from the active palette's CSS variables at the moment the PDF button is clicked:
 
-The PDF content will include each vendor's:
-- Name
-- Trade(s)
-- Phone & Email
-- Rating (★ stars)
-- Pricing model
-- W9 status
-- Notes (if any)
-
----
-
-## Files to Change
-
-Only **one file** changes: `src/pages/Vendors.tsx`
-
-### Changes
-
-**1. Import additions:**
-- Add `generatePDF` from `@/lib/pdfExport`
-- Add `useCompanySettings` hook
-- Remove `Receipt` from lucide-react imports (no longer needed)
-- Remove `GenerateReceiptSheet` import
-- Add `Download` to lucide-react imports
-
-**2. State:**
-- Remove `receiptOpen` / `setReceiptOpen` state
-- Add `const { settings, companyName } = useCompanySettings()`
-
-**3. New handler function — `handleGenerateVendorPDF`:**
-
-```typescript
-const handleGenerateVendorPDF = () => {
-  const lines: string[] = [];
-  lines.push(`VENDOR DIRECTORY`);
-  lines.push(`Total: ${filteredVendors.length} vendor(s)\n`);
-  lines.push('─'.repeat(60));
-
-  filteredVendors.forEach((vendor, i) => {
-    lines.push(`\n${i + 1}. ${vendor.name.toUpperCase()}`);
-    if (vendor.trades.length > 0) {
-      lines.push(`   Trades: ${vendor.trades.map(getTradeLabel).join(', ')}`);
-    }
-    if (vendor.phone) lines.push(`   Phone: ${vendor.phone}`);
-    if (vendor.email) lines.push(`   Email: ${vendor.email}`);
-    lines.push(`   Rating: ${'★'.repeat(vendor.reliability_rating || 0)}${'☆'.repeat(5 - (vendor.reliability_rating || 0))}`);
-    lines.push(`   Pricing: ${vendor.pricing_model === 'flat' ? 'Flat Rate' : vendor.pricing_model === 'hourly' ? 'Hourly' : 'Not set'}`);
-    lines.push(`   W9 on File: ${vendor.has_w9 ? 'Yes' : 'No'}`);
-    if (vendor.notes) lines.push(`   Notes: ${vendor.notes}`);
-    lines.push('   ' + '─'.repeat(56));
-  });
-
-  generatePDF(lines.join('\n'), {
-    docType: 'Receipt',  // We'll rename this label in options
-    companyName: companyName || 'Your Company',
-    logoUrl: settings?.logo_url,
-  });
-};
-```
-
-> Note: We'll update `PdfOptions.docType` to accept a `'Vendor Directory'` string, or simply pass a custom label. The simplest path is to pass `docType: 'Vendor Directory'` — which requires updating the `PdfOptions` type in `pdfExport.ts` to allow that value.
-
-**4. Dropdown item replacement:**
-
-```tsx
-// Remove:
-<DropdownMenuItem onClick={() => setReceiptOpen(true)} className="gap-2">
-  <Receipt className="h-4 w-4" /> Receipt
-</DropdownMenuItem>
-
-// Replace with:
-<DropdownMenuItem onClick={handleGenerateVendorPDF} className="gap-2">
-  <Download className="h-4 w-4" /> Generate PDF
-</DropdownMenuItem>
-```
-
-**5. Remove the `<GenerateReceiptSheet>` JSX** from the render (line 362).
-
----
-
-## Update to `pdfExport.ts`
-
-The `docType` union type needs one addition:
-
-```typescript
-// Before:
-docType: 'Invoice' | 'Receipt' | 'Scope of Work';
-
-// After:
-docType: 'Invoice' | 'Receipt' | 'Scope of Work' | 'Vendor Directory';
-```
-
-And the icon map in `pdfExport.ts` needs an entry:
-```typescript
-'Vendor Directory': '&#128101;', // 👥 people icon
-```
-
----
-
-## What the PDF Looks Like
-
-```
-┌──────────────────────────────────────────────────────┐
-│  [LOGO]     ACME CONSTRUCTION         👥 VENDOR DIR  │  ← themed header
-├──────────────────────────────────────────────────────┤
-│  Prepared by Acme Construction    Generated Feb 19   │  ← meta bar
-├──────────────────────────────────────────────────────┤
-│                                                      │
-│  VENDOR DIRECTORY                                    │
-│  Total: 8 vendor(s)                                  │
-│  ────────────────────────────────────────────────    │
-│                                                      │
-│  1. JOHN SMITH PLUMBING                              │
-│     Trades: Plumbing, HVAC                           │
-│     Phone: (555) 123-4567                            │
-│     Email: john@smithplumbing.com                    │
-│     Rating: ★★★★☆                                   │
-│     Pricing: Hourly                                  │
-│     W9 on File: Yes                                  │
-│     ────────────────────────────                     │
-│                                                      │
-│  2. ELITE ELECTRICAL ...                             │
-│                                                      │
-└──────────────────────────────────────────────────────┘
-```
-
----
-
-## Summary of File Changes
-
-| File | Change |
+| CSS Variable | Role in PDF |
 |---|---|
-| `src/pages/Vendors.tsx` | Replace Receipt dropdown item + state + sheet with Generate PDF handler |
-| `src/lib/pdfExport.ts` | Add `'Vendor Directory'` to docType union + icon map |
+| `--primary` (HSL) | Header background, section label color, left accent border, footer dot |
+| `--accent` (HSL) | Payment summary box background (lightened tint via opacity) |
+| Computed text contrast | White or dark text on header — auto-detected via lightness check |
 
-No edge functions. No database changes. No new components.
+The user's prompt mentions specific hex values like `#7D6A3F` — those are disregarded in favor of the live theme variables, as instructed ("keep it theme colored").
+
+---
+
+## New Visual Layout
+
+```text
+┌────────────────────────────────────────────────────────────────┐
+│  [LOGO 120px wide]    COMPANY NAME               [DOC BADGE]  │  ← primary-colored header
+│                       Professional Document                    │
+├────────────────────────────────────────────────────────────────┤
+│  Prepared by Company Name                  Generated Feb 2026  │  ← meta bar (accent tint)
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ ▌  [4px primary border left]                             │ │  ← white card, shadow
+│  │                                                          │ │
+│  │  SECTION LABEL  ─────────────────────────────────────    │ │  ← ALL CAPS, gold, tracking
+│  │  content text in clean sans-serif, charcoal, 14px       │ │
+│  │  line-height 1.7, generous padding                      │ │
+│  │                                                          │ │
+│  │  ┌──────────────────────────────────────────────────┐   │ │
+│  │  │  TOTAL AMOUNT PAID            $X,XXX.00          │   │ │  ← payment box, accent tint
+│  │  └──────────────────────────────────────────────────┘   │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│                                                                │
+├────────────────────────────────────────────────────────────────┤
+│  ● Company Name · Document Type              Generated Feb 19  │  ← footer
+└────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Key Visual Improvements
+
+### Typography
+- **No more monospace/Courier.** Body text uses `'Segoe UI', 'Inter', 'Helvetica Neue', Arial`.
+- Section headers: all-caps, `0.15em` letter-spacing, 11px, primary color.
+- Body content: `#2C2C2C`, 13.5px, `line-height: 1.75`.
+
+### Content Parsing — Smart Section Detection
+The plain-text content generated by the AI often contains section headers in patterns like `--- SERVICES ---` or `TOTAL: $1,200`. The new renderer scans each line and applies formatting rules:
+
+- **Line that is ALL CAPS and short (< 60 chars):** Rendered as a styled section header with a divider below.
+- **Line that starts with `TOTAL` or contains `$` near the end:** Rendered inside the gold-tinted payment summary box.
+- **Divider lines (`---`, `===`, `───`):** Converted to a styled `<hr>` rule.
+- **All other lines:** Clean paragraph text.
+
+This transforms the existing AI output into a visually rich document without changing the edge functions.
+
+### Payment Summary Box
+Any line detected as a "total" line is pulled into a highlighted box:
+```html
+<div class="total-box">
+  <span class="total-label">TOTAL AMOUNT PAID</span>
+  <span class="total-amount">$1,200.00</span>
+</div>
+```
+Styled with: light primary-tint background (`primaryColor` at 10% opacity), `1px solid` border at 25% opacity, rounded corners (`8px`).
+
+### Card & Shadow
+The entire content area wraps in a white card with `box-shadow: 0 2px 16px rgba(0,0,0,0.08)` and a `4px solid ${primaryColor}` left border — giving it the "professional document" feel from the prompt.
+
+### Header
+- Logo renders at `max-width: 120px` with `max-height: 52px`, `object-fit: contain`.
+- If no logo: company name alone is displayed centered.
+- Document type badge: pill shape, `rgba(255,255,255,0.22)` background, white text, `1.2em` letter-spacing.
+- Company tagline "Professional Document" in small italic below company name.
+
+### Meta Bar
+- Light accent-tinted strip between header and content.
+- "Prepared by X" on the left, "Generated on [date]" on the right.
+- Thin bottom border using primary at 20% opacity.
+
+### Footer
+- Thin divider line (primary at 20% opacity).
+- Left: colored bullet dot + company name + document type.
+- Right: generated date.
+- Muted gray `#888`, 10.5px.
+
+---
+
+## Font Loading Strategy
+Google Fonts are loaded via a `<link>` in the print window head. This requires network access, but print windows always have it. If fonts fail to load, the browser falls back to the system sans-serif stack — no breakage.
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+```
+
+---
+
+## File Changed
+
+Only `src/lib/pdfExport.ts` — no other files touch this.
+
+The `generatePDF` function signature and `PdfOptions` interface stay identical, so all three call sites (Invoice sheet, Receipt sheet, Scope of Work sheet) and the Vendors PDF handler work without any changes.
+
+---
+
+## What Does NOT Change
+- `GenerateInvoiceSheet.tsx` — untouched
+- `GenerateReceiptSheet.tsx` — untouched
+- `ScopeOfWorkSheet.tsx` — untouched
+- `src/pages/Vendors.tsx` — untouched
+- Edge functions — untouched
+- No new npm packages
+- No database changes
