@@ -174,9 +174,9 @@ input[type="number"] {
 .calendar-dropdown {
   max-height: 200px;
   overflow-y: auto;
-  color-scheme: dark;
-  background-color: hsl(220 18% 13%);
-  color: hsl(210 20% 95%);
+  color-scheme: inherit;
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
 }
 
 /* Native date/time pickers inherit color-scheme from root (set by applyPalette) */
