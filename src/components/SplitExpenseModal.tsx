@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/toggle-group';
 import { Package, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { parseDateString } from '@/lib/dateUtils';
 import { getAllCategories, getBudgetCategories } from '@/types';
 import type { Project } from '@/types';
 
@@ -164,7 +165,7 @@ export function SplitExpenseModal({
               <p className="font-medium">{expense.vendor_name || 'Unknown Vendor'}</p>
               <p className="text-sm text-muted-foreground">{expense.description}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {new Date(expense.date).toLocaleDateString()}
+                {parseDateString(expense.date).toLocaleDateString()}
               </p>
             </div>
             <p className="font-mono font-bold text-lg">{formatCurrency(expense.amount)}</p>
