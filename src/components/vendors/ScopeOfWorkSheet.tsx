@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, FileText, Sparkles } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfExport';
 import {
   Sheet,
@@ -23,8 +23,6 @@ import {
 } from '@/components/ui/select';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Vendor {
   id: string;
@@ -44,9 +42,6 @@ interface ScopeOfWorkSheetProps {
   vendors: Vendor[];
 }
 
-type ScopeLength = 'brief' | 'standard' | 'detailed';
-type Tone = 'simple' | 'standard' | 'professional';
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="mb-3">
@@ -56,82 +51,32 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ToggleGroup<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T;
-  onChange: (v: T) => void;
-  options: { value: T; label: string }[];
-}) {
-  return (
-    <div className="flex gap-1.5 p-1 rounded-lg bg-muted">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={cn(
-            'flex-1 py-1.5 text-sm rounded-md font-medium transition-all duration-150',
-            value === opt.value
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkSheetProps) {
   const { toast } = useToast();
   const { settings } = useCompanySettings();
 
-  // Vendor selection
   const [selectedVendorId, setSelectedVendorId] = useState<string>('');
-
-  // Document Info
   const [companyName, setCompanyName] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [jobNumber, setJobNumber] = useState('');
-
-  // Job Details
   const [tradeTypes, setTradeTypes] = useState<string[]>([]);
   const [tradeInput, setTradeInput] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [location, setLocation] = useState('');
   const [keyQuantities, setKeyQuantities] = useState('');
-
-  // Scope of Work
   const [workItems, setWorkItems] = useState('');
   const [alsoIncluded, setAlsoIncluded] = useState('');
   const [exclusions, setExclusions] = useState('');
-
-  // Materials & Notes
   const [materialsResponsibility, setMaterialsResponsibility] = useState('');
   const [specialNotes, setSpecialNotes] = useState('');
 
-  // Output settings
-  const [scopeLength, setScopeLength] = useState<ScopeLength>('standard');
-  const [tone, setTone] = useState<Tone>('standard');
-
-  // Result
-  const [isGenerating, setIsGenerating] = useState(false);
-
   const selectedVendor = vendors.find((v) => v.id === selectedVendorId);
 
-  // Pre-fill company name from settings
   useEffect(() => {
-    if (settings?.company_name) {
-      setCompanyName(settings.company_name);
-    }
+    if (settings?.company_name) setCompanyName(settings.company_name);
   }, [settings]);
 
-  // Auto-fill trades when vendor changes
   useEffect(() => {
     if (selectedVendor) {
       setTradeTypes(selectedVendor.trades);
@@ -140,7 +85,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
     }
   }, [selectedVendor]);
 
-  // Reset on close
   const handleOpenChange = (val: boolean) => {
     if (!val) {
       setSelectedVendorId('');
@@ -157,8 +101,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
       setExclusions('');
       setMaterialsResponsibility('');
       setSpecialNotes('');
-      setScopeLength('standard');
-      setTone('standard');
     }
     onOpenChange(val);
   };
@@ -173,60 +115,76 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
     setTradeInput('');
   };
 
-  const handleGenerate = async () => {
-    if (!selectedVendorId) return;
-    setIsGenerating(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-scope-of-work', {
-        body: {
-          vendorName: selectedVendor?.name,
-          companyName,
-          customerName,
-          date,
-          jobNumber,
-          tradeTypes,
-          jobTitle,
-          location,
-          keyQuantities,
-          workItems,
-          alsoIncluded,
-          exclusions,
-          materialsResponsibility,
-          specialNotes,
-          scopeLength,
-          tone,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.error) {
-        toast({ title: 'Error', description: data.error, variant: 'destructive' });
-        return;
-      }
-
-      const scopeText = data?.scope || '';
-      generatePDF(scopeText, {
-        docType: 'Scope of Work',
-        companyName: settings?.company_name || companyName || 'Your Company',
-        logoUrl: settings?.logo_url,
-      });
-    } catch (err: any) {
-      toast({
-        title: 'Generation failed',
-        description: err.message || 'Something went wrong. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGenerating(false);
+  const handleGenerate = () => {
+    if (!selectedVendorId) {
+      toast({ title: 'Vendor required', description: 'Please select a vendor to continue.', variant: 'destructive' });
+      return;
     }
+
+    const lines: string[] = ['SCOPE OF WORK', ''];
+
+    if (companyName) lines.push(`Company: ${companyName}`);
+    if (selectedVendor?.name) lines.push(`Contractor: ${selectedVendor.name}`);
+    if (customerName) lines.push(`Customer: ${customerName}`);
+    if (date) lines.push(`Date: ${date}`);
+    if (jobNumber) lines.push(`Job Number: ${jobNumber}`);
+
+    if (tradeTypes.length > 0) {
+      lines.push('', 'TRADE / TRADE TYPE');
+      lines.push(tradeTypes.join(', '));
+    }
+
+    if (jobTitle) {
+      lines.push('', 'JOB TITLE');
+      lines.push(jobTitle);
+    }
+
+    if (location) {
+      lines.push('', 'LOCATION / AREA');
+      lines.push(location);
+    }
+
+    if (keyQuantities) {
+      lines.push('', 'KEY QUANTITIES');
+      lines.push(keyQuantities);
+    }
+
+    if (workItems.trim()) {
+      lines.push('', 'WORK TO BE PERFORMED');
+      lines.push(workItems.trim());
+    }
+
+    if (alsoIncluded.trim()) {
+      lines.push('', 'ALSO INCLUDED');
+      lines.push(alsoIncluded.trim());
+    }
+
+    if (exclusions.trim()) {
+      lines.push('', 'NOT INCLUDED / EXCLUSIONS');
+      lines.push(exclusions.trim());
+    }
+
+    if (materialsResponsibility) {
+      lines.push('', 'MATERIALS');
+      lines.push(materialsResponsibility);
+    }
+
+    if (specialNotes.trim()) {
+      lines.push('', 'SPECIAL NOTES');
+      lines.push(specialNotes.trim());
+    }
+
+    const content = lines.join('\n');
+    generatePDF(content, {
+      docType: 'Scope of Work',
+      companyName: settings?.company_name || companyName || 'Your Company',
+      logoUrl: settings?.logo_url,
+    });
   };
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
-        {/* Header */}
         <SheetHeader className="px-6 py-4 border-b shrink-0">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -234,12 +192,11 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
             </div>
             <div>
               <SheetTitle className="text-base">Scope of Work Generator</SheetTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">AI-powered construction document</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Build a construction document PDF</p>
             </div>
           </div>
         </SheetHeader>
 
-        {/* Scrollable form body */}
         <ScrollArea className="flex-1 min-h-0">
           <div className="px-6 py-5 space-y-7">
 
@@ -288,7 +245,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
             <div>
               <SectionLabel>Job Details</SectionLabel>
               <div className="space-y-3">
-                {/* Trade type chips */}
                 <div className="space-y-1.5">
                   <Label>Trade Types</Label>
                   <div className="min-h-[40px] flex flex-wrap gap-1.5 p-2 border rounded-md bg-background">
@@ -400,58 +356,17 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
               </div>
             </div>
 
-            {/* OUTPUT SETTINGS */}
-            <div>
-              <SectionLabel>Output Settings</SectionLabel>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Scope Length</Label>
-                  <ToggleGroup
-                    value={scopeLength}
-                    onChange={(v) => setScopeLength(v as ScopeLength)}
-                    options={[
-                      { value: 'brief', label: 'Brief' },
-                      { value: 'standard', label: 'Standard' },
-                      { value: 'detailed', label: 'Detailed' },
-                    ]}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Tone</Label>
-                  <ToggleGroup
-                    value={tone}
-                    onChange={(v) => setTone(v as Tone)}
-                    options={[
-                      { value: 'simple', label: 'Simple' },
-                      { value: 'standard', label: 'Standard' },
-                      { value: 'professional', label: 'Professional' },
-                    ]}
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* GENERATE BUTTON */}
             <Button
               onClick={handleGenerate}
-              disabled={!selectedVendorId || isGenerating}
+              disabled={!selectedVendorId}
               className="w-full gap-2"
               size="lg"
             >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating…
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Generate Scope of Work PDF
-                </>
-              )}
+              <FileText className="h-4 w-4" />
+              Generate Scope of Work PDF
             </Button>
 
-            {/* Bottom padding */}
             <div className="h-4" />
           </div>
         </ScrollArea>
