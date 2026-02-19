@@ -1,26 +1,33 @@
 
 
-## Collapse Notes to 2 Lines When Long
+## Fix Edit Task Dialog for Mobile + Add Notes & Photo Upload
 
-### Problem
-The Notes section under each vendor can get long and push the card content down. The user wants notes to be truncated to 2 lines by default, with the ability to expand to see everything.
+### Problems
+1. On mobile, the Edit Task dialog opens as a centered modal that can look awkward (partially covered, hard to interact with). It should use a Drawer (bottom sheet) on mobile instead.
+2. The dialog is missing a **Notes** field (the `description` column exists in the database but isn't shown).
+3. Photo upload is already present but could be more visible.
 
-### Change
+### Changes
 
-**`src/components/project/ProjectVendors.tsx`** (lines 396-410)
+**`src/components/project/ProjectTasks.tsx`**
 
-Replace the current Collapsible + Textarea approach with a two-mode notes display:
+1. **Use Drawer on mobile, Dialog on desktop**: Import `useIsMobile` hook and conditionally render either a `Drawer` (vaul) or `Dialog` for the edit form. This follows the pattern used elsewhere in the app.
 
-1. **Read mode (default)**: Show notes text with `line-clamp-2` (CSS truncation to 2 lines). If the text is longer than 2 lines, show a small "Show more" toggle below.
-2. **Edit mode**: Tapping the text or an edit button opens the full Textarea for editing. On blur, save and return to read mode.
+2. **Add a Notes/Description field**: 
+   - Add `editDescription` state alongside existing edit states
+   - Fetch `description` in the query (already exists in DB)
+   - Add `description` to the `ProjectTask` interface
+   - Add a `Textarea` field labeled "Notes" between Due Date and Photos
+   - Save `description` in the update call
 
-This keeps notes visible at a glance (first 2 lines always shown if notes exist) instead of hiding them entirely behind a collapsed section, while preventing long notes from bloating the card.
+3. **Populate description on open**: In `openEditDialog`, set `editDescription` from the task.
 
-### Technical Detail
+### Technical Details
 
-- Add local state tracking which vendor's notes are in "expanded" or "editing" mode
-- Default display: `<p className="line-clamp-2 text-sm">` with the notes text
-- If notes overflow 2 lines, show a "Show more / Show less" toggle
-- Clicking the text opens the Textarea for editing (same onBlur save pattern)
-- If notes are empty, show a small "+ Add notes" link that opens the Textarea
+- Use `useIsMobile()` from `@/hooks/use-mobile`
+- On mobile: wrap edit form in `Drawer` / `DrawerContent` from vaul (already installed)
+- On desktop: keep existing `Dialog` / `DialogContent`
+- Extract the edit form into a shared variable to avoid duplication
+- Add `description` to the Supabase select query and update call
+- No database migration needed -- `description` column already exists on `tasks` table
 
