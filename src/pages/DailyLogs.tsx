@@ -569,12 +569,12 @@ export default function DailyLogs() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full md:max-w-md grid-cols-2">
-            <TabsTrigger value="checklist" className="gap-2 py-3 md:py-2">
+          <TabsList className="grid w-full md:max-w-md grid-cols-2 h-12 md:h-10">
+            <TabsTrigger value="checklist" className="gap-2 h-10 md:h-8">
               <Check className="h-4 w-4" />
               Checklist
             </TabsTrigger>
-            <TabsTrigger value="logs" className="gap-2 py-3 md:py-2">
+            <TabsTrigger value="logs" className="gap-2 h-10 md:h-8">
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">Daily Logs</span>
               <span className="sm:hidden">Logs</span>
@@ -764,8 +764,8 @@ export default function DailyLogs() {
           <TabsContent value="checklist" className="mt-6 space-y-6">
             {/* Sub-tabs for Daily Sprint vs Master Pipeline */}
             <Tabs value={checklistTab} onValueChange={setChecklistTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="master" className="gap-2">
+              <TabsList className="grid w-full grid-cols-2 mb-4 h-12 md:h-10">
+                <TabsTrigger value="master" className="gap-2 h-10 md:h-8">
                   <ListTodo className="h-4 w-4" />
                   <span className="hidden sm:inline">Master Pipeline</span>
                   <span className="sm:hidden">Master</span>
@@ -775,7 +775,7 @@ export default function DailyLogs() {
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="daily" className="gap-2">
+                <TabsTrigger value="daily" className="gap-2 h-10 md:h-8">
                   <Target className="h-4 w-4" />
                   <span className="hidden sm:inline">Daily Sprint</span>
                   <span className="sm:hidden">Today</span>
