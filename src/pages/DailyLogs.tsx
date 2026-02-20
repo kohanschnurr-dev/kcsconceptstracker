@@ -148,6 +148,9 @@ export default function DailyLogs() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskProjectId, setNewTaskProjectId] = useState<string>('');
   const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>();
+  const [newTaskPhotoUrls, setNewTaskPhotoUrls] = useState<string[]>([]);
+  const [newTaskUploading, setNewTaskUploading] = useState(false);
+  const newTaskFileRef = useRef<HTMLInputElement>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -357,6 +360,7 @@ export default function DailyLogs() {
           scheduled_date: isDaily ? todayStr : null,
           project_id: newTaskProjectId === 'none' || newTaskProjectId === '' ? null : newTaskProjectId,
           due_date: newTaskDueDate ? format(newTaskDueDate, 'yyyy-MM-dd') : null,
+          photo_urls: newTaskPhotoUrls.length > 0 ? newTaskPhotoUrls : [],
         });
 
       if (error) throw error;
@@ -364,6 +368,7 @@ export default function DailyLogs() {
       setNewTaskTitle('');
       setNewTaskProjectId('');
       setNewTaskDueDate(undefined);
+      setNewTaskPhotoUrls([]);
       toast({ 
         title: 'Task created', 
         description: isDaily ? 'Added to today\'s sprint' : 'Added to master pipeline' 
@@ -784,82 +789,146 @@ export default function DailyLogs() {
             </Tabs>
 
             {/* Quick Add - contextual to the current tab */}
-            <form onSubmit={handleCreateTask} className="flex flex-col sm:flex-row gap-3 sm:gap-2">
-              <div className="relative flex-1">
-                <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder={checklistTab === 'daily' 
-                    ? "Add task to today's list... (press Enter)" 
-                    : "Add to master pipeline... (press Enter)"
-                  }
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="pl-9 h-11 sm:h-10"
-                  disabled={isCreating}
+            <div>
+              <form onSubmit={handleCreateTask} className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+                <div className="relative flex-1">
+                  <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder={checklistTab === 'daily' 
+                      ? "Add task to today's list... (press Enter)" 
+                      : "Add to master pipeline... (press Enter)"
+                    }
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    className="pl-9 h-11 sm:h-10"
+                    disabled={isCreating}
+                  />
+                </div>
+                {checklistTab === 'master' && (
+                  <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
+                    <SelectTrigger className="w-full sm:w-44 h-11 sm:h-10">
+                      <SelectValue placeholder="Select project..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Other (No Project)</SelectItem>
+                      {projects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Hidden file input */}
+                <input
+                  ref={newTaskFileRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = e.target.files;
+                    if (!files || files.length === 0) return;
+                    setNewTaskUploading(true);
+                    try {
+                      for (const file of Array.from(files)) {
+                        const fileExt = file.name.split('.').pop() || 'jpg';
+                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                        const { error: uploadError } = await supabase.storage.from('task-photos').upload(fileName, file);
+                        if (uploadError) { console.error('Upload error:', uploadError); continue; }
+                        const { data } = supabase.storage.from('task-photos').getPublicUrl(fileName);
+                        setNewTaskPhotoUrls(prev => [...prev, data.publicUrl]);
+                      }
+                    } finally {
+                      setNewTaskUploading(false);
+                      if (newTaskFileRef.current) newTaskFileRef.current.value = '';
+                    }
+                  }}
                 />
-              </div>
-              {checklistTab === 'master' && (
-                <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
-                  <SelectTrigger className="w-full sm:w-44 h-11 sm:h-10">
-                    <SelectValue placeholder="Select project..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Other (No Project)</SelectItem>
-                    {projects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {checklistTab === 'master' && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "shrink-0 gap-1 h-11 sm:h-10",
-                        newTaskDueDate && "text-primary"
+
+                {/* Camera button */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn(
+                    "shrink-0 gap-1 h-11 sm:h-10 min-w-[44px] px-2 sm:px-4",
+                    newTaskPhotoUrls.length > 0 && "text-primary"
+                  )}
+                  disabled={newTaskUploading}
+                  onClick={() => newTaskFileRef.current?.click()}
+                >
+                  {newTaskUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                  {newTaskPhotoUrls.length > 0 && <span className="text-xs">{newTaskPhotoUrls.length}</span>}
+                </Button>
+
+                {checklistTab === 'master' && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "shrink-0 gap-1 h-11 sm:h-10",
+                          newTaskDueDate && "text-primary"
+                        )}
+                      >
+                        <CalendarIcon className="h-4 w-4" />
+                        {newTaskDueDate && <span className="text-xs">{format(newTaskDueDate, 'MMM d')}</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <CalendarPicker
+                        mode="single"
+                        selected={newTaskDueDate}
+                        onSelect={setNewTaskDueDate}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                      {newTaskDueDate && (
+                        <div className="px-3 pb-3">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="w-full text-xs"
+                            onClick={() => setNewTaskDueDate(undefined)}
+                          >
+                            <X className="h-3 w-3 mr-1" /> Clear date
+                          </Button>
+                        </div>
                       )}
-                    >
-                      <CalendarIcon className="h-4 w-4" />
-                      {newTaskDueDate && <span className="text-xs">{format(newTaskDueDate, 'MMM d')}</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="end">
-                    <CalendarPicker
-                      mode="single"
-                      selected={newTaskDueDate}
-                      onSelect={setNewTaskDueDate}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                    {newTaskDueDate && (
-                      <div className="px-3 pb-3">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="w-full text-xs"
-                          onClick={() => setNewTaskDueDate(undefined)}
-                        >
-                          <X className="h-3 w-3 mr-1" /> Clear date
-                        </Button>
-                      </div>
-                    )}
-                  </PopoverContent>
-                </Popover>
+                    </PopoverContent>
+                  </Popover>
+                )}
+                <Button 
+                  type="submit" 
+                  disabled={!newTaskTitle.trim() || isCreating || (checklistTab === 'master' && !newTaskProjectId)}
+                  className="w-full sm:w-auto h-11 sm:h-10"
+                >
+                  {checklistTab === 'daily' ? 'Add to Today' : 'Add to Pipeline'}
+                </Button>
+              </form>
+
+              {/* Thumbnail preview strip */}
+              {newTaskPhotoUrls.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {newTaskPhotoUrls.map((url, index) => (
+                    <div key={index} className="relative group w-10 h-10 rounded-lg overflow-hidden border bg-muted">
+                      <img src={url} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setNewTaskPhotoUrls(prev => prev.filter(u => u !== url))}
+                        className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3 text-white" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
-              <Button 
-                type="submit" 
-                disabled={!newTaskTitle.trim() || isCreating || (checklistTab === 'master' && !newTaskProjectId)}
-                className="w-full sm:w-auto h-11 sm:h-10"
-              >
-                {checklistTab === 'daily' ? 'Add to Today' : 'Add to Pipeline'}
-              </Button>
-            </form>
+            </div>
 
             {/* Filter - Wrap on mobile */}
             <div className="flex flex-wrap items-center gap-2">

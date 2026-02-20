@@ -23,7 +23,9 @@ import {
   GripVertical,
   Pencil,
   Trash2,
-  Plus
+  Plus,
+  Camera,
+  X
 } from 'lucide-react';
 
 function SortableTabItem({ id, label }: { id: string; label: string }) {
@@ -237,6 +239,9 @@ export default function ProjectDetail() {
   const [quickLogDate, setQuickLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [quickLogSubmitting, setQuickLogSubmitting] = useState(false);
   const [quickLogShowIssues, setQuickLogShowIssues] = useState(false);
+  const [quickLogPhotoUrls, setQuickLogPhotoUrls] = useState<string[]>([]);
+  const [quickLogUploading, setQuickLogUploading] = useState(false);
+  const quickLogFileRef = useRef<HTMLInputElement>(null);
   const [deleteLogId, setDeleteLogId] = useState<string | null>(null);
   const [editLog, setEditLog] = useState<DBDailyLog | null>(null);
   const [editWork, setEditWork] = useState('');
@@ -254,11 +259,13 @@ export default function ProjectDetail() {
         date: quickLogDate,
         work_performed: quickLogWork.trim(),
         issues: quickLogIssues.trim() || null,
+        photo_urls: quickLogPhotoUrls.length > 0 ? quickLogPhotoUrls : [],
       });
       if (error) throw error;
       setQuickLogWork('');
       setQuickLogIssues('');
       setQuickLogShowIssues(false);
+      setQuickLogPhotoUrls([]);
       setQuickLogDate(new Date().toISOString().split('T')[0]);
       toast({ title: 'Log added', description: 'Daily log entry saved.' });
       fetchProjectData(false);
@@ -1272,6 +1279,51 @@ export default function ProjectDetail() {
                         />
                       </PopoverContent>
                     </Popover>
+
+                    {/* Hidden file input */}
+                    <input
+                      ref={quickLogFileRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      multiple
+                      className="hidden"
+                      onChange={async (e) => {
+                        const files = e.target.files;
+                        if (!files || files.length === 0) return;
+                        setQuickLogUploading(true);
+                        try {
+                          for (const file of Array.from(files)) {
+                            const fileExt = file.name.split('.').pop() || 'jpg';
+                            const fileName = `daily-logs/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                            const { error: uploadError } = await supabase.storage.from('project-photos').upload(fileName, file);
+                            if (uploadError) { console.error('Upload error:', uploadError); continue; }
+                            const { data } = supabase.storage.from('project-photos').getPublicUrl(fileName);
+                            setQuickLogPhotoUrls(prev => [...prev, data.publicUrl]);
+                          }
+                        } finally {
+                          setQuickLogUploading(false);
+                          if (quickLogFileRef.current) quickLogFileRef.current.value = '';
+                        }
+                      }}
+                    />
+
+                    {/* Camera button */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "shrink-0 gap-1 min-w-[36px] px-2",
+                        quickLogPhotoUrls.length > 0 && "text-primary"
+                      )}
+                      disabled={quickLogUploading}
+                      onClick={() => quickLogFileRef.current?.click()}
+                    >
+                      {quickLogUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                      {quickLogPhotoUrls.length > 0 && <span className="text-xs">{quickLogPhotoUrls.length}</span>}
+                    </Button>
+
                     <Button
                       type="submit"
                       size="sm"
@@ -1288,6 +1340,25 @@ export default function ProjectDetail() {
                       )}
                     </Button>
                   </div>
+
+                  {/* Thumbnail preview strip */}
+                  {quickLogPhotoUrls.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {quickLogPhotoUrls.map((url, index) => (
+                        <div key={index} className="relative group w-10 h-10 rounded-lg overflow-hidden border bg-muted">
+                          <img src={url} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setQuickLogPhotoUrls(prev => prev.filter(u => u !== url))}
+                            className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3 text-white" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <Collapsible open={quickLogShowIssues} onOpenChange={setQuickLogShowIssues}>
                     <CollapsibleTrigger asChild>
                       <button type="button" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
