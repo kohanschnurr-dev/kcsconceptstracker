@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { TaskPriority, TaskStatus } from '@/types/task';
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/types/task';
+import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 
 interface AddTaskDialogProps {
   open: boolean;
@@ -24,11 +25,22 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [status, setStatus] = useState<TaskStatus>('pending');
   const [dueDate, setDueDate] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [projects, setProjects] = useState<{ id: string; name: string; address?: string; status?: string; projectType?: string }[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!open) return;
+    supabase.from('projects').select('id, name, address, status, project_type').then(({ data }) => {
+      if (data) {
+        setProjects(data.map(p => ({ id: p.id, name: p.name, address: p.address ?? undefined, status: p.status, projectType: p.project_type })));
+      }
+    });
+  }, [open]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -58,6 +70,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
     setPriority('medium');
     setStatus('pending');
     setDueDate('');
+    setProjectId('');
     setPhotoUrls([]);
   };
 
@@ -75,6 +88,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
         priority_level: priority,
         status,
         due_date: dueDate || null,
+        project_id: projectId || null,
         photo_urls: photoUrls.length > 0 ? photoUrls : [],
       });
 
@@ -103,6 +117,16 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
           <div>
             <Label htmlFor="task-title">Title</Label>
             <Input id="task-title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title" />
+          </div>
+
+          <div>
+            <Label>Project (optional)</Label>
+            <ProjectAutocomplete
+              projects={projects}
+              value={projectId}
+              onSelect={(id) => setProjectId(prev => prev === id ? '' : id)}
+              placeholder="None"
+            />
           </div>
 
           <div>
