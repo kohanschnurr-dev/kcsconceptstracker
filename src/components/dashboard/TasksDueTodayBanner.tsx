@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ListChecks, ArrowRight, Calendar, Clock, AlertTriangle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+
 import { supabase } from '@/integrations/supabase/client';
 import { isToday, isPast, startOfDay } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
@@ -139,10 +139,6 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded, onTaskCreated }
 
   if (isLoading) return null;
 
-  const totalActionable = tasksDueToday.length + overdueCount + todayEvents.length;
-
-  
-
   return (
     <div className="glass-card border-border bg-muted/30 p-3 animate-slide-up">
       {/* Header Row */}
@@ -150,12 +146,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded, onTaskCreated }
         <div className="p-2 rounded-lg bg-primary/10">
           <ListChecks className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-foreground">Quick Actions</h3>
-          <Badge variant="secondary" className="text-xs">
-            {totalActionable} {totalActionable === 1 ? 'Item' : 'Items'}
-          </Badge>
-        </div>
+        <h3 className="font-semibold text-foreground">Quick Actions</h3>
       </div>
 
       {/* Four-Box Grid */}
