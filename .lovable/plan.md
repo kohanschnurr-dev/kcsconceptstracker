@@ -1,32 +1,35 @@
 
 
-## Replace Inline Legend with Info Icon and Enlarge Month Label
+## Merge Calendar Header into a Single Row
 
 ### What Changes
 
-Two visual tweaks to the Project Schedule calendar on the Project Detail page:
+Currently the Project Schedule header has two rows:
+- Row 1: "Project Schedule" icon + info icon ... "Add Project Event" button
+- Row 2: Month navigation (chevrons + "February 2026")
 
-1. **Legend behind an "i" icon**: The color legend row currently takes up a full line. It will be replaced with a small info circle icon next to the title. Hovering or tapping it opens a popover showing the legend.
+This creates dead vertical space. All elements will be merged into a single row:
 
-2. **Bigger month/year label**: The "February 2026" text is currently `text-sm` with `min-w-[120px]`. It will be bumped to `text-base font-semibold` with a wider min-width to match the main Calendar page.
-
-### Changes
-
-**`src/components/project/ProjectCalendar.tsx`**
-
-1. **Import `Info`** from `lucide-react` (line 3).
-
-2. **Replace the standalone `<CalendarLegend />` (line 172)** with an info icon popover placed next to the "Project Schedule" title (inside the Row 1 div, line 134-144):
-   - Add a `Popover` with `PopoverTrigger` wrapping an `Info` icon (small, `h-4 w-4`, `text-muted-foreground hover:text-foreground`)
-   - `PopoverContent` renders `<CalendarLegend />` inside it
-
-3. **Enlarge the month label** (line 159): Change `labelClassName` from `"text-sm min-w-[120px] text-center"` to `"text-base font-semibold min-w-[150px] text-center"` so the month/year text is larger and more prominent.
+**Left**: Calendar icon + "Project Schedule" + info icon
+**Center**: Prev chevron + "February 2026" + Next chevron
+**Right**: "+ Add Project Event" button
 
 ### Technical Details
 
-- Line 3: Add `Info` to the lucide-react import
-- Lines 134-144: Insert the info popover next to the title text, before the `NewEventModal`
-- Line 159: Update `labelClassName` prop on `MonthYearPicker`
-- Line 172: Remove the standalone `<CalendarLegend />` line
-- No database changes needed
+**`src/components/project/ProjectCalendar.tsx`**
+
+Replace the current two-row layout in `CardHeader` (Row 1 title+button div and Row 2 month nav div) with a single flex row:
+
+```
+<div className="flex items-center justify-between">
+  <!-- Left: title + info icon -->
+  <!-- Center: month nav (absolute or flex-1 centered) -->
+  <!-- Right: Add button -->
+</div>
+```
+
+- Use `flex-1 justify-center` on the middle section so the month picker stays centered
+- Left and right sections get fixed widths to balance the layout
+- Remove `space-y-2` from CardHeader since there's only one row now
+- On mobile, the single row may wrap slightly but the elements are compact enough to fit
 
