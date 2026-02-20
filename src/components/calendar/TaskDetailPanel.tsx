@@ -324,14 +324,6 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
       <SheetContent className="w-full sm:max-w-lg bg-background border-border overflow-y-auto">
         <SheetHeader className="pb-4 border-b border-border">
           <div className="flex items-start gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setDeleteDialogOpen(true)}
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
             <div className="flex-1">
               {isEditingTitle ? (
                 <Input
@@ -614,6 +606,16 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
               className="bg-card border-border text-foreground placeholder:text-muted-foreground min-h-[100px]"
             />
           </div>
+
+          {/* Delete Event Button */}
+          <Button
+            variant="outline"
+            onClick={() => setDeleteDialogOpen(true)}
+            className="w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Event
+          </Button>
 
           {/* Downstream Tasks */}
           {dependents.length > 0 && (
