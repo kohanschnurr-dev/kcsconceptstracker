@@ -61,8 +61,11 @@ const CommandList = React.forwardRef<
   <CommandPrimitive.List
     ref={ref}
     className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden overscroll-contain", className)}
+    onPointerDown={(e) => {
+      if (e.button === 1) { e.stopPropagation(); }
+    }}
     onMouseDown={(e) => {
-      if (e.button === 1) e.stopPropagation();
+      if (e.button === 1) { e.stopPropagation(); }
     }}
     {...props}
   />
