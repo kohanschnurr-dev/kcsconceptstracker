@@ -1,28 +1,32 @@
 
 
-## Fix Calendar Popover Glitch in Daily Logs Table
+## Replace Inline Legend with Info Icon and Enlarge Month Label
 
-### Problem
+### What Changes
 
-When clicking the calendar icon to set a due date on a task row in the Daily Logs page, the calendar popover renders behind subsequent table rows. This happens because:
+Two visual tweaks to the Project Schedule calendar on the Project Detail page:
 
-1. The table wrapper has `glass-card overflow-hidden` which uses `backdrop-blur-sm`, creating a stacking context
-2. Even though Radix Popover uses a Portal, the visual layering gets confused with the backdrop-blur stacking context on the parent
+1. **Legend behind an "i" icon**: The color legend row currently takes up a full line. It will be replaced with a small info circle icon next to the title. Hovering or tapping it opens a popover showing the legend.
 
-### Fix
+2. **Bigger month/year label**: The "February 2026" text is currently `text-sm` with `min-w-[120px]`. It will be bumped to `text-base font-semibold` with a wider min-width to match the main Calendar page.
 
-**`src/pages/DailyLogs.tsx`** -- Two locations (desktop table + mobile cards)
+### Changes
 
-1. **Desktop table popover** (around line 1212): Add `z-[60]` to the `PopoverContent` for the due-date picker to ensure it renders above table rows with backdrop-blur stacking contexts. Also add `side="top"` so the calendar opens upward, avoiding clipping by the viewport bottom.
+**`src/components/project/ProjectCalendar.tsx`**
 
-2. **Mobile card popover** (around line 1041): Same fix -- add `z-[60]` to the `PopoverContent`.
+1. **Import `Info`** from `lucide-react` (line 3).
 
-3. **Remove `overflow-hidden`** from the desktop table wrapper (line 1086): Change `glass-card overflow-hidden` to `glass-card overflow-x-auto` so horizontal overflow scrolls but vertical popover content isn't clipped during paint.
+2. **Replace the standalone `<CalendarLegend />` (line 172)** with an info icon popover placed next to the "Project Schedule" title (inside the Row 1 div, line 134-144):
+   - Add a `Popover` with `PopoverTrigger` wrapping an `Info` icon (small, `h-4 w-4`, `text-muted-foreground hover:text-foreground`)
+   - `PopoverContent` renders `<CalendarLegend />` inside it
+
+3. **Enlarge the month label** (line 159): Change `labelClassName` from `"text-sm min-w-[120px] text-center"` to `"text-base font-semibold min-w-[150px] text-center"` so the month/year text is larger and more prominent.
 
 ### Technical Details
 
-- Line 1086: `className="hidden md:block glass-card overflow-hidden"` becomes `className="hidden md:block glass-card overflow-x-auto"`
-- Line 1041: `<PopoverContent className="w-auto p-0" align="end">` becomes `<PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">`
-- Line 1212: `<PopoverContent className="w-auto p-0" align="end">` becomes `<PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">`
+- Line 3: Add `Info` to the lucide-react import
+- Lines 134-144: Insert the info popover next to the title text, before the `NewEventModal`
+- Line 159: Update `labelClassName` prop on `MonthYearPicker`
+- Line 172: Remove the standalone `<CalendarLegend />` line
 - No database changes needed
 
