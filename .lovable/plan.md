@@ -1,22 +1,32 @@
 
 
-## Fix Checklist & Daily Logs Tab Alignment
+## Enable Middle-Click Scroll in Project Dropdown
 
 ### Problem
 
-The "Checklist / Daily Logs" tabs and the "Master Pipeline / Daily Sprint" sub-tabs look misaligned inside their gray pill containers. The tab triggers don't fill the container height properly, leaving awkward gaps and making the active tab appear to float inside the gray bar.
+The project selection dropdown (using `cmdk` Command component) does not respond to middle-mouse-button scrolling, which is a common way users scroll through lists.
 
 ### Solution
 
-Add explicit height and alignment classes to both TabsList containers and their triggers so the active pill fills the bar cleanly.
+The `cmdk` `CommandList` renders a `div` with `overflow-y-auto`, but the component's internal event handling can interfere with native scroll behavior. Adding `onPointerDown` passthrough and `overscroll-behavior-contain` to the `CommandList` ensures the browser's native scroll (including middle-click scroll) works properly.
 
 ### Technical Details
 
-**`src/pages/DailyLogs.tsx`**
+**`src/components/ui/command.tsx`** (CommandList, lines 57-66)
 
-1. **Top-level tabs (line 572)**: Add `h-12 md:h-10` to the `TabsList` so the container has a consistent height, and add `h-10 md:h-8` to each `TabsTrigger` (lines 573, 577) so the active pill fills the bar.
+- Add `overscroll-behavior-contain` to the CommandList className to keep scroll contained within the list and prevent event interference.
+- Add an `onMouseDown` handler that stops propagation for middle-click (button === 1) so the browser can handle the auto-scroll natively without `cmdk` intercepting it.
 
-2. **Sub-level tabs (line 767)**: Same approach -- add `h-12 md:h-10` to the sub-tab `TabsList` and `h-10 md:h-8` to each sub-tab `TabsTrigger` (lines 768, 778) so Master Pipeline and Daily Sprint pills align flush inside the gray bar.
+```tsx
+<CommandPrimitive.List
+  ref={ref}
+  className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden overscroll-contain", className)}
+  onMouseDown={(e) => {
+    if (e.button === 1) e.stopPropagation();
+  }}
+  {...props}
+/>
+```
 
-This ensures triggers fill their container vertically, eliminating the floating/misaligned look on both mobile and desktop.
+This is a minimal, non-breaking change to the shared `CommandList` component that enables middle-click scrolling across all command/autocomplete dropdowns in the app.
 
