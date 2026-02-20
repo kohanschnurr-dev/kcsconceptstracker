@@ -1,42 +1,28 @@
 
 
-## Add Camera/Photo Upload to Daily Logs Task Quick-Add and Project Detail Quick-Add Log
+## Fix Calendar Popover Glitch in Daily Logs Table
 
-### What Changes
+### Problem
 
-Add the same camera button pattern (already working on the dashboard QuickTaskInput) to two more locations:
+When clicking the calendar icon to set a due date on a task row in the Daily Logs page, the calendar popover renders behind subsequent table rows. This happens because:
 
-1. **Daily Logs page task quick-add** (`src/pages/DailyLogs.tsx`) -- the "Add task to today's list" / "Add to master pipeline" input bar
-2. **Project Detail logs tab quick-add** (`src/pages/ProjectDetail.tsx`) -- the "Quick Add Log" form for daily logs
+1. The table wrapper has `glass-card overflow-hidden` which uses `backdrop-blur-sm`, creating a stacking context
+2. Even though Radix Popover uses a Portal, the visual layering gets confused with the backdrop-blur stacking context on the parent
 
-### Changes
+### Fix
 
-**`src/pages/DailyLogs.tsx`**
+**`src/pages/DailyLogs.tsx`** -- Two locations (desktop table + mobile cards)
 
-1. Add state: `newTaskPhotoUrls: string[]` and `newTaskUploading: boolean`
-2. Add a hidden file input ref (`newTaskFileRef`)
-3. Add a Camera button next to the CalendarIcon button in the quick-add form (visible in both daily and master tabs)
-4. Upload handler: upload to `task-photos` bucket, collect public URLs
-5. Update `handleCreateTask` insert to include `photo_urls: newTaskPhotoUrls`
-6. Reset `newTaskPhotoUrls` on submit
-7. Add thumbnail preview strip below the form when photos are attached
+1. **Desktop table popover** (around line 1212): Add `z-[60]` to the `PopoverContent` for the due-date picker to ensure it renders above table rows with backdrop-blur stacking contexts. Also add `side="top"` so the calendar opens upward, avoiding clipping by the viewport bottom.
 
-**`src/pages/ProjectDetail.tsx`**
+2. **Mobile card popover** (around line 1041): Same fix -- add `z-[60]` to the `PopoverContent`.
 
-1. Add state: `quickLogPhotoUrls: string[]` and `quickLogUploading: boolean`
-2. Add a hidden file input ref (`quickLogFileRef`)
-3. Add a Camera button next to the Calendar date picker button in the Quick Add Log row
-4. Upload handler: upload to `project-photos` bucket under `daily-logs/` folder
-5. Update `handleQuickLogSubmit` insert to include `photo_urls: quickLogPhotoUrls`
-6. Reset `quickLogPhotoUrls` on submit
-7. Add thumbnail preview strip below the form row when photos are attached
+3. **Remove `overflow-hidden`** from the desktop table wrapper (line 1086): Change `glass-card overflow-hidden` to `glass-card overflow-x-auto` so horizontal overflow scrolls but vertical popover content isn't clipped during paint.
 
 ### Technical Details
 
-- Both use the same pattern as `QuickTaskInput.tsx`: hidden `<input type="file" accept="image/*" capture="environment" multiple>`, a Camera icon Button, upload to storage, thumbnail strip with X-to-remove
-- DailyLogs task quick-add uploads to `task-photos` bucket (same as dashboard)
-- ProjectDetail log quick-add uploads to `project-photos` bucket under `daily-logs/` folder (same as NewDailyLogModal)
-- Camera button styling matches existing calendar buttons: `variant="outline"`, same height classes (`h-11 sm:h-10` for DailyLogs, `size="sm"` for ProjectDetail)
-- Thumbnail strip: `flex flex-wrap gap-2 mt-2` with 40x40 rounded thumbnails and hover-X remove
-- No database or migration changes needed (buckets and columns already exist)
+- Line 1086: `className="hidden md:block glass-card overflow-hidden"` becomes `className="hidden md:block glass-card overflow-x-auto"`
+- Line 1041: `<PopoverContent className="w-auto p-0" align="end">` becomes `<PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">`
+- Line 1212: `<PopoverContent className="w-auto p-0" align="end">` becomes `<PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">`
+- No database changes needed
 
