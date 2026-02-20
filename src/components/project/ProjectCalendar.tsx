@@ -129,12 +129,12 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
 
   return (
     <Card className="bg-background border-border">
-      <CardHeader className="pb-2 space-y-2">
-        {/* Row 1: Title + Add button */}
+      <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-foreground font-semibold text-base sm:text-lg">
+          {/* Left: title + info */}
+          <div className="flex items-center gap-2 text-foreground font-semibold text-base sm:text-lg shrink-0">
             <CalendarIcon className="h-5 w-5 text-primary shrink-0" />
-            Project Schedule
+            <span className="hidden sm:inline">Project Schedule</span>
             <Popover>
               <PopoverTrigger asChild>
                 <button className="ml-1 text-muted-foreground hover:text-foreground transition-colors">
@@ -146,38 +146,41 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
               </PopoverContent>
             </Popover>
           </div>
-          <NewEventModal
-            projects={[{ id: projectId, name: projectName, address: projectAddress }]}
-            onEventCreated={fetchEvents}
-            defaultProjectId={projectId}
-          />
-        </div>
 
-        {/* Row 2: Month navigation centered */}
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={goToPrevMonth}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <MonthYearPicker
-            currentDate={currentDate}
-            onDateChange={setCurrentDate}
-            labelClassName="text-base font-semibold min-w-[150px] text-center"
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={goToNextMonth}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+          {/* Center: month navigation */}
+          <div className="flex items-center justify-center gap-1 flex-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={goToPrevMonth}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <MonthYearPicker
+              currentDate={currentDate}
+              onDateChange={setCurrentDate}
+              labelClassName="text-base font-semibold min-w-[150px] text-center"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={goToNextMonth}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
 
+          {/* Right: Add button */}
+          <div className="shrink-0">
+            <NewEventModal
+              projects={[{ id: projectId, name: projectName, address: projectAddress }]}
+              onEventCreated={fetchEvents}
+              defaultProjectId={projectId}
+            />
+          </div>
+        </div>
       </CardHeader>
 
       <CardContent>
