@@ -1038,7 +1038,7 @@ export default function DailyLogs() {
                                 <CalendarPlus className="h-4 w-4" />
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="end">
+                            <PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">
                               <CalendarPicker
                                 mode="single"
                                 selected={task.dueDate ? new Date(task.dueDate + 'T00:00:00') : undefined}
@@ -1083,7 +1083,7 @@ export default function DailyLogs() {
             </div>
 
             {/* Desktop Table View - Hidden below md */}
-            <div className="hidden md:block glass-card overflow-hidden">
+            <div className="hidden md:block glass-card overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1209,7 +1209,7 @@ export default function DailyLogs() {
                                     <CalendarPlus className="h-4 w-4" />
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="end">
+                                <PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">
                                   <CalendarPicker
                                     mode="single"
                                     selected={task.dueDate ? new Date(task.dueDate + 'T00:00:00') : undefined}
