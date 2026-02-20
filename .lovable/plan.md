@@ -1,35 +1,37 @@
 
 
-## Merge Calendar Header into a Single Row
+## Replace Calendar Popovers with Clickable Due Date Cells
 
 ### What Changes
 
-Currently the Project Schedule header has two rows:
-- Row 1: "Project Schedule" icon + info icon ... "Add Project Event" button
-- Row 2: Month navigation (chevrons + "February 2026")
+Remove the separate CalendarPlus icon buttons and their calendar popovers. Instead, make the "Due Date" text in each row clickable -- clicking it opens a date picker popover right there to set/change the due date.
 
-This creates dead vertical space. All elements will be merged into a single row:
+### Changes
 
-**Left**: Calendar icon + "Project Schedule" + info icon
-**Center**: Prev chevron + "February 2026" + Next chevron
-**Right**: "+ Add Project Event" button
+**`src/pages/DailyLogs.tsx`**
+
+**Desktop table (around lines 1190-1228):**
+1. Move the date picker Popover to wrap the Due Date cell content (lines 1192-1196) instead of living in the actions column (lines 1200-1228).
+2. The due date text (or the "—" dash) becomes the `PopoverTrigger`. Styled as a clickable element with hover state (e.g., `cursor-pointer hover:text-primary underline-offset-2 hover:underline`).
+3. Remove the CalendarPlus popover from the actions `TableCell` (lines 1199-1228).
+4. Include a "Clear date" button inside the popover when a date is already set.
+5. Only make it clickable when `task.status !== 'completed'`.
+
+**Mobile cards (around lines 1022-1057):**
+1. Same approach: make the "Due: MMM d, yyyy" text (line 1023-1025) the trigger for the date picker popover.
+2. If no due date, show a small "Set date" link instead.
+3. Remove the CalendarPlus button from the mobile action buttons (lines 1030-1057).
+
+**Cleanup:**
+- Remove `CalendarPlus` from the lucide-react import if no longer used elsewhere.
 
 ### Technical Details
 
-**`src/components/project/ProjectCalendar.tsx`**
-
-Replace the current two-row layout in `CardHeader` (Row 1 title+button div and Row 2 month nav div) with a single flex row:
-
-```
-<div className="flex items-center justify-between">
-  <!-- Left: title + info icon -->
-  <!-- Center: month nav (absolute or flex-1 centered) -->
-  <!-- Right: Add button -->
-</div>
-```
-
-- Use `flex-1 justify-center` on the middle section so the month picker stays centered
-- Left and right sections get fixed widths to balance the layout
-- Remove `space-y-2` from CardHeader since there's only one row now
-- On mobile, the single row may wrap slightly but the elements are compact enough to fit
+- Lines 1192-1196 (desktop Due Date cell): Wrap content in `Popover` + `PopoverTrigger`, add `PopoverContent` with the `CalendarPicker` and "Clear date" button
+- Lines 1200-1228 (desktop actions): Remove the CalendarPlus `Popover` block entirely
+- Lines 1022-1026 (mobile due date display): Wrap in `Popover` + `PopoverTrigger`, add `PopoverContent`
+- Lines 1030-1057 (mobile actions): Remove the CalendarPlus `Popover` block
+- Line 2: Remove `CalendarPlus` from import
+- Keep `z-[60]`, `side="top"`, and `pointer-events-auto` on all `PopoverContent` and `CalendarPicker` to maintain the fixes from earlier
+- No database changes needed
 
