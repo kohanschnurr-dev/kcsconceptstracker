@@ -1,17 +1,39 @@
 
 
-## Remove Clickable Calendar from Due Date Column
+## Dashboard Quick Actions Refactor
 
 ### What Changes
 
-The Due Date column in the desktop task table currently opens a calendar popover when clicked. This will be removed so the due date is plain, non-interactive text -- just like it appears for completed tasks.
+1. **Rename "Today's Agenda" to "Quick Actions"** in the banner header.
+2. **Replace the "Quick add task..." input row** with a compact "Add Task" button placed in the same grid row as "View Calendar", "Tasks Overdue", and "View Events" -- making it a 4-column grid.
+3. **New "Add Task" dialog** opens when the button is clicked, matching the Edit Task modal UI (Title, Description, Priority, Status, Due Date, Photos) but without the Delete button.
 
 ### Technical Details
 
-**`src/pages/DailyLogs.tsx`**
+**`src/components/dashboard/TasksDueTodayBanner.tsx`**
 
-- **Lines 1187-1215 (desktop Due Date cell)**: Replace the entire `Popover`/`PopoverTrigger`/`PopoverContent` block and the completed-task branch with a single plain `<span>` that displays the formatted date or "—" dash. No conditional on task status needed since the display is the same either way.
-- Remove the `dueDatePickerTaskId` state and `handleUpdateDueDate` references if they are no longer used elsewhere (need to check mobile cards first).
-- Remove `CalendarPicker` / `Calendar` import if no longer used anywhere in the file.
+- Line 151: Change `"Today's Agenda"` to `"Quick Actions"`.
+- Lines 159-233: Change the grid from `grid-cols-3` to `grid-cols-4` and add a 4th box with a `Plus` icon and an "Add Task" button.
+- Add state for `addTaskOpen` boolean. When clicked, open the new `AddTaskDialog`.
+- Accept a new `onTaskCreated` callback prop and pass it through.
 
-Result: The Due Date column becomes a static read-only display, matching the screenshot.
+**`src/components/dashboard/AddTaskDialog.tsx`** (new file)
+
+A Dialog matching the Edit Task modal layout from DailyLogs:
+- Title (Input)
+- Description (Textarea, placeholder "Add details...")
+- Priority (Select: Low/Medium/High/Urgent, default Medium) + Status (Select: Pending/In Progress/Completed, default Pending) in a 2-column grid
+- Due Date (native date input)
+- Photos (TaskPhotoUploader component, extracted or duplicated)
+- Footer: Cancel + Save buttons (no Delete since it's a new task)
+- On save: insert into `tasks` table with `user_id`, call `onTaskCreated` callback, close dialog
+
+**`src/pages/Index.tsx`**
+
+- Remove the `QuickTaskInput` import and its `<div className="glass-card p-4">` wrapper (lines 364-366).
+- Pass `onTaskCreated={() => setTaskRefreshKey(k => k + 1)}` to `TasksDueTodayBanner`.
+
+**`src/components/dashboard/TasksDueTodayBanner.tsx` (props)**
+
+- Add `onTaskCreated?: () => void` to the props interface.
+
