@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ListChecks, ArrowRight, Calendar, Clock, AlertTriangle } from 'lucide-react';
+import { ListChecks, ArrowRight, Calendar, Clock, AlertTriangle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { isToday, isPast, startOfDay } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
+import { AddTaskDialog } from './AddTaskDialog';
 import type { Task } from '@/types/task';
 
 interface CalendarEvent {
@@ -18,14 +19,16 @@ interface CalendarEvent {
 interface TasksDueTodayBannerProps {
   refreshKey?: number;
   onTasksLoaded?: (count: number) => void;
+  onTaskCreated?: () => void;
 }
 
-export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueTodayBannerProps) {
+export function TasksDueTodayBanner({ refreshKey, onTasksLoaded, onTaskCreated }: TasksDueTodayBannerProps) {
   const navigate = useNavigate();
   const [tasksDueToday, setTasksDueToday] = useState<Task[]>([]);
   const [overdueCount, setOverdueCount] = useState(0);
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -148,16 +151,16 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
           <ListChecks className="h-5 w-5 text-primary" />
         </div>
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-foreground">Today's Agenda</h3>
+          <h3 className="font-semibold text-foreground">Quick Actions</h3>
           <Badge variant="secondary" className="text-xs">
             {totalActionable} {totalActionable === 1 ? 'Item' : 'Items'}
           </Badge>
         </div>
       </div>
 
-      {/* Three-Box Grid: equal columns */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        {/* Left Box - View Calendar */}
+      {/* Four-Box Grid */}
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        {/* View Calendar */}
         <div className="bg-muted/30 rounded-lg p-2 sm:p-3 border border-border/30 flex flex-col items-center gap-2 min-h-[90px]">
           <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           <div className="flex-1" />
@@ -172,7 +175,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
           </Button>
         </div>
 
-        {/* Middle Box - Tasks */}
+        {/* Tasks */}
         <div className="bg-muted/30 rounded-lg p-2 sm:p-3 border border-border/30 flex flex-col items-center gap-2 text-center min-h-[90px]">
           <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           <div className="flex-1" />
@@ -207,7 +210,7 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
           </Button>
         </div>
 
-        {/* Right Box - Events */}
+        {/* Events */}
         <div className="bg-muted/30 rounded-lg p-2 sm:p-3 border border-border/30 flex flex-col items-center gap-2 text-center min-h-[90px]">
           <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           <div className="flex-1" />
@@ -230,7 +233,24 @@ export function TasksDueTodayBanner({ refreshKey, onTasksLoaded }: TasksDueToday
             )}
           </Button>
         </div>
+
+        {/* Add Task */}
+        <div className="bg-muted/30 rounded-lg p-2 sm:p-3 border border-border/30 flex flex-col items-center gap-2 text-center min-h-[90px]">
+          <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+          <div className="flex-1" />
+          <Button
+            onClick={() => setAddTaskOpen(true)}
+            variant="outline"
+            size="sm"
+            className="gap-1 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary w-full text-xs sm:text-sm px-1 sm:px-3"
+          >
+            <span className="sm:hidden">Add</span>
+            <span className="hidden sm:inline">Add Task</span>
+          </Button>
+        </div>
       </div>
+
+      <AddTaskDialog open={addTaskOpen} onOpenChange={setAddTaskOpen} onTaskCreated={onTaskCreated} />
     </div>
   );
 }
