@@ -1185,33 +1185,7 @@ export default function DailyLogs() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {task.status !== 'completed' ? (
-                            <Popover open={dueDatePickerTaskId === task.id} onOpenChange={(open) => setDueDatePickerTaskId(open ? task.id : null)}>
-                              <PopoverTrigger asChild>
-                                <button className="text-sm cursor-pointer hover:text-primary underline-offset-2 hover:underline">
-                                  {task.dueDate ? format(parseDateString(task.dueDate), 'MMM d, yyyy') : <span className="text-muted-foreground">—</span>}
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">
-                                <CalendarPicker
-                                  mode="single"
-                                  selected={task.dueDate ? new Date(task.dueDate + 'T00:00:00') : undefined}
-                                  onSelect={(date) => handleUpdateDueDate(task, date)}
-                                  className="p-3 pointer-events-auto"
-                                  initialFocus
-                                />
-                                {task.dueDate && (
-                                  <div className="px-3 pb-3">
-                                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => handleUpdateDueDate(task, undefined)}>
-                                      Clear date
-                                    </Button>
-                                  </div>
-                                )}
-                              </PopoverContent>
-                            </Popover>
-                          ) : (
-                            <span className="text-sm">{task.dueDate ? format(parseDateString(task.dueDate), 'MMM d, yyyy') : <span className="text-muted-foreground">—</span>}</span>
-                          )}
+                          <span className="text-sm">{task.dueDate ? format(parseDateString(task.dueDate), 'MMM d, yyyy') : <span className="text-muted-foreground">—</span>}</span>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
