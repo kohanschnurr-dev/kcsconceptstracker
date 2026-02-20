@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, startOfDay, isWithinInterval } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info } from 'lucide-react';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -135,6 +135,16 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
           <div className="flex items-center gap-2 text-foreground font-semibold text-base sm:text-lg">
             <CalendarIcon className="h-5 w-5 text-primary shrink-0" />
             Project Schedule
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="ml-1 text-muted-foreground hover:text-foreground transition-colors">
+                  <Info className="h-4 w-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-3" align="start">
+                <CalendarLegend />
+              </PopoverContent>
+            </Popover>
           </div>
           <NewEventModal
             projects={[{ id: projectId, name: projectName, address: projectAddress }]}
@@ -156,7 +166,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
           <MonthYearPicker
             currentDate={currentDate}
             onDateChange={setCurrentDate}
-            labelClassName="text-sm min-w-[120px] text-center"
+            labelClassName="text-base font-semibold min-w-[150px] text-center"
           />
           <Button
             variant="ghost"
@@ -168,8 +178,6 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
           </Button>
         </div>
 
-        {/* Legend */}
-        <CalendarLegend />
       </CardHeader>
 
       <CardContent>
