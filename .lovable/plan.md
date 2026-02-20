@@ -1,31 +1,37 @@
 
 
-## Fix Loan Calculator Mobile Layout
+## Add Camera/Photo Upload Button to Quick Task Input
 
-### Problems (from screenshot)
+### What Changes
 
-1. **Interest Rate + Loan Term row** uses `grid-cols-[1fr_2fr]` which squeezes the rate input into a narrow column on mobile. The "Annual Interest Rate" label wraps awkwardly and the input is cramped.
-
-2. **Term preset buttons** wrap into a messy multi-line grid within an already narrow column, creating visual clutter.
-
-3. **KPI cards** (Monthly Payment, Total Interest, Effective APR) use `grid-cols-3` at all breakpoints, making the text tiny and hard to read on mobile.
-
-4. **Total Loan Cost breakdown** footer line has three items in a single row that can overflow on small screens.
+A small camera icon button will be added next to the calendar button in the "Quick add task..." bar. Tapping it opens a file picker (accepting images), uploads the selected photo(s) to storage, and attaches the URLs to the task when submitted. A thumbnail preview strip appears below the input when photos are attached.
 
 ### Changes
 
-**`src/components/project/HardMoneyLoanCalculator.tsx`**
+**`src/components/dashboard/QuickTaskInput.tsx`**
 
-1. **Stack Interest Rate and Loan Term vertically on mobile**: Change line 338 from `grid-cols-[1fr_2fr]` to `grid-cols-1 sm:grid-cols-[1fr_2fr]` so they stack into full-width sections on mobile.
+1. **Add state**: `photoUrls: string[]` and `isUploading: boolean` to track attached photos.
 
-2. **KPI cards responsive grid**: Change line 627 from `grid-cols-3` to `grid-cols-1 sm:grid-cols-3` so each KPI card is full-width on mobile, stacking vertically for legibility.
+2. **Hidden file input**: Add a hidden `<input type="file" accept="image/*" capture="environment" multiple>` ref. The `capture="environment"` attribute prompts the device camera on mobile.
 
-3. **Total Loan Cost breakdown**: Change the footer stats row (line 669) from a single `flex` row to `flex flex-wrap` or stack them vertically on mobile so they don't overflow.
+3. **Camera button**: Place a new `Button` (variant="outline") with a `Camera` icon from lucide-react, positioned immediately before the calendar button. On click, it triggers the hidden file input.
+
+4. **Upload logic**: When files are selected, upload each to the `task-photos` storage bucket via `supabase.storage.from('task-photos').upload(...)`, collect the public URLs, and append them to the `photoUrls` state.
+
+5. **Submit with photos**: Update the `handleSubmit` insert call to include `photo_urls: photoUrls` so photos are saved with the task.
+
+6. **Thumbnail preview**: Below the form row, conditionally render a small strip of image thumbnails (similar to PasteableTextarea) with an X button to remove each. This strip only appears when `photoUrls.length > 0`.
+
+7. **Reset on submit**: Clear `photoUrls` along with `title` and `dueDate` after successful submission.
 
 ### Technical Details
 
-- Line 338: `grid-cols-[1fr_2fr]` becomes `grid-cols-1 sm:grid-cols-[1fr_2fr]`
-- Line 627: `grid-cols-3` becomes `grid-cols-1 sm:grid-cols-3`
-- Line 669: Add `flex-wrap gap-1` to prevent overflow on the cost breakdown row
-- No database changes needed
+- Import `Camera` from `lucide-react` and `useRef` from React
+- Use a `ref` for the hidden file input: `const fileInputRef = useRef<HTMLInputElement>(null)`
+- Camera button: same styling as the calendar button (`variant="outline"`, same `min-w-[44px] px-2 sm:px-4`)
+- Upload path: `task-photos/{timestamp}-{random}.{ext}`
+- The `task-photos` bucket should already exist (used by TaskPhotoUploader). If not, a migration will create it.
+- The insert payload adds `photo_urls: photoUrls.length > 0 ? photoUrls : []`
+- Thumbnail strip: `flex flex-wrap gap-2 mt-2` with 40x40px rounded thumbnails, each with an absolute X button on hover
+- The form wrapper changes from just `<form>` to a `<div>` containing the form row + thumbnail strip below
 
