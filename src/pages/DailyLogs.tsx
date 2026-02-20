@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, CalendarPlus, X, ListTodo, Target, CalendarIcon, Pencil, Loader2 } from 'lucide-react';
+import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, X, ListTodo, Target, CalendarIcon, Pencil, Loader2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1019,43 +1019,39 @@ export default function DailyLogs() {
                             <span>{TASK_STATUS_LABELS[task.status]}</span>
                           </div>
                         </div>
-                        {task.dueDate && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Due: {format(parseDateString(task.dueDate), 'MMM d, yyyy')}
-                          </p>
-                        )}
+                        <div className="mt-2">
+                          {task.status !== 'completed' ? (
+                            <Popover open={dueDatePickerTaskId === task.id} onOpenChange={(open) => setDueDatePickerTaskId(open ? task.id : null)}>
+                              <PopoverTrigger asChild>
+                                <button className="text-xs text-muted-foreground cursor-pointer hover:text-primary underline-offset-2 hover:underline">
+                                  {task.dueDate ? `Due: ${format(parseDateString(task.dueDate), 'MMM d, yyyy')}` : 'Set date'}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">
+                                <CalendarPicker
+                                  mode="single"
+                                  selected={task.dueDate ? new Date(task.dueDate + 'T00:00:00') : undefined}
+                                  onSelect={(date) => handleUpdateDueDate(task, date)}
+                                  className="p-3 pointer-events-auto"
+                                  initialFocus
+                                />
+                                {task.dueDate && (
+                                  <div className="px-3 pb-3">
+                                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => handleUpdateDueDate(task, undefined)}>
+                                      Clear date
+                                    </Button>
+                                  </div>
+                                )}
+                              </PopoverContent>
+                            </Popover>
+                          ) : task.dueDate ? (
+                            <p className="text-xs text-muted-foreground">
+                              Due: {format(parseDateString(task.dueDate), 'MMM d, yyyy')}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="flex flex-col gap-1 shrink-0">
-                        {task.status !== 'completed' && (
-                          <Popover open={dueDatePickerTaskId === task.id} onOpenChange={(open) => setDueDatePickerTaskId(open ? task.id : null)}>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-9 w-9 text-primary hover:text-primary/80"
-                                title="Set Due Date"
-                              >
-                                <CalendarPlus className="h-4 w-4" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">
-                              <CalendarPicker
-                                mode="single"
-                                selected={task.dueDate ? new Date(task.dueDate + 'T00:00:00') : undefined}
-                                onSelect={(date) => handleUpdateDueDate(task, date)}
-                                className="p-3 pointer-events-auto"
-                                initialFocus
-                              />
-                              {task.dueDate && (
-                                <div className="px-3 pb-3">
-                                  <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => handleUpdateDueDate(task, undefined)}>
-                                    Clear date
-                                  </Button>
-                                </div>
-                              )}
-                            </PopoverContent>
-                          </Popover>
-                        )}
                         {checklistTab === 'daily' && !task.isDaily && (
                           <Button
                             variant="ghost"
@@ -1189,44 +1185,36 @@ export default function DailyLogs() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {task.dueDate ? (
-                            <span className="text-sm">{format(parseDateString(task.dueDate), 'MMM d, yyyy')}</span>
+                          {task.status !== 'completed' ? (
+                            <Popover open={dueDatePickerTaskId === task.id} onOpenChange={(open) => setDueDatePickerTaskId(open ? task.id : null)}>
+                              <PopoverTrigger asChild>
+                                <button className="text-sm cursor-pointer hover:text-primary underline-offset-2 hover:underline">
+                                  {task.dueDate ? format(parseDateString(task.dueDate), 'MMM d, yyyy') : <span className="text-muted-foreground">—</span>}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">
+                                <CalendarPicker
+                                  mode="single"
+                                  selected={task.dueDate ? new Date(task.dueDate + 'T00:00:00') : undefined}
+                                  onSelect={(date) => handleUpdateDueDate(task, date)}
+                                  className="p-3 pointer-events-auto"
+                                  initialFocus
+                                />
+                                {task.dueDate && (
+                                  <div className="px-3 pb-3">
+                                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => handleUpdateDueDate(task, undefined)}>
+                                      Clear date
+                                    </Button>
+                                  </div>
+                                )}
+                              </PopoverContent>
+                            </Popover>
                           ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
+                            <span className="text-sm">{task.dueDate ? format(parseDateString(task.dueDate), 'MMM d, yyyy') : <span className="text-muted-foreground">—</span>}</span>
                           )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            {task.status !== 'completed' && (
-                              <Popover open={dueDatePickerTaskId === task.id} onOpenChange={(open) => setDueDatePickerTaskId(open ? task.id : null)}>
-                                <PopoverTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-primary hover:text-primary/80"
-                                    title="Set Due Date"
-                                  >
-                                    <CalendarPlus className="h-4 w-4" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">
-                                  <CalendarPicker
-                                    mode="single"
-                                    selected={task.dueDate ? new Date(task.dueDate + 'T00:00:00') : undefined}
-                                    onSelect={(date) => handleUpdateDueDate(task, date)}
-                                    className="p-3 pointer-events-auto"
-                                    initialFocus
-                                  />
-                                  {task.dueDate && (
-                                    <div className="px-3 pb-3">
-                                      <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => handleUpdateDueDate(task, undefined)}>
-                                        Clear date
-                                      </Button>
-                                    </div>
-                                  )}
-                                </PopoverContent>
-                              </Popover>
-                            )}
                             {checklistTab === 'daily' && !task.isDaily && (
                               <Button
                                 variant="ghost"
