@@ -4,7 +4,6 @@ import { DollarSign, FolderKanban, Plus, TrendingUp } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
-import { QuickTaskInput } from '@/components/dashboard/QuickTaskInput';
 import { TasksDueTodayBanner } from '@/components/dashboard/TasksDueTodayBanner';
 import { useProfile } from '@/hooks/useProfile';
 import { NewProjectModal } from '@/components/NewProjectModal';
@@ -354,16 +353,12 @@ export default function Index() {
 
       {/* Tasks Due Today Banner - High Visibility Alert */}
       <div className="mb-6">
-        <TasksDueTodayBanner refreshKey={taskRefreshKey} />
+        <TasksDueTodayBanner refreshKey={taskRefreshKey} onTaskCreated={() => setTaskRefreshKey(k => k + 1)} />
       </div>
 
       <div className="flex gap-6 items-start">
         {/* Main Content */}
         <div className="flex-1 space-y-6">
-          {/* Quick Task Input */}
-          <div className="glass-card p-4">
-            <QuickTaskInput onTaskCreated={() => setTaskRefreshKey(k => k + 1)} />
-          </div>
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
