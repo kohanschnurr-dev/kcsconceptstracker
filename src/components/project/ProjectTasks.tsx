@@ -18,6 +18,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { TASK_PRIORITY_COLORS, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/types/task';
 import type { TaskStatus, TaskPriority } from '@/types/task';
+import { parseDescription, serializeDescription, type Subtask } from '@/lib/taskSubtasks';
 import { AddTaskModal } from './AddTaskModal';
 
 const PRIORITY_ICON_COLORS: Record<TaskPriority, string> = {
@@ -122,6 +123,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
   const [editDueDate, setEditDueDate] = useState('');
   const [editStatus, setEditStatus] = useState<TaskStatus>('pending');
   const [editPhotoUrls, setEditPhotoUrls] = useState<string[]>([]);
+  const [editSubtasks, setEditSubtasks] = useState<Subtask[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
 
@@ -161,7 +163,9 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
   const openEditDialog = (task: ProjectTask) => {
     setSelectedTask(task);
     setEditTitle(task.title);
-    setEditDescription(task.description ?? '');
+    const { description, subtasks } = parseDescription(task.description);
+    setEditDescription(description);
+    setEditSubtasks(subtasks);
     setEditPriority(task.priorityLevel);
     setEditDueDate(task.dueDate ?? '');
     setEditStatus(task.status);
@@ -172,11 +176,12 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
     if (!selectedTask) return;
     setIsSaving(true);
     try {
+      const finalDescription = serializeDescription(editDescription, editSubtasks);
       const { error } = await supabase
         .from('tasks')
         .update({
           title: editTitle,
-          description: editDescription || null,
+          description: finalDescription || null,
           priority_level: editPriority,
           due_date: editDueDate || null,
           status: editStatus,
@@ -316,6 +321,53 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
           uploadedImages={editPhotoUrls}
           onImagesChange={setEditPhotoUrls}
         />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="flex items-center gap-1.5">
+          <ListTodo className="h-4 w-4" />
+          Subtasks
+        </Label>
+        <div className="space-y-1.5">
+          {editSubtasks.map((st, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <Checkbox
+                checked={st.done}
+                onCheckedChange={(checked) => {
+                  const updated = [...editSubtasks];
+                  updated[idx] = { ...st, done: !!checked };
+                  setEditSubtasks(updated);
+                }}
+              />
+              <Input
+                value={st.text}
+                onChange={(e) => {
+                  const updated = [...editSubtasks];
+                  updated[idx] = { ...st, text: e.target.value };
+                  setEditSubtasks(updated);
+                }}
+                className={cn("flex-1 h-8 text-sm", st.done && "line-through text-muted-foreground")}
+                placeholder="Subtask description"
+              />
+              <button
+                type="button"
+                onClick={() => setEditSubtasks(editSubtasks.filter((_, i) => i !== idx))}
+                className="text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full border border-dashed border-border text-muted-foreground"
+            onClick={() => setEditSubtasks([...editSubtasks, { text: '', done: false }])}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add Subtask
+          </Button>
+        </div>
       </div>
     </div>
   );
