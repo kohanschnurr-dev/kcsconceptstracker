@@ -108,7 +108,7 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
 
   const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
-  const handleGenerate = async () => {
+  const buildContent = () => {
     const lines: string[] = ['PAYMENT RECEIPT', ''];
 
     if (receiptNumber) lines.push(`Receipt Number: ${receiptNumber}`);
@@ -152,31 +152,35 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
       if (notes) lines.push(`Notes: ${notes}`);
     }
 
-    const content = lines.join('\n');
-    const pdfOptions = {
-      docType: 'Receipt' as const,
-      companyName: settings?.company_name || vendorName || 'Your Company',
-      logoUrl: settings?.logo_url,
-    };
+    return lines.join('\n');
+  };
 
-    generatePDF(content, pdfOptions);
+  const getPdfOptions = () => ({
+    docType: 'Receipt' as const,
+    companyName: settings?.company_name || vendorName || 'Your Company',
+    logoUrl: settings?.logo_url,
+  });
 
-    if (selectedProjectId) {
-      setIsSaving(true);
-      try {
-        const html = generatePDFHtml(content, pdfOptions);
-        await saveDocumentToProject(html, selectedProjectId, 'Receipt', 'general');
-        const proj = projects.find(p => p.id === selectedProjectId);
-        toast({
-          title: 'Document saved',
-          description: `Receipt saved to ${proj?.name ?? 'project'} Documents`,
-        });
-      } catch (err) {
-        console.error(err);
-        toast({ title: 'Save failed', description: 'Could not save document to project.', variant: 'destructive' });
-      } finally {
-        setIsSaving(false);
-      }
+  const handleGeneratePDF = () => {
+    generatePDF(buildContent(), getPdfOptions());
+  };
+
+  const handleSaveToProject = async () => {
+    if (!selectedProjectId) return;
+    setIsSaving(true);
+    try {
+      const html = generatePDFHtml(buildContent(), getPdfOptions());
+      await saveDocumentToProject(html, selectedProjectId, 'Receipt', 'general');
+      const proj = projects.find(p => p.id === selectedProjectId);
+      toast({
+        title: 'Document saved',
+        description: `Receipt saved to ${proj?.name ?? 'project'} Documents`,
+      });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Save failed', description: 'Could not save document to project.', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -356,15 +360,22 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
                   onSelect={(id) => setSelectedProjectId(id === selectedProjectId ? '' : id)}
                   placeholder="Select a project…"
                 />
-                <p className="text-xs text-muted-foreground">Optional — saves a copy to the project's Documents tab</p>
+                <p className="text-xs text-muted-foreground">Optional — select a project to enable saving a copy to its Documents tab</p>
               </div>
             </div>
 
             {/* GENERATE BUTTON */}
-            <Button onClick={handleGenerate} className="w-full gap-2" size="lg" disabled={isSaving}>
+            <Button onClick={handleGeneratePDF} className="w-full gap-2" size="lg">
               <FileText className="h-4 w-4" />
-              {isSaving ? 'Saving…' : 'Generate Receipt PDF'}
+              Generate Receipt PDF
             </Button>
+
+            {selectedProjectId && (
+              <Button onClick={handleSaveToProject} variant="outline" className="w-full gap-2" size="lg" disabled={isSaving}>
+                <FileText className="h-4 w-4" />
+                {isSaving ? 'Saving…' : 'Save to Project'}
+              </Button>
+            )}
 
             <div className="h-4" />
           </div>
