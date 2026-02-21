@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Download, CheckCircle2, AlertTriangle, Loader2, FileSpreadsheet, Copy, Check } from 'lucide-react';
+import { Upload, Download, CheckCircle2, AlertTriangle, Loader2, FileSpreadsheet, Copy, Check, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { getBudgetCategories } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -81,6 +82,38 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
 
   const updateRowCategory = (idx: number, catValue: string) => {
     setRows(prev => prev.map((r, i) => i === idx ? { ...r, matchedCategory: catValue, suggestedCategory: null } : r));
+  };
+
+  const removeRow = (idx: number) => {
+    setRows(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      if (next.length === 0) { setStep('upload'); }
+      return next;
+    });
+  };
+
+  const updateRowField = (idx: number, field: 'date' | 'amount', value: string) => {
+    setRows(prev => prev.map((r, i) => {
+      if (i !== idx) return r;
+      const updated = { ...r };
+      if (field === 'date') {
+        updated.date = value;
+        const parsed = new Date(value);
+        if (!isNaN(parsed.getTime())) {
+          updated.hasError = false;
+          updated.errorMsg = undefined;
+        }
+      }
+      if (field === 'amount') {
+        const num = parseFloat(value.replace(/[^0-9.\-]/g, ''));
+        if (!isNaN(num)) {
+          updated.amount = num;
+          updated.hasError = false;
+          updated.errorMsg = undefined;
+        }
+      }
+      return updated;
+    }));
   };
 
   const readyRows = rows.filter(r => !r.hasError && r.matchedCategory);
@@ -227,16 +260,17 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
             <div className="border rounded-lg overflow-auto max-h-[50vh]">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8">#</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Contractor</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Expense Type</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
+                 <TableRow>
+                     <TableHead className="w-8">#</TableHead>
+                     <TableHead>Date</TableHead>
+                     <TableHead>Contractor</TableHead>
+                     <TableHead>Category</TableHead>
+                     <TableHead className="text-right">Amount</TableHead>
+                     <TableHead>Expense Type</TableHead>
+                     <TableHead>Status</TableHead>
+                     <TableHead className="w-10"></TableHead>
+                   </TableRow>
+                 </TableHeader>
                 <TableBody>
                 {(filter === 'attention'
                   ? rows.map((r, i) => ({ ...r, originalIdx: i })).filter(r => r.hasError || !r.matchedCategory)
@@ -244,7 +278,11 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
                 ).map((row) => (
                     <TableRow key={row.originalIdx} className={row.hasError ? 'bg-destructive/5' : !row.matchedCategory ? 'bg-warning/5' : ''}>
                       <TableCell className="text-muted-foreground text-xs">{row.originalIdx + 1}</TableCell>
-                      <TableCell className="text-sm">{row.date}</TableCell>
+                      <TableCell className="text-sm">
+                        {row.hasError && row.errorMsg?.toLowerCase().includes('date') ? (
+                          <Input className="h-7 text-xs w-[120px]" defaultValue={row.date} onChange={(e) => updateRowField(row.originalIdx, 'date', e.target.value)} />
+                        ) : row.date}
+                      </TableCell>
                       <TableCell className="text-sm">{row.vendor || '—'}</TableCell>
                       <TableCell>
                         {row.matchedCategory ? (
@@ -262,7 +300,11 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
                         )}
                       </TableCell>
                       <TableCell className={`text-right font-mono text-sm ${row.amount < 0 ? 'text-success' : ''}`}>
-                        {row.amount < 0 ? '-' : ''}${Math.abs(row.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        {row.hasError && row.errorMsg?.toLowerCase().includes('amount') ? (
+                          <Input className="h-7 text-xs w-[100px] ml-auto text-right" defaultValue={String(row.amount || '')} onChange={(e) => updateRowField(row.originalIdx, 'amount', e.target.value)} />
+                        ) : (
+                          <>{row.amount < 0 ? '-' : ''}${Math.abs(row.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs capitalize">{row.expenseType}</Badge>
@@ -276,6 +318,11 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
                             </div>
                           )
                           : (<AlertTriangle className="h-4 w-4 text-warning" />)}
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(row.originalIdx)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
