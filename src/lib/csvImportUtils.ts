@@ -119,7 +119,7 @@ Category: Map each expense to exactly one of these: Appliances, Bathroom, Cabine
 
 Expense Type: Use 'product' for materials/retailers or 'labor' for contractors/service providers.
 
-Amount: Numerical only (no currency symbols or commas).
+Amount: Numerical only (no currency symbols or commas). Use negative amounts to represent refunds or credits.
 
 Payment Method: card, check, cash, or transfer.
 
@@ -178,7 +178,7 @@ export function processCSVText(
     let hasError = false;
     let errorMsg: string | undefined;
     if (!parsedDate) { hasError = true; errorMsg = 'Invalid date'; }
-    if (isNaN(amount) || amount <= 0) { hasError = true; errorMsg = 'Invalid amount'; }
+    if (isNaN(amount) || amount === 0) { hasError = true; errorMsg = 'Invalid amount'; }
 
     return {
       date: parsedDate || rawDate,
@@ -205,6 +205,7 @@ export function downloadSampleCSV(allCategories: { value: string; label: string 
   const example1 = '2025-01-15,Home Depot,Flooring,LVP for living room,2450.00,card,product,';
   const example2 = '2025-01-18,Mike\'s Plumbing,Plumbing,Rough-in for 2 bathrooms,3200.00,check,labor,Licensed & insured';
   const example3 = '2025-02-01,Lowe\'s,Electrical,Panels and wiring,1875.50,card,product,';
+  const example4 = '2025-02-10,Home Depot,Flooring,Returned excess LVP,-320.00,card,product,Refund';
   const content = [
     '# SAMPLE CSV - Delete these instruction lines before importing',
     `# Valid Categories: ${catList}`,
@@ -217,6 +218,7 @@ export function downloadSampleCSV(allCategories: { value: string; label: string 
     example1,
     example2,
     example3,
+    example4,
   ].join('\n');
   const blob = new Blob([content], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
