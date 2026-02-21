@@ -245,6 +245,28 @@ export function ProjectReport({
     * { box-sizing: border-box; }
     body { font-family: 'Inter', sans-serif; background: hsl(var(--background)); color: hsl(var(--foreground)); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .report-anim { animation: none !important; opacity: 1 !important; transform: none !important; }
+
+    /* Arbitrary Tailwind value overrides (CDN doesn't support JIT) */
+    .tracking-\\[0\\.35em\\] { letter-spacing: 0.35em !important; }
+    .tracking-\\[2\\.5px\\] { letter-spacing: 2.5px !important; }
+    .tracking-\\[2px\\] { letter-spacing: 2px !important; }
+    .tracking-\\[3px\\] { letter-spacing: 3px !important; }
+    .text-\\[9px\\] { font-size: 9px !important; line-height: 1.2; }
+    .text-\\[10px\\] { font-size: 10px !important; line-height: 1.4; }
+    .border-t-\\[3px\\] { border-top-width: 3px !important; }
+    .h-\\[10px\\] { height: 10px !important; }
+    .w-\\[2px\\] { width: 2px !important; }
+    .top-\\[-2px\\] { top: -2px !important; }
+    .bottom-\\[-2px\\] { bottom: -2px !important; }
+
+    /* Page break controls */
+    section { break-inside: avoid; margin-bottom: 16px; }
+    .bg-card { break-inside: avoid; }
+    .print\\:break-before-page { page-break-before: always; break-before: page; }
+
+    /* Hide interactive chart tooltips in print */
+    .recharts-tooltip-wrapper { display: none !important; }
+
     @media print {
       @page { size: A4 portrait; margin: 0.5in; }
       body { background: white !important; }
