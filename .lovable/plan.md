@@ -1,16 +1,24 @@
 
 
-## Fix: Prevent Horizontal Scrolling in Dialogs on Mobile
+## Prevent Keyboard Auto-Opening on Edit Task Dialogs
 
 ### Problem
-On mobile, the dialog content allows horizontal swiping/scrolling even when there's no content overflowing horizontally. This creates a jarring UX where the dialog shifts sideways.
+When opening an Edit Task dialog on mobile, the first input (Title) gets auto-focused by Radix Dialog, which triggers the on-screen keyboard immediately. Users who just want to view the task are forced to dismiss the keyboard first.
 
 ### Solution
-Add `overflow-x-hidden` to the `DialogContent` base component to prevent any horizontal scrolling while keeping vertical scroll intact.
+Add `onOpenAutoFocus={(e) => e.preventDefault()}` to the `DialogContent` (and `DrawerContent` where applicable) in all three Edit Task dialogs. This prevents Radix from auto-focusing the first input when the dialog opens, so the keyboard stays hidden until the user taps a field.
 
-### File: `src/components/ui/dialog.tsx`
-- Change `overflow-y-auto` to `overflow-y-auto overflow-x-hidden` in the DialogContent className (line 39)
-- This prevents horizontal scroll globally across all dialogs while preserving the vertical scroll fix from earlier
+### Files to Change
 
-Single-line change in one file.
+1. **`src/pages/DailyLogs.tsx`** (line ~1100)
+   - Add `onOpenAutoFocus={(e) => e.preventDefault()}` to the `<DialogContent>` for the Edit Task modal
+
+2. **`src/components/command-center/CommandCenter.tsx`** (line ~323)
+   - Add `onOpenAutoFocus={(e) => e.preventDefault()}` to the `<DialogContent>` for the Edit Task modal
+
+3. **`src/components/project/ProjectTasks.tsx`** (lines ~483 and ~497)
+   - Add `onOpenAutoFocus={(e) => e.preventDefault()}` to the `<DrawerContent>` (mobile) and `<DialogContent>` (desktop) for the Edit Task modal
+
+### Technical Detail
+Radix UI Dialog automatically focuses the first focusable element when opened. The `onOpenAutoFocus` event lets us prevent this default behavior. This only affects the edit dialogs -- the "Add Task" dialog should keep auto-focus since the user always intends to type there.
 
