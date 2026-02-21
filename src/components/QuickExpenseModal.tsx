@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles, Package, Wrench, Download, FileSpreadsheet, Copy, Check, CheckCircle2, AlertTriangle, Sun, Maximize, Eye, Layers } from 'lucide-react';
+import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles, Package, Wrench, Download, FileSpreadsheet, Copy, Check, CheckCircle2, AlertTriangle, Sun, Maximize, Eye, Layers, ChevronDown, ChevronUp, Split } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Drawer,
@@ -32,6 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { getAllCategories, getBudgetCategories, TEXAS_SALES_TAX, Project, PaymentMethod, BudgetCategory } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,7 +50,15 @@ interface QuickExpenseModalProps {
   onExpenseCreated?: () => void;
 }
 
-// ─── Single Expense Form (unchanged) ───────────────────────────────
+interface ParsedLineItem {
+  item_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  suggested_category: string;
+}
+
+// ─── Single Expense Form ───────────────────────────────────────────
 function ExpenseForm({ 
   projects, 
   onExpenseCreated, 
@@ -80,6 +89,15 @@ function ExpenseForm({
   const [showReceiptTips, setShowReceiptTips] = useState(false);
   const [isParsingImage, setIsParsingImage] = useState(false);
   const [dontRemindChecked, setDontRemindChecked] = useState(false);
+
+  // Line-item split mode state
+  const [parsedLineItems, setParsedLineItems] = useState<ParsedLineItem[]>([]);
+  const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
+  const [editableQuantities, setEditableQuantities] = useState<Record<number, number>>({});
+  const [splitMode, setSplitMode] = useState(false);
+  const [breakdownOpen, setBreakdownOpen] = useState(true);
+
+  const budgetCategories = getBudgetCategories();
 
   const calculateTax = () => {
     const baseAmount = parseFloat(amount) || 0;
@@ -159,6 +177,26 @@ function ExpenseForm({
         if (parsed.line_items?.length > 0) {
           const desc = parsed.line_items.map((li: any) => li.item_name).join(', ');
           setDescription(desc.substring(0, 200));
+
+          // Initialize split mode with parsed line items
+          const items: ParsedLineItem[] = parsed.line_items.map((li: any) => ({
+            item_name: li.item_name || 'Unknown Item',
+            quantity: li.quantity || 1,
+            unit_price: li.unit_price || 0,
+            total_price: li.total_price || 0,
+            suggested_category: li.suggested_category || 'misc',
+          }));
+          setParsedLineItems(items);
+          const cats: Record<number, string> = {};
+          const qtys: Record<number, number> = {};
+          items.forEach((item, idx) => {
+            cats[idx] = item.suggested_category;
+            qtys[idx] = item.quantity;
+          });
+          setEditableCategories(cats);
+          setEditableQuantities(qtys);
+          setSplitMode(true);
+          setBreakdownOpen(true);
         }
         if (parsed.suggested_category) setSelectedCategory(parsed.suggested_category);
         if (parsed.expense_type) setExpenseType(parsed.expense_type as 'product' | 'labor');
@@ -212,24 +250,92 @@ function ExpenseForm({
     }
   };
 
+  // Helper: ensure a category row exists for project and return category_id
+  const ensureCategoryId = async (projectId: string, categoryValue: string): Promise<string> => {
+    const { data: existing, error: fetchError } = await supabase
+      .from('project_categories').select('id').eq('project_id', projectId).eq('category', categoryValue as BudgetCategoryEnum).maybeSingle();
+    if (fetchError) throw fetchError;
+    if (existing?.id) return existing.id;
+
+    await supabase.rpc('add_budget_category', { new_value: categoryValue });
+    const { data: newCat, error: createError } = await supabase
+      .from('project_categories').insert({ project_id: projectId, category: categoryValue as BudgetCategoryEnum, estimated_budget: 0 }).select('id').single();
+    if (createError) throw createError;
+    return newCat.id;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Split mode submission
+    if (splitMode && parsedLineItems.length > 0) {
+      if (!selectedProject || !vendor) {
+        toast({ title: 'Missing fields', description: 'Please select a project and enter a vendor.', variant: 'destructive' });
+        return;
+      }
+      setIsSubmitting(true);
+      try {
+        const receiptUrl = await uploadReceipt();
+
+        // Group line items by category
+        const groups: Record<string, { items: ParsedLineItem[]; total: number; descriptions: string[] }> = {};
+        parsedLineItems.forEach((item, idx) => {
+          const cat = editableCategories[idx] || item.suggested_category;
+          const qty = editableQuantities[idx] ?? item.quantity;
+          const total = qty * item.unit_price;
+          if (!groups[cat]) groups[cat] = { items: [], total: 0, descriptions: [] };
+          groups[cat].items.push(item);
+          groups[cat].total += total;
+          groups[cat].descriptions.push(item.item_name);
+        });
+
+        // Scale proportionally to match the entered total
+        const rawTotal = Object.values(groups).reduce((s, g) => s + g.total, 0);
+        const enteredTotal = calculateTotal();
+        const categoryKeys = Object.keys(groups);
+
+        for (const cat of categoryKeys) {
+          const proportion = rawTotal > 0 ? groups[cat].total / rawTotal : 1 / categoryKeys.length;
+          const scaledAmount = Math.round(enteredTotal * proportion * 100) / 100;
+          const categoryId = await ensureCategoryId(selectedProject, cat);
+
+          const { error } = await supabase.from('expenses').insert({
+            project_id: selectedProject,
+            category_id: categoryId,
+            amount: scaledAmount,
+            vendor_name: vendor,
+            description: groups[cat].descriptions.join(', ').substring(0, 200),
+            payment_method: paymentMethod,
+            status: 'actual',
+            includes_tax: includeTax,
+            tax_amount: includeTax ? scaledAmount * TEXAS_SALES_TAX / (1 + TEXAS_SALES_TAX) : null,
+            date,
+            receipt_url: receiptUrl,
+            expense_type: expenseType,
+          });
+          if (error) throw error;
+        }
+
+        toast({ title: 'Expense split logged', description: `Split into ${categoryKeys.length} categories for ${vendor}` });
+        onClose();
+        onExpenseCreated?.();
+      } catch (error: any) {
+        console.error('Error creating split expenses:', error);
+        toast({ title: 'Error', description: error.message || 'Failed to log split expenses.', variant: 'destructive' });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // Single expense submission (unchanged)
     if (!selectedProject || !selectedCategory || !amount || !vendor) {
       toast({ title: 'Missing fields', description: 'Please fill in all required fields.', variant: 'destructive' });
       return;
     }
     setIsSubmitting(true);
     try {
-      const { data: existingCategory, error: fetchError } = await supabase
-        .from('project_categories').select('id').eq('project_id', selectedProject).eq('category', selectedCategory as BudgetCategory).maybeSingle();
-      if (fetchError) throw fetchError;
-      let categoryId = existingCategory?.id;
-      if (!categoryId) {
-        const { data: newCategory, error: createError } = await supabase
-          .from('project_categories').insert({ project_id: selectedProject, category: selectedCategory as BudgetCategory, estimated_budget: 0 }).select('id').single();
-        if (createError) throw createError;
-        categoryId = newCategory.id;
-      }
+      const categoryId = await ensureCategoryId(selectedProject, selectedCategory);
       const receiptUrl = await uploadReceipt();
       const { error } = await supabase.from('expenses').insert({
         project_id: selectedProject, category_id: categoryId, amount: calculateTotal(), vendor_name: vendor,
@@ -247,6 +353,19 @@ function ExpenseForm({
       setIsSubmitting(false);
     }
   };
+
+  // Calculate split total from line items
+  const splitTotal = parsedLineItems.reduce((sum, item, idx) => {
+    const qty = editableQuantities[idx] ?? item.quantity;
+    return sum + qty * item.unit_price;
+  }, 0);
+
+  // Count unique categories in split
+  const uniqueSplitCategories = new Set(
+    parsedLineItems.map((_, idx) => editableCategories[idx] || parsedLineItems[idx].suggested_category)
+  ).size;
+
+  const getCatLabel = (value: string) => budgetCategories.find(c => c.value === value)?.label || value;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
@@ -279,7 +398,7 @@ function ExpenseForm({
                   </div>
                 </div>
               )}
-              <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => { setReceiptFile(null); setReceiptPreview(null); }}>
+              <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => { setReceiptFile(null); setReceiptPreview(null); setParsedLineItems([]); setSplitMode(false); }}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -311,20 +430,104 @@ function ExpenseForm({
         )}
       </div>
 
+      {/* ─── Receipt Breakdown (line items with per-item categories) ─── */}
+      {parsedLineItems.length > 0 && (
+        <div className="rounded-lg border border-border bg-muted/30">
+          <Collapsible open={breakdownOpen} onOpenChange={setBreakdownOpen}>
+            <CollapsibleTrigger asChild>
+              <button type="button" className="flex items-center justify-between w-full p-3 hover:bg-muted/50 transition-colors rounded-t-lg">
+                <div className="flex items-center gap-2">
+                  <Split className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold">Receipt Breakdown</span>
+                  <Badge variant="secondary" className="text-xs">{parsedLineItems.length} items</Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs font-mono">${splitTotal.toFixed(2)}</Badge>
+                  {breakdownOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="border-t border-border">
+                {/* Split mode toggle */}
+                <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/20">
+                  <Label className="text-xs text-muted-foreground">Split by category</Label>
+                  <Switch checked={splitMode} onCheckedChange={setSplitMode} />
+                </div>
+
+                {/* Line items */}
+                <div className="max-h-[35vh] overflow-y-auto">
+                  {parsedLineItems.map((item, idx) => {
+                    const qty = editableQuantities[idx] ?? item.quantity;
+                    const lineTotal = qty * item.unit_price;
+                    const currentCat = editableCategories[idx] || item.suggested_category;
+
+                    return (
+                      <div key={idx} className="flex flex-col gap-1.5 px-3 py-2 border-b border-border last:border-b-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-medium truncate flex-1" title={item.item_name}>{item.item_name}</p>
+                          <span className="text-xs font-mono text-muted-foreground shrink-0">${lineTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              min={1}
+                              value={qty}
+                              onChange={(e) => setEditableQuantities(prev => ({ ...prev, [idx]: parseInt(e.target.value) || 1 }))}
+                              className="h-7 w-14 text-xs text-center"
+                            />
+                            <span className="text-xs text-muted-foreground">× ${item.unit_price.toFixed(2)}</span>
+                          </div>
+                          {splitMode && (
+                            <Select value={currentCat} onValueChange={(v) => setEditableCategories(prev => ({ ...prev, [idx]: v }))}>
+                              <SelectTrigger className="h-7 text-xs flex-1 min-w-0">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {budgetCategories.map((cat) => (
+                                  <SelectItem key={cat.value} value={cat.value} className="text-xs">{cat.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Summary footer */}
+                {splitMode && (
+                  <div className="px-3 py-2 border-t border-border bg-primary/5 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Splitting into <span className="font-semibold text-foreground">{uniqueSplitCategories}</span> {uniqueSplitCategories === 1 ? 'category' : 'categories'}
+                    </span>
+                    <span className="text-xs font-mono font-semibold text-primary">${splitTotal.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Project</Label>
           <ProjectAutocomplete projects={projects} value={selectedProject} onSelect={setSelectedProject} placeholder="Search" filterActive={true} />
         </div>
-        <div className="space-y-2">
-          <Label>Category</Label>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-            <SelectContent>
-              {getBudgetCategories().map((cat) => (<SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!splitMode && (
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+              <SelectContent>
+                {budgetCategories.map((cat) => (<SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
@@ -369,10 +572,12 @@ function ExpenseForm({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Description (optional)</Label>
-        <Textarea placeholder="What was purchased?" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-      </div>
+      {!splitMode && (
+        <div className="space-y-2">
+          <Label>Description (optional)</Label>
+          <Textarea placeholder="What was purchased?" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+        </div>
+      )}
 
       <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
         <div className="flex items-center gap-2">
@@ -383,8 +588,6 @@ function ExpenseForm({
           <span className="text-sm font-mono text-muted-foreground">+${calculateTax().toFixed(2)}</span>
         )}
       </div>
-
-      {/* Receipt upload section removed - now at top of form */}
 
       {/* Receipt Tips Dialog */}
       <Dialog open={showReceiptTips} onOpenChange={setShowReceiptTips}>
@@ -432,7 +635,9 @@ function ExpenseForm({
       )}
 
       <Button type="submit" className="w-full" disabled={isSubmitting || isUploading}>
-        {isSubmitting || isUploading ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />{isUploading ? 'Uploading...' : 'Saving...'}</>) : ('Log Expense')}
+        {isSubmitting || isUploading ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />{isUploading ? 'Uploading...' : 'Saving...'}</>) : (
+          splitMode && parsedLineItems.length > 0 ? `Log Split (${uniqueSplitCategories} categories)` : 'Log Expense'
+        )}
       </Button>
     </form>
   );
@@ -458,7 +663,6 @@ function ImportTab({
   const fileRef = useRef<HTMLInputElement>(null);
   const allCategories = getBudgetCategories();
 
-  // Fetch categories when project changes
   useEffect(() => {
     if (!selectedProject) { setExistingCategories([]); return; }
     supabase
@@ -560,7 +764,6 @@ function ImportTab({
 
   return (
     <div className="p-4 space-y-4" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-      {/* Project Selector */}
       <div className="space-y-2">
         <Label>Project <span className="text-destructive">*</span></Label>
         <ProjectAutocomplete projects={projects} value={selectedProject} onSelect={setSelectedProject} placeholder="Select project for import..." filterActive={true} />
@@ -568,9 +771,7 @@ function ImportTab({
 
       {!selectedProject && (
         <div className="text-center py-8 space-y-3">
-          <p className="text-muted-foreground text-sm">
-            Select a project above to begin importing expenses.
-          </p>
+          <p className="text-muted-foreground text-sm">Select a project above to begin importing expenses.</p>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-medium">
             <FileSpreadsheet className="h-3.5 w-3.5" />
             Best for adding numerous expenses at once
@@ -600,7 +801,6 @@ function ImportTab({
           </div>
           <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFile} />
 
-          {/* AI Prompt Helper */}
           <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
@@ -738,7 +938,7 @@ export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreat
               Add Expense
             </DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto">
+          <div className="overflow-y-auto flex-1">
             <ModalContent projects={projects} onExpenseCreated={onExpenseCreated} onClose={handleClose} />
           </div>
         </DrawerContent>
@@ -748,8 +948,8 @@ export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[85vh] overflow-y-auto" onDragOver={(e) => e.preventDefault()}>
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader className="p-6 pb-0">
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-primary" />
             Add Expense
