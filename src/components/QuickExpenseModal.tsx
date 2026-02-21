@@ -557,11 +557,19 @@ function ExpenseForm({
 
                 {/* Summary footer */}
                 {splitMode && (
-                  <div className="px-3 py-2 border-t border-border bg-primary/5 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
-                      Splitting into <span className="font-semibold text-foreground">{uniqueSplitCategories}</span> {uniqueSplitCategories === 1 ? 'category' : 'categories'}
-                    </span>
-                    <span className="text-xs font-mono font-semibold text-primary">${splitTotal.toFixed(2)}</span>
+                  <div className="px-3 py-2 border-t border-border bg-primary/5 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        Splitting into <span className="font-semibold text-foreground">{uniqueSplitCategories}</span> {uniqueSplitCategories === 1 ? 'category' : 'categories'}
+                      </span>
+                      <span className="text-xs font-mono font-semibold text-primary">${splitTotal.toFixed(2)}</span>
+                    </div>
+                    {includeTax && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Incl. tax — amount logged to budget</span>
+                        <span className="text-xs font-mono font-semibold text-primary">${calculateTotal().toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
