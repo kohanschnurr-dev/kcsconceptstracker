@@ -1,118 +1,84 @@
 
 
-## Add Line-Item Category Breakdown to Manual Expense Form
+## Add Scanning Loading Animation
 
-### What this does
-After scanning a receipt (photo, PDF, or pasted text), the form will show the parsed line items with per-item category dropdowns -- just like the SmartSplit flow does for QuickBooks users. The user can review, edit categories and quantities, then submit. Instead of one expense record, the system creates one expense per category group, with proportional amounts.
+### What Changes
+
+When a user clicks "Scan Receipt" (for photos, PDFs, or documents), the current UI just shows a spinner with "Scanning..." text on the button. This plan replaces that with a polished, full-section loading animation that fills the scan area -- showing progressive status messages and an animated progress bar to give the feel of a real document scan.
 
 ### Changes to `src/components/QuickExpenseModal.tsx`
 
-**1. Store line items from parsed receipt**
+**1. Replace the simple button spinner with a full scanning overlay**
 
-Add new state variables to the `ExpenseForm` component:
-- `parsedLineItems` -- array of line items from the image/text parser
-- `editableCategories` -- per-item category overrides (same pattern as SmartSplit)
-- `editableQuantities` -- per-item quantity overrides
-- `showLineItems` -- boolean toggle to show/hide the breakdown view
+When `isParsingImage` is true, instead of showing the file preview + disabled "Scanning..." button, render an animated scanning state that fills the entire scan section area:
 
-**2. Wire both parsers to populate line items**
+- A pulsing document icon (or the file preview dimmed with an overlay)
+- An animated progress bar that simulates scan progress over time (e.g., 0% to 90% over ~8 seconds, then holds until complete)
+- Rotating status messages that cycle every ~2 seconds:
+  - "Reading document..."
+  - "Extracting line items..."
+  - "Identifying categories..."
+  - "Matching vendors..."
+  - "Finalizing..."
 
-- `handleParseReceiptImage`: if `parsed.line_items` exists and has items, store them in `parsedLineItems` and initialize `editableCategories`/`editableQuantities` from the AI suggestions
-- `handleParseReceiptText`: the text parser currently does not return line items, so this path continues as single-expense (no change needed there)
+**2. Simulated progress with `useEffect` timer**
 
-**3. Render line-item breakdown UI (when available)**
+Add a progress state and a `useEffect` that runs when `isParsingImage` becomes true:
+- Starts at 0, increments smoothly toward 90% using an interval
+- Jumps to 100% when parsing completes (when `isParsingImage` flips to false)
+- Status message index cycles based on progress thresholds
 
-After the scan section and before Project/Category, show a collapsible "Receipt Breakdown" section when `parsedLineItems.length > 0`:
-- Each line item row shows: item name, editable quantity, unit price, category dropdown, line total
-- Category dropdown uses `getBudgetCategories()` (same list as existing category selector)
-- A summary footer shows the split total vs. scanned total
-- A toggle to switch between "Split by Category" and "Single Expense" mode
+**3. Visual design**
 
-**4. Update submit logic**
-
-When line items are present and split mode is active:
-- Group line items by their assigned category
-- For each category group, calculate proportional amount (scaled to match the entered total)
-- Create one `expenses` row per category group, each with appropriate `category_id`, proportional `amount`, and item notes in `description`
-- Upload receipt once, attach the same `receipt_url` to all split records
-- Show toast: "Split into X categories for [vendor]"
-
-When no line items or single-expense mode: existing submit logic unchanged.
-
-**5. Hide single Project/Category selectors when in split mode**
-
-When split mode is active, the per-item categories replace the single Category dropdown. The Project selector remains (all splits go to the same project). The Type (Product/Labor) toggle also remains as a global setting for all splits.
+The scanning animation will:
+- Use the existing `Progress` component from `src/components/ui/progress.tsx`
+- Show the file name below the animation so the user knows what's being scanned
+- Use subtle `animate-pulse` on the icon and a gradient shimmer on the progress bar
+- Match the existing primary color scheme (golden/amber tones from the screenshot)
 
 ### Technical Details
 
-**Line item state initialization (after image parse):**
+**New state variables:**
 ```typescript
-const [parsedLineItems, setParsedLineItems] = useState<Array<{
-  item_name: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  suggested_category: string;
-}>>([]);
-const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
-const [editableQuantities, setEditableQuantities] = useState<Record<number, number>>({});
-const [splitMode, setSplitMode] = useState(false);
+const [scanProgress, setScanProgress] = useState(0);
+const [scanMessage, setScanMessage] = useState('');
 ```
 
-**In handleParseReceiptImage, after existing auto-fill:**
+**Progress simulation effect:**
 ```typescript
-if (parsed.line_items?.length > 0) {
-  setParsedLineItems(parsed.line_items);
-  const cats: Record<number, string> = {};
-  const qtys: Record<number, number> = {};
-  parsed.line_items.forEach((item, idx) => {
-    cats[idx] = item.suggested_category || 'misc';
-    qtys[idx] = item.quantity || 1;
-  });
-  setEditableCategories(cats);
-  setEditableQuantities(qtys);
-  setSplitMode(true);
-}
+useEffect(() => {
+  if (!isParsingImage) { setScanProgress(0); return; }
+  setScanProgress(5);
+  const messages = [
+    'Reading document...',
+    'Extracting line items...',
+    'Identifying categories...',
+    'Matching vendors...',
+    'Finalizing...',
+  ];
+  let progress = 5;
+  const interval = setInterval(() => {
+    progress += Math.random() * 8 + 2;
+    if (progress > 90) progress = 90;
+    setScanProgress(Math.round(progress));
+    const msgIdx = Math.min(Math.floor(progress / 20), messages.length - 1);
+    setScanMessage(messages[msgIdx]);
+  }, 800);
+  return () => clearInterval(interval);
+}, [isParsingImage]);
 ```
 
-**Submit with split mode:**
-```typescript
-// Group by category
-const groups = {};
-parsedLineItems.forEach((item, idx) => {
-  const cat = editableCategories[idx] || item.suggested_category;
-  const qty = editableQuantities[idx] ?? item.quantity;
-  const total = qty * item.unit_price;
-  if (!groups[cat]) groups[cat] = { items: [], total: 0 };
-  groups[cat].items.push({ ...item, qty, total });
-  groups[cat].total += total;
-});
-
-// Scale proportionally to match entered amount
-const rawTotal = Object.values(groups).reduce((s, g) => s + g.total, 0);
-for (const cat of Object.keys(groups)) {
-  const proportion = rawTotal > 0 ? groups[cat].total / rawTotal : 0;
-  const scaledAmount = calculateTotal() * proportion;
-  // Insert expense with this category + scaled amount
-}
+**Scanning UI (replaces file preview area when scanning):**
+```
+[Scan Receipt section border]
+  [Pulsing Sparkles icon]
+  [Progress bar: 0% -> 90%]
+  [Status: "Extracting line items..."]
+  [File name: "The Home Depot.pdf"]
+[/section]
 ```
 
-**UI layout when split mode is active:**
-```
-[Scan Receipt Section]
-[Receipt Breakdown]       <-- NEW: line items with category dropdowns
-  Item 1  qty x $price   [Category v]  $total
-  Item 2  qty x $price   [Category v]  $total
-  Split Total: $xxx.xx
-[Project]                 <-- single project for all splits
-[Type: Product / Labor]   <-- global type
-[Amount] [Date]           <-- total amount (auto-filled, still editable)
-[Contractor] [Payment]
-[Description]             <-- hidden in split mode (notes come from items)
-[Tax toggle]
-[Total]
-[Log Expense]
-```
+When `isParsingImage` completes, the progress jumps to 100%, then the breakdown UI appears.
 
 ### Files Changed
-- `src/components/QuickExpenseModal.tsx` -- add line-item state, breakdown UI, split submit logic
+- `src/components/QuickExpenseModal.tsx` -- add scanning animation states, progress effect, and animated UI
