@@ -91,7 +91,7 @@ import { ProjectTasks } from '@/components/project/ProjectTasks';
 
 import { ProjectVendors } from '@/components/project/ProjectVendors';
 import { ProjectInfo } from '@/components/project/ProjectInfo';
-import { ExportReports } from '@/components/project/ExportReports';
+
 import { PendingBudgetBanner } from '@/components/project/PendingBudgetBanner';
 import { PendingBudgetDialog } from '@/components/project/PendingBudgetDialog';
 import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
@@ -1151,20 +1151,6 @@ export default function ProjectDetail() {
                   transactionCostActual={transactionCostActual}
                   holdingCostActual={holdingCostActual}
                   onSaved={() => fetchProjectData(false)}
-                />
-                <ExportReports 
-                  project={{
-                    id: project.id,
-                    name: project.name,
-                    address: project.address,
-                    total_budget: totalBudget,
-                    start_date: project.start_date,
-                    status: project.status,
-                    purchase_price: project.purchase_price,
-                    arv: project.arv,
-                  }}
-                  categories={categories}
-                  expenses={allExpensesForExport}
                 />
               </>
             )}

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Save, TrendingUp, DollarSign, Percent, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ExportReports } from '@/components/project/ExportReports';
+
 
 interface ContractorFinancialsTabProps {
   projectId: string;
@@ -243,21 +243,6 @@ export function ContractorFinancialsTab({
         )}
       </div>
 
-      {/* Export */}
-      <ExportReports
-        project={{
-          id: projectId,
-          name: projectName,
-          address: projectAddress,
-          total_budget: totalBudget,
-          start_date: projectStartDate,
-          status: projectStatus as any,
-          purchase_price: contractValue,
-          arv: undefined,
-        }}
-        categories={categories}
-        expenses={expenses}
-      />
     </div>
   );
 }
