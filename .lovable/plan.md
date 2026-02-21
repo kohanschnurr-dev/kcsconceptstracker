@@ -1,38 +1,25 @@
 
 
-## Add "Take Photo / Upload File" UI to Add Task Dialog
+## Rebrand Line Items as Subtasks
 
 ### What's Changing
 
-Replace the current `PasteableTextarea` photo approach in the Add Task dialog with the same dashed-border "Take Photo / Upload File" button pattern used in the Add Expense modal. This gives tasks a consistent, prominent photo upload area matching the rest of the app.
+Line items are being reframed as **subtasks** -- a checklist of things to do under the main task (e.g., "Frank's to-do list" with multiple items underneath). No dollar amounts needed.
 
-### UI Pattern (matching Add Expense)
+### UI Changes
 
-A dashed-border box with a label ("Photos") containing:
-- Two side-by-side buttons: "Take Photo" (camera icon) and "Upload File" (upload icon)
-- When photos are uploaded, thumbnail previews appear inside the box with remove (X) buttons
-- Ctrl+V paste and drag-and-drop still work on the entire box area
-- The Description field reverts to a standard Textarea (no longer merged with photos)
+- Rename label from "Line Items (optional)" to "Subtasks (optional)"
+- Remove the dollar amount input from each row -- each subtask is just a single text input + X button
+- Rename placeholder from "Item description" to "Subtask..."
+- Rename button from "+ Add Line Item" to "+ Add Subtask"
+- Each row: full-width text Input + X remove button (no amount column)
 
-### Technical Details
+### Data Changes
 
-**File: `src/components/dashboard/AddTaskDialog.tsx`**
+- Change state from `{ text: string; amount: string }[]` to simple `string[]`
+- Update the JSON encoding in `handleSave` to store subtasks as a string array instead of objects (delimiter stays `---LINE_ITEMS---` for backwards compat, but payload is `["subtask1", "subtask2"]`)
+- Update `resetForm`, `addLineItem`, `removeLineItem`, `updateLineItem` helpers accordingly
 
-1. Remove `PasteableTextarea` import; re-add standard `Textarea` import
-2. Add `Camera`, `Upload` icon imports from lucide-react
-3. Add a hidden `<input type="file" accept="image/*" />` ref
-4. Add a `handleReceiptPhotoClick` that opens file input with `capture="environment"`
-5. Add `handleFileSelect` to upload selected files to `task-photos` bucket via Supabase storage (same logic already in `QuickTaskInput`)
-6. Split "Description and Photos" into two sections:
-   - **Description**: Standard `Textarea` for text/notes
-   - **Photos**: New dashed-border box (`border-2 border-dashed border-primary/30 bg-primary/5 rounded-lg p-3`) containing:
-     - Label row with camera icon and "Photos" text
-     - `grid grid-cols-2 gap-2` with "Take Photo" and "Upload File" outline buttons
-     - Thumbnail strip below when `photoUrls.length > 0` (reuse existing thumbnail pattern with X overlay)
-     - Drag-and-drop + paste listeners on the container div
-7. Keep all existing save logic, line items, and photo_urls handling unchanged
+### File Changed
 
-### Files Changed
-
-- `src/components/dashboard/AddTaskDialog.tsx` -- replace PasteableTextarea with dashed-border photo upload UI matching Add Expense pattern
-
+- `src/components/dashboard/AddTaskDialog.tsx` -- simplify line items into subtask strings, remove amount inputs, update labels
