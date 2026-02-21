@@ -126,12 +126,13 @@ function ExpenseForm({
     ];
     let progress = 5;
     const interval = setInterval(() => {
-      progress += Math.random() * 8 + 2;
-      if (progress > 90) progress = 90;
+      const remaining = 90 - progress;
+      const increment = Math.max(0.5, remaining * 0.06 + Math.random() * 0.8);
+      progress = Math.min(progress + increment, 90);
       setScanProgress(Math.round(progress));
       const msgIdx = Math.min(Math.floor(progress / 20), messages.length - 1);
       setScanMessage(messages[msgIdx]);
-    }, 800);
+    }, 600);
     return () => clearInterval(interval);
   }, [isParsingImage]);
 
