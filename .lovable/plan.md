@@ -1,29 +1,17 @@
 
 
-## Trim the Report Preview Modal to Match the One-Page PDF
-
-### Goal
-Remove the "Where the Money Went", "Category Breakdown", and "Scope Creep" sections from the in-app report preview dialog so it matches the condensed one-page PDF.
+## Fix Report Layout and Data Display
 
 ### Changes in `src/components/project/ProjectReport.tsx`
 
-**1. Remove "Where the Money Went" section (lines 531-581)**
-Delete the entire donut chart section.
+**1. Remove "EST. ROI" card from Budget Snapshot (line 376)**
+Remove the 4th stat card from the grid array and change the grid from `grid-cols-4` to `grid-cols-3`.
 
-**2. Remove "Category Breakdown" section (lines 583-630)**
-Delete the bar chart / budget-vs-spent section.
+**2. Swap section order: Deal Financials above Budget Snapshot**
+Move the "DEAL FINANCIALS & ROI" section (lines 410-492) before the "BUDGET SNAPSHOT" section (lines 367-407). Update `sectionDelay` indices accordingly.
 
-**3. Remove "Scope Creep / Unbudgeted" section (lines 632-653)**
-Delete the unbudgeted spend warning section.
-
-**4. Simplify `handleDownloadPdf`**
-Since the modal no longer contains those sections, the clone-and-remove logic (removing indices 3, 4, 5) is no longer needed. The function can go back to using `reportRef.current.innerHTML` directly.
-
-**5. Clean up unused imports and variables**
-Remove references that are now only used by the deleted sections:
-- `ResponsiveContainer`, `PieChart`, `Pie`, `Cell`, `Tooltip` from recharts
-- `CHART_COLORS` constant
-- `donutData`, `barData`, `maxBarSpent`, `scopeCreepCats` computed values
+**3. Fix Loan Rate display (line 433)**
+Currently `dealField('Loan Rate', loanRate, '%')` passes the rate through `fmt()` which adds a `$` sign, producing "$6%". Replace with a dedicated rendering that shows just "6%" without the dollar sign. Change this line to use a custom display instead of `dealField`.
 
 ### Files Changed
 - `src/components/project/ProjectReport.tsx`
