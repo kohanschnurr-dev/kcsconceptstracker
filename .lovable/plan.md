@@ -1,44 +1,68 @@
 
 
-## Fix Holding Costs Display Value
+## Align Project Report Profit with Financials Tab
 
 ### Problem
-The report shows Holding Costs as $257 (the monthly figure) because the formula divides by 12. But the rest of the app -- Dashboard, Profit Breakdown, ProjectCard -- all display the **total** holding cost: `purchasePrice x holdingPct%`. For a $154K purchase at 2%, that's ~$3,080, which is what you expect to see.
+The Report and Financials tab use **different formulas**, producing different profit and ROI numbers:
 
-### Changes in `src/components/project/ProjectReport.tsx`
+| Factor | Financials (Calculator) | Report |
+|---|---|---|
+| Holding costs | PP x holdingPct% = $4,620 | (PP x pct / 12) x months = $385 |
+| Loan interest | Not subtracted | Subtracted (~$744) |
+| ROI denominator | PP + totalSpent | costBasis (PP + rehab + holding) |
 
-**1. Add a total holding cost variable and use it for display (around line 135)**
+These differences add up to thousands of dollars of discrepancy.
 
-Keep `holdPerMonth` for the cost basis calculation (which multiplies by months), but add a separate `holdingCostsTotal` for what gets shown in the Deal Financials section:
+### Solution
+Make the Report use the **exact same formula** as the ProfitCalculator:
 
-```
-// Keep existing monthly calc for cost basis:
-const holdPerMonth = holdingMode === 'flat'
-  ? (holdingFlat ?? 0)
-  : (pp ? (effectiveHoldingPct / 100) * pp / 12 : null);
+**1. Use total holding costs in profit calc (not monthly x months)**
 
-// Add total for display (matches Profit Breakdown logic):
-const holdingCostsTotal = holdingMode === 'flat'
-  ? (holdingFlat ?? 0)
-  : (pp ? (effectiveHoldingPct / 100) * pp : null);
-```
-
-**2. Update the dealField call (around line 401)**
-
-Pass `holdingCostsTotal` instead of `holdPerMonth` so the displayed value matches the $3,000+ range:
+Replace the time-based holding in `costBasis` with the flat total holding cost, matching the Calculator's `purchasePrice * (holdingPct / 100)`.
 
 ```
-{dealField(
-  holdingMode === 'flat'
-    ? 'Holding Costs (Flat)'
-    : `Holding Costs (${effectiveHoldingPct}%)`,
-  holdingCostsTotal   // <-- was holdPerMonth
-)}
+// Before:
+costBasis = pp + rehabCost + (holdPerMonth * holdPeriodMonths)
+
+// After:
+costBasis = pp + rehabCost + holdingCostsTotal
 ```
 
-### Why This Works
-- The cost basis calculation still uses the monthly figure multiplied by hold period months -- no change there.
-- The displayed "Holding Costs" value now matches every other financial view in the app.
+**2. Remove loan interest from profit**
+
+The Calculator does not subtract loan interest, so the Report shouldn't either. Remove `loanCost` from the net profit calculation and drop the Loan Amount / Loan Rate rows from the deal table (they aren't part of the Calculator's output).
+
+```
+// Before:
+netProfit = grossProfit - (loanCost ?? 0)
+
+// After:
+netProfit = grossProfit  // no loan deduction, matches Calculator
+```
+
+**3. Align ROI formula**
+
+Calculator: `profit / (PP + totalSpent)`. Report: `netProfit / costBasis`. Switch the report to match.
+
+```
+// Before:
+roi = netProfit / costBasis
+
+// After:
+roi = netProfit / (pp + rehabCost)  // matches Calculator's currentInvestment
+```
+
+### Technical Details
+
+All changes are in `src/components/project/ProjectReport.tsx`, lines ~142-164:
+
+- Line 142: Replace `holdPerMonth * holdPeriodMonths` with `holdingCostsTotal ?? 0` in the `costBasis` formula
+- Line 153: Change `netProfit = grossProfit - (loanCost ?? 0)` to `netProfit = grossProfit`
+- Lines 155-164: Simplify ROI to `netProfit / (pp + rehabCost) * 100`
+- Remove the Loan Amount and Loan Rate `dealField` rows from the UI (~lines 396-399) since they aren't used in the profit calc
+
+### Result
+The Report's Net Profit and ROI will match the Financials tab exactly.
 
 ### Files Changed
 - `src/components/project/ProjectReport.tsx`
