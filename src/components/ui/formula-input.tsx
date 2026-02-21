@@ -72,6 +72,12 @@ const FormulaInput = React.forwardRef<
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === '=' && isNumeric && !isFormulaMode) {
+        e.preventDefault();
+        setIsFormulaMode(true);
+        setLocalValue('=');
+        return;
+      }
       if (e.key === 'Enter' && isFormulaMode) {
         e.preventDefault();
         resolveFormula();
@@ -79,7 +85,7 @@ const FormulaInput = React.forwardRef<
       }
       onKeyDown?.(e);
     },
-    [isFormulaMode, resolveFormula, onKeyDown],
+    [isNumeric, isFormulaMode, resolveFormula, onKeyDown],
   );
 
   // When in formula mode, render as text to allow "=" and operators
