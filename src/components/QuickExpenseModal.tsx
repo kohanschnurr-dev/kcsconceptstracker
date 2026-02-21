@@ -728,6 +728,7 @@ function ImportTab({
   const [importing, setImporting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'attention'>('all');
   const fileRef = useRef<HTMLInputElement>(null);
   const allCategories = getBudgetCategories();
 
@@ -895,11 +896,11 @@ function ImportTab({
       {selectedProject && step === 'preview' && (
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="gap-1 text-success border-success">
+            <Badge variant="outline" className={`gap-1 text-success border-success cursor-pointer ${filter === 'all' ? 'ring-2 ring-success/30' : ''}`} onClick={() => setFilter('all')}>
               <CheckCircle2 className="h-3 w-3" />{readyRows.length} ready
             </Badge>
             {needsAttention.length > 0 && (
-              <Badge variant="outline" className="gap-1 text-warning border-warning">
+              <Badge variant="outline" className={`gap-1 text-warning border-warning cursor-pointer ${filter === 'attention' ? 'ring-2 ring-warning/30' : ''}`} onClick={() => setFilter('attention')}>
                 <AlertTriangle className="h-3 w-3" />{needsAttention.length} need attention
               </Badge>
             )}
@@ -922,9 +923,12 @@ function ImportTab({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row, idx) => (
-                  <TableRow key={idx} className={row.hasError ? 'bg-destructive/5' : !row.matchedCategory ? 'bg-warning/5' : ''}>
-                    <TableCell className="text-muted-foreground text-xs">{idx + 1}</TableCell>
+                {(filter === 'attention'
+                  ? rows.map((r, i) => ({ ...r, originalIdx: i })).filter(r => r.hasError || !r.matchedCategory)
+                  : rows.map((r, i) => ({ ...r, originalIdx: i }))
+                ).map((row) => (
+                  <TableRow key={row.originalIdx} className={row.hasError ? 'bg-destructive/5' : !row.matchedCategory ? 'bg-warning/5' : ''}>
+                    <TableCell className="text-muted-foreground text-xs">{row.originalIdx + 1}</TableCell>
                     <TableCell className="text-sm">{row.date}</TableCell>
                     <TableCell className="text-sm">{row.vendor || '—'}</TableCell>
                     <TableCell>
@@ -933,7 +937,7 @@ function ImportTab({
                       ) : (
                         <div className="space-y-1">
                           <span className="text-sm text-warning">"{row.category}"</span>
-                          <Select value={row.suggestedCategory || ''} onValueChange={(v) => updateRowCategory(idx, v)}>
+                          <Select value={row.suggestedCategory || ''} onValueChange={(v) => updateRowCategory(row.originalIdx, v)}>
                             <SelectTrigger className="h-7 text-xs w-[180px]"><SelectValue placeholder="Assign category..." /></SelectTrigger>
                             <SelectContent>
                               {allCategories.map(c => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}
