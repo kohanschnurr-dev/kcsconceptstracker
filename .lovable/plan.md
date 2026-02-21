@@ -1,40 +1,50 @@
 
-
-## Show Tax-Inclusive Total in Split Summary
+## Auto-Select Project in Import Tab When Inside a Project
 
 ### Problem
 
-When tax is enabled, the split breakdown shows the pre-tax subtotal (e.g. $440.28) while the actual amount logged to the budget is the tax-inclusive total (e.g. $476.60). This can confuse users into thinking their budget will show the wrong number.
+When opening "Add Expense > Import CSV" from within a project's Budget page, the modal still shows a project selector dropdown and asks you to pick a project -- even though you're already in one. This is unnecessary friction.
 
-### Fix
+### Root Cause
 
-Add a helper line in the split summary footer showing the tax-inclusive total that will actually be logged, so users see both the line-item subtotal and the final amount hitting their budget.
+`ProjectBudget.tsx` already passes only the current project in the `projects` array, but `ImportTab` doesn't take advantage of this. It always starts with `selectedProject = ''` and renders the full selector.
 
-### Changes to `src/components/QuickExpenseModal.tsx`
+### Fix in `src/components/QuickExpenseModal.tsx`
 
-**Update the split summary footer (lines 559-566)** to show the tax-inclusive total when tax is enabled:
+**1. Auto-select when only one project exists**
+
+In the `ImportTab` component, initialize `selectedProject` to the single project's ID when only one is provided:
+
+```typescript
+const [selectedProject, setSelectedProject] = useState(
+  projects.length === 1 ? projects[0].id : ''
+);
+```
+
+**2. Hide the project selector when pre-selected**
+
+Wrap the project selector `<Label>` and `<ProjectAutocomplete>` block in a condition so it only renders when there are multiple projects:
 
 ```tsx
-{/* Summary footer */}
-{splitMode && (
-  <div className="px-3 py-2 border-t border-border bg-primary/5 space-y-1">
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-muted-foreground">
-        Splitting into <span className="font-semibold text-foreground">{uniqueSplitCategories}</span> {uniqueSplitCategories === 1 ? 'category' : 'categories'}
-      </span>
-      <span className="text-xs font-mono font-semibold text-primary">${splitTotal.toFixed(2)}</span>
-    </div>
-    {includeTax && (
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Incl. tax — amount logged to budget</span>
-        <span className="text-xs font-mono font-semibold text-primary">${calculateTotal().toFixed(2)}</span>
-      </div>
-    )}
+{projects.length > 1 && (
+  <div className="space-y-2">
+    <Label>Project <span className="text-destructive">*</span></Label>
+    <ProjectAutocomplete ... />
   </div>
 )}
 ```
 
-This adds a second line below the category count that only appears when tax is toggled on, showing the actual tax-inclusive total that will be recorded in the budget.
+**3. Also hide the "Select a project" empty state**
+
+The empty state message ("Select a project above to begin importing expenses") should only appear when there are multiple projects and none is selected yet:
+
+```tsx
+{!selectedProject && projects.length > 1 && (
+  <div className="text-center py-8 space-y-3">...</div>
+)}
+```
+
+No changes to styling, colors, or layout. The same logic already exists implicitly for `ExpenseForm` (the Single Expense tab) -- this just brings `ImportTab` in line.
 
 ### Files Changed
-- `src/components/QuickExpenseModal.tsx` -- add tax-inclusive total line to split summary footer
+- `src/components/QuickExpenseModal.tsx` -- auto-select project and hide selector in ImportTab when only one project is available
