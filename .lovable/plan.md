@@ -1,35 +1,43 @@
 
 
-## Make Scope of Work Recipient Universal
+## Add Dollar Amount to Each Work Item Line
 
 ### What Changes
 
-Replace the vendor-specific dropdown with a simple free-text "Recipient" input field. The Scope of Work generator should work for anyone -- a contractor giving it to a homeowner, you giving it to a GC, or any other scenario. No vendor selection required.
+Each work item row (in Work Items, Also Included, and Exclusions) will gain an optional dollar amount input. This lets users assign a cost to individual line items. The PDF output will include the amount next to each item and show a subtotal per section.
 
 ### Details
 
-- Remove the "Select Vendor" dropdown and the entire Vendor section
-- Replace it with a free-text "Recipient" input in the Document Info section (e.g. "John Smith", "ABC Construction", "Homeowner")
-- Remove the `vendors` prop from the component entirely (no longer needed)
-- Remove the vendor-related state (`selectedVendorId`, `selectedVendor`) and the effect that auto-fills trades from vendor
-- The generate button will no longer require a vendor -- it will always be enabled
-- In the PDF output, change "Contractor:" to "Recipient:" to keep it universal
-- Update both parent usages (`Vendors.tsx` and `DocumentsGallery.tsx`) to stop passing the `vendors` prop
+- Add a `$` amount input (narrow, right-aligned) between the text input and the camera button on each row
+- The amount displays as empty when zero, following the existing numeric input convention
+- The PDF output formats each line as `"Item description — $X,XXX.XX"` when an amount is present, and shows a section subtotal
 
 ### Technical Details
 
+**`src/components/vendors/WorkItemLines.tsx`**
+
+1. Add `amount` field to the `WorkItem` interface:
+   ```
+   export interface WorkItem {
+     text: string;
+     amount: number;
+     photos: string[];
+   }
+   ```
+
+2. Add a narrow `$` Input (type="number", w-24) between the text input and camera button in each row
+
+3. Update `addItem` to initialize `amount: 0`
+
+4. Display a running total at the bottom of the section when any item has an amount > 0
+
 **`src/components/vendors/ScopeOfWorkSheet.tsx`**
 
-1. Remove `Vendor` interface and `vendors` from `ScopeOfWorkSheetProps`
-2. Replace `selectedVendorId` state with a `recipientName` string state
-3. Remove the `selectedVendor` lookup and the `useEffect` that syncs trades from vendor
-4. Remove the vendor validation in `handleGenerate` -- the button is always enabled
-5. Change `Contractor: ${selectedVendor.name}` to `Recipient: ${recipientName}` in PDF output
-6. Replace the Vendor section UI with a "Recipient" text input inside the Document Info grid
-7. Update reset logic in `handleOpenChange`
-8. Remove the `disabled={!selectedVendorId}` from the generate button
+1. Update `handleGenerate` to include amounts in the PDF text:
+   - Each line: `"Remove old water heater — $500.00"` (only if amount > 0)
+   - Add subtotal line per section when amounts exist
 
-**`src/pages/Vendors.tsx`** -- Remove `vendors={vendors}` prop from `<ScopeOfWorkSheet>`
+2. Reset logic already handles the array clearing, no changes needed there
 
-**`src/components/project/DocumentsGallery.tsx`** -- Remove `vendors={...}` prop from `<ScopeOfWorkSheet>`
+No database changes required.
 
