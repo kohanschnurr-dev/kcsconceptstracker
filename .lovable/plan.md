@@ -1,23 +1,17 @@
 
 
-## Fix: Due Date Input Alignment in Edit Task Dialogs
+## Fix: Dialog Still Allows Horizontal Scroll on Mobile
 
 ### Problem
-The due date input box in the Edit Task dialogs is not properly aligned on mobile -- it doesn't fill the full width of the container, making the layout look inconsistent compared to other fields.
+The dialog uses `w-full` which makes it exactly 100% of the viewport width on mobile. Even with `overflow-x-hidden` on the dialog content, the dialog container itself sits flush against both screen edges with no breathing room. Any tiny pixel rounding or browser chrome behavior can cause the page body to become horizontally scrollable.
 
 ### Solution
-Add `className="w-full"` to the date `Input` in all three Edit Task dialogs so it stretches to match the other fields.
+Replace `w-full` with `w-[calc(100vw-2rem)]` in the base `DialogContent` component. This ensures a 1rem (16px) margin on each side of the dialog on mobile, preventing edge-to-edge rendering that triggers horizontal scroll. The `max-w-lg` still caps the width on larger screens.
 
-### Files to Change
+### File to Change
 
-1. **`src/pages/DailyLogs.tsx`** (line ~1151)
-   - Add `className="w-full"` to the due date Input
+**`src/components/ui/dialog.tsx`** (line 39)
+- Change `w-full max-w-lg` to `w-[calc(100vw-2rem)] max-w-lg`
 
-2. **`src/components/command-center/CommandCenter.tsx`** (line ~434)
-   - Add `className="w-full"` to the due date Input
-
-3. **`src/components/project/ProjectTasks.tsx`** (line ~302)
-   - Add `className="w-full"` to the due date Input
-
-All three are the same one-prop addition to ensure consistent full-width rendering on mobile.
+This is a single class change in one file that affects all dialogs globally.
 
