@@ -269,7 +269,7 @@ export function ProjectReport({
 
     @media print {
       @page { size: A4 portrait; margin: 0.5in; }
-      body { background: white !important; }
+      body { background: hsl(var(--background)) !important; }
       * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -292,7 +292,7 @@ export function ProjectReport({
       /* Prevent content splitting */
       section { break-inside: avoid; margin-bottom: 12px; }
       .bg-card, .bg-warning\\/5 { break-inside: avoid; }
-      .grid { break-inside: avoid; }
+      
       .print\\:break-before-page { page-break-before: always; break-before: page; }
 
       /* Force background colors in print */
@@ -576,7 +576,7 @@ export function ProjectReport({
           </section>
 
           {/* ═══ CATEGORY BREAKDOWN ═══ */}
-          <section className="report-anim print:break-before-page" style={sectionDelay(4)}>
+          <section className="report-anim" style={sectionDelay(4)}>
             <SectionHead title="CATEGORY BREAKDOWN" />
 
             <div className="bg-card border border-border rounded-lg p-5">
