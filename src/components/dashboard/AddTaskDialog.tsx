@@ -9,6 +9,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { TaskPriority, TaskStatus } from '@/types/task';
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/types/task';
+import { type Subtask, serializeDescription } from '@/lib/taskSubtasks';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { Textarea } from '@/components/ui/textarea';
 import { toast as sonnerToast } from 'sonner';
@@ -28,7 +31,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
   const [projectId, setProjectId] = useState('');
   const [projects, setProjects] = useState<{ id: string; name: string; address?: string; status?: string; projectType?: string }[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [subtasks, setSubtasks] = useState<string[]>([]);
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -98,11 +101,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      let finalDescription = description.trim();
-      const validSubtasks = subtasks.filter(s => s.trim());
-      if (validSubtasks.length > 0) {
-        finalDescription += '\n---LINE_ITEMS---\n' + JSON.stringify(validSubtasks);
-      }
+      const finalDescription = serializeDescription(description.trim(), subtasks);
 
       const { error } = await supabase.from('tasks').insert({
         user_id: user.id,
@@ -129,10 +128,13 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
     }
   };
 
-  const addSubtask = () => setSubtasks(prev => [...prev, '']);
+  const addSubtask = () => setSubtasks(prev => [...prev, { text: '', done: false }]);
   const removeSubtask = (index: number) => setSubtasks(prev => prev.filter((_, i) => i !== index));
   const updateSubtask = (index: number, value: string) => {
-    setSubtasks(prev => prev.map((s, i) => i === index ? value : s));
+    setSubtasks(prev => prev.map((s, i) => i === index ? { ...s, text: value } : s));
+  };
+  const toggleSubtask = (index: number) => {
+    setSubtasks(prev => prev.map((s, i) => i === index ? { ...s, done: !s.done } : s));
   };
 
   return (
@@ -221,13 +223,18 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
 
           {/* Subtasks */}
           <div>
-            <Label>Subtasks (optional)</Label>
+            <Label>Subtasks</Label>
             <div className="space-y-2 mt-1">
               {subtasks.map((s, i) => (
                 <div key={i} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={s.done}
+                    onCheckedChange={() => toggleSubtask(i)}
+                    className="shrink-0"
+                  />
                   <Input
-                    className="flex-1"
-                    value={s}
+                    className={cn("flex-1", s.done && "line-through text-muted-foreground")}
+                    value={s.text}
                     onChange={e => updateSubtask(i, e.target.value)}
                     placeholder="Subtask..."
                   />

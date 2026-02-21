@@ -23,7 +23,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Plus, X } from 'lucide-react';
-import { parseDescription, serializeDescription } from '@/lib/taskSubtasks';
+import { parseDescription, serializeDescription, type Subtask } from '@/lib/taskSubtasks';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 
 export function CommandCenter() {
   const { toast } = useToast();
@@ -43,7 +45,7 @@ export function CommandCenter() {
     priorityLevel: 'medium' as TaskPriority,
     status: 'pending' as TaskStatus,
   });
-  const [editSubtasks, setEditSubtasks] = useState<string[]>([]);
+  const [editSubtasks, setEditSubtasks] = useState<Subtask[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -339,19 +341,28 @@ export function CommandCenter() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Subtasks (optional)</Label>
+              <Label>Subtasks</Label>
               <div className="space-y-2">
                 {editSubtasks.map((st, idx) => (
                   <div key={idx} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={st.done}
+                      onCheckedChange={(checked) => {
+                        const updated = [...editSubtasks];
+                        updated[idx] = { ...updated[idx], done: !!checked };
+                        setEditSubtasks(updated);
+                      }}
+                      className="shrink-0"
+                    />
                     <Input
-                      value={st}
+                      value={st.text}
                       onChange={(e) => {
                         const updated = [...editSubtasks];
-                        updated[idx] = e.target.value;
+                        updated[idx] = { ...updated[idx], text: e.target.value };
                         setEditSubtasks(updated);
                       }}
                       placeholder="Subtask..."
-                      className="flex-1"
+                      className={cn("flex-1", st.done && "line-through text-muted-foreground")}
                     />
                     <Button
                       variant="ghost"
@@ -368,7 +379,7 @@ export function CommandCenter() {
                   variant="outline"
                   size="sm"
                   className="w-full gap-1"
-                  onClick={() => setEditSubtasks([...editSubtasks, ''])}
+                  onClick={() => setEditSubtasks([...editSubtasks, { text: '', done: false }])}
                 >
                   <Plus className="h-3 w-3" />
                   Add Subtask
