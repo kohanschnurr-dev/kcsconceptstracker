@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, Filter, Loader2 } from 'lucide-react';
 import { getBudgetCategories } from '@/types';
 import { toast } from 'sonner';
 import { formatDisplayDateNumeric } from '@/lib/dateUtils';
@@ -41,9 +41,12 @@ interface ExportReportsProps {
   project: Project;
   categories: Category[];
   expenses: Expense[];
+  filteredExpenses?: Expense[];
 }
 
-export function ExportReports({ project, categories, expenses }: ExportReportsProps) {
+export function ExportReports({ project, categories, expenses, filteredExpenses }: ExportReportsProps) {
+  const resolvedFiltered = filteredExpenses ?? expenses;
+  const isFiltered = resolvedFiltered.length !== expenses.length;
   const [exportType, setExportType] = useState<string>('expenses-csv');
   const [isExporting, setIsExporting] = useState(false);
 
@@ -118,6 +121,42 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
     ].join('\n');
 
     downloadFile(csvContent, `${project.name.replace(/\s+/g, '_')}_expenses_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+  };
+
+  const exportFilteredCSV = () => {
+    const data = resolvedFiltered;
+    const headers = ['Date', 'Contractor', 'Category', 'Description', 'Type', 'Total', 'Payment Method'];
+    const rows = data.map(exp => {
+      const total = exp.includes_tax ? Number(exp.amount) + (Number(exp.tax_amount) || 0) : Number(exp.amount);
+      const type = exp.expense_type ? exp.expense_type.charAt(0).toUpperCase() + exp.expense_type.slice(1) : '';
+      return [
+        formatDate(exp.date),
+        exp.vendor_name || '',
+        getCategoryLabel(exp.category_id),
+        exp.description || '',
+        type,
+        formatCurrencyForCSV(total),
+        exp.payment_method || '',
+      ];
+    });
+
+    const grandTotal = data.reduce((sum, exp) => {
+      const total = exp.includes_tax ? Number(exp.amount) + (Number(exp.tax_amount) || 0) : Number(exp.amount);
+      return sum + total;
+    }, 0);
+    rows.push(['', '', '', 'TOTALS', '', formatCurrencyForCSV(grandTotal), '']);
+
+    const csvContent = [
+      `"Project:","${project.name}"`,
+      `"Address:","${project.address}"`,
+      `"Export Date:","${new Date().toLocaleDateString()}"`,
+      `"Filter:","${data.length} of ${expenses.length} expenses"`,
+      '',
+      headers.map(h => `"${h}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    downloadFile(csvContent, `${project.name.replace(/\s+/g, '_')}_filtered_expenses_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
   };
 
   const exportBudgetSummaryCSV = () => {
@@ -258,6 +297,10 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
           exportFullReportCSV();
           toast.success('Full report exported successfully');
           break;
+        case 'filtered-csv':
+          exportFilteredCSV();
+          toast.success('Filtered expenses exported successfully');
+          break;
         default:
           toast.error('Invalid export type');
       }
@@ -273,7 +316,7 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
       <p className="text-sm text-muted-foreground">
         Download project data for your accountant or CPA
       </p>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div 
           className={`p-3 rounded-lg border-2 cursor-pointer transition-all h-full ${
             exportType === 'expenses-csv' 
@@ -324,12 +367,36 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
             Complete project financials, profit analysis, and all expenses
           </p>
         </div>
+
+        <div 
+          className={`p-3 rounded-lg border-2 transition-all h-full ${
+            !isFiltered 
+              ? 'opacity-50 cursor-not-allowed border-border' 
+              : exportType === 'filtered-csv'
+                ? 'border-primary bg-primary/5 cursor-pointer'
+                : 'border-border hover:border-primary/50 cursor-pointer'
+          }`}
+          onClick={() => isFiltered && setExportType('filtered-csv')}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Filter className="h-4 w-4 text-orange-500" />
+            <span className="text-sm font-medium">Filtered Results</span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-tight">
+            {isFiltered 
+              ? `Export only the ${resolvedFiltered.length} currently filtered expenses`
+              : 'Apply a filter to use this option'}
+          </p>
+        </div>
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t">
         <div className="text-xs text-muted-foreground">
           <span className="font-medium">{expenses.length}</span> expenses • 
           <span className="font-medium ml-1">{categories.length}</span> categories
+          {isFiltered && (
+            <> • <span className="font-medium text-orange-500">{resolvedFiltered.length}</span> filtered</>
+          )}
         </div>
         <Button onClick={handleExport} disabled={isExporting}>
           {isExporting ? (

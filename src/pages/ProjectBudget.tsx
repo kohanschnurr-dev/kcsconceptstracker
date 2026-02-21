@@ -1640,6 +1640,7 @@ export default function ProjectBudget() {
               }}
               categories={categories}
               expenses={expenses}
+              filteredExpenses={filteredExpenses}
             />
           )}
         </DialogContent>
