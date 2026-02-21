@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { PasteableTextarea } from '@/components/PasteableTextarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
@@ -297,16 +297,20 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
       <div className="space-y-1.5">
         <Label className="flex items-center gap-1.5">
           <FileText className="h-4 w-4" />
-          Notes
+          Notes & Photos
         </Label>
-        <Textarea
+        <PasteableTextarea
           value={editDescription}
-          onChange={(e) => setEditDescription(e.target.value)}
-          placeholder="Add notes about this task..."
+          onChange={setEditDescription}
+          placeholder="Add notes about this task... (paste or drop images here)"
+          rows={3}
           className="min-h-[80px] resize-none"
+          bucketName="project-photos"
+          folderPath="task-photos"
+          uploadedImages={editPhotoUrls}
+          onImagesChange={setEditPhotoUrls}
         />
       </div>
-      <TaskPhotoUploader photos={editPhotoUrls} onPhotosChange={setEditPhotoUrls} />
     </div>
   );
 
