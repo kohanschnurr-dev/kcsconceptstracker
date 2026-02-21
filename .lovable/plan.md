@@ -1,32 +1,34 @@
 
 
-## Show Trash Button Only on Error Rows
+## Cleaner Error Indicator for Import Rows
 
 ### Problem
 
-The trash (remove) button currently appears on every row in the CSV import preview. It should only show on rows that have errors or need attention, since those are the ones users would want to discard.
+The error badge currently shows text like "Invalid amount" or "Invalid date" which takes up space. Replace these with a compact red "!" icon for a cleaner look.
 
 ### Changes
 
-#### 1. `src/components/project/ImportExpensesModal.tsx`
+**`src/lib/csvImportUtils.ts`** -- Remove the `errorMsg` string assignments. Keep the `hasError` boolean flag but stop setting descriptive text:
 
-In the last `<TableCell>` of each row, conditionally render the trash button only when `row.hasError || !row.matchedCategory`:
+- Line 180: `if (!parsedDate) { hasError = true; }`
+- Line 181: `if (isNaN(amount)) { hasError = true; }`
+
+**`src/components/project/ImportExpensesModal.tsx`** -- In the Status column, replace the destructive Badge with a red `AlertTriangle` or `AlertCircle` icon:
 
 ```tsx
-<TableCell>
-  {(row.hasError || !row.matchedCategory) && (
-    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(row.originalIdx)}>
-      <Trash2 className="h-3.5 w-3.5" />
-    </Button>
-  )}
-</TableCell>
+// Before
+{row.hasError ? (<Badge variant="destructive" className="text-xs">{row.errorMsg}</Badge>)
+
+// After
+{row.hasError ? (<AlertTriangle className="h-4 w-4 text-destructive" />)
 ```
 
-#### 2. `src/components/QuickExpenseModal.tsx`
+Also update the inline-editing condition checks -- currently they check `row.errorMsg?.toLowerCase().includes('date')` and `row.errorMsg?.toLowerCase().includes('amount')`. Since we're removing errorMsg text, switch to detecting the error source directly: show the date input when `row.hasError && !row.date` or the date is unparseable, and the amount input when `row.hasError && isNaN(row.amount)`.
 
-Same conditional logic in the ImportTab's preview table -- only show the trash button on rows with errors or unmatched categories.
+**`src/components/QuickExpenseModal.tsx`** -- Same status column and inline-editing changes.
 
 ### Files Changed
-- `src/components/project/ImportExpensesModal.tsx` -- conditional trash button
-- `src/components/QuickExpenseModal.tsx` -- conditional trash button
+- `src/lib/csvImportUtils.ts` -- remove errorMsg strings, keep hasError boolean
+- `src/components/project/ImportExpensesModal.tsx` -- red icon instead of text badge, update edit detection
+- `src/components/QuickExpenseModal.tsx` -- same changes
 
