@@ -275,7 +275,7 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
       </p>
       <div className="grid gap-4 sm:grid-cols-3">
         <div 
-          className={`p-4 rounded-lg border-2 cursor-pointer transition-all h-full ${
+          className={`p-3 rounded-lg border-2 cursor-pointer transition-all h-full ${
             exportType === 'expenses-csv' 
               ? 'border-primary bg-primary/5' 
               : 'border-border hover:border-primary/50'
@@ -283,16 +283,16 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
           onClick={() => setExportType('expenses-csv')}
         >
           <div className="flex items-center gap-2 mb-2">
-            <FileSpreadsheet className="h-5 w-5 text-green-600" />
-            <span className="font-medium">Expenses CSV</span>
+            <FileSpreadsheet className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium">Expenses CSV</span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground leading-tight">
             All expenses with dates, vendors, amounts, and tax details
           </p>
         </div>
 
         <div 
-          className={`p-4 rounded-lg border-2 cursor-pointer transition-all h-full ${
+          className={`p-3 rounded-lg border-2 cursor-pointer transition-all h-full ${
             exportType === 'budget-csv' 
               ? 'border-primary bg-primary/5' 
               : 'border-border hover:border-primary/50'
@@ -300,16 +300,16 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
           onClick={() => setExportType('budget-csv')}
         >
           <div className="flex items-center gap-2 mb-2">
-            <FileSpreadsheet className="h-5 w-5 text-blue-600" />
-            <span className="font-medium">Budget Summary</span>
+            <FileSpreadsheet className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-medium">Budget Summary</span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground leading-tight">
             Budget vs actual by category with budget analysis
           </p>
         </div>
 
         <div 
-          className={`p-4 rounded-lg border-2 cursor-pointer transition-all h-full ${
+          className={`p-3 rounded-lg border-2 cursor-pointer transition-all h-full ${
             exportType === 'full-csv' 
               ? 'border-primary bg-primary/5' 
               : 'border-border hover:border-primary/50'
@@ -317,17 +317,17 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
           onClick={() => setExportType('full-csv')}
         >
           <div className="flex items-center gap-2 mb-2">
-            <FileText className="h-5 w-5 text-purple-600" />
-            <span className="font-medium">Full Report</span>
+            <FileText className="h-4 w-4 text-purple-600" />
+            <span className="text-sm font-medium">Full Report</span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground leading-tight">
             Complete project financials, profit analysis, and all expenses
           </p>
         </div>
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t">
-        <div className="text-sm text-muted-foreground">
+        <div className="text-xs text-muted-foreground">
           <span className="font-medium">{expenses.length}</span> expenses • 
           <span className="font-medium ml-1">{categories.length}</span> categories
         </div>
