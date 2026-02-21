@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, X, ListTodo, Target, CalendarIcon, Pencil, Loader2 } from 'lucide-react';
+import { Plus, Search, Calendar, Camera, AlertTriangle, Filter, Check, Clock, AlertCircle, Trash2, X, ListTodo, Target, CalendarIcon, Pencil, Loader2, FileText } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1100,71 +1100,18 @@ export default function DailyLogs() {
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label>Title</Label>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-title">Title</Label>
               <Input
+                id="edit-title"
                 value={editForm.title}
                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                placeholder="Task title"
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={editForm.description}
-                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                placeholder="Add details..."
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Subtasks</Label>
-              <div className="space-y-2">
-                {editSubtasks.map((st, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <Checkbox
-                      checked={st.done}
-                      onCheckedChange={(checked) => {
-                        const updated = [...editSubtasks];
-                        updated[idx] = { ...updated[idx], done: !!checked };
-                        setEditSubtasks(updated);
-                      }}
-                      className="shrink-0"
-                    />
-                    <Input
-                      value={st.text}
-                      onChange={(e) => {
-                        const updated = [...editSubtasks];
-                        updated[idx] = { ...updated[idx], text: e.target.value };
-                        setEditSubtasks(updated);
-                      }}
-                      placeholder="Subtask..."
-                      className={cn("flex-1", st.done && "line-through text-muted-foreground")}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-                      onClick={() => setEditSubtasks(editSubtasks.filter((_, i) => i !== idx))}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full gap-1"
-                  onClick={() => setEditSubtasks([...editSubtasks, { text: '', done: false }])}
-                >
-                  <Plus className="h-3 w-3" />
-                  Add Subtask
-                </Button>
-              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>Priority</Label>
                 <Select
                   value={editForm.priorityLevel}
@@ -1181,7 +1128,7 @@ export default function DailyLogs() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>Status</Label>
                 <Select
                   value={editForm.status}
@@ -1198,18 +1145,79 @@ export default function DailyLogs() {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Due Date</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-due-date">Due Date</Label>
               <Input
+                id="edit-due-date"
                 type="date"
                 value={editForm.dueDate}
                 onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
               />
             </div>
-            <TaskPhotoUploader
-              photos={editForm.photoUrls}
-              onPhotosChange={(urls) => setEditForm({ ...editForm, photoUrls: urls })}
-            />
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <FileText className="h-4 w-4" />
+                Notes & Photos
+              </Label>
+              <Textarea
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                placeholder="Add notes about this task..."
+                rows={3}
+                className="min-h-[80px] resize-none"
+              />
+              <TaskPhotoUploader
+                photos={editForm.photoUrls}
+                onPhotosChange={(urls) => setEditForm({ ...editForm, photoUrls: urls })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <ListTodo className="h-4 w-4" />
+                Subtasks
+              </Label>
+              <div className="space-y-1.5">
+                {editSubtasks.map((st, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={st.done}
+                      onCheckedChange={(checked) => {
+                        const updated = [...editSubtasks];
+                        updated[idx] = { ...updated[idx], done: !!checked };
+                        setEditSubtasks(updated);
+                      }}
+                    />
+                    <Input
+                      value={st.text}
+                      onChange={(e) => {
+                        const updated = [...editSubtasks];
+                        updated[idx] = { ...updated[idx], text: e.target.value };
+                        setEditSubtasks(updated);
+                      }}
+                      className={cn("flex-1 h-8 text-sm", st.done && "line-through text-muted-foreground")}
+                      placeholder="Subtask description"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditSubtasks(editSubtasks.filter((_, i) => i !== idx))}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full border border-dashed border-border text-muted-foreground"
+                  onClick={() => setEditSubtasks([...editSubtasks, { text: '', done: false }])}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Add Subtask
+                </Button>
+              </div>
+            </div>
             <div className="flex justify-between pt-4">
               <Button
                 variant="destructive"
