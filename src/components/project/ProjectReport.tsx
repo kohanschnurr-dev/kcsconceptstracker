@@ -134,9 +134,13 @@ export function ProjectReport({
   const holdingMode = (project as any).holding_costs_mode ?? 'pct';
   const holdPerMonth = holdingMode === 'flat' && holdingFlat ? holdingFlat : (holdingPct && pp ? (holdingPct / 100) * pp / 12 : null);
   const costBasis = pp !== null ? pp + rehabCost + (holdPerMonth && holdPeriodMonths ? holdPerMonth * holdPeriodMonths : 0) : null;
-  const sellingCostsPct = 6;
+  const closingMode = (project as any).closing_costs_mode ?? 'pct';
+  const closingPct = (project as any).closing_costs_pct ?? 6;
+  const closingFlat = (project as any).closing_costs_flat ?? 0;
   const projectedSalePrice = arv;
-  const sellingCosts = projectedSalePrice ? projectedSalePrice * sellingCostsPct / 100 : null;
+  const sellingCosts = projectedSalePrice
+    ? closingMode === 'flat' ? closingFlat : projectedSalePrice * (closingPct / 100)
+    : null;
   const netProceeds = projectedSalePrice && sellingCosts !== null ? projectedSalePrice - sellingCosts : null;
   const grossProfit = netProceeds !== null && costBasis !== null ? netProceeds - costBasis : null;
   const loanCost = loanAmt && loanRate && holdPeriodMonths ? loanAmt * (loanRate / 100 / 12) * holdPeriodMonths : null;
@@ -402,7 +406,12 @@ export function ProjectReport({
                   <div>
                     <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-muted-foreground mb-3">THE RETURN</p>
                     {dealField('Projected Sale Price', projectedSalePrice)}
-                    {dealField('Transaction Costs (6%)', sellingCosts)}
+                    {dealField(
+                      closingMode === 'flat'
+                        ? 'Transaction Costs (Flat)'
+                        : `Transaction Costs (${closingPct}%)`,
+                      sellingCosts
+                    )}
                     {dealField('Net Proceeds', netProceeds)}
                     {dealField('Gross Profit', grossProfit)}
                     {dealField('Net Profit', netProfit)}
