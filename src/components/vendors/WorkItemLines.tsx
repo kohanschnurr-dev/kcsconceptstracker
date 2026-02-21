@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 
 export interface WorkItem {
   text: string;
+  amount: number;
   photos: string[];
 }
 
@@ -35,7 +36,7 @@ export function WorkItemLines({ items, onChange, placeholder, label, description
   };
 
   const addItem = () => {
-    onChange([...items, { text: '', photos: [] }]);
+    onChange([...items, { text: '', amount: 0, photos: [] }]);
   };
 
   const removePhoto = (itemIndex: number, photoUrl: string) => {
@@ -94,6 +95,19 @@ export function WorkItemLines({ items, onChange, placeholder, label, description
                 className="text-sm flex-1"
               />
 
+              <div className="relative shrink-0 w-24">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  value={item.amount || ''}
+                  onChange={(e) => updateItem(index, { amount: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00"
+                  className="text-sm pl-5 text-right"
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
               {/* Hidden file input */}
               <input
                 ref={(el) => { fileInputRefs.current[index] = el; }}
@@ -151,6 +165,15 @@ export function WorkItemLines({ items, onChange, placeholder, label, description
           </div>
         ))}
       </div>
+
+      {(() => {
+        const total = items.reduce((sum, i) => sum + (i.amount || 0), 0);
+        return total > 0 ? (
+          <p className="text-sm font-medium text-right pr-1">
+            Subtotal: ${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+        ) : null;
+      })()}
 
       <Button type="button" variant="outline" size="sm" className="gap-1 mt-1" onClick={addItem}>
         <Plus className="h-3.5 w-3.5" />

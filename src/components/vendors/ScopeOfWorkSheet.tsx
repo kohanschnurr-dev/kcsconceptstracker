@@ -123,23 +123,25 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
       lines.push(keyQuantities);
     }
 
-    const workText = workItems.map((i) => i.text).filter(Boolean).join('\n');
-    if (workText) {
-      lines.push('', 'WORK TO BE PERFORMED');
-      lines.push(workText);
-    }
+    const formatSection = (items: WorkItem[], title: string) => {
+      const filled = items.filter((i) => i.text);
+      if (filled.length === 0) return;
+      lines.push('', title);
+      filled.forEach((i) => {
+        const line = i.amount > 0
+          ? `${i.text} — $${i.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : i.text;
+        lines.push(line);
+      });
+      const subtotal = filled.reduce((s, i) => s + (i.amount || 0), 0);
+      if (subtotal > 0) {
+        lines.push(`Subtotal: $${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+      }
+    };
 
-    const alsoText = alsoIncluded.map((i) => i.text).filter(Boolean).join('\n');
-    if (alsoText) {
-      lines.push('', 'ALSO INCLUDED');
-      lines.push(alsoText);
-    }
-
-    const exclText = exclusions.map((i) => i.text).filter(Boolean).join('\n');
-    if (exclText) {
-      lines.push('', 'NOT INCLUDED / EXCLUSIONS');
-      lines.push(exclText);
-    }
+    formatSection(workItems, 'WORK TO BE PERFORMED');
+    formatSection(alsoIncluded, 'ALSO INCLUDED');
+    formatSection(exclusions, 'NOT INCLUDED / EXCLUSIONS');
 
     if (materialsResponsibility) {
       lines.push('', 'MATERIALS');
