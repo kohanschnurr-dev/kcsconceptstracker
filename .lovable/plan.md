@@ -1,34 +1,44 @@
 
 
-## Consolidate Header Actions into a Three-Dot Menu
+## Add Paste & Drag-and-Drop Photo Support to Edit Task Dialog
 
-### What's Changing
+### Problem
 
-Replace the individual icon buttons (Edit, Delete, Generate Report) next to the project name with a single three-dot (`MoreVertical`) dropdown menu containing four items:
+The Edit Task dialog's photo uploader only supports clicking to select files. It lacks Ctrl+V paste and drag-and-drop support that exists elsewhere in the app (e.g., Daily Logs notes). The screenshot also shows the footer alignment could be tightened.
 
-1. **Edit** (Pencil icon) -- triggers inline editing of name/address
-2. **Generate Report** (FileText icon) -- opens the project report dialog
-3. **Project Status** (submenu or inline options for Active / Complete / On Hold) -- replaces the current status badge dropdown
-4. **Delete** (Trash2 icon, destructive styling) -- triggers the delete confirmation flow
+### Solution
 
-The status badge will remain visible as a read-only indicator but will no longer be clickable. Status changes move into the three-dot menu instead.
+Replace the standalone `TaskPhotoUploader` component with the existing `PasteableTextarea` pattern applied to the Notes field, and add a dedicated drag-and-drop zone for the photo area. This gives users three ways to add photos: click, paste (Ctrl+V), and drag-and-drop.
 
 ### Technical Details
 
-**`src/pages/ProjectDetail.tsx`**
+**`src/components/project/ProjectTasks.tsx`**
 
-1. Remove the three standalone icon buttons (Pencil at line 788-794, Trash2 at 796-803, FileText at 805-812)
-2. Remove the `DropdownMenu` wrapper around the status Badge (lines 814-860), keeping only the static Badge display
-3. Add a new `DropdownMenu` with a `MoreVertical` icon trigger positioned after the status badge
-4. Menu items:
-   - "Edit" with `Pencil` icon -- calls `startEditing()`
-   - "Generate Report" with `FileText` icon -- calls `setReportOpen(true)`
-   - "Project Status" as a `DropdownMenuSub` with sub-items for Active, Complete, On Hold -- calls `handleStatusChange()`
-   - Separator
-   - "Delete Project" with `Trash2` icon and destructive text color -- calls `setDeleteStep(1)`
-5. Import `MoreVertical` from lucide-react and `DropdownMenuSub`, `DropdownMenuSubTrigger`, `DropdownMenuSubContent` from the dropdown menu component
+1. **Replace the plain `Textarea` for Notes** (lines 302-307) with `PasteableTextarea`, passing `editPhotoUrls` and `setEditPhotoUrls` as the image props. This means pasting/dropping an image into the notes area automatically uploads and attaches it -- matching the pattern used in Daily Logs and Business Expenses.
 
-### Files Changed
+2. **Enhance `TaskPhotoUploader`** (lines 30-86) to support drag-and-drop directly on the photo grid area:
+   - Add `onDragOver`, `onDragLeave`, `onDrop` handlers (same pattern as `PasteableTextarea`)
+   - Add `isDragging` state with a visual ring indicator
+   - Add a hint line: "Tip: Paste images with Ctrl+V or drag and drop"
+   - Support `onPaste` on the outer wrapper so Ctrl+V works when the photo area is focused
 
-- `src/pages/ProjectDetail.tsx` -- replace individual action buttons with a single three-dot dropdown menu
+3. **Footer alignment fix**: Ensure the Delete button and Save/Cancel buttons are properly spaced with `justify-between` and consistent sizing across mobile drawer and desktop dialog.
+
+### Changes
+
+- `src/components/project/ProjectTasks.tsx`:
+  - Import `PasteableTextarea` from `@/components/PasteableTextarea`
+  - Replace the plain `Textarea` in the notes section with `PasteableTextarea` configured with `bucketName="project-photos"`, `folderPath="task-photos"`, passing `editPhotoUrls` / `setEditPhotoUrls`
+  - Remove the separate `TaskPhotoUploader` render below notes (line 309) since photos are now managed by the `PasteableTextarea`
+  - Keep the `TaskPhotoUploader` component definition but it will no longer be rendered in the edit form (it may still be used by AddTaskDialog elsewhere)
+  - Add a small "Ctrl+V or drag and drop" hint text near the notes area
+
+### Result
+
+Users can add task photos by:
+- Clicking the camera button (existing)
+- Pasting from clipboard (Ctrl+V) into the notes field
+- Dragging and dropping images onto the notes field
+
+The edit dialog layout stays clean with photos rendered inline below the notes textarea, matching the established pattern across the app.
 
