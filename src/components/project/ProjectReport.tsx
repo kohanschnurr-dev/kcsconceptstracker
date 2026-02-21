@@ -363,51 +363,8 @@ export function ProjectReport({
             </div>
           </section>
 
-          {/* ═══ BUDGET SNAPSHOT ═══ */}
-          <section className="report-anim" style={sectionDelay(1)}>
-            <SectionHead title="BUDGET SNAPSHOT" />
-
-            {/* 4-column stat cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { label: 'TOTAL BUDGET', value: fmt(totalBudget), sub: 'Approved', borderColor: 'border-primary' },
-                { label: 'TOTAL SPENT', value: fmt(totalSpent), sub: `${fmtPct(pct)} used`, borderColor: pct > 100 ? 'border-destructive' : 'border-primary' },
-                { label: 'REMAINING', value: `${remaining < 0 ? '−' : ''}${fmt(Math.abs(remaining))}`, sub: remaining >= 0 ? 'Under budget' : 'Over budget', borderColor: remaining >= 0 ? 'border-success' : 'border-destructive', valueColor: remaining >= 0 ? 'text-success' : 'text-destructive' },
-                { label: 'EST. ROI', value: roi !== null ? fmtPct(roi) : 'N/A', sub: 'See deal breakdown', borderColor: 'border-success', valueColor: roi !== null && roi >= 0 ? 'text-success' : roi !== null ? 'text-destructive' : '' },
-              ].map((card, i) => (
-                <div key={i} className={cn('bg-card border border-border rounded-lg p-4 border-t-[3px]', card.borderColor)}>
-                  <p className="text-[9px] font-bold uppercase tracking-[2.5px] text-muted-foreground font-mono mb-2">{card.label}</p>
-                  <p className={cn('text-2xl font-extrabold font-mono', card.valueColor)}>{card.value}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1 font-mono">{card.sub}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Budget usage bar */}
-            <div className="bg-card border border-border rounded-lg p-4 mt-3">
-              <div className="flex justify-between items-baseline mb-2">
-                <span className="text-sm font-semibold">Budget Usage</span>
-                <span className="text-xs font-mono text-muted-foreground">{fmtPct(pct)} — {overUnderLabel}</span>
-              </div>
-              <div className="h-[10px] w-full rounded-full bg-secondary overflow-hidden">
-                <div
-                  className={cn(
-                    'h-full rounded-full transition-all duration-1000 ease-out',
-                    pct > 100 ? 'bg-gradient-to-r from-primary to-destructive' : pct >= 85 ? 'bg-warning' : 'bg-primary'
-                  )}
-                  style={{ width: mounted ? `${Math.min(pct, 100)}%` : '0%' }}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5 font-mono">
-                <span>$0</span>
-                <span>Budget {fmt(totalBudget)}</span>
-                <span>Spent {fmt(totalSpent)}</span>
-              </div>
-            </div>
-          </section>
-
           {/* ═══ DEAL FINANCIALS & ROI ═══ */}
-          <section className="report-anim" style={sectionDelay(2)}>
+          <section className="report-anim" style={sectionDelay(1)}>
             <SectionHead title="DEAL FINANCIALS & ROI" />
 
             <div className="bg-card border border-border rounded-lg overflow-hidden">
@@ -430,7 +387,12 @@ export function ProjectReport({
                     {dealField('Purchase Price', pp)}
                     {dealField('Rehab Cost', rehabCost)}
                     {dealField('Loan Amount', loanAmt)}
-                    {dealField('Loan Rate', loanRate, '%')}
+                    <div className="flex justify-between items-center py-2.5 border-b border-border/40 last:border-b-0">
+                      <span className="text-sm text-muted-foreground font-medium">Loan Rate</span>
+                      <span className="font-mono text-sm font-semibold">
+                        {loanRate !== null ? `${loanRate}%` : <span className="text-muted-foreground/50 text-xs italic bg-secondary/50 px-2 py-0.5 rounded">See Financials →</span>}
+                      </span>
+                    </div>
                     {dealField('Hold Costs / Month', holdPerMonth)}
                     {dealField('Total Cost Basis', costBasis)}
                   </div>
@@ -487,6 +449,48 @@ export function ProjectReport({
                     </p>
                   </div>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ═══ BUDGET SNAPSHOT ═══ */}
+          <section className="report-anim" style={sectionDelay(2)}>
+            <SectionHead title="BUDGET SNAPSHOT" />
+
+            {/* 3-column stat cards */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {[
+                { label: 'TOTAL BUDGET', value: fmt(totalBudget), sub: 'Approved', borderColor: 'border-primary' },
+                { label: 'TOTAL SPENT', value: fmt(totalSpent), sub: `${fmtPct(pct)} used`, borderColor: pct > 100 ? 'border-destructive' : 'border-primary' },
+                { label: 'REMAINING', value: `${remaining < 0 ? '−' : ''}${fmt(Math.abs(remaining))}`, sub: remaining >= 0 ? 'Under budget' : 'Over budget', borderColor: remaining >= 0 ? 'border-success' : 'border-destructive', valueColor: remaining >= 0 ? 'text-success' : 'text-destructive' },
+              ].map((card, i) => (
+                <div key={i} className={cn('bg-card border border-border rounded-lg p-4 border-t-[3px]', card.borderColor)}>
+                  <p className="text-[9px] font-bold uppercase tracking-[2.5px] text-muted-foreground font-mono mb-2">{card.label}</p>
+                  <p className={cn('text-2xl font-extrabold font-mono', card.valueColor)}>{card.value}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 font-mono">{card.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Budget usage bar */}
+            <div className="bg-card border border-border rounded-lg p-4 mt-3">
+              <div className="flex justify-between items-baseline mb-2">
+                <span className="text-sm font-semibold">Budget Usage</span>
+                <span className="text-xs font-mono text-muted-foreground">{fmtPct(pct)} — {overUnderLabel}</span>
+              </div>
+              <div className="h-[10px] w-full rounded-full bg-secondary overflow-hidden">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all duration-1000 ease-out',
+                    pct > 100 ? 'bg-gradient-to-r from-primary to-destructive' : pct >= 85 ? 'bg-warning' : 'bg-primary'
+                  )}
+                  style={{ width: mounted ? `${Math.min(pct, 100)}%` : '0%' }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5 font-mono">
+                <span>$0</span>
+                <span>Budget {fmt(totalBudget)}</span>
+                <span>Spent {fmt(totalSpent)}</span>
               </div>
             </div>
           </section>
