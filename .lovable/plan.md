@@ -1,43 +1,31 @@
 
 
-## Add Dollar Amount to Each Work Item Line
+## Rename "Vendors" to "Contractors"
 
 ### What Changes
 
-Each work item row (in Work Items, Also Included, and Exclusions) will gain an optional dollar amount input. This lets users assign a cost to individual line items. The PDF output will include the amount next to each item and show a subtotal per section.
+All user-facing labels that say "Vendors" will be changed to "Contractors". The URL routes will stay as `/vendors` to avoid breaking bookmarks or links. The database table name (`vendors`) also stays the same -- this is a display-only rename.
 
-### Details
+### Files to Update
 
-- Add a `$` amount input (narrow, right-aligned) between the text input and the camera button on each row
-- The amount displays as empty when zero, following the existing numeric input convention
-- The PDF output formats each line as `"Item description — $X,XXX.XX"` when an amount is present, and shows a section subtotal
+**Navigation (3 files)**
+- `src/components/layout/Sidebar.tsx` -- change label from "Vendors" to "Contractors"
+- `src/components/layout/MobileNav.tsx` -- same
+- `src/components/layout/MobileBottomNav.tsx` -- same
 
-### Technical Details
+**Vendors page (`src/pages/Vendors.tsx`)**
+- Page title: "Vendors" to "Contractors"
+- Subtitle: "Manage your contractors" (already correct)
+- Search placeholder: "Search vendors..." to "Search contractors..."
+- Empty state: "No vendors yet" to "No contractors yet", "No vendors match your search" to "No contractors match your search"
+- Add button: "Add Vendor" to "Add Contractor", "Add Your First Vendor" to "Add Your First Contractor"
+- PDF header: "VENDOR DIRECTORY" to "CONTRACTOR DIRECTORY", "vendor(s)" to "contractor(s)"
+- Toast messages: "Vendor deleted" to "Contractor deleted"
+- Delete dialog: "Delete Vendor" to "Delete Contractor"
+- Edit button label in contact card: "Edit Vendor" to "Edit Contractor"
 
-**`src/components/vendors/WorkItemLines.tsx`**
+**NewVendorModal (`src/components/NewVendorModal.tsx`)**
+- Dialog title: "Add Vendor" / "Edit Vendor" to "Add Contractor" / "Edit Contractor"
+- Any other user-facing vendor labels inside the modal
 
-1. Add `amount` field to the `WorkItem` interface:
-   ```
-   export interface WorkItem {
-     text: string;
-     amount: number;
-     photos: string[];
-   }
-   ```
-
-2. Add a narrow `$` Input (type="number", w-24) between the text input and camera button in each row
-
-3. Update `addItem` to initialize `amount: 0`
-
-4. Display a running total at the bottom of the section when any item has an amount > 0
-
-**`src/components/vendors/ScopeOfWorkSheet.tsx`**
-
-1. Update `handleGenerate` to include amounts in the PDF text:
-   - Each line: `"Remove old water heater — $500.00"` (only if amount > 0)
-   - Add subtotal line per section when amounts exist
-
-2. Reset logic already handles the array clearing, no changes needed there
-
-No database changes required.
-
+No database, route, or backend changes required.
