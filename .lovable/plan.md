@@ -1,21 +1,25 @@
 
 
-## Remove Subtotal from Invoice PDF Output
+## Split Invoice into Two Buttons: Generate PDF + Save to Project
 
 ### Problem
-The generated Invoice PDF currently shows SUBTOTAL, then TAX, then TOTAL DUE. This is misleading because users see a number (subtotal), then tax is added after, making the final total unexpected. The user wants to remove the subtotal line entirely and just show tax followed by the grand total.
+Currently the single "Generate Invoice PDF" button does both things at once -- opens the PDF and saves to the selected project. The user wants these as separate actions so they can preview/download the PDF without necessarily saving it.
 
 ### Changes
 
-**`src/components/project/GenerateInvoiceSheet.tsx`** (2 areas)
+**`src/components/project/GenerateInvoiceSheet.tsx`**
 
-1. **PDF text output** (line ~164): Remove the `SUBTOTAL:` line from the generated text content. Keep TAX and rename to just `TOTAL:` (drop "DUE"):
-   - Before: SUBTOTAL → TAX → TOTAL DUE
-   - After: TAX → TOTAL
+1. **Split `handleGenerate` into two functions:**
+   - `handleGeneratePDF()` -- only builds the text content and calls `generatePDF()` to open in a new tab. No saving.
+   - `handleSaveToProject()` -- builds the same content, generates the HTML via `generatePDFHtml()`, and calls `saveDocumentToProject()`. Shows toast on success/failure.
 
-2. **UI preview summary** (lines 339-363): Remove the "Subtotal" row from the in-sheet summary. Show only:
-   - Tax (with the percentage input)
-   - Total (bold, with border-top)
+2. **Update the button area (lines 409-413):**
+   - Keep "Generate Invoice PDF" button -- calls `handleGeneratePDF()` only. Always enabled.
+   - Add a second "Save to Project" button below it -- only visible when a project is selected (`selectedProjectId` is set). Calls `handleSaveToProject()`. Shows the `isSaving` spinner state. Uses `outline` variant with a download/save icon to visually distinguish it.
 
-No changes needed to `GenerateReceiptSheet.tsx` (it already shows just "TOTAL PAID" with no subtotal) or `ScopeOfWorkSheet.tsx` (its subtotal is per-section, different context).
+3. **Helper text update (line 405):**
+   - Change to: "Optional -- select a project to enable saving a copy to its Documents tab"
 
+### Result
+- "Generate Invoice PDF" always just opens the PDF preview
+- "Save to Project" button appears only when a project is chosen, confirming the save action separately
