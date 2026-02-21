@@ -1,24 +1,41 @@
 
 
-## Left-Align Input Values in Profit Calculator
+## Keep Formula Open Until Enter is Pressed
 
 ### Problem
 
-The numeric inputs (Purchase Price, ARV, Transaction Costs, Holding Costs) have a `DollarSign` icon on the left with `pl-9` padding, pushing the values away from the left edge unnecessarily.
+When typing a formula (e.g. `=50000-12000`), clicking away from the input (blur) immediately evaluates and clears the formula. If you need to check another website for a number, you lose your work-in-progress formula.
 
 ### Solution
 
-Remove the `DollarSign` icons and the `pl-9` padding class from all four input fields so values sit flush-left inside the inputs. The labels already indicate these are dollar amounts, making the icons redundant.
+Remove the `resolveFormula()` call from the `handleBlur` handler. The formula will only evaluate when the user explicitly presses **Enter**. The formula text stays visible in the input even after switching tabs or clicking elsewhere.
 
 ### Changes
 
-**`src/components/project/ProfitCalculator.tsx`**
+**`src/components/ui/formula-input.tsx`** (line 65-71)
 
-- Remove the `<DollarSign>` icon elements inside the `relative` wrappers for Purchase Price and ARV fields
-- Remove the `className="pl-9"` from those two `<FormulaInput>` components
-- Also remove the conditional `DollarSign` icon and `pl-9` from the Transaction Costs and Holding Costs fields (flat mode)
-- Clean up unused `DollarSign` import if no longer needed elsewhere in the component
+Update `handleBlur` to simply pass through to the parent `onBlur` without resolving the formula:
+
+```tsx
+const handleBlur = useCallback(
+  (e: React.FocusEvent<HTMLInputElement>) => {
+    // Don't resolve formula on blur -- keep it open until Enter
+    onBlur?.(e);
+  },
+  [onBlur],
+);
+```
+
+Also add **Escape** key support in `handleKeyDown` to let users cancel a formula without evaluating:
+
+```tsx
+if (e.key === 'Escape' && isFormulaMode) {
+  e.preventDefault();
+  setIsFormulaMode(false);
+  setLocalValue('');
+  return;
+}
+```
 
 ### Files Changed
-- `src/components/project/ProfitCalculator.tsx` -- remove dollar icons and left padding from 4 input fields
-
+- `src/components/ui/formula-input.tsx` -- remove blur-to-resolve, add Escape to cancel
