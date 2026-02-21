@@ -376,17 +376,6 @@ export function ProjectReport({
             <SectionHead title="DEAL FINANCIALS & ROI" />
 
             <div className="bg-card border border-border rounded-lg overflow-hidden">
-              {/* Dark header band */}
-              <div className="bg-background px-5 py-3 border-b border-border">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.35em] text-primary font-mono">
-                  HOW WE GET TO ROI
-                </h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                  <span className="text-[10px] text-muted-foreground">Values pulled from project Financials tab</span>
-                </div>
-              </div>
-
               <div className="p-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* The Deal */}
