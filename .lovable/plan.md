@@ -1,50 +1,27 @@
 
-## Auto-Select Project in Import Tab When Inside a Project
+
+## Fix: Checkboxes Not Responding to Clicks in "Add Items from Library"
 
 ### Problem
 
-When opening "Add Expense > Import CSV" from within a project's Budget page, the modal still shows a project selector dropdown and asks you to pick a project -- even though you're already in one. This is unnecessary friction.
+In the library item list, each row has a parent `div` with `onClick={() => toggleItem(item.id)}` and a `Checkbox` inside it with `onClick={(e) => e.stopPropagation()}`. The `stopPropagation` prevents the parent handler from firing, but the `Checkbox` has no `onCheckedChange` of its own -- so clicking directly on the checkbox does nothing.
 
-### Root Cause
+Clicking the row area outside the checkbox works (the parent handler fires), but clicking the checkbox itself is a dead zone.
 
-`ProjectBudget.tsx` already passes only the current project in the `projects` array, but `ImportTab` doesn't take advantage of this. It always starts with `selectedProject = ''` and renders the full selector.
+### Fix in `src/components/project/ProcurementTab.tsx`
 
-### Fix in `src/components/QuickExpenseModal.tsx`
-
-**1. Auto-select when only one project exists**
-
-In the `ImportTab` component, initialize `selectedProject` to the single project's ID when only one is provided:
-
-```typescript
-const [selectedProject, setSelectedProject] = useState(
-  projects.length === 1 ? projects[0].id : ''
-);
-```
-
-**2. Hide the project selector when pre-selected**
-
-Wrap the project selector `<Label>` and `<ProjectAutocomplete>` block in a condition so it only renders when there are multiple projects:
+Add an `onCheckedChange` handler to the `Checkbox` so it calls `toggleItem` directly:
 
 ```tsx
-{projects.length > 1 && (
-  <div className="space-y-2">
-    <Label>Project <span className="text-destructive">*</span></Label>
-    <ProjectAutocomplete ... />
-  </div>
-)}
+<Checkbox 
+  checked={selectedIds.has(item.id)} 
+  onCheckedChange={() => toggleItem(item.id)}
+  onClick={(e) => e.stopPropagation()}
+/>
 ```
 
-**3. Also hide the "Select a project" empty state**
-
-The empty state message ("Select a project above to begin importing expenses") should only appear when there are multiple projects and none is selected yet:
-
-```tsx
-{!selectedProject && projects.length > 1 && (
-  <div className="text-center py-8 space-y-3">...</div>
-)}
-```
-
-No changes to styling, colors, or layout. The same logic already exists implicitly for `ExpenseForm` (the Single Expense tab) -- this just brings `ImportTab` in line.
+This keeps `stopPropagation` to avoid double-toggling (checkbox click + parent click), while giving the checkbox its own toggle behavior.
 
 ### Files Changed
-- `src/components/QuickExpenseModal.tsx` -- auto-select project and hide selector in ImportTab when only one project is available
+- `src/components/project/ProcurementTab.tsx` -- add `onCheckedChange` to the Checkbox (line 914-917)
+
