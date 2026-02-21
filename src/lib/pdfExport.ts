@@ -1,5 +1,5 @@
 export interface PdfOptions {
-  docType: 'Invoice' | 'Receipt' | 'Scope of Work' | 'Vendor Directory';
+  docType: 'Invoice' | 'Receipt' | 'Scope of Work' | 'Vendor Directory' | 'Contractor Directory';
   companyName: string;
   logoUrl?: string | null;
 }

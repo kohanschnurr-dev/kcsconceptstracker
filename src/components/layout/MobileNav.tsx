@@ -42,7 +42,7 @@ export function MobileNav() {
     { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
     { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
     { icon: ShoppingCart, label: 'Procurement', path: '/procurement' },
-    { icon: Users, label: 'Vendors', path: '/vendors' },
+    { icon: Users, label: 'Contractors', path: '/vendors' },
     { icon: Briefcase, label: companyName, path: '/business-expenses' },
   ];
 

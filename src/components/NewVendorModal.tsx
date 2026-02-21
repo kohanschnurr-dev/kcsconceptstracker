@@ -114,7 +114,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
       if (!user) {
         toast({
           title: 'Error',
-          description: 'You must be logged in to manage vendors.',
+          description: 'You must be logged in to manage contractors.',
           variant: 'destructive',
         });
         return;
@@ -139,7 +139,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
         if (error) throw error;
 
         toast({
-          title: 'Vendor updated!',
+          title: 'Contractor updated!',
           description: `${name} has been updated.`,
         });
       } else {
@@ -161,8 +161,8 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
         if (error) throw error;
 
         toast({
-          title: 'Vendor added!',
-          description: `${name} has been added to your vendors.`,
+          title: 'Contractor added!',
+          description: `${name} has been added to your contractors.`,
         });
       }
 
@@ -172,7 +172,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
       console.error('Error saving vendor:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to save vendor.',
+        description: error.message || 'Failed to save contractor.',
         variant: 'destructive',
       });
     } finally {
@@ -186,13 +186,13 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            {isEditing ? 'Edit Vendor' : 'Add Vendor'}
+            {isEditing ? 'Edit Contractor' : 'Add Contractor'}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Vendor Name *</Label>
+            <Label>Contractor Name *</Label>
             <Input
               placeholder="DFW Foundation Pros..."
               value={name}
@@ -308,7 +308,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
           <div className="space-y-2">
             <Label>Notes</Label>
             <Textarea
-              placeholder="General notes about this vendor..."
+              placeholder="General notes about this contractor..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="min-h-[80px] resize-none"
@@ -325,7 +325,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
               Cancel
             </Button>
             <Button type="submit" className="flex-1" disabled={isSubmitting}>
-              {isSubmitting ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Vendor')}
+              {isSubmitting ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Contractor')}
             </Button>
           </div>
         </form>
