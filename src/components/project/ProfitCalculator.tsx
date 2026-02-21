@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calculator, DollarSign, TrendingUp, Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calculator, TrendingUp, Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FormulaInput } from '@/components/ui/formula-input';
@@ -154,49 +154,37 @@ export function ProfitCalculator({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="purchase-price">Purchase Price</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <FormulaInput
-                id="purchase-price"
-                type="number"
-                value={purchasePrice || ''}
-                onChange={(e) => setPurchasePrice(Number(e.target.value))}
-                className="pl-9"
-                placeholder="0"
-              />
-            </div>
+            <FormulaInput
+              id="purchase-price"
+              type="number"
+              value={purchasePrice || ''}
+              onChange={(e) => setPurchasePrice(Number(e.target.value))}
+              placeholder="0"
+            />
           </div>
           <div>
             <Label htmlFor="arv">After Repair Value (ARV)</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <FormulaInput
-                id="arv"
-                type="number"
-                value={arv || ''}
-                onChange={(e) => setArv(Number(e.target.value))}
-                className="pl-9"
-                placeholder="0"
-              />
-            </div>
+            <FormulaInput
+              id="arv"
+              type="number"
+              value={arv || ''}
+              onChange={(e) => setArv(Number(e.target.value))}
+              placeholder="0"
+            />
           </div>
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <Label htmlFor="closing-costs" className="mb-0">Transaction Costs</Label>
               {renderModeToggle(closingMode, setClosingMode)}
             </div>
-            <div className="relative">
-              {closingMode === 'flat' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
-              <FormulaInput
-                id="closing-costs"
-                type="number"
-                value={closingMode === 'actual' ? transactionCostActual : closingMode === 'pct' ? (closingPct || '') : (closingFlat || '')}
-                onChange={(e) => closingMode === 'pct' ? setClosingPct(Number(e.target.value)) : setClosingFlat(Number(e.target.value))}
-                className={closingMode === 'flat' ? 'pl-9' : ''}
-                placeholder="0"
-                disabled={closingMode === 'actual'}
-              />
-            </div>
+            <FormulaInput
+              id="closing-costs"
+              type="number"
+              value={closingMode === 'actual' ? transactionCostActual : closingMode === 'pct' ? (closingPct || '') : (closingFlat || '')}
+              onChange={(e) => closingMode === 'pct' ? setClosingPct(Number(e.target.value)) : setClosingFlat(Number(e.target.value))}
+              placeholder="0"
+              disabled={closingMode === 'actual'}
+            />
             <p className="text-xs text-muted-foreground mt-1">
               {renderCostHelperText(closingMode, closingPct, closingCosts, 'ARV')}
             </p>
@@ -206,18 +194,14 @@ export function ProfitCalculator({
               <Label htmlFor="holding-costs" className="mb-0">Holding Costs</Label>
               {renderModeToggle(holdingMode, setHoldingMode)}
             </div>
-            <div className="relative">
-              {holdingMode === 'flat' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
-              <FormulaInput
-                id="holding-costs"
-                type="number"
-                value={holdingMode === 'actual' ? holdingCostActual : holdingMode === 'pct' ? (holdingPct || '') : (holdingFlat || '')}
-                onChange={(e) => holdingMode === 'pct' ? setHoldingPct(Number(e.target.value)) : setHoldingFlat(Number(e.target.value))}
-                className={holdingMode === 'flat' ? 'pl-9' : ''}
-                placeholder="0"
-                disabled={holdingMode === 'actual'}
-              />
-            </div>
+            <FormulaInput
+              id="holding-costs"
+              type="number"
+              value={holdingMode === 'actual' ? holdingCostActual : holdingMode === 'pct' ? (holdingPct || '') : (holdingFlat || '')}
+              onChange={(e) => holdingMode === 'pct' ? setHoldingPct(Number(e.target.value)) : setHoldingFlat(Number(e.target.value))}
+              placeholder="0"
+              disabled={holdingMode === 'actual'}
+            />
             <p className="text-xs text-muted-foreground mt-1">
               {renderCostHelperText(holdingMode, holdingPct, holdingCosts, 'PP')}
             </p>
