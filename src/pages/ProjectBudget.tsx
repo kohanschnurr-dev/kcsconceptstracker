@@ -1248,11 +1248,11 @@ export default function ProjectBudget() {
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={() => setImportModalOpen(true)}>
-                  <Upload className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2" />
                   Import CSV
                 </Button>
                 <Button variant="outline" size="sm" onClick={exportToCSV}>
-                  <Download className="h-4 w-4 mr-2" />
+                  <Upload className="h-4 w-4 mr-2" />
                   Export
                 </Button>
               </div>
