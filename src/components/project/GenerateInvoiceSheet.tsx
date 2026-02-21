@@ -119,7 +119,7 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
 
   const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
-  const handleGenerate = async () => {
+  const buildContent = () => {
     const lines: string[] = ['INVOICE', ''];
 
     if (invoiceNumber) lines.push(`Invoice Number: ${invoiceNumber}`);
@@ -172,33 +172,35 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
       if (paymentNotes) lines.push(`Notes: ${paymentNotes}`);
     }
 
-    const content = lines.join('\n');
-    const pdfOptions = {
-      docType: 'Invoice' as const,
-      companyName: settings?.company_name || companyName || 'Your Company',
-      logoUrl: settings?.logo_url,
-    };
+    return lines.join('\n');
+  };
 
-    // Open PDF in new tab
-    generatePDF(content, pdfOptions);
+  const getPdfOptions = () => ({
+    docType: 'Invoice' as const,
+    companyName: settings?.company_name || companyName || 'Your Company',
+    logoUrl: settings?.logo_url,
+  });
 
-    // Save to project if selected
-    if (selectedProjectId) {
-      setIsSaving(true);
-      try {
-        const html = generatePDFHtml(content, pdfOptions);
-        await saveDocumentToProject(html, selectedProjectId, 'Invoice', 'invoice');
-        const proj = projects.find(p => p.id === selectedProjectId);
-        toast({
-          title: 'Document saved',
-          description: `Invoice saved to ${proj?.name ?? 'project'} Documents`,
-        });
-      } catch (err) {
-        console.error(err);
-        toast({ title: 'Save failed', description: 'Could not save document to project.', variant: 'destructive' });
-      } finally {
-        setIsSaving(false);
-      }
+  const handleGeneratePDF = () => {
+    generatePDF(buildContent(), getPdfOptions());
+  };
+
+  const handleSaveToProject = async () => {
+    if (!selectedProjectId) return;
+    setIsSaving(true);
+    try {
+      const html = generatePDFHtml(buildContent(), getPdfOptions());
+      await saveDocumentToProject(html, selectedProjectId, 'Invoice', 'invoice');
+      const proj = projects.find(p => p.id === selectedProjectId);
+      toast({
+        title: 'Document saved',
+        description: `Invoice saved to ${proj?.name ?? 'project'} Documents`,
+      });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Save failed', description: 'Could not save document to project.', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -402,15 +404,23 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
                   onSelect={(id) => setSelectedProjectId(id === selectedProjectId ? '' : id)}
                   placeholder="Select a project…"
                 />
-                <p className="text-xs text-muted-foreground">Optional — saves a copy to the project's Documents tab</p>
+                <p className="text-xs text-muted-foreground">Optional — select a project to enable saving a copy to its Documents tab</p>
               </div>
             </div>
 
-            {/* GENERATE BUTTON */}
-            <Button onClick={handleGenerate} className="w-full gap-2" size="lg" disabled={isSaving}>
-              <FileText className="h-4 w-4" />
-              {isSaving ? 'Saving…' : 'Generate Invoice PDF'}
-            </Button>
+            {/* ACTION BUTTONS */}
+            <div className="space-y-2">
+              <Button onClick={handleGeneratePDF} className="w-full gap-2" size="lg">
+                <FileText className="h-4 w-4" />
+                Generate Invoice PDF
+              </Button>
+              {selectedProjectId && (
+                <Button onClick={handleSaveToProject} variant="outline" className="w-full gap-2" size="lg" disabled={isSaving}>
+                  <FileText className="h-4 w-4" />
+                  {isSaving ? 'Saving…' : 'Save to Project'}
+                </Button>
+              )}
+            </div>
 
             <div className="h-4" />
           </div>
