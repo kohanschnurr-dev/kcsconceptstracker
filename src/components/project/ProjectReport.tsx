@@ -1,11 +1,10 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
-import { Printer, FileDown, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { FileDown, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { generatePDF } from '@/lib/pdfExport';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -81,8 +80,8 @@ const CHART_COLORS = [
 /* ── Section Header ──────────────────────────────────────── */
 const SectionHead = ({ title }: { title: string }) => (
   <div className="flex items-center gap-3 mb-4">
-    <h2 className="text-[10px] font-bold uppercase tracking-[3px] text-primary whitespace-nowrap">
-      {title.split('').join(' ')}
+    <h2 className="text-[10px] font-bold uppercase tracking-[0.35em] text-primary whitespace-nowrap">
+      {title}
     </h2>
     <div className="flex-1 h-px bg-border" />
   </div>
@@ -189,48 +188,84 @@ export function ProjectReport({
 
   /* ── pdf export ──────────────────────────────────────── */
 
-  const handlePrint = () => window.print();
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const handleDownloadPdf = () => {
-    const lines: string[] = [];
-    lines.push(project.name);
-    lines.push(`Address: ${project.address}`);
-    lines.push(`Status: ${project.status.replace('_', ' ')}`);
-    lines.push(`Start Date: ${startDate ? format(startDate, 'MMM d, yyyy') : project.start_date}`);
-    lines.push('');
-    lines.push('BUDGET SNAPSHOT');
-    lines.push(`Total Budget: ${fmt(totalBudget)}`);
-    lines.push(`Total Spent: ${fmt(totalSpent)}`);
-    lines.push(`Remaining: ${fmt(remaining)}`);
-    if (roi !== null) lines.push(`Estimated ROI: ${fmtPct(roi)}`);
-    lines.push('');
-    if (pp !== null || arv !== null) {
-      lines.push('DEAL FINANCIALS');
-      if (pp !== null) lines.push(`Purchase Price: ${fmt(pp)}`);
-      lines.push(`Rehab Cost: ${fmt(rehabCost)}`);
-      if (arv !== null) lines.push(`ARV: ${fmt(arv)}`);
-      if (costBasis !== null) lines.push(`Total Cost Basis: ${fmt(costBasis)}`);
-      if (netProfit !== null) lines.push(`Net Profit: ${fmt(netProfit)}`);
-      if (seventyPctRatio !== null) lines.push(`70% Rule: ${fmtPct(seventyPctRatio)}`);
-      lines.push('');
-    }
-    lines.push('CATEGORY SPEND BREAKDOWN');
-    categories.filter(c => c.estimated_budget > 0 || c.actualSpent > 0).forEach(c => {
-      lines.push(`${c.category.replace(/_/g, ' ')}: ${fmt(c.actualSpent)} / ${fmt(c.estimated_budget)}`);
-    });
-    if (scopeCreepCats.length > 0) {
-      lines.push('');
-      lines.push('UNBUDGETED SPEND');
-      scopeCreepCats.forEach(c => lines.push(`${c.category.replace(/_/g, ' ')}: ${fmt(c.actualSpent)}`));
-    }
-    lines.push('');
-    lines.push(`TOTAL SPENT: ${fmt(totalSpent)}`);
+    if (!reportRef.current) return;
+    const html = reportRef.current.innerHTML;
+    const cs = getComputedStyle(document.documentElement);
+    const vars = [
+      '--background', '--foreground', '--card', '--card-foreground',
+      '--popover', '--popover-foreground', '--primary', '--primary-foreground',
+      '--secondary', '--secondary-foreground', '--muted', '--muted-foreground',
+      '--accent', '--accent-foreground', '--destructive', '--destructive-foreground',
+      '--success', '--success-foreground', '--warning', '--warning-foreground',
+      '--border', '--input', '--ring', '--radius',
+      '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5',
+    ];
+    const cssVars = vars.map(v => `${v}: ${cs.getPropertyValue(v).trim()};`).join('\n      ');
 
-    generatePDF(lines.join('\n'), {
-      docType: 'Project Report',
-      companyName: companyName || 'My Company',
-      logoUrl,
-    });
+    const doc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${project.name} — Project Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          colors: {
+            border: 'hsl(var(--border))',
+            input: 'hsl(var(--input))',
+            ring: 'hsl(var(--ring))',
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            primary: { DEFAULT: 'hsl(var(--primary))', foreground: 'hsl(var(--primary-foreground))' },
+            secondary: { DEFAULT: 'hsl(var(--secondary))', foreground: 'hsl(var(--secondary-foreground))' },
+            destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--destructive-foreground))' },
+            success: { DEFAULT: 'hsl(var(--success))', foreground: 'hsl(var(--success-foreground))' },
+            warning: { DEFAULT: 'hsl(var(--warning))', foreground: 'hsl(var(--warning-foreground))' },
+            muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
+            accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(var(--accent-foreground))' },
+            card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
+          },
+          borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+        },
+      },
+    }
+  <\/script>
+  <style>
+    :root { ${cssVars} }
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: hsl(var(--background)); color: hsl(var(--foreground)); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .report-anim { animation: none !important; opacity: 1 !important; transform: none !important; }
+    @media print {
+      @page { size: A4 portrait; margin: 0.5in; }
+      body { background: white !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="max-w-5xl mx-auto px-8 py-8 space-y-8">
+    ${html}
+  </div>
+  <script>
+    // Wait for Tailwind CDN to process, then print
+    setTimeout(function() { window.print(); }, 1500);
+  <\/script>
+</body>
+</html>`;
+    const blob = new Blob([doc], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (win) setTimeout(() => URL.revokeObjectURL(url), 15000);
   };
 
   /* ── deal field helper ───────────────────────────────── */
@@ -260,11 +295,8 @@ export function ProjectReport({
 
         {/* ── Action bar (hidden on print) ── */}
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-border bg-background/95 backdrop-blur print:hidden">
-          <span className="text-[9px] font-bold uppercase tracking-[3px] text-primary">Project Report</span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.35em] text-primary">Project Report</span>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-1.5" /> Print
-            </Button>
             <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
               <FileDown className="h-4 w-4 mr-1.5" /> PDF
             </Button>
@@ -274,15 +306,15 @@ export function ProjectReport({
           </div>
         </div>
 
-        <div className="px-8 py-8 space-y-8 print:px-4 print:py-4 print:space-y-4">
+        <div ref={reportRef} className="px-8 py-8 space-y-8 print:px-4 print:py-4 print:space-y-4">
 
           {/* ═══ HEADER ═══ */}
           <section className="report-anim" style={sectionDelay(0)}>
             <div className="flex items-start justify-between">
               <div>
                 {companyName && (
-                  <p className="text-[9px] font-bold uppercase tracking-[3px] text-primary mb-2">
-                    {companyName.split('').join(' ')}
+                  <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-primary mb-2">
+                    {companyName}
                   </p>
                 )}
                 <h1 className="text-4xl font-extrabold tracking-tight text-foreground">{project.name}</h1>
@@ -356,8 +388,8 @@ export function ProjectReport({
             <div className="bg-card border border-border rounded-lg overflow-hidden">
               {/* Dark header band */}
               <div className="bg-background px-5 py-3 border-b border-border">
-                <h3 className="text-[10px] font-bold uppercase tracking-[2.5px] text-primary font-mono">
-                  H O W  W E  G E T  T O  R O I
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.35em] text-primary font-mono">
+                  HOW WE GET TO ROI
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
@@ -369,7 +401,7 @@ export function ProjectReport({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* The Deal */}
                   <div>
-                    <p className="text-[9px] font-bold uppercase tracking-[2.5px] text-muted-foreground mb-3">T H E  D E A L</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-muted-foreground mb-3">THE DEAL</p>
                     {dealField('Purchase Price', pp)}
                     {dealField('Rehab Cost', rehabCost)}
                     {dealField('Loan Amount', loanAmt)}
@@ -380,7 +412,7 @@ export function ProjectReport({
 
                   {/* The Return */}
                   <div>
-                    <p className="text-[9px] font-bold uppercase tracking-[2.5px] text-muted-foreground mb-3">T H E  R E T U R N</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-muted-foreground mb-3">THE RETURN</p>
                     {dealField('Projected Sale Price', projectedSalePrice)}
                     {dealField('Selling Costs (6%)', sellingCosts)}
                     {dealField('Net Proceeds', netProceeds)}
@@ -560,7 +592,7 @@ export function ProjectReport({
 
           {/* ═══ FOOTER ═══ */}
           <footer className="border-t border-border pt-5 mt-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <span className="text-[9px] font-bold uppercase tracking-[3px] text-primary">
+            <span className="text-[9px] font-bold uppercase tracking-[0.35em] text-primary">
               {companyName || ''}
             </span>
             <span className="text-[10px] text-muted-foreground font-mono">
