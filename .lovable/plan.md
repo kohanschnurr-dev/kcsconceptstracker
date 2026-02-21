@@ -1,26 +1,48 @@
 
 
-## Add Ctrl+V Paste Indicator to Photos Section
+## Fix Subtasks: Proper Checklist UI in Edit Task Dialogs
 
-### What Changes
-In `src/components/dashboard/AddTaskDialog.tsx`, add a visual hint and a third button/label for the Ctrl+V paste option in the Photos upload area, so users know they can paste images directly.
+### Problem
+When a task has subtasks, the Edit Task dialog shows the raw delimiter text `---LINE_ITEMS---` and JSON array `["GFCI Outlets","Concrete Spot"]` inside the description field. Users see ugly raw data instead of a usable checklist.
 
-### Changes in `src/components/dashboard/AddTaskDialog.tsx`
+### Solution
+Create a shared helper to parse/serialize the `---LINE_ITEMS---` format, then update both Edit Task dialogs to split description from subtasks, rendering subtasks as an editable checklist with add/remove capabilities.
 
-**1. Add `Clipboard` to the lucide imports (line 7)**
+### Changes
 
-**2. Add a hint row below the two buttons (after line 190)**
+**1. New utility: `src/lib/taskSubtasks.ts`**
 
-Add a small text hint with the clipboard icon, similar to the pattern used in `PasteableTextarea`:
+A small helper with two functions:
+- `parseDescription(raw: string)` -- returns `{ description: string, subtasks: string[] }`
+- `serializeDescription(description: string, subtasks: string[])` -- recombines into the stored format
 
+**2. Update `src/pages/DailyLogs.tsx`**
+
+- Import the parse/serialize helpers
+- Add `editSubtasks` state (string array) alongside `editForm`
+- In `openDetailModal`: parse `task.description` to split description text and subtasks into separate state
+- In `handleSaveDetail`: serialize description + subtasks back before saving
+- In the Edit Task dialog UI: replace the single description `Textarea` with:
+  - A `Textarea` for just the description text
+  - A "Subtasks" section below with checklist inputs (same pattern as `AddTaskDialog`)
+  - Each subtask gets an input + remove button
+  - An "Add Subtask" button at the bottom
+
+**3. Update `src/components/command-center/CommandCenter.tsx`**
+
+- Same pattern: parse on open, serialize on save, render subtask checklist UI in the edit dialog
+
+### UI Pattern (matching AddTaskDialog)
 ```
-<p className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-2">
-  <Clipboard className="h-3 w-3" />
-  Paste images with Ctrl+V or drag & drop
-</p>
+Subtasks (optional)
+[ GFCI Outlets                    ] [X]
+[ Concrete Spot                   ] [X]
+[+ Add Subtask                       ]
 ```
 
-This sits inside the dashed-border container so it's clear paste/drop targets the photo area.
+Each subtask is an `Input` with a remove button, plus an "Add Subtask" button -- identical to the create flow.
 
 ### Files Changed
-- `src/components/dashboard/AddTaskDialog.tsx`
+- `src/lib/taskSubtasks.ts` (new)
+- `src/pages/DailyLogs.tsx`
+- `src/components/command-center/CommandCenter.tsx`
