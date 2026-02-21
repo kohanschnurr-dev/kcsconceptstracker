@@ -1,29 +1,38 @@
 
 
-## Enlarge Export Reports Dialog and Reduce Card Text Size
+## Add "Filtered Results" Export Option
 
 ### What's Changing
 
-The Export Reports dialog will be made wider and the three export option cards will have their content tightened -- smaller description text and more compact padding -- so they feel spacious but not cramped with words.
+A fourth export card, "Filtered Results," will be added to the Export Reports dialog. When selected, it will only export the expenses currently visible after applying filters (e.g., only "Cabinets" category). The card will show how many expenses are in the filtered set vs. the total.
 
 ### Technical Details
 
-**`src/pages/ProjectBudget.tsx`** (~line 1622)
+**`src/pages/ProjectBudget.tsx`** (~line 1642)
 
-Widen the dialog from `sm:max-w-2xl` to `sm:max-w-3xl`:
+Pass `filteredExpenses` as a new prop alongside the existing `expenses`:
 
 ```tsx
-<DialogContent className="sm:max-w-3xl">
+<ExportReports
+  project={...}
+  categories={categories}
+  expenses={expenses}
+  filteredExpenses={filteredExpenses}
+/>
 ```
 
 **`src/components/project/ExportReports.tsx`**
 
-1. **Card padding**: Reduce from `p-4` to `p-3` on each option card (lines 278, 295, 312)
-2. **Card title text**: Change `font-medium` to `text-sm font-medium` on the title spans (lines 287, 304, 321)
-3. **Card icons**: Shrink from `h-5 w-5` to `h-4 w-4` (lines 286, 303, 320)
-4. **Description text**: Keep `text-xs` but add `leading-tight` for tighter line spacing (lines 289, 306, 323)
-5. **Footer stats text**: Shrink from `text-sm` to `text-xs` (line 330)
+1. Add `filteredExpenses` to the props interface (optional, defaults to full `expenses` list)
+2. Add a fourth export option card -- "Filtered Results" -- with a `Filter` icon (from lucide-react) in an orange/amber color
+3. The card description will dynamically show the count: e.g., "Export only the 12 currently filtered expenses"
+4. Add a new `exportFilteredCSV()` function that works like `exportExpensesCSV()` but uses `filteredExpenses` instead of `expenses`
+5. Wire up the new `'filtered-csv'` case in `handleExport`
+6. Update the grid from `sm:grid-cols-3` to `sm:grid-cols-4` (or keep 3 and let the 4th wrap on smaller screens -- `sm:grid-cols-2 lg:grid-cols-4` for better responsiveness)
+7. Only show/enable the "Filtered Results" card when there is an active filter (i.e., `filteredExpenses.length !== expenses.length`)
+8. Update footer stats to also show filtered count when a filter is active
 
 ### Files Changed
-- `src/pages/ProjectBudget.tsx` -- widen dialog to `sm:max-w-3xl`
-- `src/components/project/ExportReports.tsx` -- smaller text, icons, and padding in option cards
+- `src/pages/ProjectBudget.tsx` -- pass `filteredExpenses` prop
+- `src/components/project/ExportReports.tsx` -- add fourth export option, new export function, updated grid layout
+
