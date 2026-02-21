@@ -946,11 +946,18 @@ function ImportTab({
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">${row.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell className={`text-right font-mono text-sm ${row.amount < 0 ? 'text-success' : ''}`}>
+                      {row.amount < 0 ? '-' : ''}${Math.abs(row.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </TableCell>
                     <TableCell><Badge variant="outline" className="text-xs capitalize">{row.expenseType}</Badge></TableCell>
                     <TableCell>
                       {row.hasError ? (<Badge variant="destructive" className="text-xs">{row.errorMsg}</Badge>)
-                        : row.matchedCategory ? (<CheckCircle2 className="h-4 w-4 text-success" />)
+                        : row.matchedCategory ? (
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 className="h-4 w-4 text-success" />
+                            {row.amount < 0 && <Badge variant="outline" className="text-xs text-success border-success">Refund</Badge>}
+                          </div>
+                        )
                         : (<AlertTriangle className="h-4 w-4 text-warning" />)}
                     </TableCell>
                   </TableRow>
