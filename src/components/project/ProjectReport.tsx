@@ -6,7 +6,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+
 
 interface DBProject {
   id: string;
@@ -68,14 +68,6 @@ const fmt = (n: number) =>
 
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
-const CHART_COLORS = [
-  'hsl(var(--primary))',
-  'hsl(var(--chart-2, var(--primary)))',
-  'hsl(var(--chart-3, var(--primary)))',
-  'hsl(var(--chart-4, var(--primary)))',
-  'hsl(var(--chart-5, var(--primary)))',
-  'hsl(var(--muted-foreground))',
-];
 
 /* ── Section Header ──────────────────────────────────────── */
 const SectionHead = ({ title }: { title: string }) => (
@@ -161,30 +153,6 @@ export function ProjectReport({
   const seventyPctRatio = pp !== null && arv && arv > 0 ? ((pp + rehabCost) / arv) * 100 : null;
   const seventyPctPass = seventyPctRatio !== null ? seventyPctRatio <= 70 : null;
 
-  /* category analysis */
-  const scopeCreepCats = useMemo(() =>
-    categories.filter(c => (c.estimated_budget === 0 || !c.estimated_budget) && c.actualSpent > 0),
-    [categories]
-  );
-
-  /* donut data */
-  const donutData = useMemo(() => {
-    const sorted = [...categories].filter(c => c.actualSpent > 0).sort((a, b) => b.actualSpent - a.actualSpent);
-    const top5 = sorted.slice(0, 5);
-    const otherTotal = sorted.slice(5).reduce((s, c) => s + c.actualSpent, 0);
-    const data = top5.map(c => ({ name: c.category.replace(/_/g, ' '), value: c.actualSpent }));
-    if (otherTotal > 0) data.push({ name: 'All Other', value: otherTotal });
-    return data;
-  }, [categories]);
-
-  /* bar data */
-  const barData = useMemo(() =>
-    [...categories]
-      .filter(c => c.actualSpent > 0)
-      .sort((a, b) => b.actualSpent - a.actualSpent),
-    [categories]
-  );
-  const maxBarSpent = Math.max(...barData.map(c => c.actualSpent), ...barData.map(c => c.estimated_budget), 1);
 
   /* ── pdf export ──────────────────────────────────────── */
 
@@ -192,12 +160,7 @@ export function ProjectReport({
 
   const handleDownloadPdf = () => {
     if (!reportRef.current) return;
-    // Clone DOM and remove extra sections for one-page PDF
-    const clone = reportRef.current.cloneNode(true) as HTMLElement;
-    const sections = clone.querySelectorAll(':scope > section');
-    // Remove sections in reverse order: Scope Creep (5), Category Breakdown (4), Where the Money Went (3)
-    [5, 4, 3].forEach(i => { if (sections[i]) sections[i].remove(); });
-    const html = clone.innerHTML;
+    const html = reportRef.current.innerHTML;
     const cs = getComputedStyle(document.documentElement);
     const vars = [
       '--background', '--foreground', '--card', '--card-foreground',
@@ -528,129 +491,6 @@ export function ProjectReport({
             </div>
           </section>
 
-          {/* ═══ WHERE THE MONEY WENT (Donut) ═══ */}
-          <section className="report-anim" style={sectionDelay(3)}>
-            <SectionHead title="WHERE THE MONEY WENT" />
-
-            <div className="bg-card border border-border rounded-lg p-5">
-              <p className="text-xs text-muted-foreground mb-4 font-mono">{fmt(totalSpent)} total</p>
-              {donutData.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                  {/* Donut chart */}
-                  <div className="flex justify-center">
-                    <ResponsiveContainer width="100%" height={240}>
-                      <PieChart>
-                        <Pie
-                          data={donutData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={2}
-                          dataKey="value"
-                          stroke="hsl(var(--background))"
-                          strokeWidth={2}
-                        >
-                          {donutData.map((_, i) => (
-                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value: number) => fmt(value)}
-                          contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Legend grid */}
-                  <div className="grid grid-cols-1 gap-2">
-                    {donutData.map((d, i) => (
-                      <div key={d.name} className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
-                        <span className="text-sm capitalize flex-1">{d.name}</span>
-                        <span className="font-mono text-sm font-semibold">{fmt(d.value)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground py-10 text-center">No spend data available.</p>
-              )}
-            </div>
-          </section>
-
-          {/* ═══ CATEGORY BREAKDOWN ═══ */}
-          <section className="report-anim" style={sectionDelay(4)}>
-            <SectionHead title="CATEGORY BREAKDOWN" />
-
-            <div className="bg-card border border-border rounded-lg p-5">
-              <p className="text-xs text-muted-foreground mb-4 font-mono">Spent vs Budget</p>
-              <div className="space-y-3">
-                {barData.map(c => {
-                  const spentPct = (c.actualSpent / maxBarSpent) * 100;
-                  const budgetPct = c.estimated_budget > 0 ? (c.estimated_budget / maxBarSpent) * 100 : null;
-                  const isOver = c.estimated_budget > 0 && c.actualSpent > c.estimated_budget;
-                  const hasNoBudget = !c.estimated_budget || c.estimated_budget === 0;
-                  return (
-                    <div key={c.id}>
-                      <div className="flex justify-between items-baseline text-sm mb-1">
-                        <span className="capitalize font-medium truncate mr-3">{c.category.replace(/_/g, ' ')}</span>
-                        <div className="flex items-center gap-2 shrink-0 font-mono text-xs">
-                          <span className={cn('font-semibold', isOver ? 'text-destructive' : '')}>{fmt(c.actualSpent)}</span>
-                          {!hasNoBudget && (
-                            <span className="text-muted-foreground">/ {fmt(c.estimated_budget)}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="relative h-2 w-full rounded-full bg-secondary overflow-hidden">
-                        <div
-                          className={cn(
-                            'h-full rounded-full transition-all duration-1000 ease-out',
-                            isOver ? 'bg-destructive' : hasNoBudget ? 'bg-muted-foreground/40' : 'bg-primary'
-                          )}
-                          style={{ width: mounted ? `${Math.min(spentPct, 100)}%` : '0%' }}
-                        />
-                        {budgetPct !== null && budgetPct <= 100 && (
-                          <div
-                            className="absolute top-[-2px] bottom-[-2px] w-[2px] bg-foreground/70 rounded-full"
-                            style={{ left: `${budgetPct}%` }}
-                            title={`Budget: ${fmt(c.estimated_budget)}`}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                {barData.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">No spend data available.</p>
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* ═══ SCOPE CREEP / UNBUDGETED ═══ */}
-          {scopeCreepCats.length > 0 && (
-            <section className="report-anim" style={sectionDelay(5)}>
-              <div className="bg-warning/5 border border-warning/20 rounded-lg p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertTriangle className="h-4 w-4 text-warning" />
-                  <span className="text-sm font-semibold text-warning">Unbudgeted Spend</span>
-                </div>
-                <div className="space-y-2">
-                  {scopeCreepCats.map(c => (
-                    <div key={c.id} className="flex justify-between items-center text-sm py-1.5 border-b border-warning/10 last:border-b-0">
-                      <div>
-                        <span className="capitalize font-medium">{c.category.replace(/_/g, ' ')}</span>
-                        <p className="text-[10px] text-muted-foreground">No budget was set for this category</p>
-                      </div>
-                      <span className="font-mono font-semibold text-warning shrink-0">{fmt(c.actualSpent)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
 
           {/* ═══ FOOTER ═══ */}
           <footer className="border-t border-border pt-5 mt-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
