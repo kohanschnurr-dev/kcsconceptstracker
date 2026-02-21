@@ -1538,6 +1538,9 @@ export default function ProjectDetail() {
           expenses={allExpensesForExport}
           open={reportOpen}
           onOpenChange={setReportOpen}
+          constructionSpent={constructionSpent}
+          transactionCostActual={transactionCostActual}
+          holdingCostActual={holdingCostActual}
         />
       )}
     </MainLayout>
