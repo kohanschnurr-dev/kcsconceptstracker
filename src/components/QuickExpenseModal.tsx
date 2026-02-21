@@ -963,7 +963,7 @@ function ImportTab({
                   <TableRow key={row.originalIdx} className={row.hasError ? 'bg-destructive/5' : !row.matchedCategory ? 'bg-warning/5' : ''}>
                     <TableCell className="text-muted-foreground text-xs">{row.originalIdx + 1}</TableCell>
                     <TableCell className="text-sm">
-                      {row.hasError && row.errorMsg?.toLowerCase().includes('date') ? (
+                      {row.hasError && isNaN(new Date(row.date).getTime()) ? (
                         <Input className="h-7 text-xs w-[120px]" defaultValue={row.date} onChange={(e) => updateRowField(row.originalIdx, 'date', e.target.value)} />
                       ) : row.date}
                     </TableCell>
@@ -984,7 +984,7 @@ function ImportTab({
                       )}
                     </TableCell>
                     <TableCell className={`text-right font-mono text-sm ${row.amount < 0 ? 'text-success' : ''}`}>
-                      {row.hasError && row.errorMsg?.toLowerCase().includes('amount') ? (
+                      {row.hasError && isNaN(row.amount) ? (
                         <Input className="h-7 text-xs w-[100px] ml-auto text-right" defaultValue={String(row.amount || '')} onChange={(e) => updateRowField(row.originalIdx, 'amount', e.target.value)} />
                       ) : (
                         <>{row.amount < 0 ? '-' : ''}${Math.abs(row.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</>
@@ -992,7 +992,7 @@ function ImportTab({
                     </TableCell>
                     <TableCell><Badge variant="outline" className="text-xs capitalize">{row.expenseType}</Badge></TableCell>
                     <TableCell>
-                      {row.hasError ? (<Badge variant="destructive" className="text-xs">{row.errorMsg}</Badge>)
+                      {row.hasError ? (<AlertTriangle className="h-4 w-4 text-destructive" />)
                         : row.matchedCategory ? (
                           <div className="flex items-center gap-1.5">
                             <CheckCircle2 className="h-4 w-4 text-success" />
