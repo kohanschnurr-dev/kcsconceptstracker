@@ -1,27 +1,64 @@
 
 
-## Fix: Checkboxes Not Responding to Clicks in "Add Items from Library"
+## Clickable "Need Attention" Badge to Filter Rows
 
-### Problem
+### What Changes
 
-In the library item list, each row has a parent `div` with `onClick={() => toggleItem(item.id)}` and a `Checkbox` inside it with `onClick={(e) => e.stopPropagation()}`. The `stopPropagation` prevents the parent handler from firing, but the `Checkbox` has no `onCheckedChange` of its own -- so clicking directly on the checkbox does nothing.
+Make the "X need attention" badge clickable in both import preview tables. Clicking it filters the table to show only rows with errors or unmatched categories, so you can fix them quickly. Clicking again (or clicking "X ready") clears the filter and shows all rows.
 
-Clicking the row area outside the checkbox works (the parent handler fires), but clicking the checkbox itself is a dead zone.
+### Changes
 
-### Fix in `src/components/project/ProcurementTab.tsx`
+#### 1. `src/components/project/ImportExpensesModal.tsx`
 
-Add an `onCheckedChange` handler to the `Checkbox` so it calls `toggleItem` directly:
+- Add a `filter` state: `useState<'all' | 'attention'>('all')`
+- Compute `displayRows` based on the filter: when `'attention'`, show only rows where `hasError || !matchedCategory`; otherwise show all
+- Make the "need attention" badge a clickable button with `cursor-pointer` styling; clicking it toggles the filter to `'attention'`
+- Make the "ready" badge also clickable to reset filter to `'all'`
+- Add a visual indicator (e.g. ring/underline) on the active filter badge
+- Render `displayRows` in the table instead of `rows`, preserving the original row index for category assignment and numbering
+
+#### 2. `src/components/QuickExpenseModal.tsx` (ImportTab)
+
+- Same changes as above inside the `ImportTab` component's preview section (around lines 895-960)
+
+### Technical Detail
 
 ```tsx
-<Checkbox 
-  checked={selectedIds.has(item.id)} 
-  onCheckedChange={() => toggleItem(item.id)}
-  onClick={(e) => e.stopPropagation()}
-/>
+// New state
+const [filter, setFilter] = useState<'all' | 'attention'>('all');
+
+// Derived display rows (keeps original index for updateRowCategory)
+const displayRows = filter === 'attention'
+  ? rows.map((r, i) => ({ ...r, originalIdx: i })).filter(r => r.hasError || !r.matchedCategory)
+  : rows.map((r, i) => ({ ...r, originalIdx: i }));
+
+// Badges become clickable
+<Badge
+  variant="outline"
+  className={`gap-1 text-success border-success cursor-pointer ${filter === 'all' ? 'ring-2 ring-success/30' : ''}`}
+  onClick={() => setFilter('all')}
+>
+  <CheckCircle2 className="h-3 w-3" />{readyRows.length} ready
+</Badge>
+
+<Badge
+  variant="outline"
+  className={`gap-1 text-warning border-warning cursor-pointer ${filter === 'attention' ? 'ring-2 ring-warning/30' : ''}`}
+  onClick={() => setFilter('attention')}
+>
+  <AlertTriangle className="h-3 w-3" />{needsAttention.length} need attention
+</Badge>
+
+// Table uses displayRows, with originalIdx for row numbering and category updates
+{displayRows.map((row) => (
+  <TableRow key={row.originalIdx} ...>
+    <TableCell>{row.originalIdx + 1}</TableCell>
+    ...
+    // updateRowCategory(row.originalIdx, v) instead of idx
+  </TableRow>
+))}
 ```
 
-This keeps `stopPropagation` to avoid double-toggling (checkbox click + parent click), while giving the checkbox its own toggle behavior.
-
 ### Files Changed
-- `src/components/project/ProcurementTab.tsx` -- add `onCheckedChange` to the Checkbox (line 914-917)
-
+- `src/components/project/ImportExpensesModal.tsx` -- add filter state, clickable badges, filtered table
+- `src/components/QuickExpenseModal.tsx` -- same changes in ImportTab's preview section
