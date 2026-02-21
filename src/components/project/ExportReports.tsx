@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
 import { getBudgetCategories } from '@/types';
 import { toast } from 'sonner';
@@ -271,90 +269,82 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Download className="h-5 w-5" />
-          Export Reports
-        </CardTitle>
-        <CardDescription>
-          Download project data for your accountant or CPA
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div 
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              exportType === 'expenses-csv' 
-                ? 'border-primary bg-primary/5' 
-                : 'border-border hover:border-primary/50'
-            }`}
-            onClick={() => setExportType('expenses-csv')}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <FileSpreadsheet className="h-5 w-5 text-green-600" />
-              <span className="font-medium">Expenses CSV</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              All expenses with dates, vendors, amounts, and tax details
-            </p>
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Download project data for your accountant or CPA
+      </p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div 
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all h-full ${
+            exportType === 'expenses-csv' 
+              ? 'border-primary bg-primary/5' 
+              : 'border-border hover:border-primary/50'
+          }`}
+          onClick={() => setExportType('expenses-csv')}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <FileSpreadsheet className="h-5 w-5 text-green-600" />
+            <span className="font-medium">Expenses CSV</span>
           </div>
-
-          <div 
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              exportType === 'budget-csv' 
-                ? 'border-primary bg-primary/5' 
-                : 'border-border hover:border-primary/50'
-            }`}
-            onClick={() => setExportType('budget-csv')}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <FileSpreadsheet className="h-5 w-5 text-blue-600" />
-              <span className="font-medium">Budget Summary</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Budget vs actual by category with budget analysis
-            </p>
-          </div>
-
-          <div 
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              exportType === 'full-csv' 
-                ? 'border-primary bg-primary/5' 
-                : 'border-border hover:border-primary/50'
-            }`}
-            onClick={() => setExportType('full-csv')}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="h-5 w-5 text-purple-600" />
-              <span className="font-medium">Full Report</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Complete project financials, profit analysis, and all expenses
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            All expenses with dates, vendors, amounts, and tax details
+          </p>
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t">
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium">{expenses.length}</span> expenses • 
-            <span className="font-medium ml-1">{categories.length}</span> categories
+        <div 
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all h-full ${
+            exportType === 'budget-csv' 
+              ? 'border-primary bg-primary/5' 
+              : 'border-border hover:border-primary/50'
+          }`}
+          onClick={() => setExportType('budget-csv')}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+            <span className="font-medium">Budget Summary</span>
           </div>
-          <Button onClick={handleExport} disabled={isExporting}>
-            {isExporting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" />
-                Download Report
-              </>
-            )}
-          </Button>
+          <p className="text-xs text-muted-foreground">
+            Budget vs actual by category with budget analysis
+          </p>
         </div>
-      </CardContent>
-    </Card>
+
+        <div 
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all h-full ${
+            exportType === 'full-csv' 
+              ? 'border-primary bg-primary/5' 
+              : 'border-border hover:border-primary/50'
+          }`}
+          onClick={() => setExportType('full-csv')}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="h-5 w-5 text-purple-600" />
+            <span className="font-medium">Full Report</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Complete project financials, profit analysis, and all expenses
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between pt-4 border-t">
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium">{expenses.length}</span> expenses • 
+          <span className="font-medium ml-1">{categories.length}</span> categories
+        </div>
+        <Button onClick={handleExport} disabled={isExporting}>
+          {isExporting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Exporting...
+            </>
+          ) : (
+            <>
+              <Download className="mr-2 h-4 w-4" />
+              Download Report
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
   );
 }
