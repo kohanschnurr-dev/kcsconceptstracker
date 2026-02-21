@@ -98,6 +98,7 @@ import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { FieldTab } from '@/components/project/FieldTab';
 import { CostControlTab } from '@/components/project/CostControlTab';
+import { ProjectReport } from '@/components/project/ProjectReport';
 import { LeaseTab } from '@/components/project/LeaseTab';
 import { DealTab } from '@/components/project/DealTab';
 import { useToast } from '@/hooks/use-toast';
@@ -247,6 +248,7 @@ export default function ProjectDetail() {
   const [editWork, setEditWork] = useState('');
   const [editIssues, setEditIssues] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const { toast } = useToast();
 
   const handleQuickLogSubmit = async (e: React.FormEvent) => {
@@ -798,6 +800,15 @@ export default function ProjectDetail() {
                     aria-label="Delete project"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {!isEditing && (
+                  <button
+                    className="p-1 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setReportOpen(true)}
+                    aria-label="Generate report"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
                   </button>
                 )}
                 <DropdownMenu>
@@ -1512,6 +1523,15 @@ export default function ProjectDetail() {
           </div>
         </Tabs>
       </div>
+      {project && (
+        <ProjectReport
+          project={project}
+          categories={categories}
+          expenses={allExpensesForExport}
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+        />
+      )}
     </MainLayout>
   );
 }
