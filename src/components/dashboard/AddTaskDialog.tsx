@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, X, Plus } from 'lucide-react';
+import { Loader2, X, Plus, Camera, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { TaskPriority, TaskStatus } from '@/types/task';
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/types/task';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
-import { PasteableTextarea } from '@/components/PasteableTextarea';
+import { Textarea } from '@/components/ui/textarea';
+import { toast as sonnerToast } from 'sonner';
 
 interface AddTaskDialogProps {
   open: boolean;
@@ -29,6 +30,10 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [lineItems, setLineItems] = useState<{ text: string; amount: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,6 +55,40 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
     setPhotoUrls([]);
     setLineItems([]);
   };
+
+  const uploadFile = useCallback(async (file: File) => {
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop() || 'png';
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('task-photos').upload(fileName, file);
+      if (uploadError) { sonnerToast.error('Failed to upload image'); return; }
+      const { data } = supabase.storage.from('task-photos').getPublicUrl(fileName);
+      setPhotoUrls(prev => [...prev, data.publicUrl]);
+      sonnerToast.success('Image uploaded');
+    } catch { sonnerToast.error('Failed to upload image'); }
+    finally { setIsUploading(false); }
+  }, []);
+
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    for (const file of Array.from(files)) { if (file.type.startsWith('image/')) await uploadFile(file); }
+    e.target.value = '';
+  }, [uploadFile]);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault(); setIsDragging(false);
+    for (const file of Array.from(e.dataTransfer.files)) { if (file.type.startsWith('image/')) await uploadFile(file); }
+  }, [uploadFile]);
+
+  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { e.preventDefault(); const file = item.getAsFile(); if (file) await uploadFile(file); break; }
+    }
+  }, [uploadFile]);
 
   const handleSave = async () => {
     if (!title.trim() || isSubmitting) return;
@@ -121,16 +160,59 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
           </div>
 
           <div>
-            <Label htmlFor="task-desc">Description & Photos</Label>
-            <PasteableTextarea
+            <Label htmlFor="task-desc">Description</Label>
+            <Textarea
+              id="task-desc"
               value={description}
-              onChange={setDescription}
-              placeholder="Add details... paste or drag images here"
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add details..."
               rows={3}
-              bucketName="task-photos"
-              uploadedImages={photoUrls}
-              onImagesChange={setPhotoUrls}
             />
+          </div>
+
+          {/* Photos */}
+          <div>
+            <Label>Photos</Label>
+            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
+            <div
+              className={`mt-1 border-2 border-dashed rounded-lg p-3 transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'border-primary/30 bg-primary/5'}`}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+              onDrop={handleDrop}
+              onPaste={handlePaste}
+            >
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => cameraInputRef.current?.click()} disabled={isUploading}>
+                  <Camera className="h-4 w-4 mr-1.5" /> Take Photo
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                  <Upload className="h-4 w-4 mr-1.5" /> Upload File
+                </Button>
+              </div>
+              {isUploading && (
+                <div className="flex items-center justify-center py-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary mr-2" />
+                  <span className="text-xs text-muted-foreground">Uploading...</span>
+                </div>
+              )}
+              {photoUrls.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {photoUrls.map((url, index) => (
+                    <div key={index} className="relative group w-16 h-16 rounded-lg overflow-hidden border bg-muted">
+                      <img src={url} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setPhotoUrls(prev => prev.filter((_, i) => i !== index))}
+                        className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-4 w-4 text-white" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Line Items */}
