@@ -913,6 +913,7 @@ function ItemPickerModal({ open, onOpenChange, projectId, existingItemIds, onIte
                 >
                   <Checkbox 
                     checked={selectedIds.has(item.id)} 
+                    onCheckedChange={() => toggleItem(item.id)}
                     onClick={(e) => e.stopPropagation()}
                   />
                   <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
