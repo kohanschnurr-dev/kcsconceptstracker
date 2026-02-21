@@ -1,42 +1,24 @@
 
-## Fix: Formula Input Not Accepting "=" in Number Fields
 
-### Root Cause
+## Left-Align Input Values in Profit Calculator
 
-When `<input type="number">` is rendered, the browser natively blocks non-numeric characters like `=` at the DOM level. The `onChange` event never fires, so `isFormulaMode` never activates, and the input never switches to `type="text"`.
+### Problem
+
+The numeric inputs (Purchase Price, ARV, Transaction Costs, Holding Costs) have a `DollarSign` icon on the left with `pl-9` padding, pushing the values away from the left edge unnecessarily.
 
 ### Solution
 
-Intercept the `=` key in `onKeyDown` and proactively switch to formula mode before the browser blocks the character.
+Remove the `DollarSign` icons and the `pl-9` padding class from all four input fields so values sit flush-left inside the inputs. The labels already indicate these are dollar amounts, making the icons redundant.
 
 ### Changes
 
-**`src/components/ui/formula-input.tsx`**
+**`src/components/project/ProfitCalculator.tsx`**
 
-Update `handleKeyDown` to detect when the user presses `=` while in a numeric (non-formula) input:
-
-```tsx
-const handleKeyDown = useCallback(
-  (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Intercept "=" on a number input to enter formula mode
-    if (e.key === '=' && isNumeric && !isFormulaMode) {
-      e.preventDefault();
-      setIsFormulaMode(true);
-      setLocalValue('=');
-      return;
-    }
-    if (e.key === 'Enter' && isFormulaMode) {
-      e.preventDefault();
-      resolveFormula();
-      return;
-    }
-    onKeyDown?.(e);
-  },
-  [isNumeric, isFormulaMode, resolveFormula, onKeyDown],
-);
-```
-
-This is a single change in one file -- no other files affected.
+- Remove the `<DollarSign>` icon elements inside the `relative` wrappers for Purchase Price and ARV fields
+- Remove the `className="pl-9"` from those two `<FormulaInput>` components
+- Also remove the conditional `DollarSign` icon and `pl-9` from the Transaction Costs and Holding Costs fields (flat mode)
+- Clean up unused `DollarSign` import if no longer needed elsewhere in the component
 
 ### Files Changed
-- `src/components/ui/formula-input.tsx` -- add `=` key interception in `handleKeyDown`
+- `src/components/project/ProfitCalculator.tsx` -- remove dollar icons and left padding from 4 input fields
+
