@@ -192,7 +192,12 @@ export function ProjectReport({
 
   const handleDownloadPdf = () => {
     if (!reportRef.current) return;
-    const html = reportRef.current.innerHTML;
+    // Clone DOM and remove extra sections for one-page PDF
+    const clone = reportRef.current.cloneNode(true) as HTMLElement;
+    const sections = clone.querySelectorAll(':scope > section');
+    // Remove sections in reverse order: Scope Creep (5), Category Breakdown (4), Where the Money Went (3)
+    [5, 4, 3].forEach(i => { if (sections[i]) sections[i].remove(); });
+    const html = clone.innerHTML;
     const cs = getComputedStyle(document.documentElement);
     const vars = [
       '--background', '--foreground', '--card', '--card-foreground',
@@ -268,7 +273,7 @@ export function ProjectReport({
     .recharts-tooltip-wrapper { display: none !important; }
 
     @media print {
-      @page { size: A4 portrait; margin: 0.5in; }
+      @page { size: A4 portrait; margin: 0.3in; }
       body { background: hsl(var(--background)) !important; }
       * {
         -webkit-print-color-adjust: exact !important;
@@ -290,7 +295,7 @@ export function ProjectReport({
       .bottom-\\[-2px\\] { bottom: -2px !important; }
 
       /* Prevent content splitting */
-      section { break-inside: avoid; margin-bottom: 12px; }
+      section { break-inside: avoid; margin-bottom: 6px; }
       .bg-card, .bg-warning\\/5 { break-inside: avoid; }
       
       .print\\:break-before-page { page-break-before: always; break-before: page; }
@@ -310,7 +315,7 @@ export function ProjectReport({
   </style>
 </head>
 <body>
-  <div class="max-w-5xl mx-auto px-8 py-8 space-y-8">
+  <div class="max-w-5xl mx-auto px-6 py-4 space-y-4">
     ${html}
   </div>
   <script>
@@ -674,7 +679,7 @@ export function ProjectReport({
             .print\:break-before-page { page-break-before: always; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .report-anim { animation: none !important; opacity: 1 !important; transform: none !important; }
-            body { background: white !important; }
+            body { background: hsl(var(--background)) !important; }
           }
         `}</style>
       </DialogContent>
