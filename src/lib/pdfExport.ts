@@ -174,7 +174,7 @@ function renderContent(content: string, primaryColor: string, primaryRaw: string
   return htmlParts.join('\n');
 }
 
-export function generatePDF(content: string, options: PdfOptions): void {
+export function generatePDFHtml(content: string, options: PdfOptions): string {
   const primaryColor = getActivePrimaryHsl();
   const primaryRaw = getActivePrimaryRaw();
   const headerTextColor = isLightColor(primaryColor) ? '#1a1a1a' : '#ffffff';
@@ -199,7 +199,7 @@ export function generatePDF(content: string, options: PdfOptions): void {
 
   const renderedContent = renderContent(content, primaryColor, primaryRaw);
 
-  const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -220,7 +220,6 @@ export function generatePDF(content: string, options: PdfOptions): void {
       print-color-adjust: exact;
     }
 
-    /* ── PAGE WRAPPER ──────────────────────────────────── */
     .page {
       max-width: 860px;
       margin: 0 auto;
@@ -228,7 +227,6 @@ export function generatePDF(content: string, options: PdfOptions): void {
       box-shadow: 0 4px 40px rgba(0,0,0,0.10);
     }
 
-    /* ── HEADER ─────────────────────────────────────────── */
     .header {
       background: ${primaryColor};
       color: ${headerTextColor};
@@ -303,7 +301,6 @@ export function generatePDF(content: string, options: PdfOptions): void {
       border: 1px solid rgba(255,255,255,0.25);
     }
 
-    /* ── META BAR ───────────────────────────────────────── */
     .meta-bar {
       background: hsl(${primaryRaw} / 0.07);
       padding: 8px 36px;
@@ -317,13 +314,11 @@ export function generatePDF(content: string, options: PdfOptions): void {
       letter-spacing: 0.02em;
     }
 
-    /* ── CONTENT WRAPPER ────────────────────────────────── */
     .content-wrapper {
       padding: 20px 36px 24px;
       background: #F9F7F4;
     }
 
-    /* ── CONTENT CARD ───────────────────────────────────── */
     .content-card {
       background: #ffffff;
       border-radius: 10px;
@@ -332,7 +327,6 @@ export function generatePDF(content: string, options: PdfOptions): void {
       padding: 24px 32px;
     }
 
-    /* ── FOOTER ─────────────────────────────────────────── */
     .footer {
       margin: 0 36px;
       padding: 12px 0 16px;
@@ -362,7 +356,6 @@ export function generatePDF(content: string, options: PdfOptions): void {
       flex-shrink: 0;
     }
 
-    /* ── PRINT ──────────────────────────────────────────── */
     @media print {
       body {
         background: #ffffff;
@@ -438,7 +431,10 @@ export function generatePDF(content: string, options: PdfOptions): void {
 </script>
 </body>
 </html>`;
+}
 
+export function generatePDF(content: string, options: PdfOptions): void {
+  const html = generatePDFHtml(content, options);
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
   const win = window.open(url, '_blank');

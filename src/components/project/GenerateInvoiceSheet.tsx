@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { FileText, Plus, X } from 'lucide-react';
+import { generatePDFHtml } from '@/lib/pdfExport';
 import { generatePDF } from '@/lib/pdfExport';
+import { saveDocumentToProject } from '@/lib/saveDocumentToProject';
 import {
   Sheet,
   SheetContent,
@@ -21,6 +23,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useToast } from '@/hooks/use-toast';
+import { useProjectOptions } from '@/hooks/useProjectOptions';
+import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 
 interface GenerateInvoiceSheetProps {
   open: boolean;
@@ -54,6 +59,8 @@ const newLineItem = (): LineItem => ({
 
 export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', projectAddress = '' }: GenerateInvoiceSheetProps) {
   const { settings } = useCompanySettings();
+  const { toast } = useToast();
+  const projects = useProjectOptions();
 
   const [companyName, setCompanyName] = useState('');
   const [clientName, setClientName] = useState('');
@@ -67,6 +74,8 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
   const [taxRate, setTaxRate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (settings?.company_name) setCompanyName(settings.company_name);
@@ -88,6 +97,7 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
       setTaxRate('');
       setPaymentMethod('');
       setPaymentNotes('');
+      setSelectedProjectId('');
     }
     onOpenChange(val);
   };
@@ -109,7 +119,7 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
 
   const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     const lines: string[] = ['INVOICE', ''];
 
     if (invoiceNumber) lines.push(`Invoice Number: ${invoiceNumber}`);
@@ -164,11 +174,33 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
     }
 
     const content = lines.join('\n');
-    generatePDF(content, {
-      docType: 'Invoice',
+    const pdfOptions = {
+      docType: 'Invoice' as const,
       companyName: settings?.company_name || companyName || 'Your Company',
       logoUrl: settings?.logo_url,
-    });
+    };
+
+    // Open PDF in new tab
+    generatePDF(content, pdfOptions);
+
+    // Save to project if selected
+    if (selectedProjectId) {
+      setIsSaving(true);
+      try {
+        const html = generatePDFHtml(content, pdfOptions);
+        await saveDocumentToProject(html, selectedProjectId, 'Invoice', 'invoice');
+        const proj = projects.find(p => p.id === selectedProjectId);
+        toast({
+          title: 'Document saved',
+          description: `Invoice saved to ${proj?.name ?? 'project'} Documents`,
+        });
+      } catch (err) {
+        console.error(err);
+        toast({ title: 'Save failed', description: 'Could not save document to project.', variant: 'destructive' });
+      } finally {
+        setIsSaving(false);
+      }
+    }
   };
 
   return (
@@ -365,10 +397,24 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
               </div>
             </div>
 
+            {/* SAVE TO PROJECT */}
+            <div>
+              <SectionLabel>Save to Project</SectionLabel>
+              <div className="space-y-1.5">
+                <ProjectAutocomplete
+                  projects={projects}
+                  value={selectedProjectId}
+                  onSelect={(id) => setSelectedProjectId(id === selectedProjectId ? '' : id)}
+                  placeholder="Select a project…"
+                />
+                <p className="text-xs text-muted-foreground">Optional — saves a copy to the project's Documents tab</p>
+              </div>
+            </div>
+
             {/* GENERATE BUTTON */}
-            <Button onClick={handleGenerate} className="w-full gap-2" size="lg">
+            <Button onClick={handleGenerate} className="w-full gap-2" size="lg" disabled={isSaving}>
               <FileText className="h-4 w-4" />
-              Generate Invoice PDF
+              {isSaving ? 'Saving…' : 'Generate Invoice PDF'}
             </Button>
 
             <div className="h-4" />
