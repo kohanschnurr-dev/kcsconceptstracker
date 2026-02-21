@@ -155,12 +155,16 @@ function ExpenseForm({
         if (parsed.vendor_name) setVendor(parsed.vendor_name);
         if (parsed.purchase_date) setDate(parsed.purchase_date);
         if (parsed.total_amount) setAmount(parsed.total_amount.toString());
-        if (parsed.tax_amount && parsed.tax_amount > 0) setIncludeTax(false); // tax already included in total
+        if (parsed.tax_amount && parsed.tax_amount > 0) setIncludeTax(false);
         if (parsed.line_items?.length > 0) {
           const desc = parsed.line_items.map((li: any) => li.item_name).join(', ');
           setDescription(desc.substring(0, 200));
         }
-        toast({ title: 'Receipt scanned', description: `Extracted ${parsed.line_items?.length || 0} items from ${parsed.vendor_name || 'receipt'}.` });
+        if (parsed.suggested_category) setSelectedCategory(parsed.suggested_category);
+        if (parsed.expense_type) setExpenseType(parsed.expense_type as 'product' | 'labor');
+        const vendorLabel = parsed.vendor_name || 'receipt';
+        const amountLabel = parsed.total_amount ? ` - $${Number(parsed.total_amount).toFixed(2)}` : '';
+        toast({ title: 'Receipt scanned', description: `Extracted: ${vendorLabel}${amountLabel}` });
       }
     } catch (error: any) {
       console.error('Error parsing receipt image:', error);
@@ -178,6 +182,14 @@ function ExpenseForm({
       reader.onload = (e) => { setReceiptPreview(e.target?.result as string); };
       reader.readAsDataURL(file);
     }
+  };
+
+  const isImageFile = (file: File) => file.type.startsWith('image/');
+  const getFileIcon = (file: File) => {
+    if (file.type === 'application/pdf') return 'PDF';
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) return 'XLS';
+    if (file.name.endsWith('.docx') || file.name.endsWith('.doc')) return 'DOC';
+    return 'FILE';
   };
 
   const uploadReceipt = async (): Promise<string | null> => {
@@ -238,15 +250,54 @@ function ExpenseForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
-      {/* Text-to-Info Feature */}
-      <div className="space-y-2">
+      {/* ─── Scan Receipt Section (top of form) ─── */}
+      <div className="space-y-3 p-3 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">Quick Import</Label>
-          <Button type="button" variant={showTextInput ? "secondary" : "outline"} size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setShowTextInput(!showTextInput)}>
+          <Label className="text-sm font-semibold flex items-center gap-1.5">
+            <Sparkles className="h-4 w-4 text-primary" />
+            Scan Receipt
+          </Label>
+          <Button type="button" variant={showTextInput ? "secondary" : "ghost"} size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setShowTextInput(!showTextInput)}>
             <FileText className="h-3 w-3" />
-            Paste Receipt Text
+            Paste Text
           </Button>
         </div>
+
+        <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={handleFileChange} className="hidden" />
+
+        {receiptPreview ? (
+          <div className="space-y-2">
+            <div className="relative">
+              {receiptFile && isImageFile(receiptFile) ? (
+                <img src={receiptPreview} alt="Receipt preview" className="w-full h-32 object-cover rounded-lg border border-border" />
+              ) : (
+                <div className="w-full h-24 rounded-lg border border-border bg-muted/50 flex items-center justify-center gap-3">
+                  <FileText className="h-8 w-8 text-muted-foreground" />
+                  <div className="text-left">
+                    <p className="text-sm font-medium truncate max-w-[200px]">{receiptFile?.name}</p>
+                    <p className="text-xs text-muted-foreground">{receiptFile ? getFileIcon(receiptFile) : 'Document'}</p>
+                  </div>
+                </div>
+              )}
+              <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => { setReceiptFile(null); setReceiptPreview(null); }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button type="button" variant="secondary" size="sm" className="w-full gap-1.5" onClick={handleParseReceiptImage} disabled={isParsingImage}>
+              {isParsingImage ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" />Scanning...</>) : (<><Sparkles className="h-3.5 w-3.5" />Scan Receipt</>)}
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="button" variant="outline" className="gap-2" onClick={handleReceiptPhotoClick}>
+              <Camera className="h-4 w-4" />Take Photo
+            </Button>
+            <Button type="button" variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="h-4 w-4" />Upload File
+            </Button>
+          </div>
+        )}
+
         {showTextInput && (
           <div className="space-y-2 p-3 rounded-lg bg-muted/50 border border-border">
             <Textarea placeholder="Paste receipt text here (from email, screenshot OCR, etc.)..." value={receiptText} onChange={(e) => setReceiptText(e.target.value)} rows={6} className="text-xs font-mono" />
@@ -333,28 +384,7 @@ function ExpenseForm({
         )}
       </div>
 
-      {/* Receipt Upload */}
-      <div className="space-y-2">
-        <Label>Receipt (optional)</Label>
-        <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
-        {receiptPreview ? (
-          <div className="space-y-2">
-            <div className="relative">
-              <img src={receiptPreview} alt="Receipt preview" className="w-full h-32 object-cover rounded-lg border border-border" />
-              <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => { setReceiptFile(null); setReceiptPreview(null); }}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <Button type="button" variant="secondary" size="sm" className="w-full gap-1.5" onClick={handleParseReceiptImage} disabled={isParsingImage}>
-              {isParsingImage ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" />Scanning...</>) : (<><Sparkles className="h-3.5 w-3.5" />Scan Receipt</>)}
-            </Button>
-          </div>
-        ) : (
-          <Button type="button" variant="outline" className="w-full gap-2" onClick={handleReceiptPhotoClick}>
-            <Camera className="h-4 w-4" />Add Receipt Photo
-          </Button>
-        )}
-      </div>
+      {/* Receipt upload section removed - now at top of form */}
 
       {/* Receipt Tips Dialog */}
       <Dialog open={showReceiptTips} onOpenChange={setShowReceiptTips}>

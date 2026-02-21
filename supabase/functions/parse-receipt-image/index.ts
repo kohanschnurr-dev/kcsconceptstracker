@@ -138,7 +138,16 @@ CATEGORIES (use lowercase)
 plumbing, electrical, hvac, flooring, painting, cabinets, countertops, 
 tile, light_fixtures, hardware, appliances, windows, doors, roofing, 
 framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, 
-garage, cleaning, misc`
+garage, cleaning, misc
+
+═══════════════════════════════════════════════════════════════
+EXPENSE TYPE DETECTION
+═══════════════════════════════════════════════════════════════
+Determine if this receipt is for PRODUCTS or LABOR:
+- "product": Receipts from retail stores (Home Depot, Lowe's, Amazon, etc.) or for materials/supplies
+- "labor": Receipts/invoices from contractors, subcontractors, service providers, or for work performed
+
+Return this as "expense_type" in your JSON response.`
           },
           {
             role: "user",
@@ -165,6 +174,8 @@ Return ONLY valid JSON (no markdown, no explanation):
   "subtotal": 266.47,
   "discount_amount": 0,
   "purchase_date": "2026-02-03",
+  "suggested_category": "plumbing",
+  "expense_type": "product",
   "line_items": [
     {
       "item_name": "2 in. PVC Coupling",
