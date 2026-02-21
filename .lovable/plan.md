@@ -1,58 +1,46 @@
 
 
-## Fix Middle-Click Scroll in Dropdowns
+## Replace Inline Quick-Add with "+ Add Task" Button
 
-### Problem
+### What Changes
 
-The previous fix added an `onMouseDown` handler to `CommandList`, but it does not work because Radix UI uses **pointer events** (`pointerdown`), which fire **before** mouse events. The Radix `DismissableLayer` (used by Popover and Dialog) intercepts `pointerdown` and calls `preventDefault()`, blocking the browser's native middle-click auto-scroll before our `mousedown` handler ever runs.
+The full inline input bar (text input, project dropdown, camera, calendar, submit button, and photo preview strip) on the Checklist tab will be removed and replaced with a compact **"+ Add Task"** button in the page header area (top-right). Clicking it opens the existing `AddTaskDialog` modal that has all the same fields (title, project, priority, status, due date, photos).
 
-### Solution
+### Technical Details
 
-Handle **both** `onPointerDown` and `onMouseDown` for middle-click (button === 1) on scrollable list containers, stopping propagation so Radix layers do not intercept the event and the browser can activate its native auto-scroll.
+**`src/pages/DailyLogs.tsx`**
 
-### Changes
+1. **Import `AddTaskDialog`** at the top of the file:
+   ```tsx
+   import { AddTaskDialog } from '@/components/dashboard/AddTaskDialog';
+   ```
 
-**1. `src/components/ui/command.tsx` - CommandList**
+2. **Add state** for the dialog:
+   ```tsx
+   const [addTaskOpen, setAddTaskOpen] = useState(false);
+   ```
 
-Update the existing handler to also include `onPointerDown`:
+3. **Add "+ Add Task" button to the header** (lines 564-569). Update the header `div` to include the button on the right side:
+   ```tsx
+   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+     <div>
+       <h1 className="text-2xl font-semibold">Daily Logs & Tasks</h1>
+       <p className="text-muted-foreground mt-1">Track site visits and manage your checklist</p>
+     </div>
+     <Button className="gap-2 w-full sm:w-auto h-11 sm:h-10" onClick={() => setAddTaskOpen(true)}>
+       <Plus className="h-4 w-4" />
+       Add Task
+     </Button>
+   </div>
+   ```
 
-```tsx
-<CommandPrimitive.List
-  ref={ref}
-  className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden overscroll-contain", className)}
-  onPointerDown={(e) => {
-    if (e.button === 1) { e.stopPropagation(); }
-  }}
-  onMouseDown={(e) => {
-    if (e.button === 1) { e.stopPropagation(); }
-  }}
-  {...props}
-/>
-```
+4. **Remove the entire inline quick-add block** (lines 791-931) -- the form with the text input, project select, camera button, calendar popover, submit button, and photo thumbnail strip.
 
-**2. `src/components/ui/select.tsx` - SelectContent Viewport**
+5. **Render the `AddTaskDialog`** at the bottom of the component, passing `onTaskCreated` to refresh the task list after creation:
+   ```tsx
+   <AddTaskDialog open={addTaskOpen} onOpenChange={setAddTaskOpen} onTaskCreated={fetchTasks} />
+   ```
 
-Add the same handlers to the `SelectPrimitive.Viewport` element (the scrollable container inside Select dropdowns):
+6. **Clean up unused state variables** that were only used by the inline form: `newTaskTitle`, `newTaskProjectId`, `newTaskDueDate`, `newTaskPhotoUrls`, `newTaskUploading`, `newTaskFileRef`, and the `handleCreateTask` function -- if they are not used elsewhere.
 
-```tsx
-<SelectPrimitive.Viewport
-  className={cn(
-    "p-1 max-h-[280px] overflow-y-auto overscroll-contain",
-    ...
-  )}
-  onPointerDown={(e) => {
-    if (e.button === 1) { e.stopPropagation(); }
-  }}
-  onMouseDown={(e) => {
-    if (e.button === 1) { e.stopPropagation(); }
-  }}
->
-```
-
-### Why This Works
-
-- `pointerdown` fires first in the event chain; stopping propagation here prevents Radix's `DismissableLayer` from calling `preventDefault()` on the event
-- `mousedown` is kept as a fallback for any browser that processes mouse events independently
-- `overscroll-contain` keeps the scroll contained within the dropdown so the page behind does not scroll
-- Only middle-click (button === 1) is intercepted; normal clicks and right-clicks remain unaffected
-
+This keeps the same task creation capabilities (title, project, priority, status, due date, photos) but moves them into the cleaner dialog experience, matching the dashboard pattern.
