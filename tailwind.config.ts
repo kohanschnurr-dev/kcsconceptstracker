@@ -92,6 +92,11 @@ export default {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "indeterminate": {
+          "0%": { transform: "translateX(-100%)" },
+          "50%": { transform: "translateX(200%)" },
+          "100%": { transform: "translateX(-100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
