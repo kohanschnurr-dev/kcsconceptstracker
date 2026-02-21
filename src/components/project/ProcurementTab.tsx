@@ -469,19 +469,6 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
           </CardContent>
         </Card>
         
-        <Card className="glass-card">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-success/20">
-                <Package className="h-5 w-5 text-success" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Ordered/Received</p>
-                <p className="text-xl font-bold font-mono">{formatCurrency(totals.orderedTotal)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
         
         <Card className="glass-card">
           <CardContent className="pt-4">
