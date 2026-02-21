@@ -1,32 +1,66 @@
 
 
-## Make the "Add Task" Button Larger and More Prominent
+## Convert Work Items, Also Included, and Exclusions to Task-Line UI with Camera Upload
 
-### Change
+### What Changes
 
-Update the "+ Add Task" button in the Daily Logs header to be bigger and more visually prominent as the focal point of the area.
+The three textarea sections (Work Items, Also Included, Not Included / Exclusions) in the Scope of Work Generator will be replaced with an interactive task-line UI. Each line item becomes its own row with:
+- The text of the item displayed as an editable input
+- A camera button to upload/capture photos (supports multiple photos per line)
+- A delete button to remove the line
+- Thumbnail previews of uploaded photos beneath each line
+- A "+ Add Item" button at the bottom of each section
+
+Photos will be stored in the existing `task-photos` storage bucket (already public with RLS policies).
+
+### How It Works
+
+Each section manages an array of objects instead of a plain string:
+
+```text
+Before: workItems = "Remove old water heater\nInstall new unit"
+After:  workItems = [
+          { text: "Remove old water heater", photos: ["url1", "url2"] },
+          { text: "Install new unit", photos: [] }
+        ]
+```
+
+Each line item renders as:
+```text
+[  Remove old water heater          ] [camera icon] [X]
+   [thumb1] [thumb2]
+[  Install new 50-gallon unit       ] [camera icon] [X]
+[+ Add Item]
+```
 
 ### Technical Details
 
-**`src/pages/DailyLogs.tsx` (line 520)**
+**New component: `src/components/vendors/WorkItemLines.tsx`**
 
-Change the button from:
-```tsx
-<Button className="gap-2 w-full sm:w-auto h-11 sm:h-10" onClick={() => setAddTaskOpen(true)}>
-  <Plus className="h-4 w-4" />
-  Add Task
-</Button>
-```
+A reusable component that renders the task-line UI for any of the three sections. Props:
+- `items`: array of `{ text: string; photos: string[] }`
+- `onChange`: callback when items change
+- `placeholder`: placeholder text for new items
+- `label`: section label
+- `description`: optional helper text
 
-To:
-```tsx
-<Button size="lg" className="gap-2 w-full sm:w-auto h-12 px-6 text-base font-semibold" onClick={() => setAddTaskOpen(true)}>
-  <Plus className="h-5 w-5" />
-  Add Task
-</Button>
-```
+Handles:
+- Adding new empty items via "+ Add Item" button
+- Editing item text inline via Input
+- Deleting items with an X button
+- Camera button per line that triggers a hidden file input (accepts `image/*`, `capture="environment"`, `multiple`)
+- Uploading photos to `task-photos` bucket in Supabase Storage
+- Displaying photo thumbnails with remove capability
 
-- Larger height (`h-12`) and more horizontal padding (`px-6`)
-- Bigger text (`text-base`, `font-semibold`)
-- Larger icon (`h-5 w-5`)
-- Uses the `lg` size variant for consistent sizing
+**Modified: `src/components/vendors/ScopeOfWorkSheet.tsx`**
+
+1. Replace state for `workItems`, `alsoIncluded`, and `exclusions` from `string` to `Array<{ text: string; photos: string[] }>`, initialized as empty arrays.
+
+2. Replace the three Textarea blocks (lines 299-327) with the new `WorkItemLines` component.
+
+3. Update `handleGenerate` (the PDF generation) to join item texts with newlines (preserving current PDF format). Photos are not included in the PDF since it's text-based -- they serve as visual documentation for the contractor.
+
+4. Update `handleOpenChange` reset logic to clear the new array format.
+
+**No database or storage changes needed** -- the existing `task-photos` bucket is public and has appropriate RLS policies for authenticated uploads.
+
