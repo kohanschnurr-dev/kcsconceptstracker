@@ -1,66 +1,69 @@
 
 
-## Convert Work Items, Also Included, and Exclusions to Task-Line UI with Camera Upload
+## Add Project and Due Date Filters to Checklist
 
 ### What Changes
 
-The three textarea sections (Work Items, Also Included, Not Included / Exclusions) in the Scope of Work Generator will be replaced with an interactive task-line UI. Each line item becomes its own row with:
-- The text of the item displayed as an editable input
-- A camera button to upload/capture photos (supports multiple photos per line)
-- A delete button to remove the line
-- Thumbnail previews of uploaded photos beneath each line
-- A "+ Add Item" button at the bottom of each section
+The filter bar on the Checklist tab currently only has a status dropdown. We will add two more filters beside it:
+- **Project filter** -- a dropdown listing all projects the user has, plus "All Projects"
+- **Due Date filter** -- a dropdown with presets: "Any Date", "Overdue", "Due Today", "Due This Week", "No Due Date"
 
-Photos will be stored in the existing `task-photos` storage bucket (already public with RLS policies).
-
-### How It Works
-
-Each section manages an array of objects instead of a plain string:
-
-```text
-Before: workItems = "Remove old water heater\nInstall new unit"
-After:  workItems = [
-          { text: "Remove old water heater", photos: ["url1", "url2"] },
-          { text: "Install new unit", photos: [] }
-        ]
-```
-
-Each line item renders as:
-```text
-[  Remove old water heater          ] [camera icon] [X]
-   [thumb1] [thumb2]
-[  Install new 50-gallon unit       ] [camera icon] [X]
-[+ Add Item]
-```
+The filters will stack nicely on mobile using the existing `flex-wrap` layout.
 
 ### Technical Details
 
-**New component: `src/components/vendors/WorkItemLines.tsx`**
+**`src/pages/DailyLogs.tsx`**
 
-A reusable component that renders the task-line UI for any of the three sections. Props:
-- `items`: array of `{ text: string; photos: string[] }`
-- `onChange`: callback when items change
-- `placeholder`: placeholder text for new items
-- `label`: section label
-- `description`: optional helper text
+1. **Add new state variables** (near line 146):
+   ```tsx
+   const [projectFilter, setProjectFilter] = useState<string>('all');
+   const [dueDateFilter, setDueDateFilter] = useState<string>('any');
+   ```
 
-Handles:
-- Adding new empty items via "+ Add Item" button
-- Editing item text inline via Input
-- Deleting items with an X button
-- Camera button per line that triggers a hidden file input (accepts `image/*`, `capture="environment"`, `multiple`)
-- Uploading photos to `task-photos` bucket in Supabase Storage
-- Displaying photo thumbnails with remove capability
+2. **Update the filtering logic** for both `dailyTasks` and `masterTasks` (lines 308-330). After the existing status filter check, add:
+   - **Project filter**: if `projectFilter !== 'all'`, only include tasks where `task.projectId === projectFilter`
+   - **Due date filter**: based on the selected preset:
+     - `'any'` -- no filtering
+     - `'overdue'` -- `task.dueDate` is before today and task is not completed
+     - `'today'` -- `task.dueDate` equals today's date string
+     - `'this_week'` -- `task.dueDate` is within the current week (using `startOfWeek`/`endOfWeek` from date-fns)
+     - `'no_date'` -- `task.dueDate` is null
 
-**Modified: `src/components/vendors/ScopeOfWorkSheet.tsx`**
+3. **Add the two new Select dropdowns** in the filter bar (lines 748-759), after the existing status filter:
 
-1. Replace state for `workItems`, `alsoIncluded`, and `exclusions` from `string` to `Array<{ text: string; photos: string[] }>`, initialized as empty arrays.
+   **Project filter:**
+   ```tsx
+   <Select value={projectFilter} onValueChange={setProjectFilter}>
+     <SelectTrigger className="w-40 sm:w-44 h-10">
+       <SelectValue placeholder="All Projects" />
+     </SelectTrigger>
+     <SelectContent>
+       <SelectItem value="all">All Projects</SelectItem>
+       {projects.map((p) => (
+         <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+       ))}
+     </SelectContent>
+   </Select>
+   ```
 
-2. Replace the three Textarea blocks (lines 299-327) with the new `WorkItemLines` component.
+   **Due Date filter:**
+   ```tsx
+   <Select value={dueDateFilter} onValueChange={setDueDateFilter}>
+     <SelectTrigger className="w-36 sm:w-40 h-10">
+       <SelectValue />
+     </SelectTrigger>
+     <SelectContent>
+       <SelectItem value="any">Any Date</SelectItem>
+       <SelectItem value="overdue">Overdue</SelectItem>
+       <SelectItem value="today">Due Today</SelectItem>
+       <SelectItem value="this_week">Due This Week</SelectItem>
+       <SelectItem value="no_date">No Due Date</SelectItem>
+     </SelectContent>
+   </Select>
+   ```
 
-3. Update `handleGenerate` (the PDF generation) to join item texts with newlines (preserving current PDF format). Photos are not included in the PDF since it's text-based -- they serve as visual documentation for the contractor.
+4. **Import** `startOfWeek` and `endOfWeek` from `date-fns` (line 53) for the "this week" filter logic.
 
-4. Update `handleOpenChange` reset logic to clear the new array format.
+5. **Move the task count** to stay at the end of the filter row with `ml-auto`.
 
-**No database or storage changes needed** -- the existing `task-photos` bucket is public and has appropriate RLS policies for authenticated uploads.
-
+No database or backend changes needed -- all filtering is client-side on already-fetched task data.
