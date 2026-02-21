@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormulaInput } from '@/components/ui/formula-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1332,7 +1333,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           <Label>{formData.is_pack_price ? 'Pack Price *' : 'Unit Price *'}</Label>
           <div className="relative">
             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
+            <FormulaInput
               type="number"
               step="0.01"
               value={formData.unit_price}
@@ -1345,7 +1346,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
 
         <div>
           <Label>{formData.is_pack_price ? 'Units in Pack' : 'Quantity'}</Label>
-          <Input
+          <FormulaInput
             type="number"
             value={formData.quantity}
             onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormulaInput } from '@/components/ui/formula-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Save, TrendingUp, DollarSign, Percent, Loader2 } from 'lucide-react';
@@ -109,7 +110,7 @@ export function ContractorFinancialsTab({
               </div>
               <span className="text-sm font-medium text-muted-foreground">Contract Value</span>
             </div>
-            <Input
+            <FormulaInput
               type="number"
               value={contractValue || ''}
               placeholder="0"
@@ -189,7 +190,7 @@ export function ContractorFinancialsTab({
               <Label htmlFor="labor-budget" className="text-xs text-muted-foreground">
                 Est. Labor Budget
               </Label>
-              <Input
+              <FormulaInput
                 id="labor-budget"
                 type="number"
                 value={laborBudget || ''}
@@ -202,7 +203,7 @@ export function ContractorFinancialsTab({
               <Label htmlFor="materials-budget" className="text-xs text-muted-foreground">
                 Est. Materials Budget
               </Label>
-              <Input
+              <FormulaInput
                 id="materials-budget"
                 type="number"
                 value={materialsBudget || ''}
