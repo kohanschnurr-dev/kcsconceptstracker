@@ -490,11 +490,10 @@ export default function Procurement() {
                 />
               </div>
               {/* Row 2: Dropdowns side-by-side on mobile, inline on md+ */}
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Select value={filterBundle} onValueChange={setFilterBundle}>
-                  <SelectTrigger className="flex-1 h-9 min-w-0 md:w-48 md:flex-none">
-                    <Layers className="h-4 w-4 mr-1 shrink-0 hidden sm:block" />
-                    <SelectValue placeholder="Bundles" />
+                  <SelectTrigger className="h-9 min-w-0 md:w-48 md:flex-none text-xs sm:text-sm">
+                    <SelectValue placeholder="Bundle" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Bundles</SelectItem>
@@ -505,8 +504,7 @@ export default function Procurement() {
                   </SelectContent>
                 </Select>
                 <Select value={filterCategory} onValueChange={setFilterCategory}>
-                  <SelectTrigger className="flex-1 h-9 min-w-0 md:w-48 md:flex-none">
-                    <Package className="h-4 w-4 mr-1 shrink-0 hidden sm:block" />
+                  <SelectTrigger className="h-9 min-w-0 md:w-48 md:flex-none text-xs sm:text-sm">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -517,15 +515,14 @@ export default function Procurement() {
                   </SelectContent>
                 </Select>
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="flex-1 h-9 min-w-0 md:w-48 md:flex-none">
-                    <ArrowUpDown className="h-4 w-4 mr-1 shrink-0 hidden sm:block" />
+                  <SelectTrigger className="h-9 min-w-0 md:w-48 md:flex-none text-xs sm:text-sm">
                     <SelectValue placeholder="Sort" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="name_asc">A-Z</SelectItem>
                     <SelectItem value="name_desc">Z-A</SelectItem>
-                    <SelectItem value="price_low">Price: Low to High</SelectItem>
-                    <SelectItem value="price_high">Price: High to Low</SelectItem>
+                    <SelectItem value="price_low">Price ↑</SelectItem>
+                    <SelectItem value="price_high">Price ↓</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -553,7 +550,7 @@ export default function Procurement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-8 sm:w-10 text-center">
+                      <TableHead className="w-8 sm:w-10 text-center px-1 sm:px-4">
                         <Checkbox
                           checked={allVisibleSelected}
                           onCheckedChange={toggleSelectAll}
@@ -561,20 +558,20 @@ export default function Procurement() {
                           className={someVisibleSelected && !allVisibleSelected ? 'opacity-50' : ''}
                         />
                       </TableHead>
-                      <TableHead className="w-10 sm:w-16 text-center"></TableHead>
-                      <TableHead>Item</TableHead>
+                      <TableHead className="w-10 sm:w-16 text-center px-1 sm:px-4"></TableHead>
+                      <TableHead className="px-2 sm:px-4">Item</TableHead>
                       <TableHead className="text-center hidden sm:table-cell">Bundle</TableHead>
                       <TableHead className="text-center hidden sm:table-cell">Source</TableHead>
                       <TableHead className="text-center hidden sm:table-cell">Category</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right px-2 sm:px-4">Price</TableHead>
                       <TableHead className="text-center hidden sm:table-cell">Qty</TableHead>
-                      <TableHead className="text-center"></TableHead>
+                      <TableHead className="text-center px-1 sm:px-4"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedItems.map((item) => (
                       <TableRow key={item.id} data-state={selectedIds.has(item.id) ? 'selected' : undefined}>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center px-1 sm:px-4">
                           <Checkbox
                             checked={selectedIds.has(item.id)}
                             onCheckedChange={() => toggleSelectItem(item.id)}
@@ -582,7 +579,7 @@ export default function Procurement() {
                           />
                         </TableCell>
                          <TableCell className="text-center p-1 sm:p-4">
-                          <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center mx-auto">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center mx-auto">
                             {item.image_url ? (
                               <img 
                                 src={item.image_url} 
@@ -594,8 +591,8 @@ export default function Procurement() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <p className="font-medium line-clamp-2">{item.name}</p>
+                        <TableCell className="px-2 sm:px-4 max-w-[120px] sm:max-w-none">
+                          <p className="font-medium line-clamp-2 text-sm leading-tight">{item.name}</p>
                         </TableCell>
                         <TableCell className="text-center hidden sm:table-cell">
                           {(!item.bundle_ids || item.bundle_ids.length === 0) ? (
@@ -648,26 +645,26 @@ export default function Procurement() {
                             <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="text-right font-mono px-2 sm:px-4 whitespace-nowrap">
                           <div>
-                            <span>{formatCurrency(item.unit_price)}</span>
-                            <span className="text-xs text-muted-foreground sm:hidden"> ×{item.quantity}</span>
+                            <span className="text-sm">{formatCurrency(item.unit_price)}</span>
+                            <span className="text-xs text-muted-foreground block sm:hidden">×{item.quantity}</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-center hidden sm:table-cell">{item.quantity}</TableCell>
                         <TableCell className="text-center p-1 sm:p-4">
-                          <div className="flex items-center justify-center gap-0.5 sm:gap-1">
+                          <div className="flex items-center justify-center gap-0">
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="h-8 w-8"
+                              className="h-9 w-9 sm:h-8 sm:w-8"
                               onClick={() => { setEditingItem(item); setModalOpen(true); }}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Popover>
                               <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary">
+                                <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-8 sm:w-8 text-primary">
                                   <Plus className="h-4 w-4" />
                                 </Button>
                               </PopoverTrigger>
