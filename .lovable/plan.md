@@ -1,17 +1,32 @@
 
 
-## Fix: Dialog Still Allows Horizontal Scroll on Mobile
+## Fix: Product Name Linking and Edit Modal Flash
 
-### Problem
-The dialog uses `w-full` which makes it exactly 100% of the viewport width on mobile. Even with `overflow-x-hidden` on the dialog content, the dialog container itself sits flush against both screen edges with no breathing room. Any tiny pixel rounding or browser chrome behavior can cause the page body to become horizontally scrollable.
+### Problem 1: Product Name Not Clickable
+Tapping a product name in the procurement table does nothing. Users expect it to navigate to the product's source URL.
 
-### Solution
-Replace `w-full` with `w-[calc(100vw-2rem)]` in the base `DialogContent` component. This ensures a 1rem (16px) margin on each side of the dialog on mobile, preventing edge-to-edge rendering that triggers horizontal scroll. The `max-w-lg` still caps the width on larger screens.
+### Problem 2: Edit Button Shows "Add Item" Flash
+When clicking the edit pencil icon, the modal briefly flashes the "Add Item - Step 1: Product URL" screen before switching to the edit form. This happens because the modal's initialization logic is inside an async function -- the modal opens immediately with the default `step='url'` state, then the async call completes and switches to `step='details'`.
 
-### File to Change
+---
 
-**`src/components/ui/dialog.tsx`** (line 39)
-- Change `w-full max-w-lg` to `w-[calc(100vw-2rem)] max-w-lg`
+### Technical Details
 
-This is a single class change in one file that affects all dialogs globally.
+**Fix 1 -- Clickable Product Name** (`src/pages/Procurement.tsx`)
+- Wrap the item name in an anchor tag when `source_url` exists
+- Apply the same URL sanitization pattern already used elsewhere (prepend `https://` if no protocol)
+- Opens in a new tab; falls back to plain text if no URL
 
+**Fix 2 -- Eliminate Edit Flash** (`src/components/procurement/ProcurementItemModal.tsx`)
+- Change the initial `step` state to be derived from the `item` prop: if `item` is provided, start at `'details'` instead of `'url'`
+- Move the synchronous `setStep('details')` call out of the async function body so it runs immediately when the modal opens in edit mode
+- This eliminates the frame where the "Add Item" URL step is visible
+
+### Files to Change
+
+1. **`src/pages/Procurement.tsx`** (~line 594-596)
+   - Make the item name a clickable link to `source_url` when available
+
+2. **`src/components/procurement/ProcurementItemModal.tsx`** (~line 395, 593-663)
+   - Initialize `step` based on `item` prop to avoid the flash
+   - Set step synchronously before the async bundle-loading begins
