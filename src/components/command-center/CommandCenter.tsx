@@ -22,7 +22,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Plus, X } from 'lucide-react';
+import { parseDescription, serializeDescription } from '@/lib/taskSubtasks';
 
 export function CommandCenter() {
   const { toast } = useToast();
@@ -42,6 +43,7 @@ export function CommandCenter() {
     priorityLevel: 'medium' as TaskPriority,
     status: 'pending' as TaskStatus,
   });
+  const [editSubtasks, setEditSubtasks] = useState<string[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -228,13 +230,15 @@ export function CommandCenter() {
 
   const openDetailModal = (task: Task) => {
     setSelectedTask(task);
+    const parsed = parseDescription(task.description);
     setEditForm({
       title: task.title,
-      description: task.description || '',
+      description: parsed.description,
       dueDate: task.dueDate || '',
       priorityLevel: task.priorityLevel,
       status: task.status,
     });
+    setEditSubtasks(parsed.subtasks);
     setDetailModalOpen(true);
   };
 
@@ -242,11 +246,12 @@ export function CommandCenter() {
     if (!selectedTask) return;
 
     try {
+      const finalDescription = serializeDescription(editForm.description.trim(), editSubtasks);
       const { error } = await supabase
         .from('tasks')
         .update({
           title: editForm.title.trim(),
-          description: editForm.description.trim() || null,
+          description: finalDescription || null,
           due_date: editForm.dueDate || null,
           priority_level: editForm.priorityLevel,
           status: editForm.status,
@@ -332,6 +337,43 @@ export function CommandCenter() {
                 placeholder="Add details..."
                 rows={3}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Subtasks (optional)</Label>
+              <div className="space-y-2">
+                {editSubtasks.map((st, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Input
+                      value={st}
+                      onChange={(e) => {
+                        const updated = [...editSubtasks];
+                        updated[idx] = e.target.value;
+                        setEditSubtasks(updated);
+                      }}
+                      placeholder="Subtask..."
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                      onClick={() => setEditSubtasks(editSubtasks.filter((_, i) => i !== idx))}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1"
+                  onClick={() => setEditSubtasks([...editSubtasks, ''])}
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Subtask
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

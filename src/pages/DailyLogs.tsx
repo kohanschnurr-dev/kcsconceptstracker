@@ -52,6 +52,7 @@ import type { Task, TaskStatus, TaskPriority } from '@/types/task';
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/types/task';
 import { format, isToday, startOfDay, startOfWeek, endOfWeek, isBefore } from 'date-fns';
 import { formatDisplayDate, parseDateString } from '@/lib/dateUtils';
+import { parseDescription, serializeDescription } from '@/lib/taskSubtasks';
 
 interface DailyLog {
   id: string;
@@ -159,6 +160,7 @@ export default function DailyLogs() {
     status: 'pending' as TaskStatus,
     photoUrls: [] as string[],
   });
+  const [editSubtasks, setEditSubtasks] = useState<string[]>([]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [dueDatePickerTaskId, setDueDatePickerTaskId] = useState<string | null>(null);
 
@@ -454,14 +456,16 @@ export default function DailyLogs() {
 
   const openDetailModal = (task: Task) => {
     setSelectedTask(task);
+    const parsed = parseDescription(task.description);
     setEditForm({
       title: task.title,
-      description: task.description || '',
+      description: parsed.description,
       dueDate: task.dueDate || '',
       priorityLevel: task.priorityLevel,
       status: task.status,
       photoUrls: task.photoUrls || [],
     });
+    setEditSubtasks(parsed.subtasks);
     setDetailModalOpen(true);
   };
 
@@ -469,11 +473,12 @@ export default function DailyLogs() {
     if (!selectedTask) return;
 
     try {
+      const finalDescription = serializeDescription(editForm.description.trim(), editSubtasks);
       const { error } = await supabase
         .from('tasks')
         .update({
           title: editForm.title.trim(),
-          description: editForm.description.trim() || null,
+          description: finalDescription || null,
           due_date: editForm.dueDate || null,
           priority_level: editForm.priorityLevel,
           status: editForm.status,
@@ -1105,6 +1110,43 @@ export default function DailyLogs() {
                 placeholder="Add details..."
                 rows={3}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Subtasks (optional)</Label>
+              <div className="space-y-2">
+                {editSubtasks.map((st, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Input
+                      value={st}
+                      onChange={(e) => {
+                        const updated = [...editSubtasks];
+                        updated[idx] = e.target.value;
+                        setEditSubtasks(updated);
+                      }}
+                      placeholder="Subtask..."
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                      onClick={() => setEditSubtasks(editSubtasks.filter((_, i) => i !== idx))}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1"
+                  onClick={() => setEditSubtasks([...editSubtasks, ''])}
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Subtask
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
