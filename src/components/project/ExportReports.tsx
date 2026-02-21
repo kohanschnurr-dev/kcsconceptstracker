@@ -312,20 +312,20 @@ export function ExportReports({ project, categories, expenses, filteredExpenses 
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         Download project data for your accountant or CPA
       </p>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div 
-          className={`p-3 rounded-lg border-2 cursor-pointer transition-all h-full ${
+          className={`p-3 rounded-lg border-2 cursor-pointer transition-all h-full min-h-[80px] ${
             exportType === 'expenses-csv' 
               ? 'border-primary bg-primary/5' 
               : 'border-border hover:border-primary/50'
           }`}
           onClick={() => setExportType('expenses-csv')}
         >
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-2">
             <FileSpreadsheet className="h-4 w-4 text-green-600" />
             <span className="text-sm font-medium">Expenses CSV</span>
           </div>
@@ -335,14 +335,14 @@ export function ExportReports({ project, categories, expenses, filteredExpenses 
         </div>
 
         <div 
-          className={`p-3 rounded-lg border-2 cursor-pointer transition-all h-full ${
+          className={`p-3 rounded-lg border-2 cursor-pointer transition-all h-full min-h-[80px] ${
             exportType === 'budget-csv' 
               ? 'border-primary bg-primary/5' 
               : 'border-border hover:border-primary/50'
           }`}
           onClick={() => setExportType('budget-csv')}
         >
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-2">
             <FileSpreadsheet className="h-4 w-4 text-blue-600" />
             <span className="text-sm font-medium">Budget Summary</span>
           </div>
@@ -352,14 +352,14 @@ export function ExportReports({ project, categories, expenses, filteredExpenses 
         </div>
 
         <div 
-          className={`p-3 rounded-lg border-2 cursor-pointer transition-all h-full ${
+          className={`p-3 rounded-lg border-2 cursor-pointer transition-all h-full min-h-[80px] ${
             exportType === 'full-csv' 
               ? 'border-primary bg-primary/5' 
               : 'border-border hover:border-primary/50'
           }`}
           onClick={() => setExportType('full-csv')}
         >
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-2">
             <FileText className="h-4 w-4 text-purple-600" />
             <span className="text-sm font-medium">Full Report</span>
           </div>
@@ -369,7 +369,7 @@ export function ExportReports({ project, categories, expenses, filteredExpenses 
         </div>
 
         <div 
-          className={`p-3 rounded-lg border-2 transition-all h-full ${
+          className={`p-3 rounded-lg border-2 transition-all h-full min-h-[80px] ${
             !isFiltered 
               ? 'opacity-50 cursor-not-allowed border-border' 
               : exportType === 'filtered-csv'
@@ -378,7 +378,7 @@ export function ExportReports({ project, categories, expenses, filteredExpenses 
           }`}
           onClick={() => isFiltered && setExportType('filtered-csv')}
         >
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-2">
             <Filter className="h-4 w-4 text-orange-500" />
             <span className="text-sm font-medium">Filtered Results</span>
           </div>
@@ -390,7 +390,7 @@ export function ExportReports({ project, categories, expenses, filteredExpenses 
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-2 border-t">
+      <div className="flex items-center justify-between pt-3 border-t">
         <div className="text-xs text-muted-foreground">
           <span className="font-medium">{expenses.length}</span> expenses • 
           <span className="font-medium ml-1">{categories.length}</span> categories
