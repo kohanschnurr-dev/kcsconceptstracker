@@ -85,7 +85,7 @@ Output plain text only, no markdown.`;
 
     const lines = [];
     if (companyName) lines.push(`Company: ${companyName}`);
-    if (vendorName) lines.push(`Contractor / Vendor: ${vendorName}`);
+    if (vendorName) lines.push(`Recipient: ${vendorName}`);
     if (customerName) lines.push(`Customer / Property: ${customerName}`);
     if (date) lines.push(`Date: ${date}`);
     if (jobNumber) lines.push(`Job Number: ${jobNumber}`);

@@ -991,7 +991,6 @@ export function DocumentsGallery({ projectId, projectType, projectName = '', pro
       <ScopeOfWorkSheet
         open={sowOpen}
         onOpenChange={setSowOpen}
-        vendors={projectVendors}
       />
 
       <GenerateInvoiceSheet

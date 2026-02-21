@@ -385,7 +385,6 @@ export default function Vendors() {
       <ScopeOfWorkSheet
         open={scopeSheetOpen}
         onOpenChange={setScopeSheetOpen}
-        vendors={vendors}
       />
 
       <GenerateInvoiceSheet open={invoiceOpen} onOpenChange={setInvoiceOpen} />

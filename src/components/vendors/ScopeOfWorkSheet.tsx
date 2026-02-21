@@ -26,22 +26,9 @@ import {
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useToast } from '@/hooks/use-toast';
 
-interface Vendor {
-  id: string;
-  name: string;
-  trades: string[];
-  phone: string | null;
-  email: string | null;
-  has_w9: boolean;
-  reliability_rating: number | null;
-  pricing_model: 'flat' | 'hourly' | null;
-  notes: string | null;
-}
-
 interface ScopeOfWorkSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  vendors: Vendor[];
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -53,11 +40,11 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkSheetProps) {
+export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) {
   const { toast } = useToast();
   const { settings } = useCompanySettings();
 
-  const [selectedVendorId, setSelectedVendorId] = useState<string>('');
+  const [recipientName, setRecipientName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -73,23 +60,13 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
   const [materialsResponsibility, setMaterialsResponsibility] = useState('');
   const [specialNotes, setSpecialNotes] = useState('');
 
-  const selectedVendor = vendors.find((v) => v.id === selectedVendorId);
-
   useEffect(() => {
     if (settings?.company_name) setCompanyName(settings.company_name);
   }, [settings]);
 
-  useEffect(() => {
-    if (selectedVendor) {
-      setTradeTypes(selectedVendor.trades);
-    } else {
-      setTradeTypes([]);
-    }
-  }, [selectedVendor]);
-
   const handleOpenChange = (val: boolean) => {
     if (!val) {
-      setSelectedVendorId('');
+      setRecipientName('');
       setCustomerName('');
       setDate(new Date().toISOString().split('T')[0]);
       setJobNumber('');
@@ -118,15 +95,10 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
   };
 
   const handleGenerate = () => {
-    if (!selectedVendorId) {
-      toast({ title: 'Vendor required', description: 'Please select a vendor to continue.', variant: 'destructive' });
-      return;
-    }
-
     const lines: string[] = ['SCOPE OF WORK', ''];
 
     if (companyName) lines.push(`Company: ${companyName}`);
-    if (selectedVendor?.name) lines.push(`Contractor: ${selectedVendor.name}`);
+    if (recipientName) lines.push(`Recipient: ${recipientName}`);
     if (customerName) lines.push(`Customer: ${customerName}`);
     if (date) lines.push(`Date: ${date}`);
     if (jobNumber) lines.push(`Job Number: ${jobNumber}`);
@@ -205,31 +177,17 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
         <ScrollArea className="flex-1 min-h-0">
           <div className="px-6 py-5 space-y-7">
 
-            {/* VENDOR SELECTION */}
-            <div>
-              <SectionLabel>Vendor</SectionLabel>
-              <div className="space-y-1.5">
-                <Label>Select Vendor <span className="text-destructive">*</span></Label>
-                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a vendor…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendors.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             {/* DOCUMENT INFO */}
             <div>
-              <SectionLabel>Document Info <span className="normal-case font-normal text-muted-foreground/70">(optional)</span></SectionLabel>
+              <SectionLabel>Document Info</SectionLabel>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Company Name</Label>
                   <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Your company" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Recipient</Label>
+                  <Input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="e.g. John Smith, ABC Construction" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Customer / Property</Label>
@@ -355,7 +313,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
             {/* GENERATE BUTTON */}
             <Button
               onClick={handleGenerate}
-              disabled={!selectedVendorId}
+              
               className="w-full gap-2"
               size="lg"
             >
