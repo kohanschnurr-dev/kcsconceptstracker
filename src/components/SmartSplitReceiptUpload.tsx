@@ -658,8 +658,8 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       return sum + (qty * item.unit_price);
     }, 0);
     const targetTotal = taxIncluded ? qbAmount : qbAmount - taxAmount;
-    if (rawTotal <= 0 || Math.abs(rawTotal - targetTotal) <= 0.01) return 1;
-    return targetTotal / rawTotal;
+    if (rawTotal <= 0 || Math.abs(rawTotal - targetTotal) <= 0.01) return { sf: 1, rawTotal, targetTotal, taxExcluded: !taxIncluded, taxAmount };
+    return { sf: targetTotal / rawTotal, rawTotal, targetTotal, taxExcluded: !taxIncluded, taxAmount };
   };
 
   // Helper to group line items by category (with editable quantities and optional scaling)
@@ -731,7 +731,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       }
 
       // Compute scale factor for proportional allocation
-      const importScaleFactor = computeScaleFactor(
+      const { sf: importScaleFactor } = computeScaleFactor(
         selectedMatch.receipt.line_items || [],
         editableQuantities,
         selectedMatch.qbExpense.amount,
@@ -1288,14 +1288,17 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
               {/* Line Items */}
               {selectedMatch.receipt.line_items && selectedMatch.receipt.line_items.length > 0 && (() => {
-                const sf = computeScaleFactor(
+                const scaleResult = computeScaleFactor(
                   selectedMatch.receipt.line_items,
                   editableQuantities,
                   selectedMatch.qbExpense.amount,
                   selectedMatch.receipt.tax_amount || 0,
                   !includeTax
                 );
+                const sf = scaleResult.sf;
                 const wasScaled = Math.abs(sf - 1) > 0.001;
+                const pctChange = ((sf - 1) * 100);
+                const direction = pctChange > 0 ? 'up' : 'down';
                 
                 return (
                 <div>
@@ -1313,7 +1316,10 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-xs text-xs p-2">
-                            Prices adjusted proportionally to match the bank transaction total.
+                            {scaleResult.taxExcluded && scaleResult.taxAmount > 0
+                              ? `The AI parsed line items totaling ${formatCurrency(scaleResult.rawTotal)}, but the transaction total (minus ${formatCurrency(scaleResult.taxAmount)} tax) is ${formatCurrency(scaleResult.targetTotal)}. Prices were scaled ${direction} by ${Math.abs(pctChange).toFixed(1)}% so the split matches exactly.`
+                              : `The AI parsed line items totaling ${formatCurrency(scaleResult.rawTotal)}, but the transaction total is ${formatCurrency(scaleResult.targetTotal)}. Prices were scaled ${direction} by ${Math.abs(pctChange).toFixed(1)}% so the split matches exactly.`
+                            }
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
