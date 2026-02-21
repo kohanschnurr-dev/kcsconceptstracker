@@ -1,38 +1,22 @@
 
 
-## Add "Filtered Results" Export Option
+## Compact Export Reports Dialog Vertically
 
 ### What's Changing
 
-A fourth export card, "Filtered Results," will be added to the Export Reports dialog. When selected, it will only export the expenses currently visible after applying filters (e.g., only "Cabinets" category). The card will show how many expenses are in the filtered set vs. the total.
+The Export Reports dialog is too tall/stretched vertically. The spacing between sections and inside cards will be tightened to make the whole dialog more compact.
 
 ### Technical Details
 
-**`src/pages/ProjectBudget.tsx`** (~line 1642)
-
-Pass `filteredExpenses` as a new prop alongside the existing `expenses`:
-
-```tsx
-<ExportReports
-  project={...}
-  categories={categories}
-  expenses={expenses}
-  filteredExpenses={filteredExpenses}
-/>
-```
-
 **`src/components/project/ExportReports.tsx`**
 
-1. Add `filteredExpenses` to the props interface (optional, defaults to full `expenses` list)
-2. Add a fourth export option card -- "Filtered Results" -- with a `Filter` icon (from lucide-react) in an orange/amber color
-3. The card description will dynamically show the count: e.g., "Export only the 12 currently filtered expenses"
-4. Add a new `exportFilteredCSV()` function that works like `exportExpensesCSV()` but uses `filteredExpenses` instead of `expenses`
-5. Wire up the new `'filtered-csv'` case in `handleExport`
-6. Update the grid from `sm:grid-cols-3` to `sm:grid-cols-4` (or keep 3 and let the 4th wrap on smaller screens -- `sm:grid-cols-2 lg:grid-cols-4` for better responsiveness)
-7. Only show/enable the "Filtered Results" card when there is an active filter (i.e., `filteredExpenses.length !== expenses.length`)
-8. Update footer stats to also show filtered count when a filter is active
+1. **Outer spacing**: Change `space-y-4` (line 315) to `space-y-2` on the root container
+2. **Card grid gap**: Change `gap-4` to `gap-2` on the grid (line 319)
+3. **Card inner spacing**: Reduce `mb-2` to `mb-1` on the icon+title row inside each card (lines 328, 345, 362, 381)
+4. **Footer spacing**: Change `pt-4` to `pt-2` on the footer divider row (line 393)
+
+These changes tighten the vertical rhythm without changing the horizontal layout or card widths.
 
 ### Files Changed
-- `src/pages/ProjectBudget.tsx` -- pass `filteredExpenses` prop
-- `src/components/project/ExportReports.tsx` -- add fourth export option, new export function, updated grid layout
+- `src/components/project/ExportReports.tsx` -- reduce vertical spacing throughout
 
