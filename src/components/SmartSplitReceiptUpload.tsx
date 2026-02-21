@@ -651,21 +651,49 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     acceptMatch(manualMatch);
   };
 
-  // Helper to group line items by category (with editable quantities)
-  const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>, quantities: Record<number, number>) => {
-    const groups: Record<string, { items: (LineItem & { editedQuantity: number; editedTotal: number })[], total: number }> = {};
+  // Helper to compute scale factor for line items vs QB transaction amount
+  const computeScaleFactor = (lineItems: LineItem[], quantities: Record<number, number>, qbAmount: number, taxAmount: number, taxIncluded: boolean) => {
+    const rawTotal = lineItems.reduce((sum, item, idx) => {
+      const qty = quantities[idx] ?? item.quantity ?? 1;
+      return sum + (qty * item.unit_price);
+    }, 0);
+    const targetTotal = taxIncluded ? qbAmount : qbAmount - taxAmount;
+    if (rawTotal <= 0 || Math.abs(rawTotal - targetTotal) <= 0.01) return 1;
+    return targetTotal / rawTotal;
+  };
+
+  // Helper to group line items by category (with editable quantities and optional scaling)
+  const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>, quantities: Record<number, number>, scaleFactor = 1) => {
+    const groups: Record<string, { items: (LineItem & { editedQuantity: number; editedTotal: number; scaledUnitPrice: number })[], total: number }> = {};
     
     lineItems.forEach((item, idx) => {
       const category = categories[idx] || item.suggested_category || 'misc';
       const editedQuantity = quantities[idx] ?? item.quantity ?? 1;
-      const editedTotal = editedQuantity * item.unit_price;
+      const scaledUnitPrice = Math.round(item.unit_price * scaleFactor * 100) / 100;
+      const editedTotal = editedQuantity * scaledUnitPrice;
       
       if (!groups[category]) {
         groups[category] = { items: [], total: 0 };
       }
-      groups[category].items.push({ ...item, editedQuantity, editedTotal });
+      groups[category].items.push({ ...item, editedQuantity, editedTotal, scaledUnitPrice });
       groups[category].total += editedTotal;
     });
+
+    // Fix rounding remainder: apply difference to largest group
+    if (scaleFactor !== 1) {
+      const totalFromGroups = Object.values(groups).reduce((s, g) => s + g.total, 0);
+      const expectedTotal = lineItems.reduce((sum, item, idx) => {
+        const qty = quantities[idx] ?? item.quantity ?? 1;
+        return sum + qty * item.unit_price;
+      }, 0) * scaleFactor;
+      const remainder = Math.round((expectedTotal - totalFromGroups) * 100) / 100;
+      if (Math.abs(remainder) > 0 && Math.abs(remainder) <= 0.05) {
+        const largestKey = Object.entries(groups).sort((a, b) => b[1].total - a[1].total)[0]?.[0];
+        if (largestKey) {
+          groups[largestKey].total = Math.round((groups[largestKey].total + remainder) * 100) / 100;
+        }
+      }
+    }
     
     return groups;
   };
@@ -702,11 +730,21 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         }
       }
 
-      // Group line items by category (with edited quantities)
+      // Compute scale factor for proportional allocation
+      const importScaleFactor = computeScaleFactor(
+        selectedMatch.receipt.line_items || [],
+        editableQuantities,
+        selectedMatch.qbExpense.amount,
+        selectedMatch.receipt.tax_amount || 0,
+        !includeTax
+      );
+
+      // Group line items by category (with edited quantities and scaling)
       const categoryGroups = groupByCategory(
         selectedMatch.receipt.line_items || [],
         editableCategories,
-        editableQuantities
+        editableQuantities,
+        importScaleFactor
       );
 
       // Calculate proportional tax per category (using edited quantities)
@@ -1249,15 +1287,43 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
               </div>
 
               {/* Line Items */}
-              {selectedMatch.receipt.line_items && selectedMatch.receipt.line_items.length > 0 && (
+              {selectedMatch.receipt.line_items && selectedMatch.receipt.line_items.length > 0 && (() => {
+                const sf = computeScaleFactor(
+                  selectedMatch.receipt.line_items,
+                  editableQuantities,
+                  selectedMatch.qbExpense.amount,
+                  selectedMatch.receipt.tax_amount || 0,
+                  !includeTax
+                );
+                const wasScaled = Math.abs(sf - 1) > 0.001;
+                
+                return (
                 <div>
-                  <h4 className="text-sm font-medium mb-2">
-                    Suggested Split ({selectedMatch.receipt.line_items.length + (selectedMatch.receipt.tax_amount > 0 ? 1 : 0)} items)
-                  </h4>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className="text-sm font-medium">
+                      Suggested Split ({selectedMatch.receipt.line_items.length + (selectedMatch.receipt.tax_amount > 0 ? 1 : 0)} items)
+                    </h4>
+                    {wasScaled && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="secondary" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/20">
+                              <Info className="h-3 w-3" />
+                              Adjusted
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs text-xs p-2">
+                            Prices adjusted proportionally to match the bank transaction total.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {selectedMatch.receipt.line_items.map((item, idx) => {
                       const editedQty = editableQuantities[idx] ?? item.quantity ?? 1;
-                      const editedTotal = editedQty * item.unit_price;
+                      const scaledPrice = Math.round(item.unit_price * sf * 100) / 100;
+                      const editedTotal = editedQty * scaledPrice;
                       return (
                         <div key={idx} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
                           <div className="flex-1">
@@ -1273,7 +1339,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                                 }))}
                                 className="w-12 h-5 px-1 text-xs text-center"
                               />
-                              <span>× {formatCurrency(item.unit_price)}</span>
+                              <span>× {formatCurrency(scaledPrice)}</span>
                             </div>
                           </div>
                           <Select
@@ -1334,45 +1400,16 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                   </div>
                   
                   {/* Split Total */}
-                  {(() => {
-                    const lineItemsTotal = selectedMatch.receipt.line_items.reduce((sum, item, idx) => {
-                      const qty = editableQuantities[idx] ?? item.quantity ?? 1;
-                      return sum + (qty * item.unit_price);
-                    }, 0);
-                    const splitTotal = lineItemsTotal + (includeTax ? (selectedMatch.receipt.tax_amount || 0) : 0);
-                    const transactionAmount = selectedMatch.qbExpense.amount;
-                    const difference = Math.abs(splitTotal - transactionAmount);
-                    const hasMismatch = difference > 0.01;
-                    
-                    return (
-                      <div className="space-y-2 mt-3 pt-3 border-t border-border">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Split Total</span>
-                          <span className={cn(
-                            "font-mono font-semibold",
-                            hasMismatch && "text-warning"
-                          )}>
-                            {formatCurrency(splitTotal)}
-                          </span>
-                        </div>
-                        
-                        {hasMismatch && (
-                          <div className="flex items-start gap-2 p-2 rounded bg-warning/10 border border-warning/30">
-                            <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
-                            <div className="text-xs text-warning">
-                              <p className="font-medium">Total mismatch detected</p>
-                              <p className="text-warning/80">
-                                Split total ({formatCurrency(splitTotal)}) differs from transaction ({formatCurrency(transactionAmount)}) by {formatCurrency(difference)}. 
-                                Some items may not have been parsed correctly.
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  <div className="space-y-2 mt-3 pt-3 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Split Total</span>
+                      <span className="font-mono font-semibold">
+                        {formatCurrency(selectedMatch.qbExpense.amount)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              )}
+              )})()}
 
               {/* Assignment Type & Project Selection */}
               <div className="space-y-4 pt-4 border-t border-border">
