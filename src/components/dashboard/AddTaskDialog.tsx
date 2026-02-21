@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, X, Plus, Camera, Upload } from 'lucide-react';
+import { Loader2, X, Plus, Camera, Upload, Clipboard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { TaskPriority, TaskStatus } from '@/types/task';
@@ -188,6 +188,10 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
                   <Upload className="h-4 w-4 mr-1.5" /> Upload File
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-2">
+                <Clipboard className="h-3 w-3" />
+                Paste images with Ctrl+V or drag & drop
+              </p>
               {isUploading && (
                 <div className="flex items-center justify-center py-2">
                   <Loader2 className="h-4 w-4 animate-spin text-primary mr-2" />
