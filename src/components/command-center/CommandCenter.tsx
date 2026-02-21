@@ -15,7 +15,8 @@ import { TimeBlockCalendar } from './TimeBlockCalendar';
 import { LeisureBacklog } from './LeisureBacklog';
 import type { Task, TaskStatus, TaskPriority } from '@/types/task';
 import { Badge } from '@/components/ui/badge';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, ChevronDown, ListTodo as ListTodoIcon } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -340,9 +341,16 @@ export function CommandCenter() {
                 rows={3}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Subtasks</Label>
-              <div className="space-y-2">
+            <Collapsible defaultOpen={editSubtasks.length > 0}>
+              <CollapsibleTrigger className="flex items-center gap-1.5 w-full group">
+                <ListTodoIcon className="h-4 w-4" />
+                <span className="text-sm font-medium">Subtasks</span>
+                {editSubtasks.length > 0 && (
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5">{editSubtasks.length}</Badge>
+                )}
+                <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 mt-2">
                 {editSubtasks.map((st, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <Checkbox
@@ -384,8 +392,8 @@ export function CommandCenter() {
                   <Plus className="h-3 w-3" />
                   Add Subtask
                 </Button>
-              </div>
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Priority</Label>

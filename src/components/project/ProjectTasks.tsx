@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ListTodo, Check, Clock, AlertCircle, Plus, Calendar, Trash2, Camera, X, Loader2, FileText } from 'lucide-react';
+import { ListTodo, Check, Clock, AlertCircle, Plus, Calendar, Trash2, Camera, X, Loader2, FileText, ChevronDown } from 'lucide-react';
 import { parseDateString, formatDisplayDateShort } from '@/lib/dateUtils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -322,12 +323,16 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
           onImagesChange={setEditPhotoUrls}
         />
       </div>
-      <div className="space-y-1.5">
-        <Label className="flex items-center gap-1.5">
+      <Collapsible defaultOpen={editSubtasks.length > 0}>
+        <CollapsibleTrigger className="flex items-center gap-1.5 w-full group">
           <ListTodo className="h-4 w-4" />
-          Subtasks
-        </Label>
-        <div className="space-y-1.5">
+          <span className="text-sm font-medium">Subtasks</span>
+          {editSubtasks.length > 0 && (
+            <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5">{editSubtasks.length}</Badge>
+          )}
+          <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-1.5 mt-2">
           {editSubtasks.map((st, idx) => (
             <div key={idx} className="flex items-center gap-2">
               <Checkbox
@@ -367,8 +372,8 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
             <Plus className="h-3.5 w-3.5 mr-1" />
             Add Subtask
           </Button>
-        </div>
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 
