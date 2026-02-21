@@ -250,10 +250,6 @@ export default function Calendar() {
           }
         />
 
-        {/* Category Legend (desktop only; mobile legend is inside CalendarHeader) */}
-        <div className="hidden sm:block bg-background rounded-lg p-4 border border-border">
-          <CalendarLegend />
-        </div>
 
         <div className="bg-background rounded-xl border border-border overflow-hidden flex-1 flex flex-col">
           {view === 'monthly' && (
@@ -281,6 +277,11 @@ export default function Calendar() {
               onTaskMove={handleTaskMove}
             />
           )}
+        </div>
+
+        {/* Category Legend below the grid */}
+        <div className="hidden sm:block bg-background rounded-lg p-4 border border-border">
+          <CalendarLegend />
         </div>
 
         {filteredTasks.length === 0 && (
