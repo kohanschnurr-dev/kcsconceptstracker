@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
-import { FileDown, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { FileDown, X } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -150,8 +150,6 @@ export function ProjectReport({
     return null;
   }, [arv, pp, rehabCost, costBasis, netProfit]);
 
-  const seventyPctRatio = pp !== null && arv && arv > 0 ? ((pp + rehabCost) / arv) * 100 : null;
-  const seventyPctPass = seventyPctRatio !== null ? seventyPctRatio <= 70 : null;
 
 
   /* ── pdf export ──────────────────────────────────────── */
@@ -433,22 +431,6 @@ export function ProjectReport({
                   </div>
                 </div>
 
-                {/* 70% Rule */}
-                <div className="mt-4 pt-3 border-t border-border/50 flex items-center gap-3">
-                  {seventyPctPass === true && <CheckCircle2 className="h-5 w-5 text-success shrink-0" />}
-                  {seventyPctPass === false && <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />}
-                  {seventyPctPass === null && <div className="h-5 w-5 rounded-full bg-muted shrink-0" />}
-                  <div>
-                    <p className="text-sm font-semibold">
-                      70% Rule {seventyPctRatio !== null && <span className="font-mono">({fmtPct(seventyPctRatio)})</span>}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {seventyPctPass === true && '(Purchase + Rehab) / ARV is under 70% ✓'}
-                      {seventyPctPass === false && '(Purchase + Rehab) / ARV exceeds 70%'}
-                      {seventyPctPass === null && 'Add purchase price and ARV to calculate'}
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
           </section>
