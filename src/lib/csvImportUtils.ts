@@ -177,8 +177,8 @@ export function processCSVText(
 
     let hasError = false;
     let errorMsg: string | undefined;
-    if (!parsedDate) { hasError = true; errorMsg = 'Invalid date'; }
-    if (isNaN(amount)) { hasError = true; errorMsg = 'Invalid amount'; }
+    if (!parsedDate) { hasError = true; }
+    if (isNaN(amount)) { hasError = true; }
 
     return {
       date: parsedDate || rawDate,
