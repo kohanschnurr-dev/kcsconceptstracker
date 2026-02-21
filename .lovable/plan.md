@@ -1,17 +1,12 @@
 
 
-## Fix Report Layout and Data Display
+## Remove the 70% Rule from the Report
 
-### Changes in `src/components/project/ProjectReport.tsx`
+### Change in `src/components/project/ProjectReport.tsx`
 
-**1. Remove "EST. ROI" card from Budget Snapshot (line 376)**
-Remove the 4th stat card from the grid array and change the grid from `grid-cols-4` to `grid-cols-3`.
+Delete the "70% Rule" block (~lines 436-449) inside the Deal Financials section. This is the warning/info strip that shows "(Purchase + Rehab) / ARV exceeds 70%".
 
-**2. Swap section order: Deal Financials above Budget Snapshot**
-Move the "DEAL FINANCIALS & ROI" section (lines 410-492) before the "BUDGET SNAPSHOT" section (lines 367-407). Update `sectionDelay` indices accordingly.
-
-**3. Fix Loan Rate display (line 433)**
-Currently `dealField('Loan Rate', loanRate, '%')` passes the rate through `fmt()` which adds a `$` sign, producing "$6%". Replace with a dedicated rendering that shows just "6%" without the dollar sign. Change this line to use a custom display instead of `dealField`.
+Also clean up any now-unused variables related to the 70% rule calculation (`seventyPctPass`, `seventyPctRatio`) if they are no longer referenced elsewhere in the component.
 
 ### Files Changed
 - `src/components/project/ProjectReport.tsx`
