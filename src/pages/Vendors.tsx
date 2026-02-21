@@ -108,8 +108,8 @@ export default function Vendors() {
 
   const handleGenerateVendorPDF = () => {
     const lines: string[] = [];
-    lines.push('VENDOR DIRECTORY');
-    lines.push(`Total: ${filteredVendors.length} vendor(s)\n`);
+    lines.push('CONTRACTOR DIRECTORY');
+    lines.push(`Total: ${filteredVendors.length} contractor(s)\n`);
     lines.push('─'.repeat(60));
 
     filteredVendors.forEach((vendor, i) => {
@@ -127,7 +127,7 @@ export default function Vendors() {
     });
 
     generatePDF(lines.join('\n'), {
-      docType: 'Vendor Directory',
+      docType: 'Contractor Directory',
       companyName: companyName || 'Your Company',
       logoUrl: settings?.logo_url,
     });
@@ -161,7 +161,7 @@ export default function Vendors() {
       if (error) throw error;
 
       toast({
-        title: 'Vendor deleted',
+        title: 'Contractor deleted',
         description: `${vendorToDelete.name} has been removed.`,
       });
       
@@ -192,7 +192,7 @@ export default function Vendors() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Vendors</h1>
+            <h1 className="text-2xl font-semibold">Contractors</h1>
             <p className="text-muted-foreground mt-1">Manage your contractors</p>
           </div>
           <div className="flex items-center gap-2">
@@ -217,7 +217,7 @@ export default function Vendors() {
             </DropdownMenu>
             <Button className="gap-2" onClick={() => setModalOpen(true)}>
               <Plus className="h-4 w-4" />
-              Add Vendor
+              Add Contractor
             </Button>
           </div>
         </div>
@@ -227,7 +227,7 @@ export default function Vendors() {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search vendors..."
+              placeholder="Search contractors..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -361,12 +361,12 @@ export default function Vendors() {
               <div className="text-center py-12 glass-card">
                 <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                 <p className="text-muted-foreground mb-4">
-                  {vendors.length === 0 ? 'No vendors yet' : 'No vendors match your search'}
+                  {vendors.length === 0 ? 'No contractors yet' : 'No contractors match your search'}
                 </p>
                 {vendors.length === 0 && (
                   <Button onClick={() => setModalOpen(true)} className="gap-2">
                     <Plus className="h-4 w-4" />
-                    Add Your First Vendor
+                    Add Your First Contractor
                   </Button>
                 )}
               </div>
@@ -471,7 +471,7 @@ export default function Vendors() {
                 }}
               >
                 <Pencil className="h-4 w-4" />
-                Edit Vendor
+                Edit Contractor
               </Button>
             </div>
           )}
@@ -481,7 +481,7 @@ export default function Vendors() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Vendor</AlertDialogTitle>
+            <AlertDialogTitle>Delete Contractor</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete <strong>{vendorToDelete?.name}</strong>? This action cannot be undone.
             </AlertDialogDescription>
