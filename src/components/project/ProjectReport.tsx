@@ -439,7 +439,7 @@ export function ProjectReport({
           </section>
 
           {/* ═══ DEAL FINANCIALS & ROI ═══ */}
-          <section className="report-anim print:break-before-page" style={sectionDelay(2)}>
+          <section className="report-anim" style={sectionDelay(2)}>
             <SectionHead title="DEAL FINANCIALS & ROI" />
 
             <div className="bg-card border border-border rounded-lg overflow-hidden">
