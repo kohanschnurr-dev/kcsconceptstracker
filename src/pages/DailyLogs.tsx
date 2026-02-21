@@ -1151,6 +1151,7 @@ export default function DailyLogs() {
               <Input
                 id="edit-due-date"
                 type="date"
+                className="w-full"
                 value={editForm.dueDate}
                 onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
               />
