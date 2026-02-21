@@ -1,40 +1,30 @@
 
 
-## Fix Export Reports Dialog Alignment
+## Replace Download Icon in Export Reports Dialog Header
 
-### Problem
-The Export Reports dialog has a nested Card-within-Dialog layout causing:
-- Redundant double header (Dialog title "Export Reports" + Card title "Export Reports")
-- Extra padding/borders from the Card wrapper inside the dialog
-- The three export option cards have uneven heights because the description text wraps differently
+### What's Changing
 
-### Changes
+The download arrow icon next to "Export Reports" in the dialog header will be replaced with a `FileText` icon, which better represents report generation rather than downloading.
 
-**`src/components/project/ExportReports.tsx`**
+### Technical Details
 
-1. Remove the outer `Card`, `CardHeader`, `CardTitle`, `CardDescription`, and `CardContent` wrappers -- just render the content directly as a `div` since this component now lives inside a Dialog that provides its own header/chrome
-2. Add `h-full` to each of the three option cards so they stretch to equal height within the grid
-3. Remove unused `Card`-related imports
+**`src/pages/ProjectBudget.tsx`** (line 1624)
 
-The returned JSX will change from:
-```
-<Card>
-  <CardHeader>...</CardHeader>
-  <CardContent>
-    <grid of 3 cards>
-    <footer row>
-  </CardContent>
-</Card>
+Change the DialogTitle from:
+```tsx
+<DialogTitle>Export Reports</DialogTitle>
 ```
 
-To:
+To include a `FileText` icon (already imported):
+```tsx
+<DialogTitle className="flex items-center gap-2">
+  <FileText className="h-5 w-5" />
+  Export Reports
+</DialogTitle>
 ```
-<div className="space-y-4">
-  <p>Download project data...</p>
-  <grid of 3 equal-height cards>
-  <footer row>
-</div>
-```
+
+`FileText` is already imported in this file (line 17), so no new imports are needed.
 
 ### Files Changed
-- `src/components/project/ExportReports.tsx` -- remove Card wrapper, equalize option card heights
+- `src/pages/ProjectBudget.tsx` -- update DialogTitle with FileText icon
+
