@@ -480,7 +480,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
       {/* Edit Task - Drawer on mobile, Dialog on desktop */}
       {isMobile ? (
         <Drawer open={!!selectedTask} onOpenChange={(open) => { if (!open) setSelectedTask(null); }}>
-          <DrawerContent className="max-h-[85vh]">
+          <DrawerContent className="max-h-[85vh]" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DrawerHeader>
               <DrawerTitle>Edit Task</DrawerTitle>
             </DrawerHeader>
@@ -494,7 +494,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
         </Drawer>
       ) : (
         <Dialog open={!!selectedTask} onOpenChange={(open) => { if (!open) setSelectedTask(null); }}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Edit Task</DialogTitle>
             </DialogHeader>
