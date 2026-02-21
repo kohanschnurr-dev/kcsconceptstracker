@@ -161,11 +161,10 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
     }
 
     lines.push('');
-    lines.push(`SUBTOTAL: ${fmt(subtotal)}`);
     if (taxRate && parseFloat(taxRate) > 0) {
       lines.push(`TAX (${taxRate}%): ${fmt(taxAmount)}`);
     }
-    lines.push(`TOTAL DUE: ${fmt(total)}`);
+    lines.push(`TOTAL: ${fmt(total)}`);
 
     if (paymentMethod || paymentNotes) {
       lines.push('', 'PAYMENT INFORMATION');
@@ -337,10 +336,6 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
                 </Button>
 
                 <div className="mt-3 space-y-1.5 border-t pt-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span className="font-medium">{fmt(subtotal)}</span>
-                  </div>
                   <div className="flex items-center justify-between text-sm gap-4">
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">Tax</span>
