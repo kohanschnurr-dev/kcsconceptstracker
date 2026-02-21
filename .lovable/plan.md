@@ -1,43 +1,45 @@
 
 
-## Make Holding Costs Dynamic in the Report
+## Fix Holding Costs Display Value
 
 ### Problem
-The holding costs calculation on line 135 works but the label just says "Holding Costs" without showing the percentage. More importantly, when `holdingPct` is `null` (no value saved on the project), the calculation silently produces `null` instead of falling back to the default 3%. The label should also reflect the mode/percentage like we did for transaction costs.
+The report shows Holding Costs as $257 (the monthly figure) because the formula divides by 12. But the rest of the app -- Dashboard, Profit Breakdown, ProjectCard -- all display the **total** holding cost: `purchasePrice x holdingPct%`. For a $154K purchase at 2%, that's ~$3,080, which is what you expect to see.
 
 ### Changes in `src/components/project/ProjectReport.tsx`
 
-**1. Fix the `holdPerMonth` calculation to use the default fallback (line 135)**
+**1. Add a total holding cost variable and use it for display (around line 135)**
 
-Currently if `holdingPct` is null and mode is `'pct'`, the result is `null`. It should fall back to 3% (the app-wide default).
+Keep `holdPerMonth` for the cost basis calculation (which multiplies by months), but add a separate `holdingCostsTotal` for what gets shown in the Deal Financials section:
 
 ```
-// Before:
-const holdPerMonth = holdingMode === 'flat' && holdingFlat ? holdingFlat : (holdingPct && pp ? (holdingPct / 100) * pp / 12 : null);
-
-// After:
-const effectiveHoldingPct = holdingPct ?? 3;
+// Keep existing monthly calc for cost basis:
 const holdPerMonth = holdingMode === 'flat'
   ? (holdingFlat ?? 0)
   : (pp ? (effectiveHoldingPct / 100) * pp / 12 : null);
+
+// Add total for display (matches Profit Breakdown logic):
+const holdingCostsTotal = holdingMode === 'flat'
+  ? (holdingFlat ?? 0)
+  : (pp ? (effectiveHoldingPct / 100) * pp : null);
 ```
 
-**2. Make the label dynamic (line 401)**
+**2. Update the dealField call (around line 401)**
 
-Show the actual percentage or "Flat" to match the transaction costs pattern.
+Pass `holdingCostsTotal` instead of `holdPerMonth` so the displayed value matches the $3,000+ range:
 
 ```
-// Before:
-{dealField('Holding Costs', holdPerMonth)}
-
-// After:
 {dealField(
   holdingMode === 'flat'
     ? 'Holding Costs (Flat)'
     : `Holding Costs (${effectiveHoldingPct}%)`,
-  holdPerMonth
+  holdingCostsTotal   // <-- was holdPerMonth
 )}
 ```
 
+### Why This Works
+- The cost basis calculation still uses the monthly figure multiplied by hold period months -- no change there.
+- The displayed "Holding Costs" value now matches every other financial view in the app.
+
 ### Files Changed
 - `src/components/project/ProjectReport.tsx`
+
