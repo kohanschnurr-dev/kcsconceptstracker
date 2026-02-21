@@ -146,11 +146,13 @@ export default function Index() {
             actualSpent: expensesByCategory[c.id] || 0,
           }));
         
-        // Calculate total budget from sum of category budgets (not project.total_budget)
-        // This keeps it in sync with the Budget & Expenses page
-        const calculatedTotalBudget = projectCategories.reduce(
+        // Prioritize the project's total_budget DB column; fall back to category sum
+        const categorySumBudget = projectCategories.reduce(
           (sum, cat) => sum + Number(cat.estimatedBudget), 0
         );
+        const calculatedTotalBudget = Number(p.total_budget) > 0
+          ? Number(p.total_budget)
+          : categorySumBudget;
         
         return {
           id: p.id,
