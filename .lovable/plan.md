@@ -1,64 +1,56 @@
 
+## Handle Negative Expenses (Refunds) in CSV Import
 
-## Clickable "Need Attention" Badge to Filter Rows
+### Problem
 
-### What Changes
-
-Make the "X need attention" badge clickable in both import preview tables. Clicking it filters the table to show only rows with errors or unmatched categories, so you can fix them quickly. Clicking again (or clicking "X ready") clears the filter and shows all rows.
+The CSV parser rejects any row with a negative amount (`amount <= 0` is flagged as "Invalid amount"). In reality, negative values represent refunds and should be imported normally.
 
 ### Changes
 
-#### 1. `src/components/project/ImportExpensesModal.tsx`
+#### 1. `src/lib/csvImportUtils.ts` -- Allow negative amounts
 
-- Add a `filter` state: `useState<'all' | 'attention'>('all')`
-- Compute `displayRows` based on the filter: when `'attention'`, show only rows where `hasError || !matchedCategory`; otherwise show all
-- Make the "need attention" badge a clickable button with `cursor-pointer` styling; clicking it toggles the filter to `'attention'`
-- Make the "ready" badge also clickable to reset filter to `'all'`
-- Add a visual indicator (e.g. ring/underline) on the active filter badge
-- Render `displayRows` in the table instead of `rows`, preserving the original row index for category assignment and numbering
+**Line 181**: Change the validation from `amount <= 0` to just `amount === 0` (or keep only `isNaN`), so negative values pass through:
 
-#### 2. `src/components/QuickExpenseModal.tsx` (ImportTab)
+```typescript
+// Before
+if (isNaN(amount) || amount <= 0) { hasError = true; errorMsg = 'Invalid amount'; }
 
-- Same changes as above inside the `ImportTab` component's preview section (around lines 895-960)
+// After
+if (isNaN(amount) || amount === 0) { hasError = true; errorMsg = 'Invalid amount'; }
+```
 
-### Technical Detail
+**Line 188**: Keep `Math.abs` off -- store the raw negative value so the database reflects the refund correctly.
+
+#### 2. `src/components/project/ImportExpensesModal.tsx` -- Visual refund indicator
+
+In the preview table's Amount cell, show negative values in green with a "Refund" badge so they stand out:
 
 ```tsx
-// New state
-const [filter, setFilter] = useState<'all' | 'attention'>('all');
+<TableCell className="text-right font-mono text-sm">
+  {row.amount < 0 ? (
+    <span className="text-success">-${Math.abs(row.amount).toLocaleString(...)}</span>
+  ) : (
+    <span>${row.amount.toLocaleString(...)}</span>
+  )}
+</TableCell>
+```
 
-// Derived display rows (keeps original index for updateRowCategory)
-const displayRows = filter === 'attention'
-  ? rows.map((r, i) => ({ ...r, originalIdx: i })).filter(r => r.hasError || !r.matchedCategory)
-  : rows.map((r, i) => ({ ...r, originalIdx: i }));
+Also add a small "Refund" badge next to negative amounts in the Status column for extra clarity.
 
-// Badges become clickable
-<Badge
-  variant="outline"
-  className={`gap-1 text-success border-success cursor-pointer ${filter === 'all' ? 'ring-2 ring-success/30' : ''}`}
-  onClick={() => setFilter('all')}
->
-  <CheckCircle2 className="h-3 w-3" />{readyRows.length} ready
-</Badge>
+#### 3. `src/components/QuickExpenseModal.tsx` -- Same visual treatment
 
-<Badge
-  variant="outline"
-  className={`gap-1 text-warning border-warning cursor-pointer ${filter === 'attention' ? 'ring-2 ring-warning/30' : ''}`}
-  onClick={() => setFilter('attention')}
->
-  <AlertTriangle className="h-3 w-3" />{needsAttention.length} need attention
-</Badge>
+Mirror the same negative-amount display logic in the ImportTab's preview table.
 
-// Table uses displayRows, with originalIdx for row numbering and category updates
-{displayRows.map((row) => (
-  <TableRow key={row.originalIdx} ...>
-    <TableCell>{row.originalIdx + 1}</TableCell>
-    ...
-    // updateRowCategory(row.originalIdx, v) instead of idx
-  </TableRow>
-))}
+#### 4. Sample CSV + AI Prompt (minor)
+
+Update the AI prompt in `csvImportUtils.ts` to mention: "Use negative amounts to represent refunds or credits."
+
+Add a refund example row to `downloadSampleCSV`:
+```
+2025-02-10,Home Depot,Flooring,Returned excess LVP,-320.00,card,product,Refund
 ```
 
 ### Files Changed
-- `src/components/project/ImportExpensesModal.tsx` -- add filter state, clickable badges, filtered table
-- `src/components/QuickExpenseModal.tsx` -- same changes in ImportTab's preview section
+- `src/lib/csvImportUtils.ts` -- allow negative amounts in validation; update AI prompt and sample CSV
+- `src/components/project/ImportExpensesModal.tsx` -- green styling and "Refund" badge for negative rows
+- `src/components/QuickExpenseModal.tsx` -- same visual treatment in ImportTab
