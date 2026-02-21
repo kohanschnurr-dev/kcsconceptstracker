@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calculator, DollarSign, TrendingUp, Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FormulaInput } from '@/components/ui/formula-input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -156,7 +156,7 @@ export function ProfitCalculator({
             <Label htmlFor="purchase-price">Purchase Price</Label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
+              <FormulaInput
                 id="purchase-price"
                 type="number"
                 value={purchasePrice || ''}
@@ -170,7 +170,7 @@ export function ProfitCalculator({
             <Label htmlFor="arv">After Repair Value (ARV)</Label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
+              <FormulaInput
                 id="arv"
                 type="number"
                 value={arv || ''}
@@ -187,7 +187,7 @@ export function ProfitCalculator({
             </div>
             <div className="relative">
               {closingMode === 'flat' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
-              <Input
+              <FormulaInput
                 id="closing-costs"
                 type="number"
                 value={closingMode === 'actual' ? transactionCostActual : closingMode === 'pct' ? (closingPct || '') : (closingFlat || '')}
@@ -208,7 +208,7 @@ export function ProfitCalculator({
             </div>
             <div className="relative">
               {holdingMode === 'flat' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
-              <Input
+              <FormulaInput
                 id="holding-costs"
                 type="number"
                 value={holdingMode === 'actual' ? holdingCostActual : holdingMode === 'pct' ? (holdingPct || '') : (holdingFlat || '')}
