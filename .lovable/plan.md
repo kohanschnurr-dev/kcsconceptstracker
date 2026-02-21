@@ -1,72 +1,40 @@
 
-## Replace Scanning Progress Bar with Indeterminate Loading Animation
+
+## Show Tax-Inclusive Total in Split Summary
 
 ### Problem
 
-The fake progress bar races through percentages that don't correspond to actual work, making the UI feel dishonest. Since we have no way to know how long the AI parsing will take, a determinate progress bar is the wrong pattern.
+When tax is enabled, the split breakdown shows the pre-tax subtotal (e.g. $440.28) while the actual amount logged to the budget is the tax-inclusive total (e.g. $476.60). This can confuse users into thinking their budget will show the wrong number.
+
+### Fix
+
+Add a helper line in the split summary footer showing the tax-inclusive total that will actually be logged, so users see both the line-item subtotal and the final amount hitting their budget.
 
 ### Changes to `src/components/QuickExpenseModal.tsx`
 
-**1. Remove `scanProgress` state and the progress simulation `useEffect` (lines 95, 107-137)**
-
-Delete the `scanProgress` state variable and the entire `useEffect` that simulates progress increments. Keep only `scanMessage` for cycling status text.
-
-**2. Replace the `useEffect` with a simple message cycler**
-
-Instead of faking progress, cycle through the status messages on a timer while `isParsingImage` is true:
-
-```typescript
-useEffect(() => {
-  if (!isParsingImage) {
-    setScanMessage('');
-    return;
-  }
-  const messages = [
-    'Reading document...',
-    'Extracting line items...',
-    'Identifying categories...',
-    'Matching vendors...',
-    'Finalizing...',
-  ];
-  let idx = 0;
-  setScanMessage(messages[0]);
-  const interval = setInterval(() => {
-    idx = (idx + 1) % messages.length;
-    setScanMessage(messages[idx]);
-  }, 3000);
-  return () => clearInterval(interval);
-}, [isParsingImage]);
-```
-
-**3. Replace the `<Progress>` bar with an indeterminate animated bar (lines 447-452)**
-
-Swap the `<Progress value={scanProgress} ...>` component and the percentage text for a simple indeterminate bar using a CSS animation -- a small bar that slides back and forth continuously:
+**Update the split summary footer (lines 559-566)** to show the tax-inclusive total when tax is enabled:
 
 ```tsx
-<div className="w-full space-y-2">
-  <div className="h-2.5 bg-muted rounded-full overflow-hidden relative">
-    <div className="absolute h-full w-1/3 bg-gradient-to-r from-primary to-accent rounded-full animate-[indeterminate_1.5s_ease-in-out_infinite]" />
+{/* Summary footer */}
+{splitMode && (
+  <div className="px-3 py-2 border-t border-border bg-primary/5 space-y-1">
+    <div className="flex items-center justify-between">
+      <span className="text-xs text-muted-foreground">
+        Splitting into <span className="font-semibold text-foreground">{uniqueSplitCategories}</span> {uniqueSplitCategories === 1 ? 'category' : 'categories'}
+      </span>
+      <span className="text-xs font-mono font-semibold text-primary">${splitTotal.toFixed(2)}</span>
+    </div>
+    {includeTax && (
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">Incl. tax — amount logged to budget</span>
+        <span className="text-xs font-mono font-semibold text-primary">${calculateTotal().toFixed(2)}</span>
+      </div>
+    )}
   </div>
-  <span className="text-primary font-medium text-xs transition-all duration-300">{scanMessage}</span>
-</div>
+)}
 ```
 
-**4. Add the `indeterminate` keyframe to `tailwind.config.ts`**
-
-Add a keyframe that slides the bar from left to right and back:
-
-```typescript
-"indeterminate": {
-  "0%": { transform: "translateX(-100%)" },
-  "50%": { transform: "translateX(200%)" },
-  "100%": { transform: "translateX(-100%)" },
-}
-```
-
-**5. Update the rendering condition (line 441)**
-
-Change `isParsingImage || scanProgress === 100` to just `isParsingImage`, since there's no longer a completion state to show.
+This adds a second line below the category count that only appears when tax is toggled on, showing the actual tax-inclusive total that will be recorded in the budget.
 
 ### Files Changed
-- `src/components/QuickExpenseModal.tsx` -- remove progress state/effect, add message cycler, replace Progress bar with indeterminate animation
-- `tailwind.config.ts` -- add `indeterminate` keyframe
+- `src/components/QuickExpenseModal.tsx` -- add tax-inclusive total line to split summary footer
