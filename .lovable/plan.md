@@ -1,49 +1,39 @@
 
 
-## Add Sales Tax Toggle Integration with Receipt Breakdown
+## Slow Down Scanning Progress Animation
 
-### What Changes
+### Problem
 
-Currently, when the AI parses a receipt, it might return "Tax" or "Sales Tax" as a line-item category in the breakdown. Since tax is already handled by the dedicated toggle switch, these tax line items should be filtered out of the breakdown and instead auto-enable the toggle.
+The progress bar races to 90% in about 8 seconds (incrementing 10-18% every 800ms), then sits frozen at 90% for the remainder of the actual AI parsing -- which can take 15-30+ seconds for PDFs. This makes the animation feel broken.
+
+### Fix
+
+Replace the linear-ish increment with a **decelerating curve** that spreads the 0-90% range across ~25-30 seconds. The trick: as progress increases, the increment size shrinks dramatically, so early progress feels fast (good feedback) but later progress crawls to match the real backend time.
 
 ### Changes to `src/components/QuickExpenseModal.tsx`
 
-**1. Filter tax line items out of the breakdown**
+**Replace the interval logic (lines 127-134) with a decelerating curve:**
 
-When populating `parsedLineItems` from the AI parse result, filter out any items where the `item_name` or `suggested_category` matches tax-related terms (e.g., "tax", "sales tax", "TX tax"). This prevents tax from appearing as a category row in the Receipt Breakdown.
-
-**2. Auto-enable the tax toggle when tax is detected**
-
-In `handleParseReceiptImage`, if the parsed result includes a `tax_amount > 0`, automatically turn on the `includeTax` toggle (currently line 212 sets it to `false`, which is incorrect -- it should be `true`).
-
-**3. Use the receipt's subtotal (not total) as the Amount field when tax is detected**
-
-When the AI returns both `subtotal` and `tax_amount`, set the Amount field to the `subtotal` value so the tax toggle can correctly add the tax on top. This avoids double-counting tax.
-
-**4. Fix line 212 bug**
-
-Change `setIncludeTax(false)` to `setIncludeTax(true)` when `parsed.tax_amount > 0` -- the current logic is backwards.
-
-### Technical Details
-
-**Tax line-item filter (in handleParseReceiptImage):**
 ```typescript
-const taxPatterns = /^(sales\s*)?tax$/i;
-const nonTaxItems = parsed.line_items.filter(
-  (li) => !taxPatterns.test(li.item_name?.trim()) && !taxPatterns.test(li.suggested_category?.trim())
-);
-// Use nonTaxItems instead of parsed.line_items for setParsedLineItems
+let progress = 5;
+const interval = setInterval(() => {
+  // Decelerate: big jumps early, tiny increments as we approach 90%
+  const remaining = 90 - progress;
+  const increment = Math.max(0.5, remaining * 0.06 + Math.random() * 0.8);
+  progress = Math.min(progress + increment, 90);
+  setScanProgress(Math.round(progress));
+  const msgIdx = Math.min(Math.floor(progress / 20), messages.length - 1);
+  setScanMessage(messages[msgIdx]);
+}, 600);
 ```
 
-**Fix tax auto-detection:**
-```typescript
-// Line 212: change from false to true
-if (parsed.tax_amount && parsed.tax_amount > 0) {
-  setIncludeTax(true);
-  // Use subtotal as the base amount if available
-  if (parsed.subtotal) setAmount(parsed.subtotal.toString());
-}
-```
+This gives roughly:
+- 0-50% in first ~6 seconds (feels responsive)
+- 50-75% over next ~10 seconds
+- 75-90% over next ~15+ seconds (crawls to match backend)
+
+The interval fires every 600ms for smoother visual updates, and each tick adds a fraction of the remaining distance (6% of what's left + a tiny random), so it naturally decelerates without ever truly stalling.
 
 ### Files Changed
-- `src/components/QuickExpenseModal.tsx` -- filter tax from line items, fix tax toggle auto-enable, use subtotal when tax detected
+- `src/components/QuickExpenseModal.tsx` -- replace progress increment formula with decelerating curve
+
