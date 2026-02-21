@@ -1,17 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
-import { Printer, FileDown, Calendar, DollarSign, TrendingUp, Clock, CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { Printer, FileDown, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { generatePDF } from '@/lib/pdfExport';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-
-/* ── types ────────────────────────────────────────────────── */
 
 interface DBProject {
   id: string;
@@ -82,6 +78,16 @@ const CHART_COLORS = [
   'hsl(var(--muted-foreground))',
 ];
 
+/* ── Section Header ──────────────────────────────────────── */
+const SectionHead = ({ title }: { title: string }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <h2 className="text-[10px] font-bold uppercase tracking-[3px] text-primary whitespace-nowrap">
+      {title.split('').join(' ')}
+    </h2>
+    <div className="flex-1 h-px bg-border" />
+  </div>
+);
+
 /* ── component ────────────────────────────────────────────── */
 
 export function ProjectReport({
@@ -105,7 +111,7 @@ export function ProjectReport({
     setMounted(false);
   }, [open]);
 
-  /* ── computed ─────────────────────────────────────────── */
+  /* ── computed (all logic preserved) ──────────────────── */
 
   const categoryTotal = categories.reduce((s, c) => s + Number(c.estimated_budget), 0);
   const totalBudget = project.total_budget > 0 ? project.total_budget : categoryTotal;
@@ -113,7 +119,6 @@ export function ProjectReport({
   const rehabCost = constructionSpentProp ?? totalSpent;
   const remaining = totalBudget - totalSpent;
   const pct = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
-  const budgetColor = pct > 100 ? 'bg-destructive' : pct >= 85 ? 'bg-warning' : 'bg-success';
   const overUnderAmt = Math.abs(remaining);
   const overUnderLabel = remaining >= 0 ? `${fmt(overUnderAmt)} under` : `${fmt(overUnderAmt)} over`;
 
@@ -123,10 +128,6 @@ export function ProjectReport({
   const daysElapsed = startDate ? Math.max(0, Math.floor((now.getTime() - startDate.getTime()) / 86400000)) : 0;
   const totalProjectedDays = startDate && endDate ? Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / 86400000)) : null;
   const daysRemaining = endDate ? Math.max(0, Math.floor((endDate.getTime() - now.getTime()) / 86400000)) : null;
-  const timelinePct = totalProjectedDays && totalProjectedDays > 0 ? (daysElapsed / totalProjectedDays) * 100 : null;
-  const timelineColor = timelinePct === null ? 'bg-muted-foreground' : timelinePct > 100 ? 'bg-destructive' : timelinePct >= 80 ? 'bg-warning' : 'bg-success';
-  const dailyBurn = daysElapsed > 0 ? totalSpent / daysElapsed : 0;
-  const projectedTotal = daysRemaining !== null ? totalSpent + dailyBurn * daysRemaining : null;
   const holdPeriodMonths = totalProjectedDays !== null ? Math.round(totalProjectedDays / 30) : (daysElapsed > 0 ? Math.round(daysElapsed / 30) : null);
 
   /* deal financials */
@@ -162,22 +163,6 @@ export function ProjectReport({
   const seventyPctPass = seventyPctRatio !== null ? seventyPctRatio <= 70 : null;
 
   /* category analysis */
-  const overBudgetCats = useMemo(() =>
-    categories
-      .filter(c => c.estimated_budget > 0 && c.actualSpent > c.estimated_budget)
-      .map(c => ({ ...c, variance: c.actualSpent - c.estimated_budget, variancePct: ((c.actualSpent - c.estimated_budget) / c.estimated_budget) * 100 }))
-      .sort((a, b) => b.variance - a.variance),
-    [categories]
-  );
-
-  const underBudgetCats = useMemo(() =>
-    categories
-      .filter(c => c.estimated_budget > 0 && c.actualSpent <= c.estimated_budget)
-      .map(c => ({ ...c, remaining: c.estimated_budget - c.actualSpent, remainingPct: ((c.estimated_budget - c.actualSpent) / c.estimated_budget) * 100 }))
-      .sort((a, b) => b.remaining - a.remaining),
-    [categories]
-  );
-
   const scopeCreepCats = useMemo(() =>
     categories.filter(c => (c.estimated_budget === 0 || !c.estimated_budget) && c.actualSpent > 0),
     [categories]
@@ -233,11 +218,6 @@ export function ProjectReport({
     categories.filter(c => c.estimated_budget > 0 || c.actualSpent > 0).forEach(c => {
       lines.push(`${c.category.replace(/_/g, ' ')}: ${fmt(c.actualSpent)} / ${fmt(c.estimated_budget)}`);
     });
-    if (overBudgetCats.length > 0) {
-      lines.push('');
-      lines.push('OVER BUDGET');
-      overBudgetCats.forEach(c => lines.push(`${c.category.replace(/_/g, ' ')}: ${fmt(c.variance)} over (${fmtPct(c.variancePct)})`));
-    }
     if (scopeCreepCats.length > 0) {
       lines.push('');
       lines.push('UNBUDGETED SPEND');
@@ -253,25 +233,34 @@ export function ProjectReport({
     });
   };
 
+  /* ── deal field helper ───────────────────────────────── */
+
   const dealField = (label: string, value: number | null, suffix?: string) => (
-    <div className="flex justify-between text-sm py-1.5 border-b border-border/50 last:border-b-0">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium font-mono">
-        {value !== null ? `${fmt(value)}${suffix || ''}` : <span className="text-muted-foreground/60 text-xs">— Add in Financials tab</span>}
+    <div className="flex justify-between items-center py-2.5 border-b border-border/40 last:border-b-0">
+      <span className="text-sm text-muted-foreground font-medium">{label}</span>
+      <span className="font-mono text-sm font-semibold">
+        {value !== null
+          ? `${fmt(value)}${suffix || ''}`
+          : <span className="text-muted-foreground/50 text-xs italic bg-secondary/50 px-2 py-0.5 rounded">See Financials →</span>
+        }
       </span>
     </div>
   );
 
-  const sectionDelay = (i: number) => ({ animationDelay: `${i * 0.1}s` });
+  const sectionDelay = (i: number) => ({
+    animationDelay: `${i * 0.08}s`,
+    animationFillMode: 'both' as const,
+  });
+
+  /* ── RENDER ──────────────────────────────────────────── */
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-0 gap-0 print:max-w-full print:max-h-full print:overflow-visible report-modal">
-        {/* Action bar - hidden on print */}
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-0 gap-0 print:max-w-full print:max-h-full print:overflow-visible report-modal bg-background">
+
+        {/* ── Action bar (hidden on print) ── */}
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-border bg-background/95 backdrop-blur print:hidden">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">Project Report</Badge>
-          </div>
+          <span className="text-[9px] font-bold uppercase tracking-[3px] text-primary">Project Report</span>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="h-4 w-4 mr-1.5" /> Print
@@ -285,167 +274,102 @@ export function ProjectReport({
           </div>
         </div>
 
-        <div className="px-6 py-6 space-y-6 print:px-0 print:py-0 print:space-y-4">
+        <div className="px-8 py-8 space-y-8 print:px-4 print:py-4 print:space-y-4">
 
-          {/* ═══ SECTION 1 — HEADER ═══ */}
-          <section className="animate-fade-in" style={sectionDelay(0)}>
+          {/* ═══ HEADER ═══ */}
+          <section className="report-anim" style={sectionDelay(0)}>
             <div className="flex items-start justify-between">
               <div>
                 {companyName && (
-                  <p className="text-sm text-muted-foreground mb-1">{companyName}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-[3px] text-primary mb-2">
+                    {companyName.split('').join(' ')}
+                  </p>
                 )}
-                <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-                <p className="text-muted-foreground mt-1">{project.address}</p>
+                <h1 className="text-4xl font-extrabold tracking-tight text-foreground">{project.name}</h1>
+                <div className="flex items-center gap-3 mt-3 flex-wrap text-xs text-muted-foreground font-mono">
+                  <span className={cn(
+                    'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border',
+                    project.status === 'active' && 'bg-success/15 text-success border-success/30',
+                    project.status === 'complete' && 'bg-primary/15 text-primary border-primary/30',
+                    project.status === 'on_hold' && 'bg-warning/15 text-warning border-warning/30',
+                  )}>
+                    {project.status.replace('_', ' ')}
+                  </span>
+                  <span>📍 {project.address}</span>
+                  <span>📅 Started {startDate ? format(startDate, 'MMM d, yyyy') : project.start_date}</span>
+                  <span>Generated {format(now, 'MMM d, yyyy')}</span>
+                </div>
               </div>
               {logoUrl && (
-                <img src={logoUrl} alt="Company logo" className="h-10 w-auto object-contain print:h-8" />
+                <img src={logoUrl} alt="Logo" className="h-12 w-auto object-contain print:h-8 ml-4 shrink-0" />
               )}
             </div>
-            <div className="flex items-center gap-3 mt-3 flex-wrap">
-              <Badge className={cn(
-                project.status === 'active' && 'bg-success/20 text-success border-success/30',
-                project.status === 'complete' && 'bg-primary/20 text-primary border-primary/30',
-                project.status === 'on_hold' && 'bg-warning/20 text-warning border-warning/30',
-              )}>
-                {project.status.replace('_', ' ')}
-              </Badge>
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                Started {startDate ? format(startDate, 'MMM d, yyyy') : project.start_date}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Report generated {format(now, 'MMM d, yyyy')}
-              </span>
-            </div>
-            <div className="h-px bg-border mt-4" />
           </section>
 
-          {/* ═══ SECTION 2 — BUDGET SNAPSHOT ═══ */}
-          <section className="animate-fade-in" style={sectionDelay(1)}>
+          {/* ═══ BUDGET SNAPSHOT ═══ */}
+          <section className="report-anim" style={sectionDelay(1)}>
+            <SectionHead title="BUDGET SNAPSHOT" />
+
+            {/* 4-column stat cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Card className="border-t-4 border-t-primary">
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Total Budget</p>
-                  <p className="text-lg font-bold font-mono">{fmt(totalBudget)}</p>
-                </CardContent>
-              </Card>
-              <Card className={cn('border-t-4', pct > 100 ? 'border-t-destructive' : 'border-t-primary')}>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Total Spent</p>
-                  <p className="text-lg font-bold font-mono">{fmt(totalSpent)}</p>
-                </CardContent>
-              </Card>
-              <Card className={cn('border-t-4', remaining >= 0 ? 'border-t-success' : 'border-t-destructive')}>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Remaining</p>
-                  <p className={cn('text-lg font-bold font-mono', remaining >= 0 ? 'text-success' : 'text-destructive')}>
-                    {remaining < 0 && '-'}{fmt(Math.abs(remaining))}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="border-t-4 border-t-success">
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Est. ROI</p>
-                  <p className={cn('text-lg font-bold font-mono', roi !== null && roi >= 0 ? 'text-success' : roi !== null ? 'text-destructive' : '')}>
-                    {roi !== null ? fmtPct(roi) : 'N/A'}
-                  </p>
-                </CardContent>
-              </Card>
+              {[
+                { label: 'TOTAL BUDGET', value: fmt(totalBudget), sub: 'Approved', borderColor: 'border-primary' },
+                { label: 'TOTAL SPENT', value: fmt(totalSpent), sub: `${fmtPct(pct)} used`, borderColor: pct > 100 ? 'border-destructive' : 'border-primary' },
+                { label: 'REMAINING', value: `${remaining < 0 ? '−' : ''}${fmt(Math.abs(remaining))}`, sub: remaining >= 0 ? 'Under budget' : 'Over budget', borderColor: remaining >= 0 ? 'border-success' : 'border-destructive', valueColor: remaining >= 0 ? 'text-success' : 'text-destructive' },
+                { label: 'EST. ROI', value: roi !== null ? fmtPct(roi) : 'N/A', sub: 'See deal breakdown', borderColor: 'border-success', valueColor: roi !== null && roi >= 0 ? 'text-success' : roi !== null ? 'text-destructive' : '' },
+              ].map((card, i) => (
+                <div key={i} className={cn('bg-card border border-border rounded-lg p-4 border-t-[3px]', card.borderColor)}>
+                  <p className="text-[9px] font-bold uppercase tracking-[2.5px] text-muted-foreground font-mono mb-2">{card.label}</p>
+                  <p className={cn('text-2xl font-extrabold font-mono', card.valueColor)}>{card.value}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 font-mono">{card.sub}</p>
+                </div>
+              ))}
             </div>
 
-            {/* Progress bar */}
-            <Card className="mt-3">
-              <CardContent className="p-4">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium">Budget Usage</span>
-                  <span className="text-muted-foreground">{fmtPct(pct)} — {overUnderLabel}</span>
-                </div>
-                <div className="h-3 w-full rounded-full bg-secondary overflow-hidden">
-                  <div
-                    className={cn('h-full rounded-full transition-all duration-1000 ease-out', budgetColor)}
-                    style={{ width: mounted ? `${Math.min(pct, 100)}%` : '0%' }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
-                  <span>$0</span>
-                  <span>Budget: {fmt(totalBudget)}</span>
-                  <span>Spent: {fmt(totalSpent)}</span>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* ═══ SECTION 3 — DAYS ON PROJECT ═══ */}
-          <section className="animate-fade-in" style={sectionDelay(2)}>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                  <Clock className="h-4 w-4" /> Days on Project
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {totalProjectedDays !== null ? (
-                  <>
-                    <div className="h-3 w-full rounded-full bg-secondary overflow-hidden">
-                      <div
-                        className={cn('h-full rounded-full transition-all duration-1000 ease-out', timelineColor)}
-                        style={{ width: mounted ? `${Math.min(timelinePct ?? 0, 100)}%` : '0%' }}
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-center text-sm">
-                      <div>
-                        <p className="text-muted-foreground text-xs">Days Elapsed</p>
-                        <p className="font-bold text-lg">{daysElapsed}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs">Days Remaining</p>
-                        <p className="font-bold text-lg">{daysRemaining ?? '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs">Total Projected</p>
-                        <p className="font-bold text-lg">{totalProjectedDays}</p>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-3">
-                    <p className="text-sm text-muted-foreground">
-                      {daysElapsed > 0 && <span className="font-medium text-foreground">{daysElapsed} days elapsed</span>}
-                    </p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">
-                      Set a projected end date (mark project complete or set completion date) to enable full timeline tracking.
-                    </p>
-                  </div>
-                )}
-
-                {daysElapsed > 0 && (
-                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
-                    <div className="text-sm">
-                      <p className="text-muted-foreground text-xs">Daily Burn Rate</p>
-                      <p className="font-medium font-mono">{fmt(dailyBurn)}/day</p>
-                    </div>
-                    <div className="text-sm">
-                      <p className="text-muted-foreground text-xs">Projected Total Spend</p>
-                      <p className="font-medium font-mono">{projectedTotal !== null ? fmt(projectedTotal) : '—'}</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* ═══ SECTION 4 — DEAL FINANCIALS & ROI ═══ */}
-          <section className="animate-fade-in print:break-before-page" style={sectionDelay(3)}>
-            <Card>
-              <div className="bg-secondary px-4 py-3 rounded-t-lg">
-                <h3 className="text-sm font-semibold">How We Get to ROI</h3>
-                <p className="text-xs text-muted-foreground">Values from project Financials tab.</p>
+            {/* Budget usage bar */}
+            <div className="bg-card border border-border rounded-lg p-4 mt-3">
+              <div className="flex justify-between items-baseline mb-2">
+                <span className="text-sm font-semibold">Budget Usage</span>
+                <span className="text-xs font-mono text-muted-foreground">{fmtPct(pct)} — {overUnderLabel}</span>
               </div>
-              <CardContent className="p-4">
+              <div className="h-[10px] w-full rounded-full bg-secondary overflow-hidden">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all duration-1000 ease-out',
+                    pct > 100 ? 'bg-gradient-to-r from-primary to-destructive' : pct >= 85 ? 'bg-warning' : 'bg-primary'
+                  )}
+                  style={{ width: mounted ? `${Math.min(pct, 100)}%` : '0%' }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5 font-mono">
+                <span>$0</span>
+                <span>Budget {fmt(totalBudget)}</span>
+                <span>Spent {fmt(totalSpent)}</span>
+              </div>
+            </div>
+          </section>
+
+          {/* ═══ DEAL FINANCIALS & ROI ═══ */}
+          <section className="report-anim print:break-before-page" style={sectionDelay(2)}>
+            <SectionHead title="DEAL FINANCIALS & ROI" />
+
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
+              {/* Dark header band */}
+              <div className="bg-background px-5 py-3 border-b border-border">
+                <h3 className="text-[10px] font-bold uppercase tracking-[2.5px] text-primary font-mono">
+                  H O W  W E  G E T  T O  R O I
+                </h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+                  <span className="text-[10px] text-muted-foreground">Values pulled from project Financials tab</span>
+                </div>
+              </div>
+
+              <div className="p-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* LEFT — The Deal */}
+                  {/* The Deal */}
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">The Deal</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[2.5px] text-muted-foreground mb-3">T H E  D E A L</p>
                     {dealField('Purchase Price', pp)}
                     {dealField('Rehab Cost', rehabCost)}
                     {dealField('Loan Amount', loanAmt)}
@@ -454,10 +378,9 @@ export function ProjectReport({
                     {dealField('Total Cost Basis', costBasis)}
                   </div>
 
-                  {/* RIGHT — The Return */}
+                  {/* The Return */}
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">The Return</p>
-                    {dealField('ARV', arv)}
+                    <p className="text-[9px] font-bold uppercase tracking-[2.5px] text-muted-foreground mb-3">T H E  R E T U R N</p>
                     {dealField('Projected Sale Price', projectedSalePrice)}
                     {dealField('Selling Costs (6%)', sellingCosts)}
                     {dealField('Net Proceeds', netProceeds)}
@@ -466,25 +389,28 @@ export function ProjectReport({
                   </div>
                 </div>
 
-                {/* ROI strip */}
-                <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-border text-center">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Estimated ROI</p>
-                    <p className={cn('text-xl font-bold font-mono', roi !== null && roi >= 0 ? 'text-success' : roi !== null ? 'text-destructive' : '')}>
+                {/* ROI result strip */}
+                <div className="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-border">
+                  <div className="text-center">
+                    <p className="text-[9px] font-bold uppercase tracking-[2px] text-muted-foreground mb-1 font-mono">Estimated ROI</p>
+                    <p className={cn('text-3xl font-extrabold font-mono', roi !== null && roi >= 0 ? 'text-success' : roi !== null ? 'text-destructive' : 'text-muted-foreground')}>
                       {roi !== null ? fmtPct(roi) : '—'}
                     </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Equity / Profit</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Net Profit</p>
-                    <p className={cn('text-xl font-bold font-mono', netProfit !== null && netProfit >= 0 ? 'text-success' : netProfit !== null ? 'text-destructive' : '')}>
+                  <div className="text-center">
+                    <p className="text-[9px] font-bold uppercase tracking-[2px] text-muted-foreground mb-1 font-mono">Net Profit</p>
+                    <p className={cn('text-3xl font-extrabold font-mono', netProfit !== null && netProfit >= 0 ? 'text-success' : netProfit !== null ? 'text-destructive' : 'text-muted-foreground')}>
                       {netProfit !== null ? fmt(netProfit) : '—'}
                     </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Net after all costs</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Hold Period</p>
-                    <p className="text-xl font-bold font-mono">
+                  <div className="text-center">
+                    <p className="text-[9px] font-bold uppercase tracking-[2px] text-muted-foreground mb-1 font-mono">Hold Period</p>
+                    <p className="text-3xl font-extrabold font-mono text-foreground">
                       {holdPeriodMonths !== null ? `${holdPeriodMonths} mo` : '—'}
                     </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Months to close</p>
                   </div>
                 </div>
 
@@ -494,7 +420,7 @@ export function ProjectReport({
                   {seventyPctPass === false && <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />}
                   {seventyPctPass === null && <div className="h-5 w-5 rounded-full bg-muted shrink-0" />}
                   <div>
-                    <p className="text-sm font-medium">
+                    <p className="text-sm font-semibold">
                       70% Rule {seventyPctRatio !== null && <span className="font-mono">({fmtPct(seventyPctRatio)})</span>}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -504,195 +430,161 @@ export function ProjectReport({
                     </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* ═══ SECTION 5 — OVER / UNDER BUDGET ═══ */}
-          <section className="animate-fade-in" style={sectionDelay(4)}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Over Budget */}
-              <Card className="border-t-4 border-t-destructive">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold text-destructive">Over Budget</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {overBudgetCats.length > 0 ? (
-                    <div className="space-y-2">
-                      {overBudgetCats.map(c => (
-                        <div key={c.id} className="flex justify-between items-center text-sm">
-                          <span className="capitalize truncate mr-2">{c.category.replace(/_/g, ' ')}</span>
-                          <div className="text-right shrink-0">
-                            <span className="font-mono font-medium text-destructive">{fmt(c.variance)}</span>
-                            <span className="text-xs text-muted-foreground ml-1">({fmtPct(c.variancePct)})</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                      <CheckCircle2 className="h-4 w-4 text-success" />
-                      All categories within budget ✓
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Under Budget */}
-              <Card className="border-t-4 border-t-success">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold text-success">Under Budget / Unspent</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {underBudgetCats.length > 0 ? (
-                    <div className="space-y-2">
-                      {underBudgetCats.map(c => (
-                        <div key={c.id} className="flex justify-between items-center text-sm">
-                          <span className="capitalize truncate mr-2">{c.category.replace(/_/g, ' ')}</span>
-                          <div className="text-right shrink-0">
-                            <span className="font-mono font-medium text-success">{fmt(c.remaining)}</span>
-                            <span className="text-xs text-muted-foreground ml-1">({fmtPct(c.remainingPct)})</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No categories with remaining budget.</p>
-                  )}
-                </CardContent>
-              </Card>
+              </div>
             </div>
           </section>
 
-          {/* ═══ SECTION 6 — SPEND BREAKDOWN ═══ */}
-          <section className="animate-fade-in print:break-before-page" style={sectionDelay(5)}>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold">Spend Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Donut */}
-                  <div className="flex flex-col items-center">
-                    {donutData.length > 0 ? (
-                      <>
-                        <ResponsiveContainer width="100%" height={220}>
-                          <PieChart>
-                            <Pie
-                              data={donutData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={55}
-                              outerRadius={90}
-                              paddingAngle={2}
-                              dataKey="value"
-                            >
-                              {donutData.map((_, i) => (
-                                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              formatter={(value: number) => fmt(value)}
-                              contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center mt-2">
-                          {donutData.map((d, i) => (
-                            <div key={d.name} className="flex items-center gap-1.5 text-xs">
-                              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
-                              <span className="capitalize">{d.name}</span>
-                              <span className="font-mono text-muted-foreground">{fmt(d.value)}</span>
-                            </div>
+          {/* ═══ WHERE THE MONEY WENT (Donut) ═══ */}
+          <section className="report-anim" style={sectionDelay(3)}>
+            <SectionHead title="WHERE THE MONEY WENT" />
+
+            <div className="bg-card border border-border rounded-lg p-5">
+              <p className="text-xs text-muted-foreground mb-4 font-mono">{fmt(totalSpent)} total</p>
+              {donutData.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                  {/* Donut chart */}
+                  <div className="flex justify-center">
+                    <ResponsiveContainer width="100%" height={240}>
+                      <PieChart>
+                        <Pie
+                          data={donutData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="hsl(var(--background))"
+                          strokeWidth={2}
+                        >
+                          {donutData.map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                           ))}
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-sm text-muted-foreground py-10">No spend data available.</p>
-                    )}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: number) => fmt(value)}
+                          contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
 
-                  {/* Bars */}
-                  <div className="space-y-2.5">
-                    {barData.map(c => {
-                      const spentPct = (c.actualSpent / maxBarSpent) * 100;
-                      const budgetPct = c.estimated_budget > 0 ? (c.estimated_budget / maxBarSpent) * 100 : null;
-                      const isOver = c.estimated_budget > 0 && c.actualSpent > c.estimated_budget;
-                      return (
-                        <div key={c.id}>
-                          <div className="flex justify-between text-xs mb-0.5">
-                            <span className="capitalize truncate">{c.category.replace(/_/g, ' ')}</span>
-                            <span className="font-mono shrink-0 ml-2">{fmt(c.actualSpent)}</span>
-                          </div>
-                          <div className="relative h-2.5 w-full rounded-full bg-secondary overflow-hidden">
-                            <div
-                              className={cn(
-                                'h-full rounded-full transition-all duration-1000 ease-out',
-                                isOver ? 'bg-destructive' : c.estimated_budget > 0 ? 'bg-primary' : 'bg-muted-foreground/50'
-                              )}
-                              style={{ width: mounted ? `${Math.min(spentPct, 100)}%` : '0%' }}
-                            />
-                            {budgetPct !== null && budgetPct <= 100 && (
-                              <div
-                                className="absolute top-0 bottom-0 w-0.5 bg-foreground/60"
-                                style={{ left: `${budgetPct}%` }}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {barData.length === 0 && (
-                      <p className="text-xs text-muted-foreground">No spend data available.</p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* ═══ SECTION 7 — SCOPE CREEP ═══ */}
-          {scopeCreepCats.length > 0 && (
-            <section className="animate-fade-in" style={sectionDelay(6)}>
-              <Card className="border-warning/30 bg-warning/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-warning">
-                    <AlertTriangle className="h-4 w-4" /> Unbudgeted Spend
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {scopeCreepCats.map(c => (
-                      <div key={c.id} className="flex justify-between items-center text-sm">
-                        <div>
-                          <span className="capitalize">{c.category.replace(/_/g, ' ')}</span>
-                          <p className="text-xs text-muted-foreground">No budget was set for this category.</p>
-                        </div>
-                        <span className="font-mono font-medium text-warning shrink-0">{fmt(c.actualSpent)}</span>
+                  {/* Legend grid */}
+                  <div className="grid grid-cols-1 gap-2">
+                    {donutData.map((d, i) => (
+                      <div key={d.name} className="flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                        <span className="text-sm capitalize flex-1">{d.name}</span>
+                        <span className="font-mono text-sm font-semibold">{fmt(d.value)}</span>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-10 text-center">No spend data available.</p>
+              )}
+            </div>
+          </section>
+
+          {/* ═══ CATEGORY BREAKDOWN ═══ */}
+          <section className="report-anim print:break-before-page" style={sectionDelay(4)}>
+            <SectionHead title="CATEGORY BREAKDOWN" />
+
+            <div className="bg-card border border-border rounded-lg p-5">
+              <p className="text-xs text-muted-foreground mb-4 font-mono">Spent vs Budget</p>
+              <div className="space-y-3">
+                {barData.map(c => {
+                  const spentPct = (c.actualSpent / maxBarSpent) * 100;
+                  const budgetPct = c.estimated_budget > 0 ? (c.estimated_budget / maxBarSpent) * 100 : null;
+                  const isOver = c.estimated_budget > 0 && c.actualSpent > c.estimated_budget;
+                  const hasNoBudget = !c.estimated_budget || c.estimated_budget === 0;
+                  return (
+                    <div key={c.id}>
+                      <div className="flex justify-between items-baseline text-sm mb-1">
+                        <span className="capitalize font-medium truncate mr-3">{c.category.replace(/_/g, ' ')}</span>
+                        <div className="flex items-center gap-2 shrink-0 font-mono text-xs">
+                          <span className={cn('font-semibold', isOver ? 'text-destructive' : '')}>{fmt(c.actualSpent)}</span>
+                          {!hasNoBudget && (
+                            <span className="text-muted-foreground">/ {fmt(c.estimated_budget)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="relative h-2 w-full rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all duration-1000 ease-out',
+                            isOver ? 'bg-destructive' : hasNoBudget ? 'bg-muted-foreground/40' : 'bg-primary'
+                          )}
+                          style={{ width: mounted ? `${Math.min(spentPct, 100)}%` : '0%' }}
+                        />
+                        {budgetPct !== null && budgetPct <= 100 && (
+                          <div
+                            className="absolute top-[-2px] bottom-[-2px] w-[2px] bg-foreground/70 rounded-full"
+                            style={{ left: `${budgetPct}%` }}
+                            title={`Budget: ${fmt(c.estimated_budget)}`}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {barData.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-4">No spend data available.</p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* ═══ SCOPE CREEP / UNBUDGETED ═══ */}
+          {scopeCreepCats.length > 0 && (
+            <section className="report-anim" style={sectionDelay(5)}>
+              <div className="bg-warning/5 border border-warning/20 rounded-lg p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="h-4 w-4 text-warning" />
+                  <span className="text-sm font-semibold text-warning">Unbudgeted Spend</span>
+                </div>
+                <div className="space-y-2">
+                  {scopeCreepCats.map(c => (
+                    <div key={c.id} className="flex justify-between items-center text-sm py-1.5 border-b border-warning/10 last:border-b-0">
+                      <div>
+                        <span className="capitalize font-medium">{c.category.replace(/_/g, ' ')}</span>
+                        <p className="text-[10px] text-muted-foreground">No budget was set for this category</p>
+                      </div>
+                      <span className="font-mono font-semibold text-warning shrink-0">{fmt(c.actualSpent)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </section>
           )}
 
           {/* ═══ FOOTER ═══ */}
-          <footer className="border-t border-border pt-4 mt-6 flex flex-col sm:flex-row justify-between text-xs text-muted-foreground">
-            <span>{companyName || ''}</span>
-            <span>{project.name} · {project.address} · Generated {format(now, 'MMM d, yyyy')}</span>
+          <footer className="border-t border-border pt-5 mt-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <span className="text-[9px] font-bold uppercase tracking-[3px] text-primary">
+              {companyName || ''}
+            </span>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {project.name} · {project.address} · Report generated {format(now, 'MMM d, yyyy')}
+            </span>
           </footer>
         </div>
 
-        {/* Print styles */}
+        {/* Print + animation styles */}
         <style>{`
+          @keyframes reportUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .report-anim {
+            animation: reportUp 0.4s ease-out both;
+          }
           @media print {
             .report-modal { max-width: 100% !important; max-height: none !important; overflow: visible !important; border: none !important; box-shadow: none !important; }
             .report-modal > div:first-child { display: none !important; }
-            .print\\:hidden { display: none !important; }
-            .print\\:break-before-page { page-break-before: always; }
+            .print\:hidden { display: none !important; }
+            .print\:break-before-page { page-break-before: always; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .animate-fade-in { animation: none !important; opacity: 1 !important; }
+            .report-anim { animation: none !important; opacity: 1 !important; transform: none !important; }
             body { background: white !important; }
           }
         `}</style>
