@@ -9,7 +9,7 @@ const STORAGE_KEY = 'custom-rule-groups';
 
 const DEFAULT_GROUPS: RuleGroup[] = [
   { key: 'order_of_operations', label: 'Order of Operations' },
-  { key: 'vendor_requirements', label: 'Vendor Requirements' },
+  { key: 'vendor_requirements', label: 'Contractor Requirements' },
 ];
 
 export function loadRuleGroups(): RuleGroup[] {

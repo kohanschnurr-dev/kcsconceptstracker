@@ -217,7 +217,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
               ? "bg-success/20 border-success text-success" 
               : "bg-muted/50 border-muted-foreground/30 text-muted-foreground"
           )}
-          title={vendorMatched ? "Vendor matched" : "Vendor did not match"}
+          title={vendorMatched ? "Contractor matched" : "Contractor did not match"}
         >
           <Building className="h-2.5 w-2.5" />
         </div>

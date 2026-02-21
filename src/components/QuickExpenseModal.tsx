@@ -296,7 +296,7 @@ function ExpenseForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Vendor</Label>
+          <Label>Contractor</Label>
           <Input placeholder="" value={vendor} onChange={(e) => setVendor(e.target.value)} />
         </div>
         <div className="space-y-2">
@@ -583,7 +583,7 @@ function ImportTab({
 
           <div className="text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded-lg">
             <p className="font-medium mb-2">Required columns: Date, Category, Amount</p>
-            <p>Optional: Vendor, Description, Payment Method, Expense Type, Notes</p>
+            <p>Optional: Contractor, Description, Payment Method, Expense Type, Notes</p>
           </div>
         </div>
       )}
@@ -610,7 +610,7 @@ function ImportTab({
                 <TableRow>
                   <TableHead className="w-8">#</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Vendor</TableHead>
+                  <TableHead>Contractor</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Type</TableHead>

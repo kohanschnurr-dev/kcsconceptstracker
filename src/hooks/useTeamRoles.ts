@@ -6,7 +6,7 @@ export const AVAILABLE_PERMISSIONS = [
   { key: 'view_projects', label: 'View Projects', description: 'Can see project details' },
   { key: 'edit_projects', label: 'Edit Projects', description: 'Can create/edit projects' },
   { key: 'manage_expenses', label: 'Manage Expenses', description: 'Can add/edit/delete expenses' },
-  { key: 'manage_vendors', label: 'Manage Vendors', description: 'Can add/edit vendors' },
+  { key: 'manage_vendors', label: 'Manage Contractors', description: 'Can add/edit contractors' },
   { key: 'manage_procurement', label: 'Manage Procurement', description: 'Can manage procurement items' },
   { key: 'manage_budgets', label: 'Manage Budgets', description: 'Can create/edit budgets' },
   { key: 'manage_calendar', label: 'Manage Calendar', description: 'Can add/edit calendar events' },

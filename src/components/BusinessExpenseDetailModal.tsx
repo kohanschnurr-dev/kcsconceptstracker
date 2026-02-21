@@ -250,7 +250,7 @@ export function BusinessExpenseDetailModal({
           <div className="bg-muted/30 rounded-lg p-4 space-y-2">
             <div className="flex justify-between items-start">
               <div>
-                <p className="font-semibold text-lg">{expense.vendor_name || 'Unknown Vendor'}</p>
+                <p className="font-semibold text-lg">{expense.vendor_name || 'Unknown Contractor'}</p>
                 <p className="text-sm text-muted-foreground">{formatDate(expense.date)}</p>
               </div>
               <div className="text-right">

@@ -203,8 +203,8 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
               <SectionLabel>Receipt Info</SectionLabel>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 space-y-1.5">
-                  <Label>Company / Vendor Name</Label>
-                  <Input value={vendorName} onChange={e => setVendorName(e.target.value)} placeholder="Your company or vendor" />
+                  <Label>Company / Contractor Name</Label>
+                  <Input value={vendorName} onChange={e => setVendorName(e.target.value)} placeholder="Your company or contractor" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Receipt Date</Label>

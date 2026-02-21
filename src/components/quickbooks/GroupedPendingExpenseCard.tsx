@@ -144,7 +144,7 @@ export function GroupedPendingExpenseCard({
                 ) : (
                   <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                 )}
-                <p className="font-medium">{primaryExpense.vendor_name || 'Unknown Vendor'}</p>
+                <p className="font-medium">{primaryExpense.vendor_name || 'Unknown Contractor'}</p>
                 {hasReceipt && (
                   <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30 gap-1">
                     <Receipt className="h-3 w-3" />
@@ -322,7 +322,7 @@ export function GroupedPendingExpenseCard({
               ) : (
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               )}
-              <p className="font-medium">{primaryExpense.vendor_name || 'Unknown Vendor'}</p>
+              <p className="font-medium">{primaryExpense.vendor_name || 'Unknown Contractor'}</p>
               {hasReceipt && (
                 <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30 gap-1">
                   <Receipt className="h-3 w-3" />

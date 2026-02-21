@@ -229,7 +229,7 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
                   <TableRow>
                     <TableHead className="w-8">#</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Vendor</TableHead>
+                    <TableHead>Contractor</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Expense Type</TableHead>
