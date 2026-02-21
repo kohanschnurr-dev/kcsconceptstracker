@@ -130,7 +130,13 @@ export function ProjectAutocomplete({
             onValueChange={setSearchQuery}
             className="h-9"
           />
-          <CommandList className="max-h-[300px]">
+          <CommandList
+            className="max-h-[300px]"
+            onWheel={(e) => e.stopPropagation()}
+            onPointerDown={(e) => { if (e.button === 1) e.stopPropagation(); }}
+            onMouseDown={(e) => { if (e.button === 1) e.stopPropagation(); }}
+            style={{ overscrollBehavior: 'contain' }}
+          >
             <CommandEmpty>
               <div className="py-4 text-center text-sm text-muted-foreground">
                 <Search className="h-8 w-8 mx-auto mb-2 opacity-40" />
