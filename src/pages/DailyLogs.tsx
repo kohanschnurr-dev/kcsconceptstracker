@@ -50,7 +50,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Task, TaskStatus, TaskPriority } from '@/types/task';
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/types/task';
-import { format, isToday, startOfDay } from 'date-fns';
+import { format, isToday, startOfDay, startOfWeek, endOfWeek, isBefore } from 'date-fns';
 import { formatDisplayDate, parseDateString } from '@/lib/dateUtils';
 
 interface DailyLog {
@@ -144,6 +144,8 @@ export default function DailyLogs() {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'completed'>('pending');
+  const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [dueDateFilter, setDueDateFilter] = useState<string>('any');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [addTaskOpen, setAddTaskOpen] = useState(false);
@@ -303,30 +305,48 @@ export default function DailyLogs() {
 
   // Filter tasks based on daily/master and status
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayDate = new Date();
+  const weekStart = startOfWeek(todayDate, { weekStartsOn: 0 });
+  const weekEnd = endOfWeek(todayDate, { weekStartsOn: 0 });
+
+  const applyExtraFilters = (task: Task) => {
+    // Project filter
+    if (projectFilter !== 'all' && task.projectId !== projectFilter) return false;
+    // Due date filter
+    if (dueDateFilter === 'overdue') {
+      if (!task.dueDate || task.status === 'completed') return false;
+      if (!isBefore(parseDateString(task.dueDate), startOfDay(todayDate))) return false;
+    } else if (dueDateFilter === 'today') {
+      if (task.dueDate !== todayStr) return false;
+    } else if (dueDateFilter === 'this_week') {
+      if (!task.dueDate) return false;
+      const d = parseDateString(task.dueDate);
+      if (d < weekStart || d > weekEnd) return false;
+    } else if (dueDateFilter === 'no_date') {
+      if (task.dueDate !== null) return false;
+    }
+    return true;
+  };
   
   // Daily Sprint: tasks scheduled for today (regardless of is_daily flag)
   const dailyTasks = allTasks.filter((task) => {
     const isScheduledToday = task.scheduledDate === todayStr;
     
     if (taskFilter === 'pending') {
-      return isScheduledToday && task.status !== 'completed';
+      if (!(isScheduledToday && task.status !== 'completed')) return false;
     } else if (taskFilter === 'completed') {
-      return isScheduledToday && task.status === 'completed';
-    }
-    return isScheduledToday;
+      if (!(isScheduledToday && task.status === 'completed')) return false;
+    } else if (!isScheduledToday) return false;
+
+    return applyExtraFilters(task);
   });
 
   // Master Pipeline: All tasks with is_daily = false (regardless of scheduled_date)
   const masterTasks = allTasks.filter((task) => {
-    if (!task.isDaily) {
-      if (taskFilter === 'pending') {
-        return task.status !== 'completed';
-      } else if (taskFilter === 'completed') {
-        return task.status === 'completed';
-      }
-      return true;
-    }
-    return false;
+    if (task.isDaily) return false;
+    if (taskFilter === 'pending' && task.status === 'completed') return false;
+    if (taskFilter === 'completed' && task.status !== 'completed') return false;
+    return applyExtraFilters(task);
   });
 
   const tasks = checklistTab === 'daily' ? dailyTasks : masterTasks;
@@ -748,7 +768,7 @@ export default function DailyLogs() {
             <div className="flex flex-wrap items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={taskFilter} onValueChange={(v) => setTaskFilter(v as typeof taskFilter)}>
-                <SelectTrigger className="w-36 sm:w-40 h-10">
+                <SelectTrigger className="w-32 sm:w-36 h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -757,7 +777,30 @@ export default function DailyLogs() {
                   <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="text-sm text-muted-foreground ml-auto sm:ml-2">
+              <Select value={projectFilter} onValueChange={setProjectFilter}>
+                <SelectTrigger className="w-36 sm:w-44 h-10">
+                  <SelectValue placeholder="All Projects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Projects</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={dueDateFilter} onValueChange={setDueDateFilter}>
+                <SelectTrigger className="w-32 sm:w-40 h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any Date</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="today">Due Today</SelectItem>
+                  <SelectItem value="this_week">Due This Week</SelectItem>
+                  <SelectItem value="no_date">No Due Date</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-muted-foreground ml-auto">
                 {tasks.length} task{tasks.length !== 1 ? 's' : ''}
               </span>
             </div>
