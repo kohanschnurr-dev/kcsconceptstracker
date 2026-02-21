@@ -64,10 +64,10 @@ const FormulaInput = React.forwardRef<
 
   const handleBlur = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
-      resolveFormula();
+      // Don't resolve formula on blur -- keep it open until Enter
       onBlur?.(e);
     },
-    [resolveFormula, onBlur],
+    [onBlur],
   );
 
   const handleKeyDown = useCallback(
@@ -81,6 +81,12 @@ const FormulaInput = React.forwardRef<
       if (e.key === 'Enter' && isFormulaMode) {
         e.preventDefault();
         resolveFormula();
+        return;
+      }
+      if (e.key === 'Escape' && isFormulaMode) {
+        e.preventDefault();
+        setIsFormulaMode(false);
+        setLocalValue('');
         return;
       }
       onKeyDown?.(e);
