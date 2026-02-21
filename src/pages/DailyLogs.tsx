@@ -52,7 +52,7 @@ import type { Task, TaskStatus, TaskPriority } from '@/types/task';
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/types/task';
 import { format, isToday, startOfDay, startOfWeek, endOfWeek, isBefore } from 'date-fns';
 import { formatDisplayDate, parseDateString } from '@/lib/dateUtils';
-import { parseDescription, serializeDescription } from '@/lib/taskSubtasks';
+import { parseDescription, serializeDescription, type Subtask } from '@/lib/taskSubtasks';
 
 interface DailyLog {
   id: string;
@@ -166,7 +166,7 @@ export default function DailyLogs() {
     status: 'pending' as TaskStatus,
     photoUrls: [] as string[],
   });
-  const [editSubtasks, setEditSubtasks] = useState<string[]>([]);
+  const [editSubtasks, setEditSubtasks] = useState<Subtask[]>([]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [dueDatePickerTaskId, setDueDatePickerTaskId] = useState<string | null>(null);
 
@@ -1118,19 +1118,28 @@ export default function DailyLogs() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Subtasks (optional)</Label>
+              <Label>Subtasks</Label>
               <div className="space-y-2">
                 {editSubtasks.map((st, idx) => (
                   <div key={idx} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={st.done}
+                      onCheckedChange={(checked) => {
+                        const updated = [...editSubtasks];
+                        updated[idx] = { ...updated[idx], done: !!checked };
+                        setEditSubtasks(updated);
+                      }}
+                      className="shrink-0"
+                    />
                     <Input
-                      value={st}
+                      value={st.text}
                       onChange={(e) => {
                         const updated = [...editSubtasks];
-                        updated[idx] = e.target.value;
+                        updated[idx] = { ...updated[idx], text: e.target.value };
                         setEditSubtasks(updated);
                       }}
                       placeholder="Subtask..."
-                      className="flex-1"
+                      className={cn("flex-1", st.done && "line-through text-muted-foreground")}
                     />
                     <Button
                       variant="ghost"
@@ -1147,7 +1156,7 @@ export default function DailyLogs() {
                   variant="outline"
                   size="sm"
                   className="w-full gap-1"
-                  onClick={() => setEditSubtasks([...editSubtasks, ''])}
+                  onClick={() => setEditSubtasks([...editSubtasks, { text: '', done: false }])}
                 >
                   <Plus className="h-3 w-3" />
                   Add Subtask
