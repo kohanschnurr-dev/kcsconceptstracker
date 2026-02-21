@@ -1,36 +1,28 @@
 
+## Enhance "Adjusted" Tooltip with Scaling Details
 
-## Auto-Scale SmartSplit Line Items to Match Transaction Total
-
-### What This Fixes
-When the AI parser misses a line item (or gets a price slightly wrong), the SmartSplit review screen shows a scary "Total mismatch detected" warning. In reality, the final import already scales amounts proportionally to the bank transaction total -- so the warning is misleading. This change makes the UI reflect what actually happens at import time.
-
-### Approach
-Apply a proportional scale factor to displayed line item prices whenever the parsed line items don't sum to the receipt subtotal. This silently adjusts prices so they always add up correctly, matching the existing pattern used in QuickExpenseModal.
+### What Changes
+Update the tooltip that appears when hovering over the "Adjusted" badge to show specific numbers explaining what happened: the raw parsed total, the bank transaction target, and the scale factor applied.
 
 ### Technical Details
 
-**File: `src/components/SmartSplitReceiptUpload.tsx`**
+**File: `src/components/SmartSplitReceiptUpload.tsx`** (lines 1315-1317)
 
-1. **Add a scaling helper** (~after `groupByCategory` at line 671)
-   - Compute `rawTotal` from line items (sum of qty * unit_price)
-   - Compute `targetTotal` = QB transaction amount (minus tax if tax is included separately)
-   - If `rawTotal` differs from `targetTotal` by more than $0.01, calculate `scaleFactor = targetTotal / rawTotal`
-   - Apply scale factor to each item's `unit_price` when displaying and when grouping
+Replace the generic tooltip text with a dynamic message that includes:
+- The raw total the AI parsed (e.g., "$440.28")
+- The target total from the bank transaction (e.g., "$440.28" adjusted or "$476.60")
+- The percentage adjustment applied (e.g., "+0.6%")
 
-2. **Update the `groupByCategory` call and display** (~lines 706, 1230-1340)
-   - Pass scaled unit prices into the category grouping logic
-   - Update the line item display rows to show scaled prices
-   - The scaled prices will naturally sum to the transaction amount
+The `computeScaleFactor` already returns `sf` and `rawTotal`/`targetTotal` can be computed inline. We'll compute these values alongside `sf` and `wasScaled` (around line 1291-1298) and pass them into the tooltip content.
 
-3. **Replace the mismatch warning with a subtle info note** (~lines 1359-1370)
-   - Instead of the yellow "Total mismatch detected" warning, show a small info badge like "Prices adjusted to match transaction" only when scaling was applied
-   - This tells the user what happened without alarming them
+**Example tooltip content:**
+> "The AI parsed line items totaling $437.31, but the transaction subtotal is $440.28. Prices were scaled up by 0.7% so the split matches exactly."
 
-4. **Ensure rounding consistency**
-   - Round each scaled price to 2 decimal places
-   - Apply any rounding remainder (a few cents) to the largest category group to guarantee exact match
+For cases where tax is excluded from scaling:
+> "The AI parsed line items totaling $437.31, but the transaction total (minus $36.32 tax) is $440.28. Prices were scaled up by 0.7% so the split matches exactly."
 
-### Files to Change
-- `src/components/SmartSplitReceiptUpload.tsx` -- all changes in this single file
+### Implementation Steps
 
+1. Refactor `computeScaleFactor` to also return `rawTotal` and `targetTotal` (not just the factor) so the tooltip can display them
+2. Update the tooltip content (line 1316) to use a template with the raw total, target total, and percentage difference
+3. Format numbers as currency and percentage for clarity
