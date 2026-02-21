@@ -12,6 +12,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormulaInput } from '@/components/ui/formula-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -296,20 +297,22 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
                         placeholder="Item description"
                         className="text-sm"
                       />
-                      <Input
+                      <FormulaInput
                         value={item.qty}
                         onChange={e => updateLineItem(item.id, 'qty', e.target.value)}
                         type="number"
                         min="0"
                         className="text-sm"
+                        showHint={false}
                       />
-                      <Input
+                      <FormulaInput
                         value={item.unitPrice}
                         onChange={e => updateLineItem(item.id, 'unitPrice', e.target.value)}
                         type="number"
                         min="0"
                         placeholder="0.00"
                         className="text-sm"
+                        showHint={false}
                       />
                       <Button
                         variant="ghost"
@@ -341,7 +344,7 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
                   <div className="flex items-center justify-between text-sm gap-4">
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">Tax</span>
-                      <Input
+                      <FormulaInput
                         value={taxRate}
                         onChange={e => setTaxRate(e.target.value)}
                         type="number"
@@ -349,6 +352,7 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
                         max="100"
                         placeholder="0"
                         className="h-7 w-16 text-xs"
+                        showHint={false}
                       />
                       <span className="text-muted-foreground text-xs">%</span>
                     </div>

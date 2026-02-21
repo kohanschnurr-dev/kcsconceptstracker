@@ -1,5 +1,5 @@
 import { DollarSign } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { FormulaInput } from '@/components/ui/formula-input';
 import { cn } from '@/lib/utils';
 
 interface BudgetCategoryCardProps {
@@ -42,12 +42,13 @@ export function BudgetCategoryCard({
       </span>
       <div className="relative flex-shrink-0">
         <DollarSign className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-        <Input
+        <FormulaInput
           type="number"
           placeholder="0"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="pl-5 pr-1.5 font-mono text-right h-7 w-20 text-xs bg-transparent border-0 focus-visible:ring-1"
+          showHint={false}
         />
       </div>
     </div>

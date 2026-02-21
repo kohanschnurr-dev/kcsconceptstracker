@@ -20,6 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormulaInput } from '@/components/ui/formula-input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -609,7 +610,7 @@ function ExpenseForm({
           <Label>Amount</Label>
           <div className="relative">
             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input type="number" inputMode="decimal" step="0.01" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="pl-9 font-mono text-lg" />
+            <FormulaInput type="number" inputMode="decimal" step="0.01" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="pl-9 font-mono text-lg" />
           </div>
         </div>
         <div className="space-y-2">

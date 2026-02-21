@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormulaInput } from '@/components/ui/formula-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -379,7 +380,7 @@ export function CreateBudgetModal({
                 <Label htmlFor="purchasePrice" className="text-xs">Purchase Price</Label>
                 <div className="relative">
                   <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
+                  <FormulaInput
                     id="purchasePrice"
                     type="number"
                     placeholder="0"
@@ -393,7 +394,7 @@ export function CreateBudgetModal({
                 <Label htmlFor="arv" className="text-xs">ARV</Label>
                 <div className="relative">
                   <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
+                  <FormulaInput
                     id="arv"
                     type="number"
                     placeholder="0"
@@ -412,7 +413,7 @@ export function CreateBudgetModal({
                 </Label>
                 <div className="relative">
                   <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
+                  <FormulaInput
                     id="rehabBudget"
                     type="number"
                     placeholder="0"
@@ -462,12 +463,13 @@ export function CreateBudgetModal({
                       </Label>
                       <div className="relative flex-1">
                         <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                        <Input
+                        <FormulaInput
                           type="number"
                           placeholder="0"
                           value={categoryBudgets[category.value]}
                           onChange={(e) => handleCategoryChange(category.value, e.target.value)}
                           className="pl-6 font-mono h-8 text-sm"
+                          showHint={false}
                         />
                       </div>
                     </div>

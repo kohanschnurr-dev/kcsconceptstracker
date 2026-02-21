@@ -11,6 +11,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormulaInput } from '@/components/ui/formula-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -262,20 +263,22 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
                         placeholder="Item description"
                         className="text-sm"
                       />
-                      <Input
+                      <FormulaInput
                         value={item.qty}
                         onChange={e => updateLineItem(item.id, 'qty', e.target.value)}
                         type="number"
                         min="0"
                         className="text-sm"
+                        showHint={false}
                       />
-                      <Input
+                      <FormulaInput
                         value={item.unitPrice}
                         onChange={e => updateLineItem(item.id, 'unitPrice', e.target.value)}
                         type="number"
                         min="0"
                         placeholder="0.00"
                         className="text-sm"
+                        showHint={false}
                       />
                       <Button
                         variant="ghost"
