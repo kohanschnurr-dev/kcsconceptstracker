@@ -1,29 +1,43 @@
 
+## Fix Missing Budget Progress Bar on 718 Chaparral Trail
 
-## Make Export Reports Dialog Taller
+### Problem
 
-### What's Changing
+The dashboard project card for "718 Chaparral Trail" is missing its Budget Progress bar even though it's a Fix and Flip with a $67,209 total budget stored in the database. The root cause: the dashboard sums individual category estimated budgets to determine the total budget, but all of 718's category budgets are $0. The project's `total_budget` column ($67,209.96) is being ignored.
 
-The Export Reports dialog will expand to use more vertical screen space, making the cards taller and giving the whole dialog more breathing room.
+### Solution
+
+Update the budget calculation in `src/pages/Index.tsx` to prioritize the `total_budget` database column, falling back to the sum of category budgets only when the DB value is missing or zero. This aligns with the project's existing convention used elsewhere in the app.
 
 ### Technical Details
 
-**`src/pages/ProjectBudget.tsx`** (line 1622)
+**`src/pages/Index.tsx`** (~lines 149-159)
 
-Add a minimum height to the DialogContent so it claims more vertical space:
-
+Current logic:
 ```tsx
-<DialogContent className="sm:max-w-3xl min-h-[340px]">
+const calculatedTotalBudget = projectCategories.reduce(
+  (sum, cat) => sum + Number(cat.estimatedBudget), 0
+);
+// ...
+totalBudget: calculatedTotalBudget,
 ```
 
-**`src/components/project/ExportReports.tsx`**
+Updated logic:
+```tsx
+const categorySumBudget = projectCategories.reduce(
+  (sum, cat) => sum + Number(cat.estimatedBudget), 0
+);
+const calculatedTotalBudget = Number(p.total_budget) > 0
+  ? Number(p.total_budget)
+  : categorySumBudget;
+// ...
+totalBudget: calculatedTotalBudget,
+```
 
-1. Restore outer spacing from `space-y-2` back to `space-y-4` for more vertical room between sections
-2. Restore grid gap from `gap-2` back to `gap-3`
-3. Add `min-h-[80px]` to each card so they fill more height
-4. Restore footer top padding from `pt-2` to `pt-3`
+This means:
+- If the project has a `total_budget` value set (e.g. from the Budget Calculator), it uses that
+- Otherwise it falls back to the sum of category-level budgets
+- No other files need to change -- the ProjectCard already works correctly when `totalBudget > 0`
 
 ### Files Changed
-- `src/pages/ProjectBudget.tsx` -- add `min-h-[340px]` to dialog
-- `src/components/project/ExportReports.tsx` -- restore vertical spacing for a taller layout
-
+- `src/pages/Index.tsx` -- prioritize `total_budget` DB column over category sum
