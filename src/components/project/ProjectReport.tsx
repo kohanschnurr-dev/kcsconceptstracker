@@ -111,6 +111,9 @@ export function ProjectReport({
   const remaining = totalBudget - totalSpent;
   const pct = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
   const overUnderAmt = Math.abs(remaining);
+  const overPct = totalBudget > 0 ? ((totalSpent - totalBudget) / totalBudget) * 100 : 0;
+  const isSoftOver = remaining < 0 && overPct <= 5;
+  const isHardOver = remaining < 0 && overPct > 5;
   const overUnderLabel = remaining >= 0 ? `${fmt(overUnderAmt)} under` : `${fmt(overUnderAmt)} over`;
 
   const startDate = parseDateString(project.start_date);
@@ -443,8 +446,8 @@ export function ProjectReport({
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {[
                 { label: 'TOTAL BUDGET', value: fmt(totalBudget), sub: 'Approved', borderColor: 'border-primary' },
-                { label: 'TOTAL SPENT', value: fmt(totalSpent), sub: `${fmtPct(pct)} used`, borderColor: pct > 100 ? 'border-destructive' : 'border-primary' },
-                { label: 'REMAINING', value: `${remaining < 0 ? '−' : ''}${fmt(Math.abs(remaining))}`, sub: remaining >= 0 ? 'Under budget' : 'Over budget', borderColor: remaining >= 0 ? 'border-success' : 'border-destructive', valueColor: remaining >= 0 ? 'text-success' : 'text-destructive' },
+                { label: 'TOTAL SPENT', value: fmt(totalSpent), sub: `${fmtPct(pct)} used`, borderColor: isHardOver ? 'border-destructive' : isSoftOver ? 'border-warning' : 'border-primary' },
+                { label: 'REMAINING', value: `${remaining < 0 ? '−' : ''}${fmt(Math.abs(remaining))}`, sub: remaining >= 0 ? 'Under budget' : isSoftOver ? 'Slightly over' : 'Over budget', borderColor: remaining >= 0 ? 'border-success' : isSoftOver ? 'border-warning' : 'border-destructive', valueColor: remaining >= 0 ? 'text-success' : isSoftOver ? 'text-warning' : 'text-destructive' },
               ].map((card, i) => (
                 <div key={i} className={cn('bg-card border border-border rounded-lg p-4 border-t-[3px]', card.borderColor)}>
                   <p className="text-[9px] font-bold uppercase tracking-[2.5px] text-muted-foreground font-mono mb-2">{card.label}</p>
@@ -464,7 +467,7 @@ export function ProjectReport({
                 <div
                   className={cn(
                     'h-full rounded-full transition-all duration-1000 ease-out',
-                    pct > 100 ? 'bg-gradient-to-r from-primary to-destructive' : pct >= 85 ? 'bg-warning' : 'bg-primary'
+                    isHardOver ? 'bg-gradient-to-r from-primary to-destructive' : (isSoftOver || pct >= 85) ? 'bg-warning' : 'bg-primary'
                   )}
                   style={{ width: mounted ? `${Math.min(pct, 100)}%` : '0%' }}
                 />
