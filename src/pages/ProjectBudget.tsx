@@ -1621,7 +1621,10 @@ export default function ProjectBudget() {
       <Dialog open={exportModalOpen} onOpenChange={setExportModalOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Export Reports</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Export Reports
+            </DialogTitle>
           </DialogHeader>
           {project && (
             <ExportReports
