@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, X, Plus, Camera, Upload, Clipboard } from 'lucide-react';
+import { Loader2, X, Plus, Camera, Upload, Clipboard, ChevronDown, ListTodo } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -209,9 +211,16 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
             </div>
 
             {/* Subtasks */}
-            <div>
-              <Label>Subtasks</Label>
-              <div className="space-y-2 mt-1">
+            <Collapsible defaultOpen={subtasks.length > 0}>
+              <CollapsibleTrigger className="flex items-center gap-1.5 w-full group">
+                <ListTodo className="h-4 w-4" />
+                <span className="text-sm font-medium">Subtasks</span>
+                {subtasks.length > 0 && (
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5">{subtasks.length}</Badge>
+                )}
+                <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 mt-2">
                 {subtasks.map((s, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Checkbox checked={s.done} onCheckedChange={() => toggleSubtask(i)} className="shrink-0" />
@@ -229,8 +238,8 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
                 <Button type="button" variant="outline" size="sm" onClick={addSubtask} className="w-full">
                   <Plus className="h-3.5 w-3.5 mr-1" /> Add Subtask
                 </Button>
-              </div>
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Priority / Status */}
             <div className="grid grid-cols-2 gap-3">
