@@ -1,18 +1,16 @@
 
 
-## Fix: Mobile Dialog Cannot Be Dismissed
+## Fix: Prevent Horizontal Scrolling in Dialogs on Mobile
 
 ### Problem
-On mobile, the Add Task dialog content overflows the viewport. The close X button scrolls off-screen and the Cancel button is buried below the fold, trapping the user.
+On mobile, the dialog content allows horizontal swiping/scrolling even when there's no content overflowing horizontally. This creates a jarring UX where the dialog shifts sideways.
 
 ### Solution
-Add `max-h-[90vh] overflow-y-auto` to the `DialogContent` base component so all dialogs respect the viewport height and scroll internally. This fixes the issue globally for every dialog in the app.
+Add `overflow-x-hidden` to the `DialogContent` base component to prevent any horizontal scrolling while keeping vertical scroll intact.
 
 ### File: `src/components/ui/dialog.tsx`
-- Add `max-h-[90vh] overflow-y-auto` to the `DialogContent` className string (line 39)
-- This ensures the dialog never exceeds 90% of the viewport height and scrolls its content internally
-- The close X button stays fixed at top-right (absolute positioned within the content)
-- The footer with Cancel/Save remains reachable by scrolling
+- Change `overflow-y-auto` to `overflow-y-auto overflow-x-hidden` in the DialogContent className (line 39)
+- This prevents horizontal scroll globally across all dialogs while preserving the vertical scroll fix from earlier
 
-This is a single-line change that fixes the issue across all dialogs app-wide.
+Single-line change in one file.
 
