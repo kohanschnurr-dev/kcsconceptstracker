@@ -139,7 +139,7 @@ export function ProjectReport({
   const holdingCostsTotal = holdingMode === 'flat'
     ? (holdingFlat ?? 0)
     : (pp ? (effectiveHoldingPct / 100) * pp : null);
-  const costBasis = pp !== null ? pp + rehabCost + (holdPerMonth && holdPeriodMonths ? holdPerMonth * holdPeriodMonths : 0) : null;
+  const costBasis = pp !== null ? pp + rehabCost + (holdingCostsTotal ?? 0) : null;
   const closingMode = (project as any).closing_costs_mode ?? 'pct';
   const closingPct = (project as any).closing_costs_pct ?? 6;
   const closingFlat = (project as any).closing_costs_flat ?? 0;
@@ -150,18 +150,15 @@ export function ProjectReport({
   const netProceeds = projectedSalePrice && sellingCosts !== null ? projectedSalePrice - sellingCosts : null;
   const grossProfit = netProceeds !== null && costBasis !== null ? netProceeds - costBasis : null;
   const loanCost = loanAmt && loanRate && holdPeriodMonths ? loanAmt * (loanRate / 100 / 12) * holdPeriodMonths : null;
-  const netProfit = grossProfit !== null ? grossProfit - (loanCost ?? 0) : null;
+  const netProfit = grossProfit;
 
   const roi = useMemo(() => {
-    if (costBasis && costBasis > 0 && netProfit !== null) {
-      return (netProfit / costBasis) * 100;
-    }
-    if (arv && pp && pp > 0) {
-      const profit = arv - pp - rehabCost;
-      return (profit / (pp + rehabCost)) * 100;
+    const investment = (pp ?? 0) + rehabCost;
+    if (investment > 0 && netProfit !== null) {
+      return (netProfit / investment) * 100;
     }
     return null;
-  }, [arv, pp, rehabCost, costBasis, netProfit]);
+  }, [pp, rehabCost, netProfit]);
 
 
 
@@ -397,13 +394,6 @@ export function ProjectReport({
                     <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-muted-foreground mb-3">THE DEAL</p>
                     {dealField('Purchase Price', pp)}
                     {dealField('Rehab Cost', rehabCost)}
-                    {dealField('Loan Amount', loanAmt)}
-                    <div className="flex justify-between items-center py-2.5 border-b border-border/40 last:border-b-0">
-                      <span className="text-sm text-muted-foreground font-medium">Loan Rate</span>
-                      <span className="font-mono text-sm font-semibold">
-                        {loanRate !== null ? `${loanRate}%` : <span className="text-muted-foreground/50 text-xs italic bg-secondary/50 px-2 py-0.5 rounded">See Financials →</span>}
-                      </span>
-                    </div>
                     {dealField(
                       holdingMode === 'flat'
                         ? 'Holding Costs (Flat)'
