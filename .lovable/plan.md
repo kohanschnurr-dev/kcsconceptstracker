@@ -1,42 +1,41 @@
 
 
-## Pull Transaction Costs % from Project Data
+## Make Holding Costs Dynamic in the Report
 
 ### Problem
-The report hardcodes `sellingCostsPct = 6` (line 137) instead of reading the project's actual `closing_costs_pct` value. Your project has 4%, but the report always shows "Transaction Costs (6%)".
+The holding costs calculation on line 135 works but the label just says "Holding Costs" without showing the percentage. More importantly, when `holdingPct` is `null` (no value saved on the project), the calculation silently produces `null` instead of falling back to the default 3%. The label should also reflect the mode/percentage like we did for transaction costs.
 
 ### Changes in `src/components/project/ProjectReport.tsx`
 
-**1. Replace hardcoded percentage with project data (line 137)**
-Read from the project's `closing_costs_pct`, `closing_costs_mode`, and `closing_costs_flat` fields -- same pattern used in `ProjectCard.tsx` and `ProfitBreakdown.tsx`.
+**1. Fix the `holdPerMonth` calculation to use the default fallback (line 135)**
+
+Currently if `holdingPct` is null and mode is `'pct'`, the result is `null`. It should fall back to 3% (the app-wide default).
 
 ```
 // Before:
-const sellingCostsPct = 6;
-const sellingCosts = projectedSalePrice ? projectedSalePrice * sellingCostsPct / 100 : null;
+const holdPerMonth = holdingMode === 'flat' && holdingFlat ? holdingFlat : (holdingPct && pp ? (holdingPct / 100) * pp / 12 : null);
 
 // After:
-const closingMode = project.closing_costs_mode ?? 'pct';
-const closingPct = project.closing_costs_pct ?? 6;
-const closingFlat = project.closing_costs_flat ?? 0;
-const sellingCosts = projectedSalePrice
-  ? closingMode === 'flat' ? closingFlat : projectedSalePrice * (closingPct / 100)
-  : null;
+const effectiveHoldingPct = holdingPct ?? 3;
+const holdPerMonth = holdingMode === 'flat'
+  ? (holdingFlat ?? 0)
+  : (pp ? (effectiveHoldingPct / 100) * pp / 12 : null);
 ```
 
-**2. Make the label dynamic (line 405)**
-Update the label to show the actual percentage (or "Flat" when in flat mode):
+**2. Make the label dynamic (line 401)**
+
+Show the actual percentage or "Flat" to match the transaction costs pattern.
 
 ```
 // Before:
-{dealField('Transaction Costs (6%)', sellingCosts)}
+{dealField('Holding Costs', holdPerMonth)}
 
 // After:
 {dealField(
-  closingMode === 'flat'
-    ? 'Transaction Costs (Flat)'
-    : `Transaction Costs (${closingPct}%)`,
-  sellingCosts
+  holdingMode === 'flat'
+    ? 'Holding Costs (Flat)'
+    : `Holding Costs (${effectiveHoldingPct}%)`,
+  holdPerMonth
 )}
 ```
 
