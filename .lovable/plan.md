@@ -1,53 +1,35 @@
 
 
-## Add Checkboxes to Subtasks and Remove "(optional)" Label
+## Fix Project Tasks Edit Dialog: Add Subtask Checklist UI
 
-### What Changes
-Add checkboxes next to each subtask so users can check off completed items, and remove the "(optional)" text from the "Subtasks" label across all edit dialogs.
+### Problem
+The Edit Task dialog in the project-specific view (`ProjectTasks.tsx`) still shows the raw `---LINE_ITEMS---` delimiter and JSON data inside the Notes textarea. This was already fixed in DailyLogs and CommandCenter but was missed here.
 
-### Data Format Update
-Currently subtasks are stored as a simple string array: `["GFCI Outlets", "Concrete Spot"]`. To track completion, the format changes to an array of objects: `[{"text": "GFCI Outlets", "done": false}, {"text": "Concrete Spot", "done": true}]`.
+### Solution
+Apply the same subtask parsing and checklist UI pattern already used in `DailyLogs.tsx` and `CommandCenter.tsx`.
 
-The utility will handle backward compatibility -- if it encounters plain strings (old data), it converts them to `{text, done: false}`.
+### Technical Changes in `src/components/project/ProjectTasks.tsx`
 
-### Technical Details
+**1. Import the shared utility and UI components**
+- Import `parseDescription`, `serializeDescription`, and `Subtask` from `@/lib/taskSubtasks`
 
-**1. Update `src/lib/taskSubtasks.ts`**
-- Change the subtask type from `string[]` to `{text: string; done: boolean}[]`
-- Update `parseDescription` to handle both old string arrays and new object arrays (backward compatible)
-- Update `serializeDescription` to serialize the object format
-- Export a `Subtask` type
+**2. Add subtask state**
+- Add `editSubtasks` state of type `Subtask[]` alongside existing edit states
 
-**2. Update `src/pages/DailyLogs.tsx`**
-- Change `editSubtasks` state type from `string[]` to `Subtask[]`
-- Add a `Checkbox` before each subtask input
-- Toggling the checkbox sets `done: true/false`
-- Checked subtasks get a strikethrough style on the input
-- Remove "(optional)" from the label -- just show "Subtasks"
+**3. Update `openEditDialog`**
+- Parse `task.description` using `parseDescription()` to split the plain text description from subtasks
+- Set `editDescription` to just the description text
+- Set `editSubtasks` to the parsed subtask array
 
-**3. Update `src/components/command-center/CommandCenter.tsx`**
-- Same changes as DailyLogs
+**4. Update `handleSaveEdit`**
+- Use `serializeDescription(editDescription, editSubtasks)` to recombine before saving to the database
 
-**4. Update `src/components/project/ProjectTasks.tsx`**
-- The edit form here uses `PasteableTextarea` for description. The subtask parsing/rendering needs to be added here too with the same checkbox pattern.
-
-**5. Update `src/components/dashboard/AddTaskDialog.tsx`**
-- Update the create flow to use the new `Subtask` object format
-- Add checkboxes to the subtask inputs
-- Remove "(optional)" from label
-
-### UI Pattern
-```
-Subtasks
-[x] [ GFCI Outlets (strikethrough)     ] [X]
-[ ] [ Concrete Spot                     ] [X]
-[ ] [ Pressure Wash house & sidewalk    ] [X]
-[+ Add Subtask                             ]
-```
+**5. Update `editFormContent` UI**
+- After the `PasteableTextarea` (Notes and Photos section), add a "Subtasks" section with:
+  - Each subtask rendered as a row: `Checkbox` + `Input` + delete `X` button
+  - Checked subtasks get strikethrough styling
+  - "Add Subtask" button at the bottom
+- Remove raw subtask data from the textarea display
 
 ### Files Changed
-- `src/lib/taskSubtasks.ts`
-- `src/pages/DailyLogs.tsx`
-- `src/components/command-center/CommandCenter.tsx`
 - `src/components/project/ProjectTasks.tsx`
-- `src/components/dashboard/AddTaskDialog.tsx`
