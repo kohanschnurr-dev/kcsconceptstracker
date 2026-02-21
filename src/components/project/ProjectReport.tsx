@@ -394,7 +394,7 @@ export function ProjectReport({
                         {loanRate !== null ? `${loanRate}%` : <span className="text-muted-foreground/50 text-xs italic bg-secondary/50 px-2 py-0.5 rounded">See Financials →</span>}
                       </span>
                     </div>
-                    {dealField('Hold Costs / Month', holdPerMonth)}
+                    {dealField('Holding Costs', holdPerMonth)}
                     {dealField('Total Cost Basis', costBasis)}
                   </div>
 
@@ -402,7 +402,7 @@ export function ProjectReport({
                   <div>
                     <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-muted-foreground mb-3">THE RETURN</p>
                     {dealField('Projected Sale Price', projectedSalePrice)}
-                    {dealField('Selling Costs (6%)', sellingCosts)}
+                    {dealField('Transaction Costs (6%)', sellingCosts)}
                     {dealField('Net Proceeds', netProceeds)}
                     {dealField('Gross Profit', grossProfit)}
                     {dealField('Net Profit', netProfit)}
