@@ -136,6 +136,9 @@ export function ProjectReport({
   const holdPerMonth = holdingMode === 'flat'
     ? (holdingFlat ?? 0)
     : (pp ? (effectiveHoldingPct / 100) * pp / 12 : null);
+  const holdingCostsTotal = holdingMode === 'flat'
+    ? (holdingFlat ?? 0)
+    : (pp ? (effectiveHoldingPct / 100) * pp : null);
   const costBasis = pp !== null ? pp + rehabCost + (holdPerMonth && holdPeriodMonths ? holdPerMonth * holdPeriodMonths : 0) : null;
   const closingMode = (project as any).closing_costs_mode ?? 'pct';
   const closingPct = (project as any).closing_costs_pct ?? 6;
@@ -405,7 +408,7 @@ export function ProjectReport({
                       holdingMode === 'flat'
                         ? 'Holding Costs (Flat)'
                         : `Holding Costs (${effectiveHoldingPct}%)`,
-                      holdPerMonth
+                      holdingCostsTotal
                     )}
                     {dealField('Total Cost Basis', costBasis)}
                   </div>
