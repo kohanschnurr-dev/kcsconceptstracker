@@ -1,42 +1,30 @@
 
 
-## Make the PDF a One-Pager
+## Trim the Report Preview Modal to Match the One-Page PDF
 
 ### Goal
-Match the reference screenshot: the PDF should contain only the **Header**, **Budget Snapshot**, and **Deal Financials & ROI** sections -- no donut chart, no category breakdown, no scope creep. Also fix the remaining white background override.
+Remove the "Where the Money Went", "Category Breakdown", and "Scope Creep" sections from the in-app report preview dialog so it matches the condensed one-page PDF.
 
 ### Changes in `src/components/project/ProjectReport.tsx`
 
-**1. Exclude extra sections from the PDF export (handleDownloadPdf, ~line 193)**
+**1. Remove "Where the Money Went" section (lines 531-581)**
+Delete the entire donut chart section.
 
-The `handleDownloadPdf` function clones the full `reportRef.current.innerHTML`. Instead of cloning everything, we will:
-- Clone the report ref's DOM into a temporary container
-- Remove the 4th section (Where the Money Went), 5th section (Category Breakdown), and 6th section (Scope Creep) from the clone before extracting innerHTML
-- This keeps the modal preview unchanged while producing a condensed one-page PDF
+**2. Remove "Category Breakdown" section (lines 583-630)**
+Delete the bar chart / budget-vs-spent section.
 
-**2. Tighten spacing for single-page fit**
+**3. Remove "Scope Creep / Unbudgeted" section (lines 632-653)**
+Delete the unbudgeted spend warning section.
 
-In the PDF HTML template:
-- Reduce outer padding from `px-8 py-8 space-y-8` to `px-6 py-4 space-y-4`
-- Reduce `@page` margin from `0.5in` to `0.3in`
-- Reduce section `margin-bottom` in print CSS from `12px` to `6px`
+**4. Simplify `handleDownloadPdf`**
+Since the modal no longer contains those sections, the clone-and-remove logic (removing indices 3, 4, 5) is no longer needed. The function can go back to using `reportRef.current.innerHTML` directly.
 
-**3. Fix the second white background override (line 677)**
-
-The inline `<style>` block at line 677 still has `body { background: white !important; }`. Change it to use the theme variable: `body { background: hsl(var(--background)) !important; }`
-
-### Summary of Sections in PDF
-
-| Section | Included in PDF? |
-|---------|-----------------|
-| Header (company, project name, status) | Yes |
-| Budget Snapshot (4 stat cards + usage bar) | Yes |
-| Deal Financials and ROI | Yes |
-| Where the Money Went (donut) | No -- removed |
-| Category Breakdown (bar chart) | No -- removed |
-| Scope Creep / Unbudgeted | No -- removed |
-| Footer | Yes |
+**5. Clean up unused imports and variables**
+Remove references that are now only used by the deleted sections:
+- `ResponsiveContainer`, `PieChart`, `Pie`, `Cell`, `Tooltip` from recharts
+- `CHART_COLORS` constant
+- `donutData`, `barData`, `maxBarSpent`, `scopeCreepCats` computed values
 
 ### Files Changed
-- `src/components/project/ProjectReport.tsx` -- filter sections in PDF export, tighten spacing, fix background
+- `src/components/project/ProjectReport.tsx`
 
