@@ -30,6 +30,7 @@ const PRIORITY_ICON_COLORS: Record<TaskPriority, string> = {
 function TaskPhotoUploader({ photos, onPhotosChange }: { photos: string[]; onPhotosChange: (urls: string[]) => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const uploadFile = useCallback(async (file: File) => {
     setIsUploading(true);
@@ -61,14 +62,14 @@ function TaskPhotoUploader({ photos, onPhotosChange }: { photos: string[]; onPho
       </Label>
       <div className="flex flex-wrap gap-2">
         {photos.map((url, i) => (
-          <div key={i} className="relative group w-16 h-16 rounded-lg overflow-hidden border bg-muted">
-            <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+          <div key={i} className="relative group w-16 h-16 rounded-lg overflow-hidden border bg-muted cursor-pointer">
+            <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" onClick={() => setPreviewUrl(url)} />
             <button
               type="button"
-              onClick={() => onPhotosChange(photos.filter((_, idx) => idx !== i))}
-              className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => { e.stopPropagation(); onPhotosChange(photos.filter((_, idx) => idx !== i)); }}
+              className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <X className="h-4 w-4 text-white" />
+              <X className="h-3 w-3 text-white" />
             </button>
           </div>
         ))}
@@ -82,6 +83,11 @@ function TaskPhotoUploader({ photos, onPhotosChange }: { photos: string[]; onPho
         </button>
       </div>
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+      <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
+        <DialogContent className="max-w-3xl p-2">
+          {previewUrl && <img src={previewUrl} alt="Preview" className="w-full rounded" />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

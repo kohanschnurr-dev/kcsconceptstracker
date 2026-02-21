@@ -32,6 +32,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -135,6 +136,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -201,14 +203,14 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
               {photoUrls.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   {photoUrls.map((url, index) => (
-                    <div key={index} className="relative group w-16 h-16 rounded-lg overflow-hidden border bg-muted">
-                      <img src={url} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                    <div key={index} className="relative group w-16 h-16 rounded-lg overflow-hidden border bg-muted cursor-pointer">
+                      <img src={url} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" onClick={() => setPreviewUrl(url)} />
                       <button
                         type="button"
-                        onClick={() => setPhotoUrls(prev => prev.filter((_, i) => i !== index))}
-                        className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => { e.stopPropagation(); setPhotoUrls(prev => prev.filter((_, i) => i !== index)); }}
+                        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <X className="h-4 w-4 text-white" />
+                        <X className="h-3 w-3 text-white" />
                       </button>
                     </div>
                   ))}
@@ -280,5 +282,13 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Photo Preview Dialog */}
+    <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
+      <DialogContent className="max-w-3xl p-2">
+        {previewUrl && <img src={previewUrl} alt="Preview" className="w-full rounded" />}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
