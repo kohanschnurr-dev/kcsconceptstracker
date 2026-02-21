@@ -592,7 +592,18 @@ export default function Procurement() {
                           </div>
                         </TableCell>
                         <TableCell className="px-2 sm:px-4 max-w-[120px] sm:max-w-none">
-                          <p className="font-medium line-clamp-2 text-sm leading-tight">{item.name}</p>
+                          {item.source_url ? (
+                            <a
+                              href={item.source_url.match(/^https?:\/\//) ? item.source_url : `https://${item.source_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-medium line-clamp-2 text-sm leading-tight text-primary hover:underline"
+                            >
+                              {item.name}
+                            </a>
+                          ) : (
+                            <p className="font-medium line-clamp-2 text-sm leading-tight">{item.name}</p>
+                          )}
                         </TableCell>
                         <TableCell className="text-center hidden sm:table-cell">
                           {(!item.bundle_ids || item.bundle_ids.length === 0) ? (
