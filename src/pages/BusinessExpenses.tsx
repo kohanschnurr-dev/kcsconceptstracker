@@ -448,7 +448,7 @@ export default function BusinessExpenses() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Category', 'Vendor', 'Amount', 'Tax', 'Notes'];
+    const headers = ['Date', 'Category', 'Contractor', 'Amount', 'Tax', 'Notes'];
     const rows = filteredExpenses.map(e => [
       e.date,
       sanitizeForCSV(getCategoryLabel(e.category)),
@@ -735,7 +735,7 @@ export default function BusinessExpenses() {
                   <thead>
                     <tr className="bg-muted/30">
                       <th>Date</th>
-                      <th>Vendor</th>
+                      <th>Contractor</th>
                       <th>Project</th>
                       <th className="!text-center">Category</th>
                       <th className="!text-center">Payment</th>
@@ -902,9 +902,9 @@ export default function BusinessExpenses() {
             </div>
 
             <div className="space-y-2">
-              <Label>Vendor</Label>
+              <Label>Contractor</Label>
               <Input
-                placeholder="Vendor name"
+                placeholder="Contractor name"
                 value={formData.vendorName}
                 onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
               />

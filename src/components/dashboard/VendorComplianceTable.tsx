@@ -15,15 +15,15 @@ export function VendorComplianceTable({ vendors }: VendorComplianceTableProps) {
   return (
     <div className="glass-card overflow-hidden animate-slide-up">
       <div className="p-5 border-b border-border">
-        <h3 className="font-semibold">Vendor Compliance</h3>
-        <p className="text-sm text-muted-foreground mt-1">W9 status for vendors</p>
+        <h3 className="font-semibold">Contractor Compliance</h3>
+        <p className="text-sm text-muted-foreground mt-1">W9 status for contractors</p>
       </div>
       
       <div className="overflow-x-auto">
         <table className="data-table">
           <thead>
             <tr className="bg-muted/30">
-              <th>Vendor</th>
+              <th>Contractor</th>
               <th>Trades</th>
               <th>Rating</th>
               <th>W9</th>

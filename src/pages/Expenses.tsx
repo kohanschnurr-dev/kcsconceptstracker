@@ -384,7 +384,7 @@ export default function Expenses() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Vendor', 'Project', 'Category', 'Payment Method', 'Amount', 'Tax', 'Status', 'Description'];
+    const headers = ['Date', 'Contractor', 'Project', 'Category', 'Payment Method', 'Amount', 'Tax', 'Status', 'Description'];
     const rows = filteredExpenses.map(e => [
       e.date,
       e.vendor_name || '',

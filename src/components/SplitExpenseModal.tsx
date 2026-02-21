@@ -162,7 +162,7 @@ export function SplitExpenseModal({
         <div className="p-3 rounded-lg bg-muted/30 border border-border">
           <div className="flex justify-between items-start">
             <div>
-              <p className="font-medium">{expense.vendor_name || 'Unknown Vendor'}</p>
+              <p className="font-medium">{expense.vendor_name || 'Unknown Contractor'}</p>
               <p className="text-sm text-muted-foreground">{expense.description}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {parseDateString(expense.date).toLocaleDateString()}

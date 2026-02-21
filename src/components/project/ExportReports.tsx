@@ -88,7 +88,7 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
   };
 
   const exportExpensesCSV = () => {
-    const headers = ['Date', 'Vendor', 'Category', 'Description', 'Type', 'Total', 'Payment Method'];
+    const headers = ['Date', 'Contractor', 'Category', 'Description', 'Type', 'Total', 'Payment Method'];
     const rows = expenses.map(exp => {
       const total = exp.includes_tax ? Number(exp.amount) + (Number(exp.tax_amount) || 0) : Number(exp.amount);
       const type = exp.expense_type ? exp.expense_type.charAt(0).toUpperCase() + exp.expense_type.slice(1) : '';
@@ -211,7 +211,7 @@ export function ExportReports({ project, categories, expenses }: ExportReportsPr
 
     lines.push('');
     lines.push('"EXPENSE DETAILS"');
-    lines.push('"Date","Vendor","Category","Description","Type","Total","Payment Method"');
+    lines.push('"Date","Contractor","Category","Description","Type","Total","Payment Method"');
     expenses.forEach(exp => {
       const total = exp.includes_tax ? Number(exp.amount) + (Number(exp.tax_amount) || 0) : Number(exp.amount);
       const type = exp.expense_type ? exp.expense_type.charAt(0).toUpperCase() + exp.expense_type.slice(1) : '';

@@ -560,7 +560,7 @@ export default function ProjectBudget() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Vendor', 'Category', 'Description', 'Type', 'Amount', 'Tax', 'Payment Method', 'Status'];
+    const headers = ['Date', 'Contractor', 'Category', 'Description', 'Type', 'Amount', 'Tax', 'Payment Method', 'Status'];
     const rows = filteredExpenses.map(exp => [
       formatDate(exp.date),
       exp.vendor_name || '',
@@ -1170,7 +1170,7 @@ export default function ProjectBudget() {
                                                     {getPaymentIcon(exp.payment_method)}
                                                   </div>
                                                   <div>
-                                                    <p className="font-medium text-sm">{exp.vendor_name || 'Unknown Vendor'}</p>
+                                                    <p className="font-medium text-sm">{exp.vendor_name || 'Unknown Contractor'}</p>
                                                     <p className="text-xs text-muted-foreground">{exp.description || 'No description'} • {formatDate(exp.date)}</p>
                                                   </div>
                                                 </div>
@@ -1263,7 +1263,7 @@ export default function ProjectBudget() {
               <div className="relative lg:col-span-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Search vendor or description..."
+                  placeholder="Search contractor or description..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -1361,7 +1361,7 @@ export default function ProjectBudget() {
                       onClick={() => handleSort('vendor')}
                     >
                       <div className="flex items-center gap-1">
-                        Vendor
+                        Contractor
                         {sortField === 'vendor' && (
                           <ArrowUpDown className="h-3 w-3" />
                         )}

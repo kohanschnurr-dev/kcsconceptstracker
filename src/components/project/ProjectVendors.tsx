@@ -189,10 +189,10 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
       });
 
     if (error) {
-      toast.error('Failed to assign vendor');
+      toast.error('Failed to assign contractor');
       console.error(error);
     } else {
-      toast.success('Vendor assigned');
+      toast.success('Contractor assigned');
       setSelectedVendorId('');
       setScheduledDate('');
       setAssignLineItems([]);
@@ -209,9 +209,9 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
       .eq('id', id);
 
     if (error) {
-      toast.error('Failed to remove vendor');
+      toast.error('Failed to remove contractor');
     } else {
-      toast.success('Vendor removed');
+      toast.success('Contractor removed');
       fetchData();
     }
   };
@@ -260,25 +260,25 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg flex items-center gap-2">
           <Users className="h-5 w-5" />
-          Assigned Vendors ({projectVendors.length})
+          Assigned Contractors ({projectVendors.length})
         </CardTitle>
         <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) { setAssignLineItems([]); setAssignNewDesc(''); setAssignNewAmount(''); } }}>
           <DialogTrigger asChild>
             <Button size="sm" disabled={availableVendors.length === 0} className="px-2 sm:px-3">
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline ml-1">Assign Vendor</span>
+              <span className="hidden sm:inline ml-1">Assign Contractor</span>
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Assign Vendor to Project</DialogTitle>
+              <DialogTitle>Assign Contractor to Project</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Vendor *</Label>
+                <Label>Contractor *</Label>
                 <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a vendor" />
+                    <SelectValue placeholder="Select a contractor" />
                   </SelectTrigger>
                   <SelectContent>
                     {availableVendors.map(vendor => (
@@ -322,7 +322,7 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
               </div>
               <Button onClick={handleAssign} disabled={!selectedVendorId || submitting} className="w-full">
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Assign Vendor
+                Assign Contractor
               </Button>
             </div>
           </DialogContent>
@@ -335,7 +335,7 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
           </div>
         ) : projectVendors.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
-            No vendors assigned yet. Assign vendors to track who's working on this project!
+            No contractors assigned yet. Assign contractors to track who's working on this project!
           </p>
         ) : (
           <TooltipProvider>
@@ -399,7 +399,7 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                       {editingNotesId === pv.id ? (
                         <Textarea
                           autoFocus
-                          placeholder="General notes about this vendor on this project..."
+                          placeholder="General notes about this contractor on this project..."
                           defaultValue={pv.notes || ''}
                           onBlur={(e) => {
                             updateNotes(pv.id, e.target.value);

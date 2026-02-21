@@ -185,7 +185,7 @@ export function StatDrilldownModal({
           </div>
           
           <div>
-            <h4 className="font-semibold mb-3 text-sm text-muted-foreground uppercase tracking-wide">Top Vendors</h4>
+            <h4 className="font-semibold mb-3 text-sm text-muted-foreground uppercase tracking-wide">Top Contractors</h4>
             <div className="space-y-2 max-h-[200px] overflow-y-auto">
               {sortedVendors.map(([vendor, amount]) => (
                 <div key={vendor} className="flex items-center justify-between p-2 rounded bg-muted/30">
@@ -194,7 +194,7 @@ export function StatDrilldownModal({
                 </div>
               ))}
               {sortedVendors.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No vendors yet</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No contractors yet</p>
               )}
             </div>
           </div>
@@ -318,7 +318,7 @@ export function StatDrilldownModal({
             <TableHeader className="sticky top-0 bg-background">
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead>Vendor</TableHead>
+                <TableHead>Contractor</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-center">Payment</TableHead>

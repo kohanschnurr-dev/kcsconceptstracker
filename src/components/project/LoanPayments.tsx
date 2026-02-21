@@ -192,7 +192,7 @@ export function LoanPayments({ projectId }: LoanPaymentsProps) {
                 </div>
               </div>
               <div>
-                <Label>Lender / Vendor</Label>
+                <Label>Lender / Contractor</Label>
                 <Input placeholder="e.g. ABC Capital" value={vendorName} onChange={e => setVendorName(e.target.value)} />
               </div>
               <div>

@@ -257,7 +257,7 @@ export function GroupedExpenseDetailModal({
           <div className="space-y-4">
             {/* Summary Header */}
             <div className="space-y-1">
-              <h3 className="text-lg font-semibold">{parentExpense.vendor_name || 'Unknown Vendor'}</h3>
+              <h3 className="text-lg font-semibold">{parentExpense.vendor_name || 'Unknown Contractor'}</h3>
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>
                   {formatDisplayDate(parentExpense.date)} • {parentExpense.payment_method || 'N/A'}

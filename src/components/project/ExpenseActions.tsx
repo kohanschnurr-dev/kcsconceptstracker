@@ -179,9 +179,9 @@ export function EditExpenseModal({ expense, categories, open, onOpenChange, onEx
           </div>
 
           <div className="space-y-2">
-            <Label>Vendor</Label>
+            <Label>Contractor</Label>
             <Input
-              placeholder="Vendor name"
+              placeholder="Contractor name"
               value={vendorName}
               onChange={(e) => setVendorName(e.target.value)}
             />

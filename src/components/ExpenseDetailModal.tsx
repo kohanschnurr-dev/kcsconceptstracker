@@ -414,7 +414,7 @@ export function ExpenseDetailModal({
               <div className="bg-background/50 rounded-md p-3 mt-3">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-medium">{expense.vendor_name || 'Unknown Vendor'}</p>
+                    <p className="font-medium">{expense.vendor_name || 'Unknown Contractor'}</p>
                     <p className="text-sm text-muted-foreground">{formatDate(expense.date)}</p>
                   </div>
                   <p className="font-mono font-semibold text-lg">{formatCurrency(expense.amount)}</p>
@@ -459,7 +459,7 @@ export function ExpenseDetailModal({
             <div className="bg-muted/30 rounded-lg p-4 space-y-2">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-semibold text-lg">{expense.vendor_name || 'Unknown Vendor'}</p>
+                  <p className="font-semibold text-lg">{expense.vendor_name || 'Unknown Contractor'}</p>
                   <p className="text-sm text-muted-foreground">{formatDate(expense.date)}</p>
                 </div>
                 <div className="text-right">

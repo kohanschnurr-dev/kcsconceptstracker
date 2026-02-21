@@ -294,7 +294,7 @@ export function BusinessQuickBooksIntegration({ onExpenseImported, projects = []
                           <div className="flex items-start gap-3">
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
-                                <p className="font-medium">{expense.vendor_name || 'Unknown Vendor'}</p>
+                                <p className="font-medium">{expense.vendor_name || 'Unknown Contractor'}</p>
                                 <div className="flex items-center gap-2">
                                   <p className="font-mono font-semibold">
                                     {formatCurrency(expense.amount)}
