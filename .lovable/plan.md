@@ -1,69 +1,35 @@
 
 
-## Add Project and Due Date Filters to Checklist
+## Make Scope of Work Recipient Universal
 
 ### What Changes
 
-The filter bar on the Checklist tab currently only has a status dropdown. We will add two more filters beside it:
-- **Project filter** -- a dropdown listing all projects the user has, plus "All Projects"
-- **Due Date filter** -- a dropdown with presets: "Any Date", "Overdue", "Due Today", "Due This Week", "No Due Date"
+Replace the vendor-specific dropdown with a simple free-text "Recipient" input field. The Scope of Work generator should work for anyone -- a contractor giving it to a homeowner, you giving it to a GC, or any other scenario. No vendor selection required.
 
-The filters will stack nicely on mobile using the existing `flex-wrap` layout.
+### Details
+
+- Remove the "Select Vendor" dropdown and the entire Vendor section
+- Replace it with a free-text "Recipient" input in the Document Info section (e.g. "John Smith", "ABC Construction", "Homeowner")
+- Remove the `vendors` prop from the component entirely (no longer needed)
+- Remove the vendor-related state (`selectedVendorId`, `selectedVendor`) and the effect that auto-fills trades from vendor
+- The generate button will no longer require a vendor -- it will always be enabled
+- In the PDF output, change "Contractor:" to "Recipient:" to keep it universal
+- Update both parent usages (`Vendors.tsx` and `DocumentsGallery.tsx`) to stop passing the `vendors` prop
 
 ### Technical Details
 
-**`src/pages/DailyLogs.tsx`**
+**`src/components/vendors/ScopeOfWorkSheet.tsx`**
 
-1. **Add new state variables** (near line 146):
-   ```tsx
-   const [projectFilter, setProjectFilter] = useState<string>('all');
-   const [dueDateFilter, setDueDateFilter] = useState<string>('any');
-   ```
+1. Remove `Vendor` interface and `vendors` from `ScopeOfWorkSheetProps`
+2. Replace `selectedVendorId` state with a `recipientName` string state
+3. Remove the `selectedVendor` lookup and the `useEffect` that syncs trades from vendor
+4. Remove the vendor validation in `handleGenerate` -- the button is always enabled
+5. Change `Contractor: ${selectedVendor.name}` to `Recipient: ${recipientName}` in PDF output
+6. Replace the Vendor section UI with a "Recipient" text input inside the Document Info grid
+7. Update reset logic in `handleOpenChange`
+8. Remove the `disabled={!selectedVendorId}` from the generate button
 
-2. **Update the filtering logic** for both `dailyTasks` and `masterTasks` (lines 308-330). After the existing status filter check, add:
-   - **Project filter**: if `projectFilter !== 'all'`, only include tasks where `task.projectId === projectFilter`
-   - **Due date filter**: based on the selected preset:
-     - `'any'` -- no filtering
-     - `'overdue'` -- `task.dueDate` is before today and task is not completed
-     - `'today'` -- `task.dueDate` equals today's date string
-     - `'this_week'` -- `task.dueDate` is within the current week (using `startOfWeek`/`endOfWeek` from date-fns)
-     - `'no_date'` -- `task.dueDate` is null
+**`src/pages/Vendors.tsx`** -- Remove `vendors={vendors}` prop from `<ScopeOfWorkSheet>`
 
-3. **Add the two new Select dropdowns** in the filter bar (lines 748-759), after the existing status filter:
+**`src/components/project/DocumentsGallery.tsx`** -- Remove `vendors={...}` prop from `<ScopeOfWorkSheet>`
 
-   **Project filter:**
-   ```tsx
-   <Select value={projectFilter} onValueChange={setProjectFilter}>
-     <SelectTrigger className="w-40 sm:w-44 h-10">
-       <SelectValue placeholder="All Projects" />
-     </SelectTrigger>
-     <SelectContent>
-       <SelectItem value="all">All Projects</SelectItem>
-       {projects.map((p) => (
-         <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-       ))}
-     </SelectContent>
-   </Select>
-   ```
-
-   **Due Date filter:**
-   ```tsx
-   <Select value={dueDateFilter} onValueChange={setDueDateFilter}>
-     <SelectTrigger className="w-36 sm:w-40 h-10">
-       <SelectValue />
-     </SelectTrigger>
-     <SelectContent>
-       <SelectItem value="any">Any Date</SelectItem>
-       <SelectItem value="overdue">Overdue</SelectItem>
-       <SelectItem value="today">Due Today</SelectItem>
-       <SelectItem value="this_week">Due This Week</SelectItem>
-       <SelectItem value="no_date">No Due Date</SelectItem>
-     </SelectContent>
-   </Select>
-   ```
-
-4. **Import** `startOfWeek` and `endOfWeek` from `date-fns` (line 53) for the "this week" filter logic.
-
-5. **Move the task count** to stay at the end of the filter row with `ml-auto`.
-
-No database or backend changes needed -- all filtering is client-side on already-fetched task data.
