@@ -208,6 +208,11 @@ export function ProfitCalculator({
           </div>
         </div>
 
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground/50 -mt-3">
+          <Calculator className="h-3 w-3" />
+          Tip: type <span className="font-mono">=</span> for inline math (e.g. =50000-12000)
+        </p>
+
         {/* Results */}
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
           <div
