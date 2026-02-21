@@ -208,14 +208,30 @@ function ExpenseForm({
         const parsed = data.data;
         if (parsed.vendor_name) setVendor(parsed.vendor_name);
         if (parsed.purchase_date) setDate(parsed.purchase_date);
-        if (parsed.total_amount) setAmount(parsed.total_amount.toString());
-        if (parsed.tax_amount && parsed.tax_amount > 0) setIncludeTax(false);
-        if (parsed.line_items?.length > 0) {
-          const desc = parsed.line_items.map((li: any) => li.item_name).join(', ');
+        // Auto-enable tax toggle and use subtotal as base amount when tax is detected
+        if (parsed.tax_amount && parsed.tax_amount > 0) {
+          setIncludeTax(true);
+          if (parsed.subtotal) {
+            setAmount(parsed.subtotal.toString());
+          } else if (parsed.total_amount) {
+            setAmount(parsed.total_amount.toString());
+          }
+        } else if (parsed.total_amount) {
+          setAmount(parsed.total_amount.toString());
+        }
+
+        // Filter out tax line items from breakdown — tax is handled by the toggle
+        const taxPatterns = /^(sales\s*)?tax$/i;
+        const nonTaxItems = (parsed.line_items || []).filter(
+          (li: any) => !taxPatterns.test(li.item_name?.trim()) && !taxPatterns.test(li.suggested_category?.trim())
+        );
+
+        if (nonTaxItems.length > 0) {
+          const desc = nonTaxItems.map((li: any) => li.item_name).join(', ');
           setDescription(desc.substring(0, 200));
 
-          // Initialize split mode with parsed line items
-          const items: ParsedLineItem[] = parsed.line_items.map((li: any) => ({
+          // Initialize split mode with parsed line items (tax excluded)
+          const items: ParsedLineItem[] = nonTaxItems.map((li: any) => ({
             item_name: li.item_name || 'Unknown Item',
             quantity: li.quantity || 1,
             unit_price: li.unit_price || 0,
