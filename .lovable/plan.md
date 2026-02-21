@@ -1,24 +1,27 @@
 
 
-## Remove Forced Page Breaks Before Deal Financials
+## Fix PDF Background Color and Blank Pages
 
-### Problem
+### Problems
 
-The Deal Financials and Category Breakdown sections both have `print:break-before-page` which forces them to always start on a new page. This leaves a large blank area at the bottom of page 1 when there's plenty of room for the Deal Financials section to begin there.
+1. **White background in PDF** -- Line 272 sets `body { background: white !important; }` in the `@media print` block, overriding the dark theme background. The PDF should use the theme's background color instead.
+
+2. **Two blank pages** -- The "Category Breakdown" section has `print:break-before-page` (line 579) which forces a page break. Combined with `break-inside: avoid` on sections, the "Where the Money Went" donut chart section gets pushed down, creating blank pages. The fix is to remove the forced page break from Category Breakdown and let content flow naturally, relying only on `break-inside: avoid` to keep individual cards intact.
 
 ### Fix
 
 **File: `src/components/project/ProjectReport.tsx`**
 
-1. **Remove `print:break-before-page` from the Deal Financials section** (line 442) -- change the className from `"report-anim print:break-before-page"` to just `"report-anim"`. This lets it flow naturally after the Budget Snapshot section.
+1. **Change print background from white to theme color** (line 272):
+   - Change `body { background: white !important; }` to `body { background: hsl(var(--background)) !important; }`
 
-2. **Keep `print:break-before-page` on Category Breakdown** (line 579) -- this section contains the large donut chart and spending table, so a page break before it still makes sense.
+2. **Remove forced page break from Category Breakdown section** (line 579):
+   - Change `className="report-anim print:break-before-page"` to `className="report-anim"`
+   - Content will still avoid splitting mid-section thanks to `break-inside: avoid`
 
-3. **Remove the CSS rule for `.print\:break-before-page`** from the three places it's declared (lines 265, 296, 674) -- No, actually keep the CSS rule since Category Breakdown still uses it. Just remove the class from the Deal Financials section element.
-
-Summary: One-line change -- remove `print:break-before-page` from the Deal Financials section's className on line 442.
+3. **Also remove the `.grid { break-inside: avoid; }` rule** (line 295) -- grids inside sections don't need their own break-inside since the parent section already has it, and this over-constraint contributes to blank pages by preventing the grid from splitting even when the section is allowed to flow.
 
 ### Files Changed
 
-- `src/components/project/ProjectReport.tsx` -- remove `print:break-before-page` class from the Deal Financials section element (line 442)
+- `src/components/project/ProjectReport.tsx` -- three targeted changes to fix background color and eliminate blank pages
 
