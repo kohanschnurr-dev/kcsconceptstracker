@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, Plus, X } from 'lucide-react';
-import { generatePDF } from '@/lib/pdfExport';
+import { generatePDF, generatePDFHtml } from '@/lib/pdfExport';
+import { saveDocumentToProject } from '@/lib/saveDocumentToProject';
 import {
   Sheet,
   SheetContent,
@@ -21,6 +22,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useToast } from '@/hooks/use-toast';
+import { useProjectOptions } from '@/hooks/useProjectOptions';
+import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 
 interface GenerateReceiptSheetProps {
   open: boolean;
@@ -53,6 +57,8 @@ const newLineItem = (): LineItem => ({
 
 export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: GenerateReceiptSheetProps) {
   const { settings } = useCompanySettings();
+  const { toast } = useToast();
+  const projects = useProjectOptions();
 
   const [vendorName, setVendorName] = useState('');
   const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split('T')[0]);
@@ -63,6 +69,8 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (settings?.company_name) setVendorName(settings.company_name);
@@ -81,6 +89,7 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
       setPaymentMethod('');
       setPaymentDate(new Date().toISOString().split('T')[0]);
       setNotes('');
+      setSelectedProjectId('');
     }
     onOpenChange(val);
   };
@@ -99,7 +108,7 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
 
   const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     const lines: string[] = ['PAYMENT RECEIPT', ''];
 
     if (receiptNumber) lines.push(`Receipt Number: ${receiptNumber}`);
@@ -144,11 +153,31 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
     }
 
     const content = lines.join('\n');
-    generatePDF(content, {
-      docType: 'Receipt',
+    const pdfOptions = {
+      docType: 'Receipt' as const,
       companyName: settings?.company_name || vendorName || 'Your Company',
       logoUrl: settings?.logo_url,
-    });
+    };
+
+    generatePDF(content, pdfOptions);
+
+    if (selectedProjectId) {
+      setIsSaving(true);
+      try {
+        const html = generatePDFHtml(content, pdfOptions);
+        await saveDocumentToProject(html, selectedProjectId, 'Receipt', 'general');
+        const proj = projects.find(p => p.id === selectedProjectId);
+        toast({
+          title: 'Document saved',
+          description: `Receipt saved to ${proj?.name ?? 'project'} Documents`,
+        });
+      } catch (err) {
+        console.error(err);
+        toast({ title: 'Save failed', description: 'Could not save document to project.', variant: 'destructive' });
+      } finally {
+        setIsSaving(false);
+      }
+    }
   };
 
   return (
@@ -317,10 +346,24 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
               </div>
             </div>
 
+            {/* SAVE TO PROJECT */}
+            <div>
+              <SectionLabel>Save to Project</SectionLabel>
+              <div className="space-y-1.5">
+                <ProjectAutocomplete
+                  projects={projects}
+                  value={selectedProjectId}
+                  onSelect={(id) => setSelectedProjectId(id === selectedProjectId ? '' : id)}
+                  placeholder="Select a project…"
+                />
+                <p className="text-xs text-muted-foreground">Optional — saves a copy to the project's Documents tab</p>
+              </div>
+            </div>
+
             {/* GENERATE BUTTON */}
-            <Button onClick={handleGenerate} className="w-full gap-2" size="lg">
+            <Button onClick={handleGenerate} className="w-full gap-2" size="lg" disabled={isSaving}>
               <FileText className="h-4 w-4" />
-              Generate Receipt PDF
+              {isSaving ? 'Saving…' : 'Generate Receipt PDF'}
             </Button>
 
             <div className="h-4" />

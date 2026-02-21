@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText } from 'lucide-react';
-import { generatePDF } from '@/lib/pdfExport';
+import { generatePDF, generatePDFHtml } from '@/lib/pdfExport';
+import { saveDocumentToProject } from '@/lib/saveDocumentToProject';
 import {
   Sheet,
   SheetContent,
@@ -25,6 +26,8 @@ import {
 } from '@/components/ui/select';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useToast } from '@/hooks/use-toast';
+import { useProjectOptions } from '@/hooks/useProjectOptions';
+import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 
 interface ScopeOfWorkSheetProps {
   open: boolean;
@@ -43,6 +46,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) {
   const { toast } = useToast();
   const { settings } = useCompanySettings();
+  const projects = useProjectOptions();
 
   const [recipientName, setRecipientName] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -59,6 +63,8 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
   const [exclusions, setExclusions] = useState<WorkItem[]>([]);
   const [materialsResponsibility, setMaterialsResponsibility] = useState('');
   const [specialNotes, setSpecialNotes] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (settings?.company_name) setCompanyName(settings.company_name);
@@ -80,6 +86,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
       setExclusions([]);
       setMaterialsResponsibility('');
       setSpecialNotes('');
+      setSelectedProjectId('');
     }
     onOpenChange(val);
   };
@@ -94,7 +101,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     setTradeInput('');
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     const lines: string[] = ['SCOPE OF WORK', ''];
 
     if (companyName) lines.push(`Company: ${companyName}`);
@@ -154,11 +161,31 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     }
 
     const content = lines.join('\n');
-    generatePDF(content, {
-      docType: 'Scope of Work',
+    const pdfOptions = {
+      docType: 'Scope of Work' as const,
       companyName: settings?.company_name || companyName || 'Your Company',
       logoUrl: settings?.logo_url,
-    });
+    };
+
+    generatePDF(content, pdfOptions);
+
+    if (selectedProjectId) {
+      setIsSaving(true);
+      try {
+        const html = generatePDFHtml(content, pdfOptions);
+        await saveDocumentToProject(html, selectedProjectId, 'Scope of Work', 'contract');
+        const proj = projects.find(p => p.id === selectedProjectId);
+        toast({
+          title: 'Document saved',
+          description: `Scope of Work saved to ${proj?.name ?? 'project'} Documents`,
+        });
+      } catch (err) {
+        console.error(err);
+        toast({ title: 'Save failed', description: 'Could not save document to project.', variant: 'destructive' });
+      } finally {
+        setIsSaving(false);
+      }
+    }
   };
 
   return (
@@ -312,15 +339,29 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
               </div>
             </div>
 
+            {/* SAVE TO PROJECT */}
+            <div>
+              <SectionLabel>Save to Project</SectionLabel>
+              <div className="space-y-1.5">
+                <ProjectAutocomplete
+                  projects={projects}
+                  value={selectedProjectId}
+                  onSelect={(id) => setSelectedProjectId(id === selectedProjectId ? '' : id)}
+                  placeholder="Select a project…"
+                />
+                <p className="text-xs text-muted-foreground">Optional — saves a copy to the project's Documents tab</p>
+              </div>
+            </div>
+
             {/* GENERATE BUTTON */}
             <Button
               onClick={handleGenerate}
-              
               className="w-full gap-2"
               size="lg"
+              disabled={isSaving}
             >
               <FileText className="h-4 w-4" />
-              Generate Scope of Work PDF
+              {isSaving ? 'Saving…' : 'Generate Scope of Work PDF'}
             </Button>
 
             <div className="h-4" />
