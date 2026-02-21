@@ -1,35 +1,25 @@
 
 
-## Fix Project Tasks Edit Dialog: Add Subtask Checklist UI
+## Update Daily Logs Edit Task Dialog to Match Project Tasks Layout
 
 ### Problem
-The Edit Task dialog in the project-specific view (`ProjectTasks.tsx`) still shows the raw `---LINE_ITEMS---` delimiter and JSON data inside the Notes textarea. This was already fixed in DailyLogs and CommandCenter but was missed here.
+The "Edit Task" dialog in Daily Logs has a different field order than the Project Tasks version. The Daily Logs version shows: Title, Description, Subtasks, Priority/Status, Due Date, Photos. The Project Tasks version (the preferred layout) shows: Title, Priority/Status, Due Date, Notes and Photos, Subtasks.
 
-### Solution
-Apply the same subtask parsing and checklist UI pattern already used in `DailyLogs.tsx` and `CommandCenter.tsx`.
+### Changes in `src/pages/DailyLogs.tsx`
 
-### Technical Changes in `src/components/project/ProjectTasks.tsx`
+Reorder the edit form sections (lines 1103-1212) to match the Project Tasks layout:
 
-**1. Import the shared utility and UI components**
-- Import `parseDescription`, `serializeDescription`, and `Subtask` from `@/lib/taskSubtasks`
+1. **Title** (stays first -- no change)
+2. **Priority / Status** (move up from after Subtasks to right after Title)
+3. **Due Date** (move up from after Priority/Status)
+4. **Notes and Photos** (combine Description textarea and Photos into one labeled section with icon, matching the "Notes and Photos" pattern from ProjectTasks)
+5. **Subtasks** (move to last content section, before footer)
 
-**2. Add subtask state**
-- Add `editSubtasks` state of type `Subtask[]` alongside existing edit states
-
-**3. Update `openEditDialog`**
-- Parse `task.description` using `parseDescription()` to split the plain text description from subtasks
-- Set `editDescription` to just the description text
-- Set `editSubtasks` to the parsed subtask array
-
-**4. Update `handleSaveEdit`**
-- Use `serializeDescription(editDescription, editSubtasks)` to recombine before saving to the database
-
-**5. Update `editFormContent` UI**
-- After the `PasteableTextarea` (Notes and Photos section), add a "Subtasks" section with:
-  - Each subtask rendered as a row: `Checkbox` + `Input` + delete `X` button
-  - Checked subtasks get strikethrough styling
-  - "Add Subtask" button at the bottom
-- Remove raw subtask data from the textarea display
+Also update styling to match:
+- Replace plain "Description" label with icon-based "Notes and Photos" label (using FileText icon)
+- Replace the separate "Photos (optional)" section with inline photo display below the textarea (matching the PasteableTextarea pattern in ProjectTasks, or simply moving the TaskPhotoUploader under the same label)
+- Use consistent spacing (`space-y-1.5` instead of `space-y-2`)
+- Use dashed-border style for "Add Subtask" button to match ProjectTasks
 
 ### Files Changed
-- `src/components/project/ProjectTasks.tsx`
+- `src/pages/DailyLogs.tsx`
