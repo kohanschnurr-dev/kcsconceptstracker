@@ -25,7 +25,8 @@ import {
   Trash2,
   Plus,
   Camera,
-  X
+  X,
+  MoreVertical
 } from 'lucide-react';
 
 function SortableTabItem({ id, label }: { id: string; label: string }) {
@@ -52,6 +53,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Popover,
@@ -785,86 +790,89 @@ export default function ProjectDetail() {
                     {project.name}
                   </h1>
                 )}
+                <Badge
+                  className={cn(
+                    'gap-1',
+                    project.status === 'active' && 'bg-success/20 text-success border-success/30',
+                    project.status === 'complete' && 'bg-primary/20 text-primary border-primary/30',
+                    project.status === 'on_hold' && 'bg-warning/20 text-warning border-warning/30'
+                  )}
+                >
+                  {updatingStatus ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    getStatusIcon(project.status)
+                  )}
+                  {project.status.replace('_', ' ')}
+                </Badge>
                 {!isEditing && (
-                  <button
-                    className="p-1 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={startEditing}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                {!isEditing && (
-                  <button
-                    className="p-1 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                    onClick={() => setDeleteStep(1)}
-                    aria-label="Delete project"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                {!isEditing && (
-                  <button
-                    className="p-1 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => setReportOpen(true)}
-                    aria-label="Generate report"
-                  >
-                    <FileText className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild disabled={updatingStatus}>
-                    <button className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-full">
-                      <Badge
-                        className={cn(
-                          'gap-1 cursor-pointer hover:opacity-80 transition-opacity',
-                          project.status === 'active' && 'bg-success/20 text-success border-success/30',
-                          project.status === 'complete' && 'bg-primary/20 text-primary border-primary/30',
-                          project.status === 'on_hold' && 'bg-warning/20 text-warning border-warning/30'
-                        )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="p-1 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label="Project actions"
                       >
-                        {updatingStatus ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          getStatusIcon(project.status)
-                        )}
-                        {project.status.replace('_', ' ')}
-                        <ChevronDown className="h-3 w-3 ml-1" />
-                      </Badge>
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem 
-                      onClick={() => handleStatusChange('active')}
-                      className={cn(project.status === 'active' && 'bg-muted')}
-                    >
-                      <Clock className="h-4 w-4 mr-2 text-success" />
-                      Active
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => handleStatusChange('complete')}
-                      className={cn(project.status === 'complete' && 'bg-muted')}
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2 text-primary" />
-                      Complete
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => handleStatusChange('on_hold')}
-                      className={cn(project.status === 'on_hold' && 'bg-muted')}
-                    >
-                      <AlertTriangle className="h-4 w-4 mr-2 text-warning" />
-                      On Hold
-                    </DropdownMenuItem>
-                    {!isRental && project.status === 'complete' && (
-                      <>
-                        <div className="my-1 border-t border-border" />
-                        <DropdownMenuItem onClick={() => setShowConvertDialog(true)}>
-                          <Home className="h-4 w-4 mr-2 text-blue-500" />
-                          Convert to Rental
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-              </DropdownMenu>
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={startEditing}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setReportOpen(true)}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Generate Report
+                      </DropdownMenuItem>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <Clock className="h-4 w-4 mr-2" />
+                          Project Status
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuItem
+                            onClick={() => handleStatusChange('active')}
+                            className={cn(project.status === 'active' && 'bg-muted')}
+                          >
+                            <Clock className="h-4 w-4 mr-2 text-success" />
+                            Active
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleStatusChange('complete')}
+                            className={cn(project.status === 'complete' && 'bg-muted')}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-2 text-primary" />
+                            Complete
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleStatusChange('on_hold')}
+                            className={cn(project.status === 'on_hold' && 'bg-muted')}
+                          >
+                            <AlertTriangle className="h-4 w-4 mr-2 text-warning" />
+                            On Hold
+                          </DropdownMenuItem>
+                          {!isRental && project.status === 'complete' && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setShowConvertDialog(true)}>
+                                <Home className="h-4 w-4 mr-2 text-blue-500" />
+                                Convert to Rental
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setDeleteStep(1)}
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Project
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               <Dialog open={completionDateOpen} onOpenChange={setCompletionDateOpen}>
                 <DialogContent className="w-auto max-w-fit p-6">
                   <DialogHeader>
