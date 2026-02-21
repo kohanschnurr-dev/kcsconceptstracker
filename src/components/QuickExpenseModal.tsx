@@ -108,7 +108,11 @@ function ExpenseForm({
         if (parsed.description) setDescription(parsed.description);
         if (parsed.paymentMethod) setPaymentMethod(parsed.paymentMethod as PaymentMethod);
         if (parsed.includesTax !== undefined) setIncludeTax(parsed.includesTax);
-        toast({ title: 'Receipt parsed', description: 'Expense details extracted successfully.' });
+        if (parsed.suggested_category) setSelectedCategory(parsed.suggested_category);
+        if (parsed.expenseType) setExpenseType(parsed.expenseType as 'product' | 'labor');
+        const vendorLabel = parsed.vendor || 'receipt';
+        const amountLabel = parsed.amount ? ` - $${Number(parsed.amount).toFixed(2)}` : '';
+        toast({ title: 'Receipt parsed', description: `Extracted: ${vendorLabel}${amountLabel}` });
         setShowTextInput(false);
         setReceiptText('');
       }

@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -25,19 +25,51 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are a receipt parser. Extract expense information from receipt text.
-Return structured data with:
-- vendor: Store/vendor name
-- date: Date in YYYY-MM-DD format (use current year if not specified)
-- amount: Total amount as a number (the final total paid)
-- description: Brief description of items purchased
-- paymentMethod: One of "card", "cash", "check", "transfer" (infer from receipt, default to "card")
-- includesTax: Boolean indicating if tax was included in the total
-- taxAmount: Tax amount as a number if available
+    const currentYear = new Date().getFullYear();
 
-Be precise with the amount - use the final total the customer paid.
-For dates, convert any format to YYYY-MM-DD.
-For descriptions, summarize the main items purchased.`;
+    const systemPrompt = `You are a construction-industry bookkeeper AI for a DFW real estate investor. Extract expense information from pasted receipt text with high accuracy.
+
+═══════════════════════════════════════════════════════════════
+EXTRACTION RULES
+═══════════════════════════════════════════════════════════════
+
+1. VENDOR: Extract the store or contractor name exactly as shown.
+2. DATE: Convert any date format to YYYY-MM-DD. If the year is missing or outside ${currentYear - 1}–${currentYear}, use ${currentYear}.
+3. AMOUNT: Use the FINAL TOTAL the customer paid (after tax, discounts). Look for "TOTAL", "AMOUNT DUE", "GRAND TOTAL".
+4. TAX: Extract tax amount if listed separately.
+5. DESCRIPTION: Summarize the main items purchased in a short phrase.
+6. PAYMENT METHOD: Infer from text — look for "VISA", "MASTERCARD", "DEBIT", "CASH", "CHECK", etc. Default to "card".
+
+═══════════════════════════════════════════════════════════════
+CATEGORY MAPPING (use exact lowercase values)
+═══════════════════════════════════════════════════════════════
+
+Construction categories:
+appliances, bathroom, brick_siding_stucco, cabinets, carpentry, cleaning, 
+final_punch, closing_costs, countertops, demolition, doors, drain_line_repair, 
+driveway_concrete, drywall, dumpsters_trash, electrical, fencing, flooring, 
+food, foundation_repair, framing, garage, hardware, hoa, hvac, insulation, 
+insurance_project, kitchen, landscaping, light_fixtures, main_bathroom, misc, 
+natural_gas, painting, permits, inspections, pest_control, plumbing, pool, 
+railing, roofing, staging, taxes, tile, utilities, variable, water_heater, 
+rehab_filler, wholesale_fee, windows
+
+VENDOR → CATEGORY HINTS:
+• Home Depot, Lowe's, Menards, Ace → look at items to pick category (plumbing, electrical, hardware, etc.)
+• Floor & Decor → flooring or tile
+• Ferguson, Hajoca → plumbing
+• Sherwin-Williams, PPG, Benjamin Moore → painting
+• ABC Supply → roofing
+• Carrier, Trane, Lennox supplier → hvac
+• If items are mixed across trades, pick the dominant one or use "misc"
+
+═══════════════════════════════════════════════════════════════
+EXPENSE TYPE
+═══════════════════════════════════════════════════════════════
+
+• Retail stores (Home Depot, Lowe's, Amazon, etc.) → "product"
+• Contractor invoices, labor charges → "labor"
+• If unclear, default to "product"`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -46,10 +78,10 @@ For descriptions, summarize the main items purchased.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Parse this receipt:\n\n${receiptText}` }
+          { role: "user", content: `Parse this receipt text and extract all details:\n\n${receiptText}` }
         ],
         tools: [
           {
@@ -62,17 +94,37 @@ For descriptions, summarize the main items purchased.`;
                 properties: {
                   vendor: { type: "string", description: "Store or vendor name" },
                   date: { type: "string", description: "Date in YYYY-MM-DD format" },
-                  amount: { type: "number", description: "Total amount paid" },
-                  description: { type: "string", description: "Brief description of items" },
+                  amount: { type: "number", description: "Final total amount paid (after tax)" },
+                  description: { type: "string", description: "Brief description of items purchased" },
                   paymentMethod: { 
                     type: "string", 
                     enum: ["card", "cash", "check", "transfer"],
                     description: "Payment method used" 
                   },
-                  includesTax: { type: "boolean", description: "Whether tax is included" },
-                  taxAmount: { type: "number", description: "Tax amount if available" }
+                  includesTax: { type: "boolean", description: "Whether tax is included in the total" },
+                  taxAmount: { type: "number", description: "Tax amount if listed separately" },
+                  suggested_category: {
+                    type: "string",
+                    enum: [
+                      "appliances", "bathroom", "brick_siding_stucco", "cabinets", "carpentry",
+                      "cleaning", "final_punch", "closing_costs", "countertops", "demolition",
+                      "doors", "drain_line_repair", "driveway_concrete", "drywall", "dumpsters_trash",
+                      "electrical", "fencing", "flooring", "food", "foundation_repair", "framing",
+                      "garage", "hardware", "hoa", "hvac", "insulation", "insurance_project",
+                      "kitchen", "landscaping", "light_fixtures", "main_bathroom", "misc",
+                      "natural_gas", "painting", "permits", "inspections", "pest_control",
+                      "plumbing", "pool", "railing", "roofing", "staging", "taxes", "tile",
+                      "utilities", "variable", "water_heater", "rehab_filler", "wholesale_fee", "windows"
+                    ],
+                    description: "Best matching construction budget category"
+                  },
+                  expenseType: {
+                    type: "string",
+                    enum: ["product", "labor"],
+                    description: "Whether this is a product purchase or labor charge"
+                  }
                 },
-                required: ["vendor", "date", "amount", "description"],
+                required: ["vendor", "date", "amount", "description", "suggested_category", "expenseType"],
                 additionalProperties: false
               }
             }
@@ -108,6 +160,23 @@ For descriptions, summarize the main items purchased.`;
     }
 
     const expenseData = JSON.parse(toolCall.function.arguments);
+
+    // Date year correction
+    if (expenseData.date) {
+      const parsedYear = parseInt(expenseData.date.split('-')[0], 10);
+      if (parsedYear < currentYear - 1 || parsedYear > currentYear) {
+        const [_, month, day] = expenseData.date.split('-');
+        expenseData.date = `${currentYear}-${month}-${day}`;
+        console.log(`Corrected receipt year from ${parsedYear} to ${currentYear}`);
+      }
+    }
+
+    console.log("=== Receipt Text Parse Summary ===");
+    console.log(`Vendor: ${expenseData.vendor}`);
+    console.log(`Amount: $${expenseData.amount}`);
+    console.log(`Category: ${expenseData.suggested_category}`);
+    console.log(`Type: ${expenseData.expenseType}`);
+    console.log("==================================");
 
     return new Response(
       JSON.stringify({ success: true, data: expenseData }),
