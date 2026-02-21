@@ -1,53 +1,53 @@
 
 
-## Add Photo Preview to Task Photo Thumbnails
+## Add Checkboxes to Subtasks and Remove "(optional)" Label
 
-### Problem
-Clicking on a task photo immediately shows the delete overlay -- there's no way to actually view/preview the photo. Users expect clicking a photo to open a larger preview.
+### What Changes
+Add checkboxes next to each subtask so users can check off completed items, and remove the "(optional)" text from the "Subtasks" label across all edit dialogs.
 
-### Solution
-Update the photo thumbnails in all three locations to support two actions:
-- **Click** the photo to open a full-size preview dialog
-- **Small delete button** in the corner (instead of full overlay) to remove the photo
+### Data Format Update
+Currently subtasks are stored as a simple string array: `["GFCI Outlets", "Concrete Spot"]`. To track completion, the format changes to an array of objects: `[{"text": "GFCI Outlets", "done": false}, {"text": "Concrete Spot", "done": true}]`.
 
-Add a lightweight preview state (`previewUrl`) to each component, and render a simple Dialog showing the full image when set.
+The utility will handle backward compatibility -- if it encounters plain strings (old data), it converts them to `{text, done: false}`.
 
-### Changes
+### Technical Details
 
-**1. `src/pages/DailyLogs.tsx` -- TaskPhotoUploader (lines 95-125)**
-- Add `previewUrl` state
-- Change the thumbnail: clicking the image sets `previewUrl`; move the delete button to a small X icon in the top-right corner (visible on hover)
-- Add a simple Dialog below that shows the full-size image when `previewUrl` is set
+**1. Update `src/lib/taskSubtasks.ts`**
+- Change the subtask type from `string[]` to `{text: string; done: boolean}[]`
+- Update `parseDescription` to handle both old string arrays and new object arrays (backward compatible)
+- Update `serializeDescription` to serialize the object format
+- Export a `Subtask` type
 
-**2. `src/components/project/ProjectTasks.tsx` -- TaskPhotoUploader (lines 56-86)**
-- Same changes as above
+**2. Update `src/pages/DailyLogs.tsx`**
+- Change `editSubtasks` state type from `string[]` to `Subtask[]`
+- Add a `Checkbox` before each subtask input
+- Toggling the checkbox sets `done: true/false`
+- Checked subtasks get a strikethrough style on the input
+- Remove "(optional)" from the label -- just show "Subtasks"
 
-**3. `src/components/dashboard/AddTaskDialog.tsx` -- inline photo grid (lines 201-216)
-- Add `previewUrl` state
-- Same thumbnail UI change: click to preview, corner X to delete
-- Add preview Dialog
+**3. Update `src/components/command-center/CommandCenter.tsx`**
+- Same changes as DailyLogs
 
-### UI Pattern (all three locations)
+**4. Update `src/components/project/ProjectTasks.tsx`**
+- The edit form here uses `PasteableTextarea` for description. The subtask parsing/rendering needs to be added here too with the same checkbox pattern.
+
+**5. Update `src/components/dashboard/AddTaskDialog.tsx`**
+- Update the create flow to use the new `Subtask` object format
+- Add checkboxes to the subtask inputs
+- Remove "(optional)" from label
+
+### UI Pattern
 ```
-Before:
-  [photo] -- hover shows full black overlay with X to delete
-
-After:
-  [photo] -- click opens full-size preview dialog
-  [photo] -- hover shows small X button in top-right corner to delete
-```
-
-### Preview Dialog (simple, reusable pattern)
-```tsx
-<Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-  <DialogContent className="max-w-3xl p-2">
-    <img src={previewUrl} className="w-full rounded" />
-  </DialogContent>
-</Dialog>
+Subtasks
+[x] [ GFCI Outlets (strikethrough)     ] [X]
+[ ] [ Concrete Spot                     ] [X]
+[ ] [ Pressure Wash house & sidewalk    ] [X]
+[+ Add Subtask                             ]
 ```
 
 ### Files Changed
+- `src/lib/taskSubtasks.ts`
 - `src/pages/DailyLogs.tsx`
+- `src/components/command-center/CommandCenter.tsx`
 - `src/components/project/ProjectTasks.tsx`
 - `src/components/dashboard/AddTaskDialog.tsx`
-
