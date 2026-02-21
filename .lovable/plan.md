@@ -1,74 +1,118 @@
 
 
-## Move Receipt Upload to Top and Add PDF/File Support
+## Add Line-Item Category Breakdown to Manual Expense Form
 
-### What Changes
-
-The "Add Receipt Photo" section currently sits near the bottom of the form (below Description). This plan moves it to the very top -- above Project and Category -- so mobile users can tap it first, get AI-parsed data, and have the form auto-fill below.
+### What this does
+After scanning a receipt (photo, PDF, or pasted text), the form will show the parsed line items with per-item category dropdowns -- just like the SmartSplit flow does for QuickBooks users. The user can review, edit categories and quantities, then submit. Instead of one expense record, the system creates one expense per category group, with proportional amounts.
 
 ### Changes to `src/components/QuickExpenseModal.tsx`
 
-**1. Combine "Quick Import" (paste text) and "Receipt Upload" into a single top section**
+**1. Store line items from parsed receipt**
 
-- Remove the current "Quick Import" block (lines 241-261) and the "Receipt (optional)" block (lines 336-357) from their current positions
-- Create a new unified "Scan Receipt" section at the very top of the form (line 240, before Project/Category)
-- The section includes:
-  - A prominent "Upload Receipt" button that accepts images AND PDFs/documents (`accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"`)
-  - A secondary "Paste Receipt Text" toggle (same as current)
-  - When a file is selected: show preview (image thumbnail or file-type icon for PDFs) with "Scan Receipt" button
+Add new state variables to the `ExpenseForm` component:
+- `parsedLineItems` -- array of line items from the image/text parser
+- `editableCategories` -- per-item category overrides (same pattern as SmartSplit)
+- `editableQuantities` -- per-item quantity overrides
+- `showLineItems` -- boolean toggle to show/hide the breakdown view
 
-**2. Expand file input to accept PDFs and documents**
+**2. Wire both parsers to populate line items**
 
-- Change the hidden file input from `accept="image/*" capture="environment"` to `accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"`
-- Add a second file input specifically for mobile camera (`capture="environment"` for photos)
-- Show two buttons: "Take Photo" (camera icon, mobile-first) and "Upload File" (upload icon, accepts all)
+- `handleParseReceiptImage`: if `parsed.line_items` exists and has items, store them in `parsedLineItems` and initialize `editableCategories`/`editableQuantities` from the AI suggestions
+- `handleParseReceiptText`: the text parser currently does not return line items, so this path continues as single-expense (no change needed there)
 
-**3. Smart parsing based on file type**
+**3. Render line-item breakdown UI (when available)**
 
-- If uploaded file is an image: use existing `parse-receipt-image` edge function (base64 flow)
-- If uploaded file is a PDF/document: read as base64 and send to `parse-receipt-image` (Gemini 2.5 Pro already handles PDF input via base64)
-- Auto-fill all fields from parse result (vendor, amount, date, description, category, expense type) -- same as current image parsing but also wire `suggested_category` and `expenseType` from the image parser response
+After the scan section and before Project/Category, show a collapsible "Receipt Breakdown" section when `parsedLineItems.length > 0`:
+- Each line item row shows: item name, editable quantity, unit price, category dropdown, line total
+- Category dropdown uses `getBudgetCategories()` (same list as existing category selector)
+- A summary footer shows the split total vs. scanned total
+- A toggle to switch between "Split by Category" and "Single Expense" mode
 
-**4. Wire image parser to also auto-fill category and expense type**
+**4. Update submit logic**
 
-- The `handleParseReceiptImage` function (lines 145-171) currently does NOT set `selectedCategory` or `expenseType` from the image parser response
-- Add the same auto-fill logic that the text parser already has
+When line items are present and split mode is active:
+- Group line items by their assigned category
+- For each category group, calculate proportional amount (scaled to match the entered total)
+- Create one `expenses` row per category group, each with appropriate `category_id`, proportional `amount`, and item notes in `description`
+- Upload receipt once, attach the same `receipt_url` to all split records
+- Show toast: "Split into X categories for [vendor]"
 
-### Layout (top to bottom)
+When no line items or single-expense mode: existing submit logic unchanged.
 
+**5. Hide single Project/Category selectors when in split mode**
+
+When split mode is active, the per-item categories replace the single Category dropdown. The Project selector remains (all splits go to the same project). The Type (Product/Labor) toggle also remains as a global setting for all splits.
+
+### Technical Details
+
+**Line item state initialization (after image parse):**
+```typescript
+const [parsedLineItems, setParsedLineItems] = useState<Array<{
+  item_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  suggested_category: string;
+}>>([]);
+const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
+const [editableQuantities, setEditableQuantities] = useState<Record<number, number>>({});
+const [splitMode, setSplitMode] = useState(false);
+```
+
+**In handleParseReceiptImage, after existing auto-fill:**
+```typescript
+if (parsed.line_items?.length > 0) {
+  setParsedLineItems(parsed.line_items);
+  const cats: Record<number, string> = {};
+  const qtys: Record<number, number> = {};
+  parsed.line_items.forEach((item, idx) => {
+    cats[idx] = item.suggested_category || 'misc';
+    qtys[idx] = item.quantity || 1;
+  });
+  setEditableCategories(cats);
+  setEditableQuantities(qtys);
+  setSplitMode(true);
+}
+```
+
+**Submit with split mode:**
+```typescript
+// Group by category
+const groups = {};
+parsedLineItems.forEach((item, idx) => {
+  const cat = editableCategories[idx] || item.suggested_category;
+  const qty = editableQuantities[idx] ?? item.quantity;
+  const total = qty * item.unit_price;
+  if (!groups[cat]) groups[cat] = { items: [], total: 0 };
+  groups[cat].items.push({ ...item, qty, total });
+  groups[cat].total += total;
+});
+
+// Scale proportionally to match entered amount
+const rawTotal = Object.values(groups).reduce((s, g) => s + g.total, 0);
+for (const cat of Object.keys(groups)) {
+  const proportion = rawTotal > 0 ? groups[cat].total / rawTotal : 0;
+  const scaledAmount = calculateTotal() * proportion;
+  // Insert expense with this category + scaled amount
+}
+```
+
+**UI layout when split mode is active:**
 ```
 [Scan Receipt Section]
-  - "Upload Receipt" button (photos + PDFs)
-  - "Paste Text" toggle
-  - Preview + "Scan" button when file selected
-
-[Project] [Category]     <-- auto-filled after scan
-[Type: Product / Labor]  <-- auto-filled after scan
-[Amount] [Date]          <-- auto-filled after scan
-[Contractor] [Payment]   <-- auto-filled after scan
-[Description]            <-- auto-filled after scan
+[Receipt Breakdown]       <-- NEW: line items with category dropdowns
+  Item 1  qty x $price   [Category v]  $total
+  Item 2  qty x $price   [Category v]  $total
+  Split Total: $xxx.xx
+[Project]                 <-- single project for all splits
+[Type: Product / Labor]   <-- global type
+[Amount] [Date]           <-- total amount (auto-filled, still editable)
+[Contractor] [Payment]
+[Description]             <-- hidden in split mode (notes come from items)
 [Tax toggle]
 [Total]
 [Log Expense]
 ```
 
-### Technical Details
-
-**File type detection:**
-```typescript
-const isImage = file.type.startsWith('image/');
-// For PDFs/docs, convert to base64 and send to parse-receipt-image
-// Gemini 2.5 Pro natively handles PDF base64 input
-```
-
-**Image parser auto-fill additions (handleParseReceiptImage):**
-```typescript
-if (parsed.suggested_category) setSelectedCategory(parsed.suggested_category);
-if (parsed.expense_type) setExpenseType(parsed.expense_type as 'product' | 'labor');
-```
-
-**parse-receipt-image edge function** -- check if it already returns `suggested_category`; if not, add it to the tool schema (same pattern as parse-receipt-text). This may require a small update to the edge function.
-
 ### Files Changed
-- `src/components/QuickExpenseModal.tsx` -- reorder form, expand file input, wire auto-fill
-- `supabase/functions/parse-receipt-image/index.ts` -- add `suggested_category` and `expense_type` to tool schema if not already present
+- `src/components/QuickExpenseModal.tsx` -- add line-item state, breakdown UI, split submit logic
