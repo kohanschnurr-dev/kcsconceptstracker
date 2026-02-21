@@ -101,7 +101,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     setTradeInput('');
   };
 
-  const handleGenerate = async () => {
+  const buildContent = () => {
     const lines: string[] = ['SCOPE OF WORK', ''];
 
     if (companyName) lines.push(`Company: ${companyName}`);
@@ -160,31 +160,35 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
       lines.push(specialNotes.trim());
     }
 
-    const content = lines.join('\n');
-    const pdfOptions = {
-      docType: 'Scope of Work' as const,
-      companyName: settings?.company_name || companyName || 'Your Company',
-      logoUrl: settings?.logo_url,
-    };
+    return lines.join('\n');
+  };
 
-    generatePDF(content, pdfOptions);
+  const getPdfOptions = () => ({
+    docType: 'Scope of Work' as const,
+    companyName: settings?.company_name || companyName || 'Your Company',
+    logoUrl: settings?.logo_url,
+  });
 
-    if (selectedProjectId) {
-      setIsSaving(true);
-      try {
-        const html = generatePDFHtml(content, pdfOptions);
-        await saveDocumentToProject(html, selectedProjectId, 'Scope of Work', 'contract');
-        const proj = projects.find(p => p.id === selectedProjectId);
-        toast({
-          title: 'Document saved',
-          description: `Scope of Work saved to ${proj?.name ?? 'project'} Documents`,
-        });
-      } catch (err) {
-        console.error(err);
-        toast({ title: 'Save failed', description: 'Could not save document to project.', variant: 'destructive' });
-      } finally {
-        setIsSaving(false);
-      }
+  const handleGeneratePDF = () => {
+    generatePDF(buildContent(), getPdfOptions());
+  };
+
+  const handleSaveToProject = async () => {
+    if (!selectedProjectId) return;
+    setIsSaving(true);
+    try {
+      const html = generatePDFHtml(buildContent(), getPdfOptions());
+      await saveDocumentToProject(html, selectedProjectId, 'Scope of Work', 'contract');
+      const proj = projects.find(p => p.id === selectedProjectId);
+      toast({
+        title: 'Document saved',
+        description: `Scope of Work saved to ${proj?.name ?? 'project'} Documents`,
+      });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Save failed', description: 'Could not save document to project.', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -349,20 +353,32 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
                   onSelect={(id) => setSelectedProjectId(id === selectedProjectId ? '' : id)}
                   placeholder="Select a project…"
                 />
-                <p className="text-xs text-muted-foreground">Optional — saves a copy to the project's Documents tab</p>
+                <p className="text-xs text-muted-foreground">Optional — select a project to enable saving a copy to its Documents tab</p>
               </div>
             </div>
 
             {/* GENERATE BUTTON */}
-            <Button
-              onClick={handleGenerate}
-              className="w-full gap-2"
-              size="lg"
-              disabled={isSaving}
-            >
-              <FileText className="h-4 w-4" />
-              {isSaving ? 'Saving…' : 'Generate Scope of Work PDF'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleGeneratePDF}
+                className="flex-1 gap-2"
+                size="lg"
+              >
+                <FileText className="h-4 w-4" />
+                Generate Scope of Work PDF
+              </Button>
+              {selectedProjectId && (
+                <Button
+                  onClick={handleSaveToProject}
+                  variant="outline"
+                  size="lg"
+                  disabled={isSaving}
+                  className="shrink-0"
+                >
+                  {isSaving ? 'Saving…' : 'Save to Project'}
+                </Button>
+              )}
+            </div>
 
             <div className="h-4" />
           </div>
