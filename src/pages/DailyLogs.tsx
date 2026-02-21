@@ -517,8 +517,8 @@ export default function DailyLogs() {
             <h1 className="text-2xl font-semibold">Daily Logs & Tasks</h1>
             <p className="text-muted-foreground mt-1">Track site visits and manage your checklist</p>
           </div>
-          <Button className="gap-2 w-full sm:w-auto h-11 sm:h-10" onClick={() => setAddTaskOpen(true)}>
-            <Plus className="h-4 w-4" />
+          <Button size="lg" className="gap-2 w-full sm:w-auto h-12 px-6 text-base font-semibold" onClick={() => setAddTaskOpen(true)}>
+            <Plus className="h-5 w-5" />
             Add Task
           </Button>
         </div>
