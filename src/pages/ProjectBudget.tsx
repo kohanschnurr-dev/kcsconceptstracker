@@ -42,6 +42,8 @@ import { Input } from '@/components/ui/input';
 import { FormulaInput } from '@/components/ui/formula-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ExportReports } from '@/components/project/ExportReports';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -164,6 +166,7 @@ export default function ProjectBudget() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   
   // All Expenses collapsed state - show only 7 by default
   const [showAllExpenses, setShowAllExpenses] = useState(false);
@@ -1251,7 +1254,7 @@ export default function ProjectBudget() {
                   <Download className="h-4 w-4 mr-2" />
                   Import CSV
                 </Button>
-                <Button variant="outline" size="sm" onClick={exportToCSV}>
+                <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)}>
                   <Upload className="h-4 w-4 mr-2" />
                   Export
                 </Button>
@@ -1614,6 +1617,30 @@ export default function ProjectBudget() {
         projects={project ? [{ id: project.id, name: project.name, address: project.address, totalBudget: project.total_budget, startDate: project.start_date, status: project.status === 'on_hold' ? 'on-hold' : project.status as 'active' | 'complete', projectType: 'fix_flip', categories: [] }] : []}
         onExpenseCreated={refreshData}
       />
+
+      <Dialog open={exportModalOpen} onOpenChange={setExportModalOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Export Reports</DialogTitle>
+          </DialogHeader>
+          {project && (
+            <ExportReports
+              project={{
+                id: project.id,
+                name: project.name,
+                address: project.address,
+                total_budget: project.total_budget,
+                start_date: project.start_date,
+                status: project.status,
+                purchase_price: project.purchase_price,
+                arv: project.arv,
+              }}
+              categories={categories}
+              expenses={expenses}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
