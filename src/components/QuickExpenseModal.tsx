@@ -719,7 +719,9 @@ function ImportTab({
   onExpenseCreated?: () => void;
   onClose: () => void;
 }) {
-  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedProject, setSelectedProject] = useState(
+    projects.length === 1 ? projects[0].id : ''
+  );
   const [existingCategories, setExistingCategories] = useState<{ id: string; category: string }[]>([]);
   const [step, setStep] = useState<'upload' | 'preview'>('upload');
   const [rows, setRows] = useState<ParsedRow[]>([]);
@@ -830,12 +832,14 @@ function ImportTab({
 
   return (
     <div className="p-4 space-y-4" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-      <div className="space-y-2">
-        <Label>Project <span className="text-destructive">*</span></Label>
-        <ProjectAutocomplete projects={projects} value={selectedProject} onSelect={setSelectedProject} placeholder="Select project for import..." filterActive={true} />
-      </div>
+      {projects.length > 1 && (
+        <div className="space-y-2">
+          <Label>Project <span className="text-destructive">*</span></Label>
+          <ProjectAutocomplete projects={projects} value={selectedProject} onSelect={setSelectedProject} placeholder="Select project for import..." filterActive={true} />
+        </div>
+      )}
 
-      {!selectedProject && (
+      {!selectedProject && projects.length > 1 && (
         <div className="text-center py-8 space-y-3">
           <p className="text-muted-foreground text-sm">Select a project above to begin importing expenses.</p>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-medium">
