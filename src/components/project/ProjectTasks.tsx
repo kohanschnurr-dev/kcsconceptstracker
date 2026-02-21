@@ -302,6 +302,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
         <Input
           id="edit-due-date"
           type="date"
+          className="w-full"
           value={editDueDate}
           onChange={(e) => setEditDueDate(e.target.value)}
         />

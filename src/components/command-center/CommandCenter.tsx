@@ -433,6 +433,7 @@ export function CommandCenter() {
               <Label>Due Date</Label>
               <Input
                 type="date"
+                className="w-full"
                 value={editForm.dueDate}
                 onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
               />
