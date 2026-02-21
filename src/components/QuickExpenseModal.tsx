@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles, Package, Wrench, Download, FileSpreadsheet, Copy, Check, CheckCircle2, AlertTriangle, Sun, Maximize, Eye, Layers, ChevronDown, ChevronUp, Split } from 'lucide-react';
+import { Camera, DollarSign, X, Upload, Loader2, FileText, Sparkles, Package, Wrench, Download, FileSpreadsheet, Copy, Check, CheckCircle2, AlertTriangle, Sun, Maximize, Eye, Layers, ChevronDown, ChevronUp, Split, ScanLine } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Drawer,
@@ -90,6 +91,10 @@ function ExpenseForm({
   const [isParsingImage, setIsParsingImage] = useState(false);
   const [dontRemindChecked, setDontRemindChecked] = useState(false);
 
+  // Scanning animation state
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanMessage, setScanMessage] = useState('');
+
   // Line-item split mode state
   const [parsedLineItems, setParsedLineItems] = useState<ParsedLineItem[]>([]);
   const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
@@ -98,6 +103,37 @@ function ExpenseForm({
   const [breakdownOpen, setBreakdownOpen] = useState(true);
 
   const budgetCategories = getBudgetCategories();
+
+  // Scanning progress simulation
+  useEffect(() => {
+    if (!isParsingImage) {
+      if (scanProgress > 0) {
+        setScanProgress(100);
+        setScanMessage('Complete!');
+        const timeout = setTimeout(() => { setScanProgress(0); setScanMessage(''); }, 600);
+        return () => clearTimeout(timeout);
+      }
+      return;
+    }
+    setScanProgress(5);
+    setScanMessage('Reading document...');
+    const messages = [
+      'Reading document...',
+      'Extracting line items...',
+      'Identifying categories...',
+      'Matching vendors...',
+      'Finalizing...',
+    ];
+    let progress = 5;
+    const interval = setInterval(() => {
+      progress += Math.random() * 8 + 2;
+      if (progress > 90) progress = 90;
+      setScanProgress(Math.round(progress));
+      const msgIdx = Math.min(Math.floor(progress / 20), messages.length - 1);
+      setScanMessage(messages[msgIdx]);
+    }, 800);
+    return () => clearInterval(interval);
+  }, [isParsingImage]);
 
   const calculateTax = () => {
     const baseAmount = parseFloat(amount) || 0;
@@ -384,7 +420,23 @@ function ExpenseForm({
 
         <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={handleFileChange} className="hidden" />
 
-        {receiptPreview ? (
+      {receiptPreview ? (
+          isParsingImage || scanProgress === 100 ? (
+            <div className="flex flex-col items-center justify-center py-6 px-4 space-y-4">
+              <div className="relative">
+                <ScanLine className="h-10 w-10 text-primary animate-pulse" />
+                <div className="absolute inset-0 rounded-full animate-pulse-glow" />
+              </div>
+              <div className="w-full space-y-2">
+                <Progress value={scanProgress} className="h-2.5 bg-muted [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-accent" />
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-primary font-medium transition-all duration-300">{scanMessage}</span>
+                  <span className="text-muted-foreground font-mono">{scanProgress}%</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground truncate max-w-[220px]">{receiptFile?.name}</p>
+            </div>
+          ) : (
           <div className="space-y-2">
             <div className="relative">
               {receiptFile && isImageFile(receiptFile) ? (
@@ -403,9 +455,10 @@ function ExpenseForm({
               </Button>
             </div>
             <Button type="button" variant="secondary" size="sm" className="w-full gap-1.5" onClick={handleParseReceiptImage} disabled={isParsingImage}>
-              {isParsingImage ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" />Scanning...</>) : (<><Sparkles className="h-3.5 w-3.5" />Scan Receipt</>)}
+              <Sparkles className="h-3.5 w-3.5" />Scan Receipt
             </Button>
           </div>
+          )
         ) : (
           <div className="grid grid-cols-2 gap-2">
             <Button type="button" variant="outline" className="gap-2" onClick={handleReceiptPhotoClick}>
