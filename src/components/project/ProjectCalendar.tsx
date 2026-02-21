@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, startOfDay, isWithinInterval } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { NewEventModal } from '@/components/calendar/NewEventModal';
@@ -135,16 +136,6 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
           <div className="flex items-center gap-2 text-foreground font-semibold text-base sm:text-lg shrink-0">
             <CalendarIcon className="h-5 w-5 text-primary shrink-0" />
             <span className="hidden sm:inline">Project Schedule</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="ml-1 text-muted-foreground hover:text-foreground transition-colors">
-                  <Info className="h-4 w-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-3" align="start">
-                <CalendarLegend />
-              </PopoverContent>
-            </Popover>
           </div>
 
           {/* Center: month navigation */}
@@ -291,6 +282,10 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
               </div>
             );
           })}
+        </div>
+
+        <div className="pt-3 mt-2 border-t border-border">
+          <CalendarLegend />
         </div>
 
         {tasks.length === 0 && (
