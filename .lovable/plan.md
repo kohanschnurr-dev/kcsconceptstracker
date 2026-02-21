@@ -1,29 +1,42 @@
 
+## Fix: Formula Input Not Accepting "=" in Number Fields
 
-## Enable Formula Input in Profit Calculator
+### Root Cause
 
-### Problem
+When `<input type="number">` is rendered, the browser natively blocks non-numeric characters like `=` at the DOM level. The `onChange` event never fires, so `isFormulaMode` never activates, and the input never switches to `type="text"`.
 
-The Profit Calculator component (`src/components/project/ProfitCalculator.tsx`) was missed during the FormulaInput rollout. It still uses plain `<Input type="number">` fields, which block the `=` character needed to start a formula.
+### Solution
+
+Intercept the `=` key in `onKeyDown` and proactively switch to formula mode before the browser blocks the character.
 
 ### Changes
 
-**`src/components/project/ProfitCalculator.tsx`**
+**`src/components/ui/formula-input.tsx`**
 
-Replace all four `<Input type="number">` fields with `<FormulaInput type="number">`:
+Update `handleKeyDown` to detect when the user presses `=` while in a numeric (non-formula) input:
 
-1. **Purchase Price** (line ~159) -- swap `Input` to `FormulaInput`
-2. **ARV** (line ~173) -- swap `Input` to `FormulaInput`
-3. **Transaction Costs** (line ~191) -- swap `Input` to `FormulaInput`
-4. **Holding Costs** (line ~209) -- swap `Input` to `FormulaInput`
-
-Add the import at the top:
 ```tsx
-import { FormulaInput } from '@/components/ui/formula-input';
+const handleKeyDown = useCallback(
+  (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Intercept "=" on a number input to enter formula mode
+    if (e.key === '=' && isNumeric && !isFormulaMode) {
+      e.preventDefault();
+      setIsFormulaMode(true);
+      setLocalValue('=');
+      return;
+    }
+    if (e.key === 'Enter' && isFormulaMode) {
+      e.preventDefault();
+      resolveFormula();
+      return;
+    }
+    onKeyDown?.(e);
+  },
+  [isNumeric, isFormulaMode, resolveFormula, onKeyDown],
+);
 ```
 
-No other logic changes needed -- `FormulaInput` is a drop-in replacement that accepts the same props.
+This is a single change in one file -- no other files affected.
 
 ### Files Changed
-- `src/components/project/ProfitCalculator.tsx` -- swap 4 Input fields to FormulaInput, add import
-
+- `src/components/ui/formula-input.tsx` -- add `=` key interception in `handleKeyDown`
