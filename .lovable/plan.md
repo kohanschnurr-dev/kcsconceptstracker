@@ -1,39 +1,27 @@
 
-
-## Slow Down Scanning Progress Animation
+## Fix Mouse Wheel Scrolling in Project Selector Dropdown
 
 ### Problem
 
-The progress bar races to 90% in about 8 seconds (incrementing 10-18% every 800ms), then sits frozen at 90% for the remainder of the actual AI parsing -- which can take 15-30+ seconds for PDFs. This makes the animation feel broken.
+The project dropdown list inside `ProjectAutocomplete` does not respond to mouse wheel or middle-click scroll. This is caused by Radix UI's `DismissableLayer` intercepting pointer events, which prevents the browser's native scroll behavior from reaching the scrollable `CommandList`.
 
-### Fix
+### Fix in `src/components/ProjectAutocomplete.tsx`
 
-Replace the linear-ish increment with a **decelerating curve** that spreads the 0-90% range across ~25-30 seconds. The trick: as progress increases, the increment size shrinks dramatically, so early progress feels fast (good feedback) but later progress crawls to match the real backend time.
+Add `onWheel`, `onPointerDown`, and `onMouseDown` event handlers to the `CommandList` element to prevent Radix from swallowing scroll-related events:
 
-### Changes to `src/components/QuickExpenseModal.tsx`
-
-**Replace the interval logic (lines 127-134) with a decelerating curve:**
-
-```typescript
-let progress = 5;
-const interval = setInterval(() => {
-  // Decelerate: big jumps early, tiny increments as we approach 90%
-  const remaining = 90 - progress;
-  const increment = Math.max(0.5, remaining * 0.06 + Math.random() * 0.8);
-  progress = Math.min(progress + increment, 90);
-  setScanProgress(Math.round(progress));
-  const msgIdx = Math.min(Math.floor(progress / 20), messages.length - 1);
-  setScanMessage(messages[msgIdx]);
-}, 600);
+```tsx
+<CommandList
+  className="max-h-[300px]"
+  onWheel={(e) => e.stopPropagation()}
+  onPointerDown={(e) => { if (e.button === 1) e.stopPropagation(); }}
+  onMouseDown={(e) => { if (e.button === 1) e.stopPropagation(); }}
+  style={{ overscrollBehavior: 'contain' }}
+>
 ```
 
-This gives roughly:
-- 0-50% in first ~6 seconds (feels responsive)
-- 50-75% over next ~10 seconds
-- 75-90% over next ~15+ seconds (crawls to match backend)
-
-The interval fires every 600ms for smoother visual updates, and each tick adds a fraction of the remaining distance (6% of what's left + a tiny random), so it naturally decelerates without ever truly stalling.
+- `onWheel` stop-propagation ensures wheel events stay within the list and are not captured by the Radix overlay.
+- `onPointerDown` / `onMouseDown` for `button === 1` (middle-click) prevents Radix's `DismissableLayer` from calling `preventDefault()`, allowing native auto-scroll.
+- `overscroll-contain` keeps scroll confined to the list container.
 
 ### Files Changed
-- `src/components/QuickExpenseModal.tsx` -- replace progress increment formula with decelerating curve
-
+- `src/components/ProjectAutocomplete.tsx` -- add event handlers to `CommandList` for scroll fix
