@@ -28,7 +28,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
   const [projectId, setProjectId] = useState('');
   const [projects, setProjects] = useState<{ id: string; name: string; address?: string; status?: string; projectType?: string }[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [lineItems, setLineItems] = useState<{ text: string; amount: string }[]>([]);
+  const [subtasks, setSubtasks] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -53,7 +53,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
     setDueDate('');
     setProjectId('');
     setPhotoUrls([]);
-    setLineItems([]);
+    setSubtasks([]);
   };
 
   const uploadFile = useCallback(async (file: File) => {
@@ -98,11 +98,9 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
       if (!user) throw new Error('Not authenticated');
 
       let finalDescription = description.trim();
-      if (lineItems.length > 0) {
-        const validItems = lineItems.filter(li => li.text.trim());
-        if (validItems.length > 0) {
-          finalDescription += '\n---LINE_ITEMS---\n' + JSON.stringify(validItems);
-        }
+      const validSubtasks = subtasks.filter(s => s.trim());
+      if (validSubtasks.length > 0) {
+        finalDescription += '\n---LINE_ITEMS---\n' + JSON.stringify(validSubtasks);
       }
 
       const { error } = await supabase.from('tasks').insert({
@@ -130,10 +128,10 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
     }
   };
 
-  const addLineItem = () => setLineItems(prev => [...prev, { text: '', amount: '' }]);
-  const removeLineItem = (index: number) => setLineItems(prev => prev.filter((_, i) => i !== index));
-  const updateLineItem = (index: number, field: 'text' | 'amount', value: string) => {
-    setLineItems(prev => prev.map((li, i) => i === index ? { ...li, [field]: value } : li));
+  const addSubtask = () => setSubtasks(prev => [...prev, '']);
+  const removeSubtask = (index: number) => setSubtasks(prev => prev.filter((_, i) => i !== index));
+  const updateSubtask = (index: number, value: string) => {
+    setSubtasks(prev => prev.map((s, i) => i === index ? value : s));
   };
 
   return (
@@ -215,35 +213,25 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
             </div>
           </div>
 
-          {/* Line Items */}
+          {/* Subtasks */}
           <div>
-            <Label>Line Items (optional)</Label>
+            <Label>Subtasks (optional)</Label>
             <div className="space-y-2 mt-1">
-              {lineItems.map((li, i) => (
+              {subtasks.map((s, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <Input
                     className="flex-1"
-                    value={li.text}
-                    onChange={e => updateLineItem(i, 'text', e.target.value)}
-                    placeholder="Item description"
+                    value={s}
+                    onChange={e => updateSubtask(i, e.target.value)}
+                    placeholder="Subtask..."
                   />
-                  <div className="relative w-24">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                    <Input
-                      className="pl-6"
-                      type="number"
-                      value={li.amount}
-                      onChange={e => updateLineItem(i, 'amount', e.target.value)}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeLineItem(i)}>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeSubtask(i)}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               ))}
-              <Button type="button" variant="outline" size="sm" onClick={addLineItem} className="w-full">
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add Line Item
+              <Button type="button" variant="outline" size="sm" onClick={addSubtask} className="w-full">
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Subtask
               </Button>
             </div>
           </div>
