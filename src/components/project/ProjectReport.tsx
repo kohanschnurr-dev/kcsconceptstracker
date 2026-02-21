@@ -270,7 +270,42 @@ export function ProjectReport({
     @media print {
       @page { size: A4 portrait; margin: 0.5in; }
       body { background: white !important; }
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      /* Re-declare arbitrary values for print engine */
+      .tracking-\\[0\\.35em\\] { letter-spacing: 0.35em !important; }
+      .tracking-\\[2\\.5px\\] { letter-spacing: 2.5px !important; }
+      .tracking-\\[2px\\] { letter-spacing: 2px !important; }
+      .tracking-\\[3px\\] { letter-spacing: 3px !important; }
+      .text-\\[9px\\] { font-size: 9px !important; line-height: 1.2; }
+      .text-\\[10px\\] { font-size: 10px !important; line-height: 1.4; }
+      .border-t-\\[3px\\] { border-top-width: 3px !important; }
+      .h-\\[10px\\] { height: 10px !important; }
+      .w-\\[2px\\] { width: 2px !important; }
+      .top-\\[-2px\\] { top: -2px !important; }
+      .bottom-\\[-2px\\] { bottom: -2px !important; }
+
+      /* Prevent content splitting */
+      section { break-inside: avoid; margin-bottom: 12px; }
+      .bg-card, .bg-warning\\/5 { break-inside: avoid; }
+      .grid { break-inside: avoid; }
+      .print\\:break-before-page { page-break-before: always; break-before: page; }
+
+      /* Force background colors in print */
+      .bg-card { background-color: hsl(var(--card)) !important; }
+      .bg-background { background-color: hsl(var(--background)) !important; }
+      .bg-secondary { background-color: hsl(var(--secondary)) !important; }
+      .bg-primary { background-color: hsl(var(--primary)) !important; }
+      .bg-destructive { background-color: hsl(var(--destructive)) !important; }
+      .bg-success { background-color: hsl(var(--success)) !important; }
+      .bg-warning { background-color: hsl(var(--warning)) !important; }
+
+      /* Hide chart tooltips */
+      .recharts-tooltip-wrapper { display: none !important; }
     }
   </style>
 </head>
@@ -280,7 +315,7 @@ export function ProjectReport({
   </div>
   <script>
     // Wait for Tailwind CDN to process, then print
-    setTimeout(function() { window.print(); }, 1500);
+    setTimeout(function() { window.print(); }, 2500);
   <\/script>
 </body>
 </html>`;
