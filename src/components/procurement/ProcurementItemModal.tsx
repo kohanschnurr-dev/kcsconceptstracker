@@ -392,7 +392,7 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   const [showFallbackOptions, setShowFallbackOptions] = useState(false);
   const [parsingScreenshot, setParsingScreenshot] = useState(false);
   const [scrapeSuccess, setScrapeSuccess] = useState(false);
-  const [step, setStep] = useState<Step>('url');
+  const [step, setStep] = useState<Step>(item ? 'details' : 'url');
   const [urlInput, setUrlInput] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
@@ -593,6 +593,12 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
   useEffect(() => {
     const loadItemBundles = async () => {
       if (open && item) {
+        // Set step synchronously to prevent flash of URL step
+        setStep('details');
+        setUrlInput('');
+        setShowFallbackOptions(false);
+        setScrapeSuccess(false);
+
         // Fetch bundle assignments for this item from junction table
         const { data: bundleAssignments } = await supabase
           .from('procurement_item_bundles')
@@ -603,7 +609,6 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
         
         const { specs, cleanNotes } = parseSpecsFromNotes(item.notes);
         const detectedCategory = detectCategory(item.name);
-        // Use stored category if available, otherwise detect from name
         const storedCategory = (item as any).category;
         const itemCategory = storedCategory && storedCategory !== 'other' ? storedCategory : detectedCategory;
         
@@ -627,10 +632,6 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
           specs,
           image_url: (item as any).image_url || '',
         });
-        setStep('details');
-        setUrlInput('');
-        setShowFallbackOptions(false);
-        setScrapeSuccess(false);
       } else if (open) {
         setFormData({
           category: '',
