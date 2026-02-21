@@ -92,7 +92,6 @@ function ExpenseForm({
   const [dontRemindChecked, setDontRemindChecked] = useState(false);
 
   // Scanning animation state
-  const [scanProgress, setScanProgress] = useState(0);
   const [scanMessage, setScanMessage] = useState('');
 
   // Line-item split mode state
@@ -104,19 +103,12 @@ function ExpenseForm({
 
   const budgetCategories = getBudgetCategories();
 
-  // Scanning progress simulation
+  // Scanning message cycler
   useEffect(() => {
     if (!isParsingImage) {
-      if (scanProgress > 0) {
-        setScanProgress(100);
-        setScanMessage('Complete!');
-        const timeout = setTimeout(() => { setScanProgress(0); setScanMessage(''); }, 600);
-        return () => clearTimeout(timeout);
-      }
+      setScanMessage('');
       return;
     }
-    setScanProgress(5);
-    setScanMessage('Reading document...');
     const messages = [
       'Reading document...',
       'Extracting line items...',
@@ -124,15 +116,12 @@ function ExpenseForm({
       'Matching vendors...',
       'Finalizing...',
     ];
-    let progress = 5;
+    let idx = 0;
+    setScanMessage(messages[0]);
     const interval = setInterval(() => {
-      const remaining = 90 - progress;
-      const increment = Math.max(0.5, remaining * 0.06 + Math.random() * 0.8);
-      progress = Math.min(progress + increment, 90);
-      setScanProgress(Math.round(progress));
-      const msgIdx = Math.min(Math.floor(progress / 20), messages.length - 1);
-      setScanMessage(messages[msgIdx]);
-    }, 600);
+      idx = (idx + 1) % messages.length;
+      setScanMessage(messages[idx]);
+    }, 3000);
     return () => clearInterval(interval);
   }, [isParsingImage]);
 
@@ -438,18 +427,17 @@ function ExpenseForm({
         <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={handleFileChange} className="hidden" />
 
       {receiptPreview ? (
-          isParsingImage || scanProgress === 100 ? (
+          isParsingImage ? (
             <div className="flex flex-col items-center justify-center py-6 px-4 space-y-4">
               <div className="relative">
                 <ScanLine className="h-10 w-10 text-primary animate-pulse" />
                 <div className="absolute inset-0 rounded-full animate-pulse-glow" />
               </div>
               <div className="w-full space-y-2">
-                <Progress value={scanProgress} className="h-2.5 bg-muted [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-accent" />
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-primary font-medium transition-all duration-300">{scanMessage}</span>
-                  <span className="text-muted-foreground font-mono">{scanProgress}%</span>
+                <div className="h-2.5 bg-muted rounded-full overflow-hidden relative">
+                  <div className="absolute h-full w-1/3 bg-gradient-to-r from-primary to-accent rounded-full animate-[indeterminate_1.5s_ease-in-out_infinite]" />
                 </div>
+                <span className="text-primary font-medium text-xs transition-all duration-300">{scanMessage}</span>
               </div>
               <p className="text-xs text-muted-foreground truncate max-w-[220px]">{receiptFile?.name}</p>
             </div>
