@@ -320,9 +320,11 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
                           : (<AlertTriangle className="h-4 w-4 text-warning" />)}
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(row.originalIdx)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {(row.hasError || !row.matchedCategory) && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(row.originalIdx)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
