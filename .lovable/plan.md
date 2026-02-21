@@ -1,84 +1,49 @@
 
 
-## Add Scanning Loading Animation
+## Add Sales Tax Toggle Integration with Receipt Breakdown
 
 ### What Changes
 
-When a user clicks "Scan Receipt" (for photos, PDFs, or documents), the current UI just shows a spinner with "Scanning..." text on the button. This plan replaces that with a polished, full-section loading animation that fills the scan area -- showing progressive status messages and an animated progress bar to give the feel of a real document scan.
+Currently, when the AI parses a receipt, it might return "Tax" or "Sales Tax" as a line-item category in the breakdown. Since tax is already handled by the dedicated toggle switch, these tax line items should be filtered out of the breakdown and instead auto-enable the toggle.
 
 ### Changes to `src/components/QuickExpenseModal.tsx`
 
-**1. Replace the simple button spinner with a full scanning overlay**
+**1. Filter tax line items out of the breakdown**
 
-When `isParsingImage` is true, instead of showing the file preview + disabled "Scanning..." button, render an animated scanning state that fills the entire scan section area:
+When populating `parsedLineItems` from the AI parse result, filter out any items where the `item_name` or `suggested_category` matches tax-related terms (e.g., "tax", "sales tax", "TX tax"). This prevents tax from appearing as a category row in the Receipt Breakdown.
 
-- A pulsing document icon (or the file preview dimmed with an overlay)
-- An animated progress bar that simulates scan progress over time (e.g., 0% to 90% over ~8 seconds, then holds until complete)
-- Rotating status messages that cycle every ~2 seconds:
-  - "Reading document..."
-  - "Extracting line items..."
-  - "Identifying categories..."
-  - "Matching vendors..."
-  - "Finalizing..."
+**2. Auto-enable the tax toggle when tax is detected**
 
-**2. Simulated progress with `useEffect` timer**
+In `handleParseReceiptImage`, if the parsed result includes a `tax_amount > 0`, automatically turn on the `includeTax` toggle (currently line 212 sets it to `false`, which is incorrect -- it should be `true`).
 
-Add a progress state and a `useEffect` that runs when `isParsingImage` becomes true:
-- Starts at 0, increments smoothly toward 90% using an interval
-- Jumps to 100% when parsing completes (when `isParsingImage` flips to false)
-- Status message index cycles based on progress thresholds
+**3. Use the receipt's subtotal (not total) as the Amount field when tax is detected**
 
-**3. Visual design**
+When the AI returns both `subtotal` and `tax_amount`, set the Amount field to the `subtotal` value so the tax toggle can correctly add the tax on top. This avoids double-counting tax.
 
-The scanning animation will:
-- Use the existing `Progress` component from `src/components/ui/progress.tsx`
-- Show the file name below the animation so the user knows what's being scanned
-- Use subtle `animate-pulse` on the icon and a gradient shimmer on the progress bar
-- Match the existing primary color scheme (golden/amber tones from the screenshot)
+**4. Fix line 212 bug**
+
+Change `setIncludeTax(false)` to `setIncludeTax(true)` when `parsed.tax_amount > 0` -- the current logic is backwards.
 
 ### Technical Details
 
-**New state variables:**
+**Tax line-item filter (in handleParseReceiptImage):**
 ```typescript
-const [scanProgress, setScanProgress] = useState(0);
-const [scanMessage, setScanMessage] = useState('');
+const taxPatterns = /^(sales\s*)?tax$/i;
+const nonTaxItems = parsed.line_items.filter(
+  (li) => !taxPatterns.test(li.item_name?.trim()) && !taxPatterns.test(li.suggested_category?.trim())
+);
+// Use nonTaxItems instead of parsed.line_items for setParsedLineItems
 ```
 
-**Progress simulation effect:**
+**Fix tax auto-detection:**
 ```typescript
-useEffect(() => {
-  if (!isParsingImage) { setScanProgress(0); return; }
-  setScanProgress(5);
-  const messages = [
-    'Reading document...',
-    'Extracting line items...',
-    'Identifying categories...',
-    'Matching vendors...',
-    'Finalizing...',
-  ];
-  let progress = 5;
-  const interval = setInterval(() => {
-    progress += Math.random() * 8 + 2;
-    if (progress > 90) progress = 90;
-    setScanProgress(Math.round(progress));
-    const msgIdx = Math.min(Math.floor(progress / 20), messages.length - 1);
-    setScanMessage(messages[msgIdx]);
-  }, 800);
-  return () => clearInterval(interval);
-}, [isParsingImage]);
+// Line 212: change from false to true
+if (parsed.tax_amount && parsed.tax_amount > 0) {
+  setIncludeTax(true);
+  // Use subtotal as the base amount if available
+  if (parsed.subtotal) setAmount(parsed.subtotal.toString());
+}
 ```
-
-**Scanning UI (replaces file preview area when scanning):**
-```
-[Scan Receipt section border]
-  [Pulsing Sparkles icon]
-  [Progress bar: 0% -> 90%]
-  [Status: "Extracting line items..."]
-  [File name: "The Home Depot.pdf"]
-[/section]
-```
-
-When `isParsingImage` completes, the progress jumps to 100%, then the breakdown UI appears.
 
 ### Files Changed
-- `src/components/QuickExpenseModal.tsx` -- add scanning animation states, progress effect, and animated UI
+- `src/components/QuickExpenseModal.tsx` -- filter tax from line items, fix tax toggle auto-enable, use subtotal when tax detected
