@@ -7,11 +7,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { WorkItemLines, type WorkItem } from '@/components/vendors/WorkItemLines';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -65,9 +67,9 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
   const [jobTitle, setJobTitle] = useState('');
   const [location, setLocation] = useState('');
   const [keyQuantities, setKeyQuantities] = useState('');
-  const [workItems, setWorkItems] = useState('');
-  const [alsoIncluded, setAlsoIncluded] = useState('');
-  const [exclusions, setExclusions] = useState('');
+  const [workItems, setWorkItems] = useState<WorkItem[]>([]);
+  const [alsoIncluded, setAlsoIncluded] = useState<WorkItem[]>([]);
+  const [exclusions, setExclusions] = useState<WorkItem[]>([]);
   const [materialsResponsibility, setMaterialsResponsibility] = useState('');
   const [specialNotes, setSpecialNotes] = useState('');
 
@@ -96,9 +98,9 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
       setJobTitle('');
       setLocation('');
       setKeyQuantities('');
-      setWorkItems('');
-      setAlsoIncluded('');
-      setExclusions('');
+      setWorkItems([]);
+      setAlsoIncluded([]);
+      setExclusions([]);
       setMaterialsResponsibility('');
       setSpecialNotes('');
     }
@@ -149,19 +151,22 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
       lines.push(keyQuantities);
     }
 
-    if (workItems.trim()) {
+    const workText = workItems.map((i) => i.text).filter(Boolean).join('\n');
+    if (workText) {
       lines.push('', 'WORK TO BE PERFORMED');
-      lines.push(workItems.trim());
+      lines.push(workText);
     }
 
-    if (alsoIncluded.trim()) {
+    const alsoText = alsoIncluded.map((i) => i.text).filter(Boolean).join('\n');
+    if (alsoText) {
       lines.push('', 'ALSO INCLUDED');
-      lines.push(alsoIncluded.trim());
+      lines.push(alsoText);
     }
 
-    if (exclusions.trim()) {
+    const exclText = exclusions.map((i) => i.text).filter(Boolean).join('\n');
+    if (exclText) {
       lines.push('', 'NOT INCLUDED / EXCLUSIONS');
-      lines.push(exclusions.trim());
+      lines.push(exclText);
     }
 
     if (materialsResponsibility) {
@@ -295,35 +300,26 @@ export function ScopeOfWorkSheet({ open, onOpenChange, vendors }: ScopeOfWorkShe
             {/* SCOPE OF WORK */}
             <div>
               <SectionLabel>Scope of Work</SectionLabel>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label>Work Items</Label>
-                  <p className="text-xs text-muted-foreground -mt-0.5">List each task on its own line</p>
-                  <Textarea
-                    value={workItems}
-                    onChange={(e) => setWorkItems(e.target.value)}
-                    placeholder={"Remove old water heater\nInstall new 50-gallon unit\nConnect gas and water lines\nTest all connections"}
-                    className="min-h-[100px] resize-none text-sm"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Also Included</Label>
-                  <Textarea
-                    value={alsoIncluded}
-                    onChange={(e) => setAlsoIncluded(e.target.value)}
-                    placeholder={"Debris removal\nFinal cleanup\nHaul-away of old unit"}
-                    className="min-h-[72px] resize-none text-sm"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Not Included / Exclusions</Label>
-                  <Textarea
-                    value={exclusions}
-                    onChange={(e) => setExclusions(e.target.value)}
-                    placeholder={"Permits\nStructural modifications\nDrywall repairs"}
-                    className="min-h-[72px] resize-none text-sm"
-                  />
-                </div>
+              <div className="space-y-5">
+                <WorkItemLines
+                  items={workItems}
+                  onChange={setWorkItems}
+                  label="Work Items"
+                  description="Add each task as its own line — attach photos per item"
+                  placeholder="e.g. Remove old water heater"
+                />
+                <WorkItemLines
+                  items={alsoIncluded}
+                  onChange={setAlsoIncluded}
+                  label="Also Included"
+                  placeholder="e.g. Debris removal"
+                />
+                <WorkItemLines
+                  items={exclusions}
+                  onChange={setExclusions}
+                  label="Not Included / Exclusions"
+                  placeholder="e.g. Permits"
+                />
               </div>
             </div>
 
