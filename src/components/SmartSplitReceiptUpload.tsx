@@ -1309,8 +1309,8 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                     {wasScaled && (
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="secondary" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/20">
+                          <TooltipTrigger>
+                            <Badge variant="secondary" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/20 cursor-help">
                               <Info className="h-3 w-3" />
                               Adjusted
                             </Badge>
