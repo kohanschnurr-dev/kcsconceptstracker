@@ -42,8 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
-
+import { cn, formatPhone } from '@/lib/utils';
 interface Vendor {
   id: string;
   name: string;
@@ -117,7 +116,7 @@ export default function Vendors() {
       if (vendor.trades.length > 0) {
         lines.push(`   Trades: ${vendor.trades.map(getTradeLabel).join(', ')}`);
       }
-      if (vendor.phone) lines.push(`   Phone: ${vendor.phone}`);
+      if (vendor.phone) lines.push(`   Phone: ${formatPhone(vendor.phone)}`);
       if (vendor.email) lines.push(`   Email: ${vendor.email}`);
       lines.push(`   Rating: ${'★'.repeat(vendor.reliability_rating || 0)}${'☆'.repeat(5 - (vendor.reliability_rating || 0))}`);
       lines.push(`   Pricing: ${vendor.pricing_model === 'flat' ? 'Flat Rate' : vendor.pricing_model === 'hourly' ? 'Hourly' : 'Not set'}`);
@@ -337,7 +336,7 @@ export default function Vendors() {
                     {vendor.phone && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Phone className="h-4 w-4" />
-                        <span>{vendor.phone}</span>
+                        <span>{formatPhone(vendor.phone)}</span>
                       </div>
                     )}
                     {vendor.email && (
@@ -418,7 +417,7 @@ export default function Vendors() {
                 {selectedVendor.phone && (
                   <a href={`tel:${selectedVendor.phone}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
                     <Phone className="h-4 w-4" />
-                    {selectedVendor.phone}
+                    {formatPhone(selectedVendor.phone)}
                   </a>
                 )}
                 {selectedVendor.email && (

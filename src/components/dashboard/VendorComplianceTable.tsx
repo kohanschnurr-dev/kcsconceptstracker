@@ -1,6 +1,6 @@
 import { CheckCircle, XCircle, Star } from 'lucide-react';
 import { Vendor, getBudgetCategories } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, formatPhone } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 interface VendorComplianceTableProps {
@@ -35,7 +35,7 @@ export function VendorComplianceTable({ vendors }: VendorComplianceTableProps) {
                 <td>
                   <div>
                     <p className="font-medium">{vendor.name}</p>
-                    <p className="text-xs text-muted-foreground">{vendor.phone}</p>
+                    <p className="text-xs text-muted-foreground">{vendor.phone ? formatPhone(vendor.phone) : ''}</p>
                   </div>
                 </td>
                 <td>
