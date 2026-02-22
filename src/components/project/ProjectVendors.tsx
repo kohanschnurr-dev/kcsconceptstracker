@@ -11,7 +11,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn, formatPhone } from '@/lib/utils';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
 interface LineItem {
@@ -367,7 +367,7 @@ export function ProjectVendors({ projectId }: ProjectVendorsProps) {
                       {pv.vendor?.phone && (
                         <a href={`tel:${pv.vendor.phone}`} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                           <Phone className="h-3 w-3" />
-                          {pv.vendor.phone}
+                          {formatPhone(pv.vendor.phone)}
                         </a>
                       )}
                       {pv.vendor?.email && (
