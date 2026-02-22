@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { VENDOR_TRADES, type VendorTrade } from '@/types';
+import { getVendorTrades, type VendorTrade } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -90,10 +90,10 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
   };
 
   const getTradeLabel = (trade: string) => {
-    return VENDOR_TRADES.find(t => t.value === trade)?.label || trade;
+    return getVendorTrades().find(t => t.value === trade)?.label || trade;
   };
 
-  const availableTrades = VENDOR_TRADES.filter(t => !trades.includes(t.value));
+  const availableTrades = getVendorTrades().filter(t => !trades.includes(t.value));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
