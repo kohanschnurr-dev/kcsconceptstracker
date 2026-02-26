@@ -43,15 +43,15 @@ export default function Projects() {
   const [reorderOpen, setReorderOpen] = useState(false);
 
   const tabOrder = useMemo<ProjectType[]>(() => {
+    const validTypes = new Set<string>(DEFAULT_TAB_ORDER);
     const saved = profile?.project_tab_order as string[] | null;
-    if (saved && Array.isArray(saved) && saved.length >= 4) {
-      // Append any new default tabs not in saved order
-      const merged = [...saved as ProjectType[]];
+    if (saved && Array.isArray(saved)) {
+      // Filter to only valid types, then append any missing defaults
+      const filtered = saved.filter(t => validTypes.has(t)) as ProjectType[];
       for (const tab of DEFAULT_TAB_ORDER) {
-        if (!merged.includes(tab)) merged.push(tab);
+        if (!filtered.includes(tab)) filtered.push(tab);
       }
-      return merged as ProjectType[];
-      return saved as ProjectType[];
+      if (filtered.length > 0) return filtered;
     }
     return DEFAULT_TAB_ORDER;
   }, [profile?.project_tab_order]);
