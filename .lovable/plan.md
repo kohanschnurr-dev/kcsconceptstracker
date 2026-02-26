@@ -1,121 +1,47 @@
 
 
-## Remove Wholesaling, New Construction, and Contractor Project Types
+## Cleanup Remaining References to Removed Project Types
 
-Niche down the platform to **Fix & Flip** and **Rental/BRRR** only, removing all traces of Wholesaling, New Construction, and Contractor modes.
-
----
-
-### Phase 1: Convert Existing Data
-
-Before any code changes, convert existing projects of removed types to Fix & Flip in the database so no data is lost.
-
-- Update all projects with `project_type` in (`wholesaling`, `new_construction`, `contractor`) to `fix_flip`
-- Clean up any saved profile tab orders that reference removed types
+Several files still reference `wholesaling`, `new_construction`, and `contractor` as project type values. Here's what needs to be fixed:
 
 ---
 
-### Phase 2: Type System Cleanup
+### 1. ProjectAutocomplete.tsx - Remove old type groups
 
-**`src/types/index.ts`**
-- Remove `new_construction`, `wholesaling`, `contractor` from the `ProjectType` union (keep only `fix_flip` and `rental`)
-- Keep `wholesale_fee` in budget categories (user chose to keep it)
-- Remove `VendorTrade` entries for `general` (was contractor-specific) -- actually keep `general` as a catch-all trade
+Remove `new_construction`, `wholesaling`, and `contractor` from the `PROJECT_TYPE_GROUPS` array (lines 76-78), keeping only `fix_flip` and `rental`.
 
-**`src/types/task.ts`** -- check for any project type references
+### 2. DashboardPreferencesCard.tsx - Update filters and type list
 
----
+- Remove the 3 old types from `DEFAULT_FILTERS.types` (line 27)
+- Remove them from `PROJECT_TYPES` array (lines 34, 36-37)
 
-### Phase 3: New Project Modal
+### 3. Index.tsx (Dashboard) - Update default profit filters
 
-**`src/components/NewProjectModal.tsx`**
-- Change 5-column tab grid to 2-column: Fix & Flip and Rental only
-- Remove `Building2`, `Handshake`, `HardHat` icons/imports for removed types
-- Clean up placeholder text that references new construction, wholesaling, or contractor
+Remove the old types from the fallback `profitFilters.types` default (line 268). Change from `['fix_flip', 'rental', 'new_construction', 'wholesaling']` to `['fix_flip', 'rental']`.
 
----
+### 4. DocumentsGallery.tsx - Remove contractor-only gating
 
-### Phase 4: Projects Page
+The "Generate" dropdown (Scope of Work, Invoice, Receipt) and vendor fetching are gated behind `projectType === 'contractor'`. Since no projects will ever be `contractor` type again, these features will never appear. Two options:
+- **Make them available for all project types** (recommended -- these AI doc generation features are useful for flips/rentals too)
+- Or remove them entirely
 
-**`src/pages/Projects.tsx`**
-- Remove `new_construction`, `wholesaling`, `contractor` from `DEFAULT_TAB_ORDER`
-- Remove their entries from `TAB_CONFIG`
-- Remove unused icon imports (`Building2`, `Handshake`, `HardHat`)
+**Recommendation**: Make them available for all projects by removing the `projectType === 'contractor'` and `projectType !== 'contractor'` guards.
 
----
+### 5. No changes needed (label-only references)
 
-### Phase 5: Project Detail Page
-
-**`src/pages/ProjectDetail.tsx`**
-- Remove `ContractorFinancialsTab` import and usage
-- Remove `FieldTab`, `CostControlTab`, `DealTab` imports and their `TabsContent` blocks
-- Remove `CONTRACTOR_CORE_TABS` constant
-- Simplify `DEFAULT_DETAIL_TAB_ORDER_BY_TYPE` to only `fix_flip` and `rental`
-- Remove `CONTRACTOR_TAB_LABEL_OVERRIDES` and contractor-specific logic in `getTabLabel`
-- Remove tab labels for `deal`, `field`, `costcontrol`
-- Remove `contractor`/`wholesaling`/`new_construction` from `DBProject.project_type` union
+These files use "Contractor" as a **label for vendors/subcontractors** (not as a project type) and are correct to keep:
+- `Expenses.tsx`, `BusinessExpenses.tsx`, `ProjectBudget.tsx`, `ExportReports.tsx` -- CSV headers saying "Contractor" (meaning the vendor column)
+- `ProjectVendors.tsx` -- "Assign Contractor" UI
+- `StatDrilldownModal.tsx` -- "Top Contractors" section
+- `LoanPayments.tsx` -- "Lender / Contractor" label
+- `MobileBottomNav.tsx` -- "Contractors" nav item (the vendors page)
+- `pdfExport.ts` -- "Contractor Directory" doc type
+- `NewEventModal.tsx`, `TaskDetailPanel.tsx` -- placeholder text mentioning contractor names
 
 ---
 
-### Phase 6: Project Card
-
-**`src/components/dashboard/ProjectCard.tsx`**
-- Remove contractor-specific metrics (Contract Value, Gross Margin progress bar, Job P&L)
-- Remove wholesaling/new construction icon branches (`Building2`, `Handshake`, `HardHat`)
-- Simplify profit/label logic (remove `isContractor`, `isWholesaling`, `isNewConstruction` branches)
-
----
-
-### Phase 7: Budget Calculator
-
-**`src/pages/BudgetCalculator.tsx`**
-- Remove the Contractor tab from the analysis mode tabs
-- Remove `ContractorMarginGauge` import and usage
-- Keep only Sale and Rental modes
-
-**`src/components/budget/DealSidebar.tsx`**
-- Remove `contractor` from `CalculatorType`
-- Remove contractor-specific sidebar logic (hiding Purchase Price/SqFt fields)
-
-**`src/components/budget/ContractorMarginGauge.tsx`** -- can be deleted (unused after removal)
-
----
-
-### Phase 8: Remove Unused Components
-
-Delete these files that are exclusively for removed project types:
-- `src/components/project/ContractorFinancialsTab.tsx`
-- `src/components/project/CostControlTab.tsx`
-- `src/components/project/FieldTab.tsx`
-- `src/components/project/DealTab.tsx`
-- `src/components/budget/ContractorMarginGauge.tsx`
-
----
-
-### Phase 9: Supporting Files Cleanup
-
-- **`src/components/project/ProjectInfo.tsx`** -- Remove `CONTRACTOR_FIELDS` and `isContractor` branching; always use property info fields
-- **`src/components/settings/ManageSourcesCard.tsx`** -- Remove Job Info section referencing `CONTRACTOR_FIELDS`
-- **`src/components/layout/Sidebar.tsx`** -- Check for any contractor-specific labels
-- **`src/pages/Vendors.tsx`** -- UI labels say "Contractors" which is fine (industry term for vendors/subs)
-- **`src/pages/ProfitBreakdown.tsx`** -- Remove contractor profit logic branches
-- **`src/hooks/useProjectOptions.ts`** -- No change needed (generic query)
-- **`src/data/mockData.ts`** -- Remove any mock projects with removed types
-
----
-
-### What Stays Unchanged
-- "Contractors" page name (industry-standard term for vendors/subcontractors)
-- "Contractor" field labels on expense forms (refers to the vendor, not project type)
-- `wholesale_fee` budget category (user chose to keep)
-- All rental/BRRR analysis features
-- Loan tab, Lease tab, Cash Flow tab for rental projects
-
----
-
-### Estimated Scope
-- ~15 files modified
-- ~5 files deleted
-- 1 database data migration (convert existing projects)
-- No schema changes needed (the `project_type` column is a text field, not an enum)
-
+### Files to modify: 4
+- `src/components/ProjectAutocomplete.tsx`
+- `src/components/settings/DashboardPreferencesCard.tsx`
+- `src/pages/Index.tsx`
+- `src/components/project/DocumentsGallery.tsx`
