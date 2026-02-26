@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DollarSign, ChevronLeft, ChevronRight, ChevronDown, Calculator, Folder, Save, FolderOpen, Loader2, Ruler, Pencil, Check, Settings, ArrowUp, ArrowDown, HardHat, Wrench } from 'lucide-react';
+import { DollarSign, ChevronLeft, ChevronRight, ChevronDown, Calculator, Folder, Save, FolderOpen, Loader2, Ruler, Pencil, Check, Settings, ArrowUp, ArrowDown } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { arrayMove } from '@dnd-kit/sortable';
 import { Input } from '@/components/ui/input';
@@ -13,13 +13,12 @@ import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { RentalFields, type RentalFieldValues } from '@/components/budget/RentalFields';
 
-export type CalculatorType = 'fix_flip' | 'rental' | 'contractor';
+export type CalculatorType = 'fix_flip' | 'rental';
 
-const DEFAULT_CALC_TAB_ORDER: CalculatorType[] = ['fix_flip', 'rental', 'contractor'];
+const DEFAULT_CALC_TAB_ORDER: CalculatorType[] = ['fix_flip', 'rental'];
 const CALC_TAB_LABELS: Record<CalculatorType, string> = {
   fix_flip: 'Sale',
   rental: 'Rental',
-  contractor: 'Contractor',
 };
 
 type CostMode = 'pct' | 'flat';
@@ -38,13 +37,6 @@ interface DealSidebarProps {
   onArvChange: (value: string) => void;
   sqft: string;
   onSqftChange: (value: string) => void;
-  // Contractor-specific
-  laborCost: string;
-  onLaborCostChange: (value: string) => void;
-  materialCost: string;
-  onMaterialCostChange: (value: string) => void;
-  overheadPct: string;
-  onOverheadPctChange: (value: string) => void;
   budgetName: string;
   onBudgetNameChange: (value: string) => void;
   budgetDescription: string;
@@ -101,12 +93,6 @@ export function DealSidebar({
   onArvChange,
   sqft,
   onSqftChange,
-  laborCost,
-  onLaborCostChange,
-  materialCost,
-  onMaterialCostChange,
-  overheadPct,
-  onOverheadPctChange,
   budgetName,
   onBudgetNameChange,
   budgetDescription,
@@ -149,7 +135,12 @@ export function DealSidebar({
   const [calcTabOrder, setCalcTabOrder] = useState<CalculatorType[]>(() => {
     try {
       const saved = localStorage.getItem('budget-calculator-tab-order');
-      if (saved) return JSON.parse(saved) as CalculatorType[];
+      if (saved) {
+        const parsed = JSON.parse(saved) as string[];
+        // Filter out removed types
+        const valid = parsed.filter(t => t === 'fix_flip' || t === 'rental') as CalculatorType[];
+        if (valid.length > 0) return valid;
+      }
     } catch {}
     return DEFAULT_CALC_TAB_ORDER;
   });
@@ -161,14 +152,6 @@ export function DealSidebar({
 
   const purchasePriceNum = parseFloat(purchasePrice) || 0;
   const arvNum = parseFloat(arv) || 0;
-  const laborCostNum = parseFloat(laborCost) || 0;
-  const materialCostNum = parseFloat(materialCost) || 0;
-  const overheadPctNum = parseFloat(overheadPct) || 0;
-  const overheadAmount = arvNum * (overheadPctNum / 100);
-
-  // Labor / material split
-  const laborMaterialTotal = laborCostNum + materialCostNum;
-  const laborPct = laborMaterialTotal > 0 ? (laborCostNum / laborMaterialTotal) * 100 : 50;
 
   // Compute costs respecting mode
   const closingCostsBuy = closingMode === 'pct'
@@ -191,7 +174,6 @@ export function DealSidebar({
   };
 
   const showEstimatedCosts = calculatorType === 'fix_flip';
-  const isContractor = calculatorType === 'contractor';
 
   if (isCollapsed) {
     if (isMobile) {
@@ -222,7 +204,7 @@ export function DealSidebar({
         </Button>
         <div className="flex flex-col items-center gap-4 text-muted-foreground">
           <span title="Deal Parameters"><Calculator className="h-5 w-5" /></span>
-          {!isContractor && <span title="Square Footage"><Ruler className="h-5 w-5" /></span>}
+          <span title="Square Footage"><Ruler className="h-5 w-5" /></span>
           <span title="Saved Budgets"><Folder className="h-5 w-5" /></span>
         </div>
       </div>
@@ -293,28 +275,23 @@ export function DealSidebar({
 
           {/* Deal Inputs */}
           <div className="space-y-4">
-            {/* Purchase Price — hidden in contractor mode */}
-            {!isContractor && (
-              <div className="space-y-2">
-                <Label htmlFor="purchasePrice" className="text-xs">Purchase Price</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="purchasePrice"
-                    type="number"
-                    placeholder="0"
-                    className="pl-8 font-mono"
-                    value={purchasePrice}
-                    onChange={(e) => onPurchasePriceChange(e.target.value)}
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="purchasePrice" className="text-xs">Purchase Price</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="purchasePrice"
+                  type="number"
+                  placeholder="0"
+                  className="pl-8 font-mono"
+                  value={purchasePrice}
+                  onChange={(e) => onPurchasePriceChange(e.target.value)}
+                />
               </div>
-            )}
+            </div>
 
             <div className="space-y-2">
-              <Label htmlFor="arv" className="text-xs">
-                {isContractor ? 'Contract Value' : 'After Repair Value (ARV)'}
-              </Label>
+              <Label htmlFor="arv" className="text-xs">After Repair Value (ARV)</Label>
               <div className="relative">
                 <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -328,308 +305,197 @@ export function DealSidebar({
               </div>
             </div>
 
-            {/* Square Footage — hidden in contractor mode */}
-            {!isContractor && (
-              <div className="space-y-2">
-                <Label htmlFor="sqft" className="text-xs">Square Footage</Label>
-                <Input
-                  id="sqft"
-                  type="number"
-                  placeholder="1500"
-                  className="font-mono"
-                  value={sqft}
-                  onChange={(e) => onSqftChange(e.target.value)}
-                />
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="sqft" className="text-xs">Square Footage</Label>
+              <Input
+                id="sqft"
+                type="number"
+                placeholder="1500"
+                className="font-mono"
+                value={sqft}
+                onChange={(e) => onSqftChange(e.target.value)}
+              />
+            </div>
           </div>
 
-          {/* Contractor-specific fields */}
-          {isContractor && (
-            <>
-              <Separator />
-              {/* Job Breakdown */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-1.5">
-                  <HardHat className="h-3.5 w-3.5 text-muted-foreground" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Job Breakdown
-                  </h4>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="laborCost" className="text-xs">Labor Cost</Label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="laborCost"
-                        type="number"
-                        placeholder="0"
-                        className="pl-8 font-mono"
-                        value={laborCost}
-                        onChange={(e) => onLaborCostChange(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="materialCost" className="text-xs">Material Cost</Label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="materialCost"
-                        type="number"
-                        placeholder="0"
-                        className="pl-8 font-mono"
-                        value={materialCost}
-                        onChange={(e) => onMaterialCostChange(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Labor / Material Split Bar */}
-                  {laborMaterialTotal > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <span className="inline-block w-2 h-2 rounded-sm bg-primary/70" />
-                          Labor {laborPct.toFixed(0)}%
-                        </span>
-                        <span className="flex items-center gap-1">
-                          Material {(100 - laborPct).toFixed(0)}%
-                          <span className="inline-block w-2 h-2 rounded-sm bg-muted-foreground/40" />
-                        </span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden flex">
-                        <div
-                          className="h-full bg-primary/70 transition-all duration-300"
-                          style={{ width: `${laborPct}%` }}
-                        />
-                        <div className="h-full flex-1 bg-muted-foreground/20" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Overhead */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-1.5">
-                  <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Overhead
-                  </h4>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="overheadPct" className="text-xs">Overhead %</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="overheadPct"
-                      type="number"
-                      placeholder="10"
-                      className="font-mono"
-                      value={overheadPct}
-                      onChange={(e) => onOverheadPctChange(e.target.value)}
-                    />
-                    <span className="text-sm text-muted-foreground shrink-0">%</span>
-                  </div>
-                  {arvNum > 0 && overheadPctNum > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      = <span className="font-mono font-medium text-foreground">{formatCurrency(overheadAmount)}</span> of contract
-                    </p>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-
           {/* Quick Estimates - Fix & Flip only */}
-          {showEstimatedCosts && (purchasePriceNum > 0 || arvNum > 0) && (
+          {showEstimatedCosts && (
             <>
               <Separator />
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Estimated Costs
-                    </h4>
-                    {!isEditingCosts && (
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingCosts(true)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                        title="Edit cost percentages"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </button>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                    Estimated Costs
+                  </h4>
+                  <button
+                    onClick={() => setIsEditingCosts(!isEditingCosts)}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {isEditingCosts ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+
+                {isEditingCosts ? (
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1">
+                        <Label className="text-xs">Buy Closing Costs</Label>
+                        <ModeToggle mode={closingMode} onChange={onClosingModeChange} />
+                      </div>
+                      <Input
+                        type="number"
+                        className="font-mono h-8"
+                        value={closingMode === 'pct' ? closingPct : closingFlat}
+                        onChange={(e) => closingMode === 'pct' ? onClosingPctChange(e.target.value) : onClosingFlatChange(e.target.value)}
+                        placeholder={closingMode === 'pct' ? '2' : '0'}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1">
+                        <Label className="text-xs">Holding Costs</Label>
+                        <ModeToggle mode={holdingMode} onChange={onHoldingModeChange} />
+                      </div>
+                      <Input
+                        type="number"
+                        className="font-mono h-8"
+                        value={holdingMode === 'pct' ? holdingPct : holdingFlat}
+                        onChange={(e) => holdingMode === 'pct' ? onHoldingPctChange(e.target.value) : onHoldingFlatChange(e.target.value)}
+                        placeholder={holdingMode === 'pct' ? '3' : '0'}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <Label className="text-xs">Sell Closing Costs</Label>
+                          <ModeToggle mode={sellClosingMode} onChange={onSellClosingModeChange} />
+                        </div>
+                        <Switch
+                          checked={includeSellClosingCosts}
+                          onCheckedChange={onSellClosingCostsChange}
+                        />
+                      </div>
+                      {includeSellClosingCosts && (
+                        <Input
+                          type="number"
+                          className="font-mono h-8"
+                          value={sellClosingMode === 'pct' ? sellClosingPct : sellClosingFlat}
+                          onChange={(e) => sellClosingMode === 'pct' ? onSellClosingPctChange(e.target.value) : onSellClosingFlatChange(e.target.value)}
+                          placeholder={sellClosingMode === 'pct' ? '6' : '0'}
+                        />
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{costLabel('Buy Closing', closingMode, closingPct)}</span>
+                      <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{costLabel('Holding', holdingMode, holdingPct)}</span>
+                      <span className="font-mono">{formatCurrency(holdingCosts)}</span>
+                    </div>
+                    {includeSellClosingCosts && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{costLabel('Sell Closing', sellClosingMode, sellClosingPct)}</span>
+                        <span className="font-mono">{formatCurrency(closingCostsSell)}</span>
+                      </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="sell-closing-toggle" className="text-xs text-muted-foreground">
-                      Include Exit Costs
-                    </Label>
-                    <Switch
-                      id="sell-closing-toggle"
-                      checked={includeSellClosingCosts}
-                      onCheckedChange={onSellClosingCostsChange}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5 text-sm">
-                  {isEditingCosts ? (
-                    <>
-                      {/* Closing Buy */}
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground text-xs flex items-center">
-                          Closing (Buy)
-                          <ModeToggle mode={closingMode} onChange={onClosingModeChange} />
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            value={closingMode === 'pct' ? closingPct : closingFlat}
-                            onChange={(e) => closingMode === 'pct' ? onClosingPctChange(e.target.value) : onClosingFlatChange(e.target.value)}
-                            className="w-16 h-6 text-xs font-mono text-right rounded border border-input bg-background px-1.5"
-                          />
-                          <span className="text-xs text-muted-foreground w-3">{closingMode === 'pct' ? '%' : '$'}</span>
-                        </div>
-                      </div>
-                      {/* Holding */}
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground text-xs flex items-center">
-                          Holding
-                          <ModeToggle mode={holdingMode} onChange={onHoldingModeChange} />
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            value={holdingMode === 'pct' ? holdingPct : holdingFlat}
-                            onChange={(e) => holdingMode === 'pct' ? onHoldingPctChange(e.target.value) : onHoldingFlatChange(e.target.value)}
-                            className="w-16 h-6 text-xs font-mono text-right rounded border border-input bg-background px-1.5"
-                          />
-                          <span className="text-xs text-muted-foreground w-3">{holdingMode === 'pct' ? '%' : '$'}</span>
-                        </div>
-                      </div>
-                      {/* Closing Sell */}
-                      {includeSellClosingCosts && (
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground text-xs flex items-center">
-                            Closing (Sell)
-                            <ModeToggle mode={sellClosingMode} onChange={onSellClosingModeChange} />
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              value={sellClosingMode === 'pct' ? sellClosingPct : sellClosingFlat}
-                              onChange={(e) => sellClosingMode === 'pct' ? onSellClosingPctChange(e.target.value) : onSellClosingFlatChange(e.target.value)}
-                              className="w-16 h-6 text-xs font-mono text-right rounded border border-input bg-background px-1.5"
-                            />
-                            <span className="text-xs text-muted-foreground w-3">{sellClosingMode === 'pct' ? '%' : '$'}</span>
-                          </div>
-                        </div>
-                      )}
-                      <Button variant="ghost" size="sm" className="w-full h-6 text-xs mt-1" onClick={() => setIsEditingCosts(false)}>
-                        <Check className="h-3 w-3 mr-1" /> Done
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">{costLabel('Closing (Buy)', closingMode, closingPct)}</span>
-                        <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">{costLabel('Holding', holdingMode, holdingPct)}</span>
-                        <span className="font-mono">{formatCurrency(holdingCosts)}</span>
-                      </div>
-                    </>
-                  )}
-                  {includeSellClosingCosts && !isEditingCosts && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{costLabel('Closing (Sell)', sellClosingMode, sellClosingPct)}</span>
-                      <span className="font-mono">{formatCurrency(closingCostsSell)}</span>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </>
           )}
 
-          {/* Rental-specific fields */}
+          {/* Rental Fields */}
           {calculatorType === 'rental' && (
-            <RentalFields values={rentalFields} onChange={onRentalFieldChange} arv={arvNum} purchasePrice={purchasePriceNum} />
+            <>
+              <Separator />
+              <RentalFields
+                values={rentalFields}
+                onChange={onRentalFieldChange}
+              />
+            </>
           )}
 
           <Separator />
 
-          {/* Save/Apply Actions */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="budgetName" className="text-xs">Budget Name *</Label>
-              <Input
-                id="budgetName"
-                placeholder="e.g., 123 Main St Budget"
-                value={budgetName}
-                onChange={(e) => onBudgetNameChange(e.target.value)}
-              />
-            </div>
+          {/* Save / Apply */}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="save" className="text-xs gap-1">
+                <Save className="h-3 w-3" />
+                Save
+              </TabsTrigger>
+              <TabsTrigger value="apply" className="text-xs gap-1">
+                <FolderOpen className="h-3 w-3" />
+                Apply
+              </TabsTrigger>
+            </TabsList>
 
-            <div className="space-y-2">
-              <Label htmlFor="budgetDescription" className="text-xs">Description</Label>
-              <Textarea
-                id="budgetDescription"
-                placeholder="Optional notes..."
-                value={budgetDescription}
-                onChange={(e) => onBudgetDescriptionChange(e.target.value)}
-                className="h-16 resize-none"
-              />
-            </div>
+            <TabsContent value="save" className="space-y-3 mt-3">
+              <div className="space-y-2">
+                <Label htmlFor="budgetName" className="text-xs">Budget Name</Label>
+                <Input
+                  id="budgetName"
+                  placeholder="e.g. Standard 3/2 Flip"
+                  value={budgetName}
+                  onChange={(e) => onBudgetNameChange(e.target.value)}
+                />
+              </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="save" className="text-xs">
-                  <Save className="h-3 w-3 mr-1" />
-                  Save
-                </TabsTrigger>
-                <TabsTrigger value="apply" className="text-xs">
-                  <FolderOpen className="h-3 w-3 mr-1" />
-                  Apply
-                </TabsTrigger>
-              </TabsList>
+              <div className="space-y-2">
+                <Label htmlFor="budgetDesc" className="text-xs">Description (optional)</Label>
+                <Textarea
+                  id="budgetDesc"
+                  placeholder="Notes about this budget..."
+                  className="min-h-[60px] resize-none"
+                  value={budgetDescription}
+                  onChange={(e) => onBudgetDescriptionChange(e.target.value)}
+                />
+              </div>
 
-              <TabsContent value="save" className="mt-3">
-                <Button 
-                  className="w-full" 
-                  onClick={onSave}
-                  disabled={isSaving || !budgetName.trim()}
-                >
-                  {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Save to Folder
-                </Button>
-              </TabsContent>
+              <Button
+                onClick={onSave}
+                className="w-full gap-2"
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Save Budget
+              </Button>
+            </TabsContent>
 
-              <TabsContent value="apply" className="mt-3 space-y-3">
+            <TabsContent value="apply" className="space-y-3 mt-3">
+              <div className="space-y-2">
+                <Label className="text-xs">Select Project</Label>
                 <ProjectAutocomplete
                   projects={projects}
                   value={selectedProject}
-                  onSelect={setSelectedProject}
-                  placeholder={isLoadingProjects ? "Loading..." : "Select project..."}
+                  onChange={setSelectedProject}
+                  isLoading={isLoadingProjects}
                 />
-                <Button 
-                  className="w-full"
-                  onClick={() => onApplyToProject(selectedProject)}
-                  disabled={isSaving || !selectedProject}
-                >
-                  {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Apply to Project
-                </Button>
-              </TabsContent>
-            </Tabs>
-          </div>
+              </div>
+
+              <Button
+                onClick={() => onApplyToProject(selectedProject)}
+                className="w-full gap-2"
+                disabled={!selectedProject || isSaving}
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FolderOpen className="h-4 w-4" />
+                )}
+                Apply to Project
+              </Button>
+            </TabsContent>
+          </Tabs>
         </div>
       </ScrollArea>
     </div>
