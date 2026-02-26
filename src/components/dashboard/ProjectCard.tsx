@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { calcAnnualCashFlow } from '@/lib/rentalCashFlow';
 
 interface ProjectCardProps {
   project: Project;
@@ -139,56 +140,58 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
           </div>
         )}
 
-        {isRental && (() => {
-          const rent = project.monthlyRent || 0;
-          const vacancy = project.vacancyRate ?? 8;
-          const grossIncome = rent - rent * (vacancy / 100);
-          
-          const loanAmt = project.loanAmount || 0;
-          const rate = (project.interestRate || 0) / 100 / 12;
-          const nPay = Math.round((project.loanTermYears ?? 30) * 12);
-          let mortgage = 0;
-          if (loanAmt > 0 && rate > 0 && nPay > 0) {
-            mortgage = loanAmt * (rate * Math.pow(1 + rate, nPay)) / (Math.pow(1 + rate, nPay) - 1);
-          }
-          
-          const monthlyTaxes = (project.annualPropertyTaxes || 0) / 12;
-          const monthlyIns = (project.annualInsurance || 0) / 12;
-          const monthlyHoa = (project.annualHoa || 0) / 12;
-          const maint = project.monthlyMaintenance || 0;
-          const mgmt = rent * ((project.managementRate ?? 10) / 100);
-          const expenses = monthlyTaxes + monthlyIns + monthlyHoa + maint + mgmt;
-          
-          const monthlyCF = grossIncome - mortgage - expenses;
-          const annualCashFlow = monthlyCF * 12;
-          const hasData = rent > 0;
-          
-          return (
-            <div className="mb-4 p-3 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground">Annual Cash Flow</p>
-              <p className={cn('font-mono font-semibold text-lg', annualCashFlow < 0 ? 'text-destructive' : annualCashFlow > 0 ? 'text-success' : '')}>
-                {hasData ? formatCurrency(annualCashFlow) : '—'}
-              </p>
-            </div>
-          );
-        })()}
+        {isRental && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2">
+            <Calendar className="h-3.5 w-3.5" />
+            <span>{project.completedDate ? formatDate(project.completedDate) : formatDate(project.startDate)}</span>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-          <div>
-            <p className="text-xs text-muted-foreground">{isRental ? 'Equity Gain' : 'Profit'}</p>
-            <p className={cn('font-mono font-semibold',
-              !hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success'
-            )}>
-              {hasProfit ? formatCurrency(profit) : '—'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{project.completedDate ? 'Completed' : 'Start Date'}</p>
-            <div className="flex items-center gap-1 text-sm">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>{project.completedDate ? formatDate(project.completedDate) : formatDate(project.startDate)}</span>
-            </div>
-          </div>
+          {isRental ? (
+            <>
+              <div>
+                <p className="text-xs text-muted-foreground">Cash Flow</p>
+                {(() => {
+                  const annualCF = calcAnnualCashFlow(project);
+                  const hasData = (project.monthlyRent || 0) > 0;
+                  return (
+                    <p className={cn('font-mono font-semibold',
+                      !hasData ? '' : annualCF < 0 ? 'text-destructive' : 'text-success'
+                    )}>
+                      {hasData ? `${formatCurrency(annualCF)}/yr` : '—'}
+                    </p>
+                  );
+                })()}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Equity</p>
+                <p className={cn('font-mono font-semibold',
+                  !hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success'
+                )}>
+                  {hasProfit ? formatCurrency(profit) : '—'}
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <p className="text-xs text-muted-foreground">Profit</p>
+                <p className={cn('font-mono font-semibold',
+                  !hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success'
+                )}>
+                  {hasProfit ? formatCurrency(profit) : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{project.completedDate ? 'Completed' : 'Start Date'}</p>
+                <div className="flex items-center gap-1 text-sm">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>{project.completedDate ? formatDate(project.completedDate) : formatDate(project.startDate)}</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

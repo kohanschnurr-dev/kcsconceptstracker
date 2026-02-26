@@ -9,6 +9,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFoo
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { resolveTimeline, isDateInRange, type TimelinePreset } from '@/lib/timelineFilter';
+import { calcAnnualCashFlow } from '@/lib/rentalCashFlow';
 
 type StatusFilter = 'all' | 'active' | 'complete';
 
@@ -55,6 +56,8 @@ interface ProjectProfit {
   status: string;
   projectType: string;
   startDate?: string;
+  isRental: boolean;
+  annualCashFlow: number;
 }
 
 interface UnconfiguredProject {
@@ -211,10 +214,25 @@ export default function ProfitBreakdown() {
 
         const profit = arv - purchasePrice - costBasis - transactionCosts - holdingCosts;
 
+        const isRental = p.project_type === 'rental';
+        const annualCashFlow = isRental ? calcAnnualCashFlow({
+          monthlyRent: p.monthly_rent ?? undefined,
+          vacancyRate: p.vacancy_rate ?? undefined,
+          loanAmount: p.loan_amount ?? undefined,
+          interestRate: p.interest_rate ?? undefined,
+          loanTermYears: p.loan_term_years ?? undefined,
+          annualPropertyTaxes: p.annual_property_taxes ?? undefined,
+          annualInsurance: p.annual_insurance ?? undefined,
+          annualHoa: p.annual_hoa ?? undefined,
+          monthlyMaintenance: p.monthly_maintenance ?? undefined,
+          managementRate: p.management_rate ?? undefined,
+        }) : 0;
+
         configuredList.push({
           id: p.id, name: p.name, arv, purchasePrice, plannedBudget, actualSpent: constructionSpent,
           costBasis, costSource, loanCosts, monthlyCosts, transactionCosts, holdingCosts,
           profit, status: p.status, projectType: p.project_type, startDate: p.start_date,
+          isRental, annualCashFlow,
         });
       });
 
@@ -270,6 +288,7 @@ export default function ProfitBreakdown() {
   const totalMonthly = filteredConfigured.reduce((s, p) => s + p.monthlyCosts, 0);
   const totalTransaction = filteredConfigured.reduce((s, p) => s + p.transactionCosts, 0);
   const totalHolding = filteredConfigured.reduce((s, p) => s + p.holdingCosts, 0);
+  const totalCashFlow = filteredConfigured.reduce((s, p) => s + p.annualCashFlow, 0);
 
   if (isLoading) {
     return (
@@ -356,7 +375,8 @@ export default function ProfitBreakdown() {
                 </TableHead>
                 <TableHead className="text-center">Transaction Costs</TableHead>
                 <TableHead className="text-center">Holding Costs</TableHead>
-                <TableHead className="text-center">Profit</TableHead>
+                <TableHead className="text-center">Profit / Equity</TableHead>
+                <TableHead className="text-center">Cash Flow</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -376,6 +396,15 @@ export default function ProfitBreakdown() {
                   <TableCell className={`text-center font-semibold ${p.profit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
                     {fmt(p.profit)}
                   </TableCell>
+                  <TableCell className="text-center font-semibold">
+                    {p.isRental ? (
+                      <span className={p.annualCashFlow >= 0 ? 'text-emerald-500' : 'text-destructive'}>
+                        {fmt(p.annualCashFlow)}/yr
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -389,6 +418,9 @@ export default function ProfitBreakdown() {
                 <TableCell className="text-center font-semibold">{fmt(totalHolding)}</TableCell>
                 <TableCell className={`text-center font-bold ${totalProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
                   {fmt(totalProfit)}
+                </TableCell>
+                <TableCell className={`text-center font-bold ${totalCashFlow >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
+                  {fmt(totalCashFlow)}/yr
                 </TableCell>
               </TableRow>
             </TableFooter>
