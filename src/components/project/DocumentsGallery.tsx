@@ -299,7 +299,6 @@ export function DocumentsGallery({ projectId, projectType, projectName = '', pro
   };
 
   const fetchProjectVendors = async () => {
-    if (projectType !== 'contractor') return;
     const { data } = await supabase
       .from('project_vendors')
       .select('vendor_id, vendors(*)')
@@ -696,31 +695,29 @@ export function DocumentsGallery({ projectId, projectType, projectName = '', pro
 
             {/* Right side: icon-only on mobile, text on desktop */}
             <div className="flex items-center gap-1.5 shrink-0">
-              {/* Generate dropdown — contractor projects only */}
-              {projectType === 'contractor' && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline" className="px-2 sm:px-3 gap-1.5">
-                      <Sparkles className="h-4 w-4" />
-                      <span className="hidden sm:inline">Generate</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setSowOpen(true)} className="gap-2">
-                      <FileText className="h-4 w-4" />
-                      Scope of Work
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setInvoiceOpen(true)} className="gap-2">
-                      <FileText className="h-4 w-4" />
-                      Invoice
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setReceiptOpen(true)} className="gap-2">
-                      <Receipt className="h-4 w-4" />
-                      Receipt
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+              {/* Generate dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="px-2 sm:px-3 gap-1.5">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="hidden sm:inline">Generate</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSowOpen(true)} className="gap-2">
+                    <FileText className="h-4 w-4" />
+                    Scope of Work
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setInvoiceOpen(true)} className="gap-2">
+                    <FileText className="h-4 w-4" />
+                    Invoice
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setReceiptOpen(true)} className="gap-2">
+                    <Receipt className="h-4 w-4" />
+                    Receipt
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button size="sm" variant="outline" onClick={() => setFolderModalOpen(true)} className="px-2 sm:px-3">
                 <FolderPlus className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">Folder</span>

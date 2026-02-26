@@ -73,9 +73,6 @@ export function ProjectAutocomplete({
   const PROJECT_TYPE_GROUPS: { type: string; label: string }[] = [
     { type: 'fix_flip', label: 'Fix & Flips' },
     { type: 'rental', label: 'Rentals' },
-    { type: 'new_construction', label: 'New Builds' },
-    { type: 'wholesaling', label: 'Wholesaling' },
-    { type: 'contractor', label: 'Contractor' },
   ];
 
   const groupedProjects = useMemo(() => {

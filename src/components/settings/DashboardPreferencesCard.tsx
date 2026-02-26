@@ -24,17 +24,14 @@ interface ProfitFilters {
 }
 
 const DEFAULT_FILTERS: ProfitFilters = {
-  types: ['fix_flip', 'rental', 'new_construction', 'wholesaling', 'contractor'],
+  types: ['fix_flip', 'rental'],
   statuses: ['active'],
   timeline: 'all',
 };
 
 const PROJECT_TYPES = [
   { value: 'fix_flip', label: 'Fix & Flip' },
-  { value: 'wholesaling', label: 'Wholesaling' },
   { value: 'rental', label: 'Rental' },
-  { value: 'new_construction', label: 'New Construction' },
-  { value: 'contractor', label: 'Contractor' },
 ];
 
 const PROJECT_STATUSES = [
