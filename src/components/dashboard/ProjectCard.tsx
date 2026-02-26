@@ -1,4 +1,4 @@
-import { MapPin, Calendar, Home, Hammer, Building2, Handshake, Star, HardHat } from 'lucide-react';
+import { MapPin, Calendar, Home, Hammer, Star } from 'lucide-react';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -15,23 +15,8 @@ interface ProjectCardProps {
 export function ProjectCard({ project, onClick, isStarred, onToggleStar }: ProjectCardProps) {
   const totalSpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
   const isRental = project.projectType === 'rental';
-  const isNewConstruction = project.projectType === 'new_construction';
-  const isWholesaling = project.projectType === 'wholesaling';
-  const isContractor = project.projectType === 'contractor';
-  const showBudgetProgress = !isRental && !isContractor && project.totalBudget > 0;
+  const showBudgetProgress = !isRental && project.totalBudget > 0;
   const percentSpent = showBudgetProgress ? (totalSpent / project.totalBudget) * 100 : 0;
-
-  const contractValue = isContractor ? (project.purchasePrice || 0) : 0;
-  const contractorCostBasis = isContractor
-    ? (project.status === 'complete'
-        ? totalSpent
-        : (project.totalBudget > 0 ? Math.max(project.totalBudget, totalSpent) : totalSpent))
-    : 0;
-  const contractorGrossProfit = contractValue - contractorCostBasis;
-  const contractorHasData = isContractor && contractValue > 0;
-  const grossMarginPct = contractorHasData && contractorCostBasis > 0
-    ? (contractorGrossProfit / contractValue) * 100
-    : 0;
 
   const arv = project.arv || 0;
   const purchasePrice = project.purchasePrice || 0;
@@ -110,14 +95,8 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
                   <Star className={cn('h-4 w-4', isStarred ? 'fill-warning text-warning' : 'text-muted-foreground')} />
                 </button>
               )}
-              {isNewConstruction ? (
-                <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-              ) : isRental ? (
+              {isRental ? (
                 <Home className="h-4 w-4 text-muted-foreground shrink-0" />
-              ) : isWholesaling ? (
-                <Handshake className="h-4 w-4 text-muted-foreground shrink-0" />
-              ) : isContractor ? (
-                <HardHat className="h-4 w-4 text-muted-foreground shrink-0" />
               ) : (
                 <Hammer className="h-4 w-4 text-muted-foreground shrink-0" />
               )}
@@ -194,57 +173,13 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
           );
         })()}
 
-        {isContractor && (
-          <div className="space-y-3 mb-4">
-            {/* Contract Value highlight */}
-            <div className="p-3 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Contract Value</p>
-              <p className="font-mono font-semibold text-lg text-primary">
-                {contractorHasData ? formatCurrency(contractValue) : '—'}
-              </p>
-            </div>
-
-            {/* Gross Margin progress bar */}
-            {contractorHasData && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Gross Margin</span>
-                  <span className={cn('font-mono font-medium',
-                    grossMarginPct >= 20 ? 'text-success' :
-                    grossMarginPct >= 10 ? 'text-warning' : 'text-destructive'
-                  )}>
-                    {grossMarginPct.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="progress-bar">
-                  <div
-                    className={cn('progress-fill',
-                      grossMarginPct >= 20 ? 'bg-success' :
-                      grossMarginPct >= 10 ? 'bg-warning' : 'bg-destructive'
-                    )}
-                    style={{ width: `${Math.min(Math.max(grossMarginPct, 0), 100)}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{formatCurrency(contractorGrossProfit)} gross profit</span>
-                  <span>{formatCurrency(contractorCostBasis)} job cost</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
           <div>
-            <p className="text-xs text-muted-foreground">{isContractor ? 'Gross Profit' : isRental ? 'Equity Gain' : 'Profit'}</p>
+            <p className="text-xs text-muted-foreground">{isRental ? 'Equity Gain' : 'Profit'}</p>
             <p className={cn('font-mono font-semibold',
-              isContractor
-                ? (contractorHasData ? (contractorGrossProfit < 0 ? 'text-destructive' : 'text-success') : '')
-                : (!hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success')
+              !hasProfit ? '' : profit < 0 ? 'text-destructive' : 'text-success'
             )}>
-              {isContractor
-                ? (contractorHasData ? formatCurrency(contractorGrossProfit) : '—')
-                : (hasProfit ? formatCurrency(profit) : '—')}
+              {hasProfit ? formatCurrency(profit) : '—'}
             </p>
           </div>
           <div>

@@ -10,7 +10,7 @@ import { NewProjectModal } from '@/components/NewProjectModal';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { Project, CategoryBudget, Expense } from '@/types';
+import type { Project, CategoryBudget, Expense, ProjectType } from '@/types';
 import { startOfMonth, isAfter } from 'date-fns';
 import { resolveTimeline, isDateInRange, type TimelinePreset } from '@/lib/timelineFilter';
 
@@ -161,7 +161,7 @@ export default function Index() {
           totalBudget: calculatedTotalBudget,
           startDate: p.start_date,
           status: p.status === 'on_hold' ? 'on-hold' : p.status as 'active' | 'complete',
-          projectType: p.project_type as 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling',
+          projectType: (p.project_type || 'fix_flip') as ProjectType,
           categories: projectCategories,
           coverPhotoPath: p.cover_photo_path || undefined,
           coverPhotoPosition: p.cover_photo_position || undefined,

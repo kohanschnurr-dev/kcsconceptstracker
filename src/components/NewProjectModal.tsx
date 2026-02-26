@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, MapPin, DollarSign, Calendar as CalendarIcon, Hammer, Handshake, HardHat, CopyCheck, Calculator } from 'lucide-react';
+import { Building2, MapPin, DollarSign, Calendar as CalendarIcon, Hammer, CopyCheck, Calculator, Home } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   Dialog,
@@ -191,25 +191,14 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
           <div className="space-y-2">
             <Label>Project Type</Label>
             <Tabs value={projectType} onValueChange={(v) => setProjectType(v as ProjectType)}>
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="fix_flip" className="gap-1 text-xs">
                   <Hammer className="h-4 w-4" />
-                  <span className="hidden sm:inline">Fix & Flip</span>
+                  Fix & Flip
                 </TabsTrigger>
                 <TabsTrigger value="rental" className="gap-1 text-xs">
-                  <span className="hidden sm:inline">Rental</span>
-                </TabsTrigger>
-                <TabsTrigger value="new_construction" className="gap-1 text-xs">
-                  <Building2 className="h-4 w-4" />
-                  <span className="hidden sm:inline">New Build</span>
-                </TabsTrigger>
-                <TabsTrigger value="wholesaling" className="gap-1 text-xs">
-                  <Handshake className="h-4 w-4" />
-                  <span className="hidden sm:inline">Wholesale</span>
-                </TabsTrigger>
-                <TabsTrigger value="contractor" className="gap-1 text-xs">
-                  <HardHat className="h-4 w-4" />
-                  <span className="hidden sm:inline">Contractor</span>
+                  <Home className="h-4 w-4" />
+                  Rental
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -244,15 +233,9 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
             </div>
             <Input
               placeholder={
-                projectType === 'new_construction' 
-                  ? "Lot 45 Custom Home, Lakeside Estates..." 
-                  : projectType === 'fix_flip' 
-                    ? "Oak Cliff Flip, Downtown Bungalow..." 
-                    : projectType === 'wholesaling'
-                      ? "123 Main St Contract, Quick Assignment..."
-                      : projectType === 'contractor'
-                        ? "Smith Kitchen Remodel, Commercial TI..."
-                        : "Rental Property 1, Main St Duplex..."
+                projectType === 'fix_flip' 
+                  ? "Oak Cliff Flip, Downtown Bungalow..." 
+                  : "Rental Property 1, Main St Duplex..."
               }
               value={name}
               onChange={(e) => setName(e.target.value)}

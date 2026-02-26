@@ -89,7 +89,6 @@ import { DocumentsGallery } from '@/components/project/DocumentsGallery';
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { CashFlowCalculator } from '@/components/project/CashFlowCalculator';
 import { HardMoneyLoanCalculator } from '@/components/project/HardMoneyLoanCalculator';
-import { ContractorFinancialsTab } from '@/components/project/ContractorFinancialsTab';
 
 import { ProjectCalendar } from '@/components/project/ProjectCalendar';
 import { ProjectTasks } from '@/components/project/ProjectTasks';
@@ -101,11 +100,8 @@ import { PendingBudgetBanner } from '@/components/project/PendingBudgetBanner';
 import { PendingBudgetDialog } from '@/components/project/PendingBudgetDialog';
 import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
-import { FieldTab } from '@/components/project/FieldTab';
-import { CostControlTab } from '@/components/project/CostControlTab';
 import { ProjectReport } from '@/components/project/ProjectReport';
 import { LeaseTab } from '@/components/project/LeaseTab';
-import { DealTab } from '@/components/project/DealTab';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
 import { Input } from '@/components/ui/input';
@@ -115,7 +111,7 @@ interface DBProject {
   name: string;
   address: string;
   status: 'active' | 'complete' | 'on_hold';
-  project_type: 'fix_flip' | 'rental' | 'new_construction' | 'wholesaling' | 'contractor';
+  project_type: 'fix_flip' | 'rental';
   total_budget: number;
   start_date: string;
   purchase_price?: number;
@@ -168,14 +164,10 @@ interface DBDailyLog {
 }
 
 const CORE_TABS = ['schedule', 'tasks', 'financials', 'documents', 'team', 'info', 'photos', 'logs', 'procurement'];
-const CONTRACTOR_CORE_TABS = ['schedule', 'tasks', 'financials', 'documents', 'info', 'photos', 'logs', 'procurement'];
 
 const DEFAULT_DETAIL_TAB_ORDER_BY_TYPE: Record<string, string[]> = {
   fix_flip: [...CORE_TABS, 'loan'],
   rental: [...CORE_TABS, 'loan', 'lease', 'cashflow'],
-  wholesaling: [...CORE_TABS, 'loan', 'deal'],
-  new_construction: [...CORE_TABS, 'loan', 'field', 'costcontrol'],
-  contractor: [...CONTRACTOR_CORE_TABS, 'field', 'costcontrol'],
 };
 
 const DEFAULT_DETAIL_TAB_ORDER = DEFAULT_DETAIL_TAB_ORDER_BY_TYPE['fix_flip'];
@@ -193,20 +185,9 @@ const TAB_LABELS: Record<string, string> = {
   info: 'Info',
   procurement: 'Procurement',
   lease: 'Lease',
-  deal: 'Deal',
-  field: 'Field',
-  costcontrol: 'Cost Control',
 };
 
-const CONTRACTOR_TAB_LABEL_OVERRIDES: Record<string, string> = {
-  financials: 'Job P&L',
-  info: 'Job Info',
-};
-
-function getTabLabel(tab: string, projectType?: string): string {
-  if (projectType === 'contractor' && CONTRACTOR_TAB_LABEL_OVERRIDES[tab]) {
-    return CONTRACTOR_TAB_LABEL_OVERRIDES[tab];
-  }
+function getTabLabel(tab: string): string {
   return TAB_LABELS[tab] ?? tab;
 }
 
@@ -372,7 +353,7 @@ export default function ProjectDetail() {
       return;
     }
     
-    setProject(projectData);
+    setProject(projectData as DBProject);
     
     const [categoriesRes, expensesRes, qbExpensesRes, logsRes, procurementRes] = await Promise.all([
       supabase.from('project_categories').select('*').eq('project_id', id),
@@ -1080,7 +1061,7 @@ export default function ProjectDetail() {
                     value={tab}
                     className="shrink-0 rounded-none border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground bg-transparent"
                   >
-                    {getTabLabel(tab, project.project_type)}
+                    {getTabLabel(tab)}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -1097,7 +1078,7 @@ export default function ProjectDetail() {
                   <DndContext sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
                     <SortableContext items={effectiveTabOrder} strategy={verticalListSortingStrategy}>
                       {effectiveTabOrder.map((tab) => (
-                        <SortableTabItem key={tab} id={tab} label={getTabLabel(tab, project.project_type)} />
+                        <SortableTabItem key={tab} id={tab} label={getTabLabel(tab)} />
                       ))}
                     </SortableContext>
                   </DndContext>
@@ -1137,23 +1118,6 @@ export default function ProjectDetail() {
           </TabsContent>
 
           <TabsContent value="financials" className="space-y-6">
-            {project.project_type === 'contractor' ? (
-              <ContractorFinancialsTab
-                projectId={id!}
-                totalSpent={constructionSpent}
-                totalBudget={totalBudget}
-                categories={categories}
-                expenses={allExpensesForExport}
-                projectName={project.name}
-                projectAddress={project.address}
-                projectStartDate={project.start_date}
-                projectStatus={project.status}
-                purchasePrice={project.purchase_price}
-                estLaborBudget={(project as any).est_labor_budget}
-                estMaterialsBudget={(project as any).est_materials_budget}
-                onSaved={() => fetchProjectData(false)}
-              />
-            ) : (
               <>
                 <ProfitCalculator 
                   projectId={id!}
@@ -1172,7 +1136,6 @@ export default function ProjectDetail() {
                   onSaved={() => fetchProjectData(false)}
                 />
               </>
-            )}
           </TabsContent>
 
           {isRental && (
@@ -1513,20 +1476,9 @@ export default function ProjectDetail() {
             <ProcurementTab projectId={id!} categories={categories} />
           </TabsContent>
 
-          <TabsContent value="field">
-            <FieldTab projectId={id!} projectType={project.project_type} />
-          </TabsContent>
-
-          <TabsContent value="costcontrol">
-            <CostControlTab projectId={id!} />
-          </TabsContent>
 
           <TabsContent value="lease">
             <LeaseTab projectId={id!} />
-          </TabsContent>
-
-          <TabsContent value="deal">
-            <DealTab projectId={id!} />
           </TabsContent>
           </div>
         </Tabs>

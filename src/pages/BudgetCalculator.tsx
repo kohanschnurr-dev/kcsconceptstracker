@@ -8,7 +8,6 @@ import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MAOGauge } from '@/components/budget/MAOGauge';
-import { ContractorMarginGauge } from '@/components/budget/ContractorMarginGauge';
 import { BudgetCanvas } from '@/components/budget/BudgetCanvas';
 import { TemplatePicker } from '@/components/budget/TemplatePicker';
 import { DealSidebar, type CalculatorType } from '@/components/budget/DealSidebar';
@@ -92,12 +91,6 @@ export default function BudgetCalculator() {
   const [holdingFlat, setHoldingFlat] = useState<string>('');
   const [sellClosingFlat, setSellClosingFlat] = useState<string>('');
   const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
-  // Contractor-specific state
-  const [contractValue, setContractValue] = useState<string>('');
-  const [laborCost, setLaborCost] = useState<string>('');
-  const [materialCost, setMaterialCost] = useState<string>('');
-  const [overheadPct, setOverheadPct] = useState<string>('10');
-  const [marginTarget, setMarginTarget] = useState<number>(20);
   
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
@@ -189,10 +182,7 @@ export default function BudgetCalculator() {
         if (meta?.rentalFields) {
           setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
         }
-        if (meta?.laborCost !== undefined) setLaborCost(meta.laborCost);
-        if (meta?.materialCost !== undefined) setMaterialCost(meta.materialCost);
-        if (meta?.overheadPct !== undefined) setOverheadPct(meta.overheadPct);
-        if (meta?.marginTarget !== undefined) setMarginTarget(meta.marginTarget);
+        // contractor fields ignored (removed feature)
 
         const newBudgets: Record<string, string> = {};
         getBudgetCategories().forEach(cat => {
@@ -212,7 +202,6 @@ export default function BudgetCalculator() {
 
   const purchasePriceNum = parseFloat(purchasePrice) || 0;
   const arvNum = parseFloat(arv) || 0;
-  const contractValueNum = parseFloat(contractValue) || 0;
 
   // Keep refi loan amount in sync when ARV/Purchase Price or LTV changes
   useEffect(() => {
@@ -297,10 +286,6 @@ export default function BudgetCalculator() {
     if (meta?.rentalFields) {
       setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
     }
-    if (meta?.laborCost !== undefined) setLaborCost(meta.laborCost);
-    if (meta?.materialCost !== undefined) setMaterialCost(meta.materialCost);
-    if (meta?.overheadPct !== undefined) setOverheadPct(meta.overheadPct);
-    if (meta?.marginTarget !== undefined) setMarginTarget(meta.marginTarget);
 
     const newBudgets: Record<string, string> = {};
     getBudgetCategories().forEach(cat => {
@@ -332,11 +317,6 @@ export default function BudgetCalculator() {
     setHoldingFlat('');
     setSellClosingFlat('');
     setIncludeSellClosingCosts(true);
-    setContractValue('');
-    setLaborCost('');
-    setMaterialCost('');
-    setOverheadPct('10');
-    setMarginTarget(20);
     
     const cleared: Record<string, string> = {};
     getBudgetCategories().forEach(cat => {
@@ -388,10 +368,6 @@ export default function BudgetCalculator() {
       sellClosingFlat,
       includeSellClosingCosts,
       rentalFields,
-      laborCost,
-      materialCost,
-      overheadPct,
-      marginTarget,
     };
     return budgets;
   };
@@ -510,14 +486,10 @@ export default function BudgetCalculator() {
 
   const subtitleText = calculatorType === 'fix_flip'
     ? 'Build and manage rehab budgets with real-time MAO tracking'
-    : calculatorType === 'contractor'
-    ? 'Contractor job budget and profit analysis'
     : 'Analyze rental income, expenses, and cash flow projections';
 
   const analysisTitle = calculatorType === 'fix_flip'
     ? 'Profit Breakdown'
-    : calculatorType === 'contractor'
-    ? 'Job P&L Analysis'
     : 'Cash Flow Analysis';
 
   const isMobile = useIsMobile();
@@ -548,14 +520,6 @@ export default function BudgetCalculator() {
 
         {/* MAO / Margin Gauge - Sticky */}
         <div className="px-3 sm:px-6 py-2 sm:py-3 border-b bg-muted/30">
-          {calculatorType === 'contractor' ? (
-            <ContractorMarginGauge
-              contractValue={contractValueNum}
-              jobCost={totalBudget + (contractValueNum * ((parseFloat(overheadPct) || 0) / 100))}
-              marginTarget={marginTarget}
-              onMarginTargetChange={setMarginTarget}
-            />
-          ) : (
             <MAOGauge
               arv={arvNum}
               currentBudget={totalBudget}
@@ -563,7 +527,6 @@ export default function BudgetCalculator() {
               maoPercentage={maoPercentage}
               onPercentageChange={setMaoPercentage}
             />
-          )}
         </div>
 
         {/* Main Content Area */}
@@ -573,16 +536,10 @@ export default function BudgetCalculator() {
             isMobile={isMobile}
             purchasePrice={purchasePrice}
             onPurchasePriceChange={setPurchasePrice}
-            arv={calculatorType === 'contractor' ? contractValue : arv}
-            onArvChange={calculatorType === 'contractor' ? setContractValue : setArv}
+            arv={arv}
+            onArvChange={setArv}
             sqft={sqft}
             onSqftChange={setSqft}
-            laborCost={laborCost}
-            onLaborCostChange={setLaborCost}
-            materialCost={materialCost}
-            onMaterialCostChange={setMaterialCost}
-            overheadPct={overheadPct}
-            onOverheadPctChange={setOverheadPct}
             budgetName={budgetName}
             onBudgetNameChange={setBudgetName}
             budgetDescription={budgetDescription}
@@ -804,147 +761,10 @@ export default function BudgetCalculator() {
                         </div>
                       )}
 
-                      {calculatorType === 'contractor' && (() => {
-                        const contractValue = contractValueNum;
-                        const overheadPctNum = parseFloat(overheadPct) || 0;
-                        const overheadAmount = contractValue * (overheadPctNum / 100);
-                        const laborCostNum = parseFloat(laborCost) || 0;
-                        const materialCostNum = parseFloat(materialCost) || 0;
-                        const jobCost = totalBudget + overheadAmount;
-                        const grossProfit = contractValue - jobCost;
-                        const margin = contractValue > 0 ? (grossProfit / contractValue) * 100 : 0;
-                        const isProfitable = grossProfit >= 0;
-                        const isGoodMargin = margin >= marginTarget;
-                        const isAmber = !isGoodMargin && margin >= marginTarget * 0.6;
-                        const marginColor = isGoodMargin ? 'text-green-500' : isAmber ? 'text-amber-500' : 'text-destructive';
-                        const laborMaterialTotal = laborCostNum + materialCostNum;
-                        const laborPct = laborMaterialTotal > 0 ? (laborCostNum / laborMaterialTotal) * 100 : null;
-                        return (
-                          <Card>
-                            <CardHeader>
-                              <CardTitle>Job P&amp;L Analysis</CardTitle>
-                              <CardDescription>
-                                Contractor job budget and gross profit breakdown
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                {/* Contract Column */}
-                                <div className="space-y-3">
-                                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Contract</h4>
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                      <span>Contract Value</span>
-                                      <span className="font-mono">{formatCurrency(contractValue)}</span>
-                                    </div>
-                                    {laborCostNum > 0 && (
-                                      <div className="flex justify-between text-sm text-muted-foreground">
-                                        <span>Labor Cost</span>
-                                        <span className="font-mono">{formatCurrency(laborCostNum)}</span>
-                                      </div>
-                                    )}
-                                    {materialCostNum > 0 && (
-                                      <div className="flex justify-between text-sm text-muted-foreground">
-                                        <span>Material Cost</span>
-                                        <span className="font-mono">{formatCurrency(materialCostNum)}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
 
-                                {/* Job Cost Column */}
-                                <div className="space-y-3">
-                                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Job Cost</h4>
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                      <span>Budget Canvas</span>
-                                      <span className="font-mono">{formatCurrency(totalBudget)}</span>
-                                    </div>
-                                    {overheadPctNum > 0 && (
-                                      <div className="flex justify-between text-sm text-muted-foreground">
-                                        <span>Overhead ({overheadPctNum}%)</span>
-                                        <span className="font-mono">{formatCurrency(overheadAmount)}</span>
-                                      </div>
-                                    )}
-                                    <div className="flex justify-between text-sm font-medium border-t pt-1">
-                                      <span>Total Job Cost</span>
-                                      <span className="font-mono">{formatCurrency(jobCost)}</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Returns Column */}
-                                <div className="space-y-3">
-                                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Returns</h4>
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between text-sm font-medium">
-                                      <span>Gross Profit</span>
-                                      <span className={`font-mono ${isProfitable ? 'text-green-500' : 'text-destructive'}`}>
-                                        {formatCurrency(grossProfit)}
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between text-sm font-medium">
-                                      <span>Gross Margin</span>
-                                      <span className={`font-mono ${marginColor}`}>
-                                        {contractValue > 0 ? margin.toFixed(1) : '0.0'}%
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between text-sm text-muted-foreground">
-                                      <span>Target</span>
-                                      <span className="font-mono">{marginTarget}%</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Split Column */}
-                                <div className="space-y-3">
-                                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Labor / Material</h4>
-                                  {laborPct !== null ? (
-                                    <div className="space-y-2">
-                                      <div className="flex justify-between text-sm">
-                                        <span>Labor</span>
-                                        <span className="font-mono">{laborPct.toFixed(0)}%</span>
-                                      </div>
-                                      <div className="h-2 rounded-full bg-muted overflow-hidden flex">
-                                        <div className="h-full bg-primary/70 transition-all" style={{ width: `${laborPct}%` }} />
-                                        <div className="h-full flex-1 bg-muted-foreground/20" />
-                                      </div>
-                                      <div className="flex justify-between text-sm">
-                                        <span>Material</span>
-                                        <span className="font-mono">{(100 - laborPct).toFixed(0)}%</span>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <p className="text-xs text-muted-foreground">Enter labor & material costs in the sidebar to see the split.</p>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Summary Cards */}
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-                                <div className="p-4 rounded-lg bg-muted/50 text-center">
-                                  <p className="text-sm text-muted-foreground">Contract Value</p>
-                                  <p className="text-2xl font-bold font-mono">{formatCurrency(contractValue)}</p>
-                                </div>
-                                <div className="p-4 rounded-lg bg-muted/50 text-center">
-                                  <p className="text-sm text-muted-foreground">Total Job Cost</p>
-                                  <p className="text-2xl font-bold font-mono">{formatCurrency(jobCost)}</p>
-                                </div>
-                                <div className={`p-4 rounded-lg text-center ${isProfitable ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
-                                  <p className="text-sm text-muted-foreground">Gross Profit</p>
-                                  <p className={`text-2xl font-bold font-mono ${isProfitable ? 'text-green-500' : 'text-destructive'}`}>
-                                    {formatCurrency(grossProfit)}
-                                  </p>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })()}
                     </CollapsibleContent>
                   </Collapsible>
                 </div>
-              </div>
             </ScrollArea>
           </div>
 
