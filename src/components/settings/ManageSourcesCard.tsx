@@ -14,7 +14,7 @@ import { CALENDAR_CATEGORIES, CATEGORY_GROUPS, type CategoryGroup } from '@/lib/
 import { MONTHLY_COST_CATEGORIES } from '@/lib/monthlyCategories';
 import { BUDGET_CATEGORIES, BUSINESS_EXPENSE_CATEGORIES, getBudgetCategories } from '@/types';
 import { DEFAULT_STORES } from '@/hooks/useCustomStores';
-import { DEFAULT_PROPERTY_FIELDS, CONTRACTOR_FIELDS } from '@/components/project/ProjectInfo';
+import { DEFAULT_PROPERTY_FIELDS } from '@/components/project/ProjectInfo';
 import { BUDGET_CALC_GROUP_DEFS, CATEGORY_GROUP_MAP, resolveTradeGroup, getAllGroupDefs, loadCustomGroups, saveCustomGroups, CUSTOM_GROUPS_STORAGE_KEY, saveGroupOrder, type CustomGroupEntry } from '@/lib/budgetCalculatorCategories';
 import { supabase } from '@/integrations/supabase/client';
 import { reassignBudgetCategory, reassignGenericColumn } from '@/lib/reassignCategory';
@@ -403,10 +403,8 @@ const monthlyDefaults: CategoryItem[] = MONTHLY_COST_CATEGORIES.map(c => ({ valu
 const businessDefaults: CategoryItem[] = BUSINESS_EXPENSE_CATEGORIES.map(c => ({ value: c.value, label: c.label }));
 const storeDefaults: CategoryItem[] = DEFAULT_STORES.map(s => ({ value: s.value, label: s.label }));
 const propertyInfoDefaults: CategoryItem[] = DEFAULT_PROPERTY_FIELDS.map(f => ({ value: f.value, label: f.label }));
-const jobInfoDefaults: CategoryItem[] = CONTRACTOR_FIELDS.map(f => ({ value: f.value, label: f.label }));
-
 // Section configs for GenericReassignDialog
-type SectionKey = 'business' | 'calendar' | 'monthly' | 'stores' | 'propertyInfo' | 'jobInfo';
+type SectionKey = 'business' | 'calendar' | 'monthly' | 'stores' | 'propertyInfo';
 
 const SECTION_DB_CONFIG: Record<SectionKey, { tableName: 'business_expenses' | 'calendar_events' | 'procurement_items'; columnName: string } | null> = {
   business: { tableName: 'business_expenses', columnName: 'category' },
@@ -414,7 +412,6 @@ const SECTION_DB_CONFIG: Record<SectionKey, { tableName: 'business_expenses' | '
   monthly: null,
   stores: { tableName: 'procurement_items', columnName: 'source_store' },
   propertyInfo: null,
-  jobInfo: null,
 };
 
 const SECTION_LABELS: Record<SectionKey, string> = {
@@ -423,7 +420,6 @@ const SECTION_LABELS: Record<SectionKey, string> = {
   monthly: 'expense type',
   stores: 'store',
   propertyInfo: 'field',
-  jobInfo: 'field',
 };
 
 function SortableGroupBadge({ groupKey, label, isBuiltIn, onDelete }: { groupKey: string; label: string; isBuiltIn: boolean; onDelete?: () => void }) {
@@ -577,7 +573,6 @@ export default function ManageSourcesCard() {
   const business = useCustomCategories('business', businessDefaults);
   const stores = useCustomCategories('stores', storeDefaults);
   const propertyInfo = useCustomCategories('propertyInfo', propertyInfoDefaults);
-  const jobInfo = useCustomCategories('jobInfo', jobInfoDefaults);
 
   // Expense Categories — existing specialized dialog
   const [pendingDelete, setPendingDelete] = useState<{ value: string; label: string } | null>(null);
@@ -643,7 +638,7 @@ export default function ManageSourcesCard() {
         toast.error('Failed to rename');
       }
     };
-  }, [business, calendar, monthly, stores, propertyInfo, jobInfo]);
+  }, [business, calendar, monthly, stores, propertyInfo]);
 
   const makeBeforeRemove = useCallback((section: SectionKey) => {
     return (value: string, label: string) => {
@@ -659,7 +654,6 @@ export default function ManageSourcesCard() {
     monthly,
     stores,
     propertyInfo,
-    jobInfo,
   };
 
   const handleGenericComplete = useCallback((value: string) => {
@@ -667,7 +661,7 @@ export default function ManageSourcesCard() {
     sectionHooks[genericSection].removeItem(value);
     setGenericPending(null);
     setGenericSection(null);
-  }, [genericSection, business, calendar, monthly, stores, propertyInfo, jobInfo]);
+  }, [genericSection, business, calendar, monthly, stores, propertyInfo]);
 
   // Handle adding budget categories with group
   const handleAddBudgetCategory = useCallback((label: string, group?: string) => {
@@ -798,20 +792,6 @@ export default function ManageSourcesCard() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="jobInfo">
-            <AccordionTrigger className="text-sm">Job Info Fields ({jobInfo.items.length})</AccordionTrigger>
-            <AccordionContent>
-              <CategorySection
-                items={jobInfo.items}
-                onAdd={jobInfo.addItem}
-                onRemove={jobInfo.removeItem}
-                onBeforeRemove={makeBeforeRemove('jobInfo')}
-                onRename={handleRenameGeneric('jobInfo')}
-                onReset={jobInfo.resetToDefaults}
-                placeholder="New job field"
-              />
-            </AccordionContent>
-          </AccordionItem>
         </Accordion>
       </CardContent>
     </Card>

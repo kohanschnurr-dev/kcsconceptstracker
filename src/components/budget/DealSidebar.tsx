@@ -416,6 +416,8 @@ export function DealSidebar({
               <RentalFields
                 values={rentalFields}
                 onChange={onRentalFieldChange}
+                arv={arvNum}
+                purchasePrice={purchasePriceNum}
               />
             </>
           )}
@@ -477,8 +479,7 @@ export function DealSidebar({
                 <ProjectAutocomplete
                   projects={projects}
                   value={selectedProject}
-                  onChange={setSelectedProject}
-                  isLoading={isLoadingProjects}
+                  onSelect={setSelectedProject}
                 />
               </div>
 

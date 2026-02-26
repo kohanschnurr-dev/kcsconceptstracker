@@ -29,19 +29,7 @@ export const DEFAULT_PROPERTY_FIELDS: CategoryItem[] = [
   { value: 'plumbing_status', label: 'Plumbing Status' },
 ];
 
-export const CONTRACTOR_FIELDS: CategoryItem[] = [
-  { value: 'client_name', label: 'Client Name' },
-  { value: 'client_phone', label: 'Client Phone' },
-  { value: 'client_email', label: 'Client Email' },
-  { value: 'contract_type', label: 'Contract Type' },
-  { value: 'project_manager', label: 'Project Manager' },
-  { value: 'site_contact', label: 'Site Contact' },
-  { value: 'permit_number', label: 'Permit #' },
-  { value: 'bond_insurance', label: 'Bond / Insurance #' },
-  { value: 'scope_of_work', label: 'Scope of Work' },
-];
-
-const MULTILINE_FIELDS = new Set(['scope_of_work']);
+const MULTILINE_FIELDS = new Set<string>();
 
 const BUILT_IN_KEYS = new Set(DEFAULT_PROPERTY_FIELDS.map(f => f.value));
 
@@ -80,11 +68,7 @@ export function ProjectInfo({ projectId, projectType }: ProjectInfoProps) {
   const [newFieldLabel, setNewFieldLabel] = useState('');
   const [duplicateError, setDuplicateError] = useState(false);
 
-  const isContractor = projectType === 'contractor';
-
-  const activeFields = isContractor
-    ? getCustomItems('jobInfo', CONTRACTOR_FIELDS)
-    : getCustomItems('propertyInfo', DEFAULT_PROPERTY_FIELDS);
+  const activeFields = getCustomItems('propertyInfo', DEFAULT_PROPERTY_FIELDS);
 
   useEffect(() => {
     const fetchInfo = async () => {
@@ -98,10 +82,8 @@ export function ProjectInfo({ projectId, projectType }: ProjectInfoProps) {
         console.error('Error fetching project info:', error);
       } else if (data) {
         const loaded: Record<string, string> = {};
-        if (!isContractor) {
-          for (const key of BUILT_IN_KEYS) {
-            loaded[key] = (data as any)[key] || '';
-          }
+        for (const key of BUILT_IN_KEYS) {
+          loaded[key] = (data as any)[key] || '';
         }
         const rawCustom = (data as any).custom_fields || {};
         // Load project-specific field definitions
@@ -120,7 +102,7 @@ export function ProjectInfo({ projectId, projectType }: ProjectInfoProps) {
     };
 
     fetchInfo();
-  }, [projectId, isContractor]);
+  }, [projectId]);
 
   const persistCustomFields = async (
     newFields: Record<string, string>,
@@ -140,7 +122,7 @@ export function ProjectInfo({ projectId, projectType }: ProjectInfoProps) {
     if (fields[key] === savedFields[key]) return;
     if (!user) return;
 
-    const isBuiltIn = !isContractor && BUILT_IN_KEYS.has(key);
+    const isBuiltIn = BUILT_IN_KEYS.has(key);
 
     if (existingId) {
       if (isBuiltIn) {
@@ -264,9 +246,7 @@ export function ProjectInfo({ projectId, projectType }: ProjectInfoProps) {
   return (
     <Card className="glass-card relative">
       <CardHeader>
-        <CardTitle className="text-lg">
-          {isContractor ? 'Job Details' : 'Property Info'}
-        </CardTitle>
+        <CardTitle className="text-lg">Property Info</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

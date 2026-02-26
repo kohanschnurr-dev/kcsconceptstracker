@@ -765,6 +765,7 @@ export default function BudgetCalculator() {
                     </CollapsibleContent>
                   </Collapsible>
                 </div>
+              </div>
             </ScrollArea>
           </div>
 
