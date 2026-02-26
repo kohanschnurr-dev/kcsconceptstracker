@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, FolderKanban, Plus, TrendingUp } from 'lucide-react';
+import { calcAnnualCashFlow } from '@/lib/rentalCashFlow';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
@@ -313,6 +314,10 @@ export default function Index() {
     return sum + (arv - purchasePrice - costBasis - transactionCosts - holdingCosts);
   }, 0);
 
+  const totalRentalCashFlow = filteredProfitProjects
+    .filter(p => p.projectType === 'rental')
+    .reduce((sum, p) => sum + calcAnnualCashFlow(p), 0);
+
   // This month stats - include both regular expenses and QuickBooks imported expenses
   const monthStart = startOfMonth(new Date());
   const thisMonthExpenses = expenses.filter(e => {
@@ -382,7 +387,9 @@ export default function Index() {
             <StatCard
               title="Profit Potential"
               value={formatCurrency(totalProfitPotential)}
-              subtitle={`Across ${profitProjectCount} project${profitProjectCount !== 1 ? 's' : ''}`}
+              subtitle={totalRentalCashFlow !== 0
+                ? `${formatCurrency(totalRentalCashFlow)}/yr cash flow`
+                : `Across ${profitProjectCount} project${profitProjectCount !== 1 ? 's' : ''}`}
               icon={TrendingUp}
               variant={totalProfitPotential >= 0 ? 'success' : 'danger'}
               onClick={() => navigate('/profit')}
