@@ -1,42 +1,41 @@
 
 
-## Add Separate Loan Start Date to Loan Calculator
+## Fix: Loan Start Date Not Updating Interest Calculations
 
-The "To Date" calculation currently uses the project's start date as the loan origination date. This change adds a dedicated **Loan Start Date** field that defaults to the project start date but can be overridden.
+### Problem
 
----
+When "To Date" mode is active and you change the Loan Start Date, the interest calculations don't update. This is because changing `loanStartDate` recalculates the display values (`toDateMonths`, `toDateDays`) via `useMemo`, but the actual `loanTermMonths` and `termDaysOverride` state variables that drive the interest math are never updated.
 
-### 1. Database Migration
+### Root Cause
 
-Add a new column to the `projects` table:
+The `loanStartDate` change updates the memoized `toDateMonths` and `toDateDays`, but nothing pushes those new values back into `loanTermMonths` and `termDaysOverride` -- the state that the `calculations` useMemo depends on.
 
-```sql
-ALTER TABLE public.projects ADD COLUMN hm_loan_start_date date;
+### Fix
+
+**File: `src/components/project/HardMoneyLoanCalculator.tsx`**
+
+Add a `useEffect` that watches `loanStartDate` (and `toDateEndDate`). When `useToDate` is true, it recalculates and sets `loanTermMonths` and `termDaysOverride` from the new loan start date:
+
+```typescript
+useEffect(() => {
+  if (!useToDate || !loanStartDate) return;
+  const newMonths = calculateToDateMonths(loanStartDate, toDateEndDate);
+  const start = parseDateString(loanStartDate);
+  const newDays = Math.round(
+    (toDateEndDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (newMonths > 0) {
+    setLoanTermMonths(newMonths);
+    setTermDaysOverride(newDays);
+  }
+}, [loanStartDate, toDateEndDate, useToDate]);
 ```
 
-No RLS changes needed -- inherits existing project row policies.
+This single effect ensures that any time the loan start date or end date changes while in "To Date" mode, the term and day count used for interest math are kept in sync.
 
----
+### Also fix: Popover ref warning
 
-### 2. HardMoneyLoanCalculator.tsx -- Add Loan Start Date picker
-
-**New prop**: `initialLoanStartDate?: string` (from `project.hm_loan_start_date`)
-
-**New state**: `loanStartDate` -- defaults to `projectStartDate` if `initialLoanStartDate` is null.
-
-**UI**: Add a date picker row below the Interest Rate / Loan Term row. Shows the current loan start date with a small calendar popover. When the date differs from the project start date, show a muted hint like "Project started: Jan 15, 2026".
-
-**Logic changes**:
-- Replace all references to `projectStartDate` in `calculateToDateMonths`, `toDateMonths`, and `toDateDays` computations with `loanStartDate`
-- The "To Date" button and its calendar picker will calculate days/months from the loan start date instead of the project start date
-
-**Save**: Include `hm_loan_start_date` in the `handleSave` update call. Only save the value if it differs from the project start date (otherwise save null to indicate "use project start").
-
----
-
-### 3. ProjectDetail.tsx -- Pass the new prop
-
-Pass `initialLoanStartDate={(project as any).hm_loan_start_date}` to the `HardMoneyLoanCalculator` component.
+The console shows "Function components cannot be given refs" from `<Popover>` in this component. The Loan Start Date `<Popover>` at line 570 is not wrapped properly. Wrapping the trigger `<Button>` with `asChild` on `PopoverTrigger` is already done, so this is likely coming from the bare `<Popover>` usage on the "To Date" chevron dropdown (line 451) which doesn't use `asChild` -- but this is cosmetic and won't be addressed here unless desired.
 
 ---
 
@@ -44,7 +43,5 @@ Pass `initialLoanStartDate={(project as any).hm_loan_start_date}` to the `HardMo
 
 | File | Change |
 |------|--------|
-| Migration | Add `hm_loan_start_date` column |
-| `src/components/project/HardMoneyLoanCalculator.tsx` | Add loan start date state, date picker UI, update calculations |
-| `src/pages/ProjectDetail.tsx` | Pass new prop |
+| `src/components/project/HardMoneyLoanCalculator.tsx` | Add useEffect to sync term/days when loanStartDate changes in To Date mode |
 
