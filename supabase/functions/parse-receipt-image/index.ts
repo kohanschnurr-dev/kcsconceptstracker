@@ -126,6 +126,20 @@ VALIDATION CHECKLIST (VERIFY BEFORE RETURNING)
 If validation fails, RE-READ the receipt and check column alignment.
 
 ═══════════════════════════════════════════════════════════════
+DISCOUNT / SAVINGS LINES (Pro Xtra, Instant Savings, Coupons)
+═══════════════════════════════════════════════════════════════
+
+- These lines appear BELOW the item they apply to (e.g., "PRO XTRA SAVINGS -$13.50")
+- Do NOT create separate line items for discounts
+- Instead, SUBTRACT the discount from the item ABOVE it:
+  - Reduce that item's total_price by the discount amount
+  - Recalculate unit_price = total_price / quantity
+  - Set that item's "discount" field to the absolute discount value
+- Example: Wire $89.97 followed by "PRO SAVINGS -$13.50" becomes:
+  { "item_name": "ROMEX 12/2 NM Wire 250ft", "total_price": 76.47, "discount": 13.50, "unit_price": 76.47 }
+- Sum all discounts into "discount_amount" at the top level too
+
+═══════════════════════════════════════════════════════════════
 CATEGORIES (use lowercase)
 ═══════════════════════════════════════════════════════════════
 plumbing, electrical, hvac, flooring, painting, cabinets, countertops, 
@@ -177,6 +191,14 @@ Return ONLY valid JSON (no markdown, no explanation):
       "total_price": 3.98,
       "discount": 0,
       "suggested_category": "plumbing"
+    },
+    {
+      "item_name": "ROMEX 12/2 NM Wire 250ft",
+      "quantity": 1,
+      "unit_price": 76.47,
+      "total_price": 76.47,
+      "discount": 13.50,
+      "suggested_category": "electrical"
     }
   ]
 }`
@@ -292,6 +314,35 @@ Return ONLY valid JSON (no markdown, no explanation):
           }))
         : [],
     };
+
+    // Post-processing: Merge negative/discount lines into the item they follow
+    const mergedItems: typeof cleanedData.line_items = [];
+    let accumulatedDiscount = 0;
+
+    for (let i = 0; i < cleanedData.line_items.length; i++) {
+      const item = cleanedData.line_items[i];
+      if (item.total_price < 0 || item.unit_price < 0) {
+        const discountAmt = Math.abs(item.total_price);
+        accumulatedDiscount += discountAmt;
+        if (mergedItems.length > 0) {
+          const prev = mergedItems[mergedItems.length - 1];
+          prev.discount = Math.round((prev.discount + discountAmt) * 100) / 100;
+          prev.total_price = Math.round((prev.total_price - discountAmt) * 100) / 100;
+          prev.unit_price = prev.quantity > 0
+            ? Math.round((prev.total_price / prev.quantity) * 100) / 100
+            : prev.total_price;
+        }
+      } else {
+        mergedItems.push({ ...item });
+      }
+    }
+
+    cleanedData.line_items = mergedItems;
+    cleanedData.discount_amount += Math.round(accumulatedDiscount * 100) / 100;
+
+    if (accumulatedDiscount > 0) {
+      console.log(`Merged ${cleanedData.line_items.length + (cleanedData.line_items.length - mergedItems.length)} discount line(s) totaling -$${accumulatedDiscount.toFixed(2)} into their associated items`);
+    }
 
     // Post-processing: Validate quantity calculations
     const validatedLineItems = cleanedData.line_items.map(item => {
