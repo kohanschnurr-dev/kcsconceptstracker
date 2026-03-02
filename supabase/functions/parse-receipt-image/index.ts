@@ -70,26 +70,19 @@ serve(async (req) => {
       });
     }
 
-    console.log("Parsing receipt with AI Vision (Gemini Pro)...");
+    console.log("Parsing receipt with AI Vision (Gemini Flash)...");
 
     // Build the image content for the AI
     const imageContent = image_base64 
       ? { type: "image_url", image_url: { url: image_base64 } }
       : { type: "image_url", image_url: { url: image_url } };
 
-    // Use Lovable AI Vision to parse the receipt with enhanced prompts
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          {
-            role: "system",
-            content: `You are a receipt OCR specialist. Your job is to extract EVERY line item with EXACT prices.
+    const requestBody = JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `You are a receipt OCR specialist. Your job is to extract EVERY line item with EXACT prices.
 
 ═══════════════════════════════════════════════════════════════
 HOME DEPOT / LOWE'S RECEIPT COLUMN LAYOUT
@@ -148,13 +141,13 @@ Determine if this receipt is for PRODUCTS or LABOR:
 - "labor": Receipts/invoices from contractors, subcontractors, service providers, or for work performed
 
 Return this as "expense_type" in your JSON response.`
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Extract ALL items from this receipt. 
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Extract ALL items from this receipt. 
 
 COLUMN DETECTION:
 1. First, identify how many columns the receipt has
@@ -187,30 +180,58 @@ Return ONLY valid JSON (no markdown, no explanation):
     }
   ]
 }`
-              },
-              imageContent
-            ]
-          }
-        ],
-      }),
+            },
+            imageContent
+          ]
+        }
+      ],
     });
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Retry logic: up to 2 retries with 1s delay
+    let aiResponse: Response | null = null;
+    let lastError: string | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: requestBody,
         });
+
+        if (aiResponse.ok) break;
+
+        // Don't retry on 402 (payment) or 429 (rate limit) - surface immediately
+        if (aiResponse.status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (aiResponse.status === 402) {
+          return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        lastError = await aiResponse.text();
+        console.warn(`AI attempt ${attempt + 1} failed: ${aiResponse.status} ${lastError}`);
+        aiResponse = null;
+      } catch (fetchErr) {
+        lastError = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+        console.warn(`AI attempt ${attempt + 1} network error: ${lastError}`);
+        aiResponse = null;
       }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await aiResponse.text();
-      console.error("AI API error:", aiResponse.status, errorText);
-      throw new Error(`AI processing failed: ${aiResponse.status}`);
+
+      if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+    }
+
+    if (!aiResponse || !aiResponse.ok) {
+      console.error("All AI attempts failed:", lastError);
+      throw new Error(`AI processing failed after 3 attempts`);
     }
 
     const aiData = await aiResponse.json();
