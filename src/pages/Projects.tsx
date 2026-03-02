@@ -230,6 +230,10 @@ export default function Projects() {
       if (aStarred && !bStarred) return -1;
       if (!aStarred && bStarred) return 1;
       if (aStarred && bStarred) return aStarIdx - bStarIdx;
+      const statusOrder: Record<string, number> = { active: 0, 'on-hold': 1, complete: 2 };
+      const aStatus = statusOrder[a.status] ?? 1;
+      const bStatus = statusOrder[b.status] ?? 1;
+      if (aStatus !== bStatus) return aStatus - bStatus;
       return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
     });
   };
