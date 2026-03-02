@@ -1,78 +1,50 @@
 
 
-## Show Both Equity and Cash Flow for Rental Projects
+## Add Separate Loan Start Date to Loan Calculator
 
-Currently, all project types use the same ARV-based profit formula. For rentals, this is labeled "Equity Gain" but it's really unrealized paper equity -- the real day-to-day metric for a rental is **Cash Flow**. This update will show **both** metrics everywhere for rental projects.
-
----
-
-### 1. Project Cards -- Add Both Metrics for Rentals
-
-**`src/components/dashboard/ProjectCard.tsx`**
-
-The card already shows an "Annual Cash Flow" block for rentals (lines 142-174) and labels the bottom metric "Equity Gain" (line 178). Change the bottom grid for rental projects to show both:
-- **Annual Cash Flow** (already calculated in the card)
-- **Equity Gain** (the existing ARV-based calculation)
-
-Restructure the bottom `grid-cols-2` section so that for rentals it shows:
-- Left: **Cash Flow** (annual, from the rental calc block)
-- Right: **Equity** (the current ARV-based number)
-
-Remove the separate standalone "Annual Cash Flow" muted block above it (lines 142-174) to avoid duplication, and fold the cash flow value into the bottom grid instead. The date column moves to a row above or stays as a third column.
-
-For flips, keep the existing layout: **Profit** | **Date**.
+The "To Date" calculation currently uses the project's start date as the loan origination date. This change adds a dedicated **Loan Start Date** field that defaults to the project start date but can be overridden.
 
 ---
 
-### 2. Profit Breakdown Page -- Add Columns for Rentals
+### 1. Database Migration
 
-**`src/pages/ProfitBreakdown.tsx`**
+Add a new column to the `projects` table:
 
-Add two new fields to the `ProjectProfit` interface:
-- `annualCashFlow: number` -- calculated from the project's rental fields (rent, vacancy, mortgage, operating expenses)
-- `isRental: boolean`
-
-In `fetchData`, for rental projects, compute annual cash flow using the same formula as the project card (monthly rent, vacancy, loan P&I, taxes, insurance, HOA, maintenance, management).
-
-Update the table:
-- Rename "Profit" column header to **"Profit / Equity"**
-- Add a new **"Cash Flow"** column (only populated for rental projects; flips show "---")
-- In the footer totals row, sum cash flow across rentals
-
----
-
-### 3. Dashboard Stat Card
-
-**`src/pages/Index.tsx`**
-
-The "Profit Potential" stat card currently sums the ARV-based profit for all projects. Update it to:
-- Continue showing total **Equity** (ARV-based) as the main number
-- Add a subtitle line showing total **Annual Cash Flow** from rental projects (e.g., "$24,000/yr cash flow")
-
-This requires computing annual cash flow for each rental project in the dashboard data fetch, using the same rental fields (monthly rent, vacancy, mortgage, opex).
-
----
-
-### 4. Shared Calculation Utility
-
-To avoid duplicating the rental cash flow formula in 3+ places, extract it into a shared helper:
-
-**New file: `src/lib/rentalCashFlow.ts`**
-
-```
-export function calcAnnualCashFlow(project): number
+```sql
+ALTER TABLE public.projects ADD COLUMN hm_loan_start_date date;
 ```
 
-Takes the project's rental fields and returns annual cash flow. This function will be imported by ProjectCard, ProfitBreakdown, and Index.
+No RLS changes needed -- inherits existing project row policies.
 
 ---
 
-### Summary of Changes
+### 2. HardMoneyLoanCalculator.tsx -- Add Loan Start Date picker
+
+**New prop**: `initialLoanStartDate?: string` (from `project.hm_loan_start_date`)
+
+**New state**: `loanStartDate` -- defaults to `projectStartDate` if `initialLoanStartDate` is null.
+
+**UI**: Add a date picker row below the Interest Rate / Loan Term row. Shows the current loan start date with a small calendar popover. When the date differs from the project start date, show a muted hint like "Project started: Jan 15, 2026".
+
+**Logic changes**:
+- Replace all references to `projectStartDate` in `calculateToDateMonths`, `toDateMonths`, and `toDateDays` computations with `loanStartDate`
+- The "To Date" button and its calendar picker will calculate days/months from the loan start date instead of the project start date
+
+**Save**: Include `hm_loan_start_date` in the `handleSave` update call. Only save the value if it differs from the project start date (otherwise save null to indicate "use project start").
+
+---
+
+### 3. ProjectDetail.tsx -- Pass the new prop
+
+Pass `initialLoanStartDate={(project as any).hm_loan_start_date}` to the `HardMoneyLoanCalculator` component.
+
+---
+
+### Summary
 
 | File | Change |
 |------|--------|
-| `src/lib/rentalCashFlow.ts` | New shared cash flow calculator |
-| `src/components/dashboard/ProjectCard.tsx` | Consolidate cash flow + equity in bottom grid for rentals |
-| `src/pages/ProfitBreakdown.tsx` | Add Cash Flow column, compute for rentals |
-| `src/pages/Index.tsx` | Add cash flow subtitle to Profit Potential stat card |
+| Migration | Add `hm_loan_start_date` column |
+| `src/components/project/HardMoneyLoanCalculator.tsx` | Add loan start date state, date picker UI, update calculations |
+| `src/pages/ProjectDetail.tsx` | Pass new prop |
 
