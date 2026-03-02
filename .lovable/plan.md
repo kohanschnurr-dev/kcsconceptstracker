@@ -1,69 +1,88 @@
 
 
-## Speed Up and Stabilize Receipt Scanning
+## Fix: Apply Discount Lines to Their Associated Items
 
 ### Problem
-Mobile receipt scanning is slow and unreliable because full-resolution phone photos (5-10MB base64) are sent to the slowest AI model with no compression, retries, or timeout handling.
+Home Depot "Pro Member Pricing", "INSTANT SAVINGS", and similar discount lines appear as separate negative-amount entries on the receipt. Currently these either show up as broken line items or get stripped generically. They should be applied to the specific item they belong to -- reducing that item's `total_price` and populating its `discount` field.
+
+### How Receipt Discounts Work
+On Home Depot/Lowe's receipts, a discount line always appears directly **below** the item it applies to:
+
+```text
+ROMEX 12/2 NM Wire 250ft    1   $89.97        $89.97
+  PRO XTRA SAVINGS                           -$13.50
+PVC Cement 8oz               1    $6.48         $6.48
+```
+
+The `-$13.50` applies to the ROMEX wire above it.
 
 ### Changes
 
----
+**File: `supabase/functions/parse-receipt-image/index.ts`**
 
-### 1. Client-Side Image Compression (QuickExpenseModal.tsx)
+#### 1. Update AI Prompt -- Instruct to Fold Discounts Into Items
 
-Add a `compressImage` utility that uses HTML Canvas to resize photos before sending:
+Add a new section to the system prompt explaining how to handle discount/savings lines:
 
-- Max dimension: 1600px (plenty for receipt OCR)
-- JPEG quality: 0.8
-- Typical result: ~200-400KB instead of 5-10MB
-
-This runs in the `handleFileChange` handler. The compressed base64 replaces the raw `receiptPreview` sent to the edge function.
-
-```text
-Before: 8MB raw phone photo -> base64 -> edge function -> AI
-After:  300KB compressed     -> base64 -> edge function -> AI
+```
+DISCOUNT / SAVINGS LINES (Pro Xtra, Instant Savings, Coupons):
+- These lines appear BELOW the item they apply to (e.g., "PRO XTRA SAVINGS -$13.50")
+- Do NOT create separate line items for discounts
+- Instead, SUBTRACT the discount from the item ABOVE it:
+  - Reduce that item's total_price by the discount amount
+  - Recalculate unit_price = total_price / quantity
+  - Set that item's "discount" field to the absolute discount value
+- Example: Wire $89.97 followed by "PRO SAVINGS -$13.50" becomes:
+  { "item_name": "ROMEX 12/2 NM Wire 250ft", "total_price": 76.47, "discount": 13.50, "unit_price": 76.47 }
+- Sum all discounts into "discount_amount" at the top level too
 ```
 
----
+Also update the example JSON in the user prompt to show a discount field with a non-zero value.
 
-### 2. Switch AI Model to gemini-2.5-flash (parse-receipt-image/index.ts)
+#### 2. Add Post-Processing: Merge Negative Lines Into Prior Item
 
-Change `model: "google/gemini-2.5-pro"` to `model: "google/gemini-2.5-flash"`.
+Even with prompt guidance, the AI may still return negative line items. Add a server-side pass (after `cleanedData` construction, before quantity validation) that:
 
-Gemini Flash is purpose-built for fast multimodal tasks. It reads receipts just as accurately but responds 3-5x faster. The detailed system prompt already guides extraction well enough that Pro-level reasoning isn't needed.
+1. Iterates through line items in order
+2. If an item has `total_price < 0` or `unit_price < 0`, it's a discount line
+3. Apply its absolute value to the **previous** item's `discount` field and reduce that item's `total_price`
+4. Recalculate the previous item's `unit_price`
+5. Remove the discount line from the array
+6. Accumulate all found discounts into `cleanedData.discount_amount`
 
----
+```typescript
+// Merge negative/discount lines into the item they follow
+const mergedItems: typeof cleanedData.line_items = [];
+let accumulatedDiscount = 0;
 
-### 3. Add Retry Logic (parse-receipt-image/index.ts)
+for (let i = 0; i < cleanedData.line_items.length; i++) {
+  const item = cleanedData.line_items[i];
+  if (item.total_price < 0 || item.unit_price < 0) {
+    // This is a discount line -- apply to previous item
+    const discountAmt = Math.abs(item.total_price);
+    accumulatedDiscount += discountAmt;
+    if (mergedItems.length > 0) {
+      const prev = mergedItems[mergedItems.length - 1];
+      prev.discount = Math.round((prev.discount + discountAmt) * 100) / 100;
+      prev.total_price = Math.round((prev.total_price - discountAmt) * 100) / 100;
+      prev.unit_price = prev.quantity > 0
+        ? Math.round((prev.total_price / prev.quantity) * 100) / 100
+        : prev.total_price;
+    }
+  } else {
+    mergedItems.push({ ...item });
+  }
+}
 
-Wrap the AI fetch call in a retry loop (up to 2 retries with 1s delay). This handles transient network errors and 429 rate limits gracefully instead of failing immediately.
+cleanedData.line_items = mergedItems;
+cleanedData.discount_amount += Math.round(accumulatedDiscount * 100) / 100;
+```
 
----
-
-### 4. Add Client-Side Timeout (QuickExpenseModal.tsx)
-
-Add an `AbortController` with a 25-second timeout around the `supabase.functions.invoke` call. If the scan times out, show a clear message: "Scan timed out -- try a clearer photo or paste the receipt text instead." This prevents the user from waiting indefinitely.
-
----
-
-### 5. Better Error Messages (QuickExpenseModal.tsx)
-
-Replace generic "Scan failed" with specific messages:
-- Timeout: "Scan timed out. Try a clearer photo or use the paste option."
-- Rate limit (429): "Too many scans. Please wait a moment."
-- Large file: Warning before upload if file > 5MB raw
-
----
+This ensures every discount is attributed to the correct product rather than floating as a separate broken entry.
 
 ### Summary
 
 | File | Change |
 |------|--------|
-| `src/components/QuickExpenseModal.tsx` | Add image compression, timeout, better errors |
-| `supabase/functions/parse-receipt-image/index.ts` | Switch to flash model, add retry logic |
-
-### Expected Impact
-- **Speed**: 3-8x faster (smaller payload + faster model)
-- **Reliability**: Retries handle transient failures; timeout prevents infinite waits
-- **Data usage**: ~95% less data transferred on mobile
+| `supabase/functions/parse-receipt-image/index.ts` | Update prompt to fold discounts into items + add post-processing merge for negative lines |
 
