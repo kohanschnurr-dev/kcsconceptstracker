@@ -127,6 +127,20 @@ export function HardMoneyLoanCalculator({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // One-time on mount
 
+  // Sync term/days when loanStartDate or toDateEndDate changes in To Date mode
+  useEffect(() => {
+    if (!useToDate || !loanStartDate) return;
+    const newMonths = calculateToDateMonths(loanStartDate, toDateEndDate);
+    const start = parseDateString(loanStartDate);
+    const newDays = Math.round(
+      (toDateEndDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (newMonths > 0) {
+      setLoanTermMonths(newMonths);
+      setTermDaysOverride(newDays);
+    }
+  }, [loanStartDate, toDateEndDate, useToDate]);
+
   const handleSave = async () => {
     setSaving(true);
     const saveLoanStartDate = loanStartDate && loanStartDate !== projectStartDate ? loanStartDate : null;
