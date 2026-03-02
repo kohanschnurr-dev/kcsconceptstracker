@@ -1,47 +1,36 @@
 
 
-## Fix: Loan Start Date Not Updating Interest Calculations
+## Fix: Active Projects Should Sort Before Complete Projects
 
 ### Problem
-
-When "To Date" mode is active and you change the Loan Start Date, the interest calculations don't update. This is because changing `loanStartDate` recalculates the display values (`toDateMonths`, `toDateDays`) via `useMemo`, but the actual `loanTermMonths` and `termDaysOverride` state variables that drive the interest math are never updated.
-
-### Root Cause
-
-The `loanStartDate` change updates the memoized `toDateMonths` and `toDateDays`, but nothing pushes those new values back into `loanTermMonths` and `termDaysOverride` -- the state that the `calculations` useMemo depends on.
+On the Projects page, when viewing "All" projects, completed projects can appear before active ones. The current sort only considers starred status and start date, ignoring project status.
 
 ### Fix
 
-**File: `src/components/project/HardMoneyLoanCalculator.tsx`**
+**File: `src/pages/Projects.tsx`** -- Update `getFilteredProjects` sort (lines 225-234)
 
-Add a `useEffect` that watches `loanStartDate` (and `toDateEndDate`). When `useToDate` is true, it recalculates and sets `loanTermMonths` and `termDaysOverride` from the new loan start date:
+Add a status-based sort tier between the starred check and the date fallback. Active projects sort before complete projects:
 
-```typescript
-useEffect(() => {
-  if (!useToDate || !loanStartDate) return;
-  const newMonths = calculateToDateMonths(loanStartDate, toDateEndDate);
-  const start = parseDateString(loanStartDate);
-  const newDays = Math.round(
-    (toDateEndDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  if (newMonths > 0) {
-    setLoanTermMonths(newMonths);
-    setTermDaysOverride(newDays);
-  }
-}, [loanStartDate, toDateEndDate, useToDate]);
+```
+starred first (existing) -> active before complete (new) -> by start date descending (existing)
 ```
 
-This single effect ensures that any time the loan start date or end date changes while in "To Date" mode, the term and day count used for interest math are kept in sync.
+The sort comparator will map status to a numeric priority: `active = 0`, `on-hold = 1`, `complete = 2`. After the starred check, compare by status priority before falling back to date.
 
-### Also fix: Popover ref warning
+### Technical Detail
 
-The console shows "Function components cannot be given refs" from `<Popover>` in this component. The Loan Start Date `<Popover>` at line 570 is not wrapped properly. Wrapping the trigger `<Button>` with `asChild` on `PopoverTrigger` is already done, so this is likely coming from the bare `<Popover>` usage on the "To Date" chevron dropdown (line 451) which doesn't use `asChild` -- but this is cosmetic and won't be addressed here unless desired.
+In the sort function around line 225, after the starred checks, add:
 
----
+```typescript
+const statusOrder = { active: 0, 'on-hold': 1, complete: 2 };
+const aStatus = statusOrder[a.status] ?? 1;
+const bStatus = statusOrder[b.status] ?? 1;
+if (aStatus !== bStatus) return aStatus - bStatus;
+```
 
-### Summary
+This ensures active projects always appear before complete ones, while preserving starred-first ordering and date-based sorting within each status group.
 
 | File | Change |
 |------|--------|
-| `src/components/project/HardMoneyLoanCalculator.tsx` | Add useEffect to sync term/days when loanStartDate changes in To Date mode |
+| `src/pages/Projects.tsx` | Add status priority to sort in `getFilteredProjects` |
 
