@@ -1,0 +1,1 @@
+ALTER TABLE public.projects ADD COLUMN hm_loan_start_date date;

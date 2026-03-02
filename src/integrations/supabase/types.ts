@@ -1380,6 +1380,7 @@ export type Database = {
           hm_interest_only: boolean | null
           hm_interest_rate: number | null
           hm_loan_amount: number | null
+          hm_loan_start_date: string | null
           hm_loan_term_months: number | null
           hm_points: number | null
           hm_use_to_date: boolean | null
@@ -1424,6 +1425,7 @@ export type Database = {
           hm_interest_only?: boolean | null
           hm_interest_rate?: number | null
           hm_loan_amount?: number | null
+          hm_loan_start_date?: string | null
           hm_loan_term_months?: number | null
           hm_points?: number | null
           hm_use_to_date?: boolean | null
@@ -1468,6 +1470,7 @@ export type Database = {
           hm_interest_only?: boolean | null
           hm_interest_rate?: number | null
           hm_loan_amount?: number | null
+          hm_loan_start_date?: string | null
           hm_loan_term_months?: number | null
           hm_points?: number | null
           hm_use_to_date?: boolean | null
