@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, Clock, Settings, CalendarClock, RotateCcw, ChevronDown, TableProperties } from 'lucide-react';
+import { Landmark, DollarSign, Percent, Save, Loader2, TrendingUp, Clock, Settings, CalendarClock, RotateCcw, ChevronDown, TableProperties, CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,7 @@ interface HardMoneyLoanCalculatorProps {
   initialClosingCosts?: number;
   initialInterestOnly?: boolean;
   initialUseToDate?: boolean;
+  initialLoanStartDate?: string;
   onSaved?: () => void;
 }
 
@@ -71,6 +73,7 @@ export function HardMoneyLoanCalculator({
   initialClosingCosts = 0,
   initialInterestOnly = true,
   initialUseToDate = false,
+  initialLoanStartDate,
   onSaved,
 }: HardMoneyLoanCalculatorProps) {
   // Editable purchase price for testing scenarios
@@ -88,6 +91,7 @@ export function HardMoneyLoanCalculator({
   const [interestOnly, setInterestOnly] = useState(initialInterestOnly);
   const [saving, setSaving] = useState(false);
   const [useToDate, setUseToDate] = useState(initialUseToDate);
+  const [loanStartDate, setLoanStartDate] = useState(initialLoanStartDate || projectStartDate || '');
 
   // Custom term popover
   const [customTermOpen, setCustomTermOpen] = useState(false);
@@ -103,15 +107,15 @@ export function HardMoneyLoanCalculator({
   const [termDaysOverride, setTermDaysOverride] = useState<number | null>(null);
 
   const toDateMonths = useMemo(() => {
-    if (!projectStartDate) return null;
-    return calculateToDateMonths(projectStartDate, toDateEndDate);
-  }, [projectStartDate, toDateEndDate]);
+    if (!loanStartDate) return null;
+    return calculateToDateMonths(loanStartDate, toDateEndDate);
+  }, [loanStartDate, toDateEndDate]);
 
   const toDateDays = useMemo(() => {
-    if (!projectStartDate) return null;
-    const start = parseDateString(projectStartDate);
+    if (!loanStartDate) return null;
+    const start = parseDateString(loanStartDate);
     return Math.round((toDateEndDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-  }, [projectStartDate, toDateEndDate]);
+  }, [loanStartDate, toDateEndDate]);
 
   // Restore "To Date" mode on mount if it was saved
   useEffect(() => {
@@ -125,6 +129,7 @@ export function HardMoneyLoanCalculator({
 
   const handleSave = async () => {
     setSaving(true);
+    const saveLoanStartDate = loanStartDate && loanStartDate !== projectStartDate ? loanStartDate : null;
     const { error } = await supabase
       .from('projects')
       .update({
@@ -135,6 +140,7 @@ export function HardMoneyLoanCalculator({
         hm_closing_costs: closingCosts,
         hm_interest_only: interestOnly,
         hm_use_to_date: useToDate,
+        hm_loan_start_date: saveLoanStartDate,
       } as any)
       .eq('id', projectId);
 
@@ -430,7 +436,7 @@ export function HardMoneyLoanCalculator({
                 </Popover>
 
                 {/* To Date Button + Date Picker */}
-                {projectStartDate && toDateMonths !== null && toDateMonths > 0 && (
+                {loanStartDate && toDateMonths !== null && toDateMonths > 0 && (
                   <div className="flex items-center gap-0.5">
                     <Button
                       type="button"
@@ -455,7 +461,7 @@ export function HardMoneyLoanCalculator({
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="end">
                         <div className="p-3 pb-1 text-xs text-muted-foreground font-medium">
-                          {toDateDays} days from start
+                          {toDateDays} days from loan start
                         </div>
                         <Calendar
                           mode="single"
@@ -463,10 +469,10 @@ export function HardMoneyLoanCalculator({
                           onSelect={(date) => {
                             if (date) {
                               setToDateEndDate(date);
-                              const newMonths = calculateToDateMonths(projectStartDate, date);
+                              const newMonths = calculateToDateMonths(loanStartDate, date);
                               if (newMonths > 0) {
                                 setLoanTermMonths(newMonths);
-                                const start = parseDateString(projectStartDate);
+                                const start = parseDateString(loanStartDate);
                                 const exactDays = Math.round((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
                                 setTermDaysOverride(exactDays);
                               }
@@ -483,10 +489,10 @@ export function HardMoneyLoanCalculator({
                             onClick={() => {
                               const today = new Date();
                               setToDateEndDate(today);
-                              const newMonths = calculateToDateMonths(projectStartDate, today);
+                              const newMonths = calculateToDateMonths(loanStartDate, today);
                               if (newMonths > 0) {
                                 setLoanTermMonths(newMonths);
-                                const start = parseDateString(projectStartDate);
+                                const start = parseDateString(loanStartDate);
                                 const exactDays = Math.round((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
                                 setTermDaysOverride(exactDays);
                               }
@@ -556,6 +562,46 @@ export function HardMoneyLoanCalculator({
                 </Popover>
               </div>
             </div>
+            </div>
+
+            {/* Loan Start Date */}
+            <div className="space-y-2">
+              <Label>Loan Start Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal rounded-sm",
+                      !loanStartDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {loanStartDate ? format(parseDateString(loanStartDate), 'PPP') : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={loanStartDate ? parseDateString(loanStartDate) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        const y = date.getFullYear();
+                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                        const d = String(date.getDate()).padStart(2, '0');
+                        setLoanStartDate(`${y}-${m}-${d}`);
+                      }
+                    }}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              {loanStartDate && projectStartDate && loanStartDate !== projectStartDate && (
+                <p className="text-xs text-muted-foreground">
+                  Project started: {format(parseDateString(projectStartDate), 'MMM d, yyyy')}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

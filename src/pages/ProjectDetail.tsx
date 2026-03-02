@@ -1179,6 +1179,7 @@ export default function ProjectDetail() {
                 initialClosingCosts={(project as any).hm_closing_costs ?? 0}
                 initialInterestOnly={(project as any).hm_interest_only ?? true}
                 initialUseToDate={(project as any).hm_use_to_date ?? false}
+                initialLoanStartDate={(project as any).hm_loan_start_date}
                 onSaved={() => fetchProjectData(false)}
               />
               
