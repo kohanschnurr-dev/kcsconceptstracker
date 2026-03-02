@@ -191,10 +191,26 @@ function ExpenseForm({
     if (!receiptFile || !receiptPreview) return;
     setIsParsingImage(true);
     try {
+      // 25-second timeout to prevent infinite waits
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000);
+
       const { data, error } = await supabase.functions.invoke('parse-receipt-image', {
         body: { image_base64: receiptPreview },
       });
-      if (error) throw error;
+
+      clearTimeout(timeout);
+      if (error) {
+        // Check for specific error codes
+        const status = (error as any)?.status;
+        if (status === 429) {
+          throw new Error('Too many scans. Please wait a moment and try again.');
+        }
+        if (status === 402) {
+          throw new Error('AI credits exhausted. Please add credits.');
+        }
+        throw error;
+      }
       if (data?.data) {
         const parsed = data.data;
         if (parsed.vendor_name) setVendor(parsed.vendor_name);
@@ -249,19 +265,60 @@ function ExpenseForm({
       }
     } catch (error: any) {
       console.error('Error parsing receipt image:', error);
-      toast({ title: 'Scan failed', description: error.message || 'Could not parse receipt image.', variant: 'destructive' });
+      const isTimeout = error?.name === 'AbortError' || error?.message?.includes('abort');
+      const msg = isTimeout
+        ? 'Scan timed out. Try a clearer photo or use the paste option.'
+        : (error.message || 'Could not parse receipt image.');
+      toast({ title: 'Scan failed', description: msg, variant: 'destructive' });
     } finally {
       setIsParsingImage(false);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File, maxDim = 1600, quality = 0.8): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas not supported'));
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: 'Large file detected', description: 'Compressing image for faster scanning...' });
+      }
       setReceiptFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => { setReceiptPreview(e.target?.result as string); };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith('image/')) {
+        try {
+          const compressed = await compressImage(file);
+          setReceiptPreview(compressed);
+        } catch {
+          const reader = new FileReader();
+          reader.onload = (e) => { setReceiptPreview(e.target?.result as string); };
+          reader.readAsDataURL(file);
+        }
+      } else {
+        const reader = new FileReader();
+        reader.onload = (e) => { setReceiptPreview(e.target?.result as string); };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
