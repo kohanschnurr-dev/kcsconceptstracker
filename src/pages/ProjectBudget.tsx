@@ -672,9 +672,10 @@ export default function ProjectBudget() {
           </TabsList>
 
           <TabsContent value="budget" className="space-y-6">
+            <div className="space-y-4">
             {/* Summary Cards - Row 1: The Big Picture */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="glass-card">
+              <Card className="glass-card min-w-0">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingUp className="h-4 w-4 text-warning" />
@@ -686,7 +687,7 @@ export default function ProjectBudget() {
               </Card>
 
               <Card 
-                className={cn("glass-card transition-all", !budgetEditMode && "cursor-pointer hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")}
+                className={cn("glass-card min-w-0 transition-all", !budgetEditMode && "cursor-pointer hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")}
                 onClick={() => !budgetEditMode && handleCardFilter('construction')}
               >
                 <CardContent className="pt-4 relative">
@@ -787,7 +788,7 @@ export default function ProjectBudget() {
                 </CardContent>
               </Card>
 
-              <Card className="glass-card">
+              <Card className="glass-card min-w-0">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingDown className={cn("h-4 w-4", remaining >= 0 ? "text-success" : "text-destructive")} />
@@ -799,7 +800,7 @@ export default function ProjectBudget() {
                 </CardContent>
               </Card>
 
-              <Card className="glass-card">
+              <Card className="glass-card min-w-0">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Receipt className="h-4 w-4 text-muted-foreground" />
@@ -812,7 +813,7 @@ export default function ProjectBudget() {
 
             {/* Summary Cards - Row 2: The Breakdown */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")} onClick={() => handleCardFilter('construction')}>
+              <Card className={cn("glass-card min-w-0 cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")} onClick={() => handleCardFilter('construction')}>
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Hammer className="h-4 w-4 text-primary" />
@@ -823,7 +824,7 @@ export default function ProjectBudget() {
               </Card>
 
               <Card 
-                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'loan' && "ring-2 ring-primary")}
+                className={cn("glass-card min-w-0 cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'loan' && "ring-2 ring-primary")}
                 onClick={() => handleCardFilter('loan')}
               >
                 <CardContent className="pt-4">
@@ -836,7 +837,7 @@ export default function ProjectBudget() {
               </Card>
 
               <Card 
-                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'monthly' && "ring-2 ring-primary")}
+                className={cn("glass-card min-w-0 cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'monthly' && "ring-2 ring-primary")}
                 onClick={() => handleCardFilter('monthly')}
               >
                 <CardContent className="pt-4">
@@ -849,7 +850,7 @@ export default function ProjectBudget() {
               </Card>
 
               <Card 
-                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'transaction' && "ring-2 ring-primary")}
+                className={cn("glass-card min-w-0 cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'transaction' && "ring-2 ring-primary")}
                 onClick={() => handleCardFilter('transaction')}
               >
                 <CardContent className="pt-4">
@@ -860,6 +861,7 @@ export default function ProjectBudget() {
                   <p className="text-xl font-bold font-mono">{formatCurrency(transactionCosts)}</p>
                 </CardContent>
               </Card>
+            </div>
             </div>
 
         {/* Budget Progress */}
