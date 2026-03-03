@@ -672,59 +672,7 @@ export default function ProjectBudget() {
           </TabsList>
 
           <TabsContent value="budget" className="space-y-6">
-            {/* Summary Cards - Row 1 */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")} onClick={() => handleCardFilter('construction')}>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Hammer className="h-4 w-4 text-primary" />
-                    <span className="text-sm text-muted-foreground">Construction Costs</span>
-                  </div>
-                  <p className="text-xl font-bold font-mono">{formatCurrency(constructionCosts)}</p>
-                </CardContent>
-              </Card>
-
-              <Card 
-                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'loan' && "ring-2 ring-primary")}
-                onClick={() => handleCardFilter('loan')}
-              >
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Landmark className="h-4 w-4 text-primary" />
-                    <span className="text-sm text-muted-foreground">Loan Costs</span>
-                  </div>
-                  <p className="text-xl font-bold font-mono">{formatCurrency(loanCosts)}</p>
-                </CardContent>
-              </Card>
-
-              <Card 
-                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'monthly' && "ring-2 ring-primary")}
-                onClick={() => handleCardFilter('monthly')}
-              >
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Home className="h-4 w-4 text-primary" />
-                    <span className="text-sm text-muted-foreground">Holding Costs</span>
-                  </div>
-                  <p className="text-xl font-bold font-mono">{formatCurrency(holdingCosts)}</p>
-                </CardContent>
-              </Card>
-
-              <Card 
-                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'transaction' && "ring-2 ring-primary")}
-                onClick={() => handleCardFilter('transaction')}
-              >
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Receipt className="h-4 w-4 text-primary" />
-                    <span className="text-sm text-muted-foreground">Transaction Costs</span>
-                  </div>
-                  <p className="text-xl font-bold font-mono">{formatCurrency(transactionCosts)}</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Summary Cards - Row 2 */}
+            {/* Summary Cards - Row 1: The Big Picture */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="glass-card">
                 <CardContent className="pt-4">
@@ -858,6 +806,58 @@ export default function ProjectBudget() {
                     <span className="text-sm text-muted-foreground"># of Expenses</span>
                   </div>
                   <p className="text-2xl font-bold">{expenses.length}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Summary Cards - Row 2: The Breakdown */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")} onClick={() => handleCardFilter('construction')}>
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Hammer className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Construction Costs</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(constructionCosts)}</p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'loan' && "ring-2 ring-primary")}
+                onClick={() => handleCardFilter('loan')}
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Landmark className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Loan Costs</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(loanCosts)}</p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'monthly' && "ring-2 ring-primary")}
+                onClick={() => handleCardFilter('monthly')}
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Home className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Holding Costs</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(holdingCosts)}</p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'transaction' && "ring-2 ring-primary")}
+                onClick={() => handleCardFilter('transaction')}
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Receipt className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Transaction Costs</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(transactionCosts)}</p>
                 </CardContent>
               </Card>
             </div>
