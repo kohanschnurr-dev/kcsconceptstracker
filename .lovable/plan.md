@@ -1,51 +1,24 @@
 
 
-## Fix: Budget Summary Cards Show Misleading Numbers
+## Reorder Budget Summary Cards
 
-### The Core Problem
+### What Changes
 
-The two rows of stat cards are mixing scopes and creating contradictory information:
-
-**Row 1** breaks expenses into 4 cost types: Construction, Loan, Holding, Transaction.
-**Row 2** then shows "Total Spent" (all types combined) next to "Total Construction Budget" and "Remaining Construction Budget."
-
-The "Remaining Construction Budget" card calculates `totalBudget - totalSpent`, but `totalSpent` includes ALL cost types. So it subtracts loan, holding, and transaction costs from the construction budget — making it look like you're $4,664 over budget when construction alone is only ~$700 over.
-
-### The Fix
+Swap the two rows so the big-picture numbers lead, and the cost-type breakdown sits underneath.
 
 **File: `src/pages/ProjectBudget.tsx`**
 
-**Change 1: Fix the "remaining" calculation (line ~474)**
+**Row 1 (lines 675-863) — The Big Picture** will contain (in order):
+1. Total All-In Costs (currently in Row 2, line 728-738)
+2. Total Construction Budget (currently in Row 2, line 740-840)
+3. Remaining Construction Budget (currently in Row 2, line 842-852)
+4. # of Expenses (currently in Row 2, line 854-862)
 
-Currently:
-```typescript
-const totalSpent = categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
-const remaining = totalBudget - totalSpent;
-```
+**Row 2 — The Breakdown** will contain (in order):
+1. Construction Costs (currently Row 1, line 677-685)
+2. Loan Costs (currently Row 1, line 687-698)
+3. Holding Costs (currently Row 1, line 700-711)
+4. Transaction Costs (currently Row 1, line 713-724)
 
-`totalSpent` aggregates all expenses regardless of cost type. The "Remaining Construction Budget" card should compare against construction spending only:
-
-```typescript
-const remaining = totalBudget - constructionCosts;
-```
-
-This way: $153,200 - $152,506 = $693.85 remaining — which is accurate.
-
-**Change 2: Clarify "Total Spent" card to show what it actually represents**
-
-Rename "Total Spent" to "Total All-In Costs" and add a subtitle showing the breakdown: `Construction + Loan + Holding + Transaction`. This makes it immediately clear that this number spans all cost types and isn't directly comparable to the construction budget.
-
-**Change 3: Update the progress bar calculation (line ~876)**
-
-The progress bar currently uses `totalSpent / totalBudget` (all spend vs construction budget). Update it to use `constructionCosts / totalBudget` so it tracks construction progress accurately.
-
-### Summary
-
-| Line(s) | Change |
-|---------|--------|
-| ~474 | `remaining = totalBudget - constructionCosts` instead of `totalBudget - totalSpent` |
-| ~731-736 | Rename "Total Spent" label to "Total All-In Costs", add subtitle with type breakdown |
-| ~869-877 | Progress bar uses `constructionCosts` instead of `totalSpent` |
-
-The numbers will now be internally consistent: construction budget tracks construction costs, and total spending is clearly labeled as all-inclusive.
+This is purely a reorder of the existing card markup — no logic changes needed. The current Row 1 content (4 cost-type cards) moves to Row 2, and the current Row 2 content (summary cards) moves to Row 1.
 
