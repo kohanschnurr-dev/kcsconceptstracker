@@ -471,11 +471,11 @@ export default function ProjectBudget() {
   const hasManualBudget = (project?.total_budget ?? 0) > 0;
   const totalBudget = hasManualBudget ? project!.total_budget : categoryTotal;
   const totalSpent = categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
-  const remaining = totalBudget - totalSpent;
   const loanCosts = expenses.filter(e => e.cost_type === 'loan').reduce((sum, e) => sum + Number(e.amount), 0);
   const holdingCosts = expenses.filter(e => e.cost_type === 'monthly').reduce((sum, e) => sum + Number(e.amount), 0);
   const constructionCosts = expenses.filter(e => e.cost_type === 'construction').reduce((sum, e) => sum + Number(e.amount), 0);
   const transactionCosts = expenses.filter(e => e.cost_type === 'transaction').reduce((sum, e) => sum + Number(e.amount), 0);
+  const remaining = totalBudget - constructionCosts;
   const filteredTotal = filteredExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
 
 
@@ -730,9 +730,10 @@ export default function ProjectBudget() {
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingUp className="h-4 w-4 text-warning" />
-                    <span className="text-sm text-muted-foreground">Total Spent</span>
+                    <span className="text-sm text-muted-foreground">Total All-In Costs</span>
                   </div>
                   <p className="text-2xl font-bold font-mono text-warning">{formatCurrency(totalSpent)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Construction + Loan + Holding + Transaction</p>
                 </CardContent>
               </Card>
 
@@ -866,14 +867,14 @@ export default function ProjectBudget() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">
-                {totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : 0}% of budget used
+                {totalBudget > 0 ? ((constructionCosts / totalBudget) * 100).toFixed(1) : 0}% of construction budget used
               </span>
               <span className="font-mono text-sm">
-                {formatCurrency(totalSpent)} / {formatCurrency(totalBudget)}
+                {formatCurrency(constructionCosts)} / {formatCurrency(totalBudget)}
               </span>
             </div>
             <Progress 
-              value={totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0}
+              value={totalBudget > 0 ? Math.min((constructionCosts / totalBudget) * 100, 100) : 0}
               className="h-3"
             />
           </CardContent>
