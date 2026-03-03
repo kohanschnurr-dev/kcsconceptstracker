@@ -1,24 +1,23 @@
 
 
-## Reorder Budget Summary Cards
+## Make Both Stat Card Rows Equal Width
 
-### What Changes
+Both rows already use the same grid class (`grid grid-cols-2 lg:grid-cols-4 gap-4`), so the grid itself is identical. The visual width inconsistency likely comes from the rows being separate `div` elements inside a `space-y-6` flex container — any slight content-driven sizing difference can appear.
 
-Swap the two rows so the big-picture numbers lead, and the cost-type breakdown sits underneath.
+### Fix
+
+Wrap both rows in a single parent container so they share the same block formatting context, ensuring pixel-perfect alignment:
 
 **File: `src/pages/ProjectBudget.tsx`**
 
-**Row 1 (lines 675-863) — The Big Picture** will contain (in order):
-1. Total All-In Costs (currently in Row 2, line 728-738)
-2. Total Construction Budget (currently in Row 2, line 740-840)
-3. Remaining Construction Budget (currently in Row 2, line 842-852)
-4. # of Expenses (currently in Row 2, line 854-862)
+1. Wrap the two grid rows (lines 676–863) in a single `<div className="space-y-4">` container so they're siblings within one box.
+2. Ensure both grids use the exact same gap value (currently both `gap-4` — confirmed identical).
+3. Add `min-w-0` to each `<Card>` in both rows to prevent any card from pushing its column wider due to long text content (e.g., "Remaining Construction Budget" label is longer than "Loan Costs").
 
-**Row 2 — The Breakdown** will contain (in order):
-1. Construction Costs (currently Row 1, line 677-685)
-2. Loan Costs (currently Row 1, line 687-698)
-3. Holding Costs (currently Row 1, line 700-711)
-4. Transaction Costs (currently Row 1, line 713-724)
+This guarantees both rows' columns align exactly, regardless of content length.
 
-This is purely a reorder of the existing card markup — no logic changes needed. The current Row 1 content (4 cost-type cards) moves to Row 2, and the current Row 2 content (summary cards) moves to Row 1.
+| Location | Change |
+|----------|--------|
+| Lines 676–863 | Wrap both row divs in a shared parent `div` |
+| Each `Card` in both rows | Add `min-w-0` to prevent text overflow from affecting column width |
 
