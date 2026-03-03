@@ -32,7 +32,8 @@ import {
   Landmark,
   Home,
   Hammer,
-  Calculator
+  Calculator,
+  Info
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,7 @@ import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { PendingBudgetBanner } from '@/components/project/PendingBudgetBanner';
+import { Tooltip as STooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const CHART_COLORS = [
   'hsl(32, 95%, 55%)',   // primary orange
@@ -680,9 +682,14 @@ export default function ProjectBudget() {
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingUp className="h-4 w-4 text-warning" />
                     <span className="text-sm text-muted-foreground">Total All-In Costs</span>
+                    <STooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>Construction + Loan + Holding + Transaction</TooltipContent>
+                    </STooltip>
                   </div>
                   <p className="text-2xl font-bold font-mono text-warning">{formatCurrency(totalSpent)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Construction + Loan + Holding + Transaction</p>
                 </CardContent>
               </Card>
 
@@ -706,33 +713,16 @@ export default function ProjectBudget() {
                       <div className="flex items-center gap-2 mb-1">
                         <DollarSign className="h-4 w-4 text-primary" />
                         <span className="text-sm text-muted-foreground">Total Construction Budget</span>
+                        <STooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {hasManualBudget ? "Manual override — click ••• to edit or revert" : `from ${categories.length} categories`}
+                          </TooltipContent>
+                        </STooltip>
                       </div>
                       <p className="text-2xl font-bold font-mono">{formatCurrency(totalBudget)}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {hasManualBudget ? (
-                          <span className="flex items-center gap-1">
-                            manual override
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                const { error } = await supabase
-                                  .from('projects')
-                                  .update({ total_budget: 0 })
-                                  .eq('id', id!);
-                                if (!error) {
-                                  setProject(prev => prev ? { ...prev, total_budget: 0 } : prev);
-                                  toast.success('Reverted to category total');
-                                }
-                              }}
-                              className="text-primary hover:underline"
-                            >
-                              (revert)
-                            </button>
-                          </span>
-                        ) : (
-                          `from ${categories.length} categories`
-                        )}
-                      </p>
                     </>
                   ) : (
                     <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
