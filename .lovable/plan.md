@@ -1,23 +1,52 @@
 
 
-## Make Both Stat Card Rows Equal Width
+## Replace Subtitles with Tooltip Icons
 
-Both rows already use the same grid class (`grid grid-cols-2 lg:grid-cols-4 gap-4`), so the grid itself is identical. The visual width inconsistency likely comes from the rows being separate `div` elements inside a `space-y-6` flex container — any slight content-driven sizing difference can appear.
-
-### Fix
-
-Wrap both rows in a single parent container so they share the same block formatting context, ensuring pixel-perfect alignment:
+Remove the subtitle text under "Total All-In Costs" and "Total Construction Budget" cards that causes the height mismatch. Replace each with a small `Info` icon in the card header that shows the info on hover via a Tooltip.
 
 **File: `src/pages/ProjectBudget.tsx`**
 
-1. Wrap the two grid rows (lines 676–863) in a single `<div className="space-y-4">` container so they're siblings within one box.
-2. Ensure both grids use the exact same gap value (currently both `gap-4` — confirmed identical).
-3. Add `min-w-0` to each `<Card>` in both rows to prevent any card from pushing its column wider due to long text content (e.g., "Remaining Construction Budget" label is longer than "Loan Costs").
+**Change 1 — Total All-In Costs card (lines 680-685)**
 
-This guarantees both rows' columns align exactly, regardless of content length.
+Remove the `<p>` subtitle on line 685. Add an `Info` icon next to the label that shows "Construction + Loan + Holding + Transaction" on hover via `<Tooltip>`.
 
-| Location | Change |
-|----------|--------|
-| Lines 676–863 | Wrap both row divs in a shared parent `div` |
-| Each `Card` in both rows | Add `min-w-0` to prevent text overflow from affecting column width |
+```tsx
+<div className="flex items-center gap-2 mb-1">
+  <TrendingUp className="h-4 w-4 text-warning" />
+  <span className="text-sm text-muted-foreground">Total All-In Costs</span>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+    </TooltipTrigger>
+    <TooltipContent>Construction + Loan + Holding + Transaction</TooltipContent>
+  </Tooltip>
+</div>
+<p className="text-2xl font-bold font-mono text-warning">{formatCurrency(totalSpent)}</p>
+```
+
+**Change 2 — Total Construction Budget card (lines 706-735, non-edit mode)**
+
+Remove the `<p>` subtitle block (lines 711-735) that shows "from X categories" or "manual override (revert)". Move that info into a tooltip on an `Info` icon next to the label.
+
+```tsx
+<div className="flex items-center gap-2 mb-1">
+  <DollarSign className="h-4 w-4 text-primary" />
+  <span className="text-sm text-muted-foreground">Total Construction Budget</span>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+    </TooltipTrigger>
+    <TooltipContent>
+      {hasManualBudget ? "Manual override — click ••• to edit" : `from ${categories.length} categories`}
+    </TooltipContent>
+  </Tooltip>
+</div>
+<p className="text-2xl font-bold font-mono">{formatCurrency(totalBudget)}</p>
+```
+
+The "revert" action moves into the tooltip or remains accessible via the existing `•••` edit button — keeping the card compact.
+
+**Imports**: Add `Info` to the lucide-react import, and ensure `Tooltip, TooltipTrigger, TooltipContent` are imported (check if `TooltipProvider` wraps the app).
+
+Both rows will now have identical card heights: icon + label, then value. No subtitles.
 
