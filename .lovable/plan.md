@@ -1,19 +1,35 @@
 
 
-## Align Project Detail Summary Cards with Budget Page Style
+## Restructure Budget Summary into 3 Distinct Zones
 
-The project detail page (image-880) shows cards with a different layout pattern (icon-box + label/value side by side) than the budget page (image-881) which uses a top-aligned icon + label row then value below. The user wants consistency when clicking through from the project overview to the budget page.
+Reorganize the flat pill-box layout into three visually separated sections that communicate hierarchy and scope.
 
-### Changes
+### File: `src/pages/ProjectBudget.tsx` (lines 677–873)
 
-**File: `src/pages/ProjectDetail.tsx` (lines 946-1027)**
+Replace the current two equal rows + separate progress bar with:
 
-Restyle the 4 summary cards to match the budget page layout:
-- Replace the current horizontal icon-box + text layout with the budget page's vertical layout: small inline icon + label on top, large mono value below
-- Use the same card structure: `<div className="flex items-center gap-2 mb-1">` for the icon+label row, then `<p className="text-2xl font-bold font-mono">` for the value
-- Keep the same click behaviors (navigate to budget, switch to procurement tab)
-- Keep the same color coding (primary for budget, warning for spent, success/destructive for remaining, muted for procurement)
-- Remove the large 8x8/10x10 icon boxes; use small inline 4x4 icons like the budget page
+**Zone 1 — "CONSTRUCTION BUDGET"** (wrapped in a single Card)
+- Section header label: `● CONSTRUCTION BUDGET` (small, uppercase, tracking-wide, muted)
+- 3-column grid inside: **Spent** (construction costs, primary color) | **Total Budget** (with edit ••• button) | **Remaining** (green/red)
+- Each shows: small icon + label on top, large mono value, small subtitle underneath (e.g., "99.5% of budget", "53 categories", "On track")
+- Progress bar lives directly underneath the 3 cards, inside the same Card wrapper — with the percentage text and dollar amounts flanking it
 
-This makes the project detail cards visually identical to Row 1 of the budget page, so navigating between pages feels cohesive.
+**Zone 2 — "TOTAL PROJECT SUMMARY"** (wrapped in a single Card)
+- Section header: `◆ TOTAL PROJECT SUMMARY`
+- 2-column grid: **Total All-In Costs** (gold/warning, with subtitle "Construction + Loan + Holding + Transaction") | **# of Expenses** (with subtitle "across all categories")
+- Larger cards since only 2 columns
+
+**Zone 3 — "ADDITIONAL COSTS"** (wrapped in a single Card)
+- Section header: `— ADDITIONAL COSTS`
+- 3-column grid: **Loan Costs** | **Holding Costs** | **Transaction Costs**
+- Smaller/quieter styling — `text-xl` instead of `text-2xl`, muted icon colors
+- Keep click-to-filter behavior on each
+
+### Key Details
+- Each zone is a `Card className="glass-card"` with its own `CardContent` containing the header label and inner grid
+- The subtitles return (e.g., "99.5% of budget", "53 categories") since height matching is no longer needed — cards within each zone are peers, not across zones
+- Progress bar moves from a standalone Card into Zone 1, directly under the 3 construction pills
+- Remove the old `space-y-4` wrapper around the two equal rows
+- The separate progress bar Card (lines 857–873) is absorbed into Zone 1
+- Zone headers use `text-xs font-semibold uppercase tracking-widest text-muted-foreground` with a small decorative icon/dot
 
