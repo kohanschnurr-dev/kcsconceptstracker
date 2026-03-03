@@ -949,16 +949,12 @@ export default function ProjectDetail() {
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-primary/50"
             onClick={() => navigate(`/projects/${id}/budget`)}
           >
-            <CardContent className="pt-4 sm:pt-6">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Total Budget</p>
-                  <p className="text-base sm:text-xl font-semibold font-mono truncate">{formatCurrency(totalBudget)}</p>
-                </div>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="h-4 w-4 text-primary" />
+                <span className="text-sm text-muted-foreground">Total Budget</span>
               </div>
+              <p className="text-2xl font-bold font-mono">{formatCurrency(totalBudget)}</p>
             </CardContent>
           </Card>
 
@@ -966,16 +962,12 @@ export default function ProjectDetail() {
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-warning/50"
             onClick={() => navigate(`/projects/${id}/budget`)}
           >
-            <CardContent className="pt-4 sm:pt-6">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
-                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-warning" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Total Spent</p>
-                  <p className="text-base sm:text-xl font-semibold font-mono truncate">{formatCurrency(totalSpent)}</p>
-                </div>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="h-4 w-4 text-warning" />
+                <span className="text-sm text-muted-foreground">Total Spent</span>
               </div>
+              <p className="text-2xl font-bold font-mono text-warning">{formatCurrency(totalSpent)}</p>
             </CardContent>
           </Card>
 
@@ -983,28 +975,21 @@ export default function ProjectDetail() {
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-success/50"
             onClick={() => navigate(`/projects/${id}/budget`)}
           >
-            <CardContent className="pt-4 sm:pt-6">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className={cn(
-                  "h-8 w-8 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0",
-                  remaining >= 0 ? "bg-success/10" : "bg-destructive/10"
-                )}>
-                  {remaining >= 0 ? (
-                    <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-success" />
-                  ) : (
-                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-destructive" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Remaining</p>
-                  <p className={cn(
-                    "text-base sm:text-xl font-semibold font-mono truncate",
-                    remaining >= 0 ? "text-success" : "text-destructive"
-                  )}>
-                    {formatCurrency(remaining)}
-                  </p>
-                </div>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                {remaining >= 0 ? (
+                  <TrendingDown className="h-4 w-4 text-success" />
+                ) : (
+                  <TrendingUp className="h-4 w-4 text-destructive" />
+                )}
+                <span className="text-sm text-muted-foreground">Remaining</span>
               </div>
+              <p className={cn(
+                "text-2xl font-bold font-mono",
+                remaining >= 0 ? "text-success" : "text-destructive"
+              )}>
+                {formatCurrency(remaining)}
+              </p>
             </CardContent>
           </Card>
 
@@ -1012,16 +997,12 @@ export default function ProjectDetail() {
             className="glass-card cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:border-muted-foreground/50"
             onClick={() => setActiveTab('procurement')}
           >
-            <CardContent className="pt-4 sm:pt-6">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Procurement</p>
-                  <p className="text-base sm:text-xl font-semibold">{procurementCount}</p>
-                </div>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Procurement</span>
               </div>
+              <p className="text-2xl font-bold font-mono">{procurementCount}</p>
             </CardContent>
           </Card>
         </div>
