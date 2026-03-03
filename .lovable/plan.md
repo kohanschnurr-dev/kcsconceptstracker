@@ -1,88 +1,51 @@
 
 
-## Fix: Apply Discount Lines to Their Associated Items
+## Fix: Budget Summary Cards Show Misleading Numbers
 
-### Problem
-Home Depot "Pro Member Pricing", "INSTANT SAVINGS", and similar discount lines appear as separate negative-amount entries on the receipt. Currently these either show up as broken line items or get stripped generically. They should be applied to the specific item they belong to -- reducing that item's `total_price` and populating its `discount` field.
+### The Core Problem
 
-### How Receipt Discounts Work
-On Home Depot/Lowe's receipts, a discount line always appears directly **below** the item it applies to:
+The two rows of stat cards are mixing scopes and creating contradictory information:
 
-```text
-ROMEX 12/2 NM Wire 250ft    1   $89.97        $89.97
-  PRO XTRA SAVINGS                           -$13.50
-PVC Cement 8oz               1    $6.48         $6.48
+**Row 1** breaks expenses into 4 cost types: Construction, Loan, Holding, Transaction.
+**Row 2** then shows "Total Spent" (all types combined) next to "Total Construction Budget" and "Remaining Construction Budget."
+
+The "Remaining Construction Budget" card calculates `totalBudget - totalSpent`, but `totalSpent` includes ALL cost types. So it subtracts loan, holding, and transaction costs from the construction budget — making it look like you're $4,664 over budget when construction alone is only ~$700 over.
+
+### The Fix
+
+**File: `src/pages/ProjectBudget.tsx`**
+
+**Change 1: Fix the "remaining" calculation (line ~474)**
+
+Currently:
+```typescript
+const totalSpent = categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
+const remaining = totalBudget - totalSpent;
 ```
 
-The `-$13.50` applies to the ROMEX wire above it.
-
-### Changes
-
-**File: `supabase/functions/parse-receipt-image/index.ts`**
-
-#### 1. Update AI Prompt -- Instruct to Fold Discounts Into Items
-
-Add a new section to the system prompt explaining how to handle discount/savings lines:
-
-```
-DISCOUNT / SAVINGS LINES (Pro Xtra, Instant Savings, Coupons):
-- These lines appear BELOW the item they apply to (e.g., "PRO XTRA SAVINGS -$13.50")
-- Do NOT create separate line items for discounts
-- Instead, SUBTRACT the discount from the item ABOVE it:
-  - Reduce that item's total_price by the discount amount
-  - Recalculate unit_price = total_price / quantity
-  - Set that item's "discount" field to the absolute discount value
-- Example: Wire $89.97 followed by "PRO SAVINGS -$13.50" becomes:
-  { "item_name": "ROMEX 12/2 NM Wire 250ft", "total_price": 76.47, "discount": 13.50, "unit_price": 76.47 }
-- Sum all discounts into "discount_amount" at the top level too
-```
-
-Also update the example JSON in the user prompt to show a discount field with a non-zero value.
-
-#### 2. Add Post-Processing: Merge Negative Lines Into Prior Item
-
-Even with prompt guidance, the AI may still return negative line items. Add a server-side pass (after `cleanedData` construction, before quantity validation) that:
-
-1. Iterates through line items in order
-2. If an item has `total_price < 0` or `unit_price < 0`, it's a discount line
-3. Apply its absolute value to the **previous** item's `discount` field and reduce that item's `total_price`
-4. Recalculate the previous item's `unit_price`
-5. Remove the discount line from the array
-6. Accumulate all found discounts into `cleanedData.discount_amount`
+`totalSpent` aggregates all expenses regardless of cost type. The "Remaining Construction Budget" card should compare against construction spending only:
 
 ```typescript
-// Merge negative/discount lines into the item they follow
-const mergedItems: typeof cleanedData.line_items = [];
-let accumulatedDiscount = 0;
-
-for (let i = 0; i < cleanedData.line_items.length; i++) {
-  const item = cleanedData.line_items[i];
-  if (item.total_price < 0 || item.unit_price < 0) {
-    // This is a discount line -- apply to previous item
-    const discountAmt = Math.abs(item.total_price);
-    accumulatedDiscount += discountAmt;
-    if (mergedItems.length > 0) {
-      const prev = mergedItems[mergedItems.length - 1];
-      prev.discount = Math.round((prev.discount + discountAmt) * 100) / 100;
-      prev.total_price = Math.round((prev.total_price - discountAmt) * 100) / 100;
-      prev.unit_price = prev.quantity > 0
-        ? Math.round((prev.total_price / prev.quantity) * 100) / 100
-        : prev.total_price;
-    }
-  } else {
-    mergedItems.push({ ...item });
-  }
-}
-
-cleanedData.line_items = mergedItems;
-cleanedData.discount_amount += Math.round(accumulatedDiscount * 100) / 100;
+const remaining = totalBudget - constructionCosts;
 ```
 
-This ensures every discount is attributed to the correct product rather than floating as a separate broken entry.
+This way: $153,200 - $152,506 = $693.85 remaining — which is accurate.
+
+**Change 2: Clarify "Total Spent" card to show what it actually represents**
+
+Rename "Total Spent" to "Total All-In Costs" and add a subtitle showing the breakdown: `Construction + Loan + Holding + Transaction`. This makes it immediately clear that this number spans all cost types and isn't directly comparable to the construction budget.
+
+**Change 3: Update the progress bar calculation (line ~876)**
+
+The progress bar currently uses `totalSpent / totalBudget` (all spend vs construction budget). Update it to use `constructionCosts / totalBudget` so it tracks construction progress accurately.
 
 ### Summary
 
-| File | Change |
-|------|--------|
-| `supabase/functions/parse-receipt-image/index.ts` | Update prompt to fold discounts into items + add post-processing merge for negative lines |
+| Line(s) | Change |
+|---------|--------|
+| ~474 | `remaining = totalBudget - constructionCosts` instead of `totalBudget - totalSpent` |
+| ~731-736 | Rename "Total Spent" label to "Total All-In Costs", add subtitle with type breakdown |
+| ~869-877 | Progress bar uses `constructionCosts` instead of `totalSpent` |
+
+The numbers will now be internally consistent: construction budget tracks construction costs, and total spending is clearly labeled as all-inclusive.
 
