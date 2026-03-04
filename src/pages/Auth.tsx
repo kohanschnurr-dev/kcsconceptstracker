@@ -9,9 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, Users, Receipt, ShieldCheck, Lock, Loader2 } from 'lucide-react';
+import { Calculator, Users, Receipt, ShieldCheck, Loader2 } from 'lucide-react';
 import { lovable } from '@/integrations/lovable/index';
-import kcsLogo from '@/assets/kcs-logo.png';
+import groundworksLogo from '@/assets/groundworks-logo.png';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -144,13 +144,13 @@ export default function Auth() {
         <div className="relative z-10 flex flex-col gap-10">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <img src={kcsLogo} alt="KCS logo" className="h-10 w-10 rounded" />
+            <img src={groundworksLogo} alt="GroundWorks logo" className="h-10 w-10 rounded" />
             <span className="text-xl font-bold text-white tracking-tight">GroundWorks</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-3xl lg:text-4xl font-extrabold leading-tight text-white max-w-md">
-            Construction Budget Tracking Built for Flippers
+          <h1 className="text-3xl lg:text-4xl font-bold leading-tight tracking-tight text-white/90 max-w-md">
+            Smarter Project Management Starts Here
           </h1>
 
           {/* Feature bullets */}
@@ -166,11 +166,6 @@ export default function Auth() {
           </ul>
         </div>
 
-        {/* Bottom badge */}
-        <div className="relative z-10 flex items-center gap-2 text-xs text-gray-500">
-          <Lock className="h-3.5 w-3.5" />
-          <span>256-bit encrypted &nbsp;|&nbsp; Secured by Lovable Cloud</span>
-        </div>
       </div>
 
       {/* Right Panel */}
@@ -178,7 +173,7 @@ export default function Auth() {
         <div className="w-full max-w-[340px] space-y-6">
           {/* Mobile logo */}
           <div className="flex flex-col items-center gap-1 lg:hidden">
-            <img src={kcsLogo} alt="KCS logo" className="h-10 w-10 rounded" />
+            <img src={groundworksLogo} alt="GroundWorks logo" className="h-10 w-10 rounded" />
             <span className="text-lg font-bold">GroundWorks</span>
           </div>
 
