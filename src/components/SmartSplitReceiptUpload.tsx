@@ -92,6 +92,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const [editableQuantities, setEditableQuantities] = useState<Record<number, number>>({});
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
+  const [costType, setCostType] = useState<string>('construction');
   const [isImporting, setIsImporting] = useState(false);
   const [assignmentType, setAssignmentType] = useState<'project' | 'business'>('project');
   const [includeTax, setIncludeTax] = useState(true);
@@ -864,7 +865,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
             
             const { data: updateResult, error: qbError } = await supabase
               .from('quickbooks_expenses')
-              .update({ 
+              .update({
                 qb_id: splitQbId,
                 is_imported: true,
                 amount: categoryAmount,
@@ -873,6 +874,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 project_id: selectedProject,
                 category_id: categoryId,
                 expense_type: expenseType,
+                cost_type: costType,
                 payment_method: selectedMatch.qbExpense.payment_method || null,
               })
               .eq('id', originalQbExpenseId)
@@ -900,6 +902,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                   category_id: categoryId,
                   project_id: selectedProject,
                   expense_type: expenseType,
+                  cost_type: costType,
                   notes: itemNotes,
                   receipt_url: selectedMatch.receipt.receipt_image_url || null,
                   payment_method: selectedMatch.qbExpense.payment_method || null,
@@ -921,6 +924,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                   project_id: selectedProject,
                   category_id: categoryId,
                   expense_type: expenseType,
+                  cost_type: costType,
                   notes: itemNotes,
                   receipt_url: selectedMatch.receipt.receipt_image_url || null,
                   payment_method: selectedMatch.qbExpense.payment_method || null,
@@ -949,6 +953,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       setSelectedMatch(null);
       setSelectedProject('');
       setExpenseType('product');
+      setCostType('construction');
       setAssignmentType('project');
       
       // Refresh both lists
@@ -1446,23 +1451,39 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                       placeholder="Search"
                     />
 
-                    <div className="flex items-center gap-3">
-                      <Label className="text-sm text-muted-foreground">Type:</Label>
-                      <ToggleGroup
-                        type="single"
-                        value={expenseType}
-                        onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')}
-                        className="justify-start"
-                      >
-                        <ToggleGroupItem value="product" size="sm" className="gap-1">
-                          <Package className="h-3 w-3" />
-                          Product
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="labor" size="sm" className="gap-1">
-                          <Wrench className="h-3 w-3" />
-                          Labor
-                        </ToggleGroupItem>
-                      </ToggleGroup>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex items-center gap-3">
+                        <Label className="text-sm text-muted-foreground">Type:</Label>
+                        <ToggleGroup
+                          type="single"
+                          value={expenseType}
+                          onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')}
+                          className="justify-start"
+                        >
+                          <ToggleGroupItem value="product" size="sm" className="gap-1">
+                            <Package className="h-3 w-3" />
+                            Product
+                          </ToggleGroupItem>
+                          <ToggleGroupItem value="labor" size="sm" className="gap-1">
+                            <Wrench className="h-3 w-3" />
+                            Labor
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm text-muted-foreground">Cost Type:</Label>
+                        <Select value={costType} onValueChange={setCostType}>
+                          <SelectTrigger className="h-8 text-sm w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="construction">Construction</SelectItem>
+                            <SelectItem value="loan">Loan</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="transaction">Transaction</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                 )}

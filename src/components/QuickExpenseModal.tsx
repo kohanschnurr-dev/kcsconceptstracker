@@ -79,6 +79,7 @@ function ExpenseForm({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [includeTax, setIncludeTax] = useState(false);
   const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
+  const [costType, setCostType] = useState<string>('construction');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
@@ -412,6 +413,7 @@ function ExpenseForm({
             date,
             receipt_url: receiptUrl,
             expense_type: expenseType,
+            cost_type: costType,
           });
           if (error) throw error;
         }
@@ -440,7 +442,8 @@ function ExpenseForm({
       const { error } = await supabase.from('expenses').insert({
         project_id: selectedProject, category_id: categoryId, amount: calculateTotal(), vendor_name: vendor,
         description: description || null, payment_method: paymentMethod, status: 'actual',
-        includes_tax: includeTax, tax_amount: includeTax ? calculateTax() : null, date, receipt_url: receiptUrl, expense_type: expenseType,
+        includes_tax: includeTax, tax_amount: includeTax ? calculateTax() : null, date, receipt_url: receiptUrl,
+        expense_type: expenseType, cost_type: costType,
       });
       if (error) throw error;
       toast({ title: 'Expense logged', description: `$${calculateTotal().toFixed(2)} added successfully` });
@@ -654,12 +657,28 @@ function ExpenseForm({
         )}
       </div>
 
-      <div className="flex items-center gap-3">
-        <Label className="text-sm">Type:</Label>
-        <ToggleGroup type="single" value={expenseType} onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')} className="justify-start">
-          <ToggleGroupItem value="product" size="sm" className="gap-1"><Package className="h-3 w-3" />Product</ToggleGroupItem>
-          <ToggleGroupItem value="labor" size="sm" className="gap-1"><Wrench className="h-3 w-3" />Labor</ToggleGroupItem>
-        </ToggleGroup>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Label className="text-sm">Type:</Label>
+          <ToggleGroup type="single" value={expenseType} onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')} className="justify-start">
+            <ToggleGroupItem value="product" size="sm" className="gap-1"><Package className="h-3 w-3" />Product</ToggleGroupItem>
+            <ToggleGroupItem value="labor" size="sm" className="gap-1"><Wrench className="h-3 w-3" />Labor</ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-sm">Cost Type:</Label>
+          <Select value={costType} onValueChange={setCostType}>
+            <SelectTrigger className="h-8 text-sm w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="construction">Construction</SelectItem>
+              <SelectItem value="loan">Loan</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="transaction">Transaction</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -904,7 +923,7 @@ function ImportTab({
         project_id: selectedProject, category_id: catLookup[r.matchedCategory!],
         amount: r.amount, date: r.date, vendor_name: r.vendor || null,
         description: r.description || null, payment_method: r.paymentMethod as any,
-        status: 'actual' as any, expense_type: r.expenseType, notes: r.notes || null, cost_type: 'construction',
+        status: 'actual' as any, expense_type: r.expenseType, notes: r.notes || null, cost_type: r.costType || 'construction',
       }));
 
       const { error: insertError } = await supabase.from('expenses').insert(expenseRows);
