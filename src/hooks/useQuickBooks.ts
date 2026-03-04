@@ -208,7 +208,7 @@ export function useQuickBooks() {
 
       if (data?.authUrl) {
         // Open QuickBooks auth in a popup
-        const popup = window.open(data.authUrl, 'quickbooks-auth', 'width=600,height=700');
+        const popup = window.open(data.authUrl, 'quickbooks-auth', 'width=600,height=700,noopener,noreferrer');
         
         // Listen for the callback
         const handleMessage = (event: MessageEvent) => {

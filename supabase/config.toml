@@ -1,34 +1,40 @@
 project_id = "skbkqngjvbvaswijavor"
 
+# All functions that only serve authenticated users get JWT verification.
+# Supabase will reject the request before the function runs if the JWT is missing or invalid.
+
 [functions.parse-receipt-text]
-verify_jwt = false
-
-[functions.quickbooks-auth]
-verify_jwt = false
-
-[functions.quickbooks-sync]
-verify_jwt = false
-
-[functions.scrape-product-url]
-verify_jwt = false
+verify_jwt = true
 
 [functions.parse-receipt-image]
-verify_jwt = false
+verify_jwt = true
 
 [functions.match-receipts]
-verify_jwt = false
+verify_jwt = true
+
+[functions.scrape-product-url]
+verify_jwt = true
 
 [functions.parse-product-screenshot]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-team-invite]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-scope-of-work]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-invoice]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-receipt]
+verify_jwt = true
+
+[functions.quickbooks-sync]
+verify_jwt = true
+
+# quickbooks-auth must stay false: the OAuth callback is a browser redirect from
+# QuickBooks with no Authorization header. Manual JWT validation is done inside
+# the function for all non-callback actions.
+[functions.quickbooks-auth]
 verify_jwt = false

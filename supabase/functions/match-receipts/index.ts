@@ -1,10 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { handleCors } from "../_shared/cors.ts";
+import { RateLimiter } from "../_shared/rateLimiter.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
@@ -15,10 +12,9 @@ function normalizeVendorName(name: string): string {
   if (!name) return "";
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "") // Remove special characters
+    .replace(/[^a-z0-9\s]/g, "")
     .replace(/\s+/g, " ")
     .trim()
-    // Common vendor name variations
     .replace(/the home depot/g, "home depot")
     .replace(/homedepot/g, "home depot")
     .replace(/hd supply/g, "home depot")
@@ -32,36 +28,30 @@ function normalizeVendorName(name: string): string {
     .replace(/menard/g, "menards");
 }
 
-// Calculate similarity between two vendor names (0-1 score)
 function vendorSimilarity(vendor1: string, vendor2: string): number {
   const norm1 = normalizeVendorName(vendor1);
   const norm2 = normalizeVendorName(vendor2);
-  
+
   if (norm1 === norm2) return 1.0;
-  
-  // Check if one contains the other
   if (norm1.includes(norm2) || norm2.includes(norm1)) return 0.9;
-  
-  // Simple word overlap score
+
   const words1 = new Set(norm1.split(" ").filter(w => w.length > 2));
   const words2 = new Set(norm2.split(" ").filter(w => w.length > 2));
-  
+
   if (words1.size === 0 || words2.size === 0) return 0;
-  
+
   const intersection = [...words1].filter(w => words2.has(w)).length;
   const union = new Set([...words1, ...words2]).size;
-  
+
   return intersection / union;
 }
 
-// Check if date is within range (default 5 day window for bank processing)
 function isDateInRange(receiptDate: string, transactionDate: string, daysBefore = 2, daysAfter = 5): boolean {
   const receipt = new Date(receiptDate);
   const transaction = new Date(transactionDate);
-  
+
   const diffDays = (transaction.getTime() - receipt.getTime()) / (1000 * 60 * 60 * 24);
-  
-  // Transaction should be on or after receipt date (within range for processing)
+
   return diffDays >= -daysBefore && diffDays <= daysAfter;
 }
 
@@ -76,9 +66,8 @@ interface Match {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const { headers: corsHeaders, preflight } = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -103,6 +92,14 @@ serve(async (req) => {
 
     const serviceSupabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
+    const { limited } = await new RateLimiter(serviceSupabase).check(user.id, "match-receipts", 20);
+    if (limited) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Up to 20 match operations per hour." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Fetch pending receipts
     const { data: pendingReceipts, error: receiptsError } = await supabase
       .from("pending_receipts")
@@ -115,16 +112,14 @@ serve(async (req) => {
     }
 
     if (!pendingReceipts || pendingReceipts.length === 0) {
-      return new Response(JSON.stringify({ 
-        success: true, 
+      return new Response(JSON.stringify({
+        success: true,
         matches: [],
-        message: "No pending receipts to match" 
+        message: "No pending receipts to match"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    console.log(`Found ${pendingReceipts.length} pending receipts to match`);
 
     // Fetch unimported QuickBooks expenses
     const { data: qbExpenses, error: qbError } = await supabase
@@ -139,49 +134,35 @@ serve(async (req) => {
     }
 
     if (!qbExpenses || qbExpenses.length === 0) {
-      return new Response(JSON.stringify({ 
-        success: true, 
+      return new Response(JSON.stringify({
+        success: true,
         matches: [],
-        message: "No unmatched QuickBooks transactions available" 
+        message: "No unmatched QuickBooks transactions available"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log(`Checking against ${qbExpenses.length} QB expenses`);
-
     const matches: Match[] = [];
 
-    // Try to match each pending receipt
     for (const receipt of pendingReceipts) {
       let bestMatch: Match | null = null;
       let bestConfidence = 0;
 
       for (const qbExpense of qbExpenses) {
-        // Exact amount match is required
         const receiptAmount = parseFloat(receipt.total_amount);
         const qbAmount = parseFloat(qbExpense.amount);
-        
+
         if (Math.abs(receiptAmount - qbAmount) > 0.01) {
-          continue; // Amount must match exactly
+          continue;
         }
 
-        // Check date range
         const dateMatch = isDateInRange(receipt.purchase_date, qbExpense.date);
         if (!dateMatch) {
-          continue; // Date must be within range
+          continue;
         }
 
-        // Calculate vendor similarity (bonus only, doesn't block)
         const vendorScore = vendorSimilarity(receipt.vendor_name, qbExpense.vendor_name);
-        
-        // Debug logging
-        console.log(`Receipt ${receipt.id}: amount=${receiptAmount}, date=${receipt.purchase_date}, vendor="${receipt.vendor_name}"`);
-        console.log(`  vs QB ${qbExpense.qb_id}: amount=${qbAmount}, date=${qbExpense.date}, vendor="${qbExpense.vendor_name}"`);
-        console.log(`  → Amount diff: ${Math.abs(receiptAmount - qbAmount)}, Date in range: ${dateMatch}, Vendor score: ${vendorScore}`);
-
-        // Calculate overall confidence
-        // Amount match = 60%, Date in range = 30%, Vendor similarity = 10% (bonus)
         const confidence = 0.6 + 0.3 + (vendorScore * 0.1);
 
         if (confidence > bestConfidence) {
@@ -198,11 +179,9 @@ serve(async (req) => {
         }
       }
 
-      // 85% threshold: Amount + Date = 90% base, so this will match
       if (bestMatch && bestConfidence >= 0.85) {
         matches.push(bestMatch);
 
-        // Update the receipt status to matched
         await serviceSupabase
           .from("pending_receipts")
           .update({
@@ -212,13 +191,11 @@ serve(async (req) => {
             match_confidence: bestMatch.confidence,
           })
           .eq("id", receipt.id);
-
-        console.log(`Matched receipt ${receipt.id} to QB expense ${bestMatch.qb_id} with ${bestMatch.confidence}% confidence`);
       }
     }
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       matches,
       message: `Found ${matches.length} matches out of ${pendingReceipts.length} pending receipts`
     }), {

@@ -9,6 +9,9 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
+  verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,14 +22,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Auto-accept pending team invitations on sign-in or sign-up
         if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
           const u = session.user;
           const email = u.email;
@@ -42,7 +43,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -58,14 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
+      options: { emailRedirectTo: `${window.location.origin}/` },
     });
     return { error: error as Error | null };
   };
@@ -74,8 +70,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  /**
+   * Google OAuth — native Supabase flow, redirects browser to Google then back.
+   * Setup required (see README in Auth.tsx):
+   *   1. Supabase Dashboard → Auth → Providers → Google → enable + add credentials
+   *   2. Google Cloud Console → add https://[project].supabase.co/auth/v1/callback
+   *      to Authorized redirect URIs
+   *   3. Supabase Dashboard → Auth → URL Configuration → set Site URL
+   */
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+        queryParams: { access_type: 'offline', prompt: 'select_account' },
+      },
+    });
+    return { error: error as Error | null };
+  };
+
+  /**
+   * Verify 6-digit OTP sent by Supabase in the sign-up confirmation email.
+   * The email contains both a click-through link AND a 6-digit {{.Token}}.
+   */
+  const verifyOtp = async (email: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'signup',
+    });
+    return { error: error as Error | null };
+  };
+
+  /**
+   * Initiate password reset — Supabase emails a magic link back to /auth.
+   */
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth`,
+    });
+    return { error: error as Error | null };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider
+      value={{ user, session, loading, signIn, signUp, signOut, signInWithGoogle, verifyOtp, resetPassword }}
+    >
       {children}
     </AuthContext.Provider>
   );
