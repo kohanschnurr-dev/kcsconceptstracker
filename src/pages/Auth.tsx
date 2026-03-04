@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Shield, BarChart3, MessageSquare, Users, Sparkles } from 'lucide-react';
-import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import kcsLogo from '@/assets/kcs-logo.png';
 
 const signInSchema = z.object({
@@ -63,13 +63,6 @@ export default function Auth() {
     resolver: zodResolver(signUpSchema),
   });
 
-  // Redirect if already logged in — temporarily disabled for editing
-  // useEffect(() => {
-  //   if (user && !authLoading) {
-  //     navigate('/', { replace: true });
-  //   }
-  // }, [user, authLoading, navigate]);
-
   const handleSignIn = async (data: SignInFormData) => {
     setIsLoading(true);
     setError(null);
@@ -82,6 +75,8 @@ export default function Auth() {
       } else {
         setError(error.message);
       }
+    } else {
+      navigate('/', { replace: true });
     }
     setIsLoading(false);
   };
@@ -112,8 +107,9 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     setError(null);
-    const { error } = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: window.location.origin,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/` },
     });
     if (error) {
       setError(error.message || 'Failed to sign in with Google');
