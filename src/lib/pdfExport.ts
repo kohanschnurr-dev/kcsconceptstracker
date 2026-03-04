@@ -438,6 +438,8 @@ export function generatePDF(content: string, options: PdfOptions): void {
   const html = generatePDFHtml(content, options);
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
-  window.open(url, '_blank', 'noopener,noreferrer');
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  const win = window.open(url, '_blank');
+  if (win) {
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
 }

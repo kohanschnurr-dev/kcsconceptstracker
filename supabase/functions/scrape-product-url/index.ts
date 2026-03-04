@@ -1,8 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { handleCors } from "../_shared/cors.ts";
-import { getUserIdFromBearer } from "../_shared/auth.ts";
-import { RateLimiter } from "../_shared/rateLimiter.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 interface ProductData {
   name: string;
@@ -30,10 +31,11 @@ function detectStore(url: string): string {
   return 'other';
 }
 
+// Detect product category from URL and content
 function detectCategory(url: string, markdown: string): string {
   const lowerUrl = url.toLowerCase();
   const lowerContent = markdown.toLowerCase();
-
+  
   if (lowerUrl.includes('/bath') || lowerUrl.includes('bathroom')) return 'bathroom';
   if (lowerUrl.includes('/kitchen')) return 'kitchen';
   if (lowerUrl.includes('/lighting') || lowerUrl.includes('/light')) return 'lighting';
@@ -44,19 +46,19 @@ function detectCategory(url: string, markdown: string): string {
   if (lowerUrl.includes('/window')) return 'windows';
   if (lowerUrl.includes('/hardware')) return 'hardware';
   if (lowerUrl.includes('/appliance')) return 'appliances';
-
+  
   if (lowerContent.includes('faucet') || lowerContent.includes('shower') || lowerContent.includes('toilet')) return 'bathroom';
   if (lowerContent.includes('tile') || lowerContent.includes('flooring')) return 'tile';
   if (lowerContent.includes('light') || lowerContent.includes('chandelier') || lowerContent.includes('pendant')) return 'lighting';
   if (lowerContent.includes('cabinet') || lowerContent.includes('vanity')) return 'cabinets';
   if (lowerContent.includes('mirror')) return 'bathroom';
-
+  
   return 'general';
 }
 
 function detectProductType(markdown: string, category: string): string | null {
   const lowerContent = markdown.toLowerCase();
-
+  
   const productTypes: Record<string, string[]> = {
     bathroom: ['faucet', 'vanity', 'mirror', 'toilet', 'shower head', 'shower', 'sink', 'tub', 'bathtub'],
     kitchen: ['faucet', 'sink', 'range hood', 'garbage disposal'],
@@ -70,42 +72,53 @@ function detectProductType(markdown: string, category: string): string | null {
     appliances: ['refrigerator', 'dishwasher', 'oven', 'range', 'microwave', 'washer', 'dryer'],
     general: ['faucet', 'light', 'tile', 'cabinet', 'mirror', 'fixture'],
   };
-
+  
   const typesToCheck = productTypes[category] || productTypes.general;
-
+  
   for (const type of typesToCheck) {
     if (lowerContent.includes(type)) {
       return type.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     }
   }
-
+  
   return null;
 }
 
 function isGarbageName(name: string): boolean {
   if (!name || name.length < 5) return true;
-
+  
   const lowerName = name.toLowerCase();
-
+  
   const garbagePhrases = [
-    'product summary', 'key product information', 'keyboard shortcut',
-    'skip to', 'main content', 'navigation', 'search results',
-    'add to cart', 'buy now', 'sign in', 'customer review',
-    'similar item', 'frequently bought', 'sponsored', 'advertisement',
+    'product summary',
+    'key product information',
+    'keyboard shortcut',
+    'skip to',
+    'main content',
+    'navigation',
+    'search results',
+    'add to cart',
+    'buy now',
+    'sign in',
+    'customer review',
+    'similar item',
+    'frequently bought',
+    'sponsored',
+    'advertisement',
     'unknown product',
   ];
-
+  
   for (const phrase of garbagePhrases) {
     if (lowerName.includes(phrase)) return true;
   }
-
+  
   if (lowerName.includes('shift+') || lowerName.includes('alt+') || lowerName.includes('opt+')) {
     return true;
   }
-
+  
   if (/^\$?\d+\.?\d*$/.test(name.trim())) return true;
   if (['item', 'product', 'home', 'page'].includes(lowerName.trim())) return true;
-
+  
   return false;
 }
 
@@ -115,7 +128,7 @@ function extractAmazonProductName(html: string): string | null {
     const title = productTitleMatch[1].trim();
     if (!isGarbageName(title)) return title;
   }
-
+  
   const ogTitleMatch = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i) ||
                        html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:title"/i);
   if (ogTitleMatch && ogTitleMatch[1]) {
@@ -123,14 +136,14 @@ function extractAmazonProductName(html: string): string | null {
     const cleanTitle = title.replace(/\s*[-–—]\s*Amazon\.com.*$/i, '').trim();
     if (!isGarbageName(cleanTitle)) return cleanTitle;
   }
-
+  
   const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   if (titleTagMatch && titleTagMatch[1]) {
     const title = titleTagMatch[1].trim();
     const cleanTitle = title.replace(/\s*[-–—]\s*Amazon\.com.*$/i, '').replace(/Amazon\.com:\s*/i, '').trim();
     if (!isGarbageName(cleanTitle) && cleanTitle.length > 10) return cleanTitle;
   }
-
+  
   return null;
 }
 
@@ -143,27 +156,34 @@ function generateCleanName(
   tileSize: string | null
 ): string {
   const categoryDefaults: Record<string, string> = {
-    bathroom: 'Fixture', kitchen: 'Fixture', plumbing: 'Fixture',
-    tile: 'Tile', lighting: 'Light', cabinets: 'Cabinet',
-    doors: 'Door', windows: 'Window', hardware: 'Hardware',
-    appliances: 'Appliance', general: 'Item',
+    bathroom: 'Fixture',
+    kitchen: 'Fixture',
+    plumbing: 'Fixture',
+    tile: 'Tile',
+    lighting: 'Light',
+    cabinets: 'Cabinet',
+    doors: 'Door',
+    windows: 'Window',
+    hardware: 'Hardware',
+    appliances: 'Appliance',
+    general: 'Item',
   };
-
+  
   const categoryDisplay = category.charAt(0).toUpperCase() + category.slice(1);
   const type = productType || categoryDefaults[category] || 'Item';
-
+  
   if (category === 'tile') {
     if (tileSize && material) return `${tileSize} ${material} Tile`;
     if (material) return `${material} Tile`;
     if (tileSize) return `${tileSize} Tile`;
     return 'Floor Tile';
   }
-
+  
   if (finish) {
     const cleanFinish = finish.split(/[\s,]/)[0];
     return `${cleanFinish} ${categoryDisplay} ${type}`;
   }
-
+  
   return `${categoryDisplay} ${type}`;
 }
 
@@ -176,6 +196,7 @@ function parsePrice(text: string | undefined | null): number | null {
   return null;
 }
 
+// Amazon-specific price extraction from HTML
 function extractAmazonPrice(html: string): number | null {
   const pricePatterns = [
     /"priceAmount":\s*(\d+\.?\d*)/i,
@@ -208,12 +229,12 @@ function extractAmazonPrice(html: string): number | null {
 
   const validPrices = candidates.filter(p => p >= 5 && p < 50000);
   if (validPrices.length === 0) return null;
-
+  
   const priceCount = new Map<number, number>();
   for (const p of validPrices) {
     priceCount.set(p, (priceCount.get(p) || 0) + 1);
   }
-
+  
   let bestPrice = validPrices[0];
   let maxCount = 0;
   for (const [price, count] of priceCount) {
@@ -222,12 +243,14 @@ function extractAmazonPrice(html: string): number | null {
       bestPrice = price;
     }
   }
-
+  
   return bestPrice;
 }
 
+// Home Depot-specific price extraction from embedded JSON
 function extractHomeDepotPrice(html: string): number | null {
   const patterns = [
+    // Next.js __NEXT_DATA__ JSON blob — most reliable
     /"nowPrice"\s*:\s*([\d.]+)/i,
     /"originalPrice"\s*:\s*([\d.]+)/i,
     /"wasPrice"\s*:\s*([\d.]+)/i,
@@ -241,6 +264,7 @@ function extractHomeDepotPrice(html: string): number | null {
     /class="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/i,
     /price-format__main-price[^>]*>\s*\$?([\d,]+\.?\d*)/i,
     /price__dollars[^>]*>([\d,]+)/i,
+    // HD renders price as: "$XX" in a data attribute
     /data-automation-id="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/i,
   ];
 
@@ -250,17 +274,20 @@ function extractHomeDepotPrice(html: string): number | null {
     if (match && match[1]) {
       const price = parseFloat(match[1].replace(/,/g, ''));
       if (price && price >= 5 && price < 50000) {
+        console.log('Found Home Depot price via pattern:', pattern.toString().slice(0, 60), '->', price);
         candidates.push(price);
       }
     }
   }
 
   if (candidates.length === 0) return null;
+  // Return the most-common value, or the first if tied
   const counts = new Map<number, number>();
   for (const p of candidates) counts.set(p, (counts.get(p) || 0) + 1);
   return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 }
 
+// Lowe's-specific price extraction from embedded JSON
 function extractLowesPrice(html: string): number | null {
   const patterns = [
     /"price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i,
@@ -274,29 +301,39 @@ function extractLowesPrice(html: string): number | null {
     if (match && match[1]) {
       const price = parseFloat(match[1].replace(/,/g, ''));
       if (price && price > 0 && price < 50000) {
+        console.log('Found Lowes price via pattern:', pattern.toString().slice(0, 50));
         return price;
       }
     }
   }
-
+  
   return null;
 }
 
+// Extract price from markdown with context awareness
+// Layer 3: improved markdown price extraction with Amazon-specific bold patterns
 function extractPriceFromMarkdown(markdown: string, store: string): number | null {
   const falsePositives = new Set([5.99, 6.99, 7.99, 9.99, 10.00, 10.99]);
-
+  
   const candidates: { price: number; score: number }[] = [];
-
+  
   const contextPatterns: { pattern: RegExp; score: number }[] = [
+    // Amazon-specific: bold price like **$29.99** or *$29.99*
     { pattern: /\*{1,2}\$(\d{1,4}(?:\.\d{2})?)\*{1,2}/g, score: 10 },
+    // Amazon: price near "with Prime" or similar
     { pattern: /\$(\d{1,4}\.\d{2})\s*(?:with Prime|& FREE|Save)/gi, score: 9 },
+    // Standard price/cost labels
     { pattern: /(?:price|cost|buy now)[:\s]*\$?([\d,]+\.?\d*)/gi, score: 9 },
+    // Sale/now pricing
     { pattern: /(?:now|sale|deal)[:\s]*\$?([\d,]+\.?\d*)/gi, score: 7 },
+    // HD markdown often shows price as: /\$249/ or $249.00 alone on a line
     { pattern: /^\$(\d{2,4}(?:\.\d{2})?)\s*$/gm, score: 8 },
+    // Standard $XX.XX format
     { pattern: /\$(\d{2,4}\.\d{2})/g, score: 5 },
+    // Bare number with context: "249.00" after a price label in markdown tables
     { pattern: /(?:price|cost)[^$\n]{0,20}?([\d]{2,4}\.\d{2})/gi, score: 6 },
   ];
-
+  
   for (const { pattern, score } of contextPatterns) {
     const matches = [...markdown.matchAll(pattern)];
     for (const match of matches) {
@@ -306,23 +343,25 @@ function extractPriceFromMarkdown(markdown: string, store: string): number | nul
       }
     }
   }
-
+  
   candidates.sort((a, b) => b.score - a.score);
-
+  
   if (candidates.length > 0) {
     return candidates[0].price;
   }
-
+  
+  // Simple fallback for HD/Lowes
   if (store === 'home_depot' || store === 'lowes') {
     const allPrices = [...markdown.matchAll(/\$(\d{2,4}\.\d{2})/g)];
     for (const match of allPrices) {
       const price = parseFloat(match[1]);
       if (price >= 15 && price < 10000) {
+        console.log('Using simple fallback price:', price);
         return price;
       }
     }
   }
-
+  
   if (store !== 'amazon') {
     const basicMatch = markdown.match(/\$(\d{2,4}\.?\d{0,2})/);
     if (basicMatch) {
@@ -332,50 +371,56 @@ function extractPriceFromMarkdown(markdown: string, store: string): number | nul
       }
     }
   }
-
+  
   return null;
 }
 
 function parseLeadTime(text: string): number | null {
   const lowerText = text.toLowerCase();
-
+  
   const deliveryMatch = lowerText.match(/(\d+)\s*(?:to|-)\s*(\d+)\s*(?:business\s+)?days?/i);
   if (deliveryMatch) {
     return parseInt(deliveryMatch[2]);
   }
-
+  
   const singleDayMatch = lowerText.match(/(\d+)\s*(?:business\s+)?days?/i);
   if (singleDayMatch) {
     return parseInt(singleDayMatch[1]);
   }
-
+  
   if (lowerText.includes('in stock') || lowerText.includes('available now')) {
     return 1;
   }
-
+  
   return null;
 }
 
+// Layer 2: Store-specific image extraction (fixed: og:image first for Amazon, entity decode)
 function extractProductImage(html: string, url: string): string | null {
   const store = detectStore(url);
+  
+  // Decode HTML entities once for all patterns
   const decodedHtml = html.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
-
+  
+  // Amazon-specific image extraction — og:image FIRST (survives bot-blocking)
   if (store === 'amazon') {
     const amazonPatterns = [
-      /property="og:image"[^>]+content="([^"]+)"/i,
+      /property="og:image"[^>]+content="([^"]+)"/i,   // og:image — most resilient
       /<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i,
-      /data-old-hires="([^"]+)"/i,
-      /"hiRes":"([^"]+)"/i,
-      /id="landingImage"[^>]+src="([^"]+)"/i,
+      /data-old-hires="([^"]+)"/i,                      // high-res data attribute
+      /"hiRes":"([^"]+)"/i,                             // JSON embed
+      /id="landingImage"[^>]+src="([^"]+)"/i,           // JS-rendered
       /id="imgBlkFront"[^>]+src="([^"]+)"/i,
       /class="a-dynamic-image[^"]*"[^>]+src="([^"]+)"/i,
       /"large":"([^"]+)"/i,
+      // Dynamic image JSON — decode entities first so URLs parse correctly
       /data-a-dynamic-image="(\{[^}]+\})"/i,
     ];
-
+    
     for (const pattern of amazonPatterns) {
       const match = decodedHtml.match(pattern);
       if (match && match[1]) {
+        // For dynamic image JSON, extract first URL
         if (match[1].startsWith('{')) {
           const urlMatch = match[1].match(/"(https:\/\/[^"]+)"/);
           if (urlMatch) {
@@ -386,16 +431,19 @@ function extractProductImage(html: string, url: string): string | null {
         let imgUrl = match[1].replace(/\\u002F/g, '/').replace(/\\/g, '');
         imgUrl = imgUrl.replace(/\._[A-Z]{2}\d+_\./, '.');
         if (imgUrl.startsWith('http')) {
+          console.log('Amazon image found via pattern:', pattern.toString().slice(0, 60));
           return imgUrl;
         }
       }
     }
   }
-
+  
+  // Home Depot specific patterns — try og:image first (most reliable even on partial renders)
   if (store === 'home_depot') {
     const ogMatch = decodedHtml.match(/property="og:image"[^>]+content="([^"]+)"/i) ||
                     decodedHtml.match(/content="([^"]+)"[^>]+property="og:image"/i);
     if (ogMatch && ogMatch[1] && ogMatch[1].startsWith('http')) {
+      console.log('HD og:image found');
       return ogMatch[1];
     }
     const hdPatterns = [
@@ -406,7 +454,7 @@ function extractProductImage(html: string, url: string): string | null {
       /"primaryImage"\s*:\s*"(https:\/\/[^"]+)"/i,
       /"canonicalUrl"\s*:\s*"(https:\/\/[^"]+\.(jpg|jpeg|png|webp))"/i,
     ];
-
+    
     for (const pattern of hdPatterns) {
       const match = decodedHtml.match(pattern);
       if (match && match[1] && match[1].startsWith('http')) {
@@ -414,7 +462,8 @@ function extractProductImage(html: string, url: string): string | null {
       }
     }
   }
-
+  
+  // Lowes specific patterns — try og:image first
   if (store === 'lowes') {
     const ogMatch = decodedHtml.match(/property="og:image"[^>]+content="([^"]+)"/i) ||
                     decodedHtml.match(/content="([^"]+)"[^>]+property="og:image"/i);
@@ -424,7 +473,7 @@ function extractProductImage(html: string, url: string): string | null {
       /src="(https:\/\/images\.lowes[^"]+)"/i,
       /"imageUrl"\s*:\s*"(https:\/\/[^"]+\.(jpg|jpeg|png|webp)[^"]*)"/i,
     ];
-
+    
     for (const pattern of lowesPatterns) {
       const match = decodedHtml.match(pattern);
       if (match && match[1] && match[1].startsWith('http')) {
@@ -432,29 +481,32 @@ function extractProductImage(html: string, url: string): string | null {
       }
     }
   }
-
+  
+  // Generic og:image fallback for all other stores
   const ogImageMatch = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i) ||
                        html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i);
   if (ogImageMatch && ogImageMatch[1]) {
     return ogImageMatch[1];
   }
-
+  
+  // Generic product image patterns
   const genericPatterns = [
     /class="[^"]*product[^"]*image[^"]*"[^>]+src="([^"]+)"/i,
     /id="[^"]*product[^"]*image[^"]*"[^>]+src="([^"]+)"/i,
     /<img[^>]+alt="[^"]*product[^"]*"[^>]+src="([^"]+)"/i,
   ];
-
+  
   for (const pattern of genericPatterns) {
     const match = html.match(pattern);
     if (match && match[1] && match[1].startsWith('http')) {
       return match[1];
     }
   }
-
+  
   return null;
 }
 
+// Apply AI-extracted JSON (Layer 1) results to product fields
 function applyAiExtraction(
   aiExtracted: Record<string, any>,
   fields: {
@@ -466,35 +518,42 @@ function applyAiExtraction(
   }
 ): typeof fields {
   const result = { ...fields };
-
+  
+  // Price — treat 0 as null (AI returns 0 when page didn't load pricing)
   const rawPrice = aiExtracted.price ?? aiExtracted.Price;
   if (rawPrice !== null && rawPrice !== undefined) {
     const parsed = parseFloat(String(rawPrice).replace(/[^0-9.]/g, ''));
     if (parsed >= 1 && parsed < 50000) {
+      console.log('AI extracted price:', parsed);
       result.price = parsed;
     }
   }
-
+  
+  // Name
   const rawName = aiExtracted.name ?? aiExtracted.Name;
   if (rawName && !isGarbageName(String(rawName))) {
+    console.log('AI extracted name:', rawName);
     result.name = String(rawName).substring(0, 200);
   }
-
+  
+  // Brand
   const rawBrand = aiExtracted.brand ?? aiExtracted.Brand;
   if (rawBrand && String(rawBrand).length < 50 && String(rawBrand).toLowerCase() !== 'null') {
     result.brand = String(rawBrand);
   }
-
+  
+  // Model number — handle multiple key name variants the AI may return
   const rawModel = aiExtracted.model_number ?? aiExtracted['model_number_or_SKU'] ?? aiExtracted.model_number_or_SKU ?? aiExtracted.sku ?? aiExtracted.SKU;
   if (rawModel && String(rawModel).length < 50 && String(rawModel).toLowerCase() !== 'null') {
     result.model_number = String(rawModel);
   }
-
+  
+  // Finish
   const rawFinish = aiExtracted.finish ?? aiExtracted['finish_or_color'] ?? aiExtracted.finish_or_color ?? aiExtracted.color ?? aiExtracted.Color;
   if (rawFinish && String(rawFinish).length < 80 && String(rawFinish).toLowerCase() !== 'null') {
     result.finish = String(rawFinish);
   }
-
+  
   return result;
 }
 
@@ -507,7 +566,7 @@ function extractProductData(
   const store = detectStore(url);
   const category = detectCategory(url, markdown);
   const lines = markdown.split('\n');
-
+  
   let name = '';
   let price: number | null = null;
   let model_number: string | null = null;
@@ -519,7 +578,8 @@ function extractProductData(
   let material: string | null = null;
   let image_url: string | null = null;
   const specs: Record<string, string> = {};
-
+  
+  // ── LAYER 1: AI JSON extraction (Firecrawl LLM) ──────────────────────────
   if (aiExtracted) {
     const ai = applyAiExtraction(aiExtracted, { name, price, brand, model_number, finish });
     name = ai.name;
@@ -528,14 +588,18 @@ function extractProductData(
     model_number = ai.model_number;
     finish = ai.finish;
   }
-
+  
+  // ── LAYER 2: Store-specific HTML extraction ───────────────────────────────
+  // Image — always from HTML (AI doesn't return image URLs)
   image_url = extractProductImage(html, url);
-
+  
+  // Name from HTML (for Amazon — more reliable than AI on bot-blocked pages)
   if (!name && store === 'amazon') {
     const htmlName = extractAmazonProductName(html);
     if (htmlName) name = htmlName;
   }
-
+  
+  // Price from HTML if AI didn't get it
   if (!price) {
     if (store === 'amazon') {
       price = extractAmazonPrice(html);
@@ -545,7 +609,9 @@ function extractProductData(
       price = extractLowesPrice(html);
     }
   }
-
+  
+  // ── LAYER 3: Markdown regex extraction ───────────────────────────────────
+  // Name from markdown H1/H2
   if (!name) {
     for (const line of lines) {
       if (line.startsWith('# ')) {
@@ -558,11 +624,13 @@ function extractProductData(
     const titleMatch = markdown.match(/(?:^|\n)##?\s*([^\n]+)/);
     if (titleMatch) name = titleMatch[1].trim();
   }
-
+  
+  // Price from markdown if still missing
   if (!price) {
     price = extractPriceFromMarkdown(markdown, store);
   }
-
+  
+  // ── Model number — FIXED: use .exec() to preserve capture groups ──────────
   if (!model_number) {
     const modelPatterns = [
       /model\s*(?:number|#|no\.?)?\s*:?\s*([A-Z0-9][A-Z0-9\-]{2,25})/i,
@@ -570,21 +638,23 @@ function extractProductData(
       /item\s*(?:number|#|no\.?)?\s*:?\s*([A-Z0-9][A-Z0-9\-]{2,25})/i,
       /internet\s*#?\s*:?\s*([0-9]{5,12})/i,
     ];
-
+    
     for (const pattern of modelPatterns) {
       const match = pattern.exec(markdown);
       if (match && match[1]) {
         model_number = match[1].trim();
+        console.log('Model number extracted:', model_number);
         break;
       }
     }
   }
-
+  
+  // Finish/color
   if (!finish) {
     const colorPatterns = [
       /\b(white|black|gray|grey|beige|cream|ivory|tan|brown|espresso|charcoal|silver|gold|bronze|brass|nickel|chrome|copper|navy|blue|green|red|pink|yellow|orange|purple|taupe|sand|almond|bone|biscuit)\b/gi,
     ];
-
+    
     for (const pattern of colorPatterns) {
       const match = markdown.match(pattern);
       if (match) {
@@ -594,13 +664,14 @@ function extractProductData(
       }
     }
   }
-
+  
+  // Brand
   if (!brand) {
     const brandPatterns = [
       /(?:by|brand)[:\s]+([A-Za-z][A-Za-z0-9\s&-]+)/gi,
       /(?:moen|delta|kohler|american standard|glacier bay|pfister|brizo|grohe|hansgrohe|schlage|kwikset|baldwin|emtek)/gi,
     ];
-
+    
     for (const pattern of brandPatterns) {
       const match = markdown.match(pattern);
       if (match) {
@@ -609,11 +680,12 @@ function extractProductData(
       }
     }
   }
-
+  
+  // Dimensions
   const dimPatterns = [
     /(\d+(?:\.\d+)?)\s*(?:"|in|inch(?:es)?)\s*(?:x|by)\s*(\d+(?:\.\d+)?)\s*(?:"|in|inch(?:es)?)/gi,
   ];
-
+  
   for (const pattern of dimPatterns) {
     const match = markdown.match(pattern);
     if (match) {
@@ -622,11 +694,12 @@ function extractProductData(
     }
   }
 
+  // Tile size
   const tileSizePatterns = [
     /(\d{1,2})\s*x\s*(\d{1,2})/gi,
     /(\d{1,2})\s*(?:"|in\.?)\s*(?:x|by)\s*(\d{1,2})\s*(?:"|in\.?)/gi,
   ];
-
+  
   for (const pattern of tileSizePatterns) {
     const match = markdown.match(pattern);
     if (match) {
@@ -638,8 +711,9 @@ function extractProductData(
     }
   }
 
+  // Material
   const materialKeywords = ['porcelain', 'ceramic', 'marble', 'travertine', 'slate', 'granite', 'quartzite', 'limestone', 'glass', 'mosaic', 'natural stone', 'vinyl', 'laminate', 'hardwood', 'engineered'];
-
+  
   const lowerMarkdown = markdown.toLowerCase();
   for (const mat of materialKeywords) {
     if (lowerMarkdown.includes(mat)) {
@@ -655,9 +729,9 @@ function extractProductData(
       material = material.charAt(0).toUpperCase() + material.slice(1).toLowerCase();
     }
   }
-
+  
   lead_time_days = parseLeadTime(markdown);
-
+  
   const dfwMatch = markdown.match(/(?:dallas|dfw|75\d{3})[^.]*?(\d+)\s*(?:to|-)\s*(\d+)\s*days?/gi);
   if (dfwMatch) {
     const dayMatch = dfwMatch[0].match(/(\d+)\s*(?:to|-)\s*(\d+)/);
@@ -665,12 +739,13 @@ function extractProductData(
       lead_time_days = parseInt(dayMatch[2]);
     }
   }
-
+  
+  // Extract specs table
   const specPatterns = [
     /\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|/g,
     /([A-Za-z\s]+):\s*([^\n]+)/g,
   ];
-
+  
   for (const pattern of specPatterns) {
     const matches = [...markdown.matchAll(pattern)];
     for (const match of matches.slice(0, 20)) {
@@ -684,16 +759,16 @@ function extractProductData(
 
   if (tile_size) specs['tile_size'] = tile_size;
   if (material) specs['material'] = material;
-
+  
   if (isGarbageName(name)) {
     const productType = detectProductType(markdown, category);
     name = generateCleanName(category, brand, finish, material, productType, tile_size);
   }
-
+  
   if (name.length > 200) {
     name = name.substring(0, 200);
   }
-
+  
   return {
     name: name || 'Product',
     price,
@@ -710,6 +785,7 @@ function extractProductData(
   };
 }
 
+// Perform a Firecrawl scrape and return parsed response
 async function firecrawlScrape(
   url: string,
   apiKey: string,
@@ -722,12 +798,13 @@ async function firecrawlScrape(
   } = {}
 ): Promise<{ ok: boolean; data: any }> {
   const { timeout = 10000, waitFor, onlyMainContent = false, withAiJson = false, withUserAgent = false } = options;
-
+  
+  // Firecrawl v1: 'json' is a string format; jsonOptions is a separate top-level key
   const formats: string[] = ['markdown', 'html'];
   if (withAiJson) {
     formats.push('json');
   }
-
+  
   const body: any = {
     url,
     formats,
@@ -735,20 +812,20 @@ async function firecrawlScrape(
     timeout,
     location: { country: 'US', languages: ['en-US'] },
   };
-
+  
   if (withAiJson) {
     body.jsonOptions = {
       prompt: 'Extract product information: name (full product title, not a navigation label), price (number only, no $ sign, the actual sale price), brand, model_number or SKU (alphanumeric code), finish or color, material. Return null for any field not found.',
     };
   }
-
+  
   if (waitFor) body.waitFor = waitFor;
   if (withUserAgent) {
     body.headers = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     };
   }
-
+  
   const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
     method: 'POST',
     headers: {
@@ -757,34 +834,20 @@ async function firecrawlScrape(
     },
     body: JSON.stringify(body),
   });
-
+  
   const data = await response.json();
+  const mdLen = (data?.data?.markdown || data?.markdown || '').length;
+  const htmlLen = (data?.data?.html || data?.html || '').length;
+  console.log(`Firecrawl response: status=${response.status} success=${data?.success} mdLen=${mdLen} htmlLen=${htmlLen} aiJson=${JSON.stringify(data?.data?.json || data?.json || null)?.slice(0,150)}`);
   return { ok: response.ok, data };
 }
 
 Deno.serve(async (req) => {
-  const { headers: corsHeaders, preflight } = handleCors(req);
-  if (preflight) return preflight;
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const userId = getUserIdFromBearer(req.headers.get("Authorization"));
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { limited } = await new RateLimiter(
-      createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
-    ).check(userId, "scrape-product-url", 15);
-    if (limited) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Rate limit exceeded. Up to 15 product scrapes per hour.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const { url } = await req.json();
 
     if (!url) {
@@ -803,17 +866,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Format URL
     let formattedUrl = url.trim();
     if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
       formattedUrl = `https://${formattedUrl}`;
     }
 
+    console.log('Scraping product URL:', formattedUrl);
     const store = detectStore(formattedUrl);
-
+    
+    // HD/Lowes/Amazon: full page needed (onlyMainContent loses price data in their JS apps)
     const needsWaitFor = store === 'home_depot' || store === 'lowes' || store === 'amazon';
+    
+    // Single scrape — AI JSON + waitFor for JS-heavy stores; Amazon gets extra time for bot-detection bypass
     const attemptTimeout = store === 'amazon' ? 25000 : needsWaitFor ? 20000 : 12000;
     const attemptWaitFor = store === 'amazon' ? 3000 : store === 'home_depot' ? 3000 : store === 'lowes' ? 2000 : undefined;
-
+    console.log('Scraping store:', store, '| timeout:', attemptTimeout, '| waitFor:', attemptWaitFor);
+    
     const { ok, data } = await firecrawlScrape(formattedUrl, apiKey, {
       timeout: attemptTimeout,
       waitFor: attemptWaitFor,
@@ -821,16 +890,23 @@ Deno.serve(async (req) => {
       withAiJson: true,
       withUserAgent: needsWaitFor,
     });
-
+    
     const markdown = data?.data?.markdown || data?.markdown || '';
     const html = data?.data?.html || data?.html || '';
     const aiExtracted: Record<string, any> | null = data?.data?.json || data?.json || null;
-
+    
+    if (aiExtracted) {
+      console.log('AI extraction result:', JSON.stringify(aiExtracted).slice(0, 200));
+    }
+    
+    // Parse product data
     const productData = extractProductData(markdown, html, formattedUrl, aiExtracted);
-
+    
+    console.log('FINAL — price:', productData.price, '| image:', productData.image_url ? 'YES' : 'NO', '| name:', productData.name?.slice(0, 80));
+    
     return new Response(
-      JSON.stringify({
-        success: true,
+      JSON.stringify({ 
+        success: true, 
         data: productData,
         raw_markdown: (markdown || '').substring(0, 2000),
       }),

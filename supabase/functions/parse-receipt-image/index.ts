@@ -1,11 +1,13 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { handleCors } from "../_shared/cors.ts";
-import { RateLimiter } from "../_shared/rateLimiter.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 interface ReceiptData {
@@ -26,8 +28,9 @@ interface ReceiptData {
 }
 
 serve(async (req) => {
-  const { headers: corsHeaders, preflight } = handleCors(req);
-  if (preflight) return preflight;
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -39,13 +42,14 @@ serve(async (req) => {
     }
 
     if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured");
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
       global: { headers: { Authorization: authHeader } },
     });
 
@@ -57,15 +61,6 @@ serve(async (req) => {
       });
     }
 
-    const serviceSupabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { limited } = await new RateLimiter(serviceSupabase).check(user.id, "parse-receipt-image", 20);
-    if (limited) {
-      return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Up to 20 receipt images per hour." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const { image_url, image_base64 } = await req.json();
 
     if (!image_url && !image_base64) {
@@ -75,8 +70,10 @@ serve(async (req) => {
       });
     }
 
+    console.log("Parsing receipt with AI Vision (Gemini Flash)...");
+
     // Build the image content for the AI
-    const imageContent = image_base64
+    const imageContent = image_base64 
       ? { type: "image_url", image_url: { url: image_base64 } }
       : { type: "image_url", image_url: { url: image_url } };
 
@@ -112,7 +109,7 @@ COMMON MISTAKES TO AVOID:
 ✗ Hardware store items are almost NEVER under $0.50 - if you see $0.86, double-check!
 
 ═══════════════════════════════════════════════════════════════
-AMAZON RECEIPT LAYOUT
+AMAZON RECEIPT LAYOUT  
 ═══════════════════════════════════════════════════════════════
 
 Look for "Qty: X" or "X x $Y.YY" patterns below item names.
@@ -145,9 +142,9 @@ DISCOUNT / SAVINGS LINES (Pro Xtra, Instant Savings, Coupons)
 ═══════════════════════════════════════════════════════════════
 CATEGORIES (use lowercase)
 ═══════════════════════════════════════════════════════════════
-plumbing, electrical, hvac, flooring, painting, cabinets, countertops,
-tile, light_fixtures, hardware, appliances, windows, doors, roofing,
-framing, insulation, drywall, bathroom, carpentry, fencing, landscaping,
+plumbing, electrical, hvac, flooring, painting, cabinets, countertops, 
+tile, light_fixtures, hardware, appliances, windows, doors, roofing, 
+framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, 
 garage, cleaning, misc
 
 ═══════════════════════════════════════════════════════════════
@@ -164,7 +161,7 @@ Return this as "expense_type" in your JSON response.`
           content: [
             {
               type: "text",
-              text: `Extract ALL items from this receipt.
+              text: `Extract ALL items from this receipt. 
 
 COLUMN DETECTION:
 1. First, identify how many columns the receipt has
@@ -194,6 +191,14 @@ Return ONLY valid JSON (no markdown, no explanation):
       "total_price": 3.98,
       "discount": 0,
       "suggested_category": "plumbing"
+    },
+    {
+      "item_name": "ROMEX 12/2 NM Wire 250ft",
+      "quantity": 1,
+      "unit_price": 76.47,
+      "total_price": 76.47,
+      "discount": 13.50,
+      "suggested_category": "electrical"
     }
   ]
 }`
@@ -220,6 +225,7 @@ Return ONLY valid JSON (no markdown, no explanation):
 
         if (aiResponse.ok) break;
 
+        // Don't retry on 402 (payment) or 429 (rate limit) - surface immediately
         if (aiResponse.status === 429) {
           return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
             status: 429,
@@ -234,7 +240,7 @@ Return ONLY valid JSON (no markdown, no explanation):
         }
 
         lastError = await aiResponse.text();
-        console.warn(`AI attempt ${attempt + 1} failed: ${aiResponse.status}`);
+        console.warn(`AI attempt ${attempt + 1} failed: ${aiResponse.status} ${lastError}`);
         aiResponse = null;
       } catch (fetchErr) {
         lastError = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
@@ -257,6 +263,8 @@ Return ONLY valid JSON (no markdown, no explanation):
       throw new Error("No response from AI");
     }
 
+    console.log("AI response received, parsing JSON...");
+
     // Extract JSON from the response (handle markdown code blocks)
     let jsonStr = content;
     const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -268,22 +276,26 @@ Return ONLY valid JSON (no markdown, no explanation):
     try {
       receiptData = JSON.parse(jsonStr);
     } catch (parseError) {
-      console.error("Failed to parse AI response as JSON");
+      console.error("Failed to parse AI response as JSON:", content);
       throw new Error("Failed to parse receipt data from AI response");
     }
 
     // Validate and clean the data
+    // Fix incorrect years - receipts shouldn't be from the future or too far in the past
     const currentYear = new Date().getFullYear();
     let purchaseDate = receiptData.purchase_date || new Date().toISOString().split('T')[0];
-
+    
+    // If date was parsed, validate the year
     if (purchaseDate) {
       const parsedYear = parseInt(purchaseDate.split('-')[0], 10);
+      // If year is more than 1 year in the past or in the future, correct it to current year
       if (parsedYear < currentYear - 1 || parsedYear > currentYear) {
         const [_, month, day] = purchaseDate.split('-');
         purchaseDate = `${currentYear}-${month}-${day}`;
+        console.log(`Corrected receipt year from ${parsedYear} to ${currentYear}: ${purchaseDate}`);
       }
     }
-
+    
     const cleanedData: ReceiptData = {
       vendor_name: receiptData.vendor_name || "Unknown Vendor",
       total_amount: parseFloat(String(receiptData.total_amount)) || 0,
@@ -291,7 +303,7 @@ Return ONLY valid JSON (no markdown, no explanation):
       subtotal: parseFloat(String(receiptData.subtotal)) || 0,
       discount_amount: parseFloat(String(receiptData.discount_amount)) || 0,
       purchase_date: purchaseDate,
-      line_items: Array.isArray(receiptData.line_items)
+      line_items: Array.isArray(receiptData.line_items) 
         ? receiptData.line_items.map(item => ({
             item_name: item.item_name || "Unknown Item",
             quantity: parseFloat(String(item.quantity)) || 1,
@@ -328,51 +340,102 @@ Return ONLY valid JSON (no markdown, no explanation):
     cleanedData.line_items = mergedItems;
     cleanedData.discount_amount += Math.round(accumulatedDiscount * 100) / 100;
 
+    if (accumulatedDiscount > 0) {
+      console.log(`Merged ${cleanedData.line_items.length + (cleanedData.line_items.length - mergedItems.length)} discount line(s) totaling -$${accumulatedDiscount.toFixed(2)} into their associated items`);
+    }
+
     // Post-processing: Validate quantity calculations
     const validatedLineItems = cleanedData.line_items.map(item => {
+      // If total_price equals unit_price but quantity > 1 was expected
+      // This catches cases where AI mistakenly set qty=1
       const expectedTotal = item.quantity * item.unit_price;
       const tolerance = 0.01;
-
+      
+      // If the math doesn't add up, assume unit_price IS the total
+      // and calculate the real unit price
       if (Math.abs(expectedTotal - item.total_price) > tolerance) {
-        const correctedUnitPrice = item.quantity > 0
+        // total_price is correct, recalculate unit_price
+        const correctedUnitPrice = item.quantity > 0 
           ? Math.round((item.total_price / item.quantity) * 100) / 100
           : item.total_price;
-
-        return { ...item, unit_price: correctedUnitPrice };
+        
+        return {
+          ...item,
+          unit_price: correctedUnitPrice,
+        };
       }
-
+      
       return item;
     });
 
     cleanedData.line_items = validatedLineItems;
 
+    // If subtotal is 0 but we have a total and tax, calculate it
     if (cleanedData.subtotal === 0 && cleanedData.total_amount > 0) {
       cleanedData.subtotal = cleanedData.total_amount - cleanedData.tax_amount;
     }
 
+    // Calculate totals for validation
     const lineItemsTotal = cleanedData.line_items.reduce((sum, item) => sum + item.total_price, 0);
     const expectedSubtotal = cleanedData.subtotal;
     const difference = expectedSubtotal - lineItemsTotal;
     const percentDiff = expectedSubtotal > 0 ? (difference / expectedSubtotal) * 100 : 0;
 
-    const suspiciousItems = cleanedData.line_items.filter(item =>
+    // Flag items with suspiciously low prices (likely wrong column)
+    const suspiciousItems = cleanedData.line_items.filter(item => 
       item.total_price > 0 && item.total_price < 0.50
     );
 
+    if (suspiciousItems.length > 0) {
+      const suspiciousRatio = suspiciousItems.length / cleanedData.line_items.length;
+      if (suspiciousRatio > 0.3) {
+        console.warn(`WARNING: ${suspiciousItems.length}/${cleanedData.line_items.length} items have total < $0.50. AI may be reading wrong column.`);
+        console.warn("Suspicious items:", suspiciousItems.map(i => `${i.item_name}: $${i.total_price}`).join(', '));
+      }
+    }
+
+    // Improved scaling logic
     if (lineItemsTotal > 0 && percentDiff > 50) {
-      console.error(`CRITICAL: Line items sum is ${percentDiff.toFixed(0)}% less than subtotal`);
+      // If items sum to less than half the subtotal, something is very wrong
+      console.error(`CRITICAL: Line items ($${lineItemsTotal.toFixed(2)}) are ${percentDiff.toFixed(0)}% less than subtotal ($${expectedSubtotal.toFixed(2)})`);
+      console.error("Possible causes: wrong column read, missing items, or OCR failure");
+      // Don't scale - the data is too unreliable, but still return what we have
     } else if (difference > 1 && percentDiff > 5 && percentDiff < 50) {
+      // Proportional scaling for moderate discrepancies (likely discount column issue)
+      console.warn(`Scaling items to match subtotal (${percentDiff.toFixed(1)}% difference)`);
       const scaleFactor = expectedSubtotal / lineItemsTotal;
       cleanedData.line_items = cleanedData.line_items.map(item => ({
         ...item,
         unit_price: Math.round(item.unit_price * scaleFactor * 100) / 100,
         total_price: Math.round(item.total_price * scaleFactor * 100) / 100,
       }));
+    } else if (difference > 0.10) {
+      console.warn(`Minor discrepancy: Line items total ($${lineItemsTotal.toFixed(2)}) differs from subtotal ($${expectedSubtotal.toFixed(2)}) by $${difference.toFixed(2)}`);
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      data: cleanedData
+    // Recalculate after potential scaling
+    const finalLineItemsTotal = cleanedData.line_items.reduce((sum, item) => sum + item.total_price, 0);
+    const finalDifference = expectedSubtotal - finalLineItemsTotal;
+
+    // Detailed debug logging
+    console.log("=== Receipt Parse Summary ===");
+    console.log(`Vendor: ${cleanedData.vendor_name}`);
+    console.log(`Date: ${cleanedData.purchase_date}`);
+    console.log(`Items: ${cleanedData.line_items.length}`);
+    console.log(`Line Items Total: $${finalLineItemsTotal.toFixed(2)}`);
+    console.log(`Subtotal: $${cleanedData.subtotal.toFixed(2)}`);
+    console.log(`Tax: $${cleanedData.tax_amount.toFixed(2)}`);
+    console.log(`Total: $${cleanedData.total_amount.toFixed(2)}`);
+    console.log(`Discount: $${cleanedData.discount_amount.toFixed(2)}`);
+    console.log(`Final Difference: $${finalDifference.toFixed(2)}`);
+    if (suspiciousItems.length > 0) {
+      console.log(`Suspicious low-price items: ${suspiciousItems.length}`);
+    }
+    console.log("============================");
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      data: cleanedData 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
