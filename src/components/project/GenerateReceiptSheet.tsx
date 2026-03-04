@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Plus, X } from 'lucide-react';
+import { FileText, Plus, X, CheckCircle2 } from 'lucide-react';
 import { generatePDF, generatePDFHtml } from '@/lib/pdfExport';
 import { saveDocumentToProject } from '@/lib/saveDocumentToProject';
 import {
@@ -73,9 +73,8 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    if (settings?.company_name) setVendorName(settings.company_name);
-  }, [settings]);
+  // issuingCompany is always KCS Concepts (the platform), never auto-filled as vendor
+  const issuingCompany = settings?.company_name || 'KCS Concepts';
 
   useEffect(() => {
     setProjName(projectName);
@@ -115,10 +114,11 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
     if (receiptNumber) lines.push(`Receipt Number: ${receiptNumber}`);
     if (receiptDate) lines.push(`Receipt Date: ${receiptDate}`);
 
-    if (vendorName) {
-      lines.push('', 'FROM');
-      lines.push(`Vendor: ${vendorName}`);
-    }
+    lines.push('', 'RECEIPT FROM (VENDOR / PAYEE)');
+    lines.push(`Vendor: ${vendorName || '—'}`);
+
+    lines.push('', 'ISSUED BY (PLATFORM)');
+    lines.push(`Issuing Company: ${issuingCompany}`);
 
     if (projName) {
       lines.push('', 'FOR PROJECT');
@@ -158,8 +158,28 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
 
   const getPdfOptions = () => ({
     docType: 'Receipt' as const,
-    companyName: settings?.company_name || vendorName || 'Your Company',
+    companyName: issuingCompany,
     logoUrl: settings?.logo_url,
+    receiptData: {
+      vendorName,
+      issuingCompany,
+      receiptNumber,
+      receiptDate,
+      projectName: projName,
+      descriptionOfWork,
+      lineItems: lineItems
+        .filter(item => item.description || parseFloat(item.unitPrice) > 0)
+        .map(item => ({
+          description: item.description || 'Item',
+          qty: parseFloat(item.qty) || 1,
+          unitPrice: parseFloat(item.unitPrice) || 0,
+          total: (parseFloat(item.qty) || 0) * (parseFloat(item.unitPrice) || 0),
+        })),
+      paymentMethod,
+      paymentDate,
+      notes,
+      total,
+    },
   });
 
   const handleGeneratePDF = () => {
@@ -195,7 +215,7 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
             </div>
             <div>
               <SheetTitle className="text-base">Receipt Generator</SheetTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">Build a payment receipt PDF</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Premium fintech-style payment receipt</p>
             </div>
           </div>
         </SheetHeader>
@@ -203,13 +223,28 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
         <ScrollArea className="flex-1 min-h-0">
           <div className="px-6 py-5 space-y-7">
 
+            {/* ENTITY BANNER */}
+            <div className="rounded-xl border bg-muted/30 px-4 py-3 flex items-center justify-between gap-4 text-sm">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-0.5">Issued By (Platform)</p>
+                <p className="font-semibold text-foreground truncate">{issuingCompany}</p>
+              </div>
+              <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0 text-right">
+                <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-0.5">Receipt From (Vendor)</p>
+                <p className="font-semibold text-foreground truncate">{vendorName || <span className="text-muted-foreground font-normal italic">Enter below</span>}</p>
+              </div>
+            </div>
+
             {/* RECEIPT INFO */}
             <div>
               <SectionLabel>Receipt Info</SectionLabel>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 space-y-1.5">
-                  <Label>Company / Contractor Name</Label>
-                  <Input value={vendorName} onChange={e => setVendorName(e.target.value)} placeholder="Your company or contractor" />
+                  <Label>
+                    Vendor Name <span className="text-muted-foreground font-normal">(Payee — person or company being paid)</span>
+                  </Label>
+                  <Input value={vendorName} onChange={e => setVendorName(e.target.value)} placeholder="e.g. Reiber Molina" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Receipt Date</Label>
@@ -306,10 +341,13 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
                   Add Line Item
                 </Button>
 
-                <div className="mt-3 border-t pt-3">
-                  <div className="flex justify-between text-sm font-semibold">
-                    <span>Total Paid</span>
-                    <span>{fmt(total)}</span>
+                <div className="mt-3 rounded-xl border-2 border-primary/20 bg-primary/5 px-4 py-3.5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] font-bold tracking-widest uppercase text-primary">Total Paid</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">All line items combined</p>
+                    </div>
+                    <span className="text-2xl font-black text-foreground tracking-tight tabular-nums">{fmt(total)}</span>
                   </div>
                 </div>
               </div>
