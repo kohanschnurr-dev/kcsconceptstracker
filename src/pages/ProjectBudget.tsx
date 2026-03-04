@@ -32,8 +32,7 @@ import {
   Landmark,
   Home,
   Hammer,
-  Calculator,
-  Info
+  Calculator
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -63,7 +62,6 @@ import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { PendingBudgetBanner } from '@/components/project/PendingBudgetBanner';
-import { Tooltip as STooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const CHART_COLORS = [
   'hsl(32, 95%, 55%)',   // primary orange
@@ -473,11 +471,11 @@ export default function ProjectBudget() {
   const hasManualBudget = (project?.total_budget ?? 0) > 0;
   const totalBudget = hasManualBudget ? project!.total_budget : categoryTotal;
   const totalSpent = categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
+  const remaining = totalBudget - totalSpent;
   const loanCosts = expenses.filter(e => e.cost_type === 'loan').reduce((sum, e) => sum + Number(e.amount), 0);
   const holdingCosts = expenses.filter(e => e.cost_type === 'monthly').reduce((sum, e) => sum + Number(e.amount), 0);
   const constructionCosts = expenses.filter(e => e.cost_type === 'construction').reduce((sum, e) => sum + Number(e.amount), 0);
   const transactionCosts = expenses.filter(e => e.cost_type === 'transaction').reduce((sum, e) => sum + Number(e.amount), 0);
-  const remaining = totalBudget - constructionCosts;
   const filteredTotal = filteredExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
 
 
@@ -674,223 +672,212 @@ export default function ProjectBudget() {
           </TabsList>
 
           <TabsContent value="budget" className="space-y-6">
-            <div className="space-y-4">
+            {/* Summary Cards - Row 1 */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")} onClick={() => handleCardFilter('construction')}>
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Hammer className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Construction Costs</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(constructionCosts)}</p>
+                </CardContent>
+              </Card>
 
-            {/* Zone 1 — Construction Budget */}
-            <Card className="glass-card">
-              <CardContent className="pt-5 pb-4">
-                <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-1.5">
-                  <span className="text-primary">●</span> Construction Budget
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-                  {/* Spent */}
-                  <Card className={cn("min-w-0 cursor-pointer transition-all hover:border-primary/30 border-border/40", selectedCostType === 'construction' && "ring-2 ring-primary")} onClick={() => handleCardFilter('construction')}>
-                    <CardContent className="p-4">
+              <Card 
+                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'loan' && "ring-2 ring-primary")}
+                onClick={() => handleCardFilter('loan')}
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Landmark className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Loan Costs</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(loanCosts)}</p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'monthly' && "ring-2 ring-primary")}
+                onClick={() => handleCardFilter('monthly')}
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Home className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Holding Costs</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(holdingCosts)}</p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className={cn("glass-card cursor-pointer transition-all hover:border-primary/30", selectedCostType === 'transaction' && "ring-2 ring-primary")}
+                onClick={() => handleCardFilter('transaction')}
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Receipt className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Transaction Costs</span>
+                  </div>
+                  <p className="text-xl font-bold font-mono">{formatCurrency(transactionCosts)}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Summary Cards - Row 2 */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp className="h-4 w-4 text-warning" />
+                    <span className="text-sm text-muted-foreground">Total Spent</span>
+                  </div>
+                  <p className="text-2xl font-bold font-mono text-warning">{formatCurrency(totalSpent)}</p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className={cn("glass-card transition-all", !budgetEditMode && "cursor-pointer hover:border-primary/30", selectedCostType === 'construction' && "ring-2 ring-primary")}
+                onClick={() => !budgetEditMode && handleCardFilter('construction')}
+              >
+                <CardContent className="pt-4 relative">
+                  {!budgetEditMode ? (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBudgetEditMode(true);
+                          setBudgetEditValue(String(totalBudget));
+                        }}
+                        className="absolute top-3 right-3 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
                       <div className="flex items-center gap-2 mb-1">
-                        <Hammer className="h-4 w-4 text-primary" />
-                        <span className="text-sm text-muted-foreground">Spent</span>
+                        <DollarSign className="h-4 w-4 text-primary" />
+                        <span className="text-sm text-muted-foreground">Total Construction Budget</span>
                       </div>
-                      <p className="text-2xl font-bold font-mono text-primary">{formatCurrency(constructionCosts)}</p>
+                      <p className="text-2xl font-bold font-mono">{formatCurrency(totalBudget)}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {totalBudget > 0 ? ((constructionCosts / totalBudget) * 100).toFixed(1) : 0}% of budget
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Total Budget */}
-                  <Card className={cn("min-w-0 transition-all border-border/40", !budgetEditMode && "cursor-pointer hover:border-primary/30")}>
-                    <CardContent className="p-4 relative">
-                      {!budgetEditMode ? (
-                        <>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setBudgetEditMode(true);
-                              setBudgetEditValue(String(totalBudget));
-                            }}
-                            className="absolute top-3 right-3 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                          <div className="flex items-center gap-2 mb-1">
-                            <DollarSign className="h-4 w-4 text-foreground" />
-                            <span className="text-sm text-muted-foreground">Total Budget</span>
-                          </div>
-                          <p className="text-2xl font-bold font-mono">{formatCurrency(totalBudget)}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {hasManualBudget ? "Manual override" : `${categories.length} categories`}
-                          </p>
-                        </>
-                      ) : (
-                        <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <DollarSign className="h-4 w-4 text-primary" />
-                            <span className="text-sm text-muted-foreground">Edit Total Budget</span>
-                          </div>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                            <FormulaInput
-                              type="number"
-                              value={budgetEditValue}
-                              onChange={(e) => setBudgetEditValue(e.target.value)}
-                              className="pl-7 font-mono h-9"
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === 'Escape') setBudgetEditMode(false);
-                              }}
-                            />
-                          </div>
-                          <div className="flex gap-1.5">
-                            <Button
-                              size="sm"
-                              className="h-7 text-xs flex-1"
-                              onClick={async () => {
-                                const val = parseFloat(budgetEditValue) || 0;
+                        {hasManualBudget ? (
+                          <span className="flex items-center gap-1">
+                            manual override
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
                                 const { error } = await supabase
                                   .from('projects')
-                                  .update({ total_budget: val })
+                                  .update({ total_budget: 0 })
                                   .eq('id', id!);
-                                if (error) {
-                                  toast.error('Failed to update budget');
-                                } else {
-                                  setProject(prev => prev ? { ...prev, total_budget: val } : prev);
-                                  toast.success('Budget updated');
-                                  setBudgetEditMode(false);
+                                if (!error) {
+                                  setProject(prev => prev ? { ...prev, total_budget: 0 } : prev);
+                                  toast.success('Reverted to category total');
                                 }
                               }}
+                              className="text-primary hover:underline"
                             >
-                              Save
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 text-xs"
-                              onClick={() => setBudgetEditMode(false)}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Remaining */}
-                  <Card className="min-w-0 border-border/40">
-                    <CardContent className="p-4">
+                              (revert)
+                            </button>
+                          </span>
+                        ) : (
+                          `from ${categories.length} categories`
+                        )}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-2 mb-1">
-                        <TrendingDown className={cn("h-4 w-4", remaining >= 0 ? "text-success" : "text-destructive")} />
-                        <span className="text-sm text-muted-foreground">Remaining</span>
+                        <DollarSign className="h-4 w-4 text-primary" />
+                        <span className="text-sm text-muted-foreground">Edit Total Budget</span>
                       </div>
-                      <p className={cn("text-2xl font-bold font-mono", remaining >= 0 ? "text-success" : "text-destructive")}>
-                        {formatCurrency(remaining)}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {remaining >= 0 ? "On track" : "Over budget"}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                        <FormulaInput
+                          type="number"
+                          value={budgetEditValue}
+                          onChange={(e) => setBudgetEditValue(e.target.value)}
+                          className="pl-7 font-mono h-9"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') setBudgetEditMode(false);
+                          }}
+                        />
+                      </div>
+                      <div className="flex gap-1.5">
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs flex-1"
+                          onClick={async () => {
+                            const val = parseFloat(budgetEditValue) || 0;
+                            const { error } = await supabase
+                              .from('projects')
+                              .update({ total_budget: val })
+                              .eq('id', id!);
+                            if (error) {
+                              toast.error('Failed to update budget');
+                            } else {
+                              setProject(prev => prev ? { ...prev, total_budget: val } : prev);
+                              toast.success('Budget updated');
+                              setBudgetEditMode(false);
+                            }
+                          }}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={() => setBudgetEditMode(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-                {/* Progress bar inside Zone 1 */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
-                      {totalBudget > 0 ? ((constructionCosts / totalBudget) * 100).toFixed(1) : 0}% used
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {formatCurrency(constructionCosts)} / {formatCurrency(totalBudget)}
-                    </span>
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingDown className={cn("h-4 w-4", remaining >= 0 ? "text-success" : "text-destructive")} />
+                    <span className="text-sm text-muted-foreground">Remaining Construction Budget</span>
                   </div>
-                  <Progress 
-                    value={totalBudget > 0 ? Math.min((constructionCosts / totalBudget) * 100, 100) : 0}
-                    className="h-2.5"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+                  <p className={cn("text-2xl font-bold font-mono", remaining >= 0 ? "text-success" : "text-destructive")}>
+                    {formatCurrency(remaining)}
+                  </p>
+                </CardContent>
+              </Card>
 
-            {/* Zone 2 — Total Project Summary */}
-            <Card className="glass-card">
-              <CardContent className="pt-5 pb-4">
-                <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-1.5">
-                  <span className="text-warning">◆</span> Total Project Summary
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="min-w-0 border-border/40">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <TrendingUp className="h-4 w-4 text-warning" />
-                        <span className="text-sm text-muted-foreground">Total All-In Costs</span>
-                      </div>
-                      <p className="text-2xl font-bold font-mono text-warning">{formatCurrency(totalSpent)}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Construction + Loan + Holding + Transaction</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="min-w-0 border-border/40">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Receipt className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground"># of Expenses</span>
-                      </div>
-                      <p className="text-2xl font-bold font-mono">{expenses.length}</p>
-                      <p className="text-xs text-muted-foreground mt-1">across all categories</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Zone 3 — Additional Costs */}
-            <Card className="glass-card">
-              <CardContent className="pt-5 pb-4">
-                <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-1.5">
-                  <span>—</span> Additional Costs
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card 
-                    className={cn("min-w-0 cursor-pointer transition-all hover:border-primary/30 border-border/40", selectedCostType === 'loan' && "ring-2 ring-primary")}
-                    onClick={() => handleCardFilter('loan')}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Landmark className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Loan Costs</span>
-                      </div>
-                      <p className="text-xl font-bold font-mono">{formatCurrency(loanCosts)}</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card 
-                    className={cn("min-w-0 cursor-pointer transition-all hover:border-primary/30 border-border/40", selectedCostType === 'monthly' && "ring-2 ring-primary")}
-                    onClick={() => handleCardFilter('monthly')}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Home className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Holding Costs</span>
-                      </div>
-                      <p className="text-xl font-bold font-mono">{formatCurrency(holdingCosts)}</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card 
-                    className={cn("min-w-0 cursor-pointer transition-all hover:border-primary/30 border-border/40", selectedCostType === 'transaction' && "ring-2 ring-primary")}
-                    onClick={() => handleCardFilter('transaction')}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Receipt className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Transaction Costs</span>
-                      </div>
-                      <p className="text-xl font-bold font-mono">{formatCurrency(transactionCosts)}</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
+              <Card className="glass-card">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Receipt className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground"># of Expenses</span>
+                  </div>
+                  <p className="text-2xl font-bold">{expenses.length}</p>
+                </CardContent>
+              </Card>
             </div>
+
+        {/* Budget Progress */}
+        <Card className="glass-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">
+                {totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : 0}% of budget used
+              </span>
+              <span className="font-mono text-sm">
+                {formatCurrency(totalSpent)} / {formatCurrency(totalBudget)}
+              </span>
+            </div>
+            <Progress 
+              value={totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0}
+              className="h-3"
+            />
+          </CardContent>
+        </Card>
 
         {/* Expense Breakdown Pie Chart */}
         {categories.filter(c => c.actualSpent > 0).length > 0 && (

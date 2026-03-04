@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +35,7 @@ export function useNotifications() {
   const { team } = useTeam();
   const queryClient = useQueryClient();
 
+  // Only owners have a team where they are the owner_id
   const isOwner = !!team && team.owner_id === user?.id;
 
   const { data: rawNotifications = [], isLoading } = useQuery({
@@ -55,43 +55,6 @@ export function useNotifications() {
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
-
-  // ── Supabase Realtime: push new notifications instantly ──────────────────
-  useEffect(() => {
-    if (!user || !isOwner) return;
-
-    const channel = supabase
-      .channel(`notifications-live-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `owner_id=eq.${user.id}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `owner_id=eq.${user.id}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, isOwner, queryClient]);
 
   // Filter by user preferences (types toggled off are suppressed)
   const prefs = loadNotificationPrefs();

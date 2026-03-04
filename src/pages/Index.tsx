@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, FolderKanban, Plus, TrendingUp, EyeOff, Eye } from 'lucide-react';
+import { DollarSign, FolderKanban, Plus, TrendingUp } from 'lucide-react';
 import { calcAnnualCashFlow } from '@/lib/rentalCashFlow';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -45,7 +45,6 @@ export default function Index() {
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [demoMode, setDemoMode] = useState(false);
   
   const [isLoading, setIsLoading] = useState(true);
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
@@ -241,63 +240,9 @@ export default function Index() {
     }
   };
 
-  // Demo mode data
-  const DEMO_NAMES = [
-    'Maple Street Flip', 'Riverside Bungalow', 'Cedar Park Ranch', 'Oakwood Cottage',
-    'Sunset Ridge Estate', 'Pinecrest Duplex', 'Harbor View Villa', 'Elm Grove Rehab',
-    'Birchwood Heights', 'Willowbrook Manor', 'Stone Creek Lodge', 'Magnolia Place',
-  ];
-  const DEMO_ADDRESSES = [
-    '1234 Elm St, Austin, TX 78701', '5678 Oak Ave, Dallas, TX 75201',
-    '910 Maple Dr, Houston, TX 77001', '2468 Pine Ln, San Antonio, TX 78201',
-    '1357 Cedar Blvd, Fort Worth, TX 76101', '3690 Birch Rd, Plano, TX 75023',
-    '4812 Willow Way, Frisco, TX 75034', '7531 Spruce Ct, Round Rock, TX 78664',
-    '9024 Aspen Pl, Georgetown, TX 78626', '6183 Poplar St, Kyle, TX 78640',
-    '8472 Juniper Dr, Leander, TX 78641', '3159 Redwood Cir, Pflugerville, TX 78660',
-  ];
-
-  const seededRandom = (seed: number) => {
-    const x = Math.sin(seed + 1) * 10000;
-    return x - Math.floor(x);
-  };
-
-  const displayProjects = useMemo(() => {
-    if (!demoMode) return projects;
-    return projects.map((p, i) => {
-      const r = (n: number) => seededRandom(i * 100 + n);
-      const pp = 120000 + Math.floor(r(3) * 180000);
-      const budget = 25000 + Math.floor(r(1) * 80000);
-      // Ensure ARV is always well above pp + budget for healthy profit
-      const arv = pp + budget + 15000 + Math.floor(r(2) * 60000);
-      const spent = Math.floor(budget * (0.3 + r(4) * 0.5));
-      return {
-        ...p,
-        name: DEMO_NAMES[i % DEMO_NAMES.length],
-        address: DEMO_ADDRESSES[i % DEMO_ADDRESSES.length],
-        totalBudget: budget,
-        arv,
-        purchasePrice: pp,
-        constructionSpent: spent,
-        transactionCostActual: 0,
-        holdingCostActual: 0,
-        closingCostsPct: 0,
-        closingCostsFlat: 0,
-        closingCostsMode: 'flat',
-        holdingCostsPct: 0,
-        holdingCostsFlat: 0,
-        holdingCostsMode: 'flat',
-        categories: p.categories.map((c, ci) => ({
-          ...c,
-          estimatedBudget: Math.floor(budget / Math.max(p.categories.length, 1) * (0.5 + r(ci + 10))),
-          actualSpent: Math.floor((budget / Math.max(p.categories.length, 1)) * (0.1 + r(ci + 20) * 0.6)),
-        })),
-      };
-    });
-  }, [demoMode, projects]);
-
   // Calculate stats
   // Sort by starred first (in saved order), then by start date descending
-  const activeProjects = displayProjects
+  const activeProjects = projects
     .filter(p => p.status === 'active')
     .sort((a, b) => {
       const starredList = profile?.starred_projects as string[] || [];
@@ -332,7 +277,7 @@ export default function Index() {
 
   // Map status values to match project status format
   const statusMap: Record<string, string> = { active: 'active', complete: 'complete' };
-  const filteredProfitProjects = displayProjects.filter(p => {
+  const filteredProfitProjects = projects.filter(p => {
     const statusMatch = profitFilters.statuses.some(s => {
       const mapped = statusMap[s] || s;
       return p.status === mapped || (s === 'complete' && p.status === 'complete');
@@ -409,17 +354,8 @@ export default function Index() {
   return (
     <MainLayout>
       {/* Header */}
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setDemoMode(d => !d)}
-          className={`gap-1.5 text-xs ${demoMode ? 'bg-accent text-accent-foreground' : ''}`}
-        >
-          {demoMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          {demoMode ? 'Exit Demo' : 'Demo Mode'}
-        </Button>
       </div>
 
       {/* Tasks Due Today Banner - High Visibility Alert */}

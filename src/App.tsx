@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Projects from "./pages/Projects";
 import Calendar from "./pages/Calendar";
@@ -26,7 +27,6 @@ import Settings from "./pages/Settings";
 import ProfitBreakdown from "./pages/ProfitBreakdown";
 import NotFound from "./pages/NotFound";
 
-// Force rebuild
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -40,23 +40,23 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/eula" element={<EULA />} />
-            <Route path="/quickbooks-callback" element={<QuickBooksCallback />} />
-            <Route path="/" element={<Index />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/projects/:id" element={<ProjectDetail />} />
-            <Route path="/projects/:id/budget" element={<ProjectBudget />} />
-            <Route path="/expenses" element={<Expenses />} />
-            <Route path="/business-expenses" element={<BusinessExpenses />} />
-            <Route path="/vendors" element={<Vendors />} />
-            <Route path="/logs" element={<DailyLogs />} />
-            <Route path="/checklist" element={<DailyLogs />} />
-            <Route path="/calculator" element={<BudgetCalculator />} />
-            <Route path="/procurement" element={<Procurement />} />
-            <Route path="/bundles" element={<Bundles />} />
-            <Route path="/bundles/:id" element={<BundleDetail />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/profit" element={<ProfitBreakdown />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/quickbooks-callback" element={<ProtectedRoute><QuickBooksCallback /></ProtectedRoute>} />
+            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
+            <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
+            <Route path="/projects/:id/budget" element={<ProtectedRoute><ProjectBudget /></ProtectedRoute>} />
+            <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+            <Route path="/business-expenses" element={<ProtectedRoute><BusinessExpenses /></ProtectedRoute>} />
+            <Route path="/vendors" element={<ProtectedRoute><Vendors /></ProtectedRoute>} />
+            <Route path="/logs" element={<ProtectedRoute><DailyLogs /></ProtectedRoute>} />
+            <Route path="/checklist" element={<ProtectedRoute><DailyLogs /></ProtectedRoute>} />
+            <Route path="/calculator" element={<ProtectedRoute><BudgetCalculator /></ProtectedRoute>} />
+            <Route path="/procurement" element={<ProtectedRoute><Procurement /></ProtectedRoute>} />
+            <Route path="/bundles" element={<ProtectedRoute><Bundles /></ProtectedRoute>} />
+            <Route path="/bundles/:id" element={<ProtectedRoute><BundleDetail /></ProtectedRoute>} />
+            <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+            <Route path="/profit" element={<ProtectedRoute><ProfitBreakdown /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
