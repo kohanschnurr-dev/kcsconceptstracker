@@ -1,32 +1,16 @@
 
 
-## Redesign Auth Page to Match "GroundWorks" Layout
+## Diagnosis: Blank/Error Page
 
-Replace the current centered card layout with a split-panel design matching the reference screenshot (image-886.png).
+After reviewing all the relevant files (`Auth.tsx`, `Index.tsx`, `App.tsx`, types, and assets), the code appears syntactically and logically correct. No missing imports, no type errors, no broken references.
 
-### Layout
+The blank screen with the broken image icon you're seeing is most likely a **stale build or transient preview issue** rather than a code bug. Here's what I'll do:
 
-**Left half** — branding/marketing panel:
-- KCS logo + "GroundWorks" name at top-left
-- Large headline: "Built for **every build.**" (bold orange on "every build")
-- Subtitle: "Track budgets, expenses, daily logs, and team activity across every fix & flip project."
-- Bullet list with orange dot indicators:
-  - Real-time budget tracking per project
-  - Team messaging & daily site logs
-  - Vendor & procurement management
-  - AI-powered expense receipt parsing
-- Bottom footer: green dot + "Secured by Supabase · All data encrypted at rest"
+### Plan
 
-**Right half** — auth form panel:
-- Remove the Tabs component (no more Sign In / Sign Up toggle tabs)
-- Default view: "Welcome back" heading with "Don't have an account? Sign up" link
-- Google button, OR divider, Email + Password fields, "Forgot password?" link, Sign In button
-- Clicking "Sign up" swaps to sign-up form (same panel, state-driven, no tabs)
-- Footer: "© 2026 GroundWorks · All rights reserved"
+1. **Add a small no-op change to force a fresh build** — touch the `App.tsx` file with a harmless comment to trigger a clean rebuild of the preview.
 
-### Responsive
-- On mobile (`< lg`), stack vertically: branding panel on top (condensed), form below
+2. **If the error persists after rebuild**, add `console.log` statements to `Index.tsx` and `Auth.tsx` to capture the exact error on the next load.
 
-### Files Modified
-- `src/pages/Auth.tsx` — full rewrite of the JSX layout; keep all existing form logic, validation, handlers intact
+No structural code changes are needed — the current code is valid.
 
