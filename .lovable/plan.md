@@ -1,27 +1,32 @@
 
 
-## Add Temporary "Demo Mode" Button to Dashboard
+## Redesign Auth Page to Match "GroundWorks" Layout
 
-A simple client-side toggle that replaces real project data with randomized fake data in memory (no database changes). When activated, it swaps names, addresses, cover photos, and financial figures so the dashboard is safe for screen recording.
+Replace the current centered card layout with a split-panel design matching the reference screenshot (image-886.png).
 
-### Changes
+### Layout
 
-**File: `src/pages/Index.tsx`**
+**Left half** — branding/marketing panel:
+- KCS logo + "GroundWorks" name at top-left
+- Large headline: "Built for **every build.**" (bold orange on "every build")
+- Subtitle: "Track budgets, expenses, daily logs, and team activity across every fix & flip project."
+- Bullet list with orange dot indicators:
+  - Real-time budget tracking per project
+  - Team messaging & daily site logs
+  - Vendor & procurement management
+  - AI-powered expense receipt parsing
+- Bottom footer: green dot + "Secured by Supabase · All data encrypted at rest"
 
-1. Add a `demoMode` boolean state and a `demoProjects` derived list
-2. Add a small button in the header row (next to "Dashboard" title) labeled "Demo Mode" with an eye-slash icon
-3. When toggled ON:
-   - Map over `projects` and replace each project's `name` with a random property name from a pool (e.g., "Maple Street Flip", "Riverside Bungalow", "Cedar Park Ranch")
-   - Replace `address` with a randomized fake address (e.g., "1234 Elm St, Austin, TX 78701")
-   - Randomize `arv`, `purchasePrice`, `totalBudget` within realistic ranges
-   - Null out `coverPhotoPath` so real photos don't show
-   - Randomize category `actualSpent` values proportionally
-4. Use `demoProjects` instead of `projects` for all rendering when demo mode is on
-5. The button toggles — click again to restore real data
-6. Style the button as a small ghost button with a `Monitor` or `Eye` icon so it's obvious but unobtrusive
+**Right half** — auth form panel:
+- Remove the Tabs component (no more Sign In / Sign Up toggle tabs)
+- Default view: "Welcome back" heading with "Don't have an account? Sign up" link
+- Google button, OR divider, Email + Password fields, "Forgot password?" link, Sign In button
+- Clicking "Sign up" swaps to sign-up form (same panel, state-driven, no tabs)
+- Footer: "© 2026 GroundWorks · All rights reserved"
 
-This is entirely in-memory — no database writes, no edge functions. The real data stays untouched. The button can be removed later by deleting the state + button + mapping logic.
+### Responsive
+- On mobile (`< lg`), stack vertically: branding panel on top (condensed), form below
 
 ### Files Modified
-- `src/pages/Index.tsx` only
+- `src/pages/Auth.tsx` — full rewrite of the JSX layout; keep all existing form logic, validation, handlers intact
 
