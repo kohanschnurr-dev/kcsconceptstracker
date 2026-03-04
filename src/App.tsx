@@ -27,6 +27,7 @@ import Settings from "./pages/Settings";
 import ProfitBreakdown from "./pages/ProfitBreakdown";
 import NotFound from "./pages/NotFound";
 
+// Force rebuild
 const queryClient = new QueryClient();
 
 const App = () => (
