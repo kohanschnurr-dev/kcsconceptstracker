@@ -1,15 +1,32 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { handleCors } from "../_shared/cors.ts";
+import { getUserIdFromBearer } from "../_shared/auth.ts";
+import { RateLimiter } from "../_shared/rateLimiter.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const { headers: corsHeaders, preflight } = handleCors(req);
+  if (preflight) return preflight;
 
   try {
+    const userId = getUserIdFromBearer(req.headers.get("Authorization"));
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { limited } = await new RateLimiter(
+      createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
+    ).check(userId, "generate-receipt", 30);
+    if (limited) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Up to 30 documents per hour." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const {
       vendorName,
       receiptDate,

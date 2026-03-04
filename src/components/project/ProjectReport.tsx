@@ -297,8 +297,8 @@ export function ProjectReport({
 </html>`;
     const blob = new Blob([doc], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank');
-    if (win) setTimeout(() => URL.revokeObjectURL(url), 15000);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
   };
 
   /* ── deal field helper ───────────────────────────────── */

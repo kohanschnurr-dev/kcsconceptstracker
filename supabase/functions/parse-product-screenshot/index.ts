@@ -1,19 +1,34 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { handleCors } from "../_shared/cors.ts";
+import { getUserIdFromBearer } from "../_shared/auth.ts";
+import { RateLimiter } from "../_shared/rateLimiter.ts";
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  const { headers: corsHeaders, preflight } = handleCors(req);
+  if (preflight) return preflight;
 
   try {
+    const userId = getUserIdFromBearer(req.headers.get("Authorization"));
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { limited } = await new RateLimiter(
+      createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
+    ).check(userId, "parse-product-screenshot", 20);
+    if (limited) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Up to 20 screenshots per hour." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { image_base64 } = await req.json();
-    
+
     if (!image_base64) {
       return new Response(
         JSON.stringify({ error: 'No image provided' }),
@@ -23,16 +38,13 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY is not configured");
       return new Response(
         JSON.stringify({ error: 'AI service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log("Parsing product screenshot with AI vision...");
-
-    const systemPrompt = `You are an expert at extracting product information from retail website screenshots. 
+    const systemPrompt = `You are an expert at extracting product information from retail website screenshots.
 Extract the following details from the product page image:
 
 1. Product name - Create a concise 3-5 word title. For standard items use "[Finish] [Category] [Type]" pattern. For tile, use "[Size] [Material] Tile" format.
@@ -85,7 +97,7 @@ Do NOT include any explanation - only the JSON object.`;
     if (!response.ok) {
       const errorText = await response.text();
       console.error("AI API error:", response.status, errorText);
-      
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded, please try again later' }),
@@ -98,7 +110,7 @@ Do NOT include any explanation - only the JSON object.`;
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
+
       return new Response(
         JSON.stringify({ error: 'Failed to analyze screenshot' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -107,8 +119,6 @@ Do NOT include any explanation - only the JSON object.`;
 
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content;
-    
-    console.log("AI response content:", content);
 
     if (!content) {
       return new Response(
@@ -117,10 +127,8 @@ Do NOT include any explanation - only the JSON object.`;
       );
     }
 
-    // Parse the JSON from the response
     let productData;
     try {
-      // Try to find JSON in the response (in case there's extra text)
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         productData = JSON.parse(jsonMatch[0]);
@@ -135,12 +143,9 @@ Do NOT include any explanation - only the JSON object.`;
       );
     }
 
-    console.log("Parsed product data:", productData);
-
     // Second AI call - extract product image
     let extractedImage: string | null = null;
     try {
-      console.log("Extracting product image from screenshot...");
       const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -173,13 +178,11 @@ Do NOT include any explanation - only the JSON object.`;
       if (imageResponse.ok) {
         const imageData = await imageResponse.json();
         extractedImage = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
-        console.log("Product image extracted:", extractedImage ? "success" : "no image in response");
       } else {
         console.error("Image extraction failed with status:", imageResponse.status);
       }
     } catch (imageError) {
       console.error("Error extracting product image:", imageError);
-      // Don't fail the whole request if image extraction fails
     }
 
     return new Response(
