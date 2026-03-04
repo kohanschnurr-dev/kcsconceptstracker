@@ -143,9 +143,9 @@ export default function Auth() {
 
         <div className="relative z-10 flex flex-col gap-10">
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            <img src={groundworksLogo} alt="GroundWorks logo" className="h-10 w-10 rounded" />
-            <span className="text-xl font-bold text-white tracking-tight">GroundWorks</span>
+          <div className="flex items-center gap-4">
+            <img src={groundworksLogo} alt="GroundWorks logo" className="h-14 w-14 rounded" />
+            <span className="text-2xl font-bold text-white tracking-tight">GroundWorks</span>
           </div>
 
           {/* Headline */}
@@ -173,8 +173,8 @@ export default function Auth() {
         <div className="w-full max-w-[340px] space-y-6">
           {/* Mobile logo */}
           <div className="flex flex-col items-center gap-1 lg:hidden">
-            <img src={groundworksLogo} alt="GroundWorks logo" className="h-10 w-10 rounded" />
-            <span className="text-lg font-bold">GroundWorks</span>
+            <img src={groundworksLogo} alt="GroundWorks logo" className="h-14 w-14 rounded" />
+            <span className="text-xl font-bold">GroundWorks</span>
           </div>
 
           {/* Tab toggle */}
