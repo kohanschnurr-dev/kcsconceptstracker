@@ -274,13 +274,16 @@ export default function Index() {
         ...p,
         name: DEMO_NAMES[i % DEMO_NAMES.length],
         address: DEMO_ADDRESSES[i % DEMO_ADDRESSES.length],
-        // Keep cover photos — don't null them out
         totalBudget: budget,
         arv,
         purchasePrice: pp,
         constructionSpent: spent,
         transactionCostActual: 0,
         holdingCostActual: 0,
+        closingCostsMode: 'flat',
+        closingCostsFlat: 0,
+        holdingCostsMode: 'flat',
+        holdingCostsFlat: 0,
         categories: p.categories.map((c, ci) => ({
           ...c,
           estimatedBudget: Math.floor(budget / Math.max(p.categories.length, 1) * (0.5 + r(ci + 10))),
