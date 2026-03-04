@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Shield, BarChart3, MessageSquare, Users, Sparkles } from 'lucide-react';
-import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import kcsLogo from '@/assets/kcs-logo.png';
 
 const signInSchema = z.object({
@@ -48,7 +48,7 @@ const GoogleIcon = () => (
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, signIn, signUp, loading: authLoading } = useAuth();
+  const { signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,13 +63,6 @@ export default function Auth() {
     resolver: zodResolver(signUpSchema),
   });
 
-  // Redirect if already logged in — temporarily disabled for editing
-  // useEffect(() => {
-  //   if (user && !authLoading) {
-  //     navigate('/', { replace: true });
-  //   }
-  // }, [user, authLoading, navigate]);
-
   const handleSignIn = async (data: SignInFormData) => {
     setIsLoading(true);
     setError(null);
@@ -82,6 +75,8 @@ export default function Auth() {
       } else {
         setError(error.message);
       }
+    } else {
+      navigate('/', { replace: true });
     }
     setIsLoading(false);
   };
@@ -112,8 +107,9 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     setError(null);
-    const { error } = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: window.location.origin,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/` },
     });
     if (error) {
       setError(error.message || 'Failed to sign in with Google');
@@ -126,14 +122,6 @@ export default function Auth() {
     setSuccessMessage(null);
     setIsSignUp(!isSignUp);
   };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row">
