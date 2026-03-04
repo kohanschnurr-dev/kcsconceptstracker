@@ -1,27 +1,50 @@
 
 
-## Add Temporary "Demo Mode" Button to Dashboard
+## Sleek Split-Screen Auth Page
 
-A simple client-side toggle that replaces real project data with randomized fake data in memory (no database changes). When activated, it swaps names, addresses, cover photos, and financial figures so the dashboard is safe for screen recording.
+Redesign `src/pages/Auth.tsx` into a two-panel layout matching the KCS aesthetic.
 
-### Changes
+### Layout
 
-**File: `src/pages/Index.tsx`**
+```text
+┌─────────────────────────┬──────────────────────┐
+│                         │                      │
+│   LEFT PANEL (lg+)      │   RIGHT PANEL        │
+│   Dark bg + grid        │   Centered form      │
+│   Orange radial glow    │   max-w-[340px]      │
+│   Logo + headline       │                      │
+│   4 feature bullets     │   Sign In / Sign Up  │
+│   Encryption badge      │   toggle + forms     │
+│                         │                      │
+└─────────────────────────┴──────────────────────┘
+```
 
-1. Add a `demoMode` boolean state and a `demoProjects` derived list
-2. Add a small button in the header row (next to "Dashboard" title) labeled "Demo Mode" with an eye-slash icon
-3. When toggled ON:
-   - Map over `projects` and replace each project's `name` with a random property name from a pool (e.g., "Maple Street Flip", "Riverside Bungalow", "Cedar Park Ranch")
-   - Replace `address` with a randomized fake address (e.g., "1234 Elm St, Austin, TX 78701")
-   - Randomize `arv`, `purchasePrice`, `totalBudget` within realistic ranges
-   - Null out `coverPhotoPath` so real photos don't show
-   - Randomize category `actualSpent` values proportionally
-4. Use `demoProjects` instead of `projects` for all rendering when demo mode is on
-5. The button toggles — click again to restore real data
-6. Style the button as a small ghost button with a `Monitor` or `Eye` icon so it's obvious but unobtrusive
+On mobile: left panel hidden, right panel fills screen.
 
-This is entirely in-memory — no database writes, no edge functions. The real data stays untouched. The button can be removed later by deleting the state + button + mapping logic.
+### Left Panel Content
+- KCS logo (`kcs-logo.png`) + "GroundWorks" text
+- Headline: "Construction Budget Tracking Built for Flippers"
+- 4 feature bullets with icons:
+  1. `Calculator` -- Real-time budget tracking
+  2. `Users` -- Team messaging & collaboration
+  3. `Receipt` -- AI-powered receipt parsing
+  4. `ShieldCheck` -- Bank-grade data encryption
+- Bottom badge: lock icon + "256-bit encrypted | Secured by Lovable Cloud"
 
-### Files Modified
-- `src/pages/Index.tsx` only
+### Left Panel Styling
+- `bg-black` with a CSS grid pattern overlay (thin #333 lines)
+- Orange radial gradient glow behind the logo area (`bg-[radial-gradient(circle_at_center,rgba(255,140,0,0.15),transparent_70%)]`)
+- All text white/gray
+
+### Right Panel
+- Same form logic (Google OAuth, email sign-in/sign-up) but stripped of the Card wrapper
+- Form container: `max-w-[340px] w-full mx-auto`
+- Replace Tabs with two text buttons ("Sign In" / "Sign Up") toggling `activeTab` state (already exists)
+- Clean, minimal -- no card border, just the form fields on the background
+
+### Technical
+- Single file edit: `src/pages/Auth.tsx`
+- Add lucide imports: `Calculator, Users, Receipt, ShieldCheck, Lock`
+- Remove Card/CardHeader/CardContent/Tabs/TabsList/TabsTrigger imports (use simple state toggle instead)
+- Keep all form validation, handlers, Google OAuth logic unchanged
 
