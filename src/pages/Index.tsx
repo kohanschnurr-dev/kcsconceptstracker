@@ -265,22 +265,26 @@ export default function Index() {
     if (!demoMode) return projects;
     return projects.map((p, i) => {
       const r = (n: number) => seededRandom(i * 100 + n);
-      const budget = 30000 + Math.floor(r(1) * 170000);
-      const arv = 150000 + Math.floor(r(2) * 350000);
-      const pp = 80000 + Math.floor(r(3) * 200000);
+      const pp = 120000 + Math.floor(r(3) * 180000);
+      const budget = 25000 + Math.floor(r(1) * 80000);
+      // Ensure ARV is always well above pp + budget for healthy profit
+      const arv = pp + budget + 15000 + Math.floor(r(2) * 60000);
+      const spent = Math.floor(budget * (0.3 + r(4) * 0.5));
       return {
         ...p,
         name: DEMO_NAMES[i % DEMO_NAMES.length],
         address: DEMO_ADDRESSES[i % DEMO_ADDRESSES.length],
-        coverPhotoPath: undefined,
+        // Keep cover photos — don't null them out
         totalBudget: budget,
         arv,
         purchasePrice: pp,
-        constructionSpent: Math.floor(budget * (0.3 + r(4) * 0.5)),
+        constructionSpent: spent,
+        transactionCostActual: 0,
+        holdingCostActual: 0,
         categories: p.categories.map((c, ci) => ({
           ...c,
-          estimatedBudget: Math.floor(budget / p.categories.length * (0.5 + r(ci + 10))),
-          actualSpent: Math.floor((budget / p.categories.length) * (0.1 + r(ci + 20) * 0.6)),
+          estimatedBudget: Math.floor(budget / Math.max(p.categories.length, 1) * (0.5 + r(ci + 10))),
+          actualSpent: Math.floor((budget / Math.max(p.categories.length, 1)) * (0.1 + r(ci + 20) * 0.6)),
         })),
       };
     });
