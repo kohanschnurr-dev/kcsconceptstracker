@@ -37,6 +37,8 @@ const FEATURES = [
   { icon: ShieldCheck, label: 'Bank-grade data encryption' },
 ] as const;
 
+const TAGLINE = "And that's just the start";
+
 export default function Auth() {
   const navigate = useNavigate();
   const { user, signIn, signUp, loading: authLoading } = useAuth();
@@ -164,6 +166,8 @@ export default function Auth() {
               </li>
             ))}
           </ul>
+
+          <p className="text-sm text-gray-400 italic tracking-wide">{TAGLINE}</p>
         </div>
 
       </div>
