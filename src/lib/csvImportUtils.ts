@@ -13,6 +13,7 @@ export interface ParsedRow {
   suggestedCategory: string | null;
   hasError: boolean;
   errorMsg?: string;
+  costType: string;
 }
 
 // Simple CSV parser that handles quoted fields
@@ -193,6 +194,7 @@ export function processCSVText(
       suggestedCategory: exact ? null : suggested,
       hasError,
       errorMsg,
+      costType: 'construction',
     };
   });
 

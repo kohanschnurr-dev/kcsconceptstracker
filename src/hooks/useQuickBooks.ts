@@ -402,11 +402,12 @@ export function useQuickBooks() {
   }, [toast, isDemoMode]);
 
   const categorizeExpense = useCallback(async (
-    expenseId: string, 
-    projectId: string, 
+    expenseId: string,
+    projectId: string,
     categoryValue: string,
     expenseType: 'product' | 'labor' = 'product',
-    notes?: string
+    notes?: string,
+    costType: string = 'construction'
   ) => {
     if (!categoryValue) {
       toast({
@@ -509,7 +510,8 @@ export function useQuickBooks() {
           includes_tax: false,
           expense_type: expenseType,
           notes: notes || null,
-        });
+          cost_type: costType,
+        } as any);
 
       if (error) {
         console.error('Error inserting expense:', error);
@@ -565,6 +567,7 @@ export function useQuickBooks() {
           expense_type: expenseType,
           notes: notes || null,
           qb_expense_id: expenseId,
+          cost_type: costType,
         } as any);
 
         if (insertError) {

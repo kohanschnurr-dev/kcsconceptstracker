@@ -53,7 +53,7 @@ interface PendingExpense {
 interface GroupedPendingExpenseCardProps {
   expenses: PendingExpense[];
   projects: Project[];
-  onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor', notes?: string) => Promise<void>;
+  onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor', notes?: string, costType?: string) => Promise<void>;
   onDelete: (expenseId: string) => Promise<void>;
   onImportAll: (expenseIds: string[], projectId: string) => Promise<void>;
   onOpenSplitModal?: (expense: PendingExpense) => void;
@@ -76,6 +76,7 @@ export function GroupedPendingExpenseCard({
   const [selectedExpenseType, setSelectedExpenseType] = useState<'product' | 'labor'>('product');
   const [expenseNotes, setExpenseNotes] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
+  const [selectedCostType, setSelectedCostType] = useState<string>('construction');
 
   const isSplitGroup = expenses.length > 1;
   const primaryExpense = expenses[0];
@@ -116,7 +117,7 @@ export function GroupedPendingExpenseCard({
     if (!selectedProject || !selectedCategory) return;
     setIsImporting(true);
     try {
-      await onCategorize(primaryExpense.id, selectedProject, selectedCategory, selectedExpenseType, expenseNotes);
+      await onCategorize(primaryExpense.id, selectedProject, selectedCategory, selectedExpenseType, expenseNotes, selectedCostType);
     } finally {
       setIsImporting(false);
     }
@@ -219,6 +220,20 @@ export function GroupedPendingExpenseCard({
                       {project.name}
                     </SelectItem>
                   ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={selectedCostType}
+              onValueChange={setSelectedCostType}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="construction">Construction</SelectItem>
+                <SelectItem value="loan">Loan</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="transaction">Transaction</SelectItem>
               </SelectContent>
             </Select>
             <Select

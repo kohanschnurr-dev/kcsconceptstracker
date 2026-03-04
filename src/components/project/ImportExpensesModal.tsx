@@ -84,6 +84,10 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
     setRows(prev => prev.map((r, i) => i === idx ? { ...r, matchedCategory: catValue, suggestedCategory: null } : r));
   };
 
+  const updateRowCostType = (idx: number, costType: string) => {
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, costType } : r));
+  };
+
   const removeRow = (idx: number) => {
     setRows(prev => {
       const next = prev.filter((_, i) => i !== idx);
@@ -150,7 +154,8 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
         project_id: projectId, category_id: catLookup[r.matchedCategory!],
         amount: r.amount, date: r.date, vendor_name: r.vendor || null,
         description: r.description || null, payment_method: r.paymentMethod as any,
-        status: 'actual' as any, expense_type: r.expenseType, notes: r.notes || null, cost_type: 'construction',
+        status: 'actual' as any, expense_type: r.expenseType, notes: r.notes || null,
+        cost_type: r.costType || 'construction',
       }));
 
       const { error: insertError } = await supabase.from('expenses').insert(expenseRows);
@@ -265,6 +270,7 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
                      <TableHead>Date</TableHead>
                      <TableHead>Contractor</TableHead>
                      <TableHead>Category</TableHead>
+                     <TableHead>Type</TableHead>
                      <TableHead className="text-right">Amount</TableHead>
                      <TableHead>Expense Type</TableHead>
                      <TableHead>Status</TableHead>
@@ -298,6 +304,22 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
                             </Select>
                           </div>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={row.costType || 'construction'}
+                          onValueChange={(v) => updateRowCostType(row.originalIdx, v)}
+                        >
+                          <SelectTrigger className="h-7 text-xs w-[130px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="construction">Construction</SelectItem>
+                            <SelectItem value="loan">Loan</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="transaction">Transaction</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell className={`text-right font-mono text-sm ${row.amount < 0 ? 'text-success' : ''}`}>
                         {row.hasError && isNaN(row.amount) ? (
