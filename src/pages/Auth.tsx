@@ -48,12 +48,12 @@ export default function Auth() {
     resolver: zodResolver(signUpSchema),
   });
 
-  // Redirect if already logged in
-  useEffect(() => {
-    if (user && !authLoading) {
-      navigate('/', { replace: true });
-    }
-  }, [user, authLoading, navigate]);
+  // Redirect if already logged in — temporarily disabled for editing
+  // useEffect(() => {
+  //   if (user && !authLoading) {
+  //     navigate('/', { replace: true });
+  //   }
+  // }, [user, authLoading, navigate]);
 
   const handleSignIn = async (data: SignInFormData) => {
     setIsLoading(true);
