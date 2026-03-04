@@ -352,14 +352,6 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
               </>
             )}
           </button>
-
-          <button
-            onClick={handleOpenEditDialog}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-4"
-          >
-            <Settings className="h-3.5 w-3.5" />
-            Edit Presets
-          </button>
         </div>
       </div>
 
