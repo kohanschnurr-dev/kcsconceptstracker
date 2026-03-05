@@ -1,17 +1,18 @@
 
 
-## Fix Date Off-by-One in Receipt Generator
+## Apply Local Date Fix to Invoice & Scope of Work Generators
 
-The receipt generator uses `new Date().toISOString().split('T')[0]` to set default dates. Since `toISOString()` returns UTC, users in US timezones (CST/EST/PST) see tomorrow's date after their local evening hours.
+Same fix as the receipt generator — replace `new Date().toISOString().split('T')[0]` with `formatDateString(new Date())` to prevent the off-by-one day error in US timezones.
 
-### Fix in `src/components/project/GenerateReceiptSheet.tsx`
+### 1. `src/components/project/GenerateInvoiceSheet.tsx`
+- Add import: `import { formatDateString } from '@/lib/dateUtils'`
+- Line 69: initial `invoiceDate` state → `formatDateString(new Date())`
+- Line 94: reset `invoiceDate` in `handleOpenChange` → `formatDateString(new Date())`
 
-- Import `formatDateString` from `@/lib/dateUtils`
-- Replace all 3 occurrences of `new Date().toISOString().split('T')[0]` with `formatDateString(new Date())`:
-  1. Initial `receiptDate` state (line ~68)
-  2. Initial `paymentDate` state (line ~72)
-  3. Reset in `handleOpenChange` for `receiptDate` (line ~82)
-  4. Reset in `handleOpenChange` for `paymentDate` (line ~86)
+### 2. `src/components/vendors/ScopeOfWorkSheet.tsx`
+- Add import: `import { formatDateString } from '@/lib/dateUtils'`
+- Line 54: initial `date` state → `formatDateString(new Date())`
+- Line 77: reset `date` in `handleOpenChange` → `formatDateString(new Date())`
 
-Single file change.
+Two files, four replacements total. No other changes needed.
 
