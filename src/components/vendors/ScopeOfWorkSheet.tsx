@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDateString } from '@/lib/dateUtils';
 import { FileText } from 'lucide-react';
 import { generatePDF, generatePDFHtml } from '@/lib/pdfExport';
 import { saveDocumentToProject } from '@/lib/saveDocumentToProject';
@@ -51,7 +52,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
   const [recipientName, setRecipientName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [customerName, setCustomerName] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(formatDateString(new Date()));
   const [jobNumber, setJobNumber] = useState('');
   const [tradeTypes, setTradeTypes] = useState<string[]>([]);
   const [tradeInput, setTradeInput] = useState('');
@@ -74,7 +75,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     if (!val) {
       setRecipientName('');
       setCustomerName('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(formatDateString(new Date()));
       setJobNumber('');
       setTradeTypes([]);
       setTradeInput('');

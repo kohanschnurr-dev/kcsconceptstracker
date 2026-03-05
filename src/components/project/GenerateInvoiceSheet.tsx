@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDateString } from '@/lib/dateUtils';
 import { FileText, Plus, X } from 'lucide-react';
 import { generatePDFHtml } from '@/lib/pdfExport';
 import { generatePDF } from '@/lib/pdfExport';
@@ -66,7 +67,7 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
   const [companyName, setCompanyName] = useState('');
   const [clientName, setClientName] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('INV-001');
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [invoiceDate, setInvoiceDate] = useState(formatDateString(new Date()));
   const [dueDate, setDueDate] = useState('');
   const [projName, setProjName] = useState(projectName);
   const [projAddress, setProjAddress] = useState(projectAddress);
@@ -91,7 +92,7 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
     if (!val) {
       setClientName('');
       setInvoiceNumber('INV-001');
-      setInvoiceDate(new Date().toISOString().split('T')[0]);
+      setInvoiceDate(formatDateString(new Date()));
       setDueDate('');
       setDescriptionOfWork('');
       setLineItems([newLineItem()]);
