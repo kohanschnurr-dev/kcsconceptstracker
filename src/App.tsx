@@ -5,10 +5,21 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+
+// Landing / public pages
+import Landing from "./pages/Landing";
+import LandingFeatures from "./pages/LandingFeatures";
+import FeatureDetail from "./pages/FeatureDetail";
+import Pricing from "./pages/Pricing";
+import About from "./pages/About";
+import Demo from "./pages/Demo";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+
+// Dashboard / protected pages
 import Index from "./pages/Index";
 import Projects from "./pages/Projects";
 import Calendar from "./pages/Calendar";
-
 import ProjectDetail from "./pages/ProjectDetail";
 import ProjectBudget from "./pages/ProjectBudget";
 import Expenses from "./pages/Expenses";
@@ -37,11 +48,24 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Public / landing pages */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/features" element={<LandingFeatures />} />
+            <Route path="/features/:slug" element={<FeatureDetail />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/demo" element={<Demo />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
+
+            {/* Legacy routes */}
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/eula" element={<EULA />} />
+
+            {/* Protected dashboard routes */}
             <Route path="/quickbooks-callback" element={<ProtectedRoute><QuickBooksCallback /></ProtectedRoute>} />
-            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
             <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
             <Route path="/projects/:id/budget" element={<ProtectedRoute><ProjectBudget /></ProtectedRoute>} />
@@ -57,7 +81,7 @@ const App = () => (
             <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
             <Route path="/profit" element={<ProtectedRoute><ProfitBreakdown /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-            
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

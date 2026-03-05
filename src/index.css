@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @layer base {
   :root {
@@ -196,4 +196,49 @@ input[type="time"] {
   color-scheme: inherit;
   background-color: hsl(var(--input));
   color: hsl(var(--foreground));
+}
+
+/* GroundWorks Landing Page Utilities */
+.font-heading {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.gold-glow {
+  box-shadow: 0 0 20px hsl(38 92% 50% / 0.3), 0 0 60px hsl(38 92% 50% / 0.1);
+}
+
+.gold-glow-sm {
+  box-shadow: 0 0 10px hsl(38 92% 50% / 0.2), 0 0 30px hsl(38 92% 50% / 0.05);
+}
+
+.blueprint-grid {
+  background-image: linear-gradient(hsl(38 92% 50% / 0.05) 1px, transparent 1px),
+                    linear-gradient(90deg, hsl(38 92% 50% / 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Scroll-triggered fade-up animation */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s ease-out forwards;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .transition-all,
+  .transition-transform {
+    animation: none !important;
+    transition: none !important;
+  }
 }
