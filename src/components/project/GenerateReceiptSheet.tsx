@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FileText, Plus, X } from 'lucide-react';
+import { formatDateString } from '@/lib/dateUtils';
 import { generatePDF, generatePDFHtml } from '@/lib/pdfExport';
 import { saveDocumentToProject } from '@/lib/saveDocumentToProject';
 import {
@@ -62,13 +63,13 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
   const projects = useProjectOptions();
 
   const [vendorName, setVendorName] = useState('');
-  const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split('T')[0]);
+  const [receiptDate, setReceiptDate] = useState(formatDateString(new Date()));
   const [receiptNumber, setReceiptNumber] = useState('RCP-001');
   const [projName, setProjName] = useState(projectName);
   const [descriptionOfWork, setDescriptionOfWork] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([newLineItem()]);
   const [paymentMethod, setPaymentMethod] = useState('');
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentDate, setPaymentDate] = useState(formatDateString(new Date()));
   const [notes, setNotes] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -80,12 +81,12 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
 
   const handleOpenChange = (val: boolean) => {
     if (!val) {
-      setReceiptDate(new Date().toISOString().split('T')[0]);
+      setReceiptDate(formatDateString(new Date()));
       setReceiptNumber('RCP-001');
       setDescriptionOfWork('');
       setLineItems([newLineItem()]);
       setPaymentMethod('');
-      setPaymentDate(new Date().toISOString().split('T')[0]);
+      setPaymentDate(formatDateString(new Date()));
       setNotes('');
       setSelectedProjectId('');
     }
