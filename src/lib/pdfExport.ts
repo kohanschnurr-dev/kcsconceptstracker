@@ -47,7 +47,7 @@ export interface ScopeOfWorkData {
   location: string;
   keyQuantities: string;
   workItems: { text: string; amount: number; photos: string[] }[];
-  alsoIncluded: { text: string; amount: number; photos: string[] }[];
+  
   exclusions: { text: string; amount: number; photos: string[] }[];
   materialsResponsibility: string;
   specialNotes: string;
@@ -803,10 +803,7 @@ function generateScopeOfWorkPdfHtml(options: PdfOptions): string {
       </div>`;
   };
 
-  const workTotal = [
-    ...sow.workItems.filter(i => i.text),
-    ...sow.alsoIncluded.filter(i => i.text),
-  ].reduce((s, i) => s + (i.amount || 0), 0);
+  const workTotal = sow.workItems.filter(i => i.text).reduce((s, i) => s + (i.amount || 0), 0);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -988,7 +985,7 @@ function generateScopeOfWorkPdfHtml(options: PdfOptions): string {
   </div>` : ''}
 
   ${renderWorkSection(sow.workItems, 'Work to Be Performed')}
-  ${renderWorkSection(sow.alsoIncluded, 'Also Included')}
+  
   ${renderWorkSection(sow.exclusions, 'Not Included / Exclusions')}
 
   ${(sow.materialsResponsibility || sow.specialNotes) ? `
