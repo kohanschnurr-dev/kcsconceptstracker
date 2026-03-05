@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLeadCapture } from "@/contexts/LeadCaptureContext";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -14,6 +16,9 @@ const navLinks = [
 export default function LandingHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useAuth();
+  const { openModal } = useLeadCapture();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -28,6 +33,14 @@ export default function LandingHeader() {
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [mobileOpen]);
+
+  const handleTrialClick = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      openModal();
+    }
+  };
 
   return (
     <header
@@ -58,16 +71,28 @@ export default function LandingHeader() {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <Link to="/auth">
-            <Button variant="ghost" size="sm" className="text-muted-foreground">
-              Log In
-            </Button>
-          </Link>
-          <Link to="/auth">
-            <Button size="sm" className="gold-glow hover:scale-[1.03] transition-transform">
-              Start Free Trial
-            </Button>
-          </Link>
+          {user ? (
+            <Link to="/dashboard">
+              <Button size="sm" className="gold-glow hover:scale-[1.03] transition-transform">
+                Go to Dashboard
+              </Button>
+            </Link>
+          ) : (
+            <>
+              <Link to="/auth">
+                <Button variant="ghost" size="sm" className="text-muted-foreground">
+                  Log In
+                </Button>
+              </Link>
+              <Button
+                size="sm"
+                className="gold-glow hover:scale-[1.03] transition-transform"
+                onClick={handleTrialClick}
+              >
+                Start Free Trial
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile Hamburger */}
@@ -102,14 +127,30 @@ export default function LandingHeader() {
             </Link>
           ))}
           <div className="border-t border-border mt-4 pt-4 flex flex-col gap-3">
-            <Link to="/auth" onClick={() => setMobileOpen(false)}>
-              <Button variant="outline" className="w-full min-h-[48px]">
-                Log In
-              </Button>
-            </Link>
-            <Link to="/auth" onClick={() => setMobileOpen(false)}>
-              <Button className="w-full min-h-[48px] gold-glow">Start Free Trial</Button>
-            </Link>
+            {user ? (
+              <Link to="/dashboard" onClick={() => setMobileOpen(false)}>
+                <Button className="w-full min-h-[48px] gold-glow">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/auth" onClick={() => setMobileOpen(false)}>
+                  <Button variant="outline" className="w-full min-h-[48px]">
+                    Log In
+                  </Button>
+                </Link>
+                <Button
+                  className="w-full min-h-[48px] gold-glow"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    openModal();
+                  }}
+                >
+                  Start Free Trial
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

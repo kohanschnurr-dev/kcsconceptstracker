@@ -1,7 +1,21 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLeadCapture } from "@/contexts/LeadCaptureContext";
 
 export default function FinalCTA() {
+  const { user } = useAuth();
+  const { openModal } = useLeadCapture();
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      openModal();
+    }
+  };
+
   return (
     <section className="py-20 sm:py-28">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 text-center">
@@ -12,14 +26,13 @@ export default function FinalCTA() {
           Join contractors and investors who manage every project in one place.
           Start your free 14-day trial today.
         </p>
-        <Link to="/auth">
-          <Button
-            size="lg"
-            className="gold-glow min-h-[48px] px-10 text-base hover:scale-[1.03] transition-transform"
-          >
-            Start Your Free Trial
-          </Button>
-        </Link>
+        <Button
+          size="lg"
+          className="gold-glow min-h-[48px] px-10 text-base hover:scale-[1.03] transition-transform"
+          onClick={handleClick}
+        >
+          {user ? "Go to Dashboard" : "Start Your Free Trial"}
+        </Button>
         <p className="text-sm text-muted-foreground mt-6">
           No credit card required · 14-day free trial · Cancel anytime
         </p>

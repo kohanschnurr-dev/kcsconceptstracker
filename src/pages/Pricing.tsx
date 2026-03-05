@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/accordion";
 import LandingHeader from "@/components/landing/LandingHeader";
 import LandingFooter from "@/components/landing/LandingFooter";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLeadCapture } from "@/contexts/LeadCaptureContext";
 
 const soloFeatures = [
   "Unlimited projects",
@@ -71,6 +73,17 @@ const faqs = [
 
 export default function Pricing() {
   const [annual, setAnnual] = useState(false);
+  const { user } = useAuth();
+  const { openModal } = useLeadCapture();
+  const navigate = useNavigate();
+
+  const handleTrialClick = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      openModal();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -138,11 +151,12 @@ export default function Pricing() {
                   </p>
                 )}
               </div>
-              <Link to="/auth">
-                <Button className="w-full min-h-[48px] gold-glow mb-6">
-                  Start 14-Day Free Trial
-                </Button>
-              </Link>
+              <Button
+                className="w-full min-h-[48px] gold-glow mb-6"
+                onClick={handleTrialClick}
+              >
+                {user ? "Go to Dashboard" : "Start 14-Day Free Trial"}
+              </Button>
               <p className="text-xs text-muted-foreground mb-4">
                 No credit card required
               </p>
@@ -176,14 +190,13 @@ export default function Pricing() {
                   </p>
                 )}
               </div>
-              <Link to="/auth">
-                <Button
-                  variant="outline"
-                  className="w-full min-h-[48px] mb-6"
-                >
-                  Start 14-Day Free Trial
-                </Button>
-              </Link>
+              <Button
+                variant="outline"
+                className="w-full min-h-[48px] mb-6"
+                onClick={handleTrialClick}
+              >
+                {user ? "Go to Dashboard" : "Start 14-Day Free Trial"}
+              </Button>
               <p className="text-xs text-muted-foreground mb-4">
                 Everything in Solo, plus:
               </p>

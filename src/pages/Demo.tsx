@@ -1,8 +1,10 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Play, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LandingHeader from "@/components/landing/LandingHeader";
 import LandingFooter from "@/components/landing/LandingFooter";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLeadCapture } from "@/contexts/LeadCaptureContext";
 
 const highlights = [
   "Create and manage project budgets in minutes",
@@ -14,6 +16,18 @@ const highlights = [
 ];
 
 export default function Demo() {
+  const { user } = useAuth();
+  const { openModal } = useLeadCapture();
+  const navigate = useNavigate();
+
+  const handleTrialClick = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      openModal();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <LandingHeader />
@@ -58,14 +72,13 @@ export default function Demo() {
 
           {/* CTA */}
           <div className="text-center">
-            <Link to="/auth">
-              <Button
-                size="lg"
-                className="gold-glow min-h-[48px] px-8 hover:scale-[1.03] transition-transform"
-              >
-                Start Your Free Trial
-              </Button>
-            </Link>
+            <Button
+              size="lg"
+              className="gold-glow min-h-[48px] px-8 hover:scale-[1.03] transition-transform"
+              onClick={handleTrialClick}
+            >
+              {user ? "Go to Dashboard" : "Start Your Free Trial"}
+            </Button>
             <p className="text-sm text-muted-foreground mt-4">
               No credit card required · 14-day free trial
             </p>
