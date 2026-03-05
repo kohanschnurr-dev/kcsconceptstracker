@@ -1,21 +1,15 @@
 
 
-## Make Scope of Work PDF Photos Clickable (Lightbox)
+## Remove Trade Types from Scope of Work Sheet
 
-Since the PDF is rendered as HTML in a new browser tab, we can add a pure-JS lightbox overlay. When a user clicks a photo thumbnail, it shows the full-size image in a dark overlay. Clicking the overlay dismisses it.
+Remove the entire "Trade Types" UI block from `src/components/vendors/ScopeOfWorkSheet.tsx` — the badge list, the text input, and the Add button. Also remove the related state variables (`tradeTypes`, `tradeInput`) and helper functions (`removeTrade`, `addTrade`), and strip trade types from `buildContent()` and `getPdfOptions()`.
 
-### Changes in `src/lib/pdfExport.ts`
+### Changes in `src/components/vendors/ScopeOfWorkSheet.tsx`
+1. Remove state: `tradeTypes`, `tradeInput`
+2. Remove reset lines in `handleOpenChange`: `setTradeTypes([])`, `setTradeInput('')`
+3. Remove `removeTrade` and `addTrade` functions
+4. Remove the entire Trade Types JSX block (~25 lines) under Job Details
+5. Remove `tradeTypes` from `buildContent()` and `getPdfOptions()`
 
-1. **Update photo `<img>` tags** in `renderWorkSection` — add `onclick` handler and `cursor:pointer` style:
-   ```html
-   <img src="..." class="wi-photo" style="cursor:pointer;" onclick="openLightbox(this.src)" />
-   ```
-
-2. **Add lightbox HTML + JS** to the generated document (append before `</body>`):
-   - A hidden full-screen overlay div with a centered `<img>`
-   - `openLightbox(src)` function to show the overlay with the clicked image
-   - Click-to-dismiss on the overlay
-   - Minimal inline CSS for the overlay (fixed position, dark background, centered image, max-width/height constraints)
-
-Single file edit, ~20 lines added. No external dependencies needed since this runs as standalone HTML in a browser tab.
+Single file change.
 
