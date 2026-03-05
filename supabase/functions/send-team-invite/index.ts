@@ -13,11 +13,9 @@ serve(async (req) => {
 
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (!RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY is not configured");
-    }
+    if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
 
-    const { email, ownerName, appUrl } = await req.json();
+    const { email, ownerName, appUrl, token, role, companyName } = await req.json();
 
     if (!email) {
       return new Response(JSON.stringify({ error: "Email is required" }), {
@@ -26,55 +24,117 @@ serve(async (req) => {
       });
     }
 
-    const signUpUrl = `${appUrl || "https://kcsconceptstracker.lovable.app"}/auth`;
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Invitation token is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const baseUrl = appUrl || "https://kcsconceptstracker.lovable.app";
+
+    // ── Secure token-based invite link ──────────────────────────────
+    // The token is validated server-side; the link alone grants nothing
+    // until the user authenticates and the RPC verifies the token.
+    const joinUrl = `${baseUrl}/auth?invite_token=${encodeURIComponent(token)}`;
+
+    const displayCompany = companyName || "GroundWorks";
+    const displayRole    = role === "manager" ? "Project Manager" : "Viewer";
+    const senderName     = ownerName || "A team owner";
 
     const htmlBody = `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You've been invited to ${displayCompany}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+<body style="margin:0;padding:0;background-color:#F9FAFB;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F9FAFB;padding:48px 20px;">
     <tr>
       <td align="center">
-        <table width="100%" style="max-width:480px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+        <table width="100%" style="max-width:520px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #E5E7EB;">
+
+          <!-- Header band -->
           <tr>
-            <td style="background-color:#1a1a2e;padding:32px 24px;text-align:center;">
-              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">KCS Concepts Tracker</h1>
+            <td style="background:#111827;padding:28px 36px;">
+              <p style="margin:0;color:#ffffff;font-size:20px;font-weight:800;letter-spacing:0.04em;">
+                ${displayCompany}
+              </p>
+              <p style="margin:6px 0 0;color:#6B7280;font-size:12px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;">
+                Team Invitation
+              </p>
             </td>
           </tr>
+
+          <!-- Body -->
           <tr>
-            <td style="padding:32px 24px;">
-              <h2 style="margin:0 0 16px;color:#1a1a2e;font-size:18px;">You've been invited!</h2>
-              <p style="margin:0 0 16px;color:#52525b;font-size:14px;line-height:1.6;">
-                <strong>${ownerName || "A team owner"}</strong> has invited you to join their team on KCS Concepts Tracker as a project manager.
+            <td style="padding:36px 36px 28px;">
+              <p style="margin:0 0 6px;color:#111827;font-size:22px;font-weight:700;line-height:1.3;">
+                You've been invited!
               </p>
-              <p style="margin:0 0 24px;color:#52525b;font-size:14px;line-height:1.6;">
-                Click the button below to create your account and get started. You'll be automatically added to the team.
+              <p style="margin:0 0 28px;color:#6B7280;font-size:14px;line-height:1.7;">
+                <strong style="color:#374151;">${senderName}</strong> has invited you to collaborate on
+                <strong style="color:#374151;">${displayCompany}</strong>.
               </p>
+
+              <!-- Role pill -->
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+                <tr>
+                  <td style="background:#F3F4F6;border-radius:8px;padding:14px 22px;">
+                    <p style="margin:0 0 3px;color:#9CA3AF;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">
+                      Your assigned role
+                    </p>
+                    <p style="margin:0;color:#111827;font-size:16px;font-weight:700;">
+                      ${displayRole}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA -->
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center">
-                    <a href="${signUpUrl}" style="display:inline-block;background-color:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;">
-                      Join Team on KCS Concepts Tracker
+                    <a href="${joinUrl}"
+                       style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;
+                              padding:14px 40px;border-radius:8px;font-size:14px;font-weight:600;
+                              letter-spacing:0.02em;">
+                      Accept Invitation &rarr;
                     </a>
                   </td>
                 </tr>
               </table>
-              <p style="margin:24px 0 0;color:#a1a1aa;font-size:12px;line-height:1.5;">
-                If you already have an account, simply log in and you'll be added to the team automatically.
+
+              <p style="margin:24px 0 0;color:#9CA3AF;font-size:12px;line-height:1.6;text-align:center;">
+                This link expires in <strong>7 days</strong>.
+                If you weren't expecting this invitation, you can safely ignore this email.
               </p>
             </td>
           </tr>
+
+          <!-- Link fallback for email clients that block buttons -->
           <tr>
-            <td style="padding:16px 24px;background-color:#f9fafb;text-align:center;">
-              <p style="margin:0;color:#a1a1aa;font-size:11px;">
-                © ${new Date().getFullYear()} KCS Concepts Tracker. All rights reserved.
+            <td style="padding:16px 36px;background:#F9FAFB;border-top:1px solid #F3F4F6;">
+              <p style="margin:0 0 5px;color:#9CA3AF;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">
+                Or paste this link into your browser
+              </p>
+              <p style="margin:0;color:#6B7280;font-size:11px;word-break:break-all;line-height:1.5;">
+                ${joinUrl}
               </p>
             </td>
           </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:16px 36px;text-align:center;border-top:1px solid #F3F4F6;">
+              <p style="margin:0;color:#D1D5DB;font-size:10px;">
+                &copy; ${new Date().getFullYear()} ${displayCompany} &middot; All rights reserved
+              </p>
+            </td>
+          </tr>
+
         </table>
       </td>
     </tr>
@@ -89,9 +149,9 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "KCS Concepts Tracker <onboarding@resend.dev>",
+        from: `${displayCompany} <onboarding@resend.dev>`,
         to: [email],
-        subject: "You've been invited to join a team on KCS Concepts Tracker",
+        subject: `${senderName} invited you to join ${displayCompany}`,
         html: htmlBody,
       }),
     });
@@ -102,10 +162,7 @@ serve(async (req) => {
       console.error("Resend API error:", res.status, resData);
       return new Response(
         JSON.stringify({ error: "Failed to send email", details: resData }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

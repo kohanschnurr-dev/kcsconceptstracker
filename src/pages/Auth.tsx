@@ -4,12 +4,13 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { INVITE_TOKEN_STORAGE_KEY } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, Users, Receipt, ShieldCheck, Loader2 } from 'lucide-react';
+import { Calculator, Users, Receipt, ShieldCheck, Loader2, Mail } from 'lucide-react';
 import { lovable } from '@/integrations/lovable/index';
 import groundworksLogo from '@/assets/groundworks-logo.png';
 
@@ -48,6 +49,26 @@ export default function Auth() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('signin');
 
+  // ── Invite-link context ──────────────────────────────────────────────────
+  // When a user arrives via /auth?invite_token=<hex64>:
+  //   1. Persist the token in localStorage (survives email-verification redirects)
+  //   2. Switch to sign-up tab so new users see the right form first
+  //   3. Show a contextual banner above the form
+  const [hasInviteToken, setHasInviteToken] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteToken = params.get('invite_token');
+
+    if (inviteToken && inviteToken.length === 64) {
+      localStorage.setItem(INVITE_TOKEN_STORAGE_KEY, inviteToken);
+      setHasInviteToken(true);
+      setActiveTab('signup');
+      // Clean the token from the URL so it doesn't appear in browser history
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   const signInForm = useForm<SignInFormData>({ resolver: zodResolver(signInSchema) });
   const signUpForm = useForm<SignUpFormData>({ resolver: zodResolver(signUpSchema) });
 
@@ -78,7 +99,11 @@ export default function Auth() {
       else if (error.message.includes('weak password')) setError('Please choose a stronger password.');
       else setError(error.message);
     } else {
-      setSuccessMessage('Account created successfully! Please check your email to verify your account, then sign in.');
+      setSuccessMessage(
+        hasInviteToken
+          ? 'Account created! Check your email to verify your address, then sign in — your team invitation will be accepted automatically.'
+          : 'Account created successfully! Please check your email to verify your account, then sign in.'
+      );
       signUpForm.reset();
       setActiveTab('signin');
     }
@@ -180,6 +205,19 @@ export default function Auth() {
             <img src={groundworksLogo} alt="GroundWorks logo" className="h-14 w-14 rounded" />
             <span className="text-xl font-bold">GroundWorks</span>
           </div>
+
+          {/* ── Invite context banner ── */}
+          {hasInviteToken && (
+            <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3">
+              <Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">You have a team invitation</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Sign in or create an account — you'll be added to the team automatically.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Tab toggle */}
           <div className="flex gap-4 justify-center">
