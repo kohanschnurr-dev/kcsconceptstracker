@@ -58,7 +58,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
   const [location, setLocation] = useState('');
   const [keyQuantities, setKeyQuantities] = useState('');
   const [workItems, setWorkItems] = useState<WorkItem[]>([]);
-  const [alsoIncluded, setAlsoIncluded] = useState<WorkItem[]>([]);
+  
   const [exclusions, setExclusions] = useState<WorkItem[]>([]);
   const [materialsResponsibility, setMaterialsResponsibility] = useState('');
   const [specialNotes, setSpecialNotes] = useState('');
@@ -79,7 +79,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
       setLocation('');
       setKeyQuantities('');
       setWorkItems([]);
-      setAlsoIncluded([]);
+      
       setExclusions([]);
       setMaterialsResponsibility('');
       setSpecialNotes('');
@@ -130,7 +130,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     };
 
     formatSection(workItems, 'WORK TO BE PERFORMED');
-    formatSection(alsoIncluded, 'ALSO INCLUDED');
+    
     formatSection(exclusions, 'NOT INCLUDED / EXCLUSIONS');
 
     if (materialsResponsibility) {
@@ -160,7 +160,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
       location,
       keyQuantities,
       workItems,
-      alsoIncluded,
+      
       exclusions,
       materialsResponsibility,
       specialNotes,
@@ -266,12 +266,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
                   label="Work Items"
                   description="Add each task as its own line — attach photos per item"
                   placeholder="e.g. Remove old water heater"
-                />
-                <WorkItemLines
-                  items={alsoIncluded}
-                  onChange={setAlsoIncluded}
-                  label="Also Included"
-                  placeholder="e.g. Debris removal"
                 />
                 <WorkItemLines
                   items={exclusions}
