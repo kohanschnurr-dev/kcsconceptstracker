@@ -7,7 +7,6 @@ export interface ReceiptLineItem {
 
 export interface ReceiptData {
   vendorName: string;
-  issuingCompany: string;
   receiptNumber: string;
   receiptDate: string;
   projectName: string;
@@ -406,16 +405,11 @@ function generateReceiptPdfHtml(options: PdfOptions): string {
   </div>
 
   <!-- ENTITY ROW -->
-  <div class="entity-row">
-    <div class="entity-cell">
+  <div class="entity-row" style="grid-template-columns:1fr;">
+    <div class="entity-cell" style="border-right:none;">
       <div class="ent-lbl">Received From (Vendor)</div>
       <div class="ent-name">${escapeHtml(r.vendorName || '—')}</div>
       <div class="ent-role">Contractor &middot; Service Provider</div>
-    </div>
-    <div class="entity-cell">
-      <div class="ent-lbl">Issued By</div>
-      <div class="ent-name">${escapeHtml(r.issuingCompany)}</div>
-      <div class="ent-role">General Contractor &middot; Document Issuer</div>
     </div>
   </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Plus, X, CheckCircle2 } from 'lucide-react';
+import { FileText, Plus, X } from 'lucide-react';
 import { generatePDF, generatePDFHtml } from '@/lib/pdfExport';
 import { saveDocumentToProject } from '@/lib/saveDocumentToProject';
 import {
@@ -73,8 +73,6 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // issuingCompany is always KCS Concepts (the platform), never auto-filled as vendor
-  const issuingCompany = settings?.company_name || 'KCS Concepts';
 
   useEffect(() => {
     setProjName(projectName);
@@ -117,8 +115,6 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
     lines.push('', 'RECEIPT FROM (VENDOR / PAYEE)');
     lines.push(`Vendor: ${vendorName || '—'}`);
 
-    lines.push('', 'ISSUED BY (PLATFORM)');
-    lines.push(`Issuing Company: ${issuingCompany}`);
 
     if (projName) {
       lines.push('', 'FOR PROJECT');
@@ -158,11 +154,10 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
 
   const getPdfOptions = () => ({
     docType: 'Receipt' as const,
-    companyName: issuingCompany,
+    companyName: settings?.company_name || '',
     logoUrl: settings?.logo_url,
     receiptData: {
       vendorName,
-      issuingCompany,
       receiptNumber,
       receiptDate,
       projectName: projName,
@@ -222,19 +217,6 @@ export function GenerateReceiptSheet({ open, onOpenChange, projectName = '' }: G
 
         <ScrollArea className="flex-1 min-h-0">
           <div className="px-6 py-5 space-y-7">
-
-            {/* ENTITY BANNER */}
-            <div className="rounded-xl border bg-muted/30 px-4 py-3 flex items-center justify-between gap-4 text-sm">
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-0.5">Issued By (Platform)</p>
-                <p className="font-semibold text-foreground truncate">{issuingCompany}</p>
-              </div>
-              <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-              <div className="min-w-0 text-right">
-                <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-0.5">Receipt From (Vendor)</p>
-                <p className="font-semibold text-foreground truncate">{vendorName || <span className="text-muted-foreground font-normal italic">Enter below</span>}</p>
-              </div>
-            </div>
 
             {/* RECEIPT INFO */}
             <div>
