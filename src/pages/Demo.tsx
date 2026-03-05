@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import LandingHeader from "@/components/landing/LandingHeader";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLeadCapture } from "@/contexts/LeadCaptureContext";
 
 const highlights = [
   "Create and manage project budgets in minutes",
@@ -17,14 +16,13 @@ const highlights = [
 
 export default function Demo() {
   const { user } = useAuth();
-  const { openModal } = useLeadCapture();
   const navigate = useNavigate();
 
   const handleTrialClick = () => {
     if (user) {
       navigate("/dashboard");
     } else {
-      openModal();
+      navigate("/auth");
     }
   };
 

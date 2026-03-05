@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLeadCapture } from "@/contexts/LeadCaptureContext";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -17,7 +16,6 @@ export default function LandingHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useAuth();
-  const { openModal } = useLeadCapture();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,7 +36,7 @@ export default function LandingHeader() {
     if (user) {
       navigate("/dashboard");
     } else {
-      openModal();
+      navigate("/auth");
     }
   };
 
@@ -144,7 +142,7 @@ export default function LandingHeader() {
                   className="w-full min-h-[48px] gold-glow"
                   onClick={() => {
                     setMobileOpen(false);
-                    openModal();
+                    navigate("/auth");
                   }}
                 >
                   Start Free Trial

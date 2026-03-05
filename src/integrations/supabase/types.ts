@@ -1852,24 +1852,33 @@ export type Database = {
       team_invitations: {
         Row: {
           email: string
+          expires_at: string | null
           id: string
           invited_at: string
+          role: string
           status: string
           team_id: string
+          token: string | null
         }
         Insert: {
           email: string
+          expires_at?: string | null
           id?: string
           invited_at?: string
+          role?: string
           status?: string
           team_id: string
+          token?: string | null
         }
         Update: {
           email?: string
+          expires_at?: string | null
           id?: string
           invited_at?: string
+          role?: string
           status?: string
           team_id?: string
+          token?: string | null
         }
         Relationships: [
           {
@@ -2016,6 +2025,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation_by_token: {
+        Args: { p_email: string; p_token: string; p_user_id: string }
+        Returns: Json
+      }
       accept_pending_invitations: {
         Args: { p_email: string; p_user_id: string }
         Returns: undefined

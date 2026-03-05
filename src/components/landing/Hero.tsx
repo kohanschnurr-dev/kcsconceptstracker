@@ -2,18 +2,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLeadCapture } from "@/contexts/LeadCaptureContext";
 
 export default function Hero() {
   const { user } = useAuth();
-  const { openModal } = useLeadCapture();
   const navigate = useNavigate();
 
   const handleTrialClick = () => {
     if (user) {
       navigate("/dashboard");
     } else {
-      openModal();
+      navigate("/auth");
     }
   };
 
