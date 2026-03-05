@@ -1,18 +1,21 @@
 
 
-## Apply Local Date Fix to Invoice & Scope of Work Generators
+## Make Scope of Work PDF Photos Clickable (Lightbox)
 
-Same fix as the receipt generator — replace `new Date().toISOString().split('T')[0]` with `formatDateString(new Date())` to prevent the off-by-one day error in US timezones.
+Since the PDF is rendered as HTML in a new browser tab, we can add a pure-JS lightbox overlay. When a user clicks a photo thumbnail, it shows the full-size image in a dark overlay. Clicking the overlay dismisses it.
 
-### 1. `src/components/project/GenerateInvoiceSheet.tsx`
-- Add import: `import { formatDateString } from '@/lib/dateUtils'`
-- Line 69: initial `invoiceDate` state → `formatDateString(new Date())`
-- Line 94: reset `invoiceDate` in `handleOpenChange` → `formatDateString(new Date())`
+### Changes in `src/lib/pdfExport.ts`
 
-### 2. `src/components/vendors/ScopeOfWorkSheet.tsx`
-- Add import: `import { formatDateString } from '@/lib/dateUtils'`
-- Line 54: initial `date` state → `formatDateString(new Date())`
-- Line 77: reset `date` in `handleOpenChange` → `formatDateString(new Date())`
+1. **Update photo `<img>` tags** in `renderWorkSection` — add `onclick` handler and `cursor:pointer` style:
+   ```html
+   <img src="..." class="wi-photo" style="cursor:pointer;" onclick="openLightbox(this.src)" />
+   ```
 
-Two files, four replacements total. No other changes needed.
+2. **Add lightbox HTML + JS** to the generated document (append before `</body>`):
+   - A hidden full-screen overlay div with a centered `<img>`
+   - `openLightbox(src)` function to show the overlay with the clicked image
+   - Click-to-dismiss on the overlay
+   - Minimal inline CSS for the overlay (fixed position, dark background, centered image, max-width/height constraints)
+
+Single file edit, ~20 lines added. No external dependencies needed since this runs as standalone HTML in a browser tab.
 
