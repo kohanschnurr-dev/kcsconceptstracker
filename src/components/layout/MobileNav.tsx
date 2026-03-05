@@ -35,7 +35,7 @@ export function MobileNav() {
   const { unreadCount, isOwner } = useNotifications();
 
   const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: FolderKanban, label: 'Projects', path: '/projects' },
     { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
     { icon: Receipt, label: 'Expenses', path: '/expenses' },
