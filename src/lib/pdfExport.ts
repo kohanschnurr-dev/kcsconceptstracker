@@ -42,7 +42,7 @@ export interface ScopeOfWorkData {
   customerName: string;
   date: string;
   jobNumber: string;
-  tradeTypes: string[];
+  
   jobTitle: string;
   location: string;
   keyQuantities: string;
@@ -972,11 +972,10 @@ function generateScopeOfWorkPdfHtml(options: PdfOptions): string {
     </div>
   </div>
 
-  ${(sow.location || sow.keyQuantities || sow.tradeTypes.length > 0) ? `
+  ${(sow.location || sow.keyQuantities) ? `
   <div class="detail-band">
     ${sow.location ? `<div><div class="detail-lbl">Location</div><div class="detail-val">${escapeHtml(sow.location)}</div></div>` : ''}
     ${sow.keyQuantities ? `<div><div class="detail-lbl">Quantities</div><div class="detail-val">${escapeHtml(sow.keyQuantities)}</div></div>` : ''}
-    ${sow.tradeTypes.length > 0 ? `<div><div class="detail-lbl">Trades</div><div class="trade-tags">${sow.tradeTypes.map(t => `<span class="trade-tag">${escapeHtml(t)}</span>`).join('')}</div></div>` : ''}
   </div>` : ''}
 
   ${workTotal > 0 ? `

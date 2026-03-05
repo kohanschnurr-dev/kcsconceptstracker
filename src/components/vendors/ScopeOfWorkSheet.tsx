@@ -54,8 +54,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
   const [customerName, setCustomerName] = useState('');
   const [date, setDate] = useState(formatDateString(new Date()));
   const [jobNumber, setJobNumber] = useState('');
-  const [tradeTypes, setTradeTypes] = useState<string[]>([]);
-  const [tradeInput, setTradeInput] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [location, setLocation] = useState('');
   const [keyQuantities, setKeyQuantities] = useState('');
@@ -77,8 +75,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
       setCustomerName('');
       setDate(formatDateString(new Date()));
       setJobNumber('');
-      setTradeTypes([]);
-      setTradeInput('');
       setJobTitle('');
       setLocation('');
       setKeyQuantities('');
@@ -92,15 +88,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     onOpenChange(val);
   };
 
-  const removeTrade = (trade: string) => setTradeTypes((prev) => prev.filter((t) => t !== trade));
-
-  const addTrade = () => {
-    const trimmed = tradeInput.trim();
-    if (trimmed && !tradeTypes.includes(trimmed)) {
-      setTradeTypes((prev) => [...prev, trimmed]);
-    }
-    setTradeInput('');
-  };
 
   const buildContent = () => {
     const lines: string[] = ['SCOPE OF WORK', ''];
@@ -110,11 +97,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     if (customerName) lines.push(`Customer: ${customerName}`);
     if (date) lines.push(`Date: ${date}`);
     if (jobNumber) lines.push(`Job Number: ${jobNumber}`);
-
-    if (tradeTypes.length > 0) {
-      lines.push('', 'TRADE / TRADE TYPE');
-      lines.push(tradeTypes.join(', '));
-    }
 
     if (jobTitle) {
       lines.push('', 'JOB TITLE');
@@ -174,7 +156,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
       customerName,
       date,
       jobNumber,
-      tradeTypes,
       jobTitle,
       location,
       keyQuantities,
@@ -257,37 +238,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
             {/* JOB DETAILS */}
             <div>
               <SectionLabel>Job Details</SectionLabel>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label>Trade Types</Label>
-                  <div className="min-h-[40px] flex flex-wrap gap-1.5 p-2 border rounded-md bg-background">
-                    {tradeTypes.map((t) => (
-                      <Badge
-                        key={t}
-                        variant="secondary"
-                        className="gap-1 cursor-pointer hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        onClick={() => removeTrade(t)}
-                      >
-                        {t}
-                        <span className="text-xs">×</span>
-                      </Badge>
-                    ))}
-                    {tradeTypes.length === 0 && (
-                      <span className="text-xs text-muted-foreground self-center">Select a vendor to auto-fill trades, or add below</span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={tradeInput}
-                      onChange={(e) => setTradeInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTrade())}
-                      placeholder="Add trade type…"
-                      className="text-sm"
-                    />
-                    <Button type="button" variant="outline" size="sm" onClick={addTrade} className="shrink-0">Add</Button>
-                  </div>
-                </div>
-
+                <div className="space-y-3">
                 <div className="space-y-1.5">
                   <Label>Job Title</Label>
                   <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="e.g. Water heater replacement" />
