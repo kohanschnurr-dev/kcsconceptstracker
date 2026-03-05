@@ -181,6 +181,30 @@ export function GenerateInvoiceSheet({ open, onOpenChange, projectName = '', pro
     docType: 'Invoice' as const,
     companyName: settings?.company_name || companyName || 'Your Company',
     logoUrl: settings?.logo_url,
+    invoiceData: {
+      companyName: companyName || settings?.company_name || 'Your Company',
+      clientName,
+      invoiceNumber,
+      invoiceDate,
+      dueDate,
+      projectName: projName,
+      projectAddress: projAddress,
+      descriptionOfWork,
+      lineItems: lineItems
+        .filter(item => item.description || parseFloat(item.unitPrice) > 0)
+        .map(item => ({
+          description: item.description || 'Item',
+          qty: parseFloat(item.qty) || 1,
+          unitPrice: parseFloat(item.unitPrice) || 0,
+          total: (parseFloat(item.qty) || 0) * (parseFloat(item.unitPrice) || 0),
+        })),
+      taxRate: parseFloat(taxRate) || 0,
+      taxAmount,
+      subtotal,
+      total,
+      paymentMethod,
+      paymentNotes,
+    },
   });
 
   const handleGeneratePDF = () => {

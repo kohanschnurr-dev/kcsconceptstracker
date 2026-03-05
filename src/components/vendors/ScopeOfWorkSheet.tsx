@@ -168,6 +168,22 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     docType: 'Scope of Work' as const,
     companyName: settings?.company_name || companyName || 'Your Company',
     logoUrl: settings?.logo_url,
+    scopeOfWorkData: {
+      companyName: companyName || settings?.company_name || 'Your Company',
+      recipientName,
+      customerName,
+      date,
+      jobNumber,
+      tradeTypes,
+      jobTitle,
+      location,
+      keyQuantities,
+      workItems,
+      alsoIncluded,
+      exclusions,
+      materialsResponsibility,
+      specialNotes,
+    },
   });
 
   const handleGeneratePDF = () => {
