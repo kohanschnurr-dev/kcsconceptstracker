@@ -143,31 +143,31 @@ export default function Auth() {
           background: 'radial-gradient(circle at 50% 35%, rgba(255,140,0,0.15), transparent 70%)',
         }} />
 
-        <div className="relative z-10 flex flex-col gap-10">
+        <div className="relative z-10 flex flex-col gap-12">
           {/* Logo */}
           <div className="flex items-center gap-4">
             <img src={groundworksLogo} alt="GroundWorks logo" className="h-14 w-14 rounded" />
-            <span className="text-2xl font-bold text-white tracking-tight">GroundWorks</span>
+            <span className="text-3xl font-bold text-white tracking-tight">GroundWorks</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-3xl lg:text-4xl font-bold leading-tight tracking-tight text-white/90 max-w-md">
+          <h1 className="text-4xl lg:text-5xl font-bold leading-tight tracking-tight text-white/90 max-w-md">
             Smarter Project Management Starts Here
           </h1>
 
           {/* Feature bullets */}
-          <ul className="space-y-4">
+          <ul className="space-y-5">
             {FEATURES.map(({ icon: Icon, label }) => (
               <li key={label} className="flex items-center gap-3 text-gray-300">
-                <div className="flex items-center justify-center h-9 w-9 rounded-md border border-[#333] bg-white/5">
-                  <Icon className="h-4 w-4 text-[hsl(var(--primary))]" />
+                <div className="flex items-center justify-center h-10 w-10 rounded-md border border-[#333] bg-white/5">
+                  <Icon className="h-5 w-5 text-[hsl(var(--primary))]" />
                 </div>
-                <span className="text-sm">{label}</span>
+                <span className="text-base">{label}</span>
               </li>
             ))}
           </ul>
 
-          <p className="text-sm text-gray-400 italic tracking-wide">{TAGLINE}</p>
+          <p className="text-base text-gray-400 italic tracking-wide">{TAGLINE}</p>
         </div>
 
       </div>
