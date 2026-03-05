@@ -1,8 +1,22 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLeadCapture } from "@/contexts/LeadCaptureContext";
 
 export default function Hero() {
+  const { user } = useAuth();
+  const { openModal } = useLeadCapture();
+  const navigate = useNavigate();
+
+  const handleTrialClick = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      openModal();
+    }
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden blueprint-grid">
       {/* Radial gradient overlay */}
@@ -21,14 +35,13 @@ export default function Hero() {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-          <Link to="/auth">
-            <Button
-              size="lg"
-              className="gold-glow min-h-[48px] px-8 text-base hover:scale-[1.03] transition-transform"
-            >
-              Start Your Free Trial
-            </Button>
-          </Link>
+          <Button
+            size="lg"
+            className="gold-glow min-h-[48px] px-8 text-base hover:scale-[1.03] transition-transform"
+            onClick={handleTrialClick}
+          >
+            {user ? "Go to Dashboard" : "Start Your Free Trial"}
+          </Button>
           <Link to="/demo">
             <Button
               variant="outline"

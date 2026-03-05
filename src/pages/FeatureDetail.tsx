@@ -1,13 +1,26 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LandingHeader from "@/components/landing/LandingHeader";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { features } from "@/data/features";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLeadCapture } from "@/contexts/LeadCaptureContext";
 
 export default function FeatureDetail() {
   const { slug } = useParams<{ slug: string }>();
   const feature = features.find((f) => f.slug === slug);
+  const { user } = useAuth();
+  const { openModal } = useLeadCapture();
+  const navigate = useNavigate();
+
+  const handleTrialClick = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      openModal();
+    }
+  };
 
   if (!feature) {
     return (
@@ -65,14 +78,13 @@ export default function FeatureDetail() {
 
           {/* CTA */}
           <div className="mt-14 text-center">
-            <Link to="/auth">
-              <Button
-                size="lg"
-                className="gold-glow min-h-[48px] px-8 hover:scale-[1.03] transition-transform"
-              >
-                Start Your Free Trial
-              </Button>
-            </Link>
+            <Button
+              size="lg"
+              className="gold-glow min-h-[48px] px-8 hover:scale-[1.03] transition-transform"
+              onClick={handleTrialClick}
+            >
+              {user ? "Go to Dashboard" : "Start Your Free Trial"}
+            </Button>
           </div>
         </div>
       </section>

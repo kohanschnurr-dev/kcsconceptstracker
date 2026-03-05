@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import LandingLayout from "@/components/landing/LandingLayout";
 
 // Landing / public pages
 import Landing from "./pages/Landing";
@@ -48,15 +49,15 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Public / landing pages */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/features" element={<LandingFeatures />} />
-            <Route path="/features/:slug" element={<FeatureDetail />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/demo" element={<Demo />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
+            {/* Public / landing pages — wrapped in LeadCaptureProvider */}
+            <Route path="/" element={<LandingLayout><Landing /></LandingLayout>} />
+            <Route path="/features" element={<LandingLayout><LandingFeatures /></LandingLayout>} />
+            <Route path="/features/:slug" element={<LandingLayout><FeatureDetail /></LandingLayout>} />
+            <Route path="/pricing" element={<LandingLayout><Pricing /></LandingLayout>} />
+            <Route path="/about" element={<LandingLayout><About /></LandingLayout>} />
+            <Route path="/demo" element={<LandingLayout><Demo /></LandingLayout>} />
+            <Route path="/privacy" element={<LandingLayout><Privacy /></LandingLayout>} />
+            <Route path="/terms" element={<LandingLayout><Terms /></LandingLayout>} />
             <Route path="/auth" element={<Auth />} />
 
             {/* Legacy routes */}
