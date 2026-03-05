@@ -11,7 +11,6 @@ import {
 import LandingHeader from "@/components/landing/LandingHeader";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLeadCapture } from "@/contexts/LeadCaptureContext";
 
 const soloFeatures = [
   "Unlimited projects",
@@ -74,14 +73,13 @@ const faqs = [
 export default function Pricing() {
   const [annual, setAnnual] = useState(false);
   const { user } = useAuth();
-  const { openModal } = useLeadCapture();
   const navigate = useNavigate();
 
   const handleTrialClick = () => {
     if (user) {
       navigate("/dashboard");
     } else {
-      openModal();
+      navigate("/auth");
     }
   };
 

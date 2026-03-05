@@ -53,8 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               })
               .then(({ data, error }) => {
                 if (error) console.error('accept_invitation_by_token error:', error);
-                else if (data?.success === false) {
-                  console.warn('Token invitation not accepted:', data.error);
+                else {
+                  const result = data as unknown as { success: boolean; error?: string };
+                  if (result && !result.success) {
+                    console.warn('Token invitation not accepted:', result.error);
+                  }
                 }
               });
           }
