@@ -18,11 +18,48 @@ export interface ReceiptData {
   total: number;
 }
 
+export interface InvoiceData {
+  companyName: string;
+  clientName: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  projectName: string;
+  projectAddress: string;
+  descriptionOfWork: string;
+  lineItems: ReceiptLineItem[];
+  taxRate: number;
+  taxAmount: number;
+  subtotal: number;
+  total: number;
+  paymentMethod: string;
+  paymentNotes: string;
+}
+
+export interface ScopeOfWorkData {
+  companyName: string;
+  recipientName: string;
+  customerName: string;
+  date: string;
+  jobNumber: string;
+  tradeTypes: string[];
+  jobTitle: string;
+  location: string;
+  keyQuantities: string;
+  workItems: { text: string; amount: number; photos: string[] }[];
+  alsoIncluded: { text: string; amount: number; photos: string[] }[];
+  exclusions: { text: string; amount: number; photos: string[] }[];
+  materialsResponsibility: string;
+  specialNotes: string;
+}
+
 export interface PdfOptions {
   docType: 'Invoice' | 'Receipt' | 'Scope of Work' | 'Contractor Directory' | 'Project Report';
   companyName: string;
   logoUrl?: string | null;
   receiptData?: ReceiptData;
+  invoiceData?: InvoiceData;
+  scopeOfWorkData?: ScopeOfWorkData;
 }
 
 function getActivePrimaryHsl(): string {
@@ -457,10 +494,537 @@ function generateReceiptPdfHtml(options: PdfOptions): string {
 </html>`;
 }
 
+function generateInvoicePdfHtml(options: PdfOptions): string {
+  const inv = options.invoiceData!;
+  const now = new Date();
+  const generatedAt = now.toLocaleString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+
+  const fmtDate = (d: string) => {
+    if (!d) return '';
+    const dt = new Date(d + 'T12:00:00');
+    return dt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
+  const invoiceDateFormatted = fmtDate(inv.invoiceDate);
+  const dueDateFormatted = fmtDate(inv.dueDate);
+  const validItems = inv.lineItems.filter(item => item.description || item.unitPrice > 0);
+
+  const lineItemsHtml = validItems.length > 0
+    ? validItems.map(item => `
+        <div class="line-item">
+          <span class="li-desc">${escapeHtml(item.description || 'Item')}</span>
+          <span class="li-qty">${item.qty}&thinsp;&times;&thinsp;${escapeHtml(fmtCurrency(item.unitPrice))}</span>
+          <span class="li-amt">${escapeHtml(fmtCurrency(item.total))}</span>
+        </div>`).join('')
+    : `<div class="line-item-empty">No line items added</div>`;
+
+  const paymentRows: string[] = [];
+  if (inv.paymentMethod) paymentRows.push(`<div class="pd-row"><span class="pd-label">Payment Method</span><span class="pd-val">${escapeHtml(inv.paymentMethod)}</span></div>`);
+  if (inv.paymentNotes) paymentRows.push(`<div class="pd-row"><span class="pd-label">Notes</span><span class="pd-val">${escapeHtml(inv.paymentNotes)}</span></div>`);
+
+  const hasDueDate = !!inv.dueDate;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invoice &mdash; ${escapeHtml(inv.invoiceNumber || 'INV')}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      background:#F9FAFB;
+      min-height:100vh;
+      padding:40px 16px;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+    .wrap{max-width:680px;margin:0 auto;}
+    .card{
+      background:#fff;
+      border:1px solid #E5E7EB;
+      border-radius:16px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.09),0 4px 16px rgba(0,0,0,0.05);
+      overflow:hidden;
+    }
+
+    .hdr{padding:36px 40px 28px;border-bottom:1px solid #F3F4F6;background:#fff;}
+    .hdr-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;}
+    .doc-type{
+      font-size:34px;font-weight:800;color:#111827;
+      letter-spacing:0.1em;text-transform:uppercase;line-height:1;margin-bottom:10px;
+    }
+    .company-name{font-size:16px;font-weight:600;color:#374151;}
+    .company-role{font-size:12px;font-weight:400;color:#9CA3AF;margin-top:3px;}
+    .status-badge{
+      display:inline-flex;align-items:center;gap:7px;
+      background:#FEF3C7;color:#B45309;border:1px solid #FDE68A;
+      border-radius:999px;padding:7px 16px;
+      font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+      white-space:nowrap;flex-shrink:0;margin-top:4px;
+    }
+    .status-dot{width:7px;height:7px;border-radius:50%;background:#F59E0B;flex-shrink:0;}
+    .meta-row{display:flex;gap:32px;flex-wrap:wrap;}
+    .meta-lbl{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9CA3AF;margin-bottom:4px;}
+    .meta-val{font-size:13px;font-weight:600;color:#111827;}
+
+    .vbox-wrap{padding:24px 40px;background:#F9FAFB;border-bottom:1px solid #F3F4F6;}
+    .vbox{
+      background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;
+      padding:28px 32px;text-align:center;
+    }
+    .vbox-lbl{font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#EA580C;margin-bottom:10px;}
+    .vbox-amt{font-size:52px;font-weight:800;color:#EA580C;letter-spacing:-2px;line-height:1;}
+    .vbox-sub{font-size:11px;color:#FB923C;margin-top:10px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;}
+
+    .entity-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #F3F4F6;}
+    .entity-cell{padding:20px 40px;}
+    .entity-cell:first-child{border-right:1px solid #F3F4F6;}
+    .ent-lbl{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:6px;}
+    .ent-name{font-size:15px;font-weight:700;color:#111827;line-height:1.2;}
+    .ent-role{font-size:11px;font-weight:400;color:#9CA3AF;margin-top:3px;}
+
+    .proj-band{padding:16px 40px;background:#FAFAFA;border-bottom:1px solid #F3F4F6;display:flex;gap:40px;flex-wrap:wrap;}
+    .proj-lbl{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:4px;}
+    .proj-val{font-size:13px;font-weight:600;color:#111827;}
+
+    .li-section{padding:0 40px;}
+    .li-section-hdr{
+      font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+      color:#9CA3AF;padding:20px 0 14px;border-bottom:1.5px solid #E5E7EB;
+    }
+    .li-cols-hdr{
+      display:grid;grid-template-columns:1fr 160px 110px;
+      gap:12px;padding:12px 0 10px;border-bottom:1px solid #F3F4F6;
+    }
+    .li-col-lbl{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9CA3AF;}
+    .li-col-lbl.c{text-align:center;}
+    .li-col-lbl.r{text-align:right;}
+    .line-item{
+      display:grid;grid-template-columns:1fr 160px 110px;
+      gap:12px;align-items:center;
+      padding:20px 0;border-bottom:1px solid #F9FAFB;
+    }
+    .line-item:last-child{border-bottom:none;}
+    .li-desc{font-size:13.5px;font-weight:500;color:#111827;}
+    .li-qty{font-size:12px;font-weight:400;color:#6B7280;text-align:center;}
+    .li-amt{font-size:13.5px;font-weight:700;color:#111827;text-align:right;}
+    .line-item-empty{padding:24px 0;text-align:center;font-size:13px;color:#9CA3AF;font-style:italic;}
+
+    .totals-section{padding:20px 40px;border-top:1px solid #F3F4F6;background:#FAFAFA;}
+    .totals-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;}
+    .totals-row.final{border-top:1.5px solid #E5E7EB;padding-top:12px;margin-top:6px;}
+    .totals-label{color:#6B7280;font-weight:500;}
+    .totals-label.final{color:#111827;font-weight:700;font-size:14px;}
+    .totals-val{font-weight:600;color:#111827;}
+    .totals-val.final{font-weight:800;font-size:16px;color:#EA580C;}
+
+    .pd-section{padding:20px 40px;border-top:1px solid #F3F4F6;background:#FAFAFA;}
+    .pd-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:12px;}
+    .pd-row{display:flex;gap:16px;padding:5px 0;font-size:13px;}
+    .pd-label{font-weight:600;color:#6B7280;min-width:130px;flex-shrink:0;}
+    .pd-val{color:#111827;font-weight:400;}
+
+    .ftr{
+      padding:14px 40px;border-top:1px solid #F3F4F6;
+      text-align:center;font-size:10px;font-weight:400;color:#D1D5DB;
+      letter-spacing:0.02em;
+    }
+
+    @media(max-width:600px){
+      body{padding:0;background:#fff;}
+      .card{border-radius:0;border:none;box-shadow:none;}
+      .hdr{padding:28px 20px 22px;}
+      .vbox-wrap,.proj-band,.li-section,.pd-section,.ftr,.totals-section{padding-left:20px;padding-right:20px;}
+      .entity-cell{padding:16px 20px;}
+      .doc-type{font-size:26px;}
+      .vbox-amt{font-size:38px;letter-spacing:-1px;}
+      .entity-row{grid-template-columns:1fr;}
+      .entity-cell:first-child{border-right:none;border-bottom:1px solid #F3F4F6;}
+      .li-cols-hdr,.line-item{grid-template-columns:1fr auto auto;}
+      .vbox{padding:20px 18px;}
+    }
+
+    @media print{
+      body{background:#fff;padding:0;}
+      .wrap{max-width:100%;}
+      .card{box-shadow:none;border-radius:0;border:none;}
+      @page{size:A4 portrait;margin:0;}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+
+  <div class="hdr">
+    <div class="hdr-top">
+      <div>
+        <div class="doc-type">INVOICE</div>
+        <div class="company-name">${escapeHtml(inv.companyName || '—')}</div>
+        <div class="company-role">Contractor &middot; Builder</div>
+      </div>
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        ${hasDueDate ? 'DUE' : 'PENDING'}
+      </div>
+    </div>
+    <div class="meta-row">
+      ${inv.invoiceNumber ? `<div><div class="meta-lbl">Invoice No.</div><div class="meta-val">${escapeHtml(inv.invoiceNumber)}</div></div>` : ''}
+      ${invoiceDateFormatted ? `<div><div class="meta-lbl">Date</div><div class="meta-val">${escapeHtml(invoiceDateFormatted)}</div></div>` : ''}
+      ${dueDateFormatted ? `<div><div class="meta-lbl">Due Date</div><div class="meta-val">${escapeHtml(dueDateFormatted)}</div></div>` : ''}
+    </div>
+  </div>
+
+  <div class="vbox-wrap">
+    <div class="vbox">
+      <div class="vbox-lbl">Amount Due</div>
+      <div class="vbox-amt">${escapeHtml(fmtCurrency(inv.total))}</div>
+      <div class="vbox-sub">
+        ${hasDueDate ? `Due by ${escapeHtml(dueDateFormatted)}` : 'Upon receipt'}
+      </div>
+    </div>
+  </div>
+
+  <div class="entity-row">
+    <div class="entity-cell">
+      <div class="ent-lbl">From</div>
+      <div class="ent-name">${escapeHtml(inv.companyName || '—')}</div>
+      <div class="ent-role">Contractor</div>
+    </div>
+    <div class="entity-cell">
+      <div class="ent-lbl">Bill To</div>
+      <div class="ent-name">${escapeHtml(inv.clientName || '—')}</div>
+      <div class="ent-role">Client &middot; Property Owner</div>
+    </div>
+  </div>
+
+  ${(inv.projectName || inv.projectAddress || inv.descriptionOfWork) ? `
+  <div class="proj-band">
+    ${inv.projectName ? `<div><div class="proj-lbl">Project</div><div class="proj-val">${escapeHtml(inv.projectName)}</div></div>` : ''}
+    ${inv.projectAddress ? `<div><div class="proj-lbl">Address</div><div class="proj-val">${escapeHtml(inv.projectAddress)}</div></div>` : ''}
+    ${inv.descriptionOfWork ? `<div><div class="proj-lbl">Description</div><div class="proj-val" style="font-weight:400;max-width:360px;">${escapeHtml(inv.descriptionOfWork)}</div></div>` : ''}
+  </div>` : ''}
+
+  <div class="li-section">
+    <div class="li-section-hdr">Line Items</div>
+    ${validItems.length > 0 ? `
+    <div class="li-cols-hdr">
+      <span class="li-col-lbl">Description</span>
+      <span class="li-col-lbl c">Qty &times; Rate</span>
+      <span class="li-col-lbl r">Amount</span>
+    </div>` : ''}
+    ${lineItemsHtml}
+  </div>
+
+  <div class="totals-section">
+    <div class="totals-row">
+      <span class="totals-label">Subtotal</span>
+      <span class="totals-val">${escapeHtml(fmtCurrency(inv.subtotal))}</span>
+    </div>
+    ${inv.taxRate > 0 ? `
+    <div class="totals-row">
+      <span class="totals-label">Tax (${inv.taxRate}%)</span>
+      <span class="totals-val">${escapeHtml(fmtCurrency(inv.taxAmount))}</span>
+    </div>` : ''}
+    <div class="totals-row final">
+      <span class="totals-label final">Total Due</span>
+      <span class="totals-val final">${escapeHtml(fmtCurrency(inv.total))}</span>
+    </div>
+  </div>
+
+  ${paymentRows.length > 0 ? `
+  <div class="pd-section">
+    <div class="pd-title">Payment Information</div>
+    ${paymentRows.join('')}
+  </div>` : ''}
+
+  <div class="ftr">Generated on ${escapeHtml(generatedAt)}</div>
+
+</div></div>
+<script>
+  var imgs=document.querySelectorAll('img');
+  var total=imgs.length;
+  if(total===0){setTimeout(function(){window.print();},600);}
+  else{
+    var loaded=0;
+    function tryPrint(){loaded++;if(loaded>=total)setTimeout(function(){window.print();},600);}
+    imgs.forEach(function(img){if(img.complete){tryPrint();}else{img.onload=tryPrint;img.onerror=tryPrint;}});
+  }
+</script>
+</body>
+</html>`;
+}
+
+function generateScopeOfWorkPdfHtml(options: PdfOptions): string {
+  const sow = options.scopeOfWorkData!;
+  const now = new Date();
+  const generatedAt = now.toLocaleString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+
+  const fmtDate = (d: string) => {
+    if (!d) return '';
+    const dt = new Date(d + 'T12:00:00');
+    return dt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
+  const sowDateFormatted = fmtDate(sow.date);
+
+  const renderWorkSection = (items: { text: string; amount: number; photos: string[] }[], title: string) => {
+    const filled = items.filter(i => i.text);
+    if (filled.length === 0) return '';
+    const subtotal = filled.reduce((s, i) => s + (i.amount || 0), 0);
+    return `
+      <div class="work-section">
+        <div class="ws-hdr">${escapeHtml(title)}</div>
+        ${filled.map(item => `
+          <div class="work-item">
+            <span class="wi-text">${escapeHtml(item.text)}</span>
+            ${item.amount > 0 ? `<span class="wi-amt">${escapeHtml(fmtCurrency(item.amount))}</span>` : '<span></span>'}
+          </div>
+          ${item.photos.length > 0 ? `
+          <div class="wi-photos">
+            ${item.photos.map(url => `<img src="${escapeHtml(url)}" class="wi-photo" />`).join('')}
+          </div>` : ''}
+        `).join('')}
+        ${subtotal > 0 ? `
+        <div class="ws-subtotal">
+          <span>Subtotal</span>
+          <span>${escapeHtml(fmtCurrency(subtotal))}</span>
+        </div>` : ''}
+      </div>`;
+  };
+
+  const workTotal = [
+    ...sow.workItems.filter(i => i.text),
+    ...sow.alsoIncluded.filter(i => i.text),
+  ].reduce((s, i) => s + (i.amount || 0), 0);
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scope of Work &mdash; ${escapeHtml(sow.jobNumber || sow.jobTitle || 'SOW')}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      background:#F9FAFB;
+      min-height:100vh;
+      padding:40px 16px;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+    .wrap{max-width:680px;margin:0 auto;}
+    .card{
+      background:#fff;
+      border:1px solid #E5E7EB;
+      border-radius:16px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.09),0 4px 16px rgba(0,0,0,0.05);
+      overflow:hidden;
+    }
+
+    .hdr{padding:36px 40px 28px;border-bottom:1px solid #F3F4F6;background:#fff;}
+    .hdr-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;}
+    .doc-type{
+      font-size:30px;font-weight:800;color:#111827;
+      letter-spacing:0.08em;text-transform:uppercase;line-height:1;margin-bottom:10px;
+    }
+    .company-name{font-size:16px;font-weight:600;color:#374151;}
+    .company-role{font-size:12px;font-weight:400;color:#9CA3AF;margin-top:3px;}
+    .doc-badge{
+      display:inline-flex;align-items:center;gap:7px;
+      background:#DBEAFE;color:#1D4ED8;border:1px solid #BFDBFE;
+      border-radius:999px;padding:7px 16px;
+      font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+      white-space:nowrap;flex-shrink:0;margin-top:4px;
+    }
+    .doc-badge-dot{width:7px;height:7px;border-radius:50%;background:#3B82F6;flex-shrink:0;}
+    .meta-row{display:flex;gap:32px;flex-wrap:wrap;}
+    .meta-lbl{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9CA3AF;margin-bottom:4px;}
+    .meta-val{font-size:13px;font-weight:600;color:#111827;}
+
+    .entity-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #F3F4F6;}
+    .entity-cell{padding:20px 40px;}
+    .entity-cell:first-child{border-right:1px solid #F3F4F6;}
+    .ent-lbl{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:6px;}
+    .ent-name{font-size:15px;font-weight:700;color:#111827;line-height:1.2;}
+    .ent-role{font-size:11px;font-weight:400;color:#9CA3AF;margin-top:3px;}
+
+    .detail-band{padding:16px 40px;background:#FAFAFA;border-bottom:1px solid #F3F4F6;display:flex;gap:32px;flex-wrap:wrap;}
+    .detail-lbl{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:4px;}
+    .detail-val{font-size:13px;font-weight:600;color:#111827;}
+    .trade-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+    .trade-tag{
+      background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;
+      border-radius:999px;padding:4px 12px;font-size:11px;font-weight:600;
+    }
+
+    ${workTotal > 0 ? `
+    .vbox-wrap{padding:24px 40px;background:#F9FAFB;border-bottom:1px solid #F3F4F6;}
+    .vbox{
+      background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;
+      padding:28px 32px;text-align:center;
+    }
+    .vbox-lbl{font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#1D4ED8;margin-bottom:10px;}
+    .vbox-amt{font-size:48px;font-weight:800;color:#1D4ED8;letter-spacing:-2px;line-height:1;}
+    .vbox-sub{font-size:11px;color:#60A5FA;margin-top:10px;font-weight:500;}
+    ` : ''}
+
+    .work-section{padding:0 40px;margin-bottom:4px;}
+    .ws-hdr{
+      font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+      color:#9CA3AF;padding:20px 0 14px;border-bottom:1.5px solid #E5E7EB;
+    }
+    .work-item{
+      display:grid;grid-template-columns:1fr auto;
+      gap:12px;align-items:center;
+      padding:16px 0;border-bottom:1px solid #F9FAFB;
+    }
+    .work-item:last-child{border-bottom:none;}
+    .wi-text{font-size:13.5px;font-weight:500;color:#111827;}
+    .wi-amt{font-size:13.5px;font-weight:700;color:#111827;text-align:right;}
+    .wi-photos{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 12px;border-bottom:1px solid #F9FAFB;}
+    .wi-photo{width:80px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #E5E7EB;}
+    .ws-subtotal{
+      display:flex;justify-content:space-between;padding:12px 0;
+      font-size:12px;font-weight:700;color:#6B7280;border-top:1px solid #E5E7EB;
+    }
+
+    .notes-section{padding:20px 40px;border-top:1px solid #F3F4F6;background:#FAFAFA;}
+    .notes-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:12px;}
+    .notes-row{display:flex;gap:16px;padding:5px 0;font-size:13px;}
+    .notes-label{font-weight:600;color:#6B7280;min-width:130px;flex-shrink:0;}
+    .notes-val{color:#111827;font-weight:400;}
+
+    .ftr{
+      padding:14px 40px;border-top:1px solid #F3F4F6;
+      text-align:center;font-size:10px;font-weight:400;color:#D1D5DB;
+      letter-spacing:0.02em;
+    }
+
+    @media(max-width:600px){
+      body{padding:0;background:#fff;}
+      .card{border-radius:0;border:none;box-shadow:none;}
+      .hdr{padding:28px 20px 22px;}
+      .detail-band,.work-section,.notes-section,.ftr,.vbox-wrap{padding-left:20px;padding-right:20px;}
+      .entity-cell{padding:16px 20px;}
+      .doc-type{font-size:24px;}
+      .vbox-amt{font-size:36px;letter-spacing:-1px;}
+      .entity-row{grid-template-columns:1fr;}
+      .entity-cell:first-child{border-right:none;border-bottom:1px solid #F3F4F6;}
+      .vbox{padding:20px 18px;}
+    }
+
+    @media print{
+      body{background:#fff;padding:0;}
+      .wrap{max-width:100%;}
+      .card{box-shadow:none;border-radius:0;border:none;}
+      @page{size:A4 portrait;margin:0;}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+
+  <div class="hdr">
+    <div class="hdr-top">
+      <div>
+        <div class="doc-type">Scope of Work</div>
+        <div class="company-name">${escapeHtml(sow.companyName || '—')}</div>
+        <div class="company-role">Contractor &middot; Builder</div>
+      </div>
+      <div class="doc-badge">
+        <div class="doc-badge-dot"></div>
+        PROPOSAL
+      </div>
+    </div>
+    <div class="meta-row">
+      ${sow.jobNumber ? `<div><div class="meta-lbl">Job No.</div><div class="meta-val">${escapeHtml(sow.jobNumber)}</div></div>` : ''}
+      ${sowDateFormatted ? `<div><div class="meta-lbl">Date</div><div class="meta-val">${escapeHtml(sowDateFormatted)}</div></div>` : ''}
+      ${sow.jobTitle ? `<div><div class="meta-lbl">Job Title</div><div class="meta-val">${escapeHtml(sow.jobTitle)}</div></div>` : ''}
+    </div>
+  </div>
+
+  <div class="entity-row">
+    <div class="entity-cell">
+      <div class="ent-lbl">From</div>
+      <div class="ent-name">${escapeHtml(sow.companyName || '—')}</div>
+      <div class="ent-role">Contractor</div>
+    </div>
+    <div class="entity-cell">
+      <div class="ent-lbl">To</div>
+      <div class="ent-name">${escapeHtml(sow.recipientName || sow.customerName || '—')}</div>
+      ${sow.customerName && sow.recipientName ? `<div class="ent-role">${escapeHtml(sow.customerName)}</div>` : ''}
+    </div>
+  </div>
+
+  ${(sow.location || sow.keyQuantities || sow.tradeTypes.length > 0) ? `
+  <div class="detail-band">
+    ${sow.location ? `<div><div class="detail-lbl">Location</div><div class="detail-val">${escapeHtml(sow.location)}</div></div>` : ''}
+    ${sow.keyQuantities ? `<div><div class="detail-lbl">Quantities</div><div class="detail-val">${escapeHtml(sow.keyQuantities)}</div></div>` : ''}
+    ${sow.tradeTypes.length > 0 ? `<div><div class="detail-lbl">Trades</div><div class="trade-tags">${sow.tradeTypes.map(t => `<span class="trade-tag">${escapeHtml(t)}</span>`).join('')}</div></div>` : ''}
+  </div>` : ''}
+
+  ${workTotal > 0 ? `
+  <div class="vbox-wrap">
+    <div class="vbox">
+      <div class="vbox-lbl">Estimated Total</div>
+      <div class="vbox-amt">${escapeHtml(fmtCurrency(workTotal))}</div>
+      <div class="vbox-sub">Work items &amp; included services</div>
+    </div>
+  </div>` : ''}
+
+  ${renderWorkSection(sow.workItems, 'Work to Be Performed')}
+  ${renderWorkSection(sow.alsoIncluded, 'Also Included')}
+  ${renderWorkSection(sow.exclusions, 'Not Included / Exclusions')}
+
+  ${(sow.materialsResponsibility || sow.specialNotes) ? `
+  <div class="notes-section">
+    <div class="notes-title">Materials &amp; Notes</div>
+    ${sow.materialsResponsibility ? `<div class="notes-row"><span class="notes-label">Materials</span><span class="notes-val">${escapeHtml(sow.materialsResponsibility)}</span></div>` : ''}
+    ${sow.specialNotes ? `<div class="notes-row"><span class="notes-label">Special Notes</span><span class="notes-val">${escapeHtml(sow.specialNotes)}</span></div>` : ''}
+  </div>` : ''}
+
+  <div class="ftr">Generated on ${escapeHtml(generatedAt)}</div>
+
+</div></div>
+<script>
+  var imgs=document.querySelectorAll('img');
+  var total=imgs.length;
+  if(total===0){setTimeout(function(){window.print();},600);}
+  else{
+    var loaded=0;
+    function tryPrint(){loaded++;if(loaded>=total)setTimeout(function(){window.print();},600);}
+    imgs.forEach(function(img){if(img.complete){tryPrint();}else{img.onload=tryPrint;img.onerror=tryPrint;}});
+  }
+</script>
+</body>
+</html>`;
+}
+
 export function generatePDFHtml(content: string, options: PdfOptions): string {
-  // Route Receipt documents with structured data to the premium receipt template
+  // Route documents with structured data to their premium templates
   if (options.docType === 'Receipt' && options.receiptData) {
     return generateReceiptPdfHtml(options);
+  }
+  if (options.docType === 'Invoice' && options.invoiceData) {
+    return generateInvoicePdfHtml(options);
+  }
+  if (options.docType === 'Scope of Work' && options.scopeOfWorkData) {
+    return generateScopeOfWorkPdfHtml(options);
   }
 
   const primaryColor = getActivePrimaryHsl();
