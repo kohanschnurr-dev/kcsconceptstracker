@@ -44,8 +44,6 @@ export interface ScopeOfWorkData {
   jobNumber: string;
   
   jobTitle: string;
-  location: string;
-  keyQuantities: string;
   workItems: { text: string; amount: number; photos: string[] }[];
   
   exclusions: { text: string; amount: number; photos: string[] }[];
@@ -969,11 +967,6 @@ function generateScopeOfWorkPdfHtml(options: PdfOptions): string {
     </div>
   </div>
 
-  ${(sow.location || sow.keyQuantities) ? `
-  <div class="detail-band">
-    ${sow.location ? `<div><div class="detail-lbl">Location</div><div class="detail-val">${escapeHtml(sow.location)}</div></div>` : ''}
-    ${sow.keyQuantities ? `<div><div class="detail-lbl">Quantities</div><div class="detail-val">${escapeHtml(sow.keyQuantities)}</div></div>` : ''}
-  </div>` : ''}
 
   ${workTotal > 0 ? `
   <div class="vbox-wrap">
