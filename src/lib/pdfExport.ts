@@ -668,7 +668,7 @@ function generateInvoicePdfHtml(options: PdfOptions): string {
       <div>
         <div class="doc-type">INVOICE</div>
         <div class="company-name">${escapeHtml(inv.companyName || '—')}</div>
-        <div class="company-role">Contractor &middot; Builder</div>
+        
       </div>
       <div class="status-badge">
         <div class="status-dot"></div>
@@ -942,7 +942,7 @@ function generateScopeOfWorkPdfHtml(options: PdfOptions): string {
       <div>
         <div class="doc-type">Scope of Work</div>
         <div class="company-name">${escapeHtml(sow.companyName || '—')}</div>
-        <div class="company-role">Contractor &middot; Builder</div>
+        
       </div>
       <div class="doc-badge">
         <div class="doc-badge-dot"></div>
