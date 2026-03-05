@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDateString } from '@/lib/dateUtils';
 import { FileText } from 'lucide-react';
 import { generatePDF, generatePDFHtml } from '@/lib/pdfExport';
 import { saveDocumentToProject } from '@/lib/saveDocumentToProject';
@@ -51,15 +52,11 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
   const [recipientName, setRecipientName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [customerName, setCustomerName] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(formatDateString(new Date()));
   const [jobNumber, setJobNumber] = useState('');
-  const [tradeTypes, setTradeTypes] = useState<string[]>([]);
-  const [tradeInput, setTradeInput] = useState('');
   const [jobTitle, setJobTitle] = useState('');
-  const [location, setLocation] = useState('');
-  const [keyQuantities, setKeyQuantities] = useState('');
   const [workItems, setWorkItems] = useState<WorkItem[]>([]);
-  const [alsoIncluded, setAlsoIncluded] = useState<WorkItem[]>([]);
+  
   const [exclusions, setExclusions] = useState<WorkItem[]>([]);
   const [materialsResponsibility, setMaterialsResponsibility] = useState('');
   const [specialNotes, setSpecialNotes] = useState('');
@@ -74,15 +71,11 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     if (!val) {
       setRecipientName('');
       setCustomerName('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(formatDateString(new Date()));
       setJobNumber('');
-      setTradeTypes([]);
-      setTradeInput('');
       setJobTitle('');
-      setLocation('');
-      setKeyQuantities('');
       setWorkItems([]);
-      setAlsoIncluded([]);
+      
       setExclusions([]);
       setMaterialsResponsibility('');
       setSpecialNotes('');
@@ -91,15 +84,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     onOpenChange(val);
   };
 
-  const removeTrade = (trade: string) => setTradeTypes((prev) => prev.filter((t) => t !== trade));
-
-  const addTrade = () => {
-    const trimmed = tradeInput.trim();
-    if (trimmed && !tradeTypes.includes(trimmed)) {
-      setTradeTypes((prev) => [...prev, trimmed]);
-    }
-    setTradeInput('');
-  };
 
   const buildContent = () => {
     const lines: string[] = ['SCOPE OF WORK', ''];
@@ -110,25 +94,11 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     if (date) lines.push(`Date: ${date}`);
     if (jobNumber) lines.push(`Job Number: ${jobNumber}`);
 
-    if (tradeTypes.length > 0) {
-      lines.push('', 'TRADE / TRADE TYPE');
-      lines.push(tradeTypes.join(', '));
-    }
-
     if (jobTitle) {
       lines.push('', 'JOB TITLE');
       lines.push(jobTitle);
     }
 
-    if (location) {
-      lines.push('', 'LOCATION / AREA');
-      lines.push(location);
-    }
-
-    if (keyQuantities) {
-      lines.push('', 'KEY QUANTITIES');
-      lines.push(keyQuantities);
-    }
 
     const formatSection = (items: WorkItem[], title: string) => {
       const filled = items.filter((i) => i.text);
@@ -147,7 +117,7 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     };
 
     formatSection(workItems, 'WORK TO BE PERFORMED');
-    formatSection(alsoIncluded, 'ALSO INCLUDED');
+    
     formatSection(exclusions, 'NOT INCLUDED / EXCLUSIONS');
 
     if (materialsResponsibility) {
@@ -167,6 +137,19 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
     docType: 'Scope of Work' as const,
     companyName: settings?.company_name || companyName || 'Your Company',
     logoUrl: settings?.logo_url,
+    scopeOfWorkData: {
+      companyName: companyName || settings?.company_name || 'Your Company',
+      recipientName,
+      customerName,
+      date,
+      jobNumber,
+      jobTitle,
+      workItems,
+      
+      exclusions,
+      materialsResponsibility,
+      specialNotes,
+    },
   });
 
   const handleGeneratePDF = () => {
@@ -237,73 +220,20 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
               </div>
             </div>
 
-            {/* JOB DETAILS */}
-            <div>
-              <SectionLabel>Job Details</SectionLabel>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label>Trade Types</Label>
-                  <div className="min-h-[40px] flex flex-wrap gap-1.5 p-2 border rounded-md bg-background">
-                    {tradeTypes.map((t) => (
-                      <Badge
-                        key={t}
-                        variant="secondary"
-                        className="gap-1 cursor-pointer hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        onClick={() => removeTrade(t)}
-                      >
-                        {t}
-                        <span className="text-xs">×</span>
-                      </Badge>
-                    ))}
-                    {tradeTypes.length === 0 && (
-                      <span className="text-xs text-muted-foreground self-center">Select a vendor to auto-fill trades, or add below</span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={tradeInput}
-                      onChange={(e) => setTradeInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTrade())}
-                      placeholder="Add trade type…"
-                      className="text-sm"
-                    />
-                    <Button type="button" variant="outline" size="sm" onClick={addTrade} className="shrink-0">Add</Button>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label>Job Title</Label>
-                  <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="e.g. Water heater replacement" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Location / Area</Label>
-                    <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Garage, Back yard" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Key Quantities</Label>
-                    <Input value={keyQuantities} onChange={(e) => setKeyQuantities(e.target.value)} placeholder="e.g. 2 fixtures, 3 units" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* SCOPE OF WORK */}
             <div>
               <SectionLabel>Scope of Work</SectionLabel>
               <div className="space-y-5">
+                <div className="space-y-1.5">
+                  <Label>Job Title</Label>
+                  <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="e.g. Water heater replacement" />
+                </div>
                 <WorkItemLines
                   items={workItems}
                   onChange={setWorkItems}
                   label="Work Items"
                   description="Add each task as its own line — attach photos per item"
                   placeholder="e.g. Remove old water heater"
-                />
-                <WorkItemLines
-                  items={alsoIncluded}
-                  onChange={setAlsoIncluded}
-                  label="Also Included"
-                  placeholder="e.g. Debris removal"
                 />
                 <WorkItemLines
                   items={exclusions}

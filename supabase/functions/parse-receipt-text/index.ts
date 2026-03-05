@@ -1,46 +1,21 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { handleCors } from "../_shared/cors.ts";
-import { getUserIdFromBearer } from "../_shared/auth.ts";
-import { RateLimiter } from "../_shared/rateLimiter.ts";
 
-const MAX_RECEIPT_TEXT_BYTES = 50_000; // 50 KB limit
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
 
 serve(async (req) => {
-  const { headers: corsHeaders, preflight } = handleCors(req);
-  if (preflight) return preflight;
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const userId = getUserIdFromBearer(req.headers.get("Authorization"));
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const { limited } = await new RateLimiter(
-      createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
-    ).check(userId, "parse-receipt-text", 30);
-    if (limited) {
-      return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Up to 30 receipts per hour." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const { receiptText } = await req.json();
-
+    
     if (!receiptText) {
       return new Response(
         JSON.stringify({ error: "Receipt text is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (typeof receiptText !== "string" || receiptText.length > MAX_RECEIPT_TEXT_BYTES) {
-      return new Response(
-        JSON.stringify({ error: "Receipt text is too large (max 50 KB)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -70,13 +45,13 @@ CATEGORY MAPPING (use exact lowercase values)
 ═══════════════════════════════════════════════════════════════
 
 Construction categories:
-appliances, bathroom, brick_siding_stucco, cabinets, carpentry, cleaning,
-final_punch, closing_costs, countertops, demolition, doors, drain_line_repair,
-driveway_concrete, drywall, dumpsters_trash, electrical, fencing, flooring,
-food, foundation_repair, framing, garage, hardware, hoa, hvac, insulation,
-insurance_project, kitchen, landscaping, light_fixtures, main_bathroom, misc,
-natural_gas, painting, permits, inspections, pest_control, plumbing, pool,
-railing, roofing, staging, taxes, tile, utilities, variable, water_heater,
+appliances, bathroom, brick_siding_stucco, cabinets, carpentry, cleaning, 
+final_punch, closing_costs, countertops, demolition, doors, drain_line_repair, 
+driveway_concrete, drywall, dumpsters_trash, electrical, fencing, flooring, 
+food, foundation_repair, framing, garage, hardware, hoa, hvac, insulation, 
+insurance_project, kitchen, landscaping, light_fixtures, main_bathroom, misc, 
+natural_gas, painting, permits, inspections, pest_control, plumbing, pool, 
+railing, roofing, staging, taxes, tile, utilities, variable, water_heater, 
 rehab_filler, wholesale_fee, windows
 
 VENDOR → CATEGORY HINTS:
@@ -121,10 +96,10 @@ EXPENSE TYPE
                   date: { type: "string", description: "Date in YYYY-MM-DD format" },
                   amount: { type: "number", description: "Final total amount paid (after tax)" },
                   description: { type: "string", description: "Brief description of items purchased" },
-                  paymentMethod: {
-                    type: "string",
+                  paymentMethod: { 
+                    type: "string", 
                     enum: ["card", "cash", "check", "transfer"],
-                    description: "Payment method used"
+                    description: "Payment method used" 
                   },
                   includesTax: { type: "boolean", description: "Whether tax is included in the total" },
                   taxAmount: { type: "number", description: "Tax amount if listed separately" },
@@ -179,7 +154,7 @@ EXPENSE TYPE
 
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-
+    
     if (!toolCall || toolCall.function.name !== "extract_expense") {
       throw new Error("Failed to extract expense data");
     }
@@ -192,8 +167,16 @@ EXPENSE TYPE
       if (parsedYear < currentYear - 1 || parsedYear > currentYear) {
         const [_, month, day] = expenseData.date.split('-');
         expenseData.date = `${currentYear}-${month}-${day}`;
+        console.log(`Corrected receipt year from ${parsedYear} to ${currentYear}`);
       }
     }
+
+    console.log("=== Receipt Text Parse Summary ===");
+    console.log(`Vendor: ${expenseData.vendor}`);
+    console.log(`Amount: $${expenseData.amount}`);
+    console.log(`Category: ${expenseData.suggested_category}`);
+    console.log(`Type: ${expenseData.expenseType}`);
+    console.log("==================================");
 
     return new Response(
       JSON.stringify({ success: true, data: expenseData }),

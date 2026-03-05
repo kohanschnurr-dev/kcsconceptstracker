@@ -127,7 +127,7 @@ export function DocumentPreviewModal({
       .from('project-documents')
       .getPublicUrl(document.file_path);
 
-    window.open(data.publicUrl, '_blank', 'noopener,noreferrer');
+    window.open(data.publicUrl, '_blank');
   };
 
   const handleDownload = async () => {

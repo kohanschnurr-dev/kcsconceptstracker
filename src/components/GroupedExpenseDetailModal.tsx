@@ -87,7 +87,7 @@ export function GroupedExpenseDetailModal({
     try {
       const urlParts = receiptUrl.split('/storage/v1/object/public/');
       if (urlParts.length !== 2) {
-        window.open(receiptUrl, '_blank', 'noopener,noreferrer');
+        window.open(receiptUrl, '_blank');
         return;
       }
       
@@ -99,7 +99,7 @@ export function GroupedExpenseDetailModal({
         .download(filePath);
       
       if (error || !data) {
-        window.open(receiptUrl, '_blank', 'noopener,noreferrer');
+        window.open(receiptUrl, '_blank');
         return;
       }
       
@@ -113,7 +113,7 @@ export function GroupedExpenseDetailModal({
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (error) {
-      window.open(receiptUrl, '_blank', 'noopener,noreferrer');
+      window.open(receiptUrl, '_blank');
     }
   };
 

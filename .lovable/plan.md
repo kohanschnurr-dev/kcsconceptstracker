@@ -1,16 +1,18 @@
 
 
-## Diagnosis: Blank/Error Page
+## Remove Location/Key Quantities and Move Job Title into Scope of Work Section
 
-After reviewing all the relevant files (`Auth.tsx`, `Index.tsx`, `App.tsx`, types, and assets), the code appears syntactically and logically correct. No missing imports, no type errors, no broken references.
+### Changes in `src/components/vendors/ScopeOfWorkSheet.tsx`
+1. **Remove state** for `location` and `keyQuantities` (lines 58-59)
+2. **Remove resets** in `handleOpenChange`: `setLocation('')` and `setKeyQuantities('')` (lines 79-80)
+3. **Remove from `buildContent()`**: the location and keyQuantities blocks (lines 106-114)
+4. **Remove from `getPdfOptions()`**: `location` and `keyQuantities` properties (lines 160-161)
+5. **Remove entire "Job Details" section** (lines 238-257) — the section label, job title input, location input, and key quantities input
+6. **Add Job Title input** inside the "Scope of Work" section, before the WorkItemLines components (around line 261)
 
-The blank screen with the broken image icon you're seeing is most likely a **stale build or transient preview issue** rather than a code bug. Here's what I'll do:
+### Changes in `src/lib/pdfExport.ts`
+1. **Remove** `location` and `keyQuantities` from `ScopeOfWorkData` interface (lines 47-48)
+2. **Remove** the `detail-band` rendering block for location/keyQuantities (lines 972-976)
 
-### Plan
-
-1. **Add a small no-op change to force a fresh build** — touch the `App.tsx` file with a harmless comment to trigger a clean rebuild of the preview.
-
-2. **If the error persists after rebuild**, add `console.log` statements to `Index.tsx` and `Auth.tsx` to capture the exact error on the next load.
-
-No structural code changes are needed — the current code is valid.
+Two files, straightforward removals plus moving one input field.
 
