@@ -208,363 +208,199 @@ function formatReceiptDate(dateStr: string): string {
 
 function generateReceiptPdfHtml(options: PdfOptions): string {
   const r = options.receiptData!;
-  const logoHtml = options.logoUrl
-    ? `<img src="${options.logoUrl}" style="max-height:44px;max-width:110px;object-fit:contain;display:block;" crossorigin="anonymous" />`
-    : '';
 
   const now = new Date();
   const generatedAt = now.toLocaleString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
+
   const receiptDateFormatted = formatReceiptDate(r.receiptDate);
   const paymentDateFormatted = formatReceiptDate(r.paymentDate);
-
   const validItems = r.lineItems.filter(item => item.description || item.unitPrice > 0);
 
-  const rowsHtml = validItems.length > 0
-    ? validItems.map((item, i) => `
-        <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f9fb'};">
-          <td style="padding:10px 16px;font-size:12.5px;color:#1a1a1a;font-family:'Inter','Segoe UI',sans-serif;border-bottom:1px solid #eaeaea;">
-            ${escapeHtml(item.description || 'Item')}
-          </td>
-          <td style="padding:10px 16px;text-align:center;font-size:12.5px;color:#444;font-family:'Inter','Segoe UI',sans-serif;border-bottom:1px solid #eaeaea;">
-            ${item.qty}
-          </td>
-          <td style="padding:10px 16px;text-align:right;font-size:12.5px;color:#444;font-family:'Inter','Segoe UI',sans-serif;border-bottom:1px solid #eaeaea;">
-            ${fmtCurrency(item.unitPrice)}
-          </td>
-          <td style="padding:10px 16px;text-align:right;font-size:12.5px;font-weight:600;color:#1a1a1a;font-family:'Inter','Segoe UI',sans-serif;border-bottom:1px solid #eaeaea;">
-            ${fmtCurrency(item.total)}
-          </td>
-        </tr>
-      `).join('')
-    : `<tr><td colspan="4" style="padding:16px;text-align:center;color:#999;font-size:12px;font-family:'Inter','Segoe UI',sans-serif;">No line items</td></tr>`;
+  const lineItemsHtml = validItems.length > 0
+    ? validItems.map(item => `
+        <div class="line-item">
+          <span class="li-desc">${escapeHtml(item.description || 'Item')}</span>
+          <span class="li-qty">${item.qty}&thinsp;&times;&thinsp;${escapeHtml(fmtCurrency(item.unitPrice))}</span>
+          <span class="li-amt">${escapeHtml(fmtCurrency(item.total))}</span>
+        </div>`).join('')
+    : `<div class="line-item-empty">No line items added</div>`;
 
-  const detailRows: string[] = [];
-  if (r.paymentMethod) detailRows.push(`<div style="display:flex;gap:12px;padding:3px 0;font-size:12.5px;font-family:'Inter','Segoe UI',sans-serif;"><span style="min-width:130px;font-weight:600;color:#666;">Payment Method</span><span style="color:#1a1a1a;">${escapeHtml(r.paymentMethod)}</span></div>`);
-  if (paymentDateFormatted) detailRows.push(`<div style="display:flex;gap:12px;padding:3px 0;font-size:12.5px;font-family:'Inter','Segoe UI',sans-serif;"><span style="min-width:130px;font-weight:600;color:#666;">Payment Date</span><span style="color:#1a1a1a;">${escapeHtml(paymentDateFormatted)}</span></div>`);
-  if (r.notes) detailRows.push(`<div style="display:flex;gap:12px;padding:3px 0;font-size:12.5px;font-family:'Inter','Segoe UI',sans-serif;"><span style="min-width:130px;font-weight:600;color:#666;">Notes</span><span style="color:#1a1a1a;">${escapeHtml(r.notes)}</span></div>`);
+  const paymentRows: string[] = [];
+  if (r.paymentMethod) paymentRows.push(`<div class="pd-row"><span class="pd-label">Payment Method</span><span class="pd-val">${escapeHtml(r.paymentMethod)}</span></div>`);
+  if (paymentDateFormatted) paymentRows.push(`<div class="pd-row"><span class="pd-label">Payment Date</span><span class="pd-val">${escapeHtml(paymentDateFormatted)}</span></div>`);
+  if (r.notes) paymentRows.push(`<div class="pd-row"><span class="pd-label">Notes</span><span class="pd-val">${escapeHtml(r.notes)}</span></div>`);
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Payment Receipt — ${escapeHtml(r.receiptNumber || 'RCP')}</title>
+  <title>Receipt &mdash; ${escapeHtml(r.receiptNumber || 'RCP')}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-      background: #F2F4F7;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      background:#F9FAFB;
+      min-height:100vh;
+      padding:40px 16px;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
     }
-    .page {
-      max-width: 800px;
-      margin: 0 auto;
-      background: #ffffff;
-      box-shadow: 0 8px 48px rgba(0,0,0,0.12);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-    .header {
-      background: #0f172a;
-      padding: 28px 36px 24px;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 24px;
-      position: relative;
-    }
-    .header-brand {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .header-logo-wrap {
-      background: rgba(255,255,255,0.10);
-      border-radius: 8px;
-      padding: 6px 10px;
-      display: flex;
-      align-items: center;
-    }
-    .header-logo-placeholder {
-      width: 40px; height: 40px;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.15);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; font-weight: 900; color: #fff;
-      font-family: 'Crimson Text', Georgia, serif;
-    }
-    .header-company {
-      font-family: 'Crimson Text', Georgia, serif;
-      font-size: 22px;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.3px;
-      line-height: 1.1;
-    }
-    .header-subtitle {
-      font-size: 10px;
-      color: rgba(255,255,255,0.50);
-      font-weight: 500;
-      letter-spacing: 0.5px;
-      margin-top: 3px;
-    }
-    .header-right {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-    .paid-seal {
-      width: 68px; height: 68px;
-      border-radius: 50%;
-      border: 3px solid #22c55e;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      color: #22c55e;
-      transform: rotate(-12deg);
-      position: relative;
-    }
-    .paid-seal-text {
-      font-size: 15px;
-      font-weight: 900;
-      letter-spacing: 2.5px;
-      font-family: 'Inter', sans-serif;
-      line-height: 1;
-    }
-    .paid-seal-sub {
-      font-size: 7px;
-      font-weight: 600;
-      letter-spacing: 1px;
-      opacity: 0.85;
-      margin-top: 2px;
-    }
-    .receipt-meta {
-      text-align: right;
-    }
-    .receipt-doc-title {
-      font-family: 'Crimson Text', Georgia, serif;
-      font-size: 28px;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.5px;
-      line-height: 1;
-    }
-    .receipt-meta-detail {
-      font-size: 11px;
-      color: rgba(255,255,255,0.55);
-      margin-top: 5px;
-      font-weight: 500;
-    }
-    .receipt-meta-detail span {
-      color: rgba(255,255,255,0.85);
-      font-weight: 600;
+    .wrap{max-width:680px;margin:0 auto;}
+    .card{
+      background:#fff;
+      border:1px solid #E5E7EB;
+      border-radius:16px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.09),0 4px 16px rgba(0,0,0,0.05);
+      overflow:hidden;
     }
 
-    /* Entity row */
-    .entity-row {
-      display: flex;
-      align-items: stretch;
-      border-bottom: 1px solid #eaeaea;
+    /* ── HEADER ── */
+    .hdr{padding:36px 40px 28px;border-bottom:1px solid #F3F4F6;background:#fff;}
+    .hdr-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;}
+    .doc-type{
+      font-size:34px;font-weight:800;color:#111827;
+      letter-spacing:0.1em;text-transform:uppercase;line-height:1;margin-bottom:10px;
     }
-    .entity-cell {
-      flex: 1;
-      padding: 20px 28px;
+    .vendor-name{font-size:16px;font-weight:600;color:#374151;}
+    .vendor-role{font-size:12px;font-weight:400;color:#9CA3AF;margin-top:3px;}
+    .paid-badge{
+      display:inline-flex;align-items:center;gap:7px;
+      background:#DCFCE7;color:#15803D;border:1px solid #BBF7D0;
+      border-radius:999px;padding:7px 16px;
+      font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+      white-space:nowrap;flex-shrink:0;margin-top:4px;
     }
-    .entity-cell:first-child {
-      border-right: 1px solid #eaeaea;
+    .paid-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0;}
+    .meta-row{display:flex;gap:32px;flex-wrap:wrap;}
+    .meta-lbl{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9CA3AF;margin-bottom:4px;}
+    .meta-val{font-size:13px;font-weight:600;color:#111827;}
+
+    /* ── VALUE BOX ── */
+    .vbox-wrap{padding:24px 40px;background:#F9FAFB;border-bottom:1px solid #F3F4F6;}
+    .vbox{
+      background:#F5F3FF;border:1.5px solid #DDD6FE;border-radius:12px;
+      padding:28px 32px;text-align:center;
     }
-    .entity-label {
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #94a3b8;
-      margin-bottom: 5px;
-    }
-    .entity-name {
-      font-family: 'Crimson Text', Georgia, serif;
-      font-size: 20px;
-      font-weight: 700;
-      color: #0f172a;
-      line-height: 1.1;
-    }
-    .entity-role {
-      font-size: 11px;
-      color: #64748b;
-      margin-top: 3px;
-      font-weight: 500;
+    .vbox-lbl{font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#8B5CF6;margin-bottom:10px;}
+    .vbox-amt{font-size:52px;font-weight:800;color:#8B5CF6;letter-spacing:-2px;line-height:1;}
+    .vbox-sub{font-size:11px;color:#A78BFA;margin-top:10px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .vbox-check{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:16px;height:16px;border-radius:50%;background:#8B5CF6;color:#fff;
+      font-size:9px;font-weight:800;flex-shrink:0;
     }
 
-    /* Project / description band */
-    .project-band {
-      background: #f8f9fb;
-      border-bottom: 1px solid #eaeaea;
-      padding: 14px 28px;
-      display: flex;
-      gap: 40px;
-      flex-wrap: wrap;
+    /* ── ENTITY ROW ── */
+    .entity-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #F3F4F6;}
+    .entity-cell{padding:20px 40px;}
+    .entity-cell:first-child{border-right:1px solid #F3F4F6;}
+    .ent-lbl{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:6px;}
+    .ent-name{font-size:15px;font-weight:700;color:#111827;line-height:1.2;}
+    .ent-role{font-size:11px;font-weight:400;color:#9CA3AF;margin-top:3px;}
+
+    /* ── PROJECT BAND ── */
+    .proj-band{padding:16px 40px;background:#FAFAFA;border-bottom:1px solid #F3F4F6;display:flex;gap:40px;flex-wrap:wrap;}
+    .proj-lbl{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:4px;}
+    .proj-val{font-size:13px;font-weight:600;color:#111827;}
+
+    /* ── LINE ITEMS ── */
+    .li-section{padding:0 40px;}
+    .li-section-hdr{
+      font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+      color:#9CA3AF;padding:20px 0 14px;border-bottom:1.5px solid #E5E7EB;
     }
-    .project-item {}
-    .project-item-label {
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #94a3b8;
-      margin-bottom: 3px;
+    .li-cols-hdr{
+      display:grid;grid-template-columns:1fr 160px 110px;
+      gap:12px;padding:12px 0 10px;border-bottom:1px solid #F3F4F6;
     }
-    .project-item-value {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: #1a1a1a;
-      font-family: 'Inter', sans-serif;
+    .li-col-lbl{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9CA3AF;}
+    .li-col-lbl.c{text-align:center;}
+    .li-col-lbl.r{text-align:right;}
+    .line-item{
+      display:grid;grid-template-columns:1fr 160px 110px;
+      gap:12px;align-items:center;
+      padding:20px 0;border-bottom:1px solid #F9FAFB;
+    }
+    .line-item:last-child{border-bottom:none;}
+    .li-desc{font-size:13.5px;font-weight:500;color:#111827;}
+    .li-qty{font-size:12px;font-weight:400;color:#6B7280;text-align:center;}
+    .li-amt{font-size:13.5px;font-weight:700;color:#111827;text-align:right;}
+    .line-item-empty{padding:24px 0;text-align:center;font-size:13px;color:#9CA3AF;font-style:italic;}
+
+    /* ── PAYMENT DETAILS ── */
+    .pd-section{padding:20px 40px;border-top:1px solid #F3F4F6;background:#FAFAFA;}
+    .pd-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:12px;}
+    .pd-row{display:flex;gap:16px;padding:5px 0;font-size:13px;}
+    .pd-label{font-weight:600;color:#6B7280;min-width:130px;flex-shrink:0;}
+    .pd-val{color:#111827;font-weight:400;}
+
+    /* ── FOOTER ── */
+    .ftr{
+      padding:14px 40px;border-top:1px solid #F3F4F6;
+      text-align:center;font-size:10px;font-weight:400;color:#D1D5DB;
+      letter-spacing:0.02em;
     }
 
-    /* Table */
-    .table-wrap {
-      padding: 0 28px 4px;
-    }
-    table.line-items {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    table.line-items thead tr {
-      background: #0f172a;
-    }
-    table.line-items thead th {
-      padding: 10px 16px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.75);
-      font-family: 'Inter', sans-serif;
-      text-align: left;
-    }
-    table.line-items thead th:nth-child(2) { text-align: center; }
-    table.line-items thead th:nth-child(3),
-    table.line-items thead th:nth-child(4) { text-align: right; }
-
-    /* Total paid */
-    .total-section {
-      padding: 0 28px 24px;
-      display: flex;
-      justify-content: flex-end;
-    }
-    .total-box {
-      margin-top: 12px;
-      background: #eff6ff;
-      border: 2px solid #bfdbfe;
-      border-radius: 12px;
-      padding: 16px 24px;
-      min-width: 260px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-    }
-    .total-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #1d4ed8;
-      display: block;
-    }
-    .total-sublabel {
-      font-size: 10px;
-      color: #6b7280;
-      margin-top: 2px;
-      font-weight: 500;
-    }
-    .total-amount {
-      font-family: 'Crimson Text', Georgia, serif;
-      font-size: 32px;
-      font-weight: 700;
-      color: #0f172a;
-      letter-spacing: -1px;
-      white-space: nowrap;
+    /* ── RESPONSIVE ── */
+    @media(max-width:600px){
+      body{padding:0;background:#fff;}
+      .card{border-radius:0;border:none;box-shadow:none;}
+      .hdr{padding:28px 20px 22px;}
+      .vbox-wrap,.proj-band,.li-section,.pd-section,.ftr{padding-left:20px;padding-right:20px;}
+      .entity-cell{padding:16px 20px;}
+      .doc-type{font-size:26px;}
+      .vbox-amt{font-size:38px;letter-spacing:-1px;}
+      .entity-row{grid-template-columns:1fr;}
+      .entity-cell:first-child{border-right:none;border-bottom:1px solid #F3F4F6;}
+      .li-cols-hdr,.line-item{grid-template-columns:1fr auto auto;}
+      .vbox{padding:20px 18px;}
     }
 
-    /* Payment details */
-    .payment-section {
-      padding: 16px 28px 20px;
-      border-top: 1px solid #eaeaea;
-      background: #fafafa;
-    }
-    .payment-section-label {
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #94a3b8;
-      margin-bottom: 10px;
-    }
-
-    /* Footer */
-    .footer {
-      background: #0f172a;
-      padding: 12px 28px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .footer-brand {
-      font-size: 10.5px;
-      color: rgba(255,255,255,0.50);
-      font-weight: 500;
-    }
-    .footer-brand strong {
-      color: rgba(255,255,255,0.80);
-      font-weight: 700;
-    }
-    .footer-ts {
-      font-size: 10px;
-      color: rgba(255,255,255,0.35);
-    }
-
-    @media print {
-      body { background: #ffffff; }
-      .page { box-shadow: none; max-width: 100%; border-radius: 0; }
-      @page { size: A4 portrait; margin: 0; }
+    @media print{
+      body{background:#fff;padding:0;}
+      .wrap{max-width:100%;}
+      .card{box-shadow:none;border-radius:0;border:none;}
+      @page{size:A4 portrait;margin:0;}
     }
   </style>
 </head>
 <body>
-<div class="page">
+<div class="wrap"><div class="card">
 
   <!-- HEADER -->
-  <div class="header">
-    <div>
-      <div class="header-brand">
-        ${options.logoUrl
-          ? `<div class="header-logo-wrap">${logoHtml}</div>`
-          : `<div class="header-logo-placeholder">K</div>`
-        }
-        <div>
-          <div class="header-company">${escapeHtml(r.issuingCompany)}</div>
-          <div class="header-subtitle">PAYMENT PLATFORM</div>
-        </div>
+  <div class="hdr">
+    <div class="hdr-top">
+      <div>
+        <div class="doc-type">RECEIPT</div>
+        <div class="vendor-name">${escapeHtml(r.vendorName || '—')}</div>
+        <div class="vendor-role">Vendor &middot; Service Provider</div>
+      </div>
+      <div class="paid-badge">
+        <div class="paid-dot"></div>
+        PAID
       </div>
     </div>
-    <div class="header-right">
-      <div class="receipt-meta">
-        <div class="receipt-doc-title">Payment Receipt</div>
-        <div class="receipt-meta-detail">Receipt <span>${escapeHtml(r.receiptNumber)}</span></div>
-        ${receiptDateFormatted ? `<div class="receipt-meta-detail">Date <span>${escapeHtml(receiptDateFormatted)}</span></div>` : ''}
-      </div>
-      <div class="paid-seal">
-        <div class="paid-seal-text">PAID</div>
-        <div class="paid-seal-sub">CONFIRMED</div>
+    <div class="meta-row">
+      ${r.receiptNumber ? `<div><div class="meta-lbl">Receipt No.</div><div class="meta-val">${escapeHtml(r.receiptNumber)}</div></div>` : ''}
+      ${receiptDateFormatted ? `<div><div class="meta-lbl">Date</div><div class="meta-val">${escapeHtml(receiptDateFormatted)}</div></div>` : ''}
+    </div>
+  </div>
+
+  <!-- VALUE BOX -->
+  <div class="vbox-wrap">
+    <div class="vbox">
+      <div class="vbox-lbl">Total Paid</div>
+      <div class="vbox-amt">${escapeHtml(fmtCurrency(r.total))}</div>
+      <div class="vbox-sub">
+        <span class="vbox-check">&#10003;</span>
+        Payment confirmed
       </div>
     </div>
   </div>
@@ -572,91 +408,55 @@ function generateReceiptPdfHtml(options: PdfOptions): string {
   <!-- ENTITY ROW -->
   <div class="entity-row">
     <div class="entity-cell">
-      <div class="entity-label">Receipt From (Vendor / Payee)</div>
-      <div class="entity-name">${escapeHtml(r.vendorName || '—')}</div>
-      <div class="entity-role">Contractor · Service Provider</div>
+      <div class="ent-lbl">Received From (Vendor)</div>
+      <div class="ent-name">${escapeHtml(r.vendorName || '—')}</div>
+      <div class="ent-role">Contractor &middot; Service Provider</div>
     </div>
     <div class="entity-cell">
-      <div class="entity-label">Issued By (Platform)</div>
-      <div class="entity-name">${escapeHtml(r.issuingCompany)}</div>
-      <div class="entity-role">General Contractor · Document Issuer</div>
+      <div class="ent-lbl">Issued By</div>
+      <div class="ent-name">${escapeHtml(r.issuingCompany)}</div>
+      <div class="ent-role">General Contractor &middot; Document Issuer</div>
     </div>
   </div>
 
   <!-- PROJECT BAND -->
   ${(r.projectName || r.descriptionOfWork) ? `
-  <div class="project-band">
-    ${r.projectName ? `
-    <div class="project-item">
-      <div class="project-item-label">Project</div>
-      <div class="project-item-value">${escapeHtml(r.projectName)}</div>
-    </div>` : ''}
-    ${r.descriptionOfWork ? `
-    <div class="project-item">
-      <div class="project-item-label">Description of Work</div>
-      <div class="project-item-value" style="font-weight:400;max-width:400px;">${escapeHtml(r.descriptionOfWork)}</div>
-    </div>` : ''}
+  <div class="proj-band">
+    ${r.projectName ? `<div><div class="proj-lbl">Project</div><div class="proj-val">${escapeHtml(r.projectName)}</div></div>` : ''}
+    ${r.descriptionOfWork ? `<div><div class="proj-lbl">Description of Work</div><div class="proj-val" style="font-weight:400;max-width:360px;">${escapeHtml(r.descriptionOfWork)}</div></div>` : ''}
   </div>` : ''}
 
-  <!-- LINE ITEMS TABLE -->
-  <div class="table-wrap">
-    <table class="line-items">
-      <thead>
-        <tr>
-          <th>Description</th>
-          <th>Qty</th>
-          <th>Unit Price</th>
-          <th>Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rowsHtml}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- TOTAL PAID -->
-  <div class="total-section">
-    <div>
-      <div class="total-box">
-        <div>
-          <span class="total-label">Total Paid</span>
-          <span class="total-sublabel">All line items</span>
-        </div>
-        <span class="total-amount">${escapeHtml(fmtCurrency(r.total))}</span>
-      </div>
-    </div>
+  <!-- LINE ITEMS -->
+  <div class="li-section">
+    <div class="li-section-hdr">Line Items</div>
+    ${validItems.length > 0 ? `
+    <div class="li-cols-hdr">
+      <span class="li-col-lbl">Description</span>
+      <span class="li-col-lbl c">Qty &times; Rate</span>
+      <span class="li-col-lbl r">Amount</span>
+    </div>` : ''}
+    ${lineItemsHtml}
   </div>
 
   <!-- PAYMENT DETAILS -->
-  ${detailRows.length > 0 ? `
-  <div class="payment-section">
-    <div class="payment-section-label">Payment Details</div>
-    ${detailRows.join('')}
+  ${paymentRows.length > 0 ? `
+  <div class="pd-section">
+    <div class="pd-title">Payment Details</div>
+    ${paymentRows.join('')}
   </div>` : ''}
 
   <!-- FOOTER -->
-  <div class="footer">
-    <div class="footer-brand">Generated by <strong>KCS Concepts Systems</strong></div>
-    <div class="footer-ts">${escapeHtml(generatedAt)}</div>
-  </div>
+  <div class="ftr">Generated on ${escapeHtml(generatedAt)}</div>
 
-</div>
+</div></div>
 <script>
-  var imgs = document.querySelectorAll('img');
-  var total = imgs.length;
-  if (total === 0) {
-    setTimeout(function() { window.print(); }, 600);
-  } else {
-    var loaded = 0;
-    function tryPrint() {
-      loaded++;
-      if (loaded >= total) setTimeout(function() { window.print(); }, 600);
-    }
-    imgs.forEach(function(img) {
-      if (img.complete) { tryPrint(); }
-      else { img.onload = tryPrint; img.onerror = tryPrint; }
-    });
+  var imgs=document.querySelectorAll('img');
+  var total=imgs.length;
+  if(total===0){setTimeout(function(){window.print();},600);}
+  else{
+    var loaded=0;
+    function tryPrint(){loaded++;if(loaded>=total)setTimeout(function(){window.print();},600);}
+    imgs.forEach(function(img){if(img.complete){tryPrint();}else{img.onload=tryPrint;img.onerror=tryPrint;}});
   }
 </script>
 </body>
@@ -873,7 +673,7 @@ export function generatePDFHtml(content: string, options: PdfOptions): string {
     <div class="header-left">
       <div class="header-text">
         <div class="header-company">${escapeHtml(options.companyName)}</div>
-        
+
       </div>
     </div>
     <div class="header-right">
