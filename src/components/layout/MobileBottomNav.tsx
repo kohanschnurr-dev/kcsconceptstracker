@@ -47,10 +47,10 @@ export function MobileBottomNav({ onAddClick }: MobileBottomNavProps) {
         <div className="flex items-center justify-around h-16 px-1">
           {/* Dashboard */}
           <NavLink
-            to="/"
+            to="/dashboard"
             className={cn(
               'flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors min-w-0',
-              location.pathname === '/' 
+              location.pathname === '/dashboard' 
                 ? 'text-primary' 
                 : 'text-muted-foreground active:text-foreground'
             )}

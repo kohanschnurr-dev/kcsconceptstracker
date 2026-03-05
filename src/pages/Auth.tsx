@@ -73,7 +73,7 @@ export default function Auth() {
   const signUpForm = useForm<SignUpFormData>({ resolver: zodResolver(signUpSchema) });
 
   useEffect(() => {
-    if (user && !authLoading) navigate('/', { replace: true });
+    if (user && !authLoading) navigate('/dashboard', { replace: true });
   }, [user, authLoading, navigate]);
 
   const handleSignIn = async (data: SignInFormData) => {
