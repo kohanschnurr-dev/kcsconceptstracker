@@ -43,7 +43,7 @@ export function Sidebar() {
   const { unreadCount, isOwner } = useNotifications();
 
   const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/', exact: true },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', exact: true },
     { icon: FolderKanban, label: 'Projects', path: '/projects' },
     { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
     { icon: Receipt, label: 'Expenses', path: '/expenses' },
