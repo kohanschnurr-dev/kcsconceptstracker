@@ -1,16 +1,21 @@
 
 
-## Increase Left Panel Text Sizes
+## Remove "Issued By" from Receipt Generator & PDF
 
-Edit `src/pages/Auth.tsx` to reduce dead space by enlarging all text elements on the left panel:
+Three files need edits:
 
-- **Logo text**: `text-2xl` → `text-3xl`
-- **Headline**: `text-3xl lg:text-4xl` → `text-4xl lg:text-5xl`
-- **Feature labels**: `text-sm` → `text-base`
-- **Feature icon boxes**: `h-9 w-9` → `h-10 w-10`, icons `h-4 w-4` → `h-5 w-5`
-- **Tagline**: `text-sm` → `text-base`
-- **Spacing between features**: `space-y-4` → `space-y-5`
-- **Overall gap**: `gap-10` → `gap-12`
+### 1. `src/components/project/GenerateReceiptSheet.tsx`
+- Remove the `issuingCompany` constant
+- Remove the entire "ENTITY BANNER" div (the rounded box showing "Issued By (Platform)" and "Receipt From (Vendor)")
+- Remove `issuingCompany` from `buildContent()` (the "ISSUED BY (PLATFORM)" section)
+- Remove `issuingCompany` from `getPdfOptions()` receipt data
 
-Single file: `src/pages/Auth.tsx`
+### 2. `src/lib/pdfExport.ts`
+- Remove the `issuingCompany` field from the `ReceiptData` interface
+- Remove the "Issued By" entity cell from the receipt HTML template (keep the "Received From (Vendor)" cell, just remove the issuer cell)
+
+### 3. `supabase/functions/generate-receipt/index.ts`
+- No changes needed (AI plain-text path is separate and rarely used)
+
+Only the "Issued By / KCS Concepts" block is removed — vendor info, line items, payment details, and everything else stays as-is.
 
