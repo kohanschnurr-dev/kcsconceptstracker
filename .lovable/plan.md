@@ -1,20 +1,12 @@
 
 
-## Remove "Also Included" from Scope of Work
+## Remove "Contractor · Builder" Subtitle from Invoice and Scope of Work PDFs
 
-Remove the "Also Included" section from both the form UI and the PDF output.
-
-### Changes in `src/components/vendors/ScopeOfWorkSheet.tsx`
-1. Remove `alsoIncluded` state declaration (line 61)
-2. Remove `setAlsoIncluded([])` reset in `handleOpenChange` (line 82)
-3. Remove `formatSection(alsoIncluded, 'ALSO INCLUDED')` from `buildContent()` (line 133)
-4. Remove `alsoIncluded` from `getPdfOptions()` (line 163)
-5. Remove the `<WorkItemLines>` block for "Also Included" (~lines 270-274)
+Remove the hardcoded "Contractor · Builder" line from both document templates in `src/lib/pdfExport.ts`.
 
 ### Changes in `src/lib/pdfExport.ts`
-1. Remove `alsoIncluded` from `ScopeOfWorkData` interface (line 50)
-2. Remove `...sow.alsoIncluded.filter(i => i.text)` from `workTotal` calculation (line 808)
-3. Remove `renderWorkSection(sow.alsoIncluded, 'Also Included')` from HTML template (line 991)
+1. **Line 671** — Delete `<div class="company-role">Contractor &middot; Builder</div>` from the Invoice template
+2. **Line 945** — Delete `<div class="company-role">Contractor &middot; Builder</div>` from the Scope of Work template
 
-Two files, straightforward deletions.
+Two single-line deletions in one file.
 
