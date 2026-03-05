@@ -792,7 +792,7 @@ function generateScopeOfWorkPdfHtml(options: PdfOptions): string {
           </div>
           ${item.photos.length > 0 ? `
           <div class="wi-photos">
-            ${item.photos.map(url => `<img src="${escapeHtml(url)}" class="wi-photo" />`).join('')}
+            ${item.photos.map(url => `<img src="${escapeHtml(url)}" class="wi-photo" style="cursor:pointer;" onclick="openLightbox(this.src)" />`).join('')}
           </div>` : ''}
         `).join('')}
         ${subtotal > 0 ? `
@@ -897,7 +897,8 @@ function generateScopeOfWorkPdfHtml(options: PdfOptions): string {
     .wi-text{font-size:13.5px;font-weight:500;color:#111827;}
     .wi-amt{font-size:13.5px;font-weight:700;color:#111827;text-align:right;}
     .wi-photos{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 12px;border-bottom:1px solid #F9FAFB;}
-    .wi-photo{width:80px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #E5E7EB;}
+    .wi-photo{width:80px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #E5E7EB;cursor:pointer;transition:opacity .15s;}
+    .wi-photo:hover{opacity:.8;}
     .ws-subtotal{
       display:flex;justify-content:space-between;padding:12px 0;
       font-size:12px;font-weight:700;color:#6B7280;border-top:1px solid #E5E7EB;
@@ -1010,6 +1011,12 @@ function generateScopeOfWorkPdfHtml(options: PdfOptions): string {
     function tryPrint(){loaded++;if(loaded>=total)setTimeout(function(){window.print();},600);}
     imgs.forEach(function(img){if(img.complete){tryPrint();}else{img.onload=tryPrint;img.onerror=tryPrint;}});
   }
+</script>
+<div id="lightbox-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;cursor:pointer;justify-content:center;align-items:center;" onclick="this.style.display='none'">
+  <img id="lightbox-img" style="max-width:90vw;max-height:90vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5);object-fit:contain;" />
+</div>
+<script>
+function openLightbox(src){var o=document.getElementById('lightbox-overlay');var i=document.getElementById('lightbox-img');i.src=src;o.style.display='flex';}
 </script>
 </body>
 </html>`;
