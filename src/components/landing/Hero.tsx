@@ -1,18 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function Hero() {
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleTrialClick = () => {
-    if (user) {
-      navigate("/dashboard");
-    } else {
-      navigate("/auth");
-    }
+    navigate("/auth");
   };
 
   return (
@@ -38,7 +32,7 @@ export default function Hero() {
             className="gold-glow min-h-[48px] px-8 text-base hover:scale-[1.03] transition-transform"
             onClick={handleTrialClick}
           >
-            {user ? "Go to Dashboard" : "Start Your Free Trial"}
+            Start Your Free Trial
           </Button>
           <Link to="/demo">
             <Button

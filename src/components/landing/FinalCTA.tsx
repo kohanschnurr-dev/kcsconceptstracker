@@ -1,17 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function FinalCTA() {
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleClick = () => {
-    if (user) {
-      navigate("/dashboard");
-    } else {
-      navigate("/auth");
-    }
+    navigate("/auth");
   };
 
   return (
@@ -29,7 +23,7 @@ export default function FinalCTA() {
           className="gold-glow min-h-[48px] px-10 text-base hover:scale-[1.03] transition-transform"
           onClick={handleClick}
         >
-          {user ? "Go to Dashboard" : "Start Your Free Trial"}
+          Start Your Free Trial
         </Button>
         <p className="text-sm text-muted-foreground mt-6">
           No credit card required · 14-day free trial · Cancel anytime

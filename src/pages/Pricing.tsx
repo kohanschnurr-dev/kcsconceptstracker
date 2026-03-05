@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/accordion";
 import LandingHeader from "@/components/landing/LandingHeader";
 import LandingFooter from "@/components/landing/LandingFooter";
-import { useAuth } from "@/contexts/AuthContext";
 
 const soloFeatures = [
   "Unlimited projects",
@@ -72,15 +71,10 @@ const faqs = [
 
 export default function Pricing() {
   const [annual, setAnnual] = useState(false);
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleTrialClick = () => {
-    if (user) {
-      navigate("/dashboard");
-    } else {
-      navigate("/auth");
-    }
+    navigate("/auth");
   };
 
   return (
@@ -153,7 +147,7 @@ export default function Pricing() {
                 className="w-full min-h-[48px] gold-glow mb-6"
                 onClick={handleTrialClick}
               >
-                {user ? "Go to Dashboard" : "Start 14-Day Free Trial"}
+                Start 14-Day Free Trial
               </Button>
               <p className="text-xs text-muted-foreground mb-4">
                 No credit card required
@@ -193,7 +187,7 @@ export default function Pricing() {
                 className="w-full min-h-[48px] mb-6"
                 onClick={handleTrialClick}
               >
-                {user ? "Go to Dashboard" : "Start 14-Day Free Trial"}
+                Start 14-Day Free Trial
               </Button>
               <p className="text-xs text-muted-foreground mb-4">
                 Everything in Solo, plus:

@@ -3,7 +3,6 @@ import { Play, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LandingHeader from "@/components/landing/LandingHeader";
 import LandingFooter from "@/components/landing/LandingFooter";
-import { useAuth } from "@/contexts/AuthContext";
 
 const highlights = [
   "Create and manage project budgets in minutes",
@@ -15,15 +14,10 @@ const highlights = [
 ];
 
 export default function Demo() {
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleTrialClick = () => {
-    if (user) {
-      navigate("/dashboard");
-    } else {
-      navigate("/auth");
-    }
+    navigate("/auth");
   };
 
   return (
@@ -75,7 +69,7 @@ export default function Demo() {
               className="gold-glow min-h-[48px] px-8 hover:scale-[1.03] transition-transform"
               onClick={handleTrialClick}
             >
-              {user ? "Go to Dashboard" : "Start Your Free Trial"}
+              Start Your Free Trial
             </Button>
             <p className="text-sm text-muted-foreground mt-4">
               No credit card required · 14-day free trial
