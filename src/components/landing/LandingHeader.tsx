@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -15,7 +14,6 @@ const navLinks = [
 export default function LandingHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,11 +31,7 @@ export default function LandingHeader() {
   }, [mobileOpen]);
 
   const handleTrialClick = () => {
-    if (user) {
-      navigate("/dashboard");
-    } else {
-      navigate("/auth");
-    }
+    navigate("/auth");
   };
 
   return (
@@ -69,28 +63,18 @@ export default function LandingHeader() {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
-          {user ? (
-            <Link to="/dashboard">
-              <Button size="sm" className="gold-glow hover:scale-[1.03] transition-transform">
-                Go to Dashboard
-              </Button>
-            </Link>
-          ) : (
-            <>
-              <Link to="/auth">
-                <Button variant="ghost" size="sm" className="text-muted-foreground">
-                  Log In
-                </Button>
-              </Link>
-              <Button
-                size="sm"
-                className="gold-glow hover:scale-[1.03] transition-transform"
-                onClick={handleTrialClick}
-              >
-                Start Free Trial
-              </Button>
-            </>
-          )}
+          <Link to="/auth">
+            <Button variant="ghost" size="sm" className="text-muted-foreground">
+              Log In
+            </Button>
+          </Link>
+          <Button
+            size="sm"
+            className="gold-glow hover:scale-[1.03] transition-transform"
+            onClick={handleTrialClick}
+          >
+            Start Free Trial
+          </Button>
         </div>
 
         {/* Mobile Hamburger */}
@@ -125,30 +109,20 @@ export default function LandingHeader() {
             </Link>
           ))}
           <div className="border-t border-border mt-4 pt-4 flex flex-col gap-3">
-            {user ? (
-              <Link to="/dashboard" onClick={() => setMobileOpen(false)}>
-                <Button className="w-full min-h-[48px] gold-glow">
-                  Go to Dashboard
-                </Button>
-              </Link>
-            ) : (
-              <>
-                <Link to="/auth" onClick={() => setMobileOpen(false)}>
-                  <Button variant="outline" className="w-full min-h-[48px]">
-                    Log In
-                  </Button>
-                </Link>
-                <Button
-                  className="w-full min-h-[48px] gold-glow"
-                  onClick={() => {
-                    setMobileOpen(false);
-                    navigate("/auth");
-                  }}
-                >
-                  Start Free Trial
-                </Button>
-              </>
-            )}
+            <Link to="/auth" onClick={() => setMobileOpen(false)}>
+              <Button variant="outline" className="w-full min-h-[48px]">
+                Log In
+              </Button>
+            </Link>
+            <Button
+              className="w-full min-h-[48px] gold-glow"
+              onClick={() => {
+                setMobileOpen(false);
+                navigate("/auth");
+              }}
+            >
+              Start Free Trial
+            </Button>
           </div>
         </div>
       </div>
