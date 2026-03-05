@@ -5,60 +5,71 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Mail, X, Loader2, Lock, Crown, UserPlus, RefreshCw } from 'lucide-react';
+import { Users, Mail, X, Loader2, Lock, Crown, UserPlus, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useTeam } from '@/hooks/useTeam';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamRoles, AVAILABLE_ROLES } from '@/hooks/useTeamRoles';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow, isPast } from 'date-fns';
 
 const TIER_LIMITS: Record<string, number> = {
-  free: 0,
-  pro: 2,
+  free:    0,
+  pro:     2,
   premium: Infinity,
 };
 
 export default function ManageUsersCard() {
-  const { user } = useAuth();
+  const { user }    = useAuth();
   const { profile } = useProfile();
-  const { team, members, invitations, isLoading, inviteMember, cancelInvitation, removeMember, resendInvitation } = useTeam();
+  const {
+    team, members, invitations, isLoading,
+    inviteMember, cancelInvitation, removeMember, resendInvitation,
+  } = useTeam();
   const { updateMemberRole } = useTeamRoles();
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [isInviting, setIsInviting] = useState(false);
-  const [resendingEmail, setResendingEmail] = useState<string | null>(null);
+
+  const [inviteEmail, setInviteEmail]     = useState('');
+  const [inviteRole,  setInviteRole]      = useState<'viewer' | 'manager'>('viewer');
+  const [isInviting,  setIsInviting]      = useState(false);
+  const [resendingId, setResendingId]     = useState<string | null>(null);
 
   const subscriptionTier = (profile as any)?.subscription_tier || 'free';
-  const isPaid = subscriptionTier !== 'free';
-  const maxSlots = TIER_LIMITS[subscriptionTier] ?? 0;
-  const currentCount = (members?.length || 0) + (invitations?.length || 0);
-  const atLimit = currentCount >= maxSlots;
+  const isPaid           = subscriptionTier !== 'free';
+  const maxSlots         = TIER_LIMITS[subscriptionTier] ?? 0;
+  const currentCount     = (members?.length || 0) + (invitations?.length || 0);
+  const atLimit          = currentCount >= maxSlots;
 
+  // ── Invite ────────────────────────────────────────────────────────
   const handleInvite = async () => {
-    if (!inviteEmail.trim()) return;
+    const email = inviteEmail.trim();
+    if (!email) return;
+
     if (atLimit) {
       toast.error("You've reached your plan's team member limit");
       return;
     }
-
-    // Basic email validation
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast.error('Please enter a valid email address');
+      return;
+    }
+    if (email.toLowerCase() === user?.email?.toLowerCase()) {
+      toast.error("You can't invite yourself");
       return;
     }
 
     setIsInviting(true);
     try {
-      await inviteMember.mutateAsync(inviteEmail.trim());
-      toast.success(`Invitation sent to ${inviteEmail}`);
+      await inviteMember.mutateAsync({ email, role: inviteRole });
+      toast.success(`Invitation sent to ${email}`);
       setInviteEmail('');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to send invitation');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send invitation');
     } finally {
       setIsInviting(false);
     }
   };
 
+  // ── Cancel invitation ────────────────────────────────────────────
   const handleCancelInvitation = async (id: string) => {
     try {
       await cancelInvitation.mutateAsync(id);
@@ -68,6 +79,7 @@ export default function ManageUsersCard() {
     }
   };
 
+  // ── Remove active member ──────────────────────────────────────────
   const handleRemoveMember = async (id: string) => {
     try {
       await removeMember.mutateAsync(id);
@@ -77,17 +89,31 @@ export default function ManageUsersCard() {
     }
   };
 
-
-  const handleResend = async (email: string) => {
-    setResendingEmail(email);
+  // ── Resend (regenerates token + resets expiry) ────────────────────
+  const handleResend = async (inv: { id: string; email: string; role: string }) => {
+    setResendingId(inv.id);
     try {
-      await resendInvitation.mutateAsync(email);
-      toast.success(`Invitation resent to ${email}`);
+      await resendInvitation.mutateAsync({
+        invitationId: inv.id,
+        email:        inv.email,
+        role:         inv.role,
+      });
+      toast.success(`New invitation link sent to ${inv.email}`);
     } catch {
       toast.error('Failed to resend invitation');
     } finally {
-      setResendingEmail(null);
+      setResendingId(null);
     }
+  };
+
+  // ── Expiry label helper ───────────────────────────────────────────
+  const expiryLabel = (expiresAt: string | null) => {
+    if (!expiresAt) return null;
+    if (isPast(new Date(expiresAt))) return { text: 'Expired', expired: true };
+    return {
+      text: `Expires ${formatDistanceToNow(new Date(expiresAt), { addSuffix: true })}`,
+      expired: false,
+    };
   };
 
   return (
@@ -101,11 +127,13 @@ export default function ManageUsersCard() {
           {subscriptionTier === 'premium'
             ? 'Premium plan — unlimited team seats'
             : subscriptionTier === 'pro'
-              ? 'Pro plan — 2 team seats'
+              ? `Pro plan — 2 team seats`
               : 'Invite project managers to your team'}
         </CardDescription>
       </CardHeader>
+
       <CardContent>
+        {/* ── Locked for free tier ── */}
         {!isPaid ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
@@ -122,28 +150,29 @@ export default function ManageUsersCard() {
               Upgrade Plan
             </Button>
           </div>
+
         ) : isLoading ? (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
+
         ) : (
           <div className="space-y-4">
-            {/* Owner */}
+
+            {/* ── Owner row ── */}
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                   <Crown className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {user?.email}
-                  </p>
+                  <p className="text-sm font-medium text-foreground">{user?.email}</p>
                   <Badge variant="secondary" className="text-xs mt-0.5">Owner</Badge>
                 </div>
               </div>
             </div>
 
-            {/* Seats indicator */}
+            {/* ── Seat counter ── */}
             {maxSlots !== Infinity ? (
               <p className="text-xs text-muted-foreground">
                 {currentCount} / {maxSlots} seats used
@@ -154,7 +183,7 @@ export default function ManageUsersCard() {
               </p>
             ) : null}
 
-            {/* Team Members */}
+            {/* ── Active team members ── */}
             {members.map((member) => (
               <div key={member.id} className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
@@ -174,7 +203,7 @@ export default function ManageUsersCard() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Select
-                    value={member.role || 'manager'}
+                    value={member.role || 'viewer'}
                     onValueChange={async (value) => {
                       try {
                         await updateMemberRole.mutateAsync({ memberId: member.id, role: value });
@@ -189,15 +218,12 @@ export default function ManageUsersCard() {
                     </SelectTrigger>
                     <SelectContent>
                       {AVAILABLE_ROLES.map((r) => (
-                        <SelectItem key={r.key} value={r.key}>
-                          {r.label}
-                        </SelectItem>
+                        <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <Button
-                    variant="ghost"
-                    size="sm"
+                    variant="ghost" size="sm"
                     onClick={() => handleRemoveMember(member.id)}
                     className="text-destructive hover:text-destructive"
                   >
@@ -207,73 +233,122 @@ export default function ManageUsersCard() {
               </div>
             ))}
 
-            {/* Pending Invitations (inline) */}
-            {invitations.map((inv) => (
-              <div key={inv.id} className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
+            {/* ── Pending invitations ── */}
+            {invitations.map((inv) => {
+              const expiry    = expiryLabel(inv.expires_at);
+              const isExpired = expiry?.expired ?? false;
+
+              return (
+                <div
+                  key={inv.id}
+                  className={`flex items-center justify-between py-2 ${isExpired ? 'opacity-60' : ''}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isExpired ? 'bg-destructive/10' : 'bg-muted'}`}>
+                      {isExpired
+                        ? <AlertTriangle className="h-4 w-4 text-destructive" />
+                        : <Mail className="h-4 w-4 text-muted-foreground" />
+                      }
+                    </div>
+                    <div>
+                      <p className="text-sm text-foreground">{inv.email}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${isExpired ? 'border-destructive/50 text-destructive' : ''}`}
+                        >
+                          {isExpired ? 'Expired' : 'Pending'}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {inv.role === 'manager' ? 'Project Manager' : 'Viewer'}
+                        </Badge>
+                        {expiry && !isExpired && (
+                          <span className="text-xs text-muted-foreground">{expiry.text}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-foreground">{inv.email}</p>
-                    <Badge variant="outline" className="text-xs mt-0.5">Pending</Badge>
+
+                  <div className="flex items-center gap-1">
+                    {/* Resend — also refreshes token + expiry */}
+                    <Button
+                      variant="ghost" size="sm"
+                      onClick={() => handleResend({ id: inv.id, email: inv.email, role: inv.role })}
+                      disabled={resendingId === inv.id}
+                      title={isExpired ? 'Resend (generate new link)' : 'Resend invitation'}
+                    >
+                      {resendingId === inv.id
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <RefreshCw className="h-4 w-4" />
+                      }
+                    </Button>
+                    {/* Cancel / revoke */}
+                    <Button
+                      variant="ghost" size="sm"
+                      onClick={() => handleCancelInvitation(inv.id)}
+                      className="text-destructive hover:text-destructive"
+                      title="Cancel invitation"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleResend(inv.email)}
-                    disabled={resendingEmail === inv.email}
-                    title="Resend invitation"
-                  >
-                    {resendingEmail === inv.email ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleCancelInvitation(inv.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             <Separator />
 
-            {/* Invite Form */}
-            <div className="flex gap-2">
-              <Input
-                placeholder={atLimit ? 'Seat limit reached' : 'Email address'}
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
-                disabled={atLimit}
-              />
-              <Button onClick={handleInvite} disabled={atLimit || isInviting || !inviteEmail.trim()} size="sm">
-                {isInviting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <UserPlus className="h-4 w-4" />
-                )}
-              </Button>
+            {/* ── Invite form ── */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  placeholder={atLimit ? 'Seat limit reached' : 'Email address'}
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
+                  disabled={atLimit}
+                  className="flex-1"
+                />
+                {/* Role selector sits beside the email input */}
+                <Select
+                  value={inviteRole}
+                  onValueChange={(v) => setInviteRole(v as 'viewer' | 'manager')}
+                  disabled={atLimit}
+                >
+                  <SelectTrigger className="w-[130px] h-10 text-xs shrink-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="viewer">Viewer</SelectItem>
+                    <SelectItem value="manager">Project Manager</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={handleInvite}
+                  disabled={atLimit || isInviting || !inviteEmail.trim()}
+                  size="sm"
+                  className="h-10 px-3 shrink-0"
+                >
+                  {isInviting
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <UserPlus className="h-4 w-4" />
+                  }
+                </Button>
+              </div>
+
+              {atLimit && subscriptionTier === 'pro' ? (
+                <p className="text-xs text-muted-foreground">
+                  You've reached your Pro plan limit. Upgrade to Premium for unlimited team members.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Invited users will be able to access your projects when they sign up or log in.
+                  Invite links expire after <strong>7 days</strong>.
+                </p>
+              )}
             </div>
-            {atLimit && subscriptionTier === 'pro' ? (
-              <p className="text-xs text-muted-foreground">
-                You've reached your Pro plan limit. Upgrade to Premium for unlimited team members.
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Invited users will be able to access your projects when they sign up or log in.
-              </p>
-            )}
+
           </div>
         )}
       </CardContent>

@@ -2,6 +2,12 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+// ── Invite token storage key ─────────────────────────────────────────────────
+// Auth.tsx writes the token here when the user arrives via an invite link.
+// AuthContext reads and clears it after a successful sign-in so the team
+// membership is created atomically via accept_invitation_by_token().
+export const INVITE_TOKEN_STORAGE_KEY = 'gw_pending_invite_token';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -17,7 +23,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser]       = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -32,16 +38,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
 
         if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
-          const u = session.user;
+          const u     = session.user;
           const email = u.email;
-          if (email) {
-            supabase.rpc('accept_pending_invitations', {
+          if (!email) return;
+
+          // ── Priority 1: Token-based acceptance ───────────────────
+          // If the user arrived via an invite link, accept that specific
+          // invitation atomically (validates token, expiry, and email match).
+          const pendingToken = localStorage.getItem(INVITE_TOKEN_STORAGE_KEY);
+          if (pendingToken) {
+            localStorage.removeItem(INVITE_TOKEN_STORAGE_KEY);
+            supabase
+              .rpc('accept_invitation_by_token', {
+                p_user_id: u.id,
+                p_email:   email,
+                p_token:   pendingToken,
+              })
+              .then(({ data, error }) => {
+                if (error) {
+                  console.error('accept_invitation_by_token error:', error);
+                } else if (data?.success === false) {
+                  // Not a hard error — the user is still signed in, just
+                  // the invite wasn't accepted (expired / email mismatch).
+                  console.warn('Invitation not accepted:', data.error);
+                }
+              });
+            // Fall through to email-based scan as a belt-and-suspenders
+            // measure (covers invitations sent before tokens were introduced).
+          }
+
+          // ── Priority 2: Email-based scan (fallback) ───────────────
+          // Accepts any remaining pending invitations for this email address.
+          // Also covers users who navigated to /auth directly without the token.
+          supabase
+            .rpc('accept_pending_invitations', {
               p_user_id: u.id,
-              p_email: email,
-            }).then(({ error }) => {
+              p_email:   email,
+            })
+            .then(({ error }) => {
               if (error) console.error('Failed to accept pending invitations:', error);
             });
-          }
         }
       }
     );
@@ -85,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo:  `${window.location.origin}/`,
         queryParams: { access_type: 'offline', prompt: 'select_account' },
       },
     });

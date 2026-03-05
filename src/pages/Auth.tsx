@@ -1,40 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { INVITE_TOKEN_STORAGE_KEY } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Shield, BarChart3, MessageSquare, Users, Sparkles } from 'lucide-react';
+import { Loader2, Shield, BarChart3, MessageSquare, Users, Sparkles, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import kcsLogo from '@/assets/kcs-logo.png';
 
 const signInSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email:    z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 const signUpSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email:           z.string().email('Please enter a valid email address'),
+  password:        z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
-  path: ["confirmPassword"],
+  path:    ["confirmPassword"],
 });
 
 type SignInFormData = z.infer<typeof signInSchema>;
 type SignUpFormData = z.infer<typeof signUpSchema>;
 
 const features = [
-  { icon: BarChart3, text: 'Real-time budget tracking per project' },
+  { icon: BarChart3,    text: 'Real-time budget tracking per project' },
   { icon: MessageSquare, text: 'Team messaging & daily site logs' },
-  { icon: Users, text: 'Vendor & procurement management' },
-  { icon: Sparkles, text: 'AI-powered expense receipt parsing' },
+  { icon: Users,        text: 'Vendor & procurement management' },
+  { icon: Sparkles,     text: 'AI-powered expense receipt parsing' },
 ];
 
 const GoogleIcon = () => (
@@ -47,21 +48,39 @@ const GoogleIcon = () => (
 );
 
 export default function Auth() {
-  const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const navigate              = useNavigate();
+  const { signIn, signUp }    = useAuth();
+  const [isLoading, setIsLoading]             = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [error, setError]                     = useState<string | null>(null);
+  const [successMessage, setSuccessMessage]   = useState<string | null>(null);
+  const [isSignUp, setIsSignUp]               = useState(false);
 
-  const signInForm = useForm<SignInFormData>({
-    resolver: zodResolver(signInSchema),
-  });
+  // ── Invite-link context ──────────────────────────────────────────
+  // When a user lands here via /auth?invite_token=<hex64> we:
+  //   1. Persist the token in localStorage (survives email-verification redirects)
+  //   2. Switch to sign-up mode so new users see the correct form first
+  //   3. Show a contextual banner explaining why they're here
+  const [hasInviteToken, setHasInviteToken] = useState(false);
 
-  const signUpForm = useForm<SignUpFormData>({
-    resolver: zodResolver(signUpSchema),
-  });
+  useEffect(() => {
+    const params      = new URLSearchParams(window.location.search);
+    const inviteToken = params.get('invite_token');
+
+    if (inviteToken && inviteToken.length === 64) {
+      // Store so AuthContext can pick it up after sign-in/sign-up + email verification
+      localStorage.setItem(INVITE_TOKEN_STORAGE_KEY, inviteToken);
+      setHasInviteToken(true);
+      setIsSignUp(true); // nudge new users toward sign-up
+
+      // Clean the token from the URL (don't expose it in browser history)
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+  }, []);
+
+  const signInForm = useForm<SignInFormData>({ resolver: zodResolver(signInSchema) });
+  const signUpForm = useForm<SignUpFormData>({ resolver: zodResolver(signUpSchema) });
 
   const handleSignIn = async (data: SignInFormData) => {
     setIsLoading(true);
@@ -97,7 +116,11 @@ export default function Auth() {
         setError(error.message);
       }
     } else {
-      setSuccessMessage('Account created successfully! Please check your email to verify your account, then sign in.');
+      setSuccessMessage(
+        hasInviteToken
+          ? 'Account created! Check your email to verify your address, then sign in — your team invitation will be accepted automatically.'
+          : 'Account created successfully! Please check your email to verify your account, then sign in.'
+      );
       signUpForm.reset();
       setIsSignUp(false);
     }
@@ -109,7 +132,7 @@ export default function Auth() {
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/` },
+      options:  { redirectTo: `${window.location.origin}/` },
     });
     if (error) {
       setError(error.message || 'Failed to sign in with Google');
@@ -125,15 +148,16 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row">
-      {/* Left Branding Panel */}
+
+      {/* ── Left branding panel ── */}
       <div className="lg:w-1/2 flex flex-col justify-between p-8 lg:p-12 xl:p-16 bg-card/50">
-        {/* Top: Logo */}
+        {/* Logo */}
         <div className="flex items-center gap-3">
           <img src={kcsLogo} alt="KCS logo" className="h-9 w-9 rounded" />
           <span className="text-xl font-bold text-foreground tracking-tight">GroundWorks</span>
         </div>
 
-        {/* Center: Headline + features */}
+        {/* Headline + features */}
         <div className="flex-1 flex flex-col justify-center py-12 lg:py-0 max-w-lg">
           <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight mb-4">
             Built for{' '}
@@ -142,7 +166,6 @@ export default function Auth() {
           <p className="text-muted-foreground text-lg mb-10">
             Track budgets, expenses, daily logs, and team activity across every fix&nbsp;&amp;&nbsp;flip project.
           </p>
-
           <ul className="space-y-4">
             {features.map((f) => (
               <li key={f.text} className="flex items-center gap-3">
@@ -155,16 +178,30 @@ export default function Auth() {
           </ul>
         </div>
 
-        {/* Bottom: Security footer */}
+        {/* Security footer */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Shield className="h-3.5 w-3.5 text-success" />
           <span>Secured &amp; encrypted · All data encrypted at rest</span>
         </div>
       </div>
 
-      {/* Right Auth Panel */}
+      {/* ── Right auth panel ── */}
       <div className="lg:w-1/2 flex flex-col items-center justify-center p-8 lg:p-12 xl:p-16">
         <div className="w-full max-w-sm space-y-6">
+
+          {/* ── Invite context banner ── */}
+          {hasInviteToken && (
+            <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3">
+              <Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">You have a team invitation</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Sign in or create an account — you'll be added to the team automatically.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Heading */}
           <div>
             <h2 className="text-2xl font-bold text-foreground">
@@ -172,14 +209,18 @@ export default function Auth() {
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
               {isSignUp ? (
-                <>Already have an account?{' '}<button onClick={switchMode} className="text-primary hover:underline font-medium">Sign in</button></>
+                <>Already have an account?{' '}
+                  <button onClick={switchMode} className="text-primary hover:underline font-medium">Sign in</button>
+                </>
               ) : (
-                <>Don&apos;t have an account?{' '}<button onClick={switchMode} className="text-primary hover:underline font-medium">Sign up</button></>
+                <>Don&apos;t have an account?{' '}
+                  <button onClick={switchMode} className="text-primary hover:underline font-medium">Sign up</button>
+                </>
               )}
             </p>
           </div>
 
-          {/* Google Button */}
+          {/* Google */}
           <Button
             type="button"
             variant="outline"
@@ -201,7 +242,7 @@ export default function Auth() {
             </div>
           </div>
 
-          {/* Sign In Form */}
+          {/* ── Sign-in form ── */}
           {!isSignUp && (
             <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
               {error && (
@@ -217,7 +258,11 @@ export default function Auth() {
 
               <div className="space-y-2">
                 <Label htmlFor="signin-email">Email</Label>
-                <Input id="signin-email" type="email" placeholder="you@example.com" {...signInForm.register('email')} />
+                <Input
+                  id="signin-email" type="email"
+                  placeholder="you@example.com"
+                  {...signInForm.register('email')}
+                />
                 {signInForm.formState.errors.email && (
                   <p className="text-sm text-destructive">{signInForm.formState.errors.email.message}</p>
                 )}
@@ -226,21 +271,29 @@ export default function Auth() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="signin-password">Password</Label>
-                  <button type="button" className="text-xs text-primary hover:underline">Forgot password?</button>
+                  <button type="button" className="text-xs text-primary hover:underline">
+                    Forgot password?
+                  </button>
                 </div>
-                <Input id="signin-password" type="password" placeholder="••••••••" {...signInForm.register('password')} />
+                <Input
+                  id="signin-password" type="password"
+                  placeholder="••••••••"
+                  {...signInForm.register('password')}
+                />
                 {signInForm.formState.errors.password && (
                   <p className="text-sm text-destructive">{signInForm.formState.errors.password.message}</p>
                 )}
               </div>
 
               <Button type="submit" className="w-full h-11" disabled={isLoading || isGoogleLoading}>
-                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</> : 'Sign In'}
+                {isLoading
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</>
+                  : 'Sign In'}
               </Button>
             </form>
           )}
 
-          {/* Sign Up Form */}
+          {/* ── Sign-up form ── */}
           {isSignUp && (
             <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
               {error && (
@@ -251,7 +304,11 @@ export default function Auth() {
 
               <div className="space-y-2">
                 <Label htmlFor="signup-email">Email</Label>
-                <Input id="signup-email" type="email" placeholder="you@example.com" {...signUpForm.register('email')} />
+                <Input
+                  id="signup-email" type="email"
+                  placeholder="you@example.com"
+                  {...signUpForm.register('email')}
+                />
                 {signUpForm.formState.errors.email && (
                   <p className="text-sm text-destructive">{signUpForm.formState.errors.email.message}</p>
                 )}
@@ -259,7 +316,11 @@ export default function Auth() {
 
               <div className="space-y-2">
                 <Label htmlFor="signup-password">Password</Label>
-                <Input id="signup-password" type="password" placeholder="••••••••" {...signUpForm.register('password')} />
+                <Input
+                  id="signup-password" type="password"
+                  placeholder="••••••••"
+                  {...signUpForm.register('password')}
+                />
                 {signUpForm.formState.errors.password && (
                   <p className="text-sm text-destructive">{signUpForm.formState.errors.password.message}</p>
                 )}
@@ -267,21 +328,27 @@ export default function Auth() {
 
               <div className="space-y-2">
                 <Label htmlFor="signup-confirm-password">Confirm Password</Label>
-                <Input id="signup-confirm-password" type="password" placeholder="••••••••" {...signUpForm.register('confirmPassword')} />
+                <Input
+                  id="signup-confirm-password" type="password"
+                  placeholder="••••••••"
+                  {...signUpForm.register('confirmPassword')}
+                />
                 {signUpForm.formState.errors.confirmPassword && (
                   <p className="text-sm text-destructive">{signUpForm.formState.errors.confirmPassword.message}</p>
                 )}
               </div>
 
               <Button type="submit" className="w-full h-11" disabled={isLoading || isGoogleLoading}>
-                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account...</> : 'Create Account'}
+                {isLoading
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account...</>
+                  : 'Create Account'}
               </Button>
             </form>
           )}
 
           {/* Footer */}
           <p className="text-center text-xs text-muted-foreground pt-4">
-            © 2026 GroundWorks · All rights reserved
+            &copy; 2026 GroundWorks &middot; All rights reserved
           </p>
         </div>
       </div>

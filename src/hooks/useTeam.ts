@@ -20,19 +20,35 @@ interface TeamMember {
   last_name?: string;
 }
 
-interface TeamInvitation {
+export interface TeamInvitation {
   id: string;
   team_id: string;
   email: string;
+  role: string;
   status: string;
+  token: string | null;
   invited_at: string;
+  expires_at: string | null;
+}
+
+/**
+ * Generates a cryptographically secure 64-character hex token suitable for
+ * use as an invite link token.  Uses the Web Crypto API (available in all
+ * modern browsers and Supabase Edge Functions).
+ */
+function generateInviteToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 export function useTeam() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch or auto-create the user's team
+  // ── Fetch (or auto-create) the current user's team ──────────────
   const { data: team, isLoading: isLoadingTeam } = useQuery({
     queryKey: ['team', user?.id],
     queryFn: async () => {
@@ -47,7 +63,6 @@ export function useTeam() {
       if (error) throw error;
 
       if (!data) {
-        // Fetch company name for team name
         const { data: companyData } = await supabase
           .from('company_settings')
           .select('company_name')
@@ -56,12 +71,10 @@ export function useTeam() {
 
         const { data: newTeam, error: insertError } = await supabase
           .from('teams')
-          .insert({ 
-            owner_id: user.id, 
-            name: companyData?.company_name || null 
-          })
+          .insert({ owner_id: user.id, name: companyData?.company_name || null })
           .select()
           .single();
+
         if (insertError) {
           console.error('Failed to auto-create team:', insertError);
           throw insertError;
@@ -76,7 +89,7 @@ export function useTeam() {
     staleTime: 30000,
   });
 
-  // Fetch team members
+  // ── Fetch team members with profile data ─────────────────────────
   const { data: members = [], isLoading: isLoadingMembers } = useQuery({
     queryKey: ['team-members', team?.id],
     queryFn: async () => {
@@ -93,7 +106,6 @@ export function useTeam() {
         return [];
       }
 
-      // Fetch profile info for each member
       const memberProfiles: TeamMember[] = [];
       for (const m of data) {
         const { data: profile } = await supabase
@@ -116,7 +128,7 @@ export function useTeam() {
     staleTime: 30000,
   });
 
-  // Fetch pending invitations
+  // ── Fetch pending invitations ─────────────────────────────────────
   const { data: invitations = [], isLoading: isLoadingInvitations } = useQuery({
     queryKey: ['team-invitations', team?.id],
     queryFn: async () => {
@@ -124,7 +136,7 @@ export function useTeam() {
 
       const { data, error } = await supabase
         .from('team_invitations')
-        .select('*')
+        .select('id, team_id, email, role, status, token, invited_at, expires_at')
         .eq('team_id', team.id)
         .eq('status', 'pending')
         .order('invited_at', { ascending: false });
@@ -140,29 +152,63 @@ export function useTeam() {
     staleTime: 30000,
   });
 
+  // ── Invite a new member ───────────────────────────────────────────
+  /**
+   * Creates (or refreshes) an invitation with a secure token.
+   *
+   * Duplicate prevention: UPSERT on (team_id, email) so a second invite
+   * to the same address refreshes the token and expiry instead of
+   * throwing a unique-constraint error.
+   *
+   * Rate limiting: enforced at the Supabase RLS / Edge Function layer.
+   * The client-side tier check in ManageUsersCard is the first gate.
+   */
   const inviteMember = useMutation({
-    mutationFn: async (email: string) => {
+    mutationFn: async ({ email, role = 'viewer' }: { email: string; role?: string }) => {
       if (!team) throw new Error('No team found');
 
+      const token     = generateInviteToken();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      // Upsert: on conflict (team_id, email) update token + expiry + role + status
       const { error } = await supabase
         .from('team_invitations')
-        .insert({ team_id: team.id, email: email.toLowerCase() });
+        .upsert(
+          {
+            team_id:    team.id,
+            email:      email.toLowerCase(),
+            token,
+            expires_at: expiresAt,
+            role,
+            status:     'pending',
+          },
+          { onConflict: 'team_id,email' }
+        );
 
-      if (error) {
-        if (error.code === '23505') throw new Error('This email has already been invited');
-        throw error;
-      }
+      if (error) throw error;
 
-      // Send invitation email via edge function
+      // Fetch company name for white-label email
+      const { data: companyData } = await supabase
+        .from('company_settings')
+        .select('company_name')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      // Fire-and-forget email — DB record is already saved
       try {
-        const ownerName = user?.email || 'A team owner';
-        const appUrl = window.location.origin;
         await supabase.functions.invoke('send-team-invite', {
-          body: { email: email.toLowerCase(), ownerName, appUrl },
+          body: {
+            email:       email.toLowerCase(),
+            ownerName:   user?.email || 'A team owner',
+            appUrl:      window.location.origin,
+            token,
+            role,
+            companyName: companyData?.company_name || team.name || 'GroundWorks',
+          },
         });
-      } catch (emailError) {
-        // Don't fail the invite if email fails — the DB record is already created
-        console.error('Failed to send invite email:', emailError);
+      } catch (emailErr) {
+        // Don't surface this — the invitation row exists and can be resent
+        console.error('Failed to send invite email:', emailErr);
       }
     },
     onSuccess: () => {
@@ -170,6 +216,56 @@ export function useTeam() {
     },
   });
 
+  // ── Resend invitation (refreshes token + expiry) ──────────────────
+  /**
+   * Generates a brand-new token, resets the 7-day expiry, and re-sends
+   * the invitation email.  The old token immediately becomes invalid.
+   */
+  const resendInvitation = useMutation({
+    mutationFn: async ({
+      invitationId,
+      email,
+      role = 'viewer',
+    }: {
+      invitationId: string;
+      email: string;
+      role?: string;
+    }) => {
+      if (!team) throw new Error('No team found');
+
+      const token     = generateInviteToken();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const { error } = await supabase
+        .from('team_invitations')
+        .update({ token, expires_at: expiresAt, status: 'pending' })
+        .eq('id', invitationId);
+
+      if (error) throw error;
+
+      const { data: companyData } = await supabase
+        .from('company_settings')
+        .select('company_name')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      await supabase.functions.invoke('send-team-invite', {
+        body: {
+          email,
+          ownerName:   user?.email || 'A team owner',
+          appUrl:      window.location.origin,
+          token,
+          role,
+          companyName: companyData?.company_name || team.name || 'GroundWorks',
+        },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-invitations', team?.id] });
+    },
+  });
+
+  // ── Cancel / revoke an invitation ────────────────────────────────
   const cancelInvitation = useMutation({
     mutationFn: async (invitationId: string) => {
       const { error } = await supabase
@@ -184,6 +280,7 @@ export function useTeam() {
     },
   });
 
+  // ── Remove an active team member ──────────────────────────────────
   const removeMember = useMutation({
     mutationFn: async (memberId: string) => {
       const { error } = await supabase
@@ -195,16 +292,6 @@ export function useTeam() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-members', team?.id] });
-    },
-  });
-
-  const resendInvitation = useMutation({
-    mutationFn: async (email: string) => {
-      const ownerName = user?.email || 'A team owner';
-      const appUrl = window.location.origin;
-      await supabase.functions.invoke('send-team-invite', {
-        body: { email, ownerName, appUrl },
-      });
     },
   });
 
