@@ -55,8 +55,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
   const [date, setDate] = useState(formatDateString(new Date()));
   const [jobNumber, setJobNumber] = useState('');
   const [jobTitle, setJobTitle] = useState('');
-  const [location, setLocation] = useState('');
-  const [keyQuantities, setKeyQuantities] = useState('');
   const [workItems, setWorkItems] = useState<WorkItem[]>([]);
   
   const [exclusions, setExclusions] = useState<WorkItem[]>([]);
@@ -76,8 +74,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
       setDate(formatDateString(new Date()));
       setJobNumber('');
       setJobTitle('');
-      setLocation('');
-      setKeyQuantities('');
       setWorkItems([]);
       
       setExclusions([]);
@@ -103,15 +99,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
       lines.push(jobTitle);
     }
 
-    if (location) {
-      lines.push('', 'LOCATION / AREA');
-      lines.push(location);
-    }
-
-    if (keyQuantities) {
-      lines.push('', 'KEY QUANTITIES');
-      lines.push(keyQuantities);
-    }
 
     const formatSection = (items: WorkItem[], title: string) => {
       const filled = items.filter((i) => i.text);
@@ -157,8 +144,6 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
       date,
       jobNumber,
       jobTitle,
-      location,
-      keyQuantities,
       workItems,
       
       exclusions,
@@ -235,31 +220,14 @@ export function ScopeOfWorkSheet({ open, onOpenChange }: ScopeOfWorkSheetProps) 
               </div>
             </div>
 
-            {/* JOB DETAILS */}
-            <div>
-              <SectionLabel>Job Details</SectionLabel>
-                <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label>Job Title</Label>
-                  <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="e.g. Water heater replacement" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Location / Area</Label>
-                    <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Garage, Back yard" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Key Quantities</Label>
-                    <Input value={keyQuantities} onChange={(e) => setKeyQuantities(e.target.value)} placeholder="e.g. 2 fixtures, 3 units" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* SCOPE OF WORK */}
             <div>
               <SectionLabel>Scope of Work</SectionLabel>
               <div className="space-y-5">
+                <div className="space-y-1.5">
+                  <Label>Job Title</Label>
+                  <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="e.g. Water heater replacement" />
+                </div>
                 <WorkItemLines
                   items={workItems}
                   onChange={setWorkItems}
