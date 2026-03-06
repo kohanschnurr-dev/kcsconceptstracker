@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, Users, Receipt, ShieldCheck, Loader2, Mail } from 'lucide-react';
+import { Calculator, Users, Receipt, ShieldCheck, Loader2, Mail, ArrowLeft } from 'lucide-react';
 import { lovable } from '@/integrations/lovable/index';
 import groundworksLogo from '@/assets/groundworks-logo.png';
 
