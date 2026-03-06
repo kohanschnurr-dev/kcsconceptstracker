@@ -1,19 +1,16 @@
 
 
-## Fix: Layout Shift When Dialog Opens
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**Problem**: When clicking a feature card, the Radix Dialog locks scrolling on the body and removes the scrollbar, causing all content behind the overlay to shift horizontally.
-
-**Solution**: Add `scrollbar-gutter: stable` to the `<body>`/`<html>` element in `src/index.css`. This reserves space for the scrollbar at all times, so when the dialog removes it, nothing shifts.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
 ### Changes
 
-**`src/index.css`** — Add one CSS rule to `html`:
-```css
-html {
-  scrollbar-gutter: stable;
-}
-```
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-This is the cleanest fix — no component changes needed, works globally for all dialogs across the site.
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
