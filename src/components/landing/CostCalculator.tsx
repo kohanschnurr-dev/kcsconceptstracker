@@ -33,7 +33,7 @@ export default function CostCalculator() {
               value={[rate]}
               onValueChange={([v]) => setRate(v)}
               min={20}
-              max={150}
+              max={75}
               step={5}
               className="min-h-[48px]"
             />
@@ -51,7 +51,7 @@ export default function CostCalculator() {
               value={[hours]}
               onValueChange={([v]) => setHours(v)}
               min={1}
-              max={20}
+              max={12}
               step={1}
               className="min-h-[48px]"
             />
@@ -69,7 +69,7 @@ export default function CostCalculator() {
               value={[projects]}
               onValueChange={([v]) => setProjects(v)}
               min={1}
-              max={10}
+              max={4}
               step={1}
               className="min-h-[48px]"
             />
