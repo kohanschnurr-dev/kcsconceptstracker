@@ -13,30 +13,36 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
   const [count, setCount] = useState(0);
   const [hasAnimated, setHasAnimated] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const delay = index * 250;
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
 
+    let timeoutId: ReturnType<typeof setTimeout>;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !hasAnimated) {
           setHasAnimated(true);
-          if (value === 0) { setCount(0); return; }
+          if (value === 0) { setCount(0); observer.unobserve(el); return; }
 
-          const duration = 1500;
-          let startTime: number | null = null;
+          timeoutId = setTimeout(() => {
+            const duration = 1500;
+            let startTime: number | null = null;
 
-          const animate = (timestamp: number) => {
-            if (!startTime) startTime = timestamp;
-            const progress = Math.min((timestamp - startTime) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 4);
-            setCount(Math.floor(eased * value));
-            if (progress < 1) requestAnimationFrame(animate);
-            else setCount(value);
-          };
+            const animate = (timestamp: number) => {
+              if (!startTime) startTime = timestamp;
+              const progress = Math.min((timestamp - startTime) / duration, 1);
+              const eased = 1 - Math.pow(1 - progress, 4);
+              setCount(Math.floor(eased * value));
+              if (progress < 1) requestAnimationFrame(animate);
+              else setCount(value);
+            };
 
-          requestAnimationFrame(animate);
+            requestAnimationFrame(animate);
+          }, delay);
+
           observer.unobserve(el);
         }
       },
@@ -44,8 +50,11 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
     );
 
     observer.observe(el);
-    return () => observer.disconnect();
-  }, [value, hasAnimated]);
+    return () => {
+      observer.disconnect();
+      clearTimeout(timeoutId);
+    };
+  }, [value, hasAnimated, delay]);
 
   return (
     <div
@@ -54,7 +63,7 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
       className={`scroll-hidden stagger-${index + 1} text-center hover-gold-glow rounded-xl p-4 transition-all`}
     >
       <p className="font-heading text-4xl sm:text-5xl font-extrabold text-primary mb-2">
-        {prefix}{count}{suffix}
+        {prefix}{count.toLocaleString()}{suffix}
       </p>
       <p className="text-sm sm:text-base text-muted-foreground">{label}</p>
     </div>
