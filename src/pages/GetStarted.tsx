@@ -271,7 +271,7 @@ export default function GetStarted() {
                   emoji={role.emoji}
                   label={role.label}
                   selected={userRole === role.label}
-                  onClick={() => setUserRole(role.label)}
+                  onClick={() => { setUserRole(role.label); setTimeout(() => setStep(3), 300); }}
                 />
               ))}
             </div>
@@ -292,7 +292,7 @@ export default function GetStarted() {
                   key={v}
                   label={v}
                   selected={annualVolume === v}
-                  onClick={() => setAnnualVolume(v)}
+                  onClick={() => { setAnnualVolume(v); setTimeout(() => setStep(4), 300); }}
                 />
               ))}
             </div>
@@ -337,7 +337,7 @@ export default function GetStarted() {
                   key={tool}
                   label={tool}
                   selected={currentTools === tool}
-                  onClick={() => setCurrentTools(tool)}
+                  onClick={() => { setCurrentTools(tool); setTimeout(() => setStep(6), 300); }}
                 />
               ))}
             </div>
@@ -358,7 +358,7 @@ export default function GetStarted() {
                   key={size}
                   label={size}
                   selected={teamSize === size}
-                  onClick={() => setTeamSize(size)}
+                  onClick={() => { setTeamSize(size); setTimeout(() => setStep(7), 300); }}
                 />
               ))}
             </div>
