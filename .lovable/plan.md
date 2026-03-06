@@ -1,16 +1,13 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Enhance Scroll Indicator
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+**File**: `src/components/landing/Hero.tsx`
 
 ### Changes
-
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+1. **Label**: Replace "Explore" with **"See What's Inside"**
+2. **Size**: Increase the `ChevronDown` icon from `w-6 h-6` to `w-10 h-10`
+3. **Text**: Bump from `text-xs` to `text-sm font-medium` for better visibility
+4. **Glow effect**: Add a subtle gold ring/pulse behind the arrow using a `ring` or custom `animate-pulse` circle to draw the eye
+5. **Spacing**: Move it slightly higher from `bottom-8` to `bottom-10` so it's more prominent
 
