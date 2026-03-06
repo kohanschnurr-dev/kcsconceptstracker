@@ -1,16 +1,21 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Brighten All Orange Accents
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+The current orange sits at `36 100% 60%` (HSL) for the default theme and `32 45% 50%` for the Ember palette — both are muted. We'll push everything brighter and more vivid.
 
 ### Changes
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**1. `src/index.css`** — Default CSS variables (`:root` and `.dark`)
+- `--primary`: `36 100% 60%` → `30 100% 55%` (punchier, slightly deeper hue)
+- `--accent`: `36 95% 58%` → `30 100% 55%`
+- `--ring`, `--chart-1`, `--sidebar-primary`, `--sidebar-ring`: same update
+- `.gold-glow` / `.gold-glow-sm` / `.blueprint-grid`: update hardcoded `hsl(38 100% 58%)` → `hsl(30 100% 55%)`
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**2. `src/lib/colorPalettes.ts`** — Ember palette
+- `--primary`: `32 45% 50%` → `30 100% 55%`
+- `--accent`: `32 40% 45%` → `30 95% 52%`
+- `--ring`, `--chart-1`, `--sidebar-primary`, `--sidebar-ring`: match primary
 
-Two lines, two files.
+All other palettes (Graphite, Slate, etc.) are not orange-based, so no changes needed there.
 
