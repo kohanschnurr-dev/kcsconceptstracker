@@ -32,7 +32,7 @@ export default function LandingHeader() {
   }, [mobileOpen]);
 
   const handleTrialClick = () => {
-    navigate("/auth");
+    navigate("/get-started");
   };
 
   const handleNavClick = (e: React.MouseEvent, href: string) => {
@@ -137,7 +137,7 @@ export default function LandingHeader() {
               className="w-full min-h-[48px] gold-glow"
               onClick={() => {
                 setMobileOpen(false);
-                navigate("/auth");
+                navigate("/get-started");
               }}
             >
               Start Free Trial

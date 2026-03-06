@@ -74,7 +74,7 @@ export default function Pricing() {
   }, []);
 
   const handleTrialClick = () => {
-    navigate("/auth");
+    navigate("/get-started");
   };
 
   return (

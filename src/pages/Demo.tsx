@@ -17,7 +17,7 @@ export default function Demo() {
   const navigate = useNavigate();
 
   const handleTrialClick = () => {
-    navigate("/auth");
+    navigate("/get-started");
   };
 
   return (

@@ -6,7 +6,7 @@ export default function Hero() {
   const navigate = useNavigate();
 
   const handleTrialClick = () => {
-    navigate("/auth");
+    navigate("/get-started");
   };
 
   return (

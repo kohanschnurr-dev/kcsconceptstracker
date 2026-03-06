@@ -1,8 +1,18 @@
-import { useState, useMemo } from "react";
-import { Search, ChevronDown, X, ArrowUpDown } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, ChevronDown, X, ArrowUpDown, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 import type { AdminUser } from "@/types/admin";
+
+interface OnboardingData {
+  user_role: string | null;
+  annual_project_volume: string | null;
+  pain_points: string[] | null;
+  current_tools: string | null;
+  team_size: string | null;
+  created_at: string;
+}
 
 interface Props {
   users: AdminUser[];
@@ -28,6 +38,25 @@ export default function AdminUsers({ users, isLoading, onUpdateUser, onExtendTri
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [extendDays, setExtendDays] = useState("7");
+  const [onboarding, setOnboarding] = useState<OnboardingData | null>(null);
+  const [onboardingLoading, setOnboardingLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedUser) {
+      setOnboarding(null);
+      return;
+    }
+    setOnboardingLoading(true);
+    (supabase.from as any)("user_onboarding")
+      .select("user_role, annual_project_volume, pain_points, current_tools, team_size, created_at")
+      .eq("user_id", selectedUser.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .then(({ data }: { data: any[] | null }) => {
+        setOnboarding(data?.[0] ?? null);
+        setOnboardingLoading(false);
+      });
+  }, [selectedUser]);
 
   const filtered = useMemo(() => {
     let list = [...users];
@@ -231,6 +260,62 @@ export default function AdminUsers({ users, isLoading, onUpdateUser, onExtendTri
                 </div>
               )}
             </div>
+
+            {/* Onboarding Questionnaire */}
+            {onboardingLoading ? (
+              <div className="border-t border-border pt-4">
+                <p className="text-xs text-muted-foreground">Loading onboarding data...</p>
+              </div>
+            ) : onboarding ? (
+              <div className="border-t border-border pt-4 space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <ClipboardList className="w-4 h-4 text-primary" />
+                  <h4 className="text-sm font-semibold">Onboarding Questionnaire</h4>
+                </div>
+                <div className="space-y-2 text-sm bg-secondary/30 rounded-lg p-3">
+                  {onboarding.user_role && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Role</span>
+                      <span>{onboarding.user_role}</span>
+                    </div>
+                  )}
+                  {onboarding.annual_project_volume && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Projects/Year</span>
+                      <span>{onboarding.annual_project_volume}</span>
+                    </div>
+                  )}
+                  {onboarding.pain_points && onboarding.pain_points.length > 0 && (
+                    <div>
+                      <span className="text-muted-foreground text-xs">Pain Points</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {onboarding.pain_points.map((p) => (
+                          <span key={p} className="px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary">
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {onboarding.current_tools && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Current Tools</span>
+                      <span className="text-right max-w-[200px]">{onboarding.current_tools}</span>
+                    </div>
+                  )}
+                  {onboarding.team_size && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Team Size</span>
+                      <span>{onboarding.team_size}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="border-t border-border pt-4">
+                <p className="text-xs text-muted-foreground italic">No onboarding questionnaire data</p>
+              </div>
+            )}
 
             <div className="border-t border-border pt-4 space-y-3">
               <div className="flex gap-2">

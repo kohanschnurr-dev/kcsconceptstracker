@@ -32,6 +32,7 @@ import Procurement from "./pages/Procurement";
 import Bundles from "./pages/Bundles";
 import BundleDetail from "./pages/BundleDetail";
 import Auth from "./pages/Auth";
+import GetStarted from "./pages/GetStarted";
 import QuickBooksCallback from "./pages/QuickBooksCallback";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import EULA from "./pages/EULA";
@@ -59,6 +60,7 @@ const App = () => (
             <Route path="/demo" element={<LandingLayout><Demo /></LandingLayout>} />
             <Route path="/privacy" element={<LandingLayout><Privacy /></LandingLayout>} />
             <Route path="/terms" element={<LandingLayout><Terms /></LandingLayout>} />
+            <Route path="/get-started" element={<GetStarted />} />
             <Route path="/auth" element={<Auth />} />
 
             {/* Legacy routes */}
