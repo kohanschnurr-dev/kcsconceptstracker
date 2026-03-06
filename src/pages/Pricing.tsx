@@ -91,8 +91,7 @@ export default function Pricing() {
             Simple, <span className="text-primary">Honest</span> Pricing
           </h1>
           <p className="text-muted-foreground text-center mb-10 max-w-xl mx-auto">
-            No hidden fees. No long-term contracts. Start free, upgrade when
-            you're ready.
+            No hidden fees. Start free, upgrade when you're ready.
           </p>
 
           {/* Toggle */}
