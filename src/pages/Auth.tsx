@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, Users, Receipt, ShieldCheck, Loader2, Mail } from 'lucide-react';
+import { Calculator, Users, Receipt, ShieldCheck, Loader2, Mail, ArrowLeft } from 'lucide-react';
 import { lovable } from '@/integrations/lovable/index';
 import groundworksLogo from '@/assets/groundworks-logo.png';
 
@@ -198,7 +198,12 @@ export default function Auth() {
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-background">
+      <div className="flex-1 flex flex-col p-6 bg-background">
+        <Button variant="ghost" size="sm" className="self-start mb-4 gap-1 text-muted-foreground" onClick={() => navigate('/')}>
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+        <div className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-[340px] space-y-6">
           {/* Mobile logo */}
           <div className="flex flex-col items-center gap-1 lg:hidden">
@@ -281,6 +286,7 @@ export default function Auth() {
               </Button>
             </form>
           )}
+        </div>
         </div>
       </div>
     </div>
