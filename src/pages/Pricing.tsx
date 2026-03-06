@@ -91,7 +91,7 @@ export default function Pricing() {
           </p>
 
           {/* Toggle */}
-          <div className="flex flex-col items-center mb-14 h-16 justify-start">
+          <div className="flex flex-col items-center mb-10 h-14 justify-start">
             <div className="flex items-center gap-4">
               <span
                 className={`text-sm ${!annual ? "text-foreground font-semibold" : "text-muted-foreground"}`}
