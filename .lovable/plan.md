@@ -1,16 +1,20 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Center the Bouncing Arrow
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+The ping/glow circles and the chevron icon are inside a `relative flex items-center justify-center` div, but the div has no explicit dimensions — so the absolutely-positioned circles expand outside it without affecting layout, causing a visual misalignment.
 
-### Changes
+### `src/components/landing/Hero.tsx` (line 61)
+- Give the inner container a fixed size matching the glow circles: `w-14 h-14` so the absolute children align symmetrically within it.
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+Change:
+```tsx
+<div className="relative flex items-center justify-center">
+```
+To:
+```tsx
+<div className="relative flex items-center justify-center w-14 h-14">
+```
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+This anchors the ping ring and chevron to the same explicit bounding box, centering everything visually.
 
