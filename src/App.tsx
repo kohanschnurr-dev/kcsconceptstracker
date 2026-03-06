@@ -38,6 +38,7 @@ import EULA from "./pages/EULA";
 import Settings from "./pages/Settings";
 import ProfitBreakdown from "./pages/ProfitBreakdown";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,9 @@ const App = () => (
             <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
             <Route path="/profit" element={<ProtectedRoute><ProfitBreakdown /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+            {/* Admin — email-gated, no nav links */}
+            <Route path="/admin" element={<Admin />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
