@@ -1,11 +1,16 @@
 
 
-## Add New GroundWorks Logo to Auth Page
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-The user wants to replace/use the uploaded hard hat + gear logo on the auth page's left panel.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
 ### Changes
 
-1. **Copy the uploaded logo** (`GroundWorks_5-2.png`) to `src/assets/groundworks-app-logo.png`
-2. **Update `src/pages/Auth.tsx`** — Replace the current `groundworks-logo.png` import with the new logo in the left panel's logo section (the `h-14 w-14` image next to "GroundWorks" text)
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
