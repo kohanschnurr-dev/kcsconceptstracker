@@ -1,16 +1,27 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Refresh Landing Page Copy & Layout
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+### 1. Hero (`src/components/landing/Hero.tsx`)
+- **New headline**: "Your Entire Operation, **One Platform**" — drops the spreadsheet diss, uses confident corporate language
+- **New subtext**: Position GroundWorks as a command center for residential investors — budgets, rehabs, draws, subs, all in one place
 
-### Changes
+### 2. Built For section (`src/components/landing/BuiltFor.tsx`)
+- **New heading**: "Built For **Residential Investors**"
+- **Updated personas** focused on investment strategies:
+  - Fix & Flip — Track rehab budgets, timelines, and ROI
+  - Rental Properties — Manage renovations across your portfolio
+  - BRRRR Strategy — Buy, rehab, rent, refinance, repeat with clarity
+  - New Construction — Oversee ground-up builds from permit to punch list
+  - And More — Wholesalers, developers, property managers
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+### 3. Features Grid (`src/components/landing/FeaturesGrid.tsx`)
+- **New heading**: "Everything You Need to **Run the Job**" (keep as-is, it's good)
+- **Center-align** the feature card content (icon, title, description, link) using `text-center` and centering the icon/link elements
+- Update "And more" card text from "built for contractors" → "built for investors"
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+### Files Changed
+- `src/components/landing/Hero.tsx`
+- `src/components/landing/BuiltFor.tsx`
+- `src/components/landing/FeaturesGrid.tsx`
 
