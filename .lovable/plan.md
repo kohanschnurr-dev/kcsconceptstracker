@@ -1,16 +1,9 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Add "psst" note to Cost Calculator
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+### Change
+**`src/components/landing/CostCalculator.tsx`** — Update the savings banner at the bottom of the calculator to add a playful "psst.. GroundWorks only costs $89/mo" line above or replacing the current "GroundWorks Solo: $89/mo" text, keeping the "Get back $X worth of your time" line below it.
 
-### Changes
-
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+Will restyle the top line to feel more casual/whispered with smaller italic text to match the "psst" tone.
 
