@@ -1,7 +1,7 @@
 const stats = [
-  { value: "12+", label: "Project Modules" },
-  { value: "14-Day", label: "Free Trial" },
-  { value: "3x", label: "Faster Draw Processing" },
+  { value: "12+", label: "Integrated Modules" },
+  { value: "40+", label: "Database-Backed Features" },
+  { value: "3x", label: "Faster Than Spreadsheets" },
   { value: "$0", label: "Setup Fees" },
 ];
 
