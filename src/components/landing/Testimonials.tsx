@@ -31,15 +31,16 @@ export default function Testimonials() {
   return (
     <section className="py-20 sm:py-28 bg-secondary/30">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <h2 className="font-heading text-3xl sm:text-4xl font-bold text-center mb-14">
+        <h2 data-reveal className="scroll-slide-left font-heading text-3xl sm:text-4xl font-bold text-center mb-14">
           Trusted by <span className="text-primary">Real Builders</span>
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map((t) => (
+          {testimonials.map((t, i) => (
             <div
               key={t.name}
-              className="bg-card border border-border rounded-xl p-6 sm:p-8"
+              data-reveal
+              className={`scroll-hidden stagger-${i + 1} bg-card border border-border rounded-xl p-6 sm:p-8 hover-gold-glow transition-all`}
             >
               {/* Stars */}
               <div className="flex gap-1 mb-4">

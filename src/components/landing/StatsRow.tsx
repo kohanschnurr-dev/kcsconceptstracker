@@ -10,8 +10,12 @@ export default function StatsRow() {
     <section className="py-16 sm:py-20">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
-          {stats.map((s) => (
-            <div key={s.label} className="text-center">
+          {stats.map((s, i) => (
+            <div
+              key={s.label}
+              data-reveal
+              className={`scroll-hidden stagger-${i + 1} text-center hover-gold-glow rounded-xl p-4 transition-all`}
+            >
               <p className="font-heading text-4xl sm:text-5xl font-extrabold text-primary mb-2">
                 {s.value}
               </p>
