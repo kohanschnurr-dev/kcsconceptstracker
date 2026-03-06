@@ -54,11 +54,15 @@ export default function Hero() {
       {/* Scroll indicator */}
       <button
         onClick={() => document.getElementById("built-for")?.scrollIntoView({ behavior: "smooth" })}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer group"
         aria-label="Scroll down"
       >
-        <span className="text-xs tracking-widest uppercase">Explore</span>
-        <ChevronDown className="w-6 h-6 animate-bounce" />
+        <span className="text-sm font-medium tracking-widest uppercase">See What's Inside</span>
+        <div className="relative flex items-center justify-center">
+          <div className="absolute w-14 h-14 rounded-full bg-primary/10 animate-ping" />
+          <div className="absolute w-14 h-14 rounded-full bg-primary/5 group-hover:bg-primary/15 transition-colors" />
+          <ChevronDown className="relative w-10 h-10 animate-bounce" />
+        </div>
       </button>
     </section>
   );
