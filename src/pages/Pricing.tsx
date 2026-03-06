@@ -41,7 +41,7 @@ const teamsExtra = [
 const faqs = [
   {
     q: "Is there really a free trial?",
-    a: "Yes, 14 days, no credit card required. You get full access to all features in your chosen plan.",
+    a: "Yes, 7 days, no credit card required. You get full access to all features in your chosen plan.",
   },
   {
     q: "Can I switch plans later?",
@@ -148,7 +148,7 @@ export default function Pricing() {
                 className="w-full min-h-[48px] gold-glow mb-6"
                 onClick={handleTrialClick}
               >
-                Start 14-Day Free Trial
+                Start 7-Day Free Trial
               </Button>
               <p className="text-xs text-muted-foreground mb-4">
                 No credit card required
@@ -188,7 +188,7 @@ export default function Pricing() {
                 className="w-full min-h-[48px] mb-6"
                 onClick={handleTrialClick}
               >
-                Start 14-Day Free Trial
+                Start 7-Day Free Trial
               </Button>
               <p className="text-xs text-muted-foreground mb-4">
                 Everything in Solo, plus:

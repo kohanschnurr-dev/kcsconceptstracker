@@ -72,7 +72,7 @@ export default function Demo() {
               Start Your Free Trial
             </Button>
             <p className="text-sm text-muted-foreground mt-4">
-              No credit card required · 14-day free trial
+              No credit card required · 7-day free trial
             </p>
           </div>
         </div>

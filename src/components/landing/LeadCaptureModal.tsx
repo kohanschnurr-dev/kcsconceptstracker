@@ -82,7 +82,7 @@ export default function LeadCaptureModal() {
             Start Your <span className="text-primary">Free Trial</span>
           </h2>
           <p className="text-sm text-muted-foreground text-center mb-8">
-            14 days free. No credit card required. We'll get you set up.
+            7 days free. No credit card required. We'll get you set up.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">

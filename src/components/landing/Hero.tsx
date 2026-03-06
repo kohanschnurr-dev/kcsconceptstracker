@@ -47,7 +47,7 @@ export default function Hero() {
         </div>
 
         <p className="hero-animate hero-delay-4 text-sm text-muted-foreground">
-          No credit card required · 14-day free trial · Cancel anytime
+          No credit card required · 7-day free trial · Cancel anytime
         </p>
       </div>
 
