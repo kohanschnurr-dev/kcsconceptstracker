@@ -19,7 +19,7 @@ export default function Landing() {
       <Hero />
       <PlatformOverview />
       <BuiltFor />
-      <FeatureShowcase />
+      
       <IntegrationStrip />
       <HowItWorks />
       <Testimonials />
