@@ -54,7 +54,7 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
       observer.disconnect();
       clearTimeout(timeoutId);
     };
-  }, [value, hasAnimated, delay]);
+  }, [value, delay]);
 
   return (
     <div
