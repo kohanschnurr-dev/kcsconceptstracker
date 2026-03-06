@@ -2,7 +2,7 @@ import LandingHeader from "@/components/landing/LandingHeader";
 import Hero from "@/components/landing/Hero";
 import PlatformOverview from "@/components/landing/PlatformOverview";
 import BuiltFor from "@/components/landing/BuiltFor";
-import FeatureShowcase from "@/components/landing/FeatureShowcase";
+
 import IntegrationStrip from "@/components/landing/IntegrationStrip";
 import HowItWorks from "@/components/landing/HowItWorks";
 import Testimonials from "@/components/landing/Testimonials";
@@ -19,7 +19,7 @@ export default function Landing() {
       <Hero />
       <PlatformOverview />
       <BuiltFor />
-      <FeatureShowcase />
+      
       <IntegrationStrip />
       <HowItWorks />
       <Testimonials />
