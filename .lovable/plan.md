@@ -1,16 +1,17 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Auto-advance on selection
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+### Change in `src/pages/GetStarted.tsx`
 
-### Changes
+For single-select steps (2, 3, 5, 6), auto-advance to the next step when the user clicks an option. Step 4 (pain points, multi-select up to 3) keeps the Continue button since users need to pick multiple items.
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+- In step 2: `onClick={() => { setUserRole(role.label); setStep(3); }}`
+- In step 3: `onClick={() => { setAnnualVolume(v); setStep(4); }}`
+- In step 5: `onClick={() => { setCurrentTools(tool); setStep(6); }}`
+- In step 6: `onClick={() => { setTeamSize(size); setStep(7); }}`
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+Add a small delay (~300ms) before advancing so the user sees their selection highlight briefly.
 
-Two lines, two files.
+The bottom nav Continue button still shows for step 4 (multi-select). For steps 2/3/5/6, the Continue button can remain as a fallback but the auto-advance handles the primary flow.
 
