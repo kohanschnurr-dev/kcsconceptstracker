@@ -237,9 +237,9 @@ export default function PlatformOverview() {
             );
           })}
 
-          <Link
-            to="/features"
-            className="group bg-card border border-border rounded-xl p-5 flex items-start gap-3 hover:border-primary/30 transition-all"
+          <div
+            data-reveal
+            className="scroll-hidden stagger-12 group bg-card border border-border rounded-xl p-5 flex items-start gap-3 hover:border-primary/30 hover-gold-glow transition-all"
           >
             <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg">
               <Sparkles className="w-5 h-5 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
@@ -247,10 +247,10 @@ export default function PlatformOverview() {
             <div>
               <h3 className="font-heading font-semibold text-sm mb-1">And More...</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Explore all features built for investors.
+                Sign up today to explore all the features built for investors.
               </p>
             </div>
-          </Link>
+          </div>
         </div>
       </div>
 
