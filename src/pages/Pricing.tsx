@@ -70,7 +70,7 @@ const faqs = [
 ];
 
 export default function Pricing() {
-  const [annual, setAnnual] = useState(false);
+  const [annual, setAnnual] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
