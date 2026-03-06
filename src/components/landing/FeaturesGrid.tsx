@@ -6,7 +6,7 @@ export default function FeaturesGrid() {
   const displayed = features.slice(0, 7);
 
   return (
-    <section className="py-20 sm:py-28">
+    <section id="features" className="py-20 sm:py-28">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
         <h2 className="font-heading text-3xl sm:text-4xl font-bold text-center mb-14">
           Everything You Need to{" "}
