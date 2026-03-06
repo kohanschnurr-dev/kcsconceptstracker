@@ -1,16 +1,16 @@
 
 
-## Plan: Scroll to top on Pricing page load
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**File**: `src/pages/Pricing.tsx`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-Add a `useEffect` that scrolls to the top of the page when the component mounts:
+### Changes
 
-```tsx
-useEffect(() => {
-  window.scrollTo(0, 0);
-}, []);
-```
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-This ensures that navigating to `/pricing` from any scroll position on another page always starts at the top. Simple one-line addition inside the existing component.
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
