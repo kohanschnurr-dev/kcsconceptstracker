@@ -18,8 +18,8 @@ export default function Landing() {
       <Hero />
       <PlatformOverview />
       <BuiltFor />
-      
-      <IntegrationStrip />
+
+
       <HowItWorks />
       <Testimonials />
       <StatsRow />
