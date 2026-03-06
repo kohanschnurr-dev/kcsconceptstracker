@@ -46,10 +46,10 @@ export default function FeatureDetail() {
       <section className="pt-28 pb-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-8">
           <Link
-            to="/features"
+            to="/#platform"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
           >
-            <ArrowLeft className="w-4 h-4" /> Back to Features
+            <ArrowLeft className="w-4 h-4" /> Back to Home
           </Link>
 
           {/* Hero */}

@@ -9,7 +9,7 @@ import LandingLayout from "@/components/landing/LandingLayout";
 
 // Landing / public pages
 import Landing from "./pages/Landing";
-import LandingFeatures from "./pages/LandingFeatures";
+
 import FeatureDetail from "./pages/FeatureDetail";
 import Pricing from "./pages/Pricing";
 import About from "./pages/About";
@@ -52,7 +52,7 @@ const App = () => (
           <Routes>
             {/* Public / landing pages — wrapped in LeadCaptureProvider */}
             <Route path="/" element={<LandingLayout><Landing /></LandingLayout>} />
-            <Route path="/features" element={<LandingLayout><LandingFeatures /></LandingLayout>} />
+            
             <Route path="/features/:slug" element={<LandingLayout><FeatureDetail /></LandingLayout>} />
             <Route path="/pricing" element={<LandingLayout><Pricing /></LandingLayout>} />
             <Route path="/about" element={<LandingLayout><About /></LandingLayout>} />
