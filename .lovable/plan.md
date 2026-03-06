@@ -1,19 +1,16 @@
 
 
-## Plan: Add distinct background to CostCalculator section
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**File**: `src/components/landing/CostCalculator.tsx`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-**Change**: Add a subtle distinct background to the outer `<section>` element to visually separate it from adjacent sections. Will use a slightly lighter/different tone — something like `bg-muted/30` or `bg-card/50` with a top/bottom border to create visual distinction while staying on-brand with the dark theme.
+### Changes
 
-Specifically, update the section element from:
-```tsx
-<section className="py-20 sm:py-28">
-```
-to:
-```tsx
-<section className="py-20 sm:py-28 bg-muted/20 border-y border-border/40">
-```
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-This adds a subtle tinted background and thin horizontal borders to distinguish it from the pure black sections above and below.
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 

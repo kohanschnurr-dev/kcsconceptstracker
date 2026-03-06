@@ -11,7 +11,7 @@ export default function CostCalculator() {
   const annualSavings = annualCost - 89 * 12;
 
   return (
-    <section className="py-20 sm:py-28">
+    <section className="py-20 sm:py-28 bg-muted/20 border-y border-border/40">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
         <h2 className="font-heading text-3xl sm:text-4xl font-bold text-center mb-4">
           See Where Your <span className="text-primary">Time</span> Goes
