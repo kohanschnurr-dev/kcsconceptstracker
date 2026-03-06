@@ -1,20 +1,16 @@
 
 
-## Plan: Replace two weak stats with stronger selling points
+## Fix Dashboard Link in Sidebar and Mobile Nav
+
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
 ### Changes
-**`src/components/landing/StatsRow.tsx`** — Update lines 5-6 in the `stats` array:
 
-| Current | Replacement |
-|---------|-------------|
-| **98%** Budget Accuracy | **10k+** Expenses Tracked |
-| **5x** Faster Draw Requests | **3** Minutes to Set Up |
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-New stats array:
-1. **500+** Hours Saved Per Year
-2. **10,000+** Expenses Tracked  (`value: 10000, suffix: "+"`)
-3. **3** Minutes to Set Up (`value: 3, suffix: " min"`)
-4. **$0** To Get Started
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-These are more universally understood, avoid raising questions, and reinforce ease-of-use + scale.
+Two lines, two files.
 
