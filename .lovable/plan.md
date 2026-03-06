@@ -1,16 +1,28 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Fix: Background Content Shift Behind Dialog
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+**Problem**: `scrollbar-gutter: stable` fixed the header, but the background content behind the overlay still jumps when the dialog opens because Radix UI adds `overflow: hidden` to `<body>`, removing the scrollbar. The gutter on `html` doesn't prevent `body`'s scrollbar from disappearing.
+
+**Solution**: Override Radix's body scroll-lock padding compensation in CSS. When Radix hides the scrollbar, it adds `padding-right` to body to compensate — but this doesn't always work correctly with `scrollbar-gutter: stable`. We need to ensure the body also uses `scrollbar-gutter: stable` and neutralize Radix's inline padding-right override.
 
 ### Changes
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**`src/index.css`** — Add rules to prevent the shift:
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+```css
+html, body {
+  scrollbar-gutter: stable;
+}
 
-Two lines, two files.
+/* Prevent Radix dialog from adding padding-right that causes layout shift */
+body[data-scroll-locked] {
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+}
+```
+
+Remove the existing standalone `html { scrollbar-gutter: stable; }` rule and replace with the above.
+
+Single file change, no component modifications needed.
 
