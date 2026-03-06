@@ -1,16 +1,10 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Make "Features" nav link scroll to PlatformOverview section
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+**Two changes needed:**
 
-### Changes
+1. **`src/components/landing/PlatformOverview.tsx`** — Add `id="platform"` to the outer `<section>` element so it can be targeted by a hash link.
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+2. **`src/components/landing/LandingHeader.tsx`** — Change the Features nav link from `href: "/features"` to `href: "/#platform"`, and add scroll logic. When on the landing page (`/`), clicking Features should smooth-scroll to `#platform`. When on another page, it should navigate to `/#platform` and then scroll after load. The mobile drawer link should also work the same way.
 
