@@ -59,8 +59,7 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
   return (
     <div
       ref={ref}
-      data-reveal
-      className={`scroll-hidden stagger-${index + 1} text-center hover-gold-glow rounded-xl p-4 transition-all`}
+      className="text-center hover-gold-glow rounded-xl p-4 transition-all"
     >
       <p className="font-heading text-4xl sm:text-5xl font-extrabold text-primary mb-2">
         {prefix}{count.toLocaleString()}{suffix}
