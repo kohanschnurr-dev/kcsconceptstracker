@@ -1,23 +1,16 @@
 
 
-## Plan: Revamp Stats Row with compelling metrics & count-up animation
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-### New Stats (more persuasive, outcome-focused)
-1. **500+** — "Hours Saved Per Year"
-2. **98%** — "Budget Accuracy"
-3. **5x** — "Faster Draw Requests"
-4. **$0** — "To Get Started"
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-### Count-Up Animation
-- Use a custom `useCountUp` hook with `requestAnimationFrame` that triggers when the element becomes visible (via IntersectionObserver)
-- Each stat animates from 0 to its target number over ~1.5s with an ease-out curve
-- Handle prefixes (`$`) and suffixes (`+`, `%`, `x`) separately from the numeric value
-- Stats data will store `numericValue`, `prefix`, `suffix`, and `label`
+### Changes
 
-### File Changes
-**`src/components/landing/StatsRow.tsx`** — Full rewrite:
-- Define stats with structured data: `{ value: 500, prefix: "", suffix: "+", label: "Hours Saved Per Year" }`
-- Create inline `CountUpStat` component using `useEffect` + `IntersectionObserver` + `requestAnimationFrame`
-- Animate numbers from 0 to target with easeOutQuart over 1.5s
-- Keep existing scroll-reveal classes and hover-gold-glow styling
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
