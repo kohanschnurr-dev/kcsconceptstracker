@@ -81,8 +81,14 @@
   }
 }
 
-html {
+html, body {
   scrollbar-gutter: stable;
+}
+
+/* Prevent Radix dialog from adding padding-right that causes layout shift */
+body[data-scroll-locked] {
+  padding-right: 0 !important;
+  margin-right: 0 !important;
 }
 
 @layer base {
