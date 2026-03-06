@@ -243,12 +243,92 @@ input[type="time"] {
   animation: fadeUp 0.5s ease-out forwards;
 }
 
+/* Hover gold glow for cards */
+.hover-gold-glow {
+  transition: box-shadow 0.3s ease;
+}
+.hover-gold-glow:hover {
+  box-shadow: 0 0 10px hsl(30 100% 55% / 0.2), 0 0 30px hsl(30 100% 55% / 0.05);
+}
+
+/* Scroll reveal animations */
+.scroll-hidden {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.scroll-hidden.scroll-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-slide-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.scroll-slide-left.scroll-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.scroll-slide-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.scroll-slide-right.scroll-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Stagger delays for cascading card reveals */
+.stagger-1 { transition-delay: 0.05s; }
+.stagger-2 { transition-delay: 0.1s; }
+.stagger-3 { transition-delay: 0.15s; }
+.stagger-4 { transition-delay: 0.2s; }
+.stagger-5 { transition-delay: 0.25s; }
+.stagger-6 { transition-delay: 0.3s; }
+.stagger-7 { transition-delay: 0.35s; }
+.stagger-8 { transition-delay: 0.4s; }
+.stagger-9 { transition-delay: 0.45s; }
+.stagger-10 { transition-delay: 0.5s; }
+.stagger-11 { transition-delay: 0.55s; }
+.stagger-12 { transition-delay: 0.6s; }
+
+/* Hero entrance animation */
+@keyframes heroFadeScale {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.hero-animate {
+  opacity: 0;
+  animation: heroFadeScale 0.7s ease-out forwards;
+}
+.hero-delay-1 { animation-delay: 0.1s; }
+.hero-delay-2 { animation-delay: 0.3s; }
+.hero-delay-3 { animation-delay: 0.5s; }
+.hero-delay-4 { animation-delay: 0.7s; }
+
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .transition-all,
-  .transition-transform {
+  .transition-transform,
+  .scroll-hidden,
+  .scroll-slide-left,
+  .scroll-slide-right,
+  .hero-animate {
     animation: none !important;
     transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
