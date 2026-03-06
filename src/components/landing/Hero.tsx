@@ -61,7 +61,7 @@ export default function Hero() {
         <div className="relative flex items-center justify-center w-14 h-14">
           <div className="absolute w-14 h-14 rounded-full bg-primary/10 animate-ping" />
           <div className="absolute w-14 h-14 rounded-full bg-primary/5 group-hover:bg-primary/15 transition-colors" />
-          <ChevronDown className="relative w-10 h-10 animate-bounce" />
+          <ChevronDown className="relative w-10 h-10 animate-bounce-down" />
         </div>
       </button>
     </section>
