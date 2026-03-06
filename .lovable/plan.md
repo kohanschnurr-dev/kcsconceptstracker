@@ -1,16 +1,14 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Default to Annual billing
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+**File**: `src/pages/Pricing.tsx`
 
-### Changes
+Change the initial state of `annual` from `false` to `true` so the toggle defaults to annual billing selected.
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+```tsx
+const [annual, setAnnual] = useState(true);
+```
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+One-line change.
 
