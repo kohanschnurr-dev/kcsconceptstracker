@@ -1,16 +1,12 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Fix stats count-up animation
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+### Root cause
+`hasAnimated` is in the `useEffect` dependency array. When the IntersectionObserver fires and calls `setHasAnimated(true)`, React re-renders, runs the cleanup function (`clearTimeout(timeoutId)`), and kills the animation before it begins.
 
-### Changes
-
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+### Fix in `src/components/landing/StatsRow.tsx`
+- Replace `hasAnimated` state with a `useRef(false)` so setting it doesn't trigger a re-render or effect cleanup
+- Remove `hasAnimated` from the dependency array
+- Keep everything else the same (staggered delay, toLocaleString, easeOutQuart)
 
