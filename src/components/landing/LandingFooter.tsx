@@ -6,7 +6,8 @@ export default function LandingFooter() {
     <footer className="border-t border-border py-10">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
         <p className="text-sm text-muted-foreground">
-          &copy; 2025 GroundWorks. All rights reserved.
+        &copy; 2025 GroundWorks. All rights reserved.{" "}
+          <Link to="/admin" className="text-muted-foreground/30 text-[10px] hover:text-primary transition-colors">·</Link>
         </p>
 
         <div className="flex items-center gap-6">

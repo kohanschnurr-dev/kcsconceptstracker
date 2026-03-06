@@ -1,12 +1,16 @@
 
 
-## Plan: Add hidden admin link on landing page
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**File**: `src/components/landing/LandingFooter.tsx`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-Add a subtle, inconspicuous link to `/admin` in the landing page footer — something like making the copyright year or a period clickable, so only you would know it's there. No visible "Admin" text.
+### Changes
 
-Alternatively, if you prefer it more findable during development: add a small muted "Admin" text link in the footer's bottom row that blends in.
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-**Approach**: Add a `<Link to="/admin">` in the footer, styled as `text-muted-foreground/30 text-[10px] hover:text-primary` so it's nearly invisible but clickable. The `/admin` route already has its own email-based guard so no one else can use it.
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
