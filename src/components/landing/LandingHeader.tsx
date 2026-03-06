@@ -6,7 +6,7 @@ import groundworksLogo from "@/assets/groundworks-helmet-logo.png";
 
 const navLinks = [
   { label: "Home", href: "/" },
-  { label: "Features", href: "/features" },
+  { label: "Features", href: "/#platform" },
   { label: "Pricing", href: "/pricing" },
   { label: "About", href: "/about" },
   { label: "Demo", href: "/demo" },
@@ -57,6 +57,15 @@ export default function LandingHeader() {
               key={link.href}
               to={link.href}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={(e) => {
+                if (link.href === "/#platform") {
+                  const el = document.getElementById("platform");
+                  if (el && window.location.pathname === "/") {
+                    e.preventDefault();
+                    el.scrollIntoView({ behavior: "smooth" });
+                  }
+                }
+              }}
             >
               {link.label}
             </Link>
@@ -105,7 +114,16 @@ export default function LandingHeader() {
               key={link.href}
               to={link.href}
               className="text-lg py-3 text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setMobileOpen(false)}
+              onClick={(e) => {
+                setMobileOpen(false);
+                if (link.href === "/#platform") {
+                  const el = document.getElementById("platform");
+                  if (el && window.location.pathname === "/") {
+                    e.preventDefault();
+                    el.scrollIntoView({ behavior: "smooth" });
+                  }
+                }
+              }}
             >
               {link.label}
             </Link>
