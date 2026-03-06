@@ -1,16 +1,18 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Add Scroll Indicator to Hero Section
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+**Problem**: The hero takes up the full viewport and there's no visual cue telling visitors to scroll down for more content.
 
-### Changes
+**Change**: Add an animated bouncing chevron/arrow at the bottom of the hero section that smoothly scrolls to the next section on click.
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+### `src/components/landing/Hero.tsx`
+- Import `ChevronDown` from lucide-react
+- Add an absolutely-positioned bouncing chevron at the bottom center of the hero section
+- On click, smooth-scroll to the next section (Built For) using `window.scrollBy` or a ref
+- Use Tailwind's `animate-bounce` for the pulsing effect
+- Include a subtle "Explore Features" or "See More" label beneath the arrow for extra clarity
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+### `src/components/landing/BuiltFor.tsx`
+- Add an `id="built-for"` to the section element so the scroll target works cleanly
 
