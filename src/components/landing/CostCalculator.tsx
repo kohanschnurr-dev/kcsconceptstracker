@@ -26,7 +26,7 @@ export default function CostCalculator() {
             <div className="flex justify-between mb-3">
               <label className="text-sm font-medium">Your Hourly Rate</label>
               <span className="text-sm font-semibold text-primary">
-                ${rate}/hr
+                ${rate}{rate >= 75 ? "+" : ""}/hr
               </span>
             </div>
             <Slider
@@ -44,7 +44,7 @@ export default function CostCalculator() {
             <div className="flex justify-between mb-3">
               <label className="text-sm font-medium">Hours/Week on Admin</label>
               <span className="text-sm font-semibold text-primary">
-                {hours} hrs
+                {hours}{hours >= 12 ? "+" : ""} hrs
               </span>
             </div>
             <Slider
@@ -62,14 +62,14 @@ export default function CostCalculator() {
             <div className="flex justify-between mb-3">
               <label className="text-sm font-medium">Active Projects</label>
               <span className="text-sm font-semibold text-primary">
-                {projects}
+                {projects}{projects >= 5 ? "+" : ""}
               </span>
             </div>
             <Slider
               value={[projects]}
               onValueChange={([v]) => setProjects(v)}
               min={1}
-              max={4}
+              max={5}
               step={1}
               className="min-h-[48px]"
             />
