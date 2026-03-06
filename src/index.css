@@ -317,6 +317,13 @@ input[type="time"] {
 .hero-delay-3 { animation-delay: 0.5s; }
 .hero-delay-4 { animation-delay: 0.7s; }
 
+/* Bounce-down animation for scroll indicator */
+@keyframes bounce-down {
+  0%, 100% { transform: translateY(0); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+  50% { transform: translateY(25%); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+.animate-bounce-down { animation: bounce-down 1s infinite; }
+
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
