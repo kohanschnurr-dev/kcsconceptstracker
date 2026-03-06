@@ -1,19 +1,16 @@
 
 
-## Reorder Landing Page Sections
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-Move the **FeaturesGrid** above **BuiltFor** so visitors see the feature cards before the investor personas.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-### File: `src/pages/Landing.tsx`
+### Changes
 
-Change the section order from:
-```
-Hero → BuiltFor → FeaturesGrid → ...
-```
-To:
-```
-Hero → FeaturesGrid → BuiltFor → ...
-```
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-Single line swap — no other changes needed.
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
