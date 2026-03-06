@@ -25,12 +25,6 @@ const personas = [
     description: "Buy, rehab, rent, refinance, repeat — with total clarity.",
   },
   {
-    icon: Building2,
-    color: "text-emerald-400",
-    label: "New Construction",
-    description: "Oversee ground-up builds from permit to punch list.",
-  },
-  {
     icon: MoreHorizontal,
     color: "text-rose-400",
     label: "And More",
