@@ -23,8 +23,8 @@ export default function Landing() {
       <CostCalculator />
       <BuiltFor />
       <Testimonials />
-      <FAQ />
       <FinalCTA />
+      <FAQ />
       <LandingFooter />
     </div>
   );
