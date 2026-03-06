@@ -23,8 +23,8 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !hasAnimated) {
-          setHasAnimated(true);
+        if (entry.isIntersecting && !hasAnimated.current) {
+          hasAnimated.current = true;
           if (value === 0) { setCount(0); observer.unobserve(el); return; }
 
           timeoutId = setTimeout(() => {
