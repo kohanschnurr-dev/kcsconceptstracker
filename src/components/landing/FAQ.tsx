@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     q: "What's included in the free trial?",
-    a: "Everything. You get full access to all 12+ modules for 14 days with no credit card required. No feature gates, no limits — use it like you own it.",
+    a: "Everything. You get full access to all 12+ modules for 7 days with no credit card required. No feature gates, no limits — use it like you own it.",
   },
 ];
 

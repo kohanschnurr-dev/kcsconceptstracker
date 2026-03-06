@@ -16,7 +16,7 @@ export default function FinalCTA() {
         </h2>
         <p data-reveal className="scroll-hidden stagger-1 text-muted-foreground mb-10 max-w-lg mx-auto">
           Join contractors and investors who manage every project in one place.
-          Get started in minutes — your first 14 days are free.
+          Get started in minutes — your first 7 days are free.
         </p>
         <div data-reveal className="scroll-hidden stagger-2">
           <Button
@@ -28,7 +28,7 @@ export default function FinalCTA() {
           </Button>
         </div>
         <p data-reveal className="scroll-hidden stagger-3 text-sm text-muted-foreground mt-6">
-          No credit card required · 14-day free trial · Cancel anytime
+          No credit card required · 7-day free trial · Cancel anytime
         </p>
       </div>
     </section>
