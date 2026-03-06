@@ -106,8 +106,8 @@ export default function Pricing() {
               aria-label="Toggle annual billing"
             >
               <span
-                className={`absolute top-0.5 w-6 h-6 rounded-full bg-white transition-transform ${
-                  annual ? "translate-x-7" : "translate-x-0.5"
+                className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                  annual ? "translate-x-7" : "translate-x-0"
                 }`}
               />
             </button>
