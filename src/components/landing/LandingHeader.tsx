@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import groundworksLogo from "@/assets/groundworks-helmet-logo.png";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -44,7 +45,8 @@ export default function LandingHeader() {
     >
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 flex items-center justify-between h-16">
         {/* Logo */}
-        <Link to="/" className="font-heading text-xl font-bold text-foreground">
+        <Link to="/" className="flex items-center gap-2 font-heading text-xl font-bold text-foreground">
+          <img src={groundworksLogo} alt="GroundWorks" className="h-8 w-8 object-contain" />
           GroundWorks
         </Link>
 

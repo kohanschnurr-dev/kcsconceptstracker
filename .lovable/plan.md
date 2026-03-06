@@ -1,21 +1,16 @@
 
 
-## Add Logo to Landing Header
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-### Change
-In `src/components/landing/LandingHeader.tsx`, import the GroundWorks logo and display it next to the "GroundWorks" text in the top-left.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-First, copy `user-uploads://GroundWorks_5-3.png` to `src/assets/groundworks-helmet-logo.png`.
+### Changes
 
-Then update the logo `<Link>` (line 48-50) from plain text to an image + text combo:
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-```tsx
-import groundworksLogo from "@/assets/groundworks-helmet-logo.png";
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-// In the JSX:
-<Link to="/" className="flex items-center gap-2 font-heading text-xl font-bold text-foreground">
-  <img src={groundworksLogo} alt="GroundWorks" className="h-8 w-8" />
-  GroundWorks
-</Link>
-```
+Two lines, two files.
 
