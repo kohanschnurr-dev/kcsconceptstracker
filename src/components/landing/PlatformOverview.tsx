@@ -202,10 +202,10 @@ export default function PlatformOverview() {
   return (
     <section id="platform" className="py-20 sm:py-28 bg-secondary/30">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <h2 className="font-heading text-3xl sm:text-4xl font-bold text-center mb-4">
+        <h2 data-reveal className="scroll-slide-left font-heading text-3xl sm:text-4xl font-bold text-center mb-4">
           One Platform. <span className="text-primary">Every Module You Need.</span>
         </h2>
-        <p className="text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
+        <p data-reveal className="scroll-hidden text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
           GroundWorks isn't a stripped-down tracker — it's a full operating system
           for construction projects with 12+ integrated modules.
         </p>
@@ -216,8 +216,9 @@ export default function PlatformOverview() {
             return (
               <div
                 key={m.title}
+                data-reveal
                 onClick={() => setSelected(m)}
-                className="group bg-card border border-border rounded-xl p-5 hover:border-primary/30 transition-all cursor-pointer"
+                className={`scroll-hidden stagger-${(modules.indexOf(m) % 12) + 1} group bg-card border border-border rounded-xl p-5 hover:border-primary/30 hover-gold-glow transition-all cursor-pointer`}
               >
                 <div className="flex items-start gap-3">
                   <div className={`shrink-0 w-10 h-10 rounded-lg ${m.bg} flex items-center justify-center`}>

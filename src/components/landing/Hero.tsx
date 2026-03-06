@@ -15,18 +15,18 @@ export default function Hero() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsl(38_92%_50%_/_0.08)_0%,_transparent_70%)]" />
 
       <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-8 pt-24 pb-16 text-center">
-        <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-tight tracking-tight mb-6">
+        <h1 className="hero-animate hero-delay-1 font-heading text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-tight tracking-tight mb-6">
           Your Entire Operation,{" "}
           <span className="text-primary">One Platform</span>
         </h1>
 
-        <p className="max-w-2xl mx-auto text-lg sm:text-xl text-muted-foreground mb-10">
+        <p className="hero-animate hero-delay-2 max-w-2xl mx-auto text-lg sm:text-xl text-muted-foreground mb-10">
           GroundWorks is the command center for residential investors — track
           rehab budgets, manage draws, coordinate subs, and hit your numbers
           from acquisition to disposition.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+        <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           <Button
             size="lg"
             className="gold-glow min-h-[48px] px-8 text-base hover:scale-[1.03] transition-transform"
@@ -46,14 +46,14 @@ export default function Hero() {
           </Link>
         </div>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="hero-animate hero-delay-4 text-sm text-muted-foreground">
           No credit card required · 14-day free trial · Cancel anytime
         </p>
       </div>
 
       {/* Scroll indicator */}
       <button
-        onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
+        onClick={() => document.getElementById("platform")?.scrollIntoView({ behavior: "smooth" })}
         className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer group"
         aria-label="Scroll down"
       >
