@@ -287,6 +287,7 @@ export default function Auth() {
             </form>
           )}
         </div>
+        </div>
       </div>
     </div>
   );
