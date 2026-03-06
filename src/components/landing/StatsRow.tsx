@@ -11,7 +11,7 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
   value: number; prefix: string; suffix: string; label: string; index: number;
 }) {
   const [count, setCount] = useState(0);
-  const [hasAnimated, setHasAnimated] = useState(false);
+  const hasAnimated = useRef(false);
   const ref = useRef<HTMLDivElement>(null);
   const delay = index * 250;
 
