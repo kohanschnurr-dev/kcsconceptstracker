@@ -286,8 +286,8 @@ export default function Auth() {
         </div>
       </div>
 
-      <Button variant="ghost" size="sm" className="fixed bottom-6 left-6 gap-1.5 text-white hover:text-white/80 hover:bg-white/10 z-50" onClick={() => navigate('/')}>
-        <ArrowLeft className="h-4 w-4" />
+      <Button variant="ghost" size="default" className="fixed bottom-6 left-6 gap-1.5 text-white hover:text-white/80 hover:bg-white/10 z-50" onClick={() => navigate('/')}>
+        <ArrowLeft className="h-5 w-5" />
         Back to Home
       </Button>
     </div>
