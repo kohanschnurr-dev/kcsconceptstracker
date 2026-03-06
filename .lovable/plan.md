@@ -1,16 +1,15 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Change all "14-day" free trial references to "7-day"
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+Six files need updating:
 
-### Changes
+1. **`src/components/landing/FinalCTA.tsx`** — Lines 19, 31: "14 days" → "7 days", "14-day" → "7-day"
+2. **`src/components/landing/FAQ.tsx`** — Line 27: "14 days" → "7 days"
+3. **`src/components/landing/Hero.tsx`** — Line 50: "14-day" → "7-day"
+4. **`src/pages/Pricing.tsx`** — Lines 44, 151, 191: "14 days" → "7 days", "14-Day" → "7-Day"
+5. **`src/pages/Demo.tsx`** — Line 75: "14-day" → "7-day"
+6. **`src/components/landing/LeadCaptureModal.tsx`** — Line 85: "14 days" → "7 days"
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+Straightforward find-and-replace across all instances.
 
