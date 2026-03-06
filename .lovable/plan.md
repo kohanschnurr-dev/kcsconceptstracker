@@ -1,16 +1,18 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Remove the `/features` page
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+The `/features` page (`LandingFeatures.tsx`) is a standalone "All Features" grid page. Removing it involves:
 
 ### Changes
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+1. **Delete** `src/pages/LandingFeatures.tsx`
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+2. **`src/App.tsx`** — Remove the import of `LandingFeatures` and the `<Route path="/features" ...>` line. Keep the `/features/:slug` route for individual feature detail pages.
 
-Two lines, two files.
+3. **`src/components/landing/FeaturesGrid.tsx`** — The "See all features" card links to `/features`. Update it to link to `/#platform` (the Platform Overview section on the landing page) instead, or remove that card entirely.
+
+4. **`src/pages/FeatureDetail.tsx`** — Update the "Back to features" link from `/features` to `/#platform`.
+
+No other files reference this page.
 
