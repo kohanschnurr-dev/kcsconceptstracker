@@ -1,41 +1,41 @@
 import {
-  HardHat,
-  TrendingUp,
   Home,
+  TrendingUp,
+  RefreshCw,
   Building2,
-  ClipboardCheck,
+  MoreHorizontal,
 } from "lucide-react";
 
 const personas = [
   {
-    icon: HardHat,
-    color: "text-amber-400",
-    label: "General Contractors",
-    description: "Run every job from one dashboard.",
-  },
-  {
     icon: TrendingUp,
-    color: "text-violet-400",
-    label: "Fix & Flip Investors",
-    description: "Track rehab budgets and draw requests.",
+    color: "text-amber-400",
+    label: "Fix & Flip",
+    description: "Track rehab budgets, timelines, and ROI on every deal.",
   },
   {
     icon: Home,
     color: "text-sky-400",
-    label: "Rental Property Owners",
-    description: "Manage renovations across your portfolio.",
+    label: "Rental Properties",
+    description: "Manage renovations across your entire portfolio.",
+  },
+  {
+    icon: RefreshCw,
+    color: "text-violet-400",
+    label: "BRRRR Strategy",
+    description: "Buy, rehab, rent, refinance, repeat — with total clarity.",
   },
   {
     icon: Building2,
     color: "text-emerald-400",
-    label: "Real Estate Developers",
-    description: "Oversee timelines, budgets, and subs at scale.",
+    label: "New Construction",
+    description: "Oversee ground-up builds from permit to punch list.",
   },
   {
-    icon: ClipboardCheck,
+    icon: MoreHorizontal,
     color: "text-rose-400",
-    label: "Construction Managers",
-    description: "Keep every project on track and documented.",
+    label: "And More",
+    description: "Wholesalers, developers, property managers — we've got you.",
   },
 ];
 
@@ -44,7 +44,7 @@ export default function BuiltFor() {
     <section className="py-20 sm:py-28">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
         <h2 className="font-heading text-3xl sm:text-4xl font-bold text-center mb-14">
-          Built For <span className="text-primary">Builders</span>
+          Built For <span className="text-primary">Residential Investors</span>
         </h2>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">

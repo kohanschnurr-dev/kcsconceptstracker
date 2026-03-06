@@ -3,7 +3,6 @@ import { features } from "@/data/features";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 export default function FeaturesGrid() {
-  // Show 7 features + 1 "And more..." card
   const displayed = features.slice(0, 7);
 
   return (
@@ -34,7 +33,7 @@ export default function FeaturesGrid() {
             <Sparkles className="w-8 h-8 text-primary mb-3 group-hover:scale-110 transition-transform" />
             <h3 className="font-heading font-semibold mb-2">And More...</h3>
             <p className="text-sm text-muted-foreground mb-3">
-              Explore all features built for contractors.
+              Explore all features built for investors.
             </p>
             <span className="text-sm text-primary flex items-center gap-1">
               See all features <ArrowRight className="w-4 h-4" />
@@ -49,8 +48,8 @@ export default function FeaturesGrid() {
 function FeatureCard({ feature }: { feature: (typeof features)[number] }) {
   const Icon = feature.icon;
   return (
-    <div className="group bg-card border border-border rounded-xl p-6 hover:gold-glow-sm hover:border-primary/30 transition-all">
-      <div className="mb-4">
+    <div className="group bg-card border border-border rounded-xl p-6 text-center hover:gold-glow-sm hover:border-primary/30 transition-all">
+      <div className="mb-4 flex justify-center">
         <Icon
           className={`w-8 h-8 ${feature.color} group-hover:scale-110 transition-transform`}
         />
@@ -61,7 +60,7 @@ function FeatureCard({ feature }: { feature: (typeof features)[number] }) {
       </p>
       <Link
         to={`/features/${feature.slug}`}
-        className="text-sm text-primary hover:underline flex items-center gap-1"
+        className="text-sm text-primary hover:underline inline-flex items-center gap-1"
       >
         See it in action <ArrowRight className="w-3 h-3" />
       </Link>
