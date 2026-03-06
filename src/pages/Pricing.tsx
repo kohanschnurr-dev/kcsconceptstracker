@@ -52,10 +52,6 @@ const faqs = [
     a: "You choose a plan or your account pauses. No surprise charges.",
   },
   {
-    q: "Do you offer refunds?",
-    a: "30-day money-back guarantee on annual plans. No questions asked.",
-  },
-  {
     q: "Can I add more team members?",
     a: "Contact us for custom team pricing beyond 5 seats.",
   },
