@@ -10,25 +10,25 @@ const personas = [
     icon: TrendingUp,
     color: "text-amber-400",
     label: "Fix & Flip",
-    description: "Track rehab budgets, timelines, and ROI on every deal.",
+    description: "Track every dollar from demo to sale so you know your true ROI before you list.",
   },
   {
     icon: Home,
     color: "text-sky-400",
     label: "Rental Properties",
-    description: "Manage renovations across your entire portfolio.",
+    description: "Know your exact cost basis before you refi — no more guessing at rehab spend.",
   },
   {
     icon: RefreshCw,
     color: "text-violet-400",
     label: "BRRRR Strategy",
-    description: "Buy, rehab, rent, refinance, repeat — with total clarity.",
+    description: "Generate draw schedules your lender can actually use, straight from your budget.",
   },
   {
     icon: MoreHorizontal,
     color: "text-rose-400",
     label: "And More",
-    description: "Wholesalers, developers, property managers — we've got you.",
+    description: "Wholesalers, developers, property managers — if you touch rehab, we've got you.",
   },
 ];
 
@@ -36,9 +36,12 @@ export default function BuiltFor() {
   return (
     <section id="built-for" className="py-20 sm:py-28">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <h2 data-reveal className="scroll-slide-right font-heading text-3xl sm:text-4xl font-bold text-center mb-14">
-          Built For <span className="text-primary">Residential Investors</span>
+        <h2 data-reveal className="scroll-slide-right font-heading text-3xl sm:text-4xl font-bold text-center mb-3">
+          One Platform for <span className="text-primary">Every Deal</span>
         </h2>
+        <p data-reveal className="scroll-slide-right text-muted-foreground text-center max-w-2xl mx-auto mb-14">
+          Everything you need to manage rehabs, rentals, and flips — in one place.
+        </p>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-4xl mx-auto">
           {personas.map((p, i) => (

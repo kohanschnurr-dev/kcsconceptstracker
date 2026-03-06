@@ -1,25 +1,16 @@
 
 
-## Plan: Update BuiltFor & Testimonials copy
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-### 1. `src/components/landing/BuiltFor.tsx`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-**Heading** (line 39-41): Change to "One Platform for Every Deal" with a subtitle line underneath covering the who/what/why.
+### Changes
 
-**Card descriptions** — update each to sell a specific outcome:
-- **Fix & Flip**: Focus on tracking rehab budgets, timelines, and ROI on every deal (outcome-driven)
-- **Rental Properties**: Talk about knowing your cost basis before you refi
-- **BRRRR Strategy**: Mention draw schedules lenders can actually use
-- **And More**: Wholesalers, developers, property managers covered
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-### 2. `src/components/landing/Testimonials.tsx`
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-**Heading** (line 34-36): Change from "Trusted by Real Builders" to "Don't Take Our Word For It"
-
-**Testimonial quotes** — each targets a different pain point/buyer:
-- **Marcus T.** — consolidation angle: killed three tools, now everything's in one place
-- **Sarah K.** — lender workflow: "I just send my lender a link" instead of assembling draw packages
-- **Jason R.** — scale: flags budget overruns across 14 rehabs automatically
-
-Two files, copy-only changes.
+Two lines, two files.
 
