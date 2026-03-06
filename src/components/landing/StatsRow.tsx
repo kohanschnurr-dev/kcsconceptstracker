@@ -1,9 +1,65 @@
+import { useEffect, useRef, useState } from "react";
+
 const stats = [
-  { value: "12+", label: "Integrated Modules" },
-  { value: "40+", label: "Database-Backed Features" },
-  { value: "3x", label: "Faster Than Spreadsheets" },
-  { value: "$0", label: "Setup Fees" },
+  { value: 500, prefix: "", suffix: "+", label: "Hours Saved Per Year" },
+  { value: 98, prefix: "", suffix: "%", label: "Budget Accuracy" },
+  { value: 5, prefix: "", suffix: "x", label: "Faster Draw Requests" },
+  { value: 0, prefix: "$", suffix: "", label: "To Get Started" },
 ];
+
+function CountUpStat({ value, prefix, suffix, label, index }: {
+  value: number; prefix: string; suffix: string; label: string; index: number;
+}) {
+  const [count, setCount] = useState(0);
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasAnimated) {
+          setHasAnimated(true);
+          if (value === 0) { setCount(0); return; }
+
+          const duration = 1500;
+          let startTime: number | null = null;
+
+          const animate = (timestamp: number) => {
+            if (!startTime) startTime = timestamp;
+            const progress = Math.min((timestamp - startTime) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 4);
+            setCount(Math.floor(eased * value));
+            if (progress < 1) requestAnimationFrame(animate);
+            else setCount(value);
+          };
+
+          requestAnimationFrame(animate);
+          observer.unobserve(el);
+        }
+      },
+      { threshold: 0.15 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [value, hasAnimated]);
+
+  return (
+    <div
+      ref={ref}
+      data-reveal
+      className={`scroll-hidden stagger-${index + 1} text-center hover-gold-glow rounded-xl p-4 transition-all`}
+    >
+      <p className="font-heading text-4xl sm:text-5xl font-extrabold text-primary mb-2">
+        {prefix}{count}{suffix}
+      </p>
+      <p className="text-sm sm:text-base text-muted-foreground">{label}</p>
+    </div>
+  );
+}
 
 export default function StatsRow() {
   return (
@@ -11,18 +67,7 @@ export default function StatsRow() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
           {stats.map((s, i) => (
-            <div
-              key={s.label}
-              data-reveal
-              className={`scroll-hidden stagger-${i + 1} text-center hover-gold-glow rounded-xl p-4 transition-all`}
-            >
-              <p className="font-heading text-4xl sm:text-5xl font-extrabold text-primary mb-2">
-                {s.value}
-              </p>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                {s.label}
-              </p>
-            </div>
+            <CountUpStat key={s.label} {...s} index={i} />
           ))}
         </div>
       </div>
