@@ -1,16 +1,22 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Add hover animation to module icon pills and icons
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+**File**: `src/components/landing/PlatformOverview.tsx`
 
-### Changes
+Add interactive hover effects to the icon container (pill) and the icon inside each module card:
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+1. **Icon container (pill)**: Scale up slightly and increase background opacity on card hover
+2. **Icon (emoticon)**: Add a subtle rotate + scale effect on card hover
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+Using Tailwind's `group-hover` since the cards already have the `group` class:
 
-Two lines, two files.
+```tsx
+{/* Icon container */}
+<div className={`shrink-0 w-10 h-10 rounded-lg ${m.bg} flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg`}>
+  <Icon className={`w-5 h-5 ${m.color} transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6`} />
+</div>
+```
+
+Same treatment for the "And More…" Sparkles card.
 
