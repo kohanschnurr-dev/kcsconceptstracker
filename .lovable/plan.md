@@ -1,16 +1,14 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Adjust Slider Ranges to Center Defaults
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+The current slider max values make the defaults look low. Reduce the max on each slider so the defaults sit near the midpoint.
 
-### Changes
+### Change in `src/components/landing/CostCalculator.tsx`
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+| Slider | Current Range | New Range | Default (midpoint) |
+|--------|--------------|-----------|-------------------|
+| Hourly Rate | 20–150 | 20–75 | $45 |
+| Hours/Week | 1–20 | 1–12 | 6 |
+| Active Projects | 1–10 | 1–4 | 2 |
 
