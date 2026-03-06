@@ -42,7 +42,7 @@ export default function CostCalculator() {
           {/* Hours per week */}
           <div className="mb-8">
             <div className="flex justify-between mb-3">
-              <label className="text-sm font-medium">Hours/Week on Admin</label>
+              <label className="text-sm font-medium">Hours a Week</label>
               <span className="text-sm font-semibold text-primary">
                 {hours}{hours >= 12 ? "+" : ""} hrs
               </span>
