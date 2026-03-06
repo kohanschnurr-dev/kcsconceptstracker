@@ -1,16 +1,19 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Move bounce to lower half
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+Tailwind's default `animate-bounce` uses `translateY(-25%)` which makes the element bounce **upward**. To bounce **downward** instead, I'll add a custom `animate-bounce-down` keyframe in `tailwind.config.ts` (or `index.css`) and swap the class on the chevron.
 
-### Changes
+**Changes:**
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+1. **`src/index.css`** — Add a `bounce-down` keyframe that translates downward instead of upward:
+   ```css
+   @keyframes bounce-down {
+     0%, 100% { transform: translateY(0); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+     50% { transform: translateY(25%); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+   }
+   .animate-bounce-down { animation: bounce-down 1s infinite; }
+   ```
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+2. **`src/components/landing/Hero.tsx`** — Change `animate-bounce` → `animate-bounce-down` on the `ChevronDown` icon.
 
