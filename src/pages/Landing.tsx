@@ -20,7 +20,6 @@ export default function Landing() {
       <BuiltFor />
 
 
-      <HowItWorks />
       <Testimonials />
       <StatsRow />
       <CostCalculator />
