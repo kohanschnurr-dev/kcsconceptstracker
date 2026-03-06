@@ -16,14 +16,14 @@ export default function Hero() {
 
       <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-8 pt-24 pb-16 text-center">
         <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-tight tracking-tight mb-6">
-          Stop Managing Projects{" "}
-          <span className="text-primary">in Spreadsheets</span>
+          Your Entire Operation,{" "}
+          <span className="text-primary">One Platform</span>
         </h1>
 
         <p className="max-w-2xl mx-auto text-lg sm:text-xl text-muted-foreground mb-10">
-          GroundWorks replaces your scattered docs, texts, and spreadsheets with one
-          platform that tracks budgets, timelines, subs, and draws — from bid to
-          closeout.
+          GroundWorks is the command center for residential investors — track
+          rehab budgets, manage draws, coordinate subs, and hit your numbers
+          from acquisition to disposition.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
