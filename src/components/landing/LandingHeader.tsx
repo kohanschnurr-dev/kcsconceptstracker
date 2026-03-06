@@ -35,6 +35,19 @@ export default function LandingHeader() {
     navigate("/auth");
   };
 
+  const handleNavClick = (e: React.MouseEvent, href: string) => {
+    if (href === "/" && window.location.pathname === "/") {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (href === "/#platform") {
+      const el = document.getElementById("platform");
+      if (el && window.location.pathname === "/") {
+        e.preventDefault();
+        el.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  };
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -57,15 +70,7 @@ export default function LandingHeader() {
               key={link.href}
               to={link.href}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              onClick={(e) => {
-                if (link.href === "/#platform") {
-                  const el = document.getElementById("platform");
-                  if (el && window.location.pathname === "/") {
-                    e.preventDefault();
-                    el.scrollIntoView({ behavior: "smooth" });
-                  }
-                }
-              }}
+              onClick={(e) => handleNavClick(e, link.href)}
             >
               {link.label}
             </Link>
@@ -116,13 +121,7 @@ export default function LandingHeader() {
               className="text-lg py-3 text-muted-foreground hover:text-foreground transition-colors"
               onClick={(e) => {
                 setMobileOpen(false);
-                if (link.href === "/#platform") {
-                  const el = document.getElementById("platform");
-                  if (el && window.location.pathname === "/") {
-                    e.preventDefault();
-                    el.scrollIntoView({ behavior: "smooth" });
-                  }
-                }
+                handleNavClick(e, link.href);
               }}
             >
               {link.label}
