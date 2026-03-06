@@ -11,7 +11,7 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
   value: number; prefix: string; suffix: string; label: string; index: number;
 }) {
   const [count, setCount] = useState(0);
-  const [hasAnimated, setHasAnimated] = useState(false);
+  const hasAnimated = useRef(false);
   const ref = useRef<HTMLDivElement>(null);
   const delay = index * 250;
 
@@ -23,8 +23,8 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !hasAnimated) {
-          setHasAnimated(true);
+        if (entry.isIntersecting && !hasAnimated.current) {
+          hasAnimated.current = true;
           if (value === 0) { setCount(0); observer.unobserve(el); return; }
 
           timeoutId = setTimeout(() => {
@@ -54,7 +54,7 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
       observer.disconnect();
       clearTimeout(timeoutId);
     };
-  }, [value, hasAnimated, delay]);
+  }, [value, delay]);
 
   return (
     <div
