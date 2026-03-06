@@ -13,8 +13,8 @@ export default function Landing() {
     <div className="min-h-screen bg-background text-foreground">
       <LandingHeader />
       <Hero />
-      <BuiltFor />
       <FeaturesGrid />
+      <BuiltFor />
       <Testimonials />
       <StatsRow />
       <CostCalculator />
