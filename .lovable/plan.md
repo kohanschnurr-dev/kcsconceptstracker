@@ -1,15 +1,16 @@
 
 
-## Update Cost Calculator Copy & Defaults
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**File**: `src/components/landing/CostCalculator.tsx`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
 ### Changes
-1. **Slider defaults**: `rate=45`, `hours=6`, `projects=2`
-2. **Slider ranges**: rate min `20` (was 25), hours min `1` (was 2)
-3. **Headline**: "See Where Your Time Goes"
-4. **Subheadline**: "Plug in your numbers. See what you could get back."
-5. **Left stat label**: "Monthly Time Cost"
-6. **Right stat label**: "Your Annual Overhead"
-7. **Bottom CTA**: "Get back $X worth of your time"
+
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 

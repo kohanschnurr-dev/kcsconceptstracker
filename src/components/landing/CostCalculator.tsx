@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Slider } from "@/components/ui/slider";
 
 export default function CostCalculator() {
-  const [rate, setRate] = useState(75);
-  const [hours, setHours] = useState(8);
-  const [projects, setProjects] = useState(3);
+  const [rate, setRate] = useState(45);
+  const [hours, setHours] = useState(6);
+  const [projects, setProjects] = useState(2);
 
   const monthlyCost = rate * hours * 4.33 * projects;
   const annualCost = monthlyCost * 12;
@@ -14,11 +14,10 @@ export default function CostCalculator() {
     <section className="py-20 sm:py-28">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
         <h2 className="font-heading text-3xl sm:text-4xl font-bold text-center mb-4">
-          See What You're <span className="text-primary">Losing</span> to
-          Spreadsheets
+          See Where Your <span className="text-primary">Time</span> Goes
         </h2>
         <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
-          Plug in your numbers. The math speaks for itself.
+          Plug in your numbers. See what you could get back.
         </p>
 
         <div className="max-w-2xl mx-auto bg-card border border-border rounded-xl p-6 sm:p-10 gold-glow-sm">
@@ -33,7 +32,7 @@ export default function CostCalculator() {
             <Slider
               value={[rate]}
               onValueChange={([v]) => setRate(v)}
-              min={25}
+              min={20}
               max={150}
               step={5}
               className="min-h-[48px]"
@@ -51,7 +50,7 @@ export default function CostCalculator() {
             <Slider
               value={[hours]}
               onValueChange={([v]) => setHours(v)}
-              min={2}
+              min={1}
               max={20}
               step={1}
               className="min-h-[48px]"
@@ -80,7 +79,7 @@ export default function CostCalculator() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
             <div className="bg-secondary/50 rounded-lg p-5 text-center">
               <p className="text-sm text-muted-foreground mb-1">
-                Monthly Cost of Admin
+                Monthly Time Cost
               </p>
               <p className="font-heading text-3xl font-bold text-destructive">
                 ${monthlyCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -88,7 +87,7 @@ export default function CostCalculator() {
             </div>
             <div className="bg-secondary/50 rounded-lg p-5 text-center">
               <p className="text-sm text-muted-foreground mb-1">
-                Annual Wasted Cost
+                Your Annual Overhead
               </p>
               <p className="font-heading text-3xl font-bold text-destructive">
                 ${annualCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -102,13 +101,13 @@ export default function CostCalculator() {
               GroundWorks Solo: $89/mo
             </p>
             <p className="font-heading text-xl font-bold text-primary">
-              Save $
+              Get back $
               {annualSavings > 0
                 ? annualSavings.toLocaleString(undefined, {
                     maximumFractionDigits: 0,
                   })
                 : "0"}{" "}
-              per year
+              worth of your time
             </p>
           </div>
         </div>
