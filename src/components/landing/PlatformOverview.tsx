@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import {
   DollarSign,
   BarChart3,
@@ -10,7 +11,7 @@ import {
   MessageSquare,
   Bell,
   Upload,
-  Shield,
+  Sparkles,
 } from "lucide-react";
 
 const modules = [
@@ -78,25 +79,18 @@ const modules = [
     desc: "Direct PM-to-owner threads with unread counts and instant delivery.",
   },
   {
-    icon: Upload,
-    color: "text-rose-400",
-    bg: "bg-rose-400/10",
-    title: "QuickBooks Sync",
-    desc: "Pull expenses, auto-categorize, split across projects, and batch import.",
-  },
-  {
-    icon: Shield,
-    color: "text-amber-400",
-    bg: "bg-amber-400/10",
-    title: "Vendor Compliance",
-    desc: "Track contractor W9s, ratings, trade specialties, and payment history.",
-  },
-  {
     icon: Bell,
     color: "text-violet-400",
     bg: "bg-violet-400/10",
     title: "Smart Notifications",
     desc: "Customizable alerts for orders, expenses, tasks, messages, and more.",
+  },
+  {
+    icon: Upload,
+    color: "text-rose-400",
+    bg: "bg-rose-400/10",
+    title: "QuickBooks Sync",
+    desc: "Pull expenses, auto-categorize, split across projects, and batch import.",
   },
 ];
 
@@ -136,6 +130,21 @@ export default function PlatformOverview() {
               </div>
             );
           })}
+
+          <Link
+            to="/features"
+            className="group bg-card border border-border rounded-xl p-5 flex items-start gap-3 hover:border-primary/30 transition-all"
+          >
+            <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
+            </div>
+            <div>
+              <h3 className="font-heading font-semibold text-sm mb-1">And More...</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Explore all features built for investors.
+              </p>
+            </div>
+          </Link>
         </div>
       </div>
     </section>
