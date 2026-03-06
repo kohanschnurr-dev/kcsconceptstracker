@@ -1,11 +1,16 @@
 
 
-## Move "Back to Home" Button to Page Bottom-Left
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-The button is currently positioned `absolute bottom-6 left-6` inside the right panel. The user wants it at the absolute bottom-left of the entire page.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-### Change
+### Changes
 
-**`src/pages/Auth.tsx`**
-- Move the "Back to Home" button out of the right panel div and place it as a fixed/absolute element on the outer `min-h-screen flex` container, positioned `fixed bottom-6 left-6` so it sits at the very bottom-left corner of the viewport.
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
