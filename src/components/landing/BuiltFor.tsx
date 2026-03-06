@@ -40,7 +40,7 @@ export default function BuiltFor() {
           Built For <span className="text-primary">Residential Investors</span>
         </h2>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-4xl mx-auto">
           {personas.map((p) => (
             <div
               key={p.label}

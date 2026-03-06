@@ -17,10 +17,8 @@ export default function Landing() {
       <LandingHeader />
       <Hero />
       <PlatformOverview />
-      <BuiltFor />
-
-
       <CostCalculator />
+      <BuiltFor />
       <Testimonials />
       <StatsRow />
       <FAQ />
