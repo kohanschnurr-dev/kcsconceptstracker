@@ -2,7 +2,6 @@ import {
   Home,
   TrendingUp,
   RefreshCw,
-  Building2,
   MoreHorizontal,
 } from "lucide-react";
 
@@ -24,12 +23,6 @@ const personas = [
     color: "text-violet-400",
     label: "BRRRR Strategy",
     description: "Buy, rehab, rent, refinance, repeat — with total clarity.",
-  },
-  {
-    icon: Building2,
-    color: "text-emerald-400",
-    label: "New Construction",
-    description: "Oversee ground-up builds from permit to punch list.",
   },
   {
     icon: MoreHorizontal,
