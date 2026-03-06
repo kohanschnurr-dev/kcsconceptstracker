@@ -2,7 +2,6 @@ import {
   Home,
   TrendingUp,
   RefreshCw,
-  Building2,
   MoreHorizontal,
 } from "lucide-react";
 
