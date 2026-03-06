@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Play } from "lucide-react";
+import { Play, ChevronDown } from "lucide-react";
 
 export default function Hero() {
   const navigate = useNavigate();
@@ -50,6 +50,16 @@ export default function Hero() {
           No credit card required · 14-day free trial · Cancel anytime
         </p>
       </div>
+
+      {/* Scroll indicator */}
+      <button
+        onClick={() => document.getElementById("built-for")?.scrollIntoView({ behavior: "smooth" })}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+        aria-label="Scroll down"
+      >
+        <span className="text-xs tracking-widest uppercase">Explore</span>
+        <ChevronDown className="w-6 h-6 animate-bounce" />
+      </button>
     </section>
   );
 }
