@@ -115,7 +115,7 @@ const modules: Module[] = [
     color: "text-amber-400",
     bg: "bg-amber-400/10",
     title: "Document Generation",
-    desc: "One-click PDFs for receipts, invoices, scope of work, and contractor reports.",
+    desc: "One-click PDFs for project reports, receipts, invoices, scope of work, and contractor reports.",
     headline: "Professional reports. One click. Every time.",
     bullets: [
       "Generate branded receipts, invoices, and scope of work PDFs",
