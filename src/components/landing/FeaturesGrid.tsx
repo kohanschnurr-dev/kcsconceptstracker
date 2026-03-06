@@ -26,8 +26,8 @@ export default function FeaturesGrid() {
             <FeatureCard key={f.slug} feature={f} />
           ))}
 
-          <Link
-            to="/features"
+          <a
+            href="/#platform"
             className="group bg-card border border-border rounded-xl p-6 flex flex-col items-center justify-center text-center hover:gold-glow-sm hover:border-primary/30 transition-all"
           >
             <Sparkles className="w-8 h-8 text-primary mb-3 group-hover:scale-110 transition-transform" />
@@ -38,7 +38,7 @@ export default function FeaturesGrid() {
             <span className="text-sm text-primary flex items-center gap-1">
               See all features <ArrowRight className="w-4 h-4" />
             </span>
-          </Link>
+          </a>
         </div>
       </div>
     </section>
