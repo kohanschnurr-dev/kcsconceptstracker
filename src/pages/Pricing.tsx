@@ -96,33 +96,37 @@ export default function Pricing() {
           </p>
 
           {/* Toggle */}
-          <div className="flex items-center justify-center gap-4 mb-14">
-            <span
-              className={`text-sm ${!annual ? "text-foreground font-semibold" : "text-muted-foreground"}`}
-            >
-              Monthly
-            </span>
-            <button
-              onClick={() => setAnnual(!annual)}
-              className={`relative w-14 h-7 rounded-full transition-colors ${
-                annual ? "bg-primary" : "bg-secondary"
-              }`}
-              aria-label="Toggle annual billing"
-            >
+          <div className="flex flex-col items-center gap-3 mb-14">
+            <div className="flex items-center gap-4">
               <span
-                className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
-                  annual ? "translate-x-7" : "translate-x-0"
-                }`}
-              />
-            </button>
-            <span
-              className={`text-sm ${annual ? "text-foreground font-semibold" : "text-muted-foreground"}`}
-            >
-              Annual{" "}
-              <span className="text-primary text-xs font-semibold">
-                Save ~13%
+                className={`text-sm ${!annual ? "text-foreground font-semibold" : "text-muted-foreground"}`}
+              >
+                Monthly
               </span>
-            </span>
+              <button
+                onClick={() => setAnnual(!annual)}
+                className={`relative w-14 h-7 rounded-full transition-colors ${
+                  annual ? "bg-primary" : "bg-secondary"
+                }`}
+                aria-label="Toggle annual billing"
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                    annual ? "translate-x-7" : "translate-x-0"
+                  }`}
+                />
+              </button>
+              <span
+                className={`text-sm ${annual ? "text-foreground font-semibold" : "text-muted-foreground"}`}
+              >
+                Annual
+              </span>
+            </div>
+            {annual && (
+              <span className="bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full">
+                Save ~13% with annual billing
+              </span>
+            )}
           </div>
 
           {/* Plans */}

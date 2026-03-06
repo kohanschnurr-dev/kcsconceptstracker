@@ -1,14 +1,16 @@
 
 
-## Plan: Redesign the "Save ~13%" badge
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-Move "Save ~13%" from inline text hanging off "Annual" into a small pill/badge sitting below the entire toggle row, centered. This keeps the toggle row clean and gives the savings callout its own visual weight.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
 ### Changes
 
-**`src/pages/Pricing.tsx`** (lines 98-126)
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-- Remove the `Save ~13%` span from inside the "Annual" label
-- Add a small centered pill badge below the toggle row: `bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full` with text "Save ~13% with annual billing"
-- Wrap toggle + badge in a flex-col container with a small gap
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
