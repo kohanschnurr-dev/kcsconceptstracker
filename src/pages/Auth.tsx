@@ -198,11 +198,7 @@ export default function Auth() {
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex flex-col p-6 bg-background">
-        <Button variant="ghost" size="sm" className="self-start mb-4 gap-1 text-muted-foreground" onClick={() => navigate('/')}>
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
+      <div className="flex-1 flex flex-col p-6 bg-background relative">
         <div className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-[340px] space-y-6">
           {/* Mobile logo */}
@@ -288,6 +284,10 @@ export default function Auth() {
           )}
         </div>
         </div>
+        <Button variant="ghost" size="sm" className="absolute bottom-6 left-6 gap-1.5 text-white hover:text-white/80 hover:bg-white/10" onClick={() => navigate('/')}>
+          <ArrowLeft className="h-4 w-4" />
+          Back to Home
+        </Button>
       </div>
     </div>
   );
