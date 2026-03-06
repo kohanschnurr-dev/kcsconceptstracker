@@ -1,16 +1,13 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Add Back Arrow to Auth Page
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+Add a back-to-landing arrow button at the top of the Auth page's right panel, so users who clicked "Log In" from the landing page can easily return.
 
 ### Changes
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+**`src/pages/Auth.tsx`**
+- Import `ArrowLeft` from lucide-react
+- Add a back button at the top of the right panel (above the mobile logo / tab toggle), using `navigate('/')` to return to the landing page
+- Style: subtle ghost button with `ArrowLeft` icon + "Back" text, positioned top-left of the right panel
 
