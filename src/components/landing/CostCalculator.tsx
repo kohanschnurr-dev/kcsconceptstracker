@@ -97,8 +97,8 @@ export default function CostCalculator() {
 
           {/* Savings banner */}
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-5 text-center">
-            <p className="text-sm text-muted-foreground mb-1">
-              GroundWorks Solo: $89/mo
+            <p className="text-sm italic text-muted-foreground/80 mb-1">
+              psst.. GroundWorks only costs $89/mo
             </p>
             <p className="font-heading text-xl font-bold text-primary">
               Get back $
