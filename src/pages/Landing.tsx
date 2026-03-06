@@ -3,7 +3,7 @@ import Hero from "@/components/landing/Hero";
 import PlatformOverview from "@/components/landing/PlatformOverview";
 import BuiltFor from "@/components/landing/BuiltFor";
 
-import HowItWorks from "@/components/landing/HowItWorks";
+
 import Testimonials from "@/components/landing/Testimonials";
 import StatsRow from "@/components/landing/StatsRow";
 import CostCalculator from "@/components/landing/CostCalculator";
@@ -20,7 +20,6 @@ export default function Landing() {
       <BuiltFor />
 
 
-      <HowItWorks />
       <Testimonials />
       <StatsRow />
       <CostCalculator />
