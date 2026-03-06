@@ -1,16 +1,16 @@
 
 
-## Update PlatformOverview Module Grid
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-### Change in `src/components/landing/PlatformOverview.tsx`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-Update the `modules` array:
-1. Remove "Vendor Compliance" entry
-2. Reorder so Smart Notifications comes before QuickBooks Sync
-3. Add an "And More..." card as the final item (matching the style used in FeaturesGrid — with a Sparkles icon and a link to `/features`)
+### Changes
 
-Final order of the last row: Real-Time Messaging → Smart Notifications → QuickBooks Sync → And More...
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-### Files
-- `src/components/landing/PlatformOverview.tsx` — remove Vendor Compliance, reorder, add "And More" card
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
