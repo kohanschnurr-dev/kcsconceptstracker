@@ -95,7 +95,7 @@ export default function Pricing() {
           </p>
 
           {/* Toggle */}
-          <div className="flex flex-col items-center gap-3 mb-14">
+          <div className="flex flex-col items-center mb-14 h-16 justify-start">
             <div className="flex items-center gap-4">
               <span
                 className={`text-sm ${!annual ? "text-foreground font-semibold" : "text-muted-foreground"}`}
@@ -121,11 +121,9 @@ export default function Pricing() {
                 Annual
               </span>
             </div>
-            {annual && (
-              <span className="bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full">
-                Save ~13% with annual billing
-              </span>
-            )}
+            <span className={`mt-3 bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full transition-opacity ${annual ? "opacity-100" : "opacity-0"}`}>
+              Save ~13% with annual billing
+            </span>
           </div>
 
           {/* Plans */}
