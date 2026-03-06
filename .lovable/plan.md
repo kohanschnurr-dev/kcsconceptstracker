@@ -1,16 +1,13 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Swap FAQ and Final CTA sections
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+**File**: `src/pages/Landing.tsx`
 
-### Changes
+Swap the order of `<FAQ />` and `<FinalCTA />` so "Ready to Ditch the Spreadsheets?" appears before "Common Questions."
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+Current order: `… → Testimonials → FAQ → FinalCTA → LandingFooter`
+New order: `… → Testimonials → FinalCTA → FAQ → LandingFooter`
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+Single line swap — no other changes needed.
 
