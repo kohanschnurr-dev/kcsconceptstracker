@@ -1,6 +1,16 @@
 
 
-## Make "Back to Home" Button Bigger
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**`src/pages/Auth.tsx`** — Change the button `size` from `"sm"` to `"default"` and bump the icon from `h-4 w-4` to `h-5 w-5` for better visibility.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+
+### Changes
+
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
