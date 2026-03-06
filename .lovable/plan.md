@@ -1,12 +1,16 @@
 
 
-## Fix Scroll Arrow Target
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-The arrow in the Hero currently scrolls to `#built-for`, but FeaturesGrid is now the first section after the hero. Two changes needed:
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-### 1. `src/components/landing/FeaturesGrid.tsx` (line 9)
-Add `id="features"` to the section element.
+### Changes
 
-### 2. `src/components/landing/Hero.tsx` (line 56)
-Change `getElementById("built-for")` → `getElementById("features")`.
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
