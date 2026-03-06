@@ -1,16 +1,16 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Add "project reports" to Document Generation description
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+**File**: `src/components/landing/PlatformOverview.tsx`
 
-### Changes
+Update the `desc` field of the "Document Generation" module from:
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+> "One-click PDFs for receipts, invoices, scope of work, and contractor reports."
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+To:
 
-Two lines, two files.
+> "One-click PDFs for project reports, receipts, invoices, scope of work, and contractor reports."
+
+One-line text change.
 
