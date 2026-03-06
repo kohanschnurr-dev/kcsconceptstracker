@@ -5,7 +5,7 @@ export default function FinalCTA() {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate("/auth");
+    navigate("/get-started");
   };
 
   return (

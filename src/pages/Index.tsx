@@ -11,6 +11,7 @@ import { NewProjectModal } from '@/components/NewProjectModal';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
 import type { Project, CategoryBudget, Expense, ProjectType } from '@/types';
 import { startOfMonth, isAfter } from 'date-fns';
 import { resolveTimeline, isDateInRange, type TimelinePreset } from '@/lib/timelineFilter';
@@ -406,6 +407,7 @@ export default function Index() {
 
   return (
     <MainLayout>
+      <WelcomeModal />
       {/* Header */}
       <div className="mb-6 flex items-center gap-3">
         <h1 className="text-2xl font-semibold">Dashboard</h1>

@@ -18,7 +18,7 @@ export default function FeatureDetail() {
     if (user) {
       navigate("/dashboard");
     } else {
-      openModal();
+      navigate("/get-started");
     }
   };
 
