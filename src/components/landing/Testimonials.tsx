@@ -3,7 +3,7 @@ import { Star } from "lucide-react";
 const testimonials = [
   {
     quote:
-      "GroundWorks replaced three apps and a spreadsheet nightmare. I know exactly where every dollar goes on every project.",
+      "I killed three tools the week I started. Budget, schedule, receipts — it's all in one place now and I actually trust the numbers.",
     name: "Marcus T.",
     role: "General Contractor, Dallas TX",
     initials: "MT",
@@ -11,7 +11,7 @@ const testimonials = [
   },
   {
     quote:
-      "The draw tracking alone saved me 10 hours a month. My lender loves the automated reports.",
+      "I used to spend a full day assembling draw packages. Now I just send my lender a link. Done.",
     name: "Sarah K.",
     role: "Fix & Flip Investor, Fort Worth TX",
     initials: "SK",
@@ -19,7 +19,7 @@ const testimonials = [
   },
   {
     quote:
-      "I manage 14 rental rehabs at once. GroundWorks keeps my subs, budgets, and timelines in one place.",
+      "I'm running 14 rehabs right now. GroundWorks flags budget overruns before they become problems — I can't manage at this scale without it.",
     name: "Jason R.",
     role: "Property Manager, DFW",
     initials: "JR",
@@ -32,7 +32,7 @@ export default function Testimonials() {
     <section className="py-20 sm:py-28 bg-secondary/30">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
         <h2 data-reveal className="scroll-slide-left font-heading text-3xl sm:text-4xl font-bold text-center mb-14">
-          Trusted by <span className="text-primary">Real Builders</span>
+          Don't Take Our <span className="text-primary">Word For It</span>
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
