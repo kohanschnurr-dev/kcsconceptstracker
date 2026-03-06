@@ -38,7 +38,7 @@ const FEATURES = [
   { icon: ShieldCheck, label: 'Bank-grade data encryption' },
 ] as const;
 
-const TAGLINE = "And that's just the start";
+const TAGLINE = "And that's just the start...";
 
 export default function Auth() {
   const navigate = useNavigate();
