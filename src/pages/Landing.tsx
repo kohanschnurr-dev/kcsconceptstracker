@@ -1,8 +1,7 @@
 import LandingHeader from "@/components/landing/LandingHeader";
 import Hero from "@/components/landing/Hero";
-import BuiltFor from "@/components/landing/BuiltFor";
-import FeaturesGrid from "@/components/landing/FeaturesGrid";
 import PlatformOverview from "@/components/landing/PlatformOverview";
+import BuiltFor from "@/components/landing/BuiltFor";
 import FeatureShowcase from "@/components/landing/FeatureShowcase";
 import IntegrationStrip from "@/components/landing/IntegrationStrip";
 import HowItWorks from "@/components/landing/HowItWorks";
@@ -18,9 +17,8 @@ export default function Landing() {
     <div className="min-h-screen bg-background text-foreground">
       <LandingHeader />
       <Hero />
-      <FeaturesGrid />
-      <BuiltFor />
       <PlatformOverview />
+      <BuiltFor />
       <FeatureShowcase />
       <IntegrationStrip />
       <HowItWorks />

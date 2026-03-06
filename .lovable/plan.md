@@ -1,19 +1,16 @@
 
 
-## Move PlatformOverview Up & Remove FeaturesGrid
+## Fix Dashboard Link in Sidebar and Mobile Nav
+
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
 ### Changes
 
-1. **`src/pages/Landing.tsx`**
-   - Move `PlatformOverview` to directly after `Hero` (so the scroll arrow lands on it)
-   - Remove `FeaturesGrid` entirely from the page
-   - Remove the `FeaturesGrid` import
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-2. **`src/components/landing/PlatformOverview.tsx`**
-   - Add `id="features"` to the `<section>` element so the Hero's scroll-down arrow targets it correctly
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-3. **`src/components/landing/Hero.tsx`** — no changes needed (already scrolls to `#features`)
-
-### Result
-Landing page order: Hero → **PlatformOverview** → BuiltFor → FeatureShowcase → IntegrationStrip → ...
+Two lines, two files.
 

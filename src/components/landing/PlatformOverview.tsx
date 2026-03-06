@@ -96,7 +96,7 @@ const modules = [
 
 export default function PlatformOverview() {
   return (
-    <section className="py-20 sm:py-28 bg-secondary/30">
+    <section id="features" className="py-20 sm:py-28 bg-secondary/30">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
         <h2 className="font-heading text-3xl sm:text-4xl font-bold text-center mb-4">
           One Platform. <span className="text-primary">Every Module You Need.</span>
