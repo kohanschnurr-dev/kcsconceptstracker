@@ -1,19 +1,16 @@
 
 
-## Plan: Remove the "What best describes you?" role selection step
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**File:** `src/pages/GetStarted.tsx`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-The role selection step (step 2) will be removed entirely, reducing the flow from 7 steps to 6. The new flow becomes: Welcome → Projects per year → Pain points → Current tools → Team size → Create account.
+### Changes
 
-### Changes:
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-1. **Remove `ROLES` array** (lines 16-23) and `userRole` state
-2. **Update `TOTAL_STEPS`** from 7 to 6
-3. **Remove step 2 case** from `renderStep()` and renumber all subsequent steps down by 1
-4. **Update `canContinue()`** to remove the role check and renumber cases
-5. **Remove `userRole` from onboarding insert** and localStorage flag
-6. **Update bottom nav conditions** — adjust step boundary checks (steps 2-5 show back+continue, step 6 shows back only)
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-Single file edit. The auto-advance behavior on single-select steps is preserved for the remaining steps.
+Two lines, two files.
 
