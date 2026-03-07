@@ -5,13 +5,13 @@ const testimonials = [
     quote:
       "I killed three tools the week I started. Budget, schedule, receipts — it's all in one place now and I actually trust the numbers.",
     name: "Marcus T.",
-    role: "General Contractor, Dallas TX",
+    role: "Real Estate Investor, Dallas TX",
     initials: "MT",
     color: "bg-amber-500/20 text-amber-400",
   },
   {
     quote:
-      "I used to spend a full day assembling draw packages. Now I just send my lender a link. Done.",
+      "I was tracking everything in spreadsheets and losing receipts left and right. Now every expense is logged with a photo and tied to the right project automatically.",
     name: "Sarah K.",
     role: "Fix & Flip Investor, Fort Worth TX",
     initials: "SK",
@@ -19,7 +19,7 @@ const testimonials = [
   },
   {
     quote:
-      "I'm running 14 rehabs right now. GroundWorks flags budget overruns before they become problems — I can't manage at this scale without it.",
+      "I'm running 14 rehabs right now. GroundWorks keeps every budget, receipt, and task organized across all of them — I can't manage at this scale without it.",
     name: "Jason R.",
     role: "Property Manager, DFW",
     initials: "JR",
