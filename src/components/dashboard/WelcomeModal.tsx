@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 
 interface OnboardingInfo {
   firstName: string;
-  userRole: string;
   painPoints: string[];
 }
 
@@ -42,10 +41,7 @@ export function WelcomeModal() {
         </h2>
 
         <p className="text-muted-foreground">
-          We've set things up based on how you work.
-          {info.userRole && (
-            <> As a <span className="text-foreground font-medium">{info.userRole}</span>, we've tailored your dashboard to show what matters most.</>
-          )}
+          We've set things up based on how you work. Your dashboard is tailored to show what matters most.
         </p>
 
         {info.painPoints && info.painPoints.length > 0 && (
