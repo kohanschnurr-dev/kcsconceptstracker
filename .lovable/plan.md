@@ -1,11 +1,16 @@
 
 
-## Plan: Style FAQ section
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**File:** `src/components/landing/FAQ.tsx`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-1. Reduce vertical padding from `py-20 sm:py-28` to `py-14 sm:py-20` and reduce heading margin from `mb-14` to `mb-10`
-2. Add a distinct background color to the section — use `bg-card` (slightly lighter than `bg-background`) to create visual separation, with a subtle top/bottom border
+### Changes
 
-Single file, two small edits.
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
