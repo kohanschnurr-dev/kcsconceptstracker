@@ -9,18 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import groundworksLogo from "@/assets/groundworks-helmet-logo.png";
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 6;
 
 // ── Step data ──────────────────────────────────────────────────────────────────
-
-const ROLES = [
-  { emoji: "🏠", label: "Fix & Flip Investor" },
-  { emoji: "🏗️", label: "General Contractor" },
-  { emoji: "🏘️", label: "Rental Property Investor" },
-  { emoji: "🔨", label: "Remodeler / Specialty Contractor" },
-  { emoji: "📋", label: "Project Manager / Admin" },
-  { emoji: "🏢", label: "Real Estate Developer" },
-];
 
 const VOLUMES = ["1–2", "3–5", "6–10", "10+"];
 
@@ -101,7 +92,7 @@ export default function GetStarted() {
   const [showPassword, setShowPassword] = useState(false);
 
   // Questionnaire state
-  const [userRole, setUserRole] = useState("");
+  
   const [annualVolume, setAnnualVolume] = useState("");
   const [painPoints, setPainPoints] = useState<string[]>([]);
   const [currentTools, setCurrentTools] = useState("");
@@ -128,16 +119,14 @@ export default function GetStarted() {
       case 1:
         return true;
       case 2:
-        return !!userRole;
-      case 3:
         return !!annualVolume;
-      case 4:
+      case 3:
         return painPoints.length > 0;
-      case 5:
+      case 4:
         return !!currentTools;
-      case 6:
+      case 5:
         return !!teamSize;
-      case 7:
+      case 6:
         return fullName.trim() && email.trim() && password.length >= 6 && agreedToTerms;
       default:
         return false;
@@ -204,7 +193,6 @@ export default function GetStarted() {
       if (userId) {
         await (supabase.from as any)("user_onboarding").insert({
           user_id: userId,
-          user_role: userRole,
           annual_project_volume: annualVolume,
           pain_points: painPoints,
           current_tools: currentTools,
@@ -216,7 +204,6 @@ export default function GetStarted() {
       if (userId) {
         localStorage.setItem("gw_onboarding_complete", JSON.stringify({
           firstName,
-          userRole,
           painPoints,
         }));
       }
@@ -260,29 +247,6 @@ export default function GetStarted() {
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
               <h2 className="font-heading text-2xl sm:text-3xl font-bold">
-                What best describes you?
-              </h2>
-              <p className="text-muted-foreground">Pick the one that fits best.</p>
-            </div>
-            <div className="grid gap-3 max-w-lg mx-auto">
-              {ROLES.map((role) => (
-                <SelectionCard
-                  key={role.label}
-                  emoji={role.emoji}
-                  label={role.label}
-                  selected={userRole === role.label}
-                  onClick={() => { setUserRole(role.label); setTimeout(() => setStep(3), 300); }}
-                />
-              ))}
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="text-center space-y-2">
-              <h2 className="font-heading text-2xl sm:text-3xl font-bold">
                 How many projects do you run per year?
               </h2>
             </div>
@@ -292,14 +256,14 @@ export default function GetStarted() {
                   key={v}
                   label={v}
                   selected={annualVolume === v}
-                  onClick={() => { setAnnualVolume(v); setTimeout(() => setStep(4), 300); }}
+                  onClick={() => { setAnnualVolume(v); setTimeout(() => setStep(3), 300); }}
                 />
               ))}
             </div>
           </div>
         );
 
-      case 4:
+      case 3:
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
@@ -323,7 +287,7 @@ export default function GetStarted() {
           </div>
         );
 
-      case 5:
+      case 4:
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
@@ -337,14 +301,14 @@ export default function GetStarted() {
                   key={tool}
                   label={tool}
                   selected={currentTools === tool}
-                  onClick={() => { setCurrentTools(tool); setTimeout(() => setStep(6), 300); }}
+                  onClick={() => { setCurrentTools(tool); setTimeout(() => setStep(5), 300); }}
                 />
               ))}
             </div>
           </div>
         );
 
-      case 6:
+      case 5:
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
@@ -358,14 +322,14 @@ export default function GetStarted() {
                   key={size}
                   label={size}
                   selected={teamSize === size}
-                  onClick={() => { setTeamSize(size); setTimeout(() => setStep(7), 300); }}
+                  onClick={() => { setTeamSize(size); setTimeout(() => setStep(6), 300); }}
                 />
               ))}
             </div>
           </div>
         );
 
-      case 7:
+      case 6:
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
@@ -516,7 +480,7 @@ export default function GetStarted() {
       </div>
 
       {/* Bottom nav — steps 2-6 */}
-      {step > 1 && step < 7 && (
+      {step > 1 && step < 6 && (
         <div className="sticky bottom-0 bg-background/80 backdrop-blur-md border-t border-border/30">
           <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
             <Button variant="ghost" onClick={handleBack} className="gap-2">
@@ -536,7 +500,7 @@ export default function GetStarted() {
       )}
 
       {/* Step 7 back button */}
-      {step === 7 && (
+      {step === 6 && (
         <div className="sticky bottom-0 bg-background/80 backdrop-blur-md border-t border-border/30">
           <div className="max-w-3xl mx-auto px-4 py-4">
             <Button variant="ghost" onClick={handleBack} className="gap-2">
