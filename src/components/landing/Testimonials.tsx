@@ -11,7 +11,7 @@ const testimonials = [
   },
   {
     quote:
-      "I used to forget to log half my expenses. Now everything's tracked with a photo and tied to the right project automatically.",
+      "Expenses used to slip through the cracks. Now everything's tracked with a photo and tied to the right project automatically.",
     name: "Sarah K.",
     role: "Fix & Flip Investor, Fort Worth TX",
     initials: "SK",
@@ -19,7 +19,7 @@ const testimonials = [
   },
   {
     quote:
-      "I'm running 14 rehabs right now. GroundWorks keeps every budget, receipt, and task organized across all of them — I can't manage at this scale without it.",
+      "I'm running 14 rehabs right now. GroundWorks keeps them all organized — I can't manage at this scale without it.",
     name: "Jason R.",
     role: "General Contractor, DFW",
     initials: "JR",
