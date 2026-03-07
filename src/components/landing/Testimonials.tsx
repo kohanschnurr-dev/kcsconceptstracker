@@ -11,7 +11,7 @@ const testimonials = [
   },
   {
     quote:
-      "I was tracking everything in spreadsheets and losing receipts left and right. Now every expense is logged with a photo and tied to the right project automatically.",
+      "I used to forget to log half my expenses. Now everything's tracked with a photo and tied to the right project automatically.",
     name: "Sarah K.",
     role: "Fix & Flip Investor, Fort Worth TX",
     initials: "SK",
@@ -21,7 +21,7 @@ const testimonials = [
     quote:
       "I'm running 14 rehabs right now. GroundWorks keeps every budget, receipt, and task organized across all of them — I can't manage at this scale without it.",
     name: "Jason R.",
-    role: "Property Manager, DFW",
+    role: "General Contractor, DFW",
     initials: "JR",
     color: "bg-emerald-500/20 text-emerald-400",
   },
