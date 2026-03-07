@@ -1,13 +1,16 @@
 
 
-## Plan: Update Sarah K. and Jason R. testimonials
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**File:** `src/components/landing/Testimonials.tsx`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-1. **Sarah K. (lines 13-14)** — Shorten the quote and replace "losing receipts left and right" with language about forgetting to log expenses. New quote:
-   - *"I used to forget to log half my expenses. Now everything's tracked with a photo and tied to the right project automatically."*
+### Changes
 
-2. **Jason R. (line 24)** — Change role from "Property Manager, DFW" to "General Contractor, DFW"
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-Two small edits in one file.
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
