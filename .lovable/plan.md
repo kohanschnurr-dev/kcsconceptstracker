@@ -1,12 +1,16 @@
 
 
-## Plan: Change primary accent color to #FFB300
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**What:** Replace the current orange accent (`hsl(30, 100%, 55%)`) with the industrial gold `#FFB300` (`hsl(42, 100%, 50%)`) across all theme definitions.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-**File:** `src/lib/colorPalettes.ts` — update the `--primary`, `--accent`, `--ring`, `--chart-1`, and sidebar primary/ring variables in the "Industrial" palette (and any default palette) from `30 100% 55%` to `42 100% 50%`.
+### Changes
 
-**File:** `src/index.css` — update all instances of `30 100% 55%` in both `:root` and `.dark` blocks, plus the `gold-glow` / `gold-glow-sm` / `blueprint-grid` utility classes that reference `hsl(30 100% 55% / ...)` to use `42 100% 50%` instead.
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-Two files, find-and-replace of the HSL value.
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
