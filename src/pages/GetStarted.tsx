@@ -137,11 +137,11 @@ function ValueStat({ value, prefix, suffix, label, delay }: {
 }) {
   const count = useCountUp(value, delay);
   return (
-    <div className="text-center rounded-xl border-2 border-primary/20 bg-primary/5 p-6 hover-gold-glow transition-all">
-      <p className="font-heading text-3xl sm:text-4xl font-extrabold text-primary mb-1">
+    <div className="text-center rounded-xl border-2 border-primary/20 bg-primary/5 p-4 py-5 hover-gold-glow transition-all">
+      <p className="font-heading text-2xl sm:text-3xl font-extrabold text-primary mb-1 whitespace-nowrap">
         {prefix}{count.toLocaleString()}{suffix}
       </p>
-      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{label}</p>
     </div>
   );
 }
@@ -401,7 +401,7 @@ export default function GetStarted() {
       // ── NEW: Value summary step ─────────────────────────────────────────────
       case 6:
         return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-medium mb-2">
                 <Zap className="w-4 h-4" />
@@ -414,7 +414,7 @@ export default function GetStarted() {
             </div>
 
             {/* Stat cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
               <ValueStat
                 value={metrics.hoursSaved}
                 suffix=" hrs/mo"
@@ -447,7 +447,7 @@ export default function GetStarted() {
                   {painPoints.map((pp) => (
                     <div
                       key={pp}
-                      className="flex items-start gap-3 rounded-lg border border-border/60 bg-card/50 px-4 py-3 animate-in fade-in duration-500"
+                      className="flex items-start gap-3 rounded-lg border border-border/60 bg-card/50 px-3 py-2.5 animate-in fade-in duration-500"
                     >
                       <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                       <div>
