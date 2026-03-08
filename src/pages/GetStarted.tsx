@@ -224,7 +224,7 @@ export default function GetStarted() {
       case 1:
         return (
           <div className="flex flex-col items-center text-center space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <img src={groundworksLogo} alt="GroundWorks" className="h-16 w-16" />
+            <img src={groundworksLogo} alt="GroundWorks" className="h-28 w-28 animate-[float_3s_ease-in-out_infinite] drop-shadow-[0_0_25px_hsl(var(--primary)/0.4)]" />
             <h1 className="font-heading text-3xl sm:text-4xl font-bold leading-tight">
               Let's set up GroundWorks for the way{" "}
               <span className="text-primary">you work</span>.
@@ -460,10 +460,7 @@ export default function GetStarted() {
       <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/30">
         <div className="max-w-3xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between mb-2">
-            <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <img src={groundworksLogo} alt="" className="h-6 w-6" />
-              GroundWorks
-            </Link>
+            <div className="h-6" />
             {step > 1 && (
               <span className="text-xs text-muted-foreground">
                 Step {step - 1} of {TOTAL_STEPS - 1}

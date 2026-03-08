@@ -97,6 +97,10 @@ export default {
           "50%": { transform: "translateX(200%)" },
           "100%": { transform: "translateX(-100%)" },
         },
+        "float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
