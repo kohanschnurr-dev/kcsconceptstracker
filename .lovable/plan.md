@@ -1,16 +1,15 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Hide progress bar on welcome step & increase desktop sizing
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+### Changes in `src/pages/GetStarted.tsx`
 
-### Changes
+1. **Hide the top bar on step 1 (welcome screen)**
+   - Wrap the entire sticky top bar (`lines 621-633`) in a conditional so it only renders when `step > 1`. This removes the progress bar and step indicator from the welcome screen entirely.
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+2. **Increase content sizing for desktop**
+   - **Headings**: Bump question headings from `sm:text-3xl` to `lg:text-4xl` on desktop
+   - **Selection cards**: Increase padding and font size at `lg` breakpoint (e.g., `lg:px-6 lg:py-5 lg:text-lg`)
+   - **Welcome step**: Increase logo from `h-28 w-28` to `lg:h-36 lg:w-36`, heading from `sm:text-4xl` to `lg:text-5xl`
+   - **Max width**: Bump the main content container from `max-w-2xl` to `max-w-3xl` for more breathing room on desktop
 
