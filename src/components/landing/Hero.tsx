@@ -21,9 +21,8 @@ export default function Hero() {
         </h1>
 
         <p className="hero-animate hero-delay-2 max-w-2xl mx-auto text-lg sm:text-xl text-muted-foreground mb-10">
-          GroundWorks is the command center for residential investors — track
-          rehab budgets, manage draws, coordinate subs, and hit your numbers
-          from acquisition to disposition.
+          Track budgets. Manage subs. Hit your numbers. All from one dashboard
+          built for flippers and investors.
         </p>
 
         <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
