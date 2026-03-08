@@ -1,16 +1,30 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Add Smooth Fade Transitions Between Onboarding Steps
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+Currently each step renders with a slide-in entrance but disappears instantly when the step changes, creating a choppy feel.
 
-### Changes
+### Approach
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+Add a transitioning state that triggers a fade-out before changing the step number, then the new step fades in naturally with the existing `animate-in` classes.
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+### Changes in `src/pages/GetStarted.tsx`
 
-Two lines, two files.
+1. **Add transition state** — new `isTransitioning` boolean state and a `transitionTo` helper function that:
+   - Sets `isTransitioning = true` (triggers fade-out CSS)
+   - After 250ms, updates the step and sets `isTransitioning = false` (new step fades in)
+
+2. **Replace all direct `setStep` calls** in `handleContinue`, `handleBack`, and auto-advance `setTimeout` callbacks with the new `transitionTo` function.
+
+3. **Wrap the step content** in a container div with dynamic classes:
+   ```
+   className={`transition-all duration-250 ease-in-out ${
+     isTransitioning ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
+   }`}
+   ```
+   This gives a subtle fade-out + slight upward shift before the new content fades in.
+
+4. **Disable Continue/Back buttons** while `isTransitioning` is true to prevent double-clicks during the transition.
+
+No other files need changes.
 
