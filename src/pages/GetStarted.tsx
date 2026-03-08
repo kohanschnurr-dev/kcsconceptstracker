@@ -18,10 +18,10 @@ const VOLUMES = ["1–2", "3–5", "6–10", "10+"];
 const PAIN_POINTS = [
   "Tracking budgets & expenses",
   "Managing subs and schedules",
-  "Keeping draw requests organized",
-  "Communicating with my team on site",
+  "Tracking change orders & scope creep",
+  "Coordinating multiple rehabs at once",
   "Scattered docs and photos",
-  "Invoicing and getting paid",
+  "Estimating rehab costs accurately",
   "Staying on timeline",
   "Knowing my true project profit",
 ];
@@ -51,10 +51,10 @@ const TOOLS_REPLACED: Record<string, number> = {
 const PAIN_FEATURE_MAP: Record<string, string> = {
   "Tracking budgets & expenses": "Real-time budget tracking with overspend alerts",
   "Managing subs and schedules": "Drag-and-drop project calendar & vendor scheduling",
-  "Keeping draw requests organized": "Automated draw request generation from expenses",
-  "Communicating with my team on site": "Built-in team messaging with @mentions",
+  "Tracking change orders & scope creep": "Change order logging with budget-impact tracking",
+  "Coordinating multiple rehabs at once": "Multi-project dashboard with at-a-glance status",
   "Scattered docs and photos": "Project-linked document & photo gallery",
-  "Invoicing and getting paid": "One-click invoice generation from project data",
+  "Estimating rehab costs accurately": "Category-level budget templates from past projects",
   "Staying on timeline": "Milestone timelines with critical-path tracking",
   "Knowing my true project profit": "Live profit calculator with holding-cost analysis",
 };
