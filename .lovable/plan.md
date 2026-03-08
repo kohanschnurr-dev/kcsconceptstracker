@@ -1,13 +1,16 @@
 
 
-Update the third stat in `src/components/landing/StatsRow.tsx`:
-- Change label from `"To Start Tracking Today!"` to `"To Start Tracking Today!"`  (keep same)
-- Add `"Under "` as prefix, remove the `" min"` suffix, keep value as `5`, and set suffix to `" min"`
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-Actually, looking at current code: `{ value: 5, prefix: "", suffix: " min", label: "To Start Tracking Today!" }`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-The user wants it to read "Under 5 min" instead of "5 min". Change prefix to `"Under "`.
+### Changes
 
-**File:** `src/components/landing/StatsRow.tsx`  
-- Update third stat entry: change `prefix` from `""` to `"Under "`.
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
