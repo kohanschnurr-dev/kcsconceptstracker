@@ -54,7 +54,7 @@ export default function Hero() {
       {/* Scroll indicator */}
       <button
         onClick={() => document.getElementById("platform")?.scrollIntoView({ behavior: "smooth" })}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer group"
+        className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer group"
         aria-label="Scroll down"
       >
         <span className="text-sm font-medium tracking-widest uppercase">See What's Inside</span>
