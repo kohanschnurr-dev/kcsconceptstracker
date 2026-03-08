@@ -452,7 +452,7 @@ export default function GetStarted() {
             {painPoints.length > 0 && (
               <div className="max-w-lg mx-auto space-y-3">
                 <p className="text-sm font-medium text-muted-foreground text-center uppercase tracking-wider">
-                  Solutions for your pain points
+                  Here's how we help
                 </p>
                 <div className="space-y-2">
                   {painPoints.map((pp) => (
