@@ -164,8 +164,18 @@ function ProgressBar({ step }: { step: number }) {
 export default function GetStarted() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const transitionTo = (nextStep: number) => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(nextStep);
+      setIsTransitioning(false);
+    }, 250);
+  };
 
   // Questionnaire state
   const [annualVolume, setAnnualVolume] = useState("");
@@ -203,11 +213,11 @@ export default function GetStarted() {
   };
 
   const handleContinue = () => {
-    if (step < TOTAL_STEPS) setStep(step + 1);
+    if (step < TOTAL_STEPS) transitionTo(step + 1);
   };
 
   const handleBack = () => {
-    if (step > 1) setStep(step - 1);
+    if (step > 1) transitionTo(step - 1);
   };
 
   const handleSubmit = async () => {
@@ -326,7 +336,7 @@ export default function GetStarted() {
                   key={v}
                   label={v}
                   selected={annualVolume === v}
-                  onClick={() => { setAnnualVolume(v); setTimeout(() => setStep(3), 300); }}
+                  onClick={() => { setAnnualVolume(v); setTimeout(() => transitionTo(3), 300); }}
                 />
               ))}
             </div>
@@ -371,7 +381,7 @@ export default function GetStarted() {
                   key={tool}
                   label={tool}
                   selected={currentTools === tool}
-                  onClick={() => { setCurrentTools(tool); setTimeout(() => setStep(5), 300); }}
+                  onClick={() => { setCurrentTools(tool); setTimeout(() => transitionTo(5), 300); }}
                 />
               ))}
             </div>
@@ -392,7 +402,7 @@ export default function GetStarted() {
                   key={size}
                   label={size}
                   selected={teamSize === size}
-                  onClick={() => { setTeamSize(size); setTimeout(() => setStep(6), 300); }}
+                  onClick={() => { setTeamSize(size); setTimeout(() => transitionTo(6), 300); }}
                 />
               ))}
             </div>
@@ -624,20 +634,20 @@ export default function GetStarted() {
 
       {/* Main content */}
       <div className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
-        <div className="w-full max-w-2xl">{renderStep()}</div>
+        <div className={`w-full max-w-2xl transition-all duration-250 ease-in-out ${isTransitioning ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>{renderStep()}</div>
       </div>
 
       {/* Bottom nav — steps 2-5 (questionnaire) */}
       {step > 1 && step < 6 && (
         <div className="sticky bottom-0 bg-background/80 backdrop-blur-md border-t border-border/30">
           <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Button variant="ghost" onClick={handleBack} className="gap-2">
+            <Button variant="ghost" onClick={handleBack} disabled={isTransitioning} className="gap-2">
               <ArrowLeft className="w-4 h-4" />
               Back
             </Button>
             <Button
               className="gold-glow gap-2 min-h-[44px] px-8"
-              disabled={!canContinue()}
+              disabled={!canContinue() || isTransitioning}
               onClick={handleContinue}
             >
               Continue
@@ -651,7 +661,7 @@ export default function GetStarted() {
       {(step === 6 || step === 7) && (
         <div className="sticky bottom-0 bg-background/80 backdrop-blur-md border-t border-border/30">
           <div className="max-w-3xl mx-auto px-4 py-4">
-            <Button variant="ghost" onClick={handleBack} className="gap-2">
+            <Button variant="ghost" onClick={handleBack} disabled={isTransitioning} className="gap-2">
               <ArrowLeft className="w-4 h-4" />
               Back
             </Button>
