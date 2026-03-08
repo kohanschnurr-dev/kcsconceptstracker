@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 const stats = [
   { value: 1000, prefix: "", suffix: "+", label: "Projects Tracked" },
-  { value: 2, prefix: "$", suffix: "M+", label: "In Budgets Managed" },
+  { value: 50, prefix: "", suffix: "+", label: "Hours Saved Monthly" },
   { value: 5, prefix: "", suffix: " min", label: "To Start Tracking Today!" },
   { value: 0, prefix: "$", suffix: "", label: "To Get Started" },
 ];
