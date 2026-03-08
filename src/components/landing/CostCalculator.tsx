@@ -81,7 +81,7 @@ export default function CostCalculator() {
               <p className="text-sm text-muted-foreground mb-1">
                 Monthly Time Cost
               </p>
-              <p className="font-heading text-3xl font-bold text-destructive">
+              <p className="font-heading text-3xl font-bold text-primary">
                 ${monthlyCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
@@ -89,7 +89,7 @@ export default function CostCalculator() {
               <p className="text-sm text-muted-foreground mb-1">
                 Your Annual Overhead
               </p>
-              <p className="font-heading text-3xl font-bold text-destructive">
+              <p className="font-heading text-3xl font-bold text-primary">
                 ${annualCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
