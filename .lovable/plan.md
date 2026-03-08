@@ -1,16 +1,11 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Ensure all pain points have solutions & update heading
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+### Changes in `src/pages/GetStarted.tsx`
 
-### Changes
+1. **Replace heading text (line 455)**
+   - Change `"Solutions for your pain points"` → `"Here's how we help"`
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+2. **Verify PAIN_FEATURE_MAP coverage** — All 7 current pain points already have mappings, so no additions needed. Every selected pain point will show its corresponding solution.
 
