@@ -17,15 +17,10 @@ const soloFeatures = [
   "Draw request management",
   "Sub/vendor management",
   "Timeline & milestone tracking",
-  "Photo documentation",
-  "Material & order tracking",
-  "Daily logs",
-  "Document storage (5 GB)",
-  "Basic reporting",
-  "Mobile access",
-  "Email support",
-  "CSV export",
-  "Single user",
+  "Photo & document storage (5 GB)",
+  "Material tracking & daily logs",
+  "Reporting & CSV export",
+  "Mobile access · Email support",
 ];
 
 const teamsExtra = [
@@ -81,17 +76,17 @@ export default function Pricing() {
     <div className="min-h-screen bg-background text-foreground">
       <LandingHeader />
 
-      <section className="pt-28 pb-20">
+      <section className="pt-24 pb-8">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-center mb-4">
             Simple, <span className="text-primary">Honest</span> Pricing
           </h1>
-          <p className="text-muted-foreground text-center mb-10 max-w-xl mx-auto">
+          <p className="text-muted-foreground text-center mb-6 max-w-xl mx-auto">
             No hidden fees. Start free, upgrade when you're ready.
           </p>
 
           {/* Toggle */}
-          <div className="flex flex-col items-center mb-10 h-14 justify-start">
+          <div className="flex flex-col items-center mb-6 h-14 justify-start">
             <div className="flex items-center gap-4">
               <span
                 className={`text-sm ${!annual ? "text-foreground font-semibold" : "text-muted-foreground"}`}
@@ -123,9 +118,9 @@ export default function Pricing() {
           </div>
 
           {/* Plans */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-10">
             {/* Solo */}
-            <div className="relative bg-card border-2 border-primary rounded-xl p-8">
+            <div className="relative bg-card border-2 border-primary rounded-xl p-6">
               <span className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
                 Most Popular
               </span>
@@ -153,7 +148,7 @@ export default function Pricing() {
               <p className="text-xs text-muted-foreground mb-4">
                 No credit card required
               </p>
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 {soloFeatures.map((f) => (
                   <li
                     key={f}
@@ -167,7 +162,7 @@ export default function Pricing() {
             </div>
 
             {/* Teams */}
-            <div className="bg-card border border-border rounded-xl p-8">
+            <div className="bg-card border border-border rounded-xl p-6">
               <h3 className="font-heading text-2xl font-bold mb-2">Teams</h3>
               <p className="text-muted-foreground text-sm mb-6">
                 For crews that collaborate.
@@ -193,7 +188,7 @@ export default function Pricing() {
               <p className="text-xs text-muted-foreground mb-4">
                 Everything in Solo, plus:
               </p>
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 {teamsExtra.map((f) => (
                   <li
                     key={f}
