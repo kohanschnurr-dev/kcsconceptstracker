@@ -1,16 +1,14 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Update Hero Summary
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+Replace the current subtitle in `src/components/landing/Hero.tsx` (lines 23-27) with a punchy, simple copy:
 
-### Changes
+**Current:**
+> GroundWorks is the command center for residential investors — track rehab budgets, manage draws, coordinate subs, and hit your numbers from acquisition to disposition.
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**New:**
+> Track budgets. Manage subs. Hit your numbers. All from one dashboard built for flippers and investors.
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+Single line change in the `<p>` tag content — no structural changes needed.
 
