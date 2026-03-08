@@ -224,7 +224,7 @@ export default function GetStarted() {
       case 1:
         return (
           <div className="flex flex-col items-center text-center space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <img src={groundworksLogo} alt="GroundWorks" className="h-16 w-16" />
+            <img src={groundworksLogo} alt="GroundWorks" className="h-28 w-28 animate-[float_3s_ease-in-out_infinite] drop-shadow-[0_0_25px_hsl(var(--primary)/0.4)]" />
             <h1 className="font-heading text-3xl sm:text-4xl font-bold leading-tight">
               Let's set up GroundWorks for the way{" "}
               <span className="text-primary">you work</span>.
