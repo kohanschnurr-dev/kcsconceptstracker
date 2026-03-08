@@ -1,16 +1,8 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+Change the "Monthly Time Cost" and "Your Annual Overhead" values from `text-destructive` (red) to a neutral/warm color. Based on the project's industrial gold aesthetic, switching to `text-primary` (gold) would match the savings banner below and feel less aggressive.
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
-
-### Changes
-
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+**File:** `src/components/landing/CostCalculator.tsx`
+- Line ~79: Change `text-destructive` to `text-primary` for Monthly Time Cost
+- Line ~85: Change `text-destructive` to `text-primary` for Your Annual Overhead
 
