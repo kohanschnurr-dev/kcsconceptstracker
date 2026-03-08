@@ -1,16 +1,9 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Update "Hours Saved Monthly" stat
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+In `src/components/landing/StatsRow.tsx`, update the second stat:
 
-### Changes
-
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+- Change `value` from `50` to `25`
+- Change `label` from `"Hours Saved Monthly"` to `"Average Hours Saved Monthly"`
 
