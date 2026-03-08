@@ -198,7 +198,7 @@ export default function GetStarted() {
       case 4: return !!currentTools;
       case 5: return !!teamSize;
       case 6: return true; // value summary — always can continue
-      case 7: return fullName.trim() && email.trim() && password.length >= 6 && agreedToTerms;
+      case 7: return fullName.trim() && email.trim() && password.length >= 8 && /\d/.test(password) && agreedToTerms;
       default: return false;
     }
   };
@@ -541,7 +541,7 @@ export default function GetStarted() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
+                    placeholder="At least 8 characters, include a number"
                     className="min-h-[44px] pr-10"
                   />
                   <button
