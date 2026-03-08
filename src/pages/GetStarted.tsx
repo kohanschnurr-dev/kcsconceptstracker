@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Eye, EyeOff, CheckCircle2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import groundworksLogo from "@/assets/groundworks-logo-new.png";
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 // ── Step data ──────────────────────────────────────────────────────────────────
 
@@ -35,6 +35,67 @@ const TOOLS = [
 ];
 
 const TEAM_SIZES = ["Just me", "2–5 people", "6–15 people", "15+"];
+
+// ── Value calculation helpers ──────────────────────────────────────────────────
+
+const VOLUME_MULT: Record<string, number> = { "1–2": 1, "3–5": 2, "6–10": 3.5, "10+": 5 };
+const TEAM_MULT: Record<string, number> = { "Just me": 1, "2–5 people": 1.5, "6–15 people": 2.5, "15+": 4 };
+const TOOLS_REPLACED: Record<string, number> = {
+  "Spreadsheets & Google Docs": 3,
+  "Pen and paper / texts": 2,
+  "Another software (QuickBooks, Buildertrend, CoConstruct, etc.)": 4,
+  "A mix of everything": 5,
+  "I'm just getting started": 1,
+};
+
+const PAIN_FEATURE_MAP: Record<string, string> = {
+  "Tracking budgets & expenses": "Real-time budget tracking with overspend alerts",
+  "Managing subs and schedules": "Drag-and-drop project calendar & vendor scheduling",
+  "Keeping draw requests organized": "Automated draw request generation from expenses",
+  "Communicating with my team on site": "Built-in team messaging with @mentions",
+  "Scattered docs and photos": "Project-linked document & photo gallery",
+  "Invoicing and getting paid": "One-click invoice generation from project data",
+  "Staying on timeline": "Milestone timelines with critical-path tracking",
+  "Knowing my true project profit": "Live profit calculator with holding-cost analysis",
+};
+
+function calcMetrics(volume: string, team: string, tools: string) {
+  const vMult = VOLUME_MULT[volume] ?? 1;
+  const tMult = TEAM_MULT[team] ?? 1;
+  const baseHours = 8;
+  const hoursSaved = Math.min(Math.round(baseHours * vMult * tMult), 160);
+  const annualSavings = hoursSaved * 12 * 45;
+  const toolsReplaced = TOOLS_REPLACED[tools] ?? 2;
+  return { hoursSaved, annualSavings, toolsReplaced };
+}
+
+// ── Count-up hook ──────────────────────────────────────────────────────────────
+
+function useCountUp(target: number, delay: number, duration = 1400) {
+  const [count, setCount] = useState(0);
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    const timeout = setTimeout(() => {
+      if (target === 0) { setCount(0); return; }
+      let startTime: number | null = null;
+      const animate = (ts: number) => {
+        if (!startTime) startTime = ts;
+        const progress = Math.min((ts - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 4);
+        setCount(Math.floor(eased * target));
+        if (progress < 1) requestAnimationFrame(animate);
+        else setCount(target);
+      };
+      requestAnimationFrame(animate);
+    }, delay);
+    return () => clearTimeout(timeout);
+  }, [target, delay, duration]);
+
+  return count;
+}
 
 // ── Selection card component ───────────────────────────────────────────────────
 
@@ -69,6 +130,22 @@ function SelectionCard({
   );
 }
 
+// ── Stat card for value step ───────────────────────────────────────────────────
+
+function ValueStat({ value, prefix, suffix, label, delay }: {
+  value: number; prefix?: string; suffix?: string; label: string; delay: number;
+}) {
+  const count = useCountUp(value, delay);
+  return (
+    <div className="text-center rounded-xl border-2 border-primary/20 bg-primary/5 p-6 hover-gold-glow transition-all">
+      <p className="font-heading text-3xl sm:text-4xl font-extrabold text-primary mb-1">
+        {prefix}{count.toLocaleString()}{suffix}
+      </p>
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
 // ── Progress bar ───────────────────────────────────────────────────────────────
 
 function ProgressBar({ step }: { step: number }) {
@@ -92,7 +169,6 @@ export default function GetStarted() {
   const [showPassword, setShowPassword] = useState(false);
 
   // Questionnaire state
-  
   const [annualVolume, setAnnualVolume] = useState("");
   const [painPoints, setPainPoints] = useState<string[]>([]);
   const [currentTools, setCurrentTools] = useState("");
@@ -116,20 +192,14 @@ export default function GetStarted() {
 
   const canContinue = () => {
     switch (step) {
-      case 1:
-        return true;
-      case 2:
-        return !!annualVolume;
-      case 3:
-        return painPoints.length > 0;
-      case 4:
-        return !!currentTools;
-      case 5:
-        return !!teamSize;
-      case 6:
-        return fullName.trim() && email.trim() && password.length >= 6 && agreedToTerms;
-      default:
-        return false;
+      case 1: return true;
+      case 2: return !!annualVolume;
+      case 3: return painPoints.length > 0;
+      case 4: return !!currentTools;
+      case 5: return !!teamSize;
+      case 6: return true; // value summary — always can continue
+      case 7: return fullName.trim() && email.trim() && password.length >= 6 && agreedToTerms;
+      default: return false;
     }
   };
 
@@ -147,7 +217,6 @@ export default function GetStarted() {
     setError("");
 
     try {
-      // 1. Create the user in Supabase Auth
       const nameParts = fullName.trim().split(/\s+/);
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
@@ -181,7 +250,6 @@ export default function GetStarted() {
 
       const userId = authData.user?.id;
 
-      // 2. Update profile with name
       if (userId) {
         await supabase
           .from("profiles")
@@ -189,7 +257,6 @@ export default function GetStarted() {
           .eq("user_id", userId);
       }
 
-      // 3. Store onboarding answers
       if (userId) {
         await (supabase.from as any)("user_onboarding").insert({
           user_id: userId,
@@ -200,7 +267,6 @@ export default function GetStarted() {
         });
       }
 
-      // 4. Store flag so dashboard shows welcome modal
       if (userId) {
         localStorage.setItem("gw_onboarding_complete", JSON.stringify({
           firstName,
@@ -217,7 +283,10 @@ export default function GetStarted() {
     }
   };
 
-  // ── Step content ─────────────────────────────────────────────────────────────
+  // ── Computed metrics for value step ─────────────────────────────────────────
+  const metrics = calcMetrics(annualVolume, teamSize, currentTools);
+
+  // ── Step content ────────────────────────────────────────────────────────────
 
   const renderStep = () => {
     switch (step) {
@@ -329,7 +398,88 @@ export default function GetStarted() {
           </div>
         );
 
+      // ── NEW: Value summary step ─────────────────────────────────────────────
       case 6:
+        return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-medium mb-2">
+                <Zap className="w-4 h-4" />
+                Personalized for you
+              </div>
+              <h2 className="font-heading text-2xl sm:text-3xl font-bold">
+                Here's what GroundWorks can do for{" "}
+                <span className="text-primary">your business</span>
+              </h2>
+            </div>
+
+            {/* Stat cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
+              <ValueStat
+                value={metrics.hoursSaved}
+                suffix=" hrs/mo"
+                prefix="~"
+                label="Admin time saved"
+                delay={0}
+              />
+              <ValueStat
+                value={metrics.annualSavings}
+                prefix="$"
+                suffix="/yr"
+                label="In time recovered"
+                delay={250}
+              />
+              <ValueStat
+                value={metrics.toolsReplaced}
+                suffix=" tools → 1"
+                label="Consolidated platform"
+                delay={500}
+              />
+            </div>
+
+            {/* Pain point → feature mapping */}
+            {painPoints.length > 0 && (
+              <div className="max-w-lg mx-auto space-y-3">
+                <p className="text-sm font-medium text-muted-foreground text-center uppercase tracking-wider">
+                  Solutions for your pain points
+                </p>
+                <div className="space-y-2">
+                  {painPoints.map((pp) => (
+                    <div
+                      key={pp}
+                      className="flex items-start gap-3 rounded-lg border border-border/60 bg-card/50 px-4 py-3 animate-in fade-in duration-500"
+                    >
+                      <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm text-muted-foreground line-through">{pp}</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {PAIN_FEATURE_MAP[pp]}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CTA */}
+            <div className="text-center space-y-3 pt-2">
+              <Button
+                size="lg"
+                className="gold-glow min-h-[48px] px-10 text-base hover:scale-[1.03] transition-transform"
+                onClick={handleContinue}
+              >
+                Start My Free Trial
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                No credit card required · 7-day free trial
+              </p>
+            </div>
+          </div>
+        );
+
+      case 7:
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
@@ -476,7 +626,7 @@ export default function GetStarted() {
         <div className="w-full max-w-2xl">{renderStep()}</div>
       </div>
 
-      {/* Bottom nav — steps 2-6 */}
+      {/* Bottom nav — steps 2-5 (questionnaire) */}
       {step > 1 && step < 6 && (
         <div className="sticky bottom-0 bg-background/80 backdrop-blur-md border-t border-border/30">
           <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -496,8 +646,8 @@ export default function GetStarted() {
         </div>
       )}
 
-      {/* Step 7 back button */}
-      {step === 6 && (
+      {/* Step 6 (value) & 7 (account) — back button only */}
+      {(step === 6 || step === 7) && (
         <div className="sticky bottom-0 bg-background/80 backdrop-blur-md border-t border-border/30">
           <div className="max-w-3xl mx-auto px-4 py-4">
             <Button variant="ghost" onClick={handleBack} className="gap-2">
