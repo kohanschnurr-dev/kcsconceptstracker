@@ -1,16 +1,14 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Replace "3 tools → 1" with a scalability stat
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+### Change in `src/pages/GetStarted.tsx`
 
-### Changes
+1. **Replace the third `ValueStat`** (lines 443-448) with a scalability-focused card:
+   - Change to something like: value based on team size multiplier (e.g. `2x` or `3x`), suffix `"x capacity"`, label `"Scale without extra hires"`
+   - This communicates the ability to handle more projects/volume with the same team
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+2. **Update grid** from `sm:grid-cols-3` to `sm:grid-cols-2` if we want only two cards, **or** keep three with the new scalability card. Given the user wants to highlight scalability, keeping three cards with the replacement makes sense.
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+3. **Add a `capacityMultiplier`** to the metrics calculation — a simple formula like `Math.max(2, Math.round(teamSize * 1.5))` to give a personalized scaling factor.
 
