@@ -30,7 +30,6 @@ const teamsExtra = [
   "Shared project dashboards",
   "Advanced reporting & analytics",
   "Priority support",
-  "25 GB document storage",
   "API access (coming soon)",
 ];
 
