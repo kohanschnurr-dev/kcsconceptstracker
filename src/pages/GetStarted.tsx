@@ -64,8 +64,8 @@ function calcMetrics(volume: string, team: string, tools: string) {
   const baseHours = 8;
   const hoursSaved = Math.min(Math.round(baseHours * vMult * tMult), 160);
   const annualSavings = hoursSaved * 12 * 45;
-  const toolsReplaced = TOOLS_REPLACED[tools] ?? 2;
-  return { hoursSaved, annualSavings, toolsReplaced };
+  const capacityMultiplier = Math.max(2, Math.round(tMult * 1.5));
+  return { hoursSaved, annualSavings, capacityMultiplier };
 }
 
 // ── Count-up hook ──────────────────────────────────────────────────────────────
@@ -441,9 +441,9 @@ export default function GetStarted() {
                 delay={250}
               />
               <ValueStat
-                value={metrics.toolsReplaced}
-                suffix=" tools → 1"
-                label="Consolidated platform"
+                value={metrics.capacityMultiplier}
+                suffix="x capacity"
+                label="Scale without extra hires"
                 delay={500}
               />
             </div>
