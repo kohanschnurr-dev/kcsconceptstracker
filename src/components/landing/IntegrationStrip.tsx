@@ -11,15 +11,15 @@ const integrations = [
 export default function IntegrationStrip() {
   return (
     <section className="py-16 sm:py-20">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <h2 className="font-heading text-3xl sm:text-4xl font-bold text-center mb-4">
+      <div className="max-w-[1400px] mx-auto px-5 sm:px-8">
+        <h2 className="font-heading text-[22px] sm:text-4xl font-bold text-center mb-4">
           Connects With Your <span className="text-primary">Workflow</span>
         </h2>
-        <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
+        <p className="text-muted-foreground text-center mb-10 sm:mb-12 max-w-xl mx-auto leading-relaxed">
           Import data, export reports, and keep everything synced.
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {integrations.map((int) => {
             const Icon = int.icon;
             return (

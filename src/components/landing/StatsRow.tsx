@@ -61,7 +61,7 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
       ref={ref}
       className="text-center hover-gold-glow rounded-xl p-4 transition-all"
     >
-      <p className="font-heading text-4xl sm:text-5xl font-extrabold text-primary mb-2">
+      <p className="font-heading text-3xl sm:text-5xl font-extrabold text-primary mb-2">
         {prefix}{count.toLocaleString()}{suffix}
       </p>
       <p className="text-sm sm:text-base text-muted-foreground">{label}</p>
@@ -72,8 +72,8 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
 export default function StatsRow() {
   return (
     <section className="py-16 sm:py-20">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
+      <div className="max-w-[1400px] mx-auto px-5 sm:px-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-12">
           {stats.map((s, i) => (
             <CountUpStat key={s.label} {...s} index={i} />
           ))}

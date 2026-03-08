@@ -106,13 +106,29 @@ export default function LandingHeader() {
         </button>
       </div>
 
+      {/* Overlay — render before drawer so drawer sits on top */}
+      <div
+        className={`md:hidden fixed inset-0 bg-black/50 z-[60] transition-opacity duration-300 ${
+          mobileOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      />
+
       {/* Mobile Drawer */}
       <div
-        className={`md:hidden fixed inset-y-0 right-0 w-72 bg-background border-l border-border z-50 transform transition-transform duration-300 ${
+        className={`md:hidden fixed inset-y-0 right-0 w-72 bg-background/95 backdrop-blur-lg border-l border-border/50 z-[70] transform transition-transform duration-300 ease-in-out ${
           mobileOpen ? "translate-x-0" : "translate-x-full"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close button inside drawer */}
+        <button
+          className="absolute top-4 right-4 p-2 min-h-[48px] min-w-[48px] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close menu"
+        >
+          <X className="w-6 h-6" />
+        </button>
+
         <div className="flex flex-col gap-2 p-6 pt-20">
           {navLinks.map((link) => (
             <Link
@@ -145,11 +161,6 @@ export default function LandingHeader() {
           </div>
         </div>
       </div>
-
-      {/* Overlay */}
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-40" />
-      )}
     </header>
   );
 }
