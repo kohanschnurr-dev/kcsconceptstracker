@@ -1,16 +1,14 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Replace "$2M+" stat with "50+ Hours Saved Monthly"
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+### Single edit in `src/components/landing/StatsRow.tsx`
 
-### Changes
+Replace the second stat in the `stats` array:
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**Before:** `{ value: 2, prefix: "$", suffix: "M+", label: "In Budgets Managed" }`
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**After:** `{ value: 50, prefix: "", suffix: "+", label: "Hours Saved Monthly" }`
 
-Two lines, two files.
+The count-up animation will naturally tick from 0 → 50, which gives a satisfying visual without being too fast or too slow.
 
