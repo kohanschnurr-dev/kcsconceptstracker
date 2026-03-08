@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 const stats = [
-  { value: 500, prefix: "", suffix: "+", label: "Hours Saved Per Year" },
-  { value: 10000, prefix: "", suffix: "+", label: "Expenses Tracked" },
+  { value: 12, prefix: "", suffix: "+", label: "Modules in One Platform" },
+  { value: 30, prefix: "", suffix: "%", label: "Average Budget Savings" },
   { value: 5, prefix: "", suffix: " min", label: "To Start Tracking Today!" },
   { value: 0, prefix: "$", suffix: "", label: "To Get Started" },
 ];
