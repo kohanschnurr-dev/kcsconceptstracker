@@ -1,16 +1,13 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Replace GroundWorks logo with new icon-only version
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+Copy the uploaded logo (`Ground_Works_No_Word.png`) to replace `src/assets/groundworks-logo-new.png` and `public/favicon.png`. Since all brand logo references already point to `groundworks-logo-new.png`, no import changes are needed — just replacing the asset file.
 
-### Changes
+### Steps
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+1. **Copy** `user-uploads://Ground_Works_No_Word.png` → `src/assets/groundworks-logo-new.png` (overwrites current)
+2. **Copy** `user-uploads://Ground_Works_No_Word.png` → `public/favicon.png` (overwrites current)
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+No code changes required. All existing imports in LandingHeader, GetStarted, and Auth already reference `groundworks-logo-new.png`.
 
