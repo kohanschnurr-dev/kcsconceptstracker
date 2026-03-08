@@ -1,16 +1,22 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Fix Choppy Logo Animation on Welcome Step
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+The logo has both a `float` animation (infinite) and the parent container's `animate-in fade-in` entrance animation competing simultaneously, causing a choppy appearance. The float keyframe starts immediately while the fade-in is still running.
 
-### Changes
+### Changes in `src/pages/GetStarted.tsx` (line 296)
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+1. **Separate the logo entrance from the float animation** — Use a CSS transition approach: start the logo with `opacity-0` and use a `setTimeout` or CSS `animation-delay` to fade it in smoothly first, then let the float take over. Simplest fix: apply a dedicated smooth `transition-opacity duration-700 ease-out` on the image and delay the float animation start with `animation-delay`.
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+2. Specifically, change the `<img>` class to:
+   - Add `opacity-0 animate-[fadeInFloat_1s_ease-out_0.3s_forwards]` — a combined keyframe that fades in over ~700ms then transitions into the float loop.
+   - Or simpler: keep `animate-[float_3s_ease-in-out_infinite]` but add `animation-delay: 0.5s` and a separate fade-in with `opacity-0 animate-[fade-in_0.8s_ease-out_forwards]` using a wrapper element.
 
-Two lines, two files.
+**Cleanest approach**: Wrap the logo in a `div` that handles the smooth fade-in (`animate-[fade-in_0.8s_ease-out_0.3s_both]`), while the `img` itself only does the float. This separates concerns and prevents the two animations from conflicting.
+
+### File: `src/pages/GetStarted.tsx` (line 296)
+- Wrap `<img>` in a `<div className="animate-[fade-in_0.8s_ease-out_0.3s_both]">`
+- Keep `<img>` with only `h-28 w-28 animate-[float_3s_ease-in-out_infinite] drop-shadow-[0_0_25px_hsl(var(--primary)/0.4)]`
+
+This ensures the logo fades in smoothly over 0.8s (with a 0.3s delay for the parent to start its entrance), then the float loops seamlessly underneath.
 
