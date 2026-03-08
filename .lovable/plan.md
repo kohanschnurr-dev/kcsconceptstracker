@@ -1,16 +1,20 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Update Pain Points to Be More Construction/Fix-and-Flip Focused
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+Replace three pain points with more relevant construction-based options and update the corresponding feature mappings.
 
-### Changes
+### Changes in `src/pages/GetStarted.tsx`
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**PAIN_POINTS array (lines 18-27)** — swap out three items:
+- ~~"Keeping draw requests organized"~~ → **"Tracking change orders & scope creep"**
+- ~~"Communicating with my team on site"~~ → **"Coordinating multiple rehabs at once"**
+- ~~"Invoicing and getting paid"~~ → **"Estimating rehab costs accurately"**
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**PAIN_FEATURE_MAP (lines 51-60)** — update the three corresponding entries:
+- `"Tracking change orders & scope creep"`: `"Change order logging with budget-impact tracking"`
+- `"Coordinating multiple rehabs at once"`: `"Multi-project dashboard with at-a-glance status"`
+- `"Estimating rehab costs accurately"`: `"Category-level budget templates from past projects"`
 
-Two lines, two files.
+No other files affected.
 
