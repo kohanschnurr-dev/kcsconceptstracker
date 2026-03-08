@@ -17,13 +17,12 @@ const VOLUMES = ["1–2", "3–5", "6–10", "10+"];
 
 const PAIN_POINTS = [
   "Tracking budgets & expenses",
-  "Managing subs and schedules",
-  "Tracking change orders & scope creep",
   "Coordinating multiple rehabs at once",
   "Scattered docs and photos",
   "Estimating rehab costs accurately",
   "Staying on timeline",
   "Knowing my true project profit",
+  "Managing subs and schedules",
 ];
 
 const TOOLS = [
@@ -51,7 +50,7 @@ const TOOLS_REPLACED: Record<string, number> = {
 const PAIN_FEATURE_MAP: Record<string, string> = {
   "Tracking budgets & expenses": "Real-time budget tracking with overspend alerts",
   "Managing subs and schedules": "Drag-and-drop project calendar & vendor scheduling",
-  "Tracking change orders & scope creep": "Change order logging with budget-impact tracking",
+  
   "Coordinating multiple rehabs at once": "Multi-project dashboard with at-a-glance status",
   "Scattered docs and photos": "Project-linked document & photo gallery",
   "Estimating rehab costs accurately": "Category-level budget templates from past projects",

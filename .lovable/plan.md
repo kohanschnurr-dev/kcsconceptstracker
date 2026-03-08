@@ -1,22 +1,16 @@
 
 
-## Plan: Remove "Tracking change orders" and reorder pain points
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-### Changes in `src/pages/GetStarted.tsx`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-**PAIN_POINTS array (lines 18-27)** — Remove "Tracking change orders & scope creep" and move "Managing subs and schedules" to the bottom:
+### Changes
 
-```typescript
-const PAIN_POINTS = [
-  "Tracking budgets & expenses",
-  "Coordinating multiple rehabs at once",
-  "Scattered docs and photos",
-  "Estimating rehab costs accurately",
-  "Staying on timeline",
-  "Knowing my true project profit",
-  "Managing subs and schedules",
-];
-```
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-**PAIN_FEATURE_MAP (line 54)** — Remove the "Tracking change orders & scope creep" entry.
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
