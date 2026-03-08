@@ -460,10 +460,7 @@ export default function GetStarted() {
       <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/30">
         <div className="max-w-3xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between mb-2">
-            <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <img src={groundworksLogo} alt="" className="h-6 w-6" />
-              GroundWorks
-            </Link>
+            <div className="h-6" />
             {step > 1 && (
               <span className="text-xs text-muted-foreground">
                 Step {step - 1} of {TOTAL_STEPS - 1}
