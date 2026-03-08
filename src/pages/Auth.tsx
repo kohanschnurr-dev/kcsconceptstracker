@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, Users, Receipt, ShieldCheck, Loader2, Mail, ArrowLeft } from 'lucide-react';
 import { lovable } from '@/integrations/lovable/index';
-import groundworksLogo from '@/assets/groundworks-app-logo.png';
+import groundworksLogo from '@/assets/groundworks-logo-new.png';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email address'),

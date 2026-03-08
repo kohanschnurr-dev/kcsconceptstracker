@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import groundworksLogo from "@/assets/groundworks-helmet-logo.png";
+import groundworksLogo from "@/assets/groundworks-logo-new.png";
 
 const TOTAL_STEPS = 6;
 

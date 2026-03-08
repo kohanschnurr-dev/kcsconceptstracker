@@ -1,19 +1,16 @@
 
 
-## Plan: Replace GroundWorks logo across the app
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-Copy the new logo file to `src/assets/` and update all three files that reference the old GroundWorks brand logos. The Sidebar/MobileNav business logo (`kcsLogo` / `logoUrl` from company settings) will NOT be touched.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-### Steps
+### Changes
 
-1. **Copy uploaded logo** to `src/assets/groundworks-logo-new.png`
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-2. **Update imports** in these 3 files:
-   - `src/components/landing/LandingHeader.tsx` — change import from `groundworks-helmet-logo.png` to the new logo
-   - `src/pages/GetStarted.tsx` — change import from `groundworks-helmet-logo.png` to the new logo
-   - `src/pages/Auth.tsx` — change import from `groundworks-app-logo.png` to the new logo
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-3. **Update favicon** in `index.html` — copy logo to `public/favicon.png` and reference it
-
-No other files affected. The Sidebar, MobileNav, and settings company logo are untouched.
+Two lines, two files.
 
