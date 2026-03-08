@@ -1,16 +1,16 @@
 
 
-## Plan: Fix Value Summary Step Formatting
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-The screenshot shows the stat cards have text that's too large and wrapping awkwardly (e.g., "~28 hrs/mo" breaking across lines), and the overall spacing feels cramped.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-### Changes in `src/pages/GetStarted.tsx`
+### Changes
 
-1. **ValueStat component** (lines 139-146): Reduce the large heading from `text-3xl sm:text-4xl` to `text-2xl sm:text-3xl`, add `whitespace-nowrap` to prevent line breaks, and tighten padding from `p-6` to `p-4 py-5`.
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-2. **Stat cards grid** (line 417): Ensure `sm:grid-cols-3` cards have equal sizing with `auto-cols-fr` and reduce gap from `gap-4` to `gap-3`.
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-3. **Pain point cards** (lines 446-461): Reduce vertical spacing between cards, tighten padding from `px-4 py-3` to `px-3 py-2.5` for a cleaner list appearance.
-
-4. **Overall section spacing** (line 404): Reduce top-level `space-y-8` to `space-y-6` so the whole step feels less spread out.
+Two lines, two files.
 
