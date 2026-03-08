@@ -113,13 +113,13 @@ function SelectionCard({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all duration-200 ${
+      className={`w-full text-left px-5 py-4 lg:px-6 lg:py-5 rounded-xl border-2 transition-all duration-200 ${
         selected
           ? "border-primary bg-primary/10 shadow-[0_0_15px_hsl(32_95%_55%/0.2)]"
           : "border-border/60 bg-card/50 hover:border-border hover:bg-card/80"
       }`}
     >
-      <span className="flex items-center gap-3 text-base">
+      <span className="flex items-center gap-3 text-base lg:text-lg">
         {emoji && <span className="text-xl">{emoji}</span>}
         <span className={selected ? "text-foreground font-medium" : "text-muted-foreground"}>
           {label}
@@ -303,9 +303,9 @@ export default function GetStarted() {
         return (
           <div className="flex flex-col items-center text-center space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="animate-[fade-in_0.8s_ease-out_0.3s_both]">
-              <img src={groundworksLogo} alt="GroundWorks" className="h-28 w-28 animate-[float_3s_ease-in-out_infinite] drop-shadow-[0_0_25px_hsl(var(--primary)/0.4)]" />
+              <img src={groundworksLogo} alt="GroundWorks" className="h-28 w-28 lg:h-36 lg:w-36 animate-[float_3s_ease-in-out_infinite] drop-shadow-[0_0_25px_hsl(var(--primary)/0.4)]" />
             </div>
-            <h1 className="font-heading text-3xl sm:text-4xl font-bold leading-tight">
+            <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
               Let's set up GroundWorks for the way{" "}
               <span className="text-primary">you work</span>.
             </h1>
@@ -326,7 +326,7 @@ export default function GetStarted() {
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
-              <h2 className="font-heading text-2xl sm:text-3xl font-bold">
+              <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-bold">
                 How many projects do you run per year?
               </h2>
             </div>
@@ -347,7 +347,7 @@ export default function GetStarted() {
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
-              <h2 className="font-heading text-2xl sm:text-3xl font-bold">
+              <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-bold">
                 What's your biggest headache right now?
               </h2>
               <p className="text-muted-foreground">
@@ -371,7 +371,7 @@ export default function GetStarted() {
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
-              <h2 className="font-heading text-2xl sm:text-3xl font-bold">
+              <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-bold">
                 How are you managing projects today?
               </h2>
             </div>
@@ -392,7 +392,7 @@ export default function GetStarted() {
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
-              <h2 className="font-heading text-2xl sm:text-3xl font-bold">
+              <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-bold">
                 How big is your team?
               </h2>
             </div>
@@ -418,7 +418,7 @@ export default function GetStarted() {
                 <Zap className="w-4 h-4" />
                 Personalized for you
               </div>
-              <h2 className="font-heading text-2xl sm:text-3xl font-bold">
+              <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-bold">
                 Here's what GroundWorks can do for{" "}
                 <span className="text-primary">your business</span>
               </h2>
@@ -618,23 +618,23 @@ export default function GetStarted() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Top bar with progress */}
-      <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/30">
-        <div className="max-w-3xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between mb-2">
-            <div className="h-6" />
-            {step > 1 && (
+      {step > 1 && (
+        <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/30">
+          <div className="max-w-3xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="h-6" />
               <span className="text-xs text-muted-foreground">
                 Step {step - 1} of {TOTAL_STEPS - 1}
               </span>
-            )}
+            </div>
+            <ProgressBar step={step} />
           </div>
-          <ProgressBar step={step} />
         </div>
-      </div>
+      )}
 
       {/* Main content */}
       <div className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
-        <div className={`w-full max-w-2xl transition-all duration-250 ease-in-out ${isTransitioning ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>{renderStep()}</div>
+        <div className={`w-full max-w-2xl lg:max-w-3xl transition-all duration-250 ease-in-out ${isTransitioning ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>{renderStep()}</div>
       </div>
 
       {/* Bottom nav — steps 2-5 (questionnaire) */}
