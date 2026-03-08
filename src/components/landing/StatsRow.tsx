@@ -4,7 +4,7 @@ const stats = [
   { value: 1000, prefix: "", suffix: "+", label: "Projects Tracked and Counting" },
   { value: 25, prefix: "", suffix: "+", label: "Average Hours Saved Monthly" },
   { value: 3, prefix: "Under ", suffix: " min", label: "To Start Tracking Today!" },
-  { value: 0, prefix: "$", suffix: "", label: "To Get Started" },
+  { value: 7, prefix: "", suffix: "-Day", label: "Free Trial" },
 ];
 
 function CountUpStat({ value, prefix, suffix, label, index }: {
