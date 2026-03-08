@@ -14,13 +14,14 @@ import LandingFooter from "@/components/landing/LandingFooter";
 const soloFeatures = [
   "Unlimited projects",
   "Budget tracking & cost breakdowns",
-  "Draw request management",
   "Sub/vendor management",
   "Timeline & milestone tracking",
-  "Photo & document storage (5 GB)",
+  "Draw request management",
+  "Photo & document storage",
   "Material tracking & daily logs",
   "Reporting & CSV export",
   "Mobile access · Email support",
+  "And more...",
 ];
 
 const teamsExtra = [
@@ -29,7 +30,6 @@ const teamsExtra = [
   "Shared project dashboards",
   "Advanced reporting & analytics",
   "Priority support",
-  "25 GB document storage",
   "API access (coming soon)",
 ];
 

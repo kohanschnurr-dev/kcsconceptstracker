@@ -1,26 +1,16 @@
 
 
-## Changes to Pricing Page Feature Lists
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**File:** `src/pages/Pricing.tsx`
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-1. **Solo features** (lines ~17-27):
-   - Remove "(5 GB)" from "Photo & document storage (5 GB)"
-   - Move "Draw request management" from position 3 to after "Timeline & milestone tracking"
-   - Add "And more..." at the end
+### Changes
 
-2. **Teams features** (lines ~29-36):
-   - Remove "25 GB document storage" from the list
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-Updated solo list order:
-1. Unlimited projects
-2. Budget tracking & cost breakdowns
-3. Sub/vendor management
-4. Timeline & milestone tracking
-5. Draw request management
-6. Photo & document storage
-7. Material tracking & daily logs
-8. Reporting & CSV export
-9. Mobile access · Email support
-10. And more...
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+
+Two lines, two files.
 
