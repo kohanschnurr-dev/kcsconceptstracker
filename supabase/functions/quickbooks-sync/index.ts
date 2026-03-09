@@ -106,9 +106,10 @@ serve(async (req) => {
 
     const userId = claimsData.claims.sub as string;
 
-    // Get user's QuickBooks tokens
-    const { data: tokenData, error: tokenError } = await supabase
-      .from("quickbooks_tokens")
+    // Get user's QuickBooks tokens (read from decrypted view)
+    const serviceSupabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+    const { data: tokenData, error: tokenError } = await serviceSupabase
+      .from("quickbooks_tokens_decrypted")
       .select("*")
       .eq("user_id", userId)
       .single();
