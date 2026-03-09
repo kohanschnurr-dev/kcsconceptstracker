@@ -243,6 +243,11 @@ export default function BudgetCalculator() {
       ...prev,
       rehab_filler: fillerAmount > 0 ? fillerAmount.toString() : '',
     }));
+    if (fillerAmount > 0) {
+      setAutoRevealCategory('rehab_filler');
+      const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format;
+      toast.success(`Budget set to ${fmt(target)} — ${fmt(fillerAmount)} allocated to Filler`);
+    }
   };
 
   const formatCurrency = (value: number) => {
