@@ -27,12 +27,16 @@ export function MAOGauge({
   currentBudget, 
   purchasePrice, 
   maoPercentage = 78,
-  onPercentageChange 
+  onPercentageChange,
+  onBudgetTargetChange
 }: MAOGaugeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const [editingBudget, setEditingBudget] = useState(false);
+  const [budgetInputValue, setBudgetInputValue] = useState('');
+  const budgetInputRef = useRef<HTMLInputElement>(null);
 
   // Dynamic MAO Rule: Max Offer = (ARV × percentage) - Rehab Budget
   const maxAllowableOffer = (arv * (maoPercentage / 100)) - currentBudget;
