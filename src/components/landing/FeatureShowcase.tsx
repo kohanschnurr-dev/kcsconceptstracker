@@ -92,17 +92,17 @@ const showcaseItems: ShowcaseItem[] = [
 
 export default function FeatureShowcase() {
   return (
-    <section className="py-20 sm:py-28">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <h2 className="font-heading text-3xl sm:text-4xl font-bold text-center mb-4">
+    <section className="py-16 sm:py-28">
+      <div className="max-w-[1400px] mx-auto px-5 sm:px-8">
+        <h2 className="font-heading text-[22px] sm:text-4xl font-bold text-center mb-4">
           Deep Tools, Not <span className="text-primary">Shallow Features</span>
         </h2>
-        <p className="text-muted-foreground text-center mb-16 max-w-2xl mx-auto">
+        <p className="text-muted-foreground text-center mb-10 sm:mb-16 max-w-2xl mx-auto leading-relaxed">
           Every module is built with the depth contractors actually need — not watered-down
           demos that fall apart on real jobs.
         </p>
 
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {showcaseItems.map((item, idx) => {
             const Icon = item.icon;
             const isEven = idx % 2 === 0;
@@ -110,7 +110,7 @@ export default function FeatureShowcase() {
             return (
               <div
                 key={item.title}
-                className={`flex flex-col ${isEven ? "lg:flex-row" : "lg:flex-row-reverse"} gap-8 items-center`}
+                className={`flex flex-col ${isEven ? "lg:flex-row" : "lg:flex-row-reverse"} gap-4 sm:gap-8 items-center`}
               >
                 {/* Text side */}
                 <div className="flex-1 w-full">
@@ -154,7 +154,7 @@ function FeatureVisual({ item }: { item: ShowcaseItem }) {
   const Icon = item.icon;
 
   return (
-    <div className="bg-card border border-border rounded-xl p-6 sm:p-8 h-full flex flex-col items-center justify-center min-h-[280px] relative overflow-hidden">
+    <div className="bg-card border border-border rounded-xl p-6 sm:p-8 h-full flex flex-col items-center justify-center min-h-[200px] sm:min-h-[280px] relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsl(38_92%_50%_/_0.04)_0%,_transparent_70%)]" />
 

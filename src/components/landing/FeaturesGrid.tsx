@@ -6,22 +6,22 @@ export default function FeaturesGrid() {
   const displayed = features.slice(0, 7);
 
   return (
-    <section id="features" className="py-20 sm:py-28">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <h2 className="font-heading text-3xl sm:text-4xl font-bold text-center mb-14">
+    <section id="features" className="py-16 sm:py-28">
+      <div className="max-w-[1400px] mx-auto px-5 sm:px-8">
+        <h2 className="font-heading text-[22px] sm:text-4xl font-bold text-center mb-10 sm:mb-14">
           Everything You Need to{" "}
           <span className="text-primary">Run the Job</span>
         </h2>
 
         {/* Top row: 4 cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-3 sm:mb-5">
           {displayed.slice(0, 4).map((f) => (
             <FeatureCard key={f.slug} feature={f} />
           ))}
         </div>
 
         {/* Bottom row: 3 cards + "And more" */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
           {displayed.slice(4, 7).map((f) => (
             <FeatureCard key={f.slug} feature={f} />
           ))}

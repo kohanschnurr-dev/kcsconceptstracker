@@ -14,30 +14,30 @@ export default function Hero() {
       {/* Radial gradient overlay */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsl(38_92%_50%_/_0.08)_0%,_transparent_70%)]" />
 
-      <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-8 pt-24 pb-16 text-center">
-        <h1 className="hero-animate hero-delay-1 font-heading text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-tight tracking-tight mb-6">
+      <div className="relative z-10 max-w-[1400px] mx-auto px-5 sm:px-8 pt-24 pb-16 text-center">
+        <h1 className="hero-animate hero-delay-1 font-heading text-[28px] sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-[1.15] tracking-tight mb-6">
           Your Entire Operation,{" "}
           <span className="text-primary">One Platform</span>
         </h1>
 
-        <p className="hero-animate hero-delay-2 max-w-2xl mx-auto text-lg sm:text-xl text-muted-foreground mb-10">
+        <p className="hero-animate hero-delay-2 max-w-2xl mx-auto text-base sm:text-xl text-muted-foreground mb-10 leading-relaxed">
           Track budgets. Manage subs. Hit your numbers. All from one dashboard
           built for flippers and investors.
         </p>
 
-        <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+        <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 w-full max-w-[400px] sm:max-w-none mx-auto">
           <Button
             size="lg"
-            className="gold-glow min-h-[48px] px-8 text-base hover:scale-[1.03] transition-transform"
+            className="gold-glow min-h-[48px] w-full sm:w-auto px-8 text-base hover:scale-[1.03] transition-transform"
             onClick={handleTrialClick}
           >
             Start Your Free Trial
           </Button>
-          <Link to="/demo">
+          <Link to="/demo" className="w-full sm:w-auto">
             <Button
               variant="outline"
               size="lg"
-              className="min-h-[48px] px-8 text-base hover:scale-[1.03] transition-transform"
+              className="min-h-[48px] w-full sm:w-auto px-8 text-base hover:scale-[1.03] transition-transform"
             >
               <Play className="w-4 h-4 mr-2" />
               Watch Demo
@@ -53,7 +53,7 @@ export default function Hero() {
       {/* Scroll indicator */}
       <button
         onClick={() => document.getElementById("platform")?.scrollIntoView({ behavior: "smooth" })}
-        className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer group"
+        className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 hidden sm:flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer group"
         aria-label="Scroll down"
       >
         <span className="text-sm font-medium tracking-widest uppercase">See What's Inside</span>

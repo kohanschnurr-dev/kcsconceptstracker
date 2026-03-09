@@ -200,17 +200,17 @@ export default function PlatformOverview() {
   const [selected, setSelected] = useState<Module | null>(null);
 
   return (
-    <section id="platform" className="py-20 sm:py-28 bg-secondary/30">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <h2 data-reveal className="scroll-slide-left font-heading text-3xl sm:text-4xl font-bold text-center mb-4">
+    <section id="platform" className="py-16 sm:py-28 bg-secondary/30">
+      <div className="max-w-[1400px] mx-auto px-5 sm:px-8">
+        <h2 data-reveal className="scroll-slide-left font-heading text-[22px] sm:text-4xl font-bold text-center mb-4">
           One Platform. <span className="text-primary">Every Module You Need.</span>
         </h2>
-        <p data-reveal className="scroll-hidden text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
+        <p data-reveal className="scroll-hidden text-muted-foreground text-center mb-10 sm:mb-14 max-w-2xl mx-auto leading-relaxed">
           GroundWorks isn't a stripped-down tracker — it's a full operating system
           for construction projects with 12+ integrated modules.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {modules.map((m) => {
             const Icon = m.icon;
             return (

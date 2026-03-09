@@ -11,12 +11,12 @@ export default function CostCalculator() {
   const annualSavings = annualCost - 89 * 12;
 
   return (
-    <section className="py-20 sm:py-28 bg-muted/20 border-y border-border/40">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <h2 data-reveal className="scroll-slide-left font-heading text-3xl sm:text-4xl font-bold text-center mb-4">
+    <section className="py-16 sm:py-28 bg-muted/20 border-y border-border/40">
+      <div className="max-w-[1400px] mx-auto px-5 sm:px-8">
+        <h2 data-reveal className="scroll-slide-left font-heading text-[22px] sm:text-4xl font-bold text-center mb-4">
           See Where Your <span className="text-primary">Time</span> Goes
         </h2>
-        <p data-reveal className="scroll-hidden text-muted-foreground text-center mb-12 max-w-xl mx-auto">
+        <p data-reveal className="scroll-hidden text-muted-foreground text-center mb-10 sm:mb-12 max-w-xl mx-auto leading-relaxed">
           Plug in your numbers. See what you could get back.
         </p>
 
@@ -81,7 +81,7 @@ export default function CostCalculator() {
               <p className="text-sm text-muted-foreground mb-1">
                 Monthly Time Cost
               </p>
-              <p className="font-heading text-3xl font-bold text-primary">
+              <p className="font-heading text-2xl sm:text-3xl font-bold text-primary">
                 ${monthlyCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
@@ -89,7 +89,7 @@ export default function CostCalculator() {
               <p className="text-sm text-muted-foreground mb-1">
                 Your Annual Overhead
               </p>
-              <p className="font-heading text-3xl font-bold text-primary">
+              <p className="font-heading text-2xl sm:text-3xl font-bold text-primary">
                 ${annualCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>

@@ -34,16 +34,16 @@ const personas = [
 
 export default function BuiltFor() {
   return (
-    <section id="built-for" className="py-20 sm:py-28">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <h2 data-reveal className="scroll-slide-right font-heading text-3xl sm:text-4xl font-bold text-center mb-3">
+    <section id="built-for" className="py-16 sm:py-28">
+      <div className="max-w-[1400px] mx-auto px-5 sm:px-8">
+        <h2 data-reveal className="scroll-slide-right font-heading text-[22px] sm:text-4xl font-bold text-center mb-3">
           One Platform for <span className="text-primary">Every Deal</span>
         </h2>
-        <p data-reveal className="scroll-slide-right text-muted-foreground text-center max-w-2xl mx-auto mb-14">
+        <p data-reveal className="scroll-slide-right text-muted-foreground text-center max-w-2xl mx-auto mb-10 sm:mb-14">
           Everything you need to manage rehabs, rentals, and flips — in one place.
         </p>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 max-w-4xl mx-auto">
           {personas.map((p, i) => (
             <div
               key={p.label}

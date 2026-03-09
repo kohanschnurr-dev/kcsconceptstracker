@@ -29,16 +29,16 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section className="py-20 sm:py-28 bg-secondary/30">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <h2 className="font-heading text-3xl sm:text-4xl font-bold text-center mb-4">
+    <section className="py-16 sm:py-28 bg-secondary/30">
+      <div className="max-w-[1400px] mx-auto px-5 sm:px-8">
+        <h2 className="font-heading text-[22px] sm:text-4xl font-bold text-center mb-4">
           Up and Running in <span className="text-primary">Minutes</span>
         </h2>
-        <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
+        <p className="text-muted-foreground text-center mb-10 sm:mb-14 max-w-xl mx-auto leading-relaxed">
           No onboarding calls. No consultants. Just sign up and start managing.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {steps.map((s, idx) => {
             const Icon = s.icon;
             return (

@@ -292,8 +292,10 @@ serve(async (req) => {
 
     if (action === "status") {
       // Check if user is connected to QuickBooks
-      const { data: tokenData, error: tokenError } = await supabase
-        .from("quickbooks_tokens")
+      // Read from decrypted view (tokens are encrypted at rest)
+      const serviceSupabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+      const { data: tokenData, error: tokenError } = await serviceSupabase
+        .from("quickbooks_tokens_decrypted")
         .select("expires_at, realm_id, refresh_token")
         .eq("user_id", userId)
         .single();

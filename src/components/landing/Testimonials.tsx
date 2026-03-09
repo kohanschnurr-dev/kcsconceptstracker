@@ -29,13 +29,13 @@ const testimonials = [
 
 export default function Testimonials() {
   return (
-    <section className="py-20 sm:py-28 bg-secondary/30">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        <h2 data-reveal className="scroll-slide-left font-heading text-3xl sm:text-4xl font-bold text-center mb-14">
+    <section className="py-16 sm:py-28 bg-secondary/30">
+      <div className="max-w-[1400px] mx-auto px-5 sm:px-8">
+        <h2 data-reveal className="scroll-slide-left font-heading text-[22px] sm:text-4xl font-bold text-center mb-10 sm:mb-14">
           Don't Take Our <span className="text-primary">Word For It</span>
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {testimonials.map((t, i) => (
             <div
               key={t.name}
