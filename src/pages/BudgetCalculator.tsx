@@ -608,6 +608,8 @@ export default function BudgetCalculator() {
                   baselineActive={activeBaselineRate !== null}
                   expandAll={templateJustApplied}
                   onExpandHandled={() => setTemplateJustApplied(false)}
+                  autoRevealCategory={autoRevealCategory}
+                  onRevealHandled={() => setAutoRevealCategory(null)}
                 />
 
                 {/* Analysis Section - Collapsible */}

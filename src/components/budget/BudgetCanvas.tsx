@@ -71,6 +71,25 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     }
   }, [expandAll]);
 
+  // Auto-reveal a specific category (unhide it and expand its parent group)
+  useEffect(() => {
+    if (!autoRevealCategory) return;
+    // Find the group containing this category
+    const parentGroup = dynamicGroups.find(g => g.categories.includes(autoRevealCategory));
+    if (parentGroup) {
+      setOpenGroups(prev => prev.includes(parentGroup.name) ? prev : [...prev, parentGroup.name]);
+    }
+    // Unhide the category
+    setHiddenCategories(prev => {
+      if (!prev.has(autoRevealCategory)) return prev;
+      const next = new Set(prev);
+      next.delete(autoRevealCategory);
+      localStorage.setItem(HIDDEN_CATEGORIES_STORAGE_KEY, JSON.stringify([...next]));
+      return next;
+    });
+    onRevealHandled?.();
+  }, [autoRevealCategory]);
+
   // Load presets from database on mount, fall back to localStorage for migration
   useEffect(() => {
     if (!user || dbLoadedRef.current) return;
