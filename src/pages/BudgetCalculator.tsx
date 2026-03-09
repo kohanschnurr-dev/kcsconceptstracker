@@ -91,6 +91,7 @@ export default function BudgetCalculator() {
   const [holdingFlat, setHoldingFlat] = useState<string>('');
   const [sellClosingFlat, setSellClosingFlat] = useState<string>('');
   const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
+  const [autoRevealCategory, setAutoRevealCategory] = useState<string | null>(null);
   
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
