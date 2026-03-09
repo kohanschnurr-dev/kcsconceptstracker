@@ -230,6 +230,20 @@ export default function BudgetCalculator() {
   const maxOffer = (arvNum * (maoPercentage / 100)) - totalBudget;
   const meetsMaoRule = purchasePriceNum <= maxOffer && purchasePriceNum > 0;
 
+  // Handle user setting a target construction budget — fill filler with the difference
+  const handleBudgetTargetChange = (target: number) => {
+    // Sum all categories EXCEPT filler
+    const currentNonFiller = Object.entries(categoryBudgets).reduce((sum, [key, val]) => {
+      if (key === 'rehab_filler') return sum;
+      return sum + (parseFloat(val) || 0);
+    }, 0);
+    const fillerAmount = Math.max(0, target - currentNonFiller);
+    setCategoryBudgets(prev => ({
+      ...prev,
+      rehab_filler: fillerAmount > 0 ? fillerAmount.toString() : '',
+    }));
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -526,6 +540,7 @@ export default function BudgetCalculator() {
               purchasePrice={purchasePriceNum}
               maoPercentage={maoPercentage}
               onPercentageChange={setMaoPercentage}
+              onBudgetTargetChange={handleBudgetTargetChange}
             />
         </div>
 
