@@ -476,7 +476,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
 
       {/* Per-Group Settings Dialog */}
       <Dialog open={isGroupSettingsOpen} onOpenChange={setIsGroupSettingsOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{activeGroupName} Settings</DialogTitle>
             <DialogDescription>
@@ -484,7 +484,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-2">
+          <div className="flex-1 overflow-y-auto space-y-6 py-2 -mx-6 px-6">
             {/* Section 1: Visibility */}
             <div>
               <p className="text-sm font-semibold mb-3">Show / Hide Items</p>
@@ -600,7 +600,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="border-t border-border bg-background pt-4 -mx-6 px-6 -mb-6 pb-6 sticky bottom-0">
             <Button variant="ghost" onClick={() => setIsGroupSettingsOpen(false)}>
               Cancel
             </Button>
