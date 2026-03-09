@@ -17,6 +17,7 @@ interface MAOGaugeProps {
   purchasePrice: number;
   maoPercentage?: number;
   onPercentageChange?: (percentage: number) => void;
+  onBudgetTargetChange?: (target: number) => void;
 }
 
 const PRESET_PERCENTAGES = [70, 75, 78, 80, 85];
