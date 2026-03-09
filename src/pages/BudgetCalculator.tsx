@@ -540,6 +540,7 @@ export default function BudgetCalculator() {
               purchasePrice={purchasePriceNum}
               maoPercentage={maoPercentage}
               onPercentageChange={setMaoPercentage}
+              onBudgetTargetChange={handleBudgetTargetChange}
             />
         </div>
 
