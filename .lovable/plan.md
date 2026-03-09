@@ -1,16 +1,17 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Make Save/Cancel Buttons Sticky in Group Settings Dialog
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+The "Save" and "Cancel" buttons in the per-group settings dialog (e.g. "Other Settings") scroll off-screen when the category list is long. Users toggling visibility items at the top won't see the save button without scrolling all the way down.
 
-### Changes
+**File:** `src/components/budget/BudgetCanvas.tsx`
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**Changes (lines ~479-611):**
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+1. Remove `overflow-y-auto` from the `DialogContent` — move scrolling to the inner content area only
+2. Wrap the content between `DialogHeader` and `DialogFooter` in a `ScrollArea` (or a `div` with `overflow-y-auto flex-1`) so only the middle scrolls
+3. Make `DialogContent` use `flex flex-col` layout so header and footer stay fixed at top/bottom
+4. Add a top border and background to `DialogFooter` so it visually separates from scrollable content (e.g. `border-t bg-background pt-4 sticky bottom-0`)
 
-Two lines, two files.
+This ensures Save/Cancel are always visible regardless of how many categories are in the group.
 
