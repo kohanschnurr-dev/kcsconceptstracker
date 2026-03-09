@@ -1,36 +1,46 @@
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const faqs = [
   {
     q: "What types of projects does GroundWorks support?",
-    a: "GroundWorks is built for residential construction — fix & flips, rental rehabs, new builds, and remodels. If you're tracking budgets, subs, and timelines on construction projects, it's built for you.",
+    a: "GroundWorks is built for residential construction — fix & flips, rental rehabs (BRRR), new builds, and remodels. If you're tracking budgets, managing subs, and hitting timelines on construction projects, it's built for you.",
   },
   {
     q: "How does QuickBooks integration work?",
-    a: "Connect your QuickBooks account and GroundWorks will sync your expenses automatically. You can categorize them, split costs across multiple projects, and batch-import with one click. It checks for duplicates so nothing gets counted twice.",
+    a: "Connect your QuickBooks account and GroundWorks syncs your expenses automatically. Categorize them, split costs across multiple projects, and batch-import with one click. Built-in duplicate detection ensures nothing gets counted twice.",
   },
   {
     q: "Can my project managers use the app too?",
-    a: "Yes. Invite team members via email and assign roles with granular permissions — control who can view projects, manage expenses, handle procurement, and more. PMs can submit order requests that you approve from your dashboard.",
+    a: "Absolutely. Invite team members via email and assign roles with granular permissions — control who can view projects, manage expenses, handle procurement, and more. PMs can submit order requests that you approve directly from your dashboard.",
   },
   {
     q: "Is my data secure?",
-    a: "GroundWorks uses Supabase for data storage with row-level security, encrypted connections, and secure file storage for receipts and documents. Your data is never shared with third parties.",
+    a: "GroundWorks uses enterprise-grade encryption, row-level security, and secure file storage for all your receipts and documents. Your data is never shared with third parties, and all connections are encrypted end-to-end.",
+  },
+  {
+    q: "Do I need to be tech-savvy to use it?",
+    a: "Not at all. GroundWorks is designed to be intuitive from day one — most users are up and running in under 3 minutes. No training, no onboarding calls, no learning curve. If you can use a smartphone, you can use GroundWorks.",
   },
   {
     q: "Can I generate documents and reports?",
-    a: "Absolutely. Generate branded PDFs for receipts, invoices, scope of work documents, and contractor directories. Export daily logs, budget breakdowns, and spending reports — all with your company logo and branding.",
+    a: "Yes. Generate branded PDFs for receipts, invoices, scope of work documents, and contractor directories. Export daily logs, budget breakdowns, and spending reports — all with your company logo and branding.",
   },
   {
     q: "What's included in the free trial?",
     a: "Everything. You get full access to all 12+ modules for 7 days with no credit card required. No feature gates, no limits — use it like you own it.",
   },
+  {
+    q: "What if I need help getting started?",
+    a: "We've got you covered. Reach out via in-app support chat anytime and our team will help you get set up, import your data, or answer any questions. We're builders too — we get it.",
+  },
 ];
 
 export default function FAQ() {
-  const [open, setOpen] = useState<number | null>(null);
-
   return (
     <section className="py-14 sm:py-20 bg-card border-y border-border/50">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
@@ -38,38 +48,24 @@ export default function FAQ() {
           <span className="text-primary">FAQ</span>
         </h2>
 
-        <div className="max-w-2xl mx-auto space-y-3">
-          {faqs.map((faq, idx) => {
-            const isOpen = open === idx;
-            return (
-              <div
+        <div className="max-w-2xl mx-auto">
+          <Accordion type="single" collapsible className="space-y-3">
+            {faqs.map((faq, idx) => (
+              <AccordionItem
                 key={idx}
+                value={`faq-${idx}`}
                 data-reveal
-                className={`scroll-hidden stagger-${idx + 1} bg-card border border-border rounded-xl overflow-hidden`}
+                className={`scroll-hidden stagger-${idx + 1} bg-card border border-border rounded-xl px-5 overflow-hidden`}
               >
-                <button
-                  onClick={() => setOpen(isOpen ? null : idx)}
-                  className="w-full flex items-center justify-between p-5 text-left hover:bg-secondary/30 transition-colors"
-                >
-                  <span className="font-heading font-semibold text-sm sm:text-base pr-4">
-                    {faq.q}
-                  </span>
-                  <ChevronDown
-                    className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${
-                      isOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-                {isOpen && (
-                  <div className="px-5 pb-5">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {faq.a}
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                <AccordionTrigger className="text-left text-sm sm:text-base font-heading font-semibold py-5 min-h-[48px] hover:no-underline hover:bg-secondary/30 -mx-5 px-5">
+                  {faq.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground leading-relaxed pb-5">
+                  {faq.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       </div>
     </section>
