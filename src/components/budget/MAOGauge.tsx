@@ -151,16 +151,41 @@ export function MAOGauge({
           </div>
         </div>
 
-        {/* Current Budget */}
-        <div className="flex items-center gap-2">
+        {/* Current Budget — clickable to set target */}
+        <div 
+          className={cn(
+            "flex items-center gap-2",
+            onBudgetTargetChange && !editingBudget && "cursor-pointer group"
+          )}
+          onClick={!editingBudget ? handleBudgetClick : undefined}
+          title={onBudgetTargetChange ? "Click to set a target construction budget" : undefined}
+        >
           <div className="p-1.5 rounded-lg bg-primary/20">
             <TrendingUp className="h-4 w-4 text-primary" />
           </div>
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Construction Budget</p>
-            <p className="text-base sm:text-lg font-bold font-mono text-primary">
-              {formatCurrency(currentBudget)}
-            </p>
+            {editingBudget ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-base font-bold font-mono text-primary">$</span>
+                <Input
+                  ref={budgetInputRef}
+                  type="number"
+                  value={budgetInputValue}
+                  onChange={(e) => setBudgetInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleBudgetSubmit();
+                    if (e.key === 'Escape') setEditingBudget(false);
+                  }}
+                  onBlur={handleBudgetSubmit}
+                  className="h-7 w-28 text-sm font-mono font-bold p-1"
+                />
+              </div>
+            ) : (
+              <p className="text-base sm:text-lg font-bold font-mono text-primary group-hover:underline group-hover:decoration-primary/40 transition-all">
+                {formatCurrency(currentBudget)}
+              </p>
+            )}
           </div>
         </div>
 
