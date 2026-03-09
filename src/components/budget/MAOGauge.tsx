@@ -166,8 +166,8 @@ export function MAOGauge({
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Construction Budget</p>
             {editingBudget ? (
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-bold font-mono text-primary">$</span>
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-base font-bold font-mono text-primary">$</span>
                 <Input
                   ref={budgetInputRef}
                   type="number"
@@ -178,7 +178,7 @@ export function MAOGauge({
                     if (e.key === 'Escape') setEditingBudget(false);
                   }}
                   onBlur={handleBudgetSubmit}
-                  className="h-7 w-28 text-sm font-mono font-bold p-1"
+                  className="h-8 w-32 pl-6 pr-2 text-base font-mono font-bold border-primary/50"
                 />
               </div>
             ) : (
