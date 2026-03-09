@@ -26,11 +26,13 @@ interface BudgetCanvasProps {
   baselineActive?: boolean;
   expandAll?: boolean;
   onExpandHandled?: () => void;
+  autoRevealCategory?: string | null;
+  onRevealHandled?: () => void;
 }
 
 
 
-export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled }: BudgetCanvasProps) {
+export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled, autoRevealCategory, onRevealHandled }: BudgetCanvasProps) {
   const { user } = useAuth();
   const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [presets, setPresets] = useState<CategoryPreset[]>(DEFAULT_CATEGORY_PRESETS);
@@ -68,6 +70,25 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
       onExpandHandled?.();
     }
   }, [expandAll]);
+
+  // Auto-reveal a specific category (unhide it and expand its parent group)
+  useEffect(() => {
+    if (!autoRevealCategory) return;
+    // Find the group containing this category
+    const parentGroup = dynamicGroups.find(g => g.categories.includes(autoRevealCategory));
+    if (parentGroup) {
+      setOpenGroups(prev => prev.includes(parentGroup.name) ? prev : [...prev, parentGroup.name]);
+    }
+    // Unhide the category
+    setHiddenCategories(prev => {
+      if (!prev.has(autoRevealCategory)) return prev;
+      const next = new Set(prev);
+      next.delete(autoRevealCategory);
+      localStorage.setItem(HIDDEN_CATEGORIES_STORAGE_KEY, JSON.stringify([...next]));
+      return next;
+    });
+    onRevealHandled?.();
+  }, [autoRevealCategory]);
 
   // Load presets from database on mount, fall back to localStorage for migration
   useEffect(() => {

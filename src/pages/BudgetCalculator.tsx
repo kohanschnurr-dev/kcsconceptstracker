@@ -91,6 +91,7 @@ export default function BudgetCalculator() {
   const [holdingFlat, setHoldingFlat] = useState<string>('');
   const [sellClosingFlat, setSellClosingFlat] = useState<string>('');
   const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
+  const [autoRevealCategory, setAutoRevealCategory] = useState<string | null>(null);
   
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
@@ -242,6 +243,11 @@ export default function BudgetCalculator() {
       ...prev,
       rehab_filler: fillerAmount > 0 ? fillerAmount.toString() : '',
     }));
+    if (fillerAmount > 0) {
+      setAutoRevealCategory('rehab_filler');
+      const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format;
+      toast.success(`Budget set to ${fmt(target)} — ${fmt(fillerAmount)} allocated to Filler`);
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -602,6 +608,8 @@ export default function BudgetCalculator() {
                   baselineActive={activeBaselineRate !== null}
                   expandAll={templateJustApplied}
                   onExpandHandled={() => setTemplateJustApplied(false)}
+                  autoRevealCategory={autoRevealCategory}
+                  onRevealHandled={() => setAutoRevealCategory(null)}
                 />
 
                 {/* Analysis Section - Collapsible */}
