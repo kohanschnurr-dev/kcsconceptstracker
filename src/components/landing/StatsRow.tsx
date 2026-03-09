@@ -13,7 +13,7 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
   const [count, setCount] = useState(0);
   const hasAnimated = useRef(false);
   const ref = useRef<HTMLDivElement>(null);
-  const delay = index * 250;
+  const delay = index * 100;
 
   useEffect(() => {
     const el = ref.current;
