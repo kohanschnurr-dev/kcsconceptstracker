@@ -1,16 +1,11 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Speed Up Stats Count-Up Animation
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+The count-up animation in `StatsRow.tsx` currently takes 1500ms per stat with staggered 250ms delays between each (up to 750ms delay for the last stat). This makes the section feel sluggish.
 
-### Changes
-
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+**Changes in `src/components/landing/StatsRow.tsx`:**
+- Reduce animation duration from 1500ms to 800ms
+- Reduce stagger delay from 250ms to 100ms per stat
+- This brings total animation time from ~2250ms down to ~1100ms
 
