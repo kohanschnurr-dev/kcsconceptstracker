@@ -26,6 +26,8 @@ interface BudgetCanvasProps {
   baselineActive?: boolean;
   expandAll?: boolean;
   onExpandHandled?: () => void;
+  autoRevealCategory?: string | null;
+  onRevealHandled?: () => void;
 }
 
 
