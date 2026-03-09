@@ -66,6 +66,27 @@ export function MAOGauge({
     }
   }, [showCustomInput]);
 
+  useEffect(() => {
+    if (editingBudget && budgetInputRef.current) {
+      budgetInputRef.current.focus();
+      budgetInputRef.current.select();
+    }
+  }, [editingBudget]);
+
+  const handleBudgetClick = () => {
+    if (!onBudgetTargetChange) return;
+    setBudgetInputValue(currentBudget > 0 ? currentBudget.toString() : '');
+    setEditingBudget(true);
+  };
+
+  const handleBudgetSubmit = () => {
+    const val = parseFloat(budgetInputValue) || 0;
+    if (val > 0) {
+      onBudgetTargetChange?.(val);
+    }
+    setEditingBudget(false);
+  };
+
   const handlePercentageSelect = (percent: number) => {
     onPercentageChange?.(percent);
     setShowCustomInput(false);
