@@ -28,7 +28,7 @@ function CountUpStat({ value, prefix, suffix, label, index }: {
           if (value === 0) { setCount(0); observer.unobserve(el); return; }
 
           timeoutId = setTimeout(() => {
-            const duration = 1500;
+            const duration = 800;
             let startTime: number | null = null;
 
             const animate = (timestamp: number) => {
