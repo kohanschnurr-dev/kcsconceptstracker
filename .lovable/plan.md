@@ -1,16 +1,14 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Fix Construction Budget Inline Edit Formatting
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+The edit input for "Construction Budget" in the MAO gauge looks cramped — the `$` prefix and narrow input don't align well with the label, and the field is too small for comfortable entry.
 
-### Changes
+**Changes in `src/components/budget/MAOGauge.tsx`:**
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+1. **Widen the input** from `w-28` to `w-32` so larger numbers fit without clipping
+2. **Match the font size** to the display value (`text-base`) instead of `text-sm` so the edit state doesn't visually "shrink"
+3. **Remove the separate `$` span** — use a cleaner approach with the `$` built into the input padding (matching BudgetCategoryCard pattern with a `$` icon overlay)
+4. **Add `border-primary/50`** to the input so it's visually distinct as editable (matches gold accent theme)
+5. **Ensure consistent height** — use `h-8` instead of `h-7` to match the line height of the display text
 
