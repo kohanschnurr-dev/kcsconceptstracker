@@ -1105,6 +1105,17 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            {match.receipt.receipt_image_url && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => downloadReceipt(match.receipt.receipt_image_url!, match.receipt.vendor_name)}
+                                className="text-muted-foreground hover:text-primary"
+                                title="Download receipt"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button size="sm" onClick={() => acceptMatch(match)} className="gap-1">
                               <Check className="h-4 w-4" />
                               Import

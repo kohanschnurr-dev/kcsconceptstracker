@@ -155,7 +155,7 @@ serve(async (req) => {
     console.log(`Syncing expenses from ${startDate} to ${endDate}`);
 
     const expenses: any[] = [];
-    const realmId = tokenData.realm_id;
+    const realmId = tokenData.realm_id as string;
 
     // 1. Fetch Purchases (direct purchases, credit card charges, etc.)
     const purchaseQuery = `SELECT * FROM Purchase WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' MAXRESULTS 1000`;
