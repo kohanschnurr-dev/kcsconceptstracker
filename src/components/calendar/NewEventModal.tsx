@@ -82,8 +82,8 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
     }
     const query = categorySearch.toLowerCase().trim();
     return getCalendarCategories().filter(cat =>
-      cat.label.toLowerCase().includes(query) ||
-      cat.groupLabel.toLowerCase().includes(query)
+      cat.label?.toLowerCase().includes(query) ||
+      cat.groupLabel?.toLowerCase().includes(query)
     );
   }, [categorySearch]);
 

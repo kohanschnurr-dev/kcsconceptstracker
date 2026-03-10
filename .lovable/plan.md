@@ -1,28 +1,16 @@
 
 
-## Fix Calendar Crash — Null Safety in Category Filtering
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-**Root cause:** `getCalendarCategories()` loads custom categories from localStorage. If any saved category object is missing `label` or `groupLabel` (e.g. corrupted data, older format), the `useMemo` filter in `NewEventModal.tsx` line 85-86 calls `.toLowerCase()` on `undefined`, crashing the entire React tree.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-**File: `src/components/calendar/NewEventModal.tsx`**
+### Changes
 
-Add null guards in the `filteredCategories` useMemo filter (lines 84-87):
-```ts
-cat.label?.toLowerCase().includes(query) ||
-cat.groupLabel?.toLowerCase().includes(query)
-```
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-**File: `src/lib/calendarCategories.ts`**
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-Sanitize categories returned from localStorage (line 123) — filter out any entries missing required fields:
-```ts
-if (saved) {
-  const parsed = JSON.parse(saved) as CalendarCategory[];
-  return parsed
-    .filter(c => c.value && c.label && c.group && c.groupLabel)
-    .sort((a, b) => a.label.localeCompare(b.label));
-}
-```
-
-This two-layer fix prevents the crash at source (bad data) and at usage (missing null check).
+Two lines, two files.
 
