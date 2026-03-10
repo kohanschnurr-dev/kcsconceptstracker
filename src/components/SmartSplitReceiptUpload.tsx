@@ -1529,78 +1529,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 </div>
               )})()}
 
-              {/* Assignment Type & Project Selection */}
-              <div className="space-y-4 pt-4 border-t border-border">
-                <h4 className="text-sm font-medium">Assign to</h4>
-                
-                <ToggleGroup
-                  type="single"
-                  value={assignmentType}
-                  onValueChange={(value) => value && setAssignmentType(value as 'project' | 'business')}
-                  className="justify-start"
-                >
-                  <ToggleGroupItem value="project" size="sm" className="gap-1">
-                    <Home className="h-3 w-3" />
-                    Project
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="business" size="sm" className="gap-1">
-                    <Building2 className="h-3 w-3" />
-                    {companyName}
-                  </ToggleGroupItem>
-                </ToggleGroup>
-                
-                {assignmentType === 'project' && (
-                  <div className="space-y-3">
-                    <ProjectAutocomplete
-                      projects={projects}
-                      value={selectedProject}
-                      onSelect={setSelectedProject}
-                      placeholder="Search"
-                    />
 
-                    <div className="flex flex-wrap items-center gap-4">
-                      <div className="flex items-center gap-3">
-                        <Label className="text-sm text-muted-foreground">Type:</Label>
-                        <ToggleGroup
-                          type="single"
-                          value={expenseType}
-                          onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')}
-                          className="justify-start"
-                        >
-                          <ToggleGroupItem value="product" size="sm" className="gap-1">
-                            <Package className="h-3 w-3" />
-                            Product
-                          </ToggleGroupItem>
-                          <ToggleGroupItem value="labor" size="sm" className="gap-1">
-                            <Wrench className="h-3 w-3" />
-                            Labor
-                          </ToggleGroupItem>
-                        </ToggleGroup>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm text-muted-foreground">Cost Type:</Label>
-                        <Select value={costType} onValueChange={setCostType}>
-                          <SelectTrigger className="h-8 text-sm w-[140px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="construction">Construction</SelectItem>
-                            <SelectItem value="loan">Loan</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                            <SelectItem value="transaction">Transaction</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {assignmentType === 'business' && (
-                  <div className="text-sm text-muted-foreground p-3 rounded-md bg-muted/30">
-                    Expense will be added to <span className="font-medium text-foreground">{companyName}</span> business expenses
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
