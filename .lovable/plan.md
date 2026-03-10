@@ -1,16 +1,23 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Fix: Calendar Categories Not Loading from Settings
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+**Root cause:** The Settings page uses `useCustomCategories` which saves categories as `{ value, label, group, isCustom }` — there is no `groupLabel` field. But `getCalendarCategories()` requires all four fields including `groupLabel` to pass validation, so every saved category is filtered out as "invalid."
 
-### Changes
+**Fix in `src/lib/calendarCategories.ts`:**
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+Update `getCalendarCategories()` to:
+1. Only require `value`, `label`, and `group` (not `groupLabel`)
+2. Reconstruct `groupLabel` from the `CATEGORY_GROUPS` lookup when missing
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+```ts
+const valid = parsed
+  .filter(c => c.value && c.label && c.group)
+  .map(c => ({
+    ...c,
+    groupLabel: c.groupLabel || CATEGORY_GROUPS[c.group as CategoryGroup]?.label || c.group,
+  }));
+```
 
-Two lines, two files.
+This single change makes `getCalendarCategories()` compatible with data saved by the Settings page while still sanitizing truly broken entries.
 
