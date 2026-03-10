@@ -625,13 +625,16 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     // Initialize editable categories and quantities from line items
     const initialCategories: Record<number, string> = {};
     const initialQuantities: Record<number, number> = {};
+    const initialPrices: Record<number, number> = {};
     match.receipt.line_items?.forEach((item, idx) => {
       initialCategories[idx] = item.suggested_category || 'misc';
       initialQuantities[idx] = item.quantity || 1;
+      initialPrices[idx] = item.unit_price;
     });
     setEditableCategories(initialCategories);
     setIncludeTax(true); // Reset tax toggle when opening modal
     setEditableQuantities(initialQuantities);
+    setEditablePrices(initialPrices);
     setShowMatchModal(true);
   };
 
