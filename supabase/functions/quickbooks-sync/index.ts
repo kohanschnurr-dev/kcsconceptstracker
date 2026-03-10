@@ -237,7 +237,7 @@ serve(async (req) => {
 
     // Upsert expenses (using service role to bypass RLS for batch operations)
     // IMPORTANT: Preserve project_id, category_id, and is_imported for already-assigned expenses
-    const serviceSupabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+    // Reuse serviceSupabase declared above
     
     let successCount = 0;
     let skippedCount = 0;
