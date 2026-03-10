@@ -191,12 +191,37 @@ export function useQuickBooks() {
     });
   }, [toast]);
 
+  // Persistent listener for postMessage from OAuth popup
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'quickbooks-callback' || event.data?.type === 'quickbooks-connected') {
+        if (event.data.success) {
+          // Verify connection server-side before updating UI
+          await checkConnection();
+          toast({
+            title: 'Connected!',
+            description: 'QuickBooks connected successfully',
+          });
+        } else {
+          toast({
+            title: 'Connection Failed',
+            description: event.data.error || 'Failed to connect to QuickBooks',
+            variant: 'destructive',
+          });
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [checkConnection, toast]);
+
   const connect = useCallback(async () => {
     try {
       const { data, error } = await supabase.functions.invoke('quickbooks-auth', {
         body: { action: 'authorize' },
       });
-      
+
       if (error) {
         toast({
           title: 'Connection Failed',
@@ -208,31 +233,29 @@ export function useQuickBooks() {
 
       if (data?.authUrl) {
         // Open QuickBooks auth in a popup
-        const popup = window.open(data.authUrl, 'quickbooks-auth', 'width=600,height=700');
-        
-        // Listen for the callback
-        const handleMessage = (event: MessageEvent) => {
-          if (event.data?.type === 'quickbooks-connected') {
-            popup?.close();
-            window.removeEventListener('message', handleMessage);
-            
-            if (event.data.success) {
-              setIsConnected(true);
-              toast({
-                title: 'Connected!',
-                description: 'QuickBooks connected successfully',
-              });
-            } else {
-              toast({
-                title: 'Connection Failed',
-                description: event.data.error || 'Failed to connect to QuickBooks',
-                variant: 'destructive',
-              });
-            }
+        const popup = window.open(data.authUrl, 'quickbooks-auth', 'width=600,height=700,scrollbars=yes');
+
+        // Polling fallback: window.opener may be null after cross-origin redirects,
+        // so periodically check if OAuth completed server-side
+        let pollCount = 0;
+        const maxPolls = 60; // Poll for up to ~5 minutes
+        const pollInterval = setInterval(async () => {
+          pollCount++;
+
+          // Stop polling if already connected, popup closed, or max polls reached
+          if (pollCount >= maxPolls) {
+            clearInterval(pollInterval);
+            return;
           }
-        };
-        
-        window.addEventListener('message', handleMessage);
+
+          // Check if popup was closed by user or after successful auth
+          if (popup && popup.closed) {
+            clearInterval(pollInterval);
+            // Popup closed — check if connection was established
+            await checkConnection();
+            return;
+          }
+        }, 5000);
       }
     } catch (error) {
       console.error('Error connecting to QuickBooks:', error);
@@ -242,7 +265,7 @@ export function useQuickBooks() {
         variant: 'destructive',
       });
     }
-  }, [toast]);
+  }, [toast, checkConnection]);
 
   const disconnect = useCallback(async () => {
     if (isDemoMode) {
