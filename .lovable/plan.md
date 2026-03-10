@@ -1,17 +1,16 @@
 
 
-## Plan: Add Download Receipt Button to Matches Ready for Import + Fix Build Errors
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-### 1. Add download button to matched receipts (SmartSplitReceiptUpload.tsx)
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-In the matched receipts section (~line 1107), add a Download button before the Import button, identical to how it's done in the pending receipts section (~line 1201). Only show when `match.receipt.receipt_image_url` exists.
+### Changes
 
-### 2. Fix TypeScript build errors in quickbooks-sync edge function
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-The `tokenData` is typed as `Record<string, unknown>`, causing all property accesses to be `unknown`. Fix by casting the relevant fields:
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-- Line 141: `new Date(tokenData.expires_at as string)`
-- Line 145: `tokenData.refresh_token as string`
-- Line 158: `const realmId = tokenData.realm_id as string;`
-- Line 138: `let accessToken = tokenData.access_token as string;`
+Two lines, two files.
 
