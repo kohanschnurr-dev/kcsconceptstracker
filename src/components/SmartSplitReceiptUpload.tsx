@@ -741,6 +741,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       const { sf: importScaleFactor } = computeScaleFactor(
         selectedMatch.receipt.line_items || [],
         editableQuantities,
+        editablePrices,
         selectedMatch.qbExpense.amount,
         selectedMatch.receipt.tax_amount || 0,
         !includeTax
@@ -751,6 +752,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         selectedMatch.receipt.line_items || [],
         editableCategories,
         editableQuantities,
+        editablePrices,
         importScaleFactor
       );
 
