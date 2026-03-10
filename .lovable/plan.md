@@ -1,16 +1,21 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Fix: QuickBooks Popup Not Communicating Back to App
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+**Root cause:** Message type mismatch between the edge function and the client hook.
 
-### Changes
+- **Edge function** (`quickbooks-auth/index.ts` line 221): sends `window.opener.postMessage({ type: 'quickbooks-connected' }, '*')`
+- **Client hook** (`useQuickBooks.ts` line 215): listens for `event.data?.type === 'quickbooks-callback'`
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+These don't match, so the popup's success message is ignored. The popup stays open showing raw HTML, and the app never learns the connection succeeded.
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**Fix in `src/hooks/useQuickBooks.ts` (line 215):**
 
-Two lines, two files.
+Change the message listener to match what the edge function actually sends:
+
+```ts
+if (event.data?.type === 'quickbooks-connected') {
+```
+
+Single line change. Everything else (token storage, sync, etc.) is working correctly — the connection itself succeeded as shown in the screenshot.
 
