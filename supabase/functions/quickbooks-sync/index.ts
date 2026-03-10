@@ -135,7 +135,7 @@ serve(async (req) => {
       });
     }
 
-    let accessToken = tokenData.access_token;
+    let accessToken = tokenData.access_token as string;
     
     // Check if token is expired and refresh if needed
     if (new Date(tokenData.expires_at) < new Date()) {
