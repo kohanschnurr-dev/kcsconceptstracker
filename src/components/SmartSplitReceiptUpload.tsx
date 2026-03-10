@@ -1353,7 +1353,8 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {selectedMatch.receipt.line_items.map((item, idx) => {
                       const editedQty = editableQuantities[idx] ?? item.quantity ?? 1;
-                      const scaledPrice = Math.round(item.unit_price * sf * 100) / 100;
+                      const editedPrice = editablePrices[idx] ?? item.unit_price;
+                      const scaledPrice = Math.round(editedPrice * sf * 100) / 100;
                       const editedTotal = editedQty * scaledPrice;
                       return (
                         <div key={idx} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
@@ -1370,7 +1371,19 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                                 }))}
                                 className="w-12 h-5 px-1 text-xs text-center"
                               />
-                              <span>× {formatCurrency(scaledPrice)}</span>
+                              <span>×</span>
+                              <span>$</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={editedPrice}
+                                onChange={(e) => setEditablePrices(prev => ({
+                                  ...prev,
+                                  [idx]: parseFloat(e.target.value) || 0
+                                }))}
+                                className="w-16 h-5 px-1 text-xs text-center"
+                              />
                             </div>
                           </div>
                           <Select
