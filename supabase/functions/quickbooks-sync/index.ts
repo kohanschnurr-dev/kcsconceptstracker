@@ -138,12 +138,12 @@ serve(async (req) => {
     let accessToken = tokenData.access_token as string;
     
     // Check if token is expired and refresh if needed
-    if (new Date(tokenData.expires_at) < new Date()) {
+    if (new Date(tokenData.expires_at as string) < new Date()) {
       accessToken = await refreshToken(
         supabase, 
         userId, 
-        tokenData.refresh_token, 
-        tokenData.realm_id
+        tokenData.refresh_token as string, 
+        tokenData.realm_id as string
       );
     }
 
