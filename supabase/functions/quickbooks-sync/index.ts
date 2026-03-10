@@ -135,15 +135,15 @@ serve(async (req) => {
       });
     }
 
-    let accessToken = tokenData.access_token;
+    let accessToken = tokenData.access_token as string;
     
     // Check if token is expired and refresh if needed
-    if (new Date(tokenData.expires_at) < new Date()) {
+    if (new Date(tokenData.expires_at as string) < new Date()) {
       accessToken = await refreshToken(
         supabase, 
         userId, 
-        tokenData.refresh_token, 
-        tokenData.realm_id
+        tokenData.refresh_token as string, 
+        tokenData.realm_id as string
       );
     }
 
@@ -155,7 +155,7 @@ serve(async (req) => {
     console.log(`Syncing expenses from ${startDate} to ${endDate}`);
 
     const expenses: any[] = [];
-    const realmId = tokenData.realm_id;
+    const realmId = tokenData.realm_id as string;
 
     // 1. Fetch Purchases (direct purchases, credit card charges, etc.)
     const purchaseQuery = `SELECT * FROM Purchase WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' MAXRESULTS 1000`;
@@ -251,7 +251,7 @@ serve(async (req) => {
 
     // Upsert expenses (using service role to bypass RLS for batch operations)
     // IMPORTANT: Preserve project_id, category_id, and is_imported for already-assigned expenses
-    const serviceSupabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+    // Reuse serviceSupabase declared above
     
     let successCount = 0;
     let skippedCount = 0;

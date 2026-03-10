@@ -194,7 +194,7 @@ export function useQuickBooks() {
   // Persistent listener for postMessage from OAuth popup
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
-      if (event.data?.type === 'quickbooks-callback') {
+      if (event.data?.type === 'quickbooks-callback' || event.data?.type === 'quickbooks-connected') {
         if (event.data.success) {
           // Verify connection server-side before updating UI
           await checkConnection();

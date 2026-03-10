@@ -90,6 +90,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   
   const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
   const [editableQuantities, setEditableQuantities] = useState<Record<number, number>>({});
+  const [editablePrices, setEditablePrices] = useState<Record<number, number>>({});
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
   const [costType, setCostType] = useState<string>('construction');
@@ -624,13 +625,16 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     // Initialize editable categories and quantities from line items
     const initialCategories: Record<number, string> = {};
     const initialQuantities: Record<number, number> = {};
+    const initialPrices: Record<number, number> = {};
     match.receipt.line_items?.forEach((item, idx) => {
       initialCategories[idx] = item.suggested_category || 'misc';
       initialQuantities[idx] = item.quantity || 1;
+      initialPrices[idx] = item.unit_price;
     });
     setEditableCategories(initialCategories);
     setIncludeTax(true); // Reset tax toggle when opening modal
     setEditableQuantities(initialQuantities);
+    setEditablePrices(initialPrices);
     setShowMatchModal(true);
   };
 
@@ -653,10 +657,11 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   };
 
   // Helper to compute scale factor for line items vs QB transaction amount
-  const computeScaleFactor = (lineItems: LineItem[], quantities: Record<number, number>, qbAmount: number, taxAmount: number, taxIncluded: boolean) => {
+  const computeScaleFactor = (lineItems: LineItem[], quantities: Record<number, number>, prices: Record<number, number>, qbAmount: number, taxAmount: number, taxIncluded: boolean) => {
     const rawTotal = lineItems.reduce((sum, item, idx) => {
       const qty = quantities[idx] ?? item.quantity ?? 1;
-      return sum + (qty * item.unit_price);
+      const price = prices[idx] ?? item.unit_price;
+      return sum + (qty * price);
     }, 0);
     const targetTotal = taxIncluded ? qbAmount : qbAmount - taxAmount;
     if (rawTotal <= 0 || Math.abs(rawTotal - targetTotal) <= 0.01) return { sf: 1, rawTotal, targetTotal, taxExcluded: !taxIncluded, taxAmount };
@@ -664,13 +669,14 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   };
 
   // Helper to group line items by category (with editable quantities and optional scaling)
-  const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>, quantities: Record<number, number>, scaleFactor = 1) => {
+  const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>, quantities: Record<number, number>, prices: Record<number, number>, scaleFactor = 1) => {
     const groups: Record<string, { items: (LineItem & { editedQuantity: number; editedTotal: number; scaledUnitPrice: number })[], total: number }> = {};
     
     lineItems.forEach((item, idx) => {
       const category = categories[idx] || item.suggested_category || 'misc';
       const editedQuantity = quantities[idx] ?? item.quantity ?? 1;
-      const scaledUnitPrice = Math.round(item.unit_price * scaleFactor * 100) / 100;
+      const price = prices[idx] ?? item.unit_price;
+      const scaledUnitPrice = Math.round(price * scaleFactor * 100) / 100;
       const editedTotal = editedQuantity * scaledUnitPrice;
       
       if (!groups[category]) {
@@ -685,7 +691,8 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       const totalFromGroups = Object.values(groups).reduce((s, g) => s + g.total, 0);
       const expectedTotal = lineItems.reduce((sum, item, idx) => {
         const qty = quantities[idx] ?? item.quantity ?? 1;
-        return sum + qty * item.unit_price;
+        const price = prices[idx] ?? item.unit_price;
+        return sum + qty * price;
       }, 0) * scaleFactor;
       const remainder = Math.round((expectedTotal - totalFromGroups) * 100) / 100;
       if (Math.abs(remainder) > 0 && Math.abs(remainder) <= 0.05) {
@@ -735,6 +742,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       const { sf: importScaleFactor } = computeScaleFactor(
         selectedMatch.receipt.line_items || [],
         editableQuantities,
+        editablePrices,
         selectedMatch.qbExpense.amount,
         selectedMatch.receipt.tax_amount || 0,
         !includeTax
@@ -745,6 +753,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         selectedMatch.receipt.line_items || [],
         editableCategories,
         editableQuantities,
+        editablePrices,
         importScaleFactor
       );
 
@@ -1105,6 +1114,17 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            {match.receipt.receipt_image_url && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => downloadReceipt(match.receipt.receipt_image_url!, match.receipt.vendor_name)}
+                                className="text-muted-foreground hover:text-primary"
+                                title="Download receipt"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button size="sm" onClick={() => acceptMatch(match)} className="gap-1">
                               <Check className="h-4 w-4" />
                               Import
@@ -1267,6 +1287,79 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
           {selectedMatch && (
             <div className="space-y-4">
+              {/* Assignment Type & Project Selection */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Assign to</h4>
+                
+                <ToggleGroup
+                  type="single"
+                  value={assignmentType}
+                  onValueChange={(value) => value && setAssignmentType(value as 'project' | 'business')}
+                  className="justify-start"
+                >
+                  <ToggleGroupItem value="project" size="sm" className="gap-1">
+                    <Home className="h-3 w-3" />
+                    Project
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="business" size="sm" className="gap-1">
+                    <Building2 className="h-3 w-3" />
+                    {companyName}
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                
+                {assignmentType === 'project' && (
+                  <div className="space-y-3">
+                    <ProjectAutocomplete
+                      projects={projects}
+                      value={selectedProject}
+                      onSelect={setSelectedProject}
+                      placeholder="Search"
+                    />
+
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex items-center gap-3">
+                        <Label className="text-sm text-muted-foreground">Type:</Label>
+                        <ToggleGroup
+                          type="single"
+                          value={expenseType}
+                          onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')}
+                          className="justify-start"
+                        >
+                          <ToggleGroupItem value="product" size="sm" className="gap-1">
+                            <Package className="h-3 w-3" />
+                            Product
+                          </ToggleGroupItem>
+                          <ToggleGroupItem value="labor" size="sm" className="gap-1">
+                            <Wrench className="h-3 w-3" />
+                            Labor
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm text-muted-foreground">Cost Type:</Label>
+                        <Select value={costType} onValueChange={setCostType}>
+                          <SelectTrigger className="h-8 text-sm w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="construction">Construction</SelectItem>
+                            <SelectItem value="loan">Loan</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="transaction">Transaction</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {assignmentType === 'business' && (
+                  <div className="text-sm text-muted-foreground p-3 rounded-md bg-muted/30">
+                    Expense will be added to <span className="font-medium text-foreground">{companyName}</span> business expenses
+                  </div>
+                )}
+              </div>
+
               {/* Match Summary */}
               <div className="grid grid-cols-2 gap-4">
                 <Card>
@@ -1296,6 +1389,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 const scaleResult = computeScaleFactor(
                   selectedMatch.receipt.line_items,
                   editableQuantities,
+                  editablePrices,
                   selectedMatch.qbExpense.amount,
                   selectedMatch.receipt.tax_amount || 0,
                   !includeTax
@@ -1333,7 +1427,8 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {selectedMatch.receipt.line_items.map((item, idx) => {
                       const editedQty = editableQuantities[idx] ?? item.quantity ?? 1;
-                      const scaledPrice = Math.round(item.unit_price * sf * 100) / 100;
+                      const editedPrice = editablePrices[idx] ?? item.unit_price;
+                      const scaledPrice = Math.round(editedPrice * sf * 100) / 100;
                       const editedTotal = editedQty * scaledPrice;
                       return (
                         <div key={idx} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
@@ -1350,7 +1445,19 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                                 }))}
                                 className="w-12 h-5 px-1 text-xs text-center"
                               />
-                              <span>× {formatCurrency(scaledPrice)}</span>
+                              <span>×</span>
+                              <span>$</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={editedPrice}
+                                onChange={(e) => setEditablePrices(prev => ({
+                                  ...prev,
+                                  [idx]: parseFloat(e.target.value) || 0
+                                }))}
+                                className="w-16 h-5 px-1 text-xs text-center"
+                              />
                             </div>
                           </div>
                           <Select
@@ -1422,78 +1529,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 </div>
               )})()}
 
-              {/* Assignment Type & Project Selection */}
-              <div className="space-y-4 pt-4 border-t border-border">
-                <h4 className="text-sm font-medium">Assign to</h4>
-                
-                <ToggleGroup
-                  type="single"
-                  value={assignmentType}
-                  onValueChange={(value) => value && setAssignmentType(value as 'project' | 'business')}
-                  className="justify-start"
-                >
-                  <ToggleGroupItem value="project" size="sm" className="gap-1">
-                    <Home className="h-3 w-3" />
-                    Project
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="business" size="sm" className="gap-1">
-                    <Building2 className="h-3 w-3" />
-                    {companyName}
-                  </ToggleGroupItem>
-                </ToggleGroup>
-                
-                {assignmentType === 'project' && (
-                  <div className="space-y-3">
-                    <ProjectAutocomplete
-                      projects={projects}
-                      value={selectedProject}
-                      onSelect={setSelectedProject}
-                      placeholder="Search"
-                    />
 
-                    <div className="flex flex-wrap items-center gap-4">
-                      <div className="flex items-center gap-3">
-                        <Label className="text-sm text-muted-foreground">Type:</Label>
-                        <ToggleGroup
-                          type="single"
-                          value={expenseType}
-                          onValueChange={(value) => value && setExpenseType(value as 'product' | 'labor')}
-                          className="justify-start"
-                        >
-                          <ToggleGroupItem value="product" size="sm" className="gap-1">
-                            <Package className="h-3 w-3" />
-                            Product
-                          </ToggleGroupItem>
-                          <ToggleGroupItem value="labor" size="sm" className="gap-1">
-                            <Wrench className="h-3 w-3" />
-                            Labor
-                          </ToggleGroupItem>
-                        </ToggleGroup>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm text-muted-foreground">Cost Type:</Label>
-                        <Select value={costType} onValueChange={setCostType}>
-                          <SelectTrigger className="h-8 text-sm w-[140px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="construction">Construction</SelectItem>
-                            <SelectItem value="loan">Loan</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                            <SelectItem value="transaction">Transaction</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {assignmentType === 'business' && (
-                  <div className="text-sm text-muted-foreground p-3 rounded-md bg-muted/30">
-                    Expense will be added to <span className="font-medium text-foreground">{companyName}</span> business expenses
-                  </div>
-                )}
-              </div>
             </div>
           )}
 

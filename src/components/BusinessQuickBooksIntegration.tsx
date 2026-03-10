@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { format, subDays } from 'date-fns';
-import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon } from 'lucide-react';
+import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
@@ -35,6 +36,7 @@ interface BusinessQuickBooksIntegrationProps {
 }
 
 export function BusinessQuickBooksIntegration({ onExpenseImported, projects = [] }: BusinessQuickBooksIntegrationProps) {
+  const navigate = useNavigate();
   const {
     isConnected,
     isDemoMode,
@@ -199,9 +201,9 @@ export function BusinessQuickBooksIntegration({ onExpenseImported, projects = []
                   Connect your QuickBooks account to automatically import business expenses
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button onClick={connect} className="gap-2">
-                    <Link2 className="h-4 w-4" />
-                    Connect QuickBooks
+                  <Button onClick={() => navigate('/settings')} className="gap-2">
+                    <Settings className="h-4 w-4" />
+                    Connect in Settings
                   </Button>
                   <Button variant="outline" onClick={enableDemoMode} className="gap-2">
                     Try Demo Mode

@@ -120,9 +120,23 @@ export const CALENDAR_CATEGORIES: CalendarCategory[] = [
 export function getCalendarCategories(): CalendarCategory[] {
   try {
     const saved = localStorage.getItem('custom-calendar-categories');
-    if (saved) return (JSON.parse(saved) as CalendarCategory[]).sort((a, b) => a.label.localeCompare(b.label));
+    if (saved) {
+      const parsed = JSON.parse(saved) as CalendarCategory[];
+      const valid = parsed
+        .filter(c => c.value && c.label && c.group)
+        .map(c => ({
+          ...c,
+          groupLabel: c.groupLabel || CATEGORY_GROUPS[c.group as CategoryGroup]?.label || c.group,
+        }));
+      if (valid.length > 0) {
+        return valid.sort((a, b) => a.label.localeCompare(b.label));
+      }
+      // All entries invalid — clear corrupted data
+      localStorage.removeItem('custom-calendar-categories');
+    }
   } catch (e) {
     console.error('Error loading custom calendar categories:', e);
+    localStorage.removeItem('custom-calendar-categories');
   }
   return [...CALENDAR_CATEGORIES].sort((a, b) => a.label.localeCompare(b.label));
 }

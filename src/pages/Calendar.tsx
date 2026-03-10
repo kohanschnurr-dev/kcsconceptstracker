@@ -77,93 +77,98 @@ export default function Calendar() {
   }, []);
 
   const fetchData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const { data: projectsData } = await supabase
-      .from('projects')
-      .select('id, name, address, project_type')
-      .eq('status', 'active')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      const { data: projectsData } = await supabase
+        .from('projects')
+        .select('id, name, address, project_type')
+        .eq('status', 'active')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-    if (projectsData) {
-      const sortedProjects = projectsData
-        .map(p => ({ ...p, projectType: p.project_type as 'fix_flip' | 'rental' }))
-        .sort((a, b) => {
-          if (a.projectType === 'fix_flip' && b.projectType !== 'fix_flip') return -1;
-          if (a.projectType !== 'fix_flip' && b.projectType === 'fix_flip') return 1;
-          return 0;
-        });
-      setProjects(sortedProjects);
-      setAllProjects(sortedProjects);
-    }
+      if (projectsData) {
+        const sortedProjects = projectsData
+          .map(p => ({ ...p, projectType: p.project_type as 'fix_flip' | 'rental' }))
+          .sort((a, b) => {
+            if (a.projectType === 'fix_flip' && b.projectType !== 'fix_flip') return -1;
+            if (a.projectType !== 'fix_flip' && b.projectType === 'fix_flip') return 1;
+            return 0;
+          });
+        setProjects(sortedProjects);
+        setAllProjects(sortedProjects);
+      }
 
-    const { data: allProjectsData } = await supabase
-      .from('projects')
-      .select('id, name, total_budget')
-      .eq('user_id', user.id);
+      const { data: allProjectsData } = await supabase
+        .from('projects')
+        .select('id, name, total_budget')
+        .eq('user_id', user.id);
 
-    const { data: eventsData, error } = await supabase
-      .from('calendar_events')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('start_date', { ascending: true });
+      const { data: eventsData, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('start_date', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching calendar events:', error);
-      return;
-    }
+      if (error) {
+        console.error('Error fetching calendar events:', error);
+        return;
+      }
 
-    const { data: expensesData } = await supabase
-      .from('expenses')
-      .select('project_id, amount');
+      const { data: expensesData } = await supabase
+        .from('expenses')
+        .select('project_id, amount');
 
-    const { data: categoriesData } = await supabase
-      .from('project_categories')
-      .select('project_id, estimated_budget');
+      const { data: categoriesData } = await supabase
+        .from('project_categories')
+        .select('project_id, estimated_budget');
 
-    const projectBudgetHealth: Record<string, 'green' | 'yellow' | 'red'> = {};
-    
-    if (allProjectsData) {
-      allProjectsData.forEach((project) => {
-        const projectExpenses = expensesData?.filter(e => e.project_id === project.id) || [];
-        const projectCategories = categoriesData?.filter(c => c.project_id === project.id) || [];
-        
-        const totalSpent = projectExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
-        const totalBudget = projectCategories.reduce((sum, c) => sum + Number(c.estimated_budget), 0) || project.total_budget;
-        const spentPercent = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
-        
-        if (spentPercent > 100) projectBudgetHealth[project.id] = 'red';
-        else if (spentPercent > 85) projectBudgetHealth[project.id] = 'yellow';
-        else projectBudgetHealth[project.id] = 'green';
-      });
-    }
-
-    const calendarTasks: CalendarTask[] = (eventsData || []).map((event: any) => {
-      const project = allProjectsData?.find(p => p.id === event.project_id);
+      const projectBudgetHealth: Record<string, 'green' | 'yellow' | 'red'> = {};
       
-      return {
-        id: event.id,
-        projectId: event.project_id,
-        projectName: project?.name || 'Unknown Project',
-        title: event.title,
-        startDate: parseDateString(event.start_date),
-        endDate: parseDateString(event.end_date),
-        status: getStatusFromCategory(event.event_category),
-        budgetHealth: projectBudgetHealth[event.project_id] || 'green',
-        category: event.event_category || 'due_diligence',
-        checklist: Array.isArray(event.checklist) ? event.checklist : [],
-        notes: event.notes || '',
-        isCriticalPath: event.is_critical_path,
-        eventCategory: event.event_category,
-        leadTimeDays: event.lead_time_days,
-        expectedDate: event.expected_date ? parseDateString(event.expected_date) : undefined,
-        recurrenceGroupId: event.recurrence_group_id,
-      };
-    });
+      if (allProjectsData) {
+        allProjectsData.forEach((project) => {
+          const projectExpenses = expensesData?.filter(e => e.project_id === project.id) || [];
+          const projectCategories = categoriesData?.filter(c => c.project_id === project.id) || [];
+          
+          const totalSpent = projectExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+          const totalBudget = projectCategories.reduce((sum, c) => sum + Number(c.estimated_budget), 0) || project.total_budget;
+          const spentPercent = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+          
+          if (spentPercent > 100) projectBudgetHealth[project.id] = 'red';
+          else if (spentPercent > 85) projectBudgetHealth[project.id] = 'yellow';
+          else projectBudgetHealth[project.id] = 'green';
+        });
+      }
 
-    setTasks(calendarTasks);
+      const calendarTasks: CalendarTask[] = (eventsData || []).map((event: any) => {
+        const project = allProjectsData?.find(p => p.id === event.project_id);
+        
+        return {
+          id: event.id,
+          projectId: event.project_id,
+          projectName: project?.name || 'Unknown Project',
+          title: event.title,
+          startDate: parseDateString(event.start_date),
+          endDate: parseDateString(event.end_date),
+          status: getStatusFromCategory(event.event_category),
+          budgetHealth: projectBudgetHealth[event.project_id] || 'green',
+          category: event.event_category || 'due_diligence',
+          checklist: Array.isArray(event.checklist) ? event.checklist : [],
+          notes: event.notes || '',
+          isCriticalPath: event.is_critical_path,
+          eventCategory: event.event_category,
+          leadTimeDays: event.lead_time_days,
+          expectedDate: event.expected_date ? parseDateString(event.expected_date) : undefined,
+          recurrenceGroupId: event.recurrence_group_id,
+        };
+      });
+
+      setTasks(calendarTasks);
+    } catch (err) {
+      console.error('Calendar fetchData error:', err);
+      toast({ title: 'Error', description: 'Failed to load calendar data', variant: 'destructive' });
+    }
   };
 
   const getStatusFromCategory = (category: string): CalendarTask['status'] => {

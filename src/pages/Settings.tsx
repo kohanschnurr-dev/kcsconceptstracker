@@ -42,6 +42,7 @@ import ColorPaletteCard from '@/components/settings/ColorPaletteCard';
 import DashboardPreferencesCard from '@/components/settings/DashboardPreferencesCard';
 import FinancialPresetsCard from '@/components/settings/FinancialPresetsCard';
 import NotificationPreferencesCard from '@/components/settings/NotificationPreferencesCard';
+import QuickBooksConnectionCard from '@/components/settings/QuickBooksConnectionCard';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -375,6 +376,9 @@ export default function Settings() {
               )}
             </CardContent>
           </Card>
+
+          {/* QuickBooks Integration */}
+          <QuickBooksConnectionCard />
 
           {/* Manage Sources Section */}
           <ManageSourcesCard />
