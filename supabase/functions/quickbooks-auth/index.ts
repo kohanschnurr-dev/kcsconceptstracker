@@ -218,7 +218,7 @@ serve(async (req) => {
               <p style="color: #6b7280;">You can close this window and return to the app.</p>
               <script>
                 if (window.opener) {
-                  window.opener.postMessage({ type: 'quickbooks-connected' }, '*');
+                  window.opener.postMessage({ type: 'quickbooks-callback', success: true }, '*');
                   setTimeout(() => window.close(), 2000);
                 }
               </script>
@@ -292,13 +292,31 @@ serve(async (req) => {
 
     if (action === "status") {
       // Check if user is connected to QuickBooks
-      // Read from decrypted view (tokens are encrypted at rest)
+      // Try decrypted view first, fall back to raw table if view doesn't exist
       const serviceSupabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-      const { data: tokenData, error: tokenError } = await serviceSupabase
+      let tokenData: { expires_at: string; realm_id: string; refresh_token: string | null } | null = null;
+      let tokenError: unknown = null;
+
+      // Try the decrypted view first (if encryption migration has been applied)
+      const viewResult = await serviceSupabase
         .from("quickbooks_tokens_decrypted")
         .select("expires_at, realm_id, refresh_token")
         .eq("user_id", userId)
         .single();
+
+      if (!viewResult.error) {
+        tokenData = viewResult.data;
+      } else {
+        // Fall back to raw table (encryption migration not applied yet)
+        console.log("Decrypted view unavailable, falling back to raw table");
+        const rawResult = await serviceSupabase
+          .from("quickbooks_tokens")
+          .select("expires_at, realm_id, refresh_token")
+          .eq("user_id", userId)
+          .single();
+        tokenData = rawResult.data;
+        tokenError = rawResult.error;
+      }
 
       if (tokenError || !tokenData) {
         return new Response(JSON.stringify({ connected: false }), {
