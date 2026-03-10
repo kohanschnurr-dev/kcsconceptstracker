@@ -106,15 +106,29 @@ serve(async (req) => {
 
     const userId = claimsData.claims.sub as string;
 
-    // Get user's QuickBooks tokens (read from decrypted view)
+    // Get user's QuickBooks tokens — try decrypted view, fall back to raw table
     const serviceSupabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-    const { data: tokenData, error: tokenError } = await serviceSupabase
+    let tokenData: Record<string, unknown> | null = null;
+
+    const viewResult = await serviceSupabase
       .from("quickbooks_tokens_decrypted")
       .select("*")
       .eq("user_id", userId)
       .single();
 
-    if (tokenError || !tokenData) {
+    if (!viewResult.error) {
+      tokenData = viewResult.data;
+    } else {
+      console.log("Decrypted view unavailable, falling back to raw table");
+      const rawResult = await serviceSupabase
+        .from("quickbooks_tokens")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+      tokenData = rawResult.data;
+    }
+
+    if (!tokenData) {
       return new Response(JSON.stringify({ error: "QuickBooks not connected" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

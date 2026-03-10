@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // If the user arrived via an invite link (/auth?invite_token=…),
           // Auth.tsx stored the token in localStorage. Accept it atomically
           // via the RPC which validates the token, expiry, and email match.
+          // Note: email is derived server-side from auth.jwt() — not sent from client.
           const pendingToken = localStorage.getItem(INVITE_TOKEN_STORAGE_KEY);
           if (pendingToken) {
             localStorage.removeItem(INVITE_TOKEN_STORAGE_KEY);
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // ── Priority 2: Email-based scan (fallback) ───────────────────────
           // Covers users who navigated to /auth directly (no token) and any
           // invitations sent before the token system was introduced.
+          // Note: email is derived server-side from auth.jwt() — p_email kept for compat.
           supabase.rpc('accept_pending_invitations', {
             p_user_id: u.id,
             p_email: email,
