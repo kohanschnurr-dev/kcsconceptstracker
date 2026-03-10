@@ -691,7 +691,8 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       const totalFromGroups = Object.values(groups).reduce((s, g) => s + g.total, 0);
       const expectedTotal = lineItems.reduce((sum, item, idx) => {
         const qty = quantities[idx] ?? item.quantity ?? 1;
-        return sum + qty * item.unit_price;
+        const price = prices[idx] ?? item.unit_price;
+        return sum + qty * price;
       }, 0) * scaleFactor;
       const remainder = Math.round((expectedTotal - totalFromGroups) * 100) / 100;
       if (Math.abs(remainder) > 0 && Math.abs(remainder) <= 0.05) {
