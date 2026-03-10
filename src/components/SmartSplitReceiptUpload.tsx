@@ -90,6 +90,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   
   const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
   const [editableQuantities, setEditableQuantities] = useState<Record<number, number>>({});
+  const [editablePrices, setEditablePrices] = useState<Record<number, number>>({});
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [expenseType, setExpenseType] = useState<'product' | 'labor'>('product');
   const [costType, setCostType] = useState<string>('construction');
