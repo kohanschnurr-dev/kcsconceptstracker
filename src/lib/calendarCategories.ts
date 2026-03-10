@@ -122,12 +122,17 @@ export function getCalendarCategories(): CalendarCategory[] {
     const saved = localStorage.getItem('custom-calendar-categories');
     if (saved) {
       const parsed = JSON.parse(saved) as CalendarCategory[];
-      return parsed
-        .filter(c => c.value && c.label && c.group && c.groupLabel)
-        .sort((a, b) => a.label.localeCompare(b.label));
+      const valid = parsed
+        .filter(c => c.value && c.label && c.group && c.groupLabel);
+      if (valid.length > 0) {
+        return valid.sort((a, b) => a.label.localeCompare(b.label));
+      }
+      // All entries invalid — clear corrupted data
+      localStorage.removeItem('custom-calendar-categories');
     }
   } catch (e) {
     console.error('Error loading custom calendar categories:', e);
+    localStorage.removeItem('custom-calendar-categories');
   }
   return [...CALENDAR_CATEGORIES].sort((a, b) => a.label.localeCompare(b.label));
 }
