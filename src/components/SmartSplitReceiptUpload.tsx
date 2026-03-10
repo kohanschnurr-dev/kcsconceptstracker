@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download, Camera, Info } from 'lucide-react';
+import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, AlertTriangle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download, Camera, Info, RefreshCw } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Switch } from '@/components/ui/switch';
@@ -31,6 +31,8 @@ interface LineItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+  original_price?: number;
+  discount?: number;
   suggested_category: string;
   project_id?: string;
   notes?: string;
@@ -47,6 +49,9 @@ interface PendingReceipt {
   receipt_image_url?: string;
   matched_qb_id?: string;
   match_confidence?: number;
+  discount_amount?: number;
+  parsing_confidence?: 'high' | 'medium' | 'low';
+  warnings?: string[];
   line_items?: LineItem[];
 }
 
@@ -97,6 +102,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const [isImporting, setIsImporting] = useState(false);
   const [assignmentType, setAssignmentType] = useState<'project' | 'business'>('project');
   const [includeTax, setIncludeTax] = useState(true);
+  const [isReparsing, setIsReparsing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{
     current: number;
     total: number;
@@ -162,6 +168,23 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       style: 'currency',
       currency: 'USD',
     }).format(amount);
+  };
+
+  // Compute warnings from receipt data (since warnings aren't persisted)
+  const getReceiptWarnings = (receipt: PendingReceipt): string[] => {
+    if (receipt.warnings && receipt.warnings.length > 0) return receipt.warnings;
+    const warnings: string[] = [];
+    if (receipt.line_items && receipt.line_items.length > 0 && receipt.subtotal > 0) {
+      const itemsTotal = receipt.line_items.reduce((s, i) => s + i.total_price, 0);
+      const diff = Math.abs(receipt.subtotal - itemsTotal);
+      const pct = (diff / receipt.subtotal) * 100;
+      if (pct > 10) {
+        warnings.push(`Line items total (${formatCurrency(itemsTotal)}) differs from subtotal (${formatCurrency(receipt.subtotal)}) by ${pct.toFixed(1)}%`);
+      } else if (pct > 2) {
+        warnings.push(`Minor discrepancy: items total ${formatCurrency(itemsTotal)} vs subtotal ${formatCurrency(receipt.subtotal)}`);
+      }
+    }
+    return warnings;
   };
 
   // Match criteria helper functions
@@ -381,6 +404,8 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
           total_amount: receiptData.total_amount,
           tax_amount: receiptData.tax_amount,
           subtotal: receiptData.subtotal,
+          discount_amount: receiptData.discount_amount || 0,
+          parsing_confidence: receiptData.parsing_confidence || 'high',
           purchase_date: receiptData.purchase_date,
           receipt_image_url: publicUrl,
           status: 'pending',
@@ -390,14 +415,16 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
       if (receiptError) throw receiptError;
 
-      // Create line items
+      // Create line items (include discount and original_price)
       if (receiptData.line_items && receiptData.line_items.length > 0) {
-        const lineItemsToInsert = receiptData.line_items.map((item: LineItem) => ({
+        const lineItemsToInsert = receiptData.line_items.map((item: any) => ({
           receipt_id: receipt.id,
           item_name: item.item_name,
           quantity: item.quantity,
           unit_price: item.unit_price,
           total_price: item.total_price,
+          original_price: item.original_price || item.total_price,
+          discount: item.discount || 0,
           suggested_category: item.suggested_category,
         }));
 
@@ -565,6 +592,74 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         description: error.message,
         variant: 'destructive' 
       });
+    }
+  };
+
+  // Re-parse a receipt by re-submitting its image to the AI
+  const handleReparse = async (receipt: PendingReceipt) => {
+    if (!receipt.receipt_image_url || isReparsing) return;
+
+    setIsReparsing(true);
+    try {
+      // Re-invoke the parse function with the existing image URL
+      const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-receipt-image', {
+        body: { image_url: receipt.receipt_image_url },
+      });
+
+      if (parseError) throw parseError;
+      if (!parseResult.success) throw new Error(parseResult.error);
+
+      const receiptData = parseResult.data;
+
+      // Delete old line items
+      await supabase.from('receipt_line_items').delete().eq('receipt_id', receipt.id);
+
+      // Update receipt totals
+      await supabase.from('pending_receipts').update({
+        vendor_name: receiptData.vendor_name,
+        total_amount: receiptData.total_amount,
+        tax_amount: receiptData.tax_amount,
+        subtotal: receiptData.subtotal,
+        discount_amount: receiptData.discount_amount || 0,
+        parsing_confidence: receiptData.parsing_confidence || 'high',
+      }).eq('id', receipt.id);
+
+      // Insert new line items
+      if (receiptData.line_items && receiptData.line_items.length > 0) {
+        const lineItemsToInsert = receiptData.line_items.map((item: any) => ({
+          receipt_id: receipt.id,
+          item_name: item.item_name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total_price: item.total_price,
+          original_price: item.original_price || item.total_price,
+          discount: item.discount || 0,
+          suggested_category: item.suggested_category,
+        }));
+
+        await supabase.from('receipt_line_items').insert(lineItemsToInsert);
+      }
+
+      toast({
+        title: 'Receipt re-parsed!',
+        description: `Found ${receiptData.line_items?.length || 0} items (confidence: ${receiptData.parsing_confidence || 'unknown'})`,
+      });
+
+      // Reset editable state since line items changed
+      setEditableCategories({});
+      setEditableQuantities({});
+      setEditablePrices({});
+
+      await fetchPendingReceipts();
+    } catch (error: any) {
+      console.error('Error re-parsing receipt:', error);
+      toast({
+        title: 'Re-parse failed',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsReparsing(false);
     }
   };
 
@@ -1360,6 +1455,45 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 )}
               </div>
 
+              {/* Parsing Confidence Warning */}
+              {(() => {
+                const confidence = selectedMatch.receipt.parsing_confidence || 'high';
+                const receiptWarnings = getReceiptWarnings(selectedMatch.receipt);
+                if (confidence === 'high' && receiptWarnings.length === 0) return null;
+                return (
+                  <div className={cn(
+                    "flex items-start gap-3 p-3 rounded-lg border text-sm",
+                    confidence === 'low'
+                      ? "bg-destructive/10 border-destructive/30 text-destructive"
+                      : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                  )}>
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <div className="flex-1 space-y-1">
+                      <p className="font-medium">
+                        {confidence === 'low'
+                          ? 'Low parsing confidence — please review prices'
+                          : 'Some prices may need review'}
+                      </p>
+                      {receiptWarnings.length > 0 && (
+                        <ul className="text-xs opacity-80 space-y-0.5">
+                          {receiptWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                        </ul>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 gap-2 h-7 text-xs"
+                        onClick={() => handleReparse(selectedMatch.receipt)}
+                        disabled={isReparsing}
+                      >
+                        {isReparsing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                        Re-parse Receipt
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Match Summary */}
               <div className="grid grid-cols-2 gap-4">
                 <Card>
@@ -1434,6 +1568,15 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                         <div key={idx} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
                           <div className="flex-1">
                             <p className="font-medium">{item.item_name}</p>
+                            {(item.discount ?? 0) > 0 && (
+                              <div className="flex items-center gap-1.5 text-[10px] text-green-500">
+                                <span className="line-through text-muted-foreground">{formatCurrency(item.original_price ?? (item.total_price + (item.discount ?? 0)))}</span>
+                                <span>-{formatCurrency(item.discount!)}</span>
+                                <Badge variant="outline" className="text-[9px] h-4 px-1 border-green-500/30 text-green-500">
+                                  Pro Discount
+                                </Badge>
+                              </div>
+                            )}
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Input
                                 type="number"
@@ -1534,6 +1677,16 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
           )}
 
           <DialogFooter className="gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-auto gap-2"
+              onClick={() => selectedMatch && handleReparse(selectedMatch.receipt)}
+              disabled={isReparsing}
+            >
+              {isReparsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              Re-parse
+            </Button>
             <Button variant="outline" onClick={() => setShowMatchModal(false)}>
               Cancel
             </Button>
