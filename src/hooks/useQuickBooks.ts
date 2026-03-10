@@ -212,7 +212,7 @@ export function useQuickBooks() {
         
         // Listen for the callback
         const handleMessage = (event: MessageEvent) => {
-          if (event.data?.type === 'quickbooks-callback') {
+          if (event.data?.type === 'quickbooks-connected') {
             popup?.close();
             window.removeEventListener('message', handleMessage);
             
