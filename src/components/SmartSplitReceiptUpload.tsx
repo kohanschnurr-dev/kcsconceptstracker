@@ -657,10 +657,11 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   };
 
   // Helper to compute scale factor for line items vs QB transaction amount
-  const computeScaleFactor = (lineItems: LineItem[], quantities: Record<number, number>, qbAmount: number, taxAmount: number, taxIncluded: boolean) => {
+  const computeScaleFactor = (lineItems: LineItem[], quantities: Record<number, number>, prices: Record<number, number>, qbAmount: number, taxAmount: number, taxIncluded: boolean) => {
     const rawTotal = lineItems.reduce((sum, item, idx) => {
       const qty = quantities[idx] ?? item.quantity ?? 1;
-      return sum + (qty * item.unit_price);
+      const price = prices[idx] ?? item.unit_price;
+      return sum + (qty * price);
     }, 0);
     const targetTotal = taxIncluded ? qbAmount : qbAmount - taxAmount;
     if (rawTotal <= 0 || Math.abs(rawTotal - targetTotal) <= 0.01) return { sf: 1, rawTotal, targetTotal, taxExcluded: !taxIncluded, taxAmount };
