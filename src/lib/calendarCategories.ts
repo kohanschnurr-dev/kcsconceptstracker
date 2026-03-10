@@ -120,7 +120,12 @@ export const CALENDAR_CATEGORIES: CalendarCategory[] = [
 export function getCalendarCategories(): CalendarCategory[] {
   try {
     const saved = localStorage.getItem('custom-calendar-categories');
-    if (saved) return (JSON.parse(saved) as CalendarCategory[]).sort((a, b) => a.label.localeCompare(b.label));
+    if (saved) {
+      const parsed = JSON.parse(saved) as CalendarCategory[];
+      return parsed
+        .filter(c => c.value && c.label && c.group && c.groupLabel)
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
   } catch (e) {
     console.error('Error loading custom calendar categories:', e);
   }
