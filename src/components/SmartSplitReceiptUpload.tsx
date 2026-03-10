@@ -669,13 +669,14 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   };
 
   // Helper to group line items by category (with editable quantities and optional scaling)
-  const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>, quantities: Record<number, number>, scaleFactor = 1) => {
+  const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>, quantities: Record<number, number>, prices: Record<number, number>, scaleFactor = 1) => {
     const groups: Record<string, { items: (LineItem & { editedQuantity: number; editedTotal: number; scaledUnitPrice: number })[], total: number }> = {};
     
     lineItems.forEach((item, idx) => {
       const category = categories[idx] || item.suggested_category || 'misc';
       const editedQuantity = quantities[idx] ?? item.quantity ?? 1;
-      const scaledUnitPrice = Math.round(item.unit_price * scaleFactor * 100) / 100;
+      const price = prices[idx] ?? item.unit_price;
+      const scaledUnitPrice = Math.round(price * scaleFactor * 100) / 100;
       const editedTotal = editedQuantity * scaledUnitPrice;
       
       if (!groups[category]) {
