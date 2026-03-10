@@ -123,7 +123,11 @@ export function getCalendarCategories(): CalendarCategory[] {
     if (saved) {
       const parsed = JSON.parse(saved) as CalendarCategory[];
       const valid = parsed
-        .filter(c => c.value && c.label && c.group && c.groupLabel);
+        .filter(c => c.value && c.label && c.group)
+        .map(c => ({
+          ...c,
+          groupLabel: c.groupLabel || CATEGORY_GROUPS[c.group as CategoryGroup]?.label || c.group,
+        }));
       if (valid.length > 0) {
         return valid.sort((a, b) => a.label.localeCompare(b.label));
       }
