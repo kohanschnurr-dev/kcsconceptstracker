@@ -1,16 +1,24 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Move "Assign to" and "Type" Above the Match Summary
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+Reorder the sections inside the Match Approval Modal so the user flow is: **assign first → review split → submit**.
 
-### Changes
+### Current order (lines 1288–1530):
+1. Match Summary (Receipt + QB Transaction cards)
+2. Line Items / Suggested Split
+3. Split Total
+4. **Assign to** (project/business toggle, project search, type/cost type)
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+### New order:
+1. **Assign to** (project/business toggle, project search, type/cost type)
+2. Match Summary (Receipt + QB Transaction cards)
+3. Line Items / Suggested Split
+4. Split Total
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+### Implementation
+Single file change in `src/components/SmartSplitReceiptUpload.tsx`:
+- Cut the "Assignment Type & Project Selection" block (lines 1459–1530) and paste it right after `<div className="space-y-4">` on line 1289, before the Match Summary grid.
 
-Two lines, two files.
+No logic changes needed — just reordering the JSX blocks.
 
