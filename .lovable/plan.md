@@ -1,16 +1,22 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Fix Build Error & Investigate Calendar Blank Screen
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+### 1. Build Error Fix (quickbooks-sync)
+**File:** `supabase/functions/quickbooks-sync/index.ts`
 
-### Changes
+The variable `serviceSupabase` is declared twice with `const` at lines 110 and 240. Fix: rename the second one or move the first declaration to a broader scope, or simply reuse the existing one by removing the second `const`.
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+- **Line 240**: Change `const serviceSupabase = createClient(...)` to just reuse the one from line 110 (remove the redeclaration).
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+### 2. Calendar Blank Screen
+The screenshot shows the published site at `groundworksapp.com/calendar` rendering a completely blank page. This is likely caused by an unhandled error in the Calendar page crashing the React tree. Possible causes:
+- A runtime error in data fetching or rendering that isn't caught
+- The `CalendarTask` state or project state causing a crash on certain data
 
-Two lines, two files.
+Since there are no console logs captured, I'll add an error boundary or try-catch around the fetch in `Calendar.tsx` to prevent blank screens, and review the calendar components for potential crash points.
+
+**Files to edit:**
+- `supabase/functions/quickbooks-sync/index.ts` — remove duplicate `const serviceSupabase` declaration on line 240
+- `src/pages/Calendar.tsx` — add error handling around `fetchData` to prevent blank screen crashes
 
