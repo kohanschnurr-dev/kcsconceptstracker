@@ -268,7 +268,8 @@ export default function Calendar() {
               onDateChange={setCurrentDate}
               onDayDoubleClick={(date) => {
                 setQuickCreateDate(date);
-                setQuickCreateOpen(true);
+                // Use setTimeout to ensure state is set before modal reads it
+                setTimeout(() => setQuickCreateOpen(true), 0);
               }}
             />
           )}
