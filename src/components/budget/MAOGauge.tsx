@@ -27,6 +27,7 @@ export function MAOGauge({
   arv, 
   currentBudget, 
   purchasePrice, 
+  sqft = 0,
   maoPercentage = 78,
   onPercentageChange,
   onBudgetTargetChange
@@ -38,6 +39,9 @@ export function MAOGauge({
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInputValue, setBudgetInputValue] = useState('');
   const budgetInputRef = useRef<HTMLInputElement>(null);
+  const [budgetMode, setBudgetMode] = useState<'actual' | 'psf'>('actual');
+
+  const psfRate = sqft > 0 ? currentBudget / sqft : 0;
 
   // Dynamic MAO Rule: Max Offer = (ARV × percentage) - Rehab Budget
   const maxAllowableOffer = (arv * (maoPercentage / 100)) - currentBudget;
