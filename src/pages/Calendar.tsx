@@ -266,6 +266,10 @@ export default function Calendar() {
               onTaskClick={handleTaskClick}
               onTaskMove={handleTaskMove}
               onDateChange={setCurrentDate}
+              onDayDoubleClick={(date) => {
+                setQuickCreateDate(date);
+                setQuickCreateOpen(true);
+              }}
             />
           )}
           {view === 'weekly' && (
