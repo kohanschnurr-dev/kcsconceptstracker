@@ -303,6 +303,23 @@ export default function Vendors() {
             <FolderPlus className="h-4 w-4" />
             New Folder
           </Button>
+          <Button
+            variant={activeFolderId === null ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setActiveFolderId(null)}
+          >
+            All
+            <Badge
+              variant="secondary"
+              className={cn(
+                'ml-1 h-5 min-w-[20px] px-1 text-[10px]',
+                activeFolderId === null && 'bg-white/20 text-white'
+              )}
+            >
+              {vendors.length}
+            </Badge>
+          </Button>
           {folders.map((folder) => {
             const isActive = activeFolderId === folder.id;
             const count = getFolderVendorCount(folder.id);
@@ -346,19 +363,6 @@ export default function Vendors() {
           })}
         </div>
 
-        {/* Active folder breadcrumb */}
-        {activeFolder && (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <button onClick={() => setActiveFolderId(null)} className="hover:text-foreground transition-colors">
-              All Contractors
-            </button>
-            <ChevronRight className="h-3 w-3" />
-            <span className="font-medium text-foreground flex items-center gap-1">
-              <Folder className="h-3.5 w-3.5" style={{ color: activeFolder.color }} />
-              {activeFolder.name}
-            </span>
-          </div>
-        )}
 
         {/* Search & Filter */}
         <div className="flex flex-col sm:flex-row gap-3">

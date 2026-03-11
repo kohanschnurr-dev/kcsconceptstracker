@@ -1,24 +1,16 @@
 
 
-## Plan: Add "All" Pill to Folder Row
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-### Problem
-When a folder is active, the most intuitive action is to look left and click something to clear the filter. Currently users must either re-click the active folder or use the breadcrumb below.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
-### Change
+### Changes
 
-**`src/pages/Vendors.tsx`** — One small addition to the folders row (around line 296):
-- Add an "All" button as the first item after "New Folder" (or before the folder pills)
-- It renders as a pill/button matching the folder button style
-- Active when `activeFolderId === null`, clicks sets `activeFolderId(null)`
-- Shows total vendor count as a badge
-- Remove the breadcrumb section (lines 349-361) since the "All" pill serves the same purpose more cleanly
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-### Result
-```text
-[+ Folder]  [All (12)]  [🟡 Dallas (4)]  [🔵 Fort Worth (2)]
-                ↑ always visible, highlighted when no filter active
-```
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-This is a ~15-line change in one file.
+Two lines, two files.
 
