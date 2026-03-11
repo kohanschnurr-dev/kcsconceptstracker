@@ -60,7 +60,7 @@ export function BRRRAnalysis({ purchasePrice, arv, totalBudget, closingCostsBuy,
     <Card>
       <CardHeader>
         <CardTitle>BRRR Analysis</CardTitle>
-        <CardDescription>Rehab equity capture + post-refinance cash flow projections</CardDescription>
+        <CardDescription>Construction equity capture + post-refinance cash flow projections</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
