@@ -303,6 +303,23 @@ export default function Vendors() {
             <FolderPlus className="h-4 w-4" />
             New Folder
           </Button>
+          <Button
+            variant={activeFolderId === null ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setActiveFolderId(null)}
+          >
+            All
+            <Badge
+              variant="secondary"
+              className={cn(
+                'ml-1 h-5 min-w-[20px] px-1 text-[10px]',
+                activeFolderId === null && 'bg-white/20 text-white'
+              )}
+            >
+              {vendors.length}
+            </Badge>
+          </Button>
           {folders.map((folder) => {
             const isActive = activeFolderId === folder.id;
             const count = getFolderVendorCount(folder.id);
