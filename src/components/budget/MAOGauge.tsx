@@ -15,6 +15,7 @@ interface MAOGaugeProps {
   arv: number;
   currentBudget: number;
   purchasePrice: number;
+  sqft?: number;
   maoPercentage?: number;
   onPercentageChange?: (percentage: number) => void;
   onBudgetTargetChange?: (target: number) => void;
