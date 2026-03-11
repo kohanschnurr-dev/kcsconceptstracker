@@ -276,7 +276,7 @@ export function CashFlowCalculator({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
           <div className="sm:col-span-2">
             <div className="flex items-center gap-2 mb-1">
-              <Label htmlFor="rehab-budget" className="mb-0">Rehab Budget</Label>
+              <Label htmlFor="rehab-budget" className="mb-0">Construction Budget</Label>
               <div className="flex items-center gap-1.5">
                 <Switch
                   id="manual-rehab"
