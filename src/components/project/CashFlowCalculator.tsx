@@ -276,7 +276,7 @@ export function CashFlowCalculator({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
           <div className="sm:col-span-2">
             <div className="flex items-center gap-2 mb-1">
-              <Label htmlFor="rehab-budget" className="mb-0">Rehab Budget</Label>
+              <Label htmlFor="rehab-budget" className="mb-0">Construction Budget</Label>
               <div className="flex items-center gap-1.5">
                 <Switch
                   id="manual-rehab"
@@ -702,7 +702,7 @@ export function CashFlowCalculator({
             <p className="font-semibold text-muted-foreground mb-2">CASH-ON-CASH ROI BREAKDOWN</p>
             <div className="flex justify-between"><span>Annual Cash Flow</span><span className="font-mono">{formatCurrency(annualCashFlow)}</span></div>
             <div className="flex justify-between border-t border-border pt-1 mt-1"><span>Purchase Price</span><span className="font-mono">{formatCurrency(purchasePrice)}</span></div>
-            <div className="flex justify-between"><span>Rehab Budget</span><span className="font-mono">{formatCurrency(activeRehabBudget)}</span></div>
+            <div className="flex justify-between"><span>Construction Budget</span><span className="font-mono">{formatCurrency(activeRehabBudget)}</span></div>
             <div className="flex justify-between font-medium"><span>Total Investment</span><span className="font-mono">{formatCurrency(totalInvestment)}</span></div>
             {effectiveLoanAmount > 0 ? (
               <div className="flex justify-between text-destructive"><span>Refi Loan Amount</span><span className="font-mono">-{formatCurrency(effectiveLoanAmount)}</span></div>
