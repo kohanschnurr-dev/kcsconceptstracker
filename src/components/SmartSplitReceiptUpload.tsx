@@ -721,7 +721,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     const initialCategories: Record<number, string> = {};
     const initialQuantities: Record<number, number> = {};
     const initialPrices: Record<number, number> = {};
-    match.receipt.line_items?.forEach((item, idx) => {
+    (match.receipt.line_items || []).forEach((item, idx) => {
       initialCategories[idx] = item.suggested_category || 'misc';
       initialQuantities[idx] = item.quantity || 1;
       initialPrices[idx] = item.unit_price;
@@ -751,53 +751,23 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     acceptMatch(manualMatch);
   };
 
-  // Helper to compute scale factor for line items vs QB transaction amount
-  const computeScaleFactor = (lineItems: LineItem[], quantities: Record<number, number>, prices: Record<number, number>, qbAmount: number, taxAmount: number, taxIncluded: boolean) => {
-    const rawTotal = lineItems.reduce((sum, item, idx) => {
-      const qty = quantities[idx] ?? item.quantity ?? 1;
-      const price = prices[idx] ?? item.unit_price;
-      return sum + (qty * price);
-    }, 0);
-    const targetTotal = taxIncluded ? qbAmount : qbAmount - taxAmount;
-    if (rawTotal <= 0 || Math.abs(rawTotal - targetTotal) <= 0.01) return { sf: 1, rawTotal, targetTotal, taxExcluded: !taxIncluded, taxAmount };
-    return { sf: targetTotal / rawTotal, rawTotal, targetTotal, taxExcluded: !taxIncluded, taxAmount };
-  };
+  // Helper to group line items by category with editable quantities/prices
+  const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>, quantities: Record<number, number>, prices: Record<number, number>) => {
+    const groups: Record<string, { items: (LineItem & { editedQuantity: number; editedTotal: number })[], total: number }> = {};
 
-  // Helper to group line items by category (with editable quantities and optional scaling)
-  const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>, quantities: Record<number, number>, prices: Record<number, number>, scaleFactor = 1) => {
-    const groups: Record<string, { items: (LineItem & { editedQuantity: number; editedTotal: number; scaledUnitPrice: number })[], total: number }> = {};
-    
     lineItems.forEach((item, idx) => {
       const category = categories[idx] || item.suggested_category || 'misc';
       const editedQuantity = quantities[idx] ?? item.quantity ?? 1;
       const price = prices[idx] ?? item.unit_price;
-      const scaledUnitPrice = Math.round(price * scaleFactor * 100) / 100;
-      const editedTotal = editedQuantity * scaledUnitPrice;
-      
+      const editedTotal = Math.round(editedQuantity * price * 100) / 100;
+
       if (!groups[category]) {
         groups[category] = { items: [], total: 0 };
       }
-      groups[category].items.push({ ...item, editedQuantity, editedTotal, scaledUnitPrice });
+      groups[category].items.push({ ...item, editedQuantity, editedTotal });
       groups[category].total += editedTotal;
     });
 
-    // Fix rounding remainder: apply difference to largest group
-    if (scaleFactor !== 1) {
-      const totalFromGroups = Object.values(groups).reduce((s, g) => s + g.total, 0);
-      const expectedTotal = lineItems.reduce((sum, item, idx) => {
-        const qty = quantities[idx] ?? item.quantity ?? 1;
-        const price = prices[idx] ?? item.unit_price;
-        return sum + qty * price;
-      }, 0) * scaleFactor;
-      const remainder = Math.round((expectedTotal - totalFromGroups) * 100) / 100;
-      if (Math.abs(remainder) > 0 && Math.abs(remainder) <= 0.05) {
-        const largestKey = Object.entries(groups).sort((a, b) => b[1].total - a[1].total)[0]?.[0];
-        if (largestKey) {
-          groups[largestKey].total = Math.round((groups[largestKey].total + remainder) * 100) / 100;
-        }
-      }
-    }
-    
     return groups;
   };
 
@@ -833,23 +803,12 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         }
       }
 
-      // Compute scale factor for proportional allocation
-      const { sf: importScaleFactor } = computeScaleFactor(
-        selectedMatch.receipt.line_items || [],
-        editableQuantities,
-        editablePrices,
-        selectedMatch.qbExpense.amount,
-        selectedMatch.receipt.tax_amount || 0,
-        !includeTax
-      );
-
-      // Group line items by category (with edited quantities and scaling)
+      // Group line items by category with user-edited quantities/prices
       const categoryGroups = groupByCategory(
         selectedMatch.receipt.line_items || [],
         editableCategories,
         editableQuantities,
-        editablePrices,
-        importScaleFactor
+        editablePrices
       );
 
       // Calculate proportional tax per category (using edited quantities)
@@ -1527,50 +1486,18 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
               {/* Line Items */}
               {selectedMatch.receipt.line_items && selectedMatch.receipt.line_items.length > 0 && (() => {
-                const scaleResult = computeScaleFactor(
-                  selectedMatch.receipt.line_items,
-                  editableQuantities,
-                  editablePrices,
-                  selectedMatch.qbExpense.amount,
-                  selectedMatch.receipt.tax_amount || 0,
-                  !includeTax
-                );
-                const sf = scaleResult.sf;
-                const wasScaled = Math.abs(sf - 1) > 0.001;
-                const pctChange = ((sf - 1) * 100);
-                const direction = pctChange > 0 ? 'up' : 'down';
-                
                 return (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <h4 className="text-sm font-medium">
                       Suggested Split ({selectedMatch.receipt.line_items.length + (selectedMatch.receipt.tax_amount > 0 ? 1 : 0)} items)
                     </h4>
-                    {wasScaled && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Badge variant="secondary" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/20 cursor-help">
-                              <Info className="h-3 w-3" />
-                              Adjusted
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-xs text-xs p-2">
-                            {scaleResult.taxExcluded && scaleResult.taxAmount > 0
-                              ? `The AI parsed line items totaling ${formatCurrency(scaleResult.rawTotal)}, but the transaction total (minus ${formatCurrency(scaleResult.taxAmount)} tax) is ${formatCurrency(scaleResult.targetTotal)}. Prices were scaled ${direction} by ${Math.abs(pctChange).toFixed(1)}% so the split matches exactly.`
-                              : `The AI parsed line items totaling ${formatCurrency(scaleResult.rawTotal)}, but the transaction total is ${formatCurrency(scaleResult.targetTotal)}. Prices were scaled ${direction} by ${Math.abs(pctChange).toFixed(1)}% so the split matches exactly.`
-                            }
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
                   </div>
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {selectedMatch.receipt.line_items.map((item, idx) => {
                       const editedQty = editableQuantities[idx] ?? item.quantity ?? 1;
                       const editedPrice = editablePrices[idx] ?? item.unit_price;
-                      const scaledPrice = Math.round(editedPrice * sf * 100) / 100;
-                      const editedTotal = editedQty * scaledPrice;
+                      const editedTotal = Math.round(editedQty * editedPrice * 100) / 100;
                       return (
                         <div key={idx} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
                           <div className="flex-1">
