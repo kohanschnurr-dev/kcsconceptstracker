@@ -11,17 +11,7 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const AI_MODEL = "google/gemini-2.5-flash";
-
-const DISCOUNT_PATTERNS = [
-  /pro\s*xtra/i, /preferred\s*pricing/i, /pro\s*savings/i, /instant\s*savings/i,
-  /pro\s*paint/i, /mkdn|markdown/i, /amt\s*off/i, /coupon/i, /discount/i,
-  /savings/i, /manager\s*markdown/i,
-];
-
-function isDiscountLine(name: string): boolean {
-  return DISCOUNT_PATTERNS.some(p => p.test(name));
-}
+const AI_MODEL = "google/gemini-2.5-pro";
 
 async function callAI(apiKey: string, body: string): Promise<Response | null> {
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -105,10 +95,9 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // PASS 2: Structured extraction
-    // AI reads every line (products + discounts separately)
+    // PASS 2: Structured extraction — NET prices
     // ==========================================
-    console.log("Pass 2: Structure...");
+    console.log("Pass 2: Structure (net prices)...");
     const ocrRef = ocrText ? `\n\nOCR text for cross-reference:\n---\n${ocrText}\n---` : "";
 
     const parseResp = await callAI(LOVABLE_API_KEY, JSON.stringify({
@@ -116,24 +105,41 @@ serve(async (req) => {
       messages: [
         {
           role: "system",
-          content: `You read receipts. Return every printed line that has a dollar amount as a separate item.
+          content: `You are a construction receipt parser. Return ONLY product lines — no discount lines as separate items.
 
-RULES:
-- Products: positive total_price, is_discount=false
-- Discounts/coupons/savings: NEGATIVE total_price, is_discount=true (e.g. "Pro Xtra Preferred Pricing -2.24" → total_price: -2.24)
-- Multi-qty "3@4.48 13.44" → quantity:3, unit_price:4.48, total_price:13.44
-- Skip "MAX REFUND VALUE" lines
-- SUBTOTAL/TAX/TOTAL go in top-level fields, NOT as line items
-- Use the RIGHTMOST dollar amount as the price
-- Do NOT duplicate items. Each physical product line on the receipt = exactly one item in your response.
-- Categories: plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, light_fixtures, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, garage, cleaning, misc`
+CRITICAL RULES:
+- For each product, return the FINAL NET price AFTER any discounts applied to that item.
+- If a discount applies to a product (e.g. "Pro Xtra Preferred Pricing -$5.96" below an item), do NOT create a separate line for the discount. Instead:
+  - Set total_price to the NET price (original minus discount)
+  - Set discount to the positive discount amount
+  - Set original_price to the price before discount
+- If no discount applies, set discount to 0 and original_price equal to total_price.
+- Multi-qty: "3@4.48 13.44" → quantity:3, unit_price:4.48, total_price:13.44 (then apply discounts to the total)
+- Skip "MAX REFUND VALUE" lines entirely.
+- SUBTOTAL/TAX/TOTAL go in top-level fields, NOT as line items.
+- Use the RIGHTMOST dollar amount on each line as the price.
+- Do NOT duplicate items. Each physical product = exactly one item.
+- Categories: plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, light_fixtures, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, garage, cleaning, misc
+
+DISCOUNT RECOGNITION — these are discount lines, NOT products:
+- Pro Xtra Preferred Pricing, Pro Xtra Savings, Instant Savings, Pro Savings
+- Manager Markdown, MKDN, Amt Off, Coupon
+- Any line with a negative dollar amount
+
+EXAMPLE:
+Receipt shows:
+  GORILLA WOOD GLUE    $25.96
+  Pro Xtra Preferred   -$5.96
+
+You return ONE item:
+  { "item_name": "GORILLA WOOD GLUE", "quantity": 1, "unit_price": 20.00, "total_price": 20.00, "discount": 5.96, "original_price": 25.96, "suggested_category": "hardware" }`
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: `Read this receipt. Return every line that has a dollar amount. Discount lines get negative prices.${ocrRef}
+              text: `Read this receipt. Return each product with its NET price after discounts. Do NOT return discount lines as separate items.${ocrRef}
 
 Return ONLY valid JSON:
 {
@@ -143,8 +149,7 @@ Return ONLY valid JSON:
   "subtotal": 0,
   "purchase_date": "YYYY-MM-DD",
   "line_items": [
-    { "item_name": "NAME", "quantity": 1, "unit_price": 10.00, "total_price": 10.00, "is_discount": false, "suggested_category": "hardware" },
-    { "item_name": "Pro Xtra Preferred Pricing", "quantity": 1, "unit_price": -1.50, "total_price": -1.50, "is_discount": true, "suggested_category": "" }
+    { "item_name": "NAME", "quantity": 1, "unit_price": 10.00, "total_price": 10.00, "discount": 0, "original_price": 10.00, "suggested_category": "hardware" }
   ]
 }`
             },
@@ -172,35 +177,27 @@ Return ONLY valid JSON:
 
     // ==========================================
     // SERVER-SIDE PROCESSING
-    // 1. Merge discounts into products
+    // 1. Filter valid products (no discount lines)
     // 2. Deduplicate
     // 3. Enforce subtotal (items MUST add up)
     // ==========================================
     const rawItems: any[] = Array.isArray(raw.line_items) ? raw.line_items : [];
 
-    // Step 1: Merge discounts into the product above them
+    // Step 1: Collect products — skip any that slipped through as discounts
     const products: any[] = [];
     for (const item of rawItems) {
       const price = parseFloat(String(item.total_price)) || 0;
-      const name = String(item.item_name || "");
-      const isDisc = item.is_discount === true || price < 0 || isDiscountLine(name);
+      if (price <= 0) continue; // skip negative/zero items (discount lines that leaked through)
 
-      if (isDisc) {
-        const amt = Math.abs(price);
-        if (amt > 0 && products.length > 0) {
-          const prev = products[products.length - 1];
-          prev.total_price = Math.round((prev.total_price - amt) * 100) / 100;
-          console.log(`  Discount -$${amt.toFixed(2)} "${name}" → "${prev.item_name}" now $${prev.total_price.toFixed(2)}`);
-        }
-      } else if (price > 0) {
-        products.push({
-          item_name: name || "Unknown Item",
-          quantity: parseFloat(String(item.quantity)) || 1,
-          unit_price: parseFloat(String(item.unit_price)) || 0,
-          total_price: Math.abs(price),
-          suggested_category: item.suggested_category || "misc",
-        });
-      }
+      products.push({
+        item_name: String(item.item_name || "Unknown Item"),
+        quantity: parseFloat(String(item.quantity)) || 1,
+        unit_price: parseFloat(String(item.unit_price)) || 0,
+        total_price: Math.abs(price),
+        discount: Math.abs(parseFloat(String(item.discount)) || 0),
+        original_price: parseFloat(String(item.original_price)) || Math.abs(price),
+        suggested_category: item.suggested_category || "misc",
+      });
     }
 
     // Step 2: Deduplicate — if same item name appears multiple times, merge them
@@ -209,18 +206,14 @@ Return ONLY valid JSON:
       const key = p.item_name.trim().toUpperCase();
       if (deduped.has(key)) {
         const existing = deduped.get(key);
-        // Only merge if they look like true duplicates (similar price)
-        // If prices are very different, keep both (different products with same name)
         const priceDiff = Math.abs(existing.total_price / existing.quantity - p.total_price / p.quantity);
         if (priceDiff < 1.00) {
-          // True duplicate — keep the one with higher total (more likely correct)
           if (p.total_price > existing.total_price) {
             deduped.set(key, p);
           }
           console.log(`  Dedup: removed duplicate "${p.item_name}" ($${p.total_price.toFixed(2)})`);
           continue;
         }
-        // Different prices = different products, keep both with unique key
         deduped.set(key + `_${deduped.size}`, p);
       } else {
         deduped.set(key, p);
@@ -241,8 +234,7 @@ Return ONLY valid JSON:
     let subtotal = parseFloat(String(raw.subtotal)) || 0;
     if (subtotal === 0 && totalAmount > 0) subtotal = totalAmount - taxAmount;
 
-    // Step 4: ENFORCE SUBTOTAL — items MUST add up to the receipt subtotal
-    // The receipt subtotal is ground truth. If items don't match, adjust proportionally.
+    // Step 4: ENFORCE SUBTOTAL
     const itemsTotal = uniqueProducts.reduce((s, i) => s + i.total_price, 0);
     const diff = Math.abs(subtotal - itemsTotal);
     const pctDiff = subtotal > 0 ? (diff / subtotal) * 100 : 0;
@@ -250,7 +242,6 @@ Return ONLY valid JSON:
     console.log(`Before enforcement: items=$${itemsTotal.toFixed(2)}, subtotal=$${subtotal.toFixed(2)}, diff=${pctDiff.toFixed(1)}%`);
 
     if (subtotal > 0 && pctDiff > 1 && uniqueProducts.length > 0) {
-      // Proportionally adjust all prices so they sum to subtotal exactly
       const factor = subtotal / itemsTotal;
       console.log(`Enforcing subtotal: scaling by ${factor.toFixed(4)}`);
 
@@ -258,7 +249,6 @@ Return ONLY valid JSON:
       for (let i = 0; i < uniqueProducts.length; i++) {
         const item = uniqueProducts[i];
         if (i === uniqueProducts.length - 1) {
-          // Last item gets the remainder to avoid rounding drift
           item.total_price = Math.round((subtotal - runningTotal) * 100) / 100;
         } else {
           item.total_price = Math.round(item.total_price * factor * 100) / 100;
@@ -279,6 +269,8 @@ Return ONLY valid JSON:
       quantity: p.quantity,
       unit_price: p.unit_price,
       total_price: p.total_price,
+      discount: p.discount,
+      original_price: p.original_price,
       suggested_category: p.suggested_category,
     }));
 
@@ -295,7 +287,7 @@ Return ONLY valid JSON:
 
     console.log("=== Final Result ===");
     console.log(`${finalItems.length} items, subtotal=$${subtotal.toFixed(2)}, tax=$${taxAmount.toFixed(2)}, total=$${totalAmount.toFixed(2)}`);
-    finalItems.forEach(i => console.log(`  ${i.item_name}: ${i.quantity}x $${i.unit_price} = $${i.total_price} [${i.suggested_category}]`));
+    finalItems.forEach(i => console.log(`  ${i.item_name}: ${i.quantity}x $${i.unit_price} = $${i.total_price} [${i.suggested_category}]${i.discount > 0 ? ` (discount: -$${i.discount.toFixed(2)})` : ''}`));
     console.log("====================");
 
     return jsonResp({
