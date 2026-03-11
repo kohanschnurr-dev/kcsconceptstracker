@@ -1,16 +1,14 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Add Neutral Theme Color to Folder Presets
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+Add a muted gray/neutral color as the first option in the preset colors list so users can create folders that blend with the dark theme instead of standing out with a bright color.
 
-### Changes
+### Change
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**`src/components/vendors/CreateVendorFolderModal.tsx`**
+- Add `{ name: 'Neutral', value: '#6b7280' }` (Tailwind gray-500) as the first item in `PRESET_COLORS`
+- Set the default `color` state to this neutral value so new folders default to the subdued option
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
-
-Two lines, two files.
+One-line addition, one-line default change.
 
