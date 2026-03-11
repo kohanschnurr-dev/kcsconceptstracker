@@ -51,6 +51,8 @@ export default function Calendar() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [quickCreateDate, setQuickCreateDate] = useState<Date | undefined>();
   const { toast } = useToast();
 
   const selectedProjectId = searchParams.get('project');
