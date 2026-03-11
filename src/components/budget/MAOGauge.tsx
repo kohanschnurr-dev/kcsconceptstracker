@@ -177,7 +177,32 @@ export function MAOGauge({
             <TrendingUp className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Construction Budget</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Construction Budget</p>
+              {onBudgetTargetChange && (
+                <div className="inline-flex h-5 rounded-md border border-input overflow-hidden text-[10px] font-mono leading-none">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setBudgetMode('actual'); setEditingBudget(false); }}
+                    className={cn(
+                      "px-1.5 transition-colors",
+                      budgetMode === 'actual' ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"
+                    )}
+                  >$</button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setBudgetMode('psf'); setEditingBudget(false); }}
+                    disabled={sqft <= 0}
+                    className={cn(
+                      "px-1.5 transition-colors",
+                      budgetMode === 'psf' ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent",
+                      sqft <= 0 && "opacity-40 cursor-not-allowed"
+                    )}
+                    title={sqft <= 0 ? "Enter sqft first" : "Per square foot"}
+                  >PSF</button>
+                </div>
+              )}
+            </div>
             {editingBudget ? (
               <div className="relative">
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-base font-bold font-mono text-primary">$</span>
