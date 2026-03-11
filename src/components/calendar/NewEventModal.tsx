@@ -67,11 +67,14 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
     } else {
       setInternalOpen(v);
     }
-    if (v && defaultStartDate) {
+  };
+
+  useEffect(() => {
+    if (externalOpen && defaultStartDate) {
       setStartDate(defaultStartDate);
       setEndDate(defaultStartDate);
     }
-  };
+  }, [externalOpen, defaultStartDate]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 

@@ -281,7 +281,7 @@ export default function Calendar() {
               onTaskMove={handleTaskMove}
               onDayDoubleClick={(date) => {
                 setQuickCreateDate(date);
-                setQuickCreateOpen(true);
+                setTimeout(() => setQuickCreateOpen(true), 0);
               }}
             />
           )}
