@@ -52,11 +52,13 @@ function DraggableCard({ task, onTaskClick }: { task: CalendarTask; onTaskClick:
 function DroppableDay({ 
   day, 
   children, 
-  isCurrentMonth 
+  isCurrentMonth,
+  onDoubleClick,
 }: { 
   day: Date; 
   children: React.ReactNode; 
   isCurrentMonth: boolean;
+  onDoubleClick?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: day.toISOString(),
