@@ -41,7 +41,7 @@ function DraggableCard({ task, onTaskClick }: { task: CalendarTask; onTaskClick:
   );
 }
 
-function DroppableDay({ day, children }: { day: Date; children: React.ReactNode }) {
+function DroppableDay({ day, children, onDoubleClick }: { day: Date; children: React.ReactNode; onDoubleClick?: () => void }) {
   const { setNodeRef, isOver } = useDroppable({
     id: day.toISOString(),
     data: { date: day },
@@ -50,6 +50,7 @@ function DroppableDay({ day, children }: { day: Date; children: React.ReactNode 
   return (
     <div
       ref={setNodeRef}
+      onDoubleClick={onDoubleClick}
       className={cn(
         'min-h-[400px] p-3 rounded-lg border transition-colors',
         'bg-card/50 border-border',
