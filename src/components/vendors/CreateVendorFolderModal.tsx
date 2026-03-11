@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 const PRESET_COLORS = [
+  { name: 'Neutral', value: '#6b7280' },
   { name: 'Amber', value: '#f59e0b' },
   { name: 'Blue', value: '#3b82f6' },
   { name: 'Green', value: '#22c55e' },
