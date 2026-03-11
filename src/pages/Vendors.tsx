@@ -363,19 +363,6 @@ export default function Vendors() {
           })}
         </div>
 
-        {/* Active folder breadcrumb */}
-        {activeFolder && (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <button onClick={() => setActiveFolderId(null)} className="hover:text-foreground transition-colors">
-              All Contractors
-            </button>
-            <ChevronRight className="h-3 w-3" />
-            <span className="font-medium text-foreground flex items-center gap-1">
-              <Folder className="h-3.5 w-3.5" style={{ color: activeFolder.color }} />
-              {activeFolder.name}
-            </span>
-          </div>
-        )}
 
         {/* Search & Filter */}
         <div className="flex flex-col sm:flex-row gap-3">
