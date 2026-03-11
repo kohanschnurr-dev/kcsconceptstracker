@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, type ReactNode } from 'react';
 import { 
   startOfWeek, 
   addDays,
@@ -7,7 +7,12 @@ import {
   isToday,
   addWeeks
 } from 'date-fns';
-import { AlertTriangle } from 'lucide-react';
+import { 
+  AlertTriangle, Wrench, Zap, Snowflake, Hammer, Paintbrush, Layers, 
+  Grid3x3, Square, DoorOpen, PaintBucket, Home, Landmark, TreePine, 
+  Warehouse, Sparkles, CalendarDays, DollarSign, Package, CheckCircle, 
+  ClipboardList, FileText
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { CalendarTask } from '@/pages/Calendar';
@@ -29,42 +34,40 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
     return Array.from({ length: 28 }, (_, i) => addDays(startDate, i));
   }, [startDate]);
 
-  const getCategoryEmoji = (category: string) => {
+  const getCategoryIcon = (category: string, size = 12, className = ''): ReactNode => {
+    const props = { size, className, strokeWidth: 2 };
     switch (category) {
-      case 'plumbing_rough': return '🔧';
-      case 'electrical_rough': return '⚡';
-      case 'hvac_rough': return '❄️';
-      case 'framing': return '🔨';
-      case 'demo': return '🔨';
-      case 'painting': case 'exterior_paint': return '🎨';
-      case 'flooring': return '🪵';
-      case 'tile': return '🔲';
-      case 'cabinetry': return '🗄️';
-      case 'countertops': return '🔲';
-      case 'windows': return '🚪';
-      case 'drywall': return '🖌️';
-      case 'roofing': case 'siding': return '🏠';
-      case 'foundation_piers': return '🏛️';
-      case 'grading': return '🌳';
-      case 'garage': return '🏗️';
-      case 'stage_clean': return '✨';
-      case 'listing_date': case 'sale_closing': case 'closing': return '📅';
-      case 'open_house': return '🏠';
-      case 'purchase': case 'refinancing': return '💰';
-      case 'order': case 'item_arrived': return '📦';
-      case 'city_rough_in': case 'third_party': case 'foundation_pre_pour': case 'final_green_tag': return '✅';
-      case 'permitting': return '📋';
-      case 'due_diligence': case 'underwriting': return '📄';
+      case 'plumbing_rough': return <Wrench {...props} />;
+      case 'electrical_rough': return <Zap {...props} />;
+      case 'hvac_rough': return <Snowflake {...props} />;
+      case 'framing': case 'demo': return <Hammer {...props} />;
+      case 'painting': case 'exterior_paint': return <Paintbrush {...props} />;
+      case 'flooring': return <Layers {...props} />;
+      case 'tile': case 'countertops': return <Grid3x3 {...props} />;
+      case 'cabinetry': return <Square {...props} />;
+      case 'windows': return <DoorOpen {...props} />;
+      case 'drywall': return <PaintBucket {...props} />;
+      case 'roofing': case 'siding': case 'open_house': return <Home {...props} />;
+      case 'foundation_piers': return <Landmark {...props} />;
+      case 'grading': return <TreePine {...props} />;
+      case 'garage': return <Warehouse {...props} />;
+      case 'stage_clean': return <Sparkles {...props} />;
+      case 'listing_date': case 'sale_closing': case 'closing': return <CalendarDays {...props} />;
+      case 'purchase': case 'refinancing': return <DollarSign {...props} />;
+      case 'order': case 'item_arrived': return <Package {...props} />;
+      case 'city_rough_in': case 'third_party': case 'foundation_pre_pour': case 'final_green_tag': return <CheckCircle {...props} />;
+      case 'permitting': return <ClipboardList {...props} />;
+      case 'due_diligence': case 'underwriting': return <FileText {...props} />;
       default: {
         const group = getCategoryGroup(category);
         switch (group) {
-          case 'acquisition_admin': return '📄';
-          case 'structural_exterior': return '🏠';
-          case 'rough_ins': return '🔧';
-          case 'inspections': return '✅';
-          case 'interior_finishes': return '🎨';
-          case 'milestones': return '📅';
-          default: return '🔧';
+          case 'acquisition_admin': return <FileText {...props} />;
+          case 'structural_exterior': return <Home {...props} />;
+          case 'rough_ins': return <Wrench {...props} />;
+          case 'inspections': return <CheckCircle {...props} />;
+          case 'interior_finishes': return <Paintbrush {...props} />;
+          case 'milestones': return <CalendarDays {...props} />;
+          default: return <Wrench {...props} />;
         }
       }
     }
@@ -183,7 +186,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                       onClick={() => onTaskClick(task)}
                       className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      {getCategoryEmoji(task.eventCategory || 'due_diligence')}
+                      {getCategoryIcon(task.eventCategory || 'due_diligence', 12, 'text-muted-foreground')}
                       <span className="truncate">{task.title}</span>
                       {hasDependencyWarning(task) && (
                         <Tooltip>
@@ -230,8 +233,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                           )}
                           style={position}
                         >
-                          <div className="flex items-center justify-center h-full text-xs">
-                            {getCategoryEmoji(task.eventCategory || 'due_diligence')}
+                          <div className="flex items-center justify-center h-full">
+                            {getCategoryIcon(task.eventCategory || 'due_diligence', 12, 'text-white')}
                           </div>
                         </div>
                       </TooltipTrigger>
