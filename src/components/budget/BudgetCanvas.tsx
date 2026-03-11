@@ -148,7 +148,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
         const calculated = preset.mode === 'flat'
           ? preset.pricePerSqft
           : sqftNum * preset.pricePerSqft;
-        onCategoryChange(preset.category, calculated.toFixed(2));
+        onCategoryChange(preset.category, Math.round(calculated).toString());
       });
     }
 
