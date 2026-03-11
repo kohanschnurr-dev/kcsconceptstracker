@@ -81,7 +81,7 @@ function DroppableDay({
   );
 }
 
-export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDateChange }: MonthlyViewProps) {
+export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDateChange, onDayDoubleClick }: MonthlyViewProps) {
   const [activeTask, setActiveTask] = useState<CalendarTask | null>(null);
   const touchStartX = useRef<number | null>(null);
   
