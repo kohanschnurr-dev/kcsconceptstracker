@@ -1,16 +1,16 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Move Presets Section Above Show/Hide Items
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+Swap the two sections inside the Per-Group Settings Dialog in `src/components/budget/BudgetCanvas.tsx`.
 
-### Changes
+### Change
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**`src/components/budget/BudgetCanvas.tsx`** (lines 487-600)
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+Reorder the content inside `<div className="flex-1 overflow-y-auto ...">`:
+1. **Presets** section (currently lines 519-600) moves to the top
+2. **Show / Hide Items** section (currently lines 488-517) moves below it
 
-Two lines, two files.
+No logic changes — just swap the two `<div>` blocks.
 
