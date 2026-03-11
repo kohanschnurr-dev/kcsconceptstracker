@@ -1,16 +1,39 @@
 
 
-## Fix Dashboard Link in Sidebar and Mobile Nav
+## Plan: Replace Emojis with Lucide Vector Icons in Gantt Bars
 
-The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
+Replace all emoji characters in the Gantt bar content and sidebar labels with Lucide React vector icons for a cleaner, consistent look.
 
 ### Changes
 
-**1. `src/components/layout/Sidebar.tsx` (line 46)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+**`src/components/calendar/GanttView.tsx`**
 
-**2. `src/components/layout/MobileNav.tsx` (line 38)**
-- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
+1. Replace `getCategoryEmoji` with `getCategoryIcon` that returns Lucide icon components:
+   - `plumbing_rough` → `Wrench`
+   - `electrical_rough` → `Zap`
+   - `hvac_rough` → `Snowflake`
+   - `framing`, `demo` → `Hammer`
+   - `painting`, `exterior_paint` → `Paintbrush`
+   - `flooring` → `Layers`
+   - `tile`, `countertops` → `Grid3x3`
+   - `cabinetry` → `Square`
+   - `windows` → `DoorOpen`
+   - `drywall` → `PaintBucket`
+   - `roofing`, `siding`, `open_house` → `Home`
+   - `foundation_piers` → `Landmark`
+   - `grading` → `TreePine`
+   - `garage` → `Warehouse`
+   - `stage_clean` → `Sparkles`
+   - `listing_date`, `sale_closing`, `closing` → `CalendarDays`
+   - `purchase`, `refinancing` → `DollarSign`
+   - `order`, `item_arrived` → `Package`
+   - inspections → `CheckCircle`
+   - `permitting` → `ClipboardList`
+   - `due_diligence`, `underwriting` → `FileText`
+   - Group fallbacks follow same pattern
+   - Default → `Wrench`
 
-Two lines, two files.
+2. Import all needed icons from `lucide-react`.
+
+3. Update both the **bar content** and **sidebar label** to render the Lucide icon component (size 12, `text-white` in bar, `text-muted-foreground` in sidebar) instead of emoji strings.
 
