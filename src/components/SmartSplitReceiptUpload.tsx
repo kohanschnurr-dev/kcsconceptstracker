@@ -721,10 +721,21 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     const initialCategories: Record<number, string> = {};
     const initialQuantities: Record<number, number> = {};
     const initialPrices: Record<number, number> = {};
-    match.receipt.line_items?.forEach((item, idx) => {
+
+    // Pre-scale prices so what the user sees matches the QB transaction total
+    const lineItems = match.receipt.line_items || [];
+    const rawTotal = lineItems.reduce((sum, item) => sum + ((item.quantity || 1) * item.unit_price), 0);
+    const taxAmount = match.receipt.tax_amount || 0;
+    const targetTotal = match.qbExpense.amount - taxAmount;
+    const sf = (rawTotal > 0 && Math.abs(rawTotal - targetTotal) > 0.01)
+      ? targetTotal / rawTotal
+      : 1;
+
+    lineItems.forEach((item, idx) => {
       initialCategories[idx] = item.suggested_category || 'misc';
       initialQuantities[idx] = item.quantity || 1;
-      initialPrices[idx] = item.unit_price;
+      // Apply scale factor so displayed prices match the actual transaction
+      initialPrices[idx] = Math.round(item.unit_price * sf * 100) / 100;
     });
     setEditableCategories(initialCategories);
     setIncludeTax(true); // Reset tax toggle when opening modal
@@ -1568,9 +1579,9 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {selectedMatch.receipt.line_items.map((item, idx) => {
                       const editedQty = editableQuantities[idx] ?? item.quantity ?? 1;
-                      const editedPrice = editablePrices[idx] ?? item.unit_price;
-                      const scaledPrice = Math.round(editedPrice * sf * 100) / 100;
-                      const editedTotal = editedQty * scaledPrice;
+                      // Prices are pre-scaled in acceptMatch, so use directly
+                      const editedPrice = editablePrices[idx] ?? Math.round(item.unit_price * sf * 100) / 100;
+                      const editedTotal = editedQty * editedPrice;
                       return (
                         <div key={idx} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
                           <div className="flex-1">
