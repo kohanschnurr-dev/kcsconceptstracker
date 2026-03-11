@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Phone, Mail, Star, X, Folder } from 'lucide-react';
+import { Users, Phone, Mail, Star, X, Folder, Check } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -33,7 +33,7 @@ interface Vendor {
   reliability_rating: number | null;
   pricing_model: 'flat' | 'hourly' | null;
   notes: string | null;
-  folder_id?: string | null;
+  folder_ids: string[];
 }
 
 interface VendorFolder {
@@ -59,7 +59,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor, fo
   const [reliabilityRating, setReliabilityRating] = useState(3);
   const [pricingModel, setPricingModel] = useState<'flat' | 'hourly'>('flat');
   const [notes, setNotes] = useState('');
-  const [folderId, setFolderId] = useState<string | null>(null);
+  const [folderIds, setFolderIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditing = !!vendor;
@@ -74,7 +74,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor, fo
       setReliabilityRating(vendor.reliability_rating || 3);
       setPricingModel(vendor.pricing_model || 'flat');
       setNotes(vendor.notes || '');
-      setFolderId(vendor.folder_id || null);
+      setFolderIds(vendor.folder_ids || []);
     } else if (!open) {
       setName('');
       setTrades([]);
@@ -84,7 +84,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor, fo
       setReliabilityRating(3);
       setPricingModel('flat');
       setNotes('');
-      setFolderId(null);
+      setFolderIds([]);
     }
   }, [open, vendor]);
 
@@ -100,6 +100,14 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor, fo
 
   const getTradeLabel = (trade: string) => {
     return getVendorTrades().find(t => t.value === trade)?.label || trade;
+  };
+
+  const toggleFolder = (folderId: string) => {
+    setFolderIds(prev =>
+      prev.includes(folderId)
+        ? prev.filter(id => id !== folderId)
+        : [...prev, folderId]
+    );
   };
 
   const availableTrades = getVendorTrades().filter(t => !trades.includes(t.value));
@@ -129,6 +137,8 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor, fo
         return;
       }
 
+      let vendorId: string;
+
       if (isEditing) {
         const { error } = await supabase
           .from('vendors')
@@ -141,18 +151,31 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor, fo
             reliability_rating: reliabilityRating,
             pricing_model: pricingModel,
             notes: notes || null,
-            folder_id: folderId,
           })
           .eq('id', vendor.id);
 
         if (error) throw error;
+        vendorId = vendor.id;
+
+        // Sync folder assignments: delete all then re-insert
+        await supabase
+          .from('vendor_folder_assignments')
+          .delete()
+          .eq('vendor_id', vendorId);
+
+        if (folderIds.length > 0) {
+          const { error: assignError } = await supabase
+            .from('vendor_folder_assignments')
+            .insert(folderIds.map(fid => ({ vendor_id: vendorId, folder_id: fid })));
+          if (assignError) throw assignError;
+        }
 
         toast({
           title: 'Contractor updated!',
           description: `${name} has been updated.`,
         });
       } else {
-        const { error } = await supabase
+        const { data: newVendor, error } = await supabase
           .from('vendors')
           .insert({
             name,
@@ -164,10 +187,20 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor, fo
             pricing_model: pricingModel,
             notes: notes || null,
             user_id: user.id,
-            folder_id: folderId,
-          });
+          })
+          .select('id')
+          .single();
 
         if (error) throw error;
+        vendorId = newVendor.id;
+
+        // Insert folder assignments
+        if (folderIds.length > 0) {
+          const { error: assignError } = await supabase
+            .from('vendor_folder_assignments')
+            .insert(folderIds.map(fid => ({ vendor_id: vendorId, folder_id: fid })));
+          if (assignError) throw assignError;
+        }
 
         toast({
           title: 'Contractor added!',
@@ -278,26 +311,33 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor, fo
             </div>
           </div>
 
-          {/* Folder assignment */}
+          {/* Multi-folder assignment */}
           {folders.length > 0 && (
             <div className="space-y-2">
-              <Label>Folder</Label>
-              <Select value={folderId || '_none'} onValueChange={(v) => setFolderId(v === '_none' ? null : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="No folder" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">No folder</SelectItem>
-                  {folders.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      <span className="flex items-center gap-2">
-                        <span className="h-3 w-3 rounded-full inline-block" style={{ backgroundColor: f.color }} />
-                        {f.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Folders</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {folders.map((f) => {
+                  const isSelected = folderIds.includes(f.id);
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => toggleFolder(f.id)}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors',
+                        isSelected
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-foreground border-border hover:bg-accent'
+                      )}
+                    >
+                      <Folder className="h-3 w-3" style={{ color: isSelected ? undefined : f.color }} />
+                      {f.name}
+                      {isSelected && <Check className="h-3 w-3" />}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">Select one or more folders</p>
             </div>
           )}
 

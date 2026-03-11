@@ -1975,6 +1975,42 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_folder_assignments: {
+        Row: {
+          created_at: string | null
+          folder_id: string
+          id: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          folder_id: string
+          id?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string | null
+          folder_id?: string
+          id?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_folder_assignments_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_folder_assignments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_folders: {
         Row: {
           color: string
@@ -2003,7 +2039,6 @@ export type Database = {
         Row: {
           created_at: string
           email: string | null
-          folder_id: string | null
           has_w9: boolean
           id: string
           name: string
@@ -2018,7 +2053,6 @@ export type Database = {
         Insert: {
           created_at?: string
           email?: string | null
-          folder_id?: string | null
           has_w9?: boolean
           id?: string
           name: string
@@ -2033,7 +2067,6 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string | null
-          folder_id?: string | null
           has_w9?: boolean
           id?: string
           name?: string
@@ -2045,15 +2078,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "vendors_folder_id_fkey"
-            columns: ["folder_id"]
-            isOneToOne: false
-            referencedRelation: "vendor_folders"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
