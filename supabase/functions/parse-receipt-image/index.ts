@@ -13,7 +13,6 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const AI_MODEL = "google/gemini-2.5-flash";
 
-// Patterns that indicate a line is a discount, not a product
 const DISCOUNT_PATTERNS = [
   /pro\s*xtra/i, /preferred\s*pricing/i, /pro\s*savings/i, /instant\s*savings/i,
   /pro\s*paint/i, /mkdn|markdown/i, /amt\s*off/i, /coupon/i, /discount/i,
@@ -33,7 +32,7 @@ async function callAI(apiKey: string, body: string): Promise<Response | null> {
         body,
       });
       if (resp.ok) return resp;
-      if (resp.status === 429 || resp.status === 402) return resp; // caller handles
+      if (resp.status === 429 || resp.status === 402) return resp;
       console.warn(`AI attempt ${attempt + 1}: ${resp.status}`);
     } catch (err) {
       console.warn(`AI attempt ${attempt + 1} error:`, err);
@@ -43,6 +42,12 @@ async function callAI(apiKey: string, body: string): Promise<Response | null> {
   return null;
 }
 
+function jsonResp(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -50,130 +55,96 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!authHeader) return jsonResp({ error: "Unauthorized" }, 401);
 
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "AI service not configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!LOVABLE_API_KEY) return jsonResp({ error: "AI service not configured" }, 500);
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
       global: { headers: { Authorization: authHeader } },
     });
-
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (userError || !user) return jsonResp({ error: "Unauthorized" }, 401);
 
     const { image_url, image_base64 } = await req.json();
-    if (!image_url && !image_base64) {
-      return new Response(JSON.stringify({ error: "Either image_url or image_base64 is required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!image_url && !image_base64) return jsonResp({ error: "image_url or image_base64 required" }, 400);
 
-    console.log("Parsing receipt...");
-
-    // Always use base64 — download URL if needed
+    // Always use base64
     let finalBase64 = image_base64;
     if (!finalBase64 && image_url) {
-      console.log("Downloading image from URL...");
       try {
         const imgResp = await fetch(image_url);
-        if (!imgResp.ok) throw new Error(`Download failed: ${imgResp.status}`);
-        const imgBuffer = await imgResp.arrayBuffer();
+        if (!imgResp.ok) throw new Error(`${imgResp.status}`);
+        const buf = await imgResp.arrayBuffer();
         const ct = imgResp.headers.get("content-type") || "image/jpeg";
-        const b64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
-        finalBase64 = `data:${ct};base64,${b64}`;
-      } catch (dlErr) {
-        console.error("Image download failed:", dlErr);
-        return new Response(JSON.stringify({ success: false, error: "Could not download receipt image." }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        finalBase64 = `data:${ct};base64,${btoa(String.fromCharCode(...new Uint8Array(buf)))}`;
+      } catch (e) {
+        return jsonResp({ success: false, error: "Could not download receipt image." }, 400);
       }
     }
 
     const imageContent = { type: "image_url", image_url: { url: finalBase64 } };
 
     // ==========================================
-    // PASS 1: Raw OCR text extraction
+    // PASS 1: OCR
     // ==========================================
-    console.log("Pass 1: OCR extraction...");
-    const ocrBody = JSON.stringify({
+    console.log("Pass 1: OCR...");
+    let ocrText = "";
+    const ocrResp = await callAI(LOVABLE_API_KEY, JSON.stringify({
       model: AI_MODEL,
       messages: [{
         role: "user",
         content: [
-          { type: "text", text: "Extract ALL text from this receipt image exactly as printed. Preserve the line-by-line layout. Include every line: item names, SKUs, prices, discounts, subtotals, tax, total. Return ONLY the raw text." },
+          { type: "text", text: "Extract ALL text from this receipt image exactly as printed, line by line. Include every line: items, SKUs, prices, discounts, subtotals, tax, total. Return ONLY the raw text." },
           imageContent
         ]
       }],
-    });
-
-    let ocrText = "";
-    const ocrResp = await callAI(LOVABLE_API_KEY, ocrBody);
+    }));
     if (ocrResp?.ok) {
-      const ocrData = await ocrResp.json();
-      ocrText = ocrData.choices?.[0]?.message?.content || "";
-      console.log(`OCR extracted ${ocrText.length} chars`);
+      ocrText = (await ocrResp.json()).choices?.[0]?.message?.content || "";
+      console.log(`OCR: ${ocrText.length} chars`);
     }
 
     // ==========================================
     // PASS 2: Structured extraction
-    // AI just READS — returns every line including discounts
-    // Our CODE does the math
+    // AI reads every line (products + discounts separately)
     // ==========================================
-    console.log("Pass 2: Structured extraction...");
+    console.log("Pass 2: Structure...");
+    const ocrRef = ocrText ? `\n\nOCR text for cross-reference:\n---\n${ocrText}\n---` : "";
 
-    const ocrContext = ocrText
-      ? `\n\nOCR text from the receipt (use to cross-reference):\n---\n${ocrText}\n---`
-      : "";
-
-    const parseBody = JSON.stringify({
+    const parseResp = await callAI(LOVABLE_API_KEY, JSON.stringify({
       model: AI_MODEL,
       messages: [
         {
           role: "system",
-          content: `You are a receipt reader. Your ONLY job is to read what's on the receipt and return it as structured data. Do NOT do math. Do NOT apply discounts. Just read each line.
+          content: `You read receipts. Return every printed line that has a dollar amount as a separate item.
 
 RULES:
-1. Return EVERY line that has a dollar amount — products, discounts, coupons, everything
-2. Products have POSITIVE prices. Discount/coupon lines have NEGATIVE prices.
-3. For discount lines (e.g. "Pro Xtra Preferred Pricing -$2.24"), return them as separate items with negative total_price
-4. For multi-quantity lines like "3@4.48  13.44": quantity=3, unit_price=4.48, total_price=13.44
-5. "MAX REFUND VALUE" lines are NOT items — skip them
-6. Lines with just "SUBTOTAL", "TAX", "TOTAL" are NOT items — put those in the top-level fields
-7. Use the RIGHTMOST dollar amount on each line as the price
-8. Set is_discount=true for any discount/coupon/savings/markdown line
-9. Set is_discount=false for regular product lines
-
-CATEGORIES (for products only): plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, light_fixtures, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, garage, cleaning, misc`
+- Products: positive total_price, is_discount=false
+- Discounts/coupons/savings: NEGATIVE total_price, is_discount=true (e.g. "Pro Xtra Preferred Pricing -2.24" → total_price: -2.24)
+- Multi-qty "3@4.48 13.44" → quantity:3, unit_price:4.48, total_price:13.44
+- Skip "MAX REFUND VALUE" lines
+- SUBTOTAL/TAX/TOTAL go in top-level fields, NOT as line items
+- Use the RIGHTMOST dollar amount as the price
+- Do NOT duplicate items. Each physical product line on the receipt = exactly one item in your response.
+- Categories: plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, light_fixtures, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, garage, cleaning, misc`
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: `Read this receipt and return EVERY line with a price. Include discount lines as separate items with negative prices.${ocrContext}
+              text: `Read this receipt. Return every line that has a dollar amount. Discount lines get negative prices.${ocrRef}
 
 Return ONLY valid JSON:
 {
-  "vendor_name": "STORE NAME",
-  "total_amount": 152.16,
-  "tax_amount": 11.60,
-  "subtotal": 140.56,
-  "purchase_date": "2026-02-28",
+  "vendor_name": "STORE",
+  "total_amount": 0,
+  "tax_amount": 0,
+  "subtotal": 0,
+  "purchase_date": "YYYY-MM-DD",
   "line_items": [
-    { "item_name": "PRODUCT NAME", "quantity": 1, "unit_price": 15.97, "total_price": 15.97, "is_discount": false, "suggested_category": "hardware" },
-    { "item_name": "Pro Xtra Preferred Pricing", "quantity": 1, "unit_price": -2.24, "total_price": -2.24, "is_discount": true, "suggested_category": "" }
+    { "item_name": "NAME", "quantity": 1, "unit_price": 10.00, "total_price": 10.00, "is_discount": false, "suggested_category": "hardware" },
+    { "item_name": "Pro Xtra Preferred Pricing", "quantity": 1, "unit_price": -1.50, "total_price": -1.50, "is_discount": true, "suggested_category": "" }
   ]
 }`
             },
@@ -181,118 +152,135 @@ Return ONLY valid JSON:
           ]
         }
       ],
-    });
+    }));
 
-    const parseResp = await callAI(LOVABLE_API_KEY, parseBody);
-    if (!parseResp) {
-      return new Response(JSON.stringify({ success: false, error: "AI failed after 3 attempts" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (parseResp.status === 429) {
-      return new Response(JSON.stringify({ success: false, error: "Rate limited. Try again later." }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (parseResp.status === 402) {
-      return new Response(JSON.stringify({ success: false, error: "AI credits exhausted." }), {
-        status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (!parseResp.ok) {
-      return new Response(JSON.stringify({ success: false, error: "AI request failed" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!parseResp) return jsonResp({ success: false, error: "AI failed after 3 attempts" }, 502);
+    if (parseResp.status === 429) return jsonResp({ success: false, error: "Rate limited." }, 429);
+    if (parseResp.status === 402) return jsonResp({ success: false, error: "AI credits exhausted." }, 402);
+    if (!parseResp.ok) return jsonResp({ success: false, error: "AI request failed" }, 502);
 
-    const aiData = await parseResp.json();
-    const content = aiData.choices?.[0]?.message?.content;
-    if (!content) {
-      return new Response(JSON.stringify({ success: false, error: "Empty AI response" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const content = (await parseResp.json()).choices?.[0]?.message?.content;
+    if (!content) return jsonResp({ success: false, error: "Empty AI response" }, 502);
 
-    // Parse JSON from AI response
     let jsonStr = content;
-    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) jsonStr = jsonMatch[1].trim();
+    const m = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (m) jsonStr = m[1].trim();
 
     let raw: any;
-    try {
-      raw = JSON.parse(jsonStr);
-    } catch {
-      console.error("JSON parse failed:", content.substring(0, 500));
-      return new Response(JSON.stringify({ success: false, error: "Failed to parse AI response" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    try { raw = JSON.parse(jsonStr); }
+    catch { return jsonResp({ success: false, error: "Failed to parse AI JSON" }, 502); }
 
     // ==========================================
-    // SERVER-SIDE: Apply discounts to products
-    // The AI just read the lines. We do the math.
+    // SERVER-SIDE PROCESSING
+    // 1. Merge discounts into products
+    // 2. Deduplicate
+    // 3. Enforce subtotal (items MUST add up)
     // ==========================================
-    console.log("Applying discounts server-side...");
-
     const rawItems: any[] = Array.isArray(raw.line_items) ? raw.line_items : [];
 
-    // Separate products and discounts
-    // A line is a discount if: is_discount=true, OR price is negative, OR name matches discount patterns
+    // Step 1: Merge discounts into the product above them
     const products: any[] = [];
-    const orphanDiscounts: number[] = []; // discounts that couldn't be matched
-
-    for (let i = 0; i < rawItems.length; i++) {
-      const item = rawItems[i];
+    for (const item of rawItems) {
       const price = parseFloat(String(item.total_price)) || 0;
       const name = String(item.item_name || "");
-      const flaggedDiscount = item.is_discount === true;
-      const isNegative = price < 0;
-      const nameIsDiscount = isDiscountLine(name);
+      const isDisc = item.is_discount === true || price < 0 || isDiscountLine(name);
 
-      if (flaggedDiscount || isNegative || nameIsDiscount) {
-        // This is a discount line — apply it to the nearest product ABOVE
-        const discountAmt = Math.abs(price);
-        if (discountAmt > 0 && products.length > 0) {
-          const target = products[products.length - 1];
-          target.discount = (target.discount || 0) + discountAmt;
-          target.total_price = Math.round((target.total_price - discountAmt) * 100) / 100;
-          target.unit_price = target.quantity > 0
-            ? Math.round((target.total_price / target.quantity) * 100) / 100
-            : target.total_price;
-          console.log(`  Applied -$${discountAmt.toFixed(2)} "${name}" to "${target.item_name}" → $${target.total_price.toFixed(2)}`);
-        } else if (discountAmt > 0) {
-          orphanDiscounts.push(discountAmt);
-          console.warn(`  Orphan discount: -$${discountAmt.toFixed(2)} "${name}" (no product above)`);
+      if (isDisc) {
+        const amt = Math.abs(price);
+        if (amt > 0 && products.length > 0) {
+          const prev = products[products.length - 1];
+          prev.total_price = Math.round((prev.total_price - amt) * 100) / 100;
+          console.log(`  Discount -$${amt.toFixed(2)} "${name}" → "${prev.item_name}" now $${prev.total_price.toFixed(2)}`);
         }
-      } else {
-        // Regular product
+      } else if (price > 0) {
         products.push({
           item_name: name || "Unknown Item",
           quantity: parseFloat(String(item.quantity)) || 1,
           unit_price: parseFloat(String(item.unit_price)) || 0,
-          total_price: Math.abs(price), // ensure positive
-          discount: 0,
+          total_price: Math.abs(price),
           suggested_category: item.suggested_category || "misc",
         });
       }
     }
 
-    // Fix unit_price consistency
-    const finalItems = products.map(item => {
-      const expected = Math.round(item.quantity * item.unit_price * 100) / 100;
-      if (Math.abs(expected - item.total_price) > 0.02) {
+    // Step 2: Deduplicate — if same item name appears multiple times, merge them
+    const deduped = new Map<string, any>();
+    for (const p of products) {
+      const key = p.item_name.trim().toUpperCase();
+      if (deduped.has(key)) {
+        const existing = deduped.get(key);
+        // Only merge if they look like true duplicates (similar price)
+        // If prices are very different, keep both (different products with same name)
+        const priceDiff = Math.abs(existing.total_price / existing.quantity - p.total_price / p.quantity);
+        if (priceDiff < 1.00) {
+          // True duplicate — keep the one with higher total (more likely correct)
+          if (p.total_price > existing.total_price) {
+            deduped.set(key, p);
+          }
+          console.log(`  Dedup: removed duplicate "${p.item_name}" ($${p.total_price.toFixed(2)})`);
+          continue;
+        }
+        // Different prices = different products, keep both with unique key
+        deduped.set(key + `_${deduped.size}`, p);
+      } else {
+        deduped.set(key, p);
+      }
+    }
+    const uniqueProducts = Array.from(deduped.values());
+
+    // Step 3: Recalculate unit prices
+    for (const item of uniqueProducts) {
+      item.unit_price = item.quantity > 0
+        ? Math.round((item.total_price / item.quantity) * 100) / 100
+        : item.total_price;
+    }
+
+    // Get receipt totals
+    const totalAmount = parseFloat(String(raw.total_amount)) || 0;
+    const taxAmount = parseFloat(String(raw.tax_amount)) || 0;
+    let subtotal = parseFloat(String(raw.subtotal)) || 0;
+    if (subtotal === 0 && totalAmount > 0) subtotal = totalAmount - taxAmount;
+
+    // Step 4: ENFORCE SUBTOTAL — items MUST add up to the receipt subtotal
+    // The receipt subtotal is ground truth. If items don't match, adjust proportionally.
+    const itemsTotal = uniqueProducts.reduce((s, i) => s + i.total_price, 0);
+    const diff = Math.abs(subtotal - itemsTotal);
+    const pctDiff = subtotal > 0 ? (diff / subtotal) * 100 : 0;
+
+    console.log(`Before enforcement: items=$${itemsTotal.toFixed(2)}, subtotal=$${subtotal.toFixed(2)}, diff=${pctDiff.toFixed(1)}%`);
+
+    if (subtotal > 0 && pctDiff > 1 && uniqueProducts.length > 0) {
+      // Proportionally adjust all prices so they sum to subtotal exactly
+      const factor = subtotal / itemsTotal;
+      console.log(`Enforcing subtotal: scaling by ${factor.toFixed(4)}`);
+
+      let runningTotal = 0;
+      for (let i = 0; i < uniqueProducts.length; i++) {
+        const item = uniqueProducts[i];
+        if (i === uniqueProducts.length - 1) {
+          // Last item gets the remainder to avoid rounding drift
+          item.total_price = Math.round((subtotal - runningTotal) * 100) / 100;
+        } else {
+          item.total_price = Math.round(item.total_price * factor * 100) / 100;
+        }
+        runningTotal += item.total_price;
         item.unit_price = item.quantity > 0
           ? Math.round((item.total_price / item.quantity) * 100) / 100
           : item.total_price;
       }
-      return {
-        item_name: item.item_name,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total_price: item.total_price,
-        suggested_category: item.suggested_category,
-      };
-    });
+
+      const finalTotal = uniqueProducts.reduce((s, i) => s + i.total_price, 0);
+      console.log(`After enforcement: items=$${finalTotal.toFixed(2)} (should be $${subtotal.toFixed(2)})`);
+    }
+
+    // Build final line items
+    const finalItems = uniqueProducts.map(p => ({
+      item_name: p.item_name,
+      quantity: p.quantity,
+      unit_price: p.unit_price,
+      total_price: p.total_price,
+      suggested_category: p.suggested_category,
+    }));
 
     // Validate date
     const currentYear = new Date().getFullYear();
@@ -305,24 +293,12 @@ Return ONLY valid JSON:
       }
     }
 
-    const totalAmount = parseFloat(String(raw.total_amount)) || 0;
-    const taxAmount = parseFloat(String(raw.tax_amount)) || 0;
-    let subtotal = parseFloat(String(raw.subtotal)) || 0;
-    if (subtotal === 0 && totalAmount > 0) subtotal = totalAmount - taxAmount;
+    console.log("=== Final Result ===");
+    console.log(`${finalItems.length} items, subtotal=$${subtotal.toFixed(2)}, tax=$${taxAmount.toFixed(2)}, total=$${totalAmount.toFixed(2)}`);
+    finalItems.forEach(i => console.log(`  ${i.item_name}: ${i.quantity}x $${i.unit_price} = $${i.total_price} [${i.suggested_category}]`));
+    console.log("====================");
 
-    const itemsTotal = finalItems.reduce((s, i) => s + i.total_price, 0);
-    const totalDiscount = products.reduce((s, i) => s + (i.discount || 0), 0);
-    const diff = Math.abs(subtotal - itemsTotal);
-    const pctDiff = subtotal > 0 ? (diff / subtotal) * 100 : 0;
-
-    console.log("=== Parse Summary ===");
-    console.log(`Vendor: ${raw.vendor_name || "?"}`);
-    console.log(`Products: ${finalItems.length}, Discounts applied: $${totalDiscount.toFixed(2)}`);
-    console.log(`Items total: $${itemsTotal.toFixed(2)} | Subtotal: $${subtotal.toFixed(2)} | Diff: ${pctDiff.toFixed(1)}%`);
-    if (orphanDiscounts.length > 0) console.log(`Orphan discounts: ${orphanDiscounts.map(d => `$${d.toFixed(2)}`).join(', ')}`);
-    console.log("=====================");
-
-    return new Response(JSON.stringify({
+    return jsonResp({
       success: true,
       data: {
         vendor_name: raw.vendor_name || "Unknown Vendor",
@@ -332,15 +308,10 @@ Return ONLY valid JSON:
         purchase_date: purchaseDate,
         line_items: finalItems,
       }
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error: unknown) {
     console.error("Error:", error);
-    const msg = error instanceof Error ? error.message : "Failed to parse receipt";
-    return new Response(JSON.stringify({ success: false, error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResp({ success: false, error: error instanceof Error ? error.message : "Failed to parse receipt" }, 500);
   }
 });
