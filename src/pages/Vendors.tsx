@@ -330,12 +330,11 @@ export default function Vendors() {
                   size="sm"
                   className={cn(
                     'gap-1.5 pr-2 transition-all',
-                    isActive && 'ring-2 ring-offset-1 ring-offset-background'
+                    isActive && 'ring-2 ring-primary ring-offset-1 ring-offset-background'
                   )}
-                  style={isActive ? { backgroundColor: folder.color, borderColor: folder.color } : undefined}
                   onClick={() => setActiveFolderId(isActive ? null : folder.id)}
                 >
-                  <Folder className="h-4 w-4" style={{ color: isActive ? undefined : folder.color }} />
+                  <Folder className="h-4 w-4" style={{ color: folder.color }} />
                   {folder.name}
                   <Badge
                     variant="secondary"
