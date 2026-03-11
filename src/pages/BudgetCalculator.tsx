@@ -544,6 +544,7 @@ export default function BudgetCalculator() {
               arv={arvNum}
               currentBudget={totalBudget}
               purchasePrice={purchasePriceNum}
+              sqft={parseFloat(sqft) || 0}
               maoPercentage={maoPercentage}
               onPercentageChange={setMaoPercentage}
               onBudgetTargetChange={handleBudgetTargetChange}

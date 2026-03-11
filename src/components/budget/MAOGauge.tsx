@@ -220,9 +220,14 @@ export function MAOGauge({
                 />
               </div>
             ) : (
-              <p className="text-base sm:text-lg font-bold font-mono text-primary group-hover:underline group-hover:decoration-primary/40 transition-all">
-                {formatCurrency(currentBudget)}
-              </p>
+              <div>
+                <p className="text-base sm:text-lg font-bold font-mono text-primary group-hover:underline group-hover:decoration-primary/40 transition-all">
+                  {formatCurrency(currentBudget)}
+                </p>
+                {budgetMode === 'psf' && sqft > 0 && (
+                  <p className="text-[10px] text-muted-foreground font-mono">${Math.round(psfRate)}/sqft</p>
+                )}
+              </div>
             )}
           </div>
         </div>
