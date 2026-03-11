@@ -31,8 +31,6 @@ interface LineItem {
   quantity: number;
   unit_price: number;
   total_price: number;
-  original_price?: number;
-  discount?: number;
   suggested_category: string;
   project_id?: string;
   notes?: string;
@@ -49,8 +47,6 @@ interface PendingReceipt {
   receipt_image_url?: string;
   matched_qb_id?: string;
   match_confidence?: number;
-  discount_amount?: number;
-  parsing_confidence?: 'high' | 'medium' | 'low';
   warnings?: string[];
   line_items?: LineItem[];
 }
@@ -404,8 +400,6 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
           total_amount: receiptData.total_amount,
           tax_amount: receiptData.tax_amount,
           subtotal: receiptData.subtotal,
-          discount_amount: receiptData.discount_amount || 0,
-          parsing_confidence: receiptData.parsing_confidence || 'high',
           purchase_date: receiptData.purchase_date,
           receipt_image_url: publicUrl,
           status: 'pending',
@@ -415,18 +409,22 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
       if (receiptError) throw receiptError;
 
-      // Create line items (include discount and original_price)
+      // Create line items (store discount info in notes if present)
       if (receiptData.line_items && receiptData.line_items.length > 0) {
-        const lineItemsToInsert = receiptData.line_items.map((item: any) => ({
-          receipt_id: receipt.id,
-          item_name: item.item_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total_price: item.total_price,
-          original_price: item.original_price || item.total_price,
-          discount: item.discount || 0,
-          suggested_category: item.suggested_category,
-        }));
+        const lineItemsToInsert = receiptData.line_items.map((item: any) => {
+          const discountNote = (item.discount && item.discount > 0)
+            ? `Discount: -$${item.discount.toFixed(2)} (original: $${(item.original_price || item.total_price + item.discount).toFixed(2)})`
+            : undefined;
+          return {
+            receipt_id: receipt.id,
+            item_name: item.item_name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price,
+            suggested_category: item.suggested_category,
+            notes: discountNote || null,
+          };
+        });
 
         await supabase.from('receipt_line_items').insert(lineItemsToInsert);
       }
@@ -620,29 +618,31 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         total_amount: receiptData.total_amount,
         tax_amount: receiptData.tax_amount,
         subtotal: receiptData.subtotal,
-        discount_amount: receiptData.discount_amount || 0,
-        parsing_confidence: receiptData.parsing_confidence || 'high',
       }).eq('id', receipt.id);
 
-      // Insert new line items
+      // Insert new line items (store discount info in notes if present)
       if (receiptData.line_items && receiptData.line_items.length > 0) {
-        const lineItemsToInsert = receiptData.line_items.map((item: any) => ({
-          receipt_id: receipt.id,
-          item_name: item.item_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total_price: item.total_price,
-          original_price: item.original_price || item.total_price,
-          discount: item.discount || 0,
-          suggested_category: item.suggested_category,
-        }));
+        const lineItemsToInsert = receiptData.line_items.map((item: any) => {
+          const discountNote = (item.discount && item.discount > 0)
+            ? `Discount: -$${item.discount.toFixed(2)} (original: $${(item.original_price || item.total_price + item.discount).toFixed(2)})`
+            : undefined;
+          return {
+            receipt_id: receipt.id,
+            item_name: item.item_name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price,
+            suggested_category: item.suggested_category,
+            notes: discountNote || null,
+          };
+        });
 
         await supabase.from('receipt_line_items').insert(lineItemsToInsert);
       }
 
       toast({
         title: 'Receipt re-parsed!',
-        description: `Found ${receiptData.line_items?.length || 0} items (confidence: ${receiptData.parsing_confidence || 'unknown'})`,
+        description: `Found ${receiptData.line_items?.length || 0} items from ${receiptData.vendor_name}`,
       });
 
       // Reset editable state since line items changed
@@ -1457,8 +1457,15 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
               {/* Parsing Confidence Warning */}
               {(() => {
-                const confidence = selectedMatch.receipt.parsing_confidence || 'high';
                 const receiptWarnings = getReceiptWarnings(selectedMatch.receipt);
+                // Compute confidence from line items vs subtotal discrepancy
+                let confidence: 'high' | 'medium' | 'low' = 'high';
+                if (selectedMatch.receipt.line_items && selectedMatch.receipt.subtotal > 0) {
+                  const itemsTotal = selectedMatch.receipt.line_items.reduce((s, i) => s + i.total_price, 0);
+                  const pct = Math.abs(selectedMatch.receipt.subtotal - itemsTotal) / selectedMatch.receipt.subtotal * 100;
+                  if (pct > 10) confidence = 'low';
+                  else if (pct > 2) confidence = 'medium';
+                }
                 if (confidence === 'high' && receiptWarnings.length === 0) return null;
                 return (
                   <div className={cn(
@@ -1568,10 +1575,9 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                         <div key={idx} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
                           <div className="flex-1">
                             <p className="font-medium">{item.item_name}</p>
-                            {(item.discount ?? 0) > 0 && (
+                            {item.notes && item.notes.startsWith('Discount:') && (
                               <div className="flex items-center gap-1.5 text-[10px] text-green-500">
-                                <span className="line-through text-muted-foreground">{formatCurrency(item.original_price ?? (item.total_price + (item.discount ?? 0)))}</span>
-                                <span>-{formatCurrency(item.discount!)}</span>
+                                <span className="text-muted-foreground">{item.notes}</span>
                                 <Badge variant="outline" className="text-[9px] h-4 px-1 border-green-500/30 text-green-500">
                                   Pro Discount
                                 </Badge>
