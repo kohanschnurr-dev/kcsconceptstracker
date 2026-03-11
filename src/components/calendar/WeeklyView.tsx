@@ -19,6 +19,7 @@ interface WeeklyViewProps {
   tasks: CalendarTask[];
   onTaskClick: (task: CalendarTask) => void;
   onTaskMove: (taskId: string, newStartDate: Date, newEndDate: Date) => void;
+  onDayDoubleClick?: (date: Date) => void;
 }
 
 function DraggableCard({ task, onTaskClick }: { task: CalendarTask; onTaskClick: () => void }) {
