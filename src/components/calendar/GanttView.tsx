@@ -7,10 +7,7 @@ import {
   isToday,
   addWeeks
 } from 'date-fns';
-import { 
-  Hammer, Pipette, Zap, Landmark, Fan, PaintBucket,
-  Wrench, AlertTriangle, FileText, ClipboardCheck, Calendar, Home, Sparkles,
-} from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { CalendarTask } from '@/pages/Calendar';
