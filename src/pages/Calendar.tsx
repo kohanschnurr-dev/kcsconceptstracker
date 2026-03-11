@@ -278,6 +278,10 @@ export default function Calendar() {
               tasks={filteredTasks}
               onTaskClick={handleTaskClick}
               onTaskMove={handleTaskMove}
+              onDayDoubleClick={(date) => {
+                setQuickCreateDate(date);
+                setQuickCreateOpen(true);
+              }}
             />
           )}
           {view === 'gantt' && (
