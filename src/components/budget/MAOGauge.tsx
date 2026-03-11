@@ -15,6 +15,7 @@ interface MAOGaugeProps {
   arv: number;
   currentBudget: number;
   purchasePrice: number;
+  sqft?: number;
   maoPercentage?: number;
   onPercentageChange?: (percentage: number) => void;
   onBudgetTargetChange?: (target: number) => void;
@@ -26,6 +27,7 @@ export function MAOGauge({
   arv, 
   currentBudget, 
   purchasePrice, 
+  sqft = 0,
   maoPercentage = 78,
   onPercentageChange,
   onBudgetTargetChange
@@ -37,6 +39,9 @@ export function MAOGauge({
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInputValue, setBudgetInputValue] = useState('');
   const budgetInputRef = useRef<HTMLInputElement>(null);
+  const [budgetMode, setBudgetMode] = useState<'actual' | 'psf'>('actual');
+
+  const psfRate = sqft > 0 ? currentBudget / sqft : 0;
 
   // Dynamic MAO Rule: Max Offer = (ARV × percentage) - Rehab Budget
   const maxAllowableOffer = (arv * (maoPercentage / 100)) - currentBudget;
@@ -75,14 +80,22 @@ export function MAOGauge({
 
   const handleBudgetClick = () => {
     if (!onBudgetTargetChange) return;
-    setBudgetInputValue(currentBudget > 0 ? currentBudget.toString() : '');
+    if (budgetMode === 'psf') {
+      setBudgetInputValue(psfRate > 0 ? Math.round(psfRate).toString() : '');
+    } else {
+      setBudgetInputValue(currentBudget > 0 ? currentBudget.toString() : '');
+    }
     setEditingBudget(true);
   };
 
   const handleBudgetSubmit = () => {
     const val = parseFloat(budgetInputValue) || 0;
     if (val > 0) {
-      onBudgetTargetChange?.(val);
+      if (budgetMode === 'psf' && sqft > 0) {
+        onBudgetTargetChange?.(Math.round(val * sqft));
+      } else {
+        onBudgetTargetChange?.(val);
+      }
     }
     setEditingBudget(false);
   };
@@ -164,7 +177,32 @@ export function MAOGauge({
             <TrendingUp className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Construction Budget</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Construction Budget</p>
+              {onBudgetTargetChange && (
+                <div className="inline-flex h-5 rounded-md border border-input overflow-hidden text-[10px] font-mono leading-none">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setBudgetMode('actual'); setEditingBudget(false); }}
+                    className={cn(
+                      "px-1.5 transition-colors",
+                      budgetMode === 'actual' ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"
+                    )}
+                  >$</button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setBudgetMode('psf'); setEditingBudget(false); }}
+                    disabled={sqft <= 0}
+                    className={cn(
+                      "px-1.5 transition-colors",
+                      budgetMode === 'psf' ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent",
+                      sqft <= 0 && "opacity-40 cursor-not-allowed"
+                    )}
+                    title={sqft <= 0 ? "Enter sqft first" : "Per square foot"}
+                  >PSF</button>
+                </div>
+              )}
+            </div>
             {editingBudget ? (
               <div className="relative">
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-base font-bold font-mono text-primary">$</span>
@@ -182,9 +220,14 @@ export function MAOGauge({
                 />
               </div>
             ) : (
-              <p className="text-base sm:text-lg font-bold font-mono text-primary group-hover:underline group-hover:decoration-primary/40 transition-all">
-                {formatCurrency(currentBudget)}
-              </p>
+              <div>
+                <p className="text-base sm:text-lg font-bold font-mono text-primary group-hover:underline group-hover:decoration-primary/40 transition-all">
+                  {formatCurrency(currentBudget)}
+                </p>
+                {budgetMode === 'psf' && sqft > 0 && (
+                  <p className="text-[10px] text-muted-foreground font-mono">${Math.round(psfRate)}/sqft</p>
+                )}
+              </div>
             )}
           </div>
         </div>

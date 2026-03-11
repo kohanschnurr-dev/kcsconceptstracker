@@ -1,23 +1,16 @@
 
 
-## Plan: Add $/PSF Mode Toggle to Construction Budget in MAO Gauge
+## Fix Dashboard Link in Sidebar and Mobile Nav
 
-Add a small toggle on the Construction Budget display in the MAO Gauge so users can switch between "Actual $" (current behavior) and "$/PSF" mode. In PSF mode, the user types a per-square-foot rate (e.g. 115) and the total is calculated as `rate × sqft`.
+The sidebar and mobile hamburger nav have the Dashboard path set to `/` (the landing page) instead of `/dashboard` (the actual app dashboard).
 
 ### Changes
 
-**`src/components/budget/MAOGauge.tsx`**
-- Add `sqft` prop (number) to the component
-- Add a small `$ | PSF` toggle button next to the "Construction Budget" label (same style as the Profit Calculator cost mode toggles)
-- In PSF mode, when editing, the input accepts a $/sqft rate; on submit, call `onBudgetTargetChange(rate × sqft)`
-- Display the PSF rate as helper text when not editing (e.g. `$115/sqft`)
-- Store the mode toggle locally in component state (no persistence needed — it's a quick-entry shortcut)
+**1. `src/components/layout/Sidebar.tsx` (line 46)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-**`src/pages/BudgetCalculator.tsx`**
-- Pass `sqft={parseFloat(sqft) || 0}` to the `<MAOGauge>` component
+**2. `src/components/layout/MobileNav.tsx` (line 38)**
+- Change `path: '/'` to `path: '/dashboard'` for the Dashboard nav item
 
-### UI Behavior
-- Default mode: "Actual $" — current behavior unchanged
-- PSF mode: user types rate → budget = rate × sqft → fires `onBudgetTargetChange`
-- If sqft is 0 or missing, PSF input is disabled with a hint to enter sqft first
+Two lines, two files.
 
