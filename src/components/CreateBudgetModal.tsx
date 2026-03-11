@@ -406,7 +406,7 @@ export function CreateBudgetModal({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="rehabBudget" className="text-xs flex items-center gap-1">
-                  Rehab Budget
+                  Construction Budget
                   {isRehabBudgetManual && (
                     <span className="text-[10px] text-muted-foreground">(manual)</span>
                   )}

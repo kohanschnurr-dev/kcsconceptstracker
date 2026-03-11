@@ -654,10 +654,10 @@ export default function BudgetCalculator() {
 
                               {/* Rehab Column */}
                               <div className="space-y-3">
-                                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Rehab & Holding</h4>
+                                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Construction & Holding</h4>
                                 <div className="space-y-2">
                                   <div className="flex justify-between text-sm">
-                                    <span>Rehab Budget</span>
+                                    <span>Construction Budget</span>
                                     <span className="font-mono">{formatCurrency(totalBudget)}</span>
                                   </div>
                                   <div className="flex justify-between text-sm">

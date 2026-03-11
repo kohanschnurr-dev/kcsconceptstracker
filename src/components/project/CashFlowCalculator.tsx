@@ -702,7 +702,7 @@ export function CashFlowCalculator({
             <p className="font-semibold text-muted-foreground mb-2">CASH-ON-CASH ROI BREAKDOWN</p>
             <div className="flex justify-between"><span>Annual Cash Flow</span><span className="font-mono">{formatCurrency(annualCashFlow)}</span></div>
             <div className="flex justify-between border-t border-border pt-1 mt-1"><span>Purchase Price</span><span className="font-mono">{formatCurrency(purchasePrice)}</span></div>
-            <div className="flex justify-between"><span>Rehab Budget</span><span className="font-mono">{formatCurrency(activeRehabBudget)}</span></div>
+            <div className="flex justify-between"><span>Construction Budget</span><span className="font-mono">{formatCurrency(activeRehabBudget)}</span></div>
             <div className="flex justify-between font-medium"><span>Total Investment</span><span className="font-mono">{formatCurrency(totalInvestment)}</span></div>
             {effectiveLoanAmount > 0 ? (
               <div className="flex justify-between text-destructive"><span>Refi Loan Amount</span><span className="font-mono">-{formatCurrency(effectiveLoanAmount)}</span></div>

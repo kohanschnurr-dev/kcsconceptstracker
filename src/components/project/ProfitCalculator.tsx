@@ -287,7 +287,7 @@ export function ProfitCalculator({
               <span>{formatCurrency(purchasePrice)}</span>
             </div>
             <div className="flex justify-between text-destructive">
-              <span>− {expandedBreakdown === 'estimated' ? 'Rehab Budget' : 'Rehab Spent'}</span>
+              <span>− {expandedBreakdown === 'estimated' ? 'Construction Budget' : 'Construction Spent'}</span>
               <span>{formatCurrency(expandedBreakdown === 'estimated' ? totalBudget : totalSpent)}</span>
             </div>
             <div className="flex justify-between text-destructive">

@@ -73,7 +73,7 @@ export function BRRRAnalysis({ purchasePrice, arv, totalBudget, closingCostsBuy,
                 <span className="font-mono">{formatCurrency(purchasePrice)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Rehab</span>
+                <span>Construction</span>
                 <span className="font-mono">{formatCurrency(totalBudget)}</span>
               </div>
               <div className="flex justify-between">
