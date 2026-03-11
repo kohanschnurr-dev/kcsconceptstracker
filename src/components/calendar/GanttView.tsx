@@ -233,8 +233,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                           )}
                           style={position}
                         >
-                          <div className="flex items-center justify-center h-full text-xs">
-                            {getCategoryEmoji(task.eventCategory || 'due_diligence')}
+                          <div className="flex items-center justify-center h-full">
+                            {getCategoryIcon(task.eventCategory || 'due_diligence', 12, 'text-white')}
                           </div>
                         </div>
                       </TooltipTrigger>
