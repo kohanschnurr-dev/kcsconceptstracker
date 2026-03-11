@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format, addMonths, addYears, differenceInCalendarDays } from 'date-fns';
 import { Plus, AlertTriangle, Zap, CalendarRange, Check, ChevronsUpDown, Repeat, Circle, X } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
@@ -67,11 +67,14 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
     } else {
       setInternalOpen(v);
     }
-    if (v && defaultStartDate) {
+  };
+
+  useEffect(() => {
+    if (externalOpen && defaultStartDate) {
       setStartDate(defaultStartDate);
       setEndDate(defaultStartDate);
     }
-  };
+  }, [externalOpen, defaultStartDate]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
