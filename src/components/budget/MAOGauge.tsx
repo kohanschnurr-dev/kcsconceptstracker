@@ -80,14 +80,22 @@ export function MAOGauge({
 
   const handleBudgetClick = () => {
     if (!onBudgetTargetChange) return;
-    setBudgetInputValue(currentBudget > 0 ? currentBudget.toString() : '');
+    if (budgetMode === 'psf') {
+      setBudgetInputValue(psfRate > 0 ? Math.round(psfRate).toString() : '');
+    } else {
+      setBudgetInputValue(currentBudget > 0 ? currentBudget.toString() : '');
+    }
     setEditingBudget(true);
   };
 
   const handleBudgetSubmit = () => {
     const val = parseFloat(budgetInputValue) || 0;
     if (val > 0) {
-      onBudgetTargetChange?.(val);
+      if (budgetMode === 'psf' && sqft > 0) {
+        onBudgetTargetChange?.(Math.round(val * sqft));
+      } else {
+        onBudgetTargetChange?.(val);
+      }
     }
     setEditingBudget(false);
   };
