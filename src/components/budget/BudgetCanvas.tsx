@@ -485,38 +485,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-6 py-2 -mx-6 px-6">
-            {/* Section 1: Visibility */}
-            <div>
-              <p className="text-sm font-semibold mb-3">Show / Hide Items</p>
-              <div className="space-y-1">
-                {activeGroupCategories.map(cat => {
-                  const isHidden = groupHiddenDraft.has(cat);
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => toggleCategoryVisibility(cat)}
-                      className={cn(
-                        "w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors",
-                        isHidden
-                          ? "text-muted-foreground bg-muted/20 hover:bg-muted/40"
-                          : "text-foreground bg-muted/10 hover:bg-muted/30"
-                      )}
-                    >
-                      <span className={cn(isHidden && "line-through opacity-50")}>
-                        {getCategoryLabel(cat)}
-                      </span>
-                      {isHidden ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-primary" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Section 2: Presets for this group */}
+            {/* Section 1: Presets for this group */}
             <div>
               <p className="text-sm font-semibold mb-3">Presets</p>
               {groupPresetsForActive.length > 0 ? (
@@ -597,6 +566,37 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Section 2: Visibility */}
+            <div>
+              <p className="text-sm font-semibold mb-3">Show / Hide Items</p>
+              <div className="space-y-1">
+                {activeGroupCategories.map(cat => {
+                  const isHidden = groupHiddenDraft.has(cat);
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => toggleCategoryVisibility(cat)}
+                      className={cn(
+                        "w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors",
+                        isHidden
+                          ? "text-muted-foreground bg-muted/20 hover:bg-muted/40"
+                          : "text-foreground bg-muted/10 hover:bg-muted/30"
+                      )}
+                    >
+                      <span className={cn(isHidden && "line-through opacity-50")}>
+                        {getCategoryLabel(cat)}
+                      </span>
+                      {isHidden ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-primary" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
