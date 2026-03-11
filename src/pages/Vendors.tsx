@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2, FileText, Sparkles, Download, Receipt, Folder, FolderPlus, X, ChevronRight } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2, FileText, Sparkles, Download, Receipt, Folder, FolderPlus, X, ChevronRight, Check } from 'lucide-react';
 import { ScopeOfWorkSheet } from '@/components/vendors/ScopeOfWorkSheet';
 import { GenerateInvoiceSheet } from '@/components/project/GenerateInvoiceSheet';
 import { GenerateReceiptSheet } from '@/components/project/GenerateReceiptSheet';
@@ -59,7 +59,7 @@ interface Vendor {
   reliability_rating: number | null;
   pricing_model: 'flat' | 'hourly' | null;
   notes: string | null;
-  folder_id: string | null;
+  folder_ids: string[];
 }
 
 interface VendorFolder {
@@ -96,13 +96,33 @@ export default function Vendors() {
 
   const fetchVendors = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: vendorData, error: vendorError } = await supabase
         .from('vendors')
         .select('*')
         .order('name');
 
-      if (error) throw error;
-      setVendors(data || []);
+      if (vendorError) throw vendorError;
+
+      // Fetch folder assignments
+      const { data: assignments, error: assignError } = await supabase
+        .from('vendor_folder_assignments')
+        .select('vendor_id, folder_id');
+
+      if (assignError) throw assignError;
+
+      // Build a map of vendor_id -> folder_ids[]
+      const folderMap: Record<string, string[]> = {};
+      (assignments || []).forEach(a => {
+        if (!folderMap[a.vendor_id]) folderMap[a.vendor_id] = [];
+        folderMap[a.vendor_id].push(a.folder_id);
+      });
+
+      const merged: Vendor[] = (vendorData || []).map(v => ({
+        ...v,
+        folder_ids: folderMap[v.id] || [],
+      }));
+
+      setVendors(merged);
     } catch (error) {
       console.error('Error fetching vendors:', error);
       toast({
@@ -128,15 +148,28 @@ export default function Vendors() {
     }
   };
 
-  const handleMoveToFolder = async (vendorId: string, folderId: string | null) => {
+  const handleToggleFolder = async (vendorId: string, folderId: string) => {
+    const vendor = vendors.find(v => v.id === vendorId);
+    if (!vendor) return;
+
+    const isAssigned = vendor.folder_ids.includes(folderId);
+
     try {
-      const { error } = await supabase
-        .from('vendors')
-        .update({ folder_id: folderId })
-        .eq('id', vendorId);
-      if (error) throw error;
+      if (isAssigned) {
+        const { error } = await supabase
+          .from('vendor_folder_assignments')
+          .delete()
+          .eq('vendor_id', vendorId)
+          .eq('folder_id', folderId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('vendor_folder_assignments')
+          .insert({ vendor_id: vendorId, folder_id: folderId });
+        if (error) throw error;
+      }
       fetchVendors();
-      toast({ title: folderId ? 'Moved to folder' : 'Removed from folder' });
+      toast({ title: isAssigned ? 'Removed from folder' : 'Added to folder' });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     }
@@ -145,8 +178,7 @@ export default function Vendors() {
   const handleDeleteFolder = async () => {
     if (!folderToDelete) return;
     try {
-      // Unassign vendors first
-      await supabase.from('vendors').update({ folder_id: null }).eq('folder_id', folderToDelete.id);
+      // Assignments cascade-delete automatically via FK
       const { error } = await supabase.from('vendor_folders').delete().eq('id', folderToDelete.id);
       if (error) throw error;
       toast({ title: 'Folder deleted', description: `"${folderToDelete.name}" removed.` });
@@ -205,12 +237,12 @@ export default function Vendors() {
     const matchesSearch = vendor.name.toLowerCase().includes(search.toLowerCase()) ||
       vendor.trades.some(t => t.toLowerCase().includes(search.toLowerCase()));
     const matchesTrade = tradeFilter === 'all' || vendor.trades.includes(tradeFilter);
-    const matchesFolder = activeFolderId === null || vendor.folder_id === activeFolderId;
+    const matchesFolder = activeFolderId === null || vendor.folder_ids.includes(activeFolderId);
     return matchesSearch && matchesTrade && matchesFolder;
   });
 
   const getFolderVendorCount = (folderId: string) =>
-    vendors.filter(v => v.folder_id === folderId).length;
+    vendors.filter(v => v.folder_ids.includes(folderId)).length;
 
   const handleEditVendor = (vendor: Vendor) => {
     setEditingVendor(vendor);
@@ -313,7 +345,7 @@ export default function Vendors() {
             <Badge
               variant="secondary"
               className={cn(
-                'ml-1 h-5 min-w-[20px] px-1 text-[10px]',
+                'ml-1 h-5 min-w-[20px] px-1 text-[10px] flex items-center justify-center leading-none',
                 activeFolderId === null && 'bg-white/20 text-white'
               )}
             >
@@ -339,14 +371,14 @@ export default function Vendors() {
                   <Badge
                     variant="secondary"
                     className={cn(
-                      'ml-1 h-5 min-w-[20px] px-1 text-[10px]',
+                      'ml-1 h-5 min-w-[20px] px-1 text-[10px] flex items-center justify-center leading-none',
                       isActive && 'bg-white/20 text-white'
                     )}
                   >
                     {count}
                   </Badge>
                 </Button>
-                {/* Delete folder on right-click or hover X */}
+                {/* Delete folder on hover X */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -404,13 +436,16 @@ export default function Vendors() {
             {/* Vendors Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredVendors.map((vendor) => {
-                const vendorFolder = vendor.folder_id ? folders.find(f => f.id === vendor.folder_id) : null;
+                const vendorFolders = vendor.folder_ids
+                  .map(fid => folders.find(f => f.id === fid))
+                  .filter(Boolean) as VendorFolder[];
+                const firstFolder = vendorFolders[0] || null;
                 return (
                   <div
                     key={vendor.id}
                     className="glass-card p-5 hover:border-primary/50 transition-all cursor-pointer animate-slide-up relative"
                     onClick={() => setSelectedVendor(vendor)}
-                    style={vendorFolder ? { borderLeftWidth: 3, borderLeftColor: vendorFolder.color } : undefined}
+                    style={firstFolder ? { borderLeftWidth: 3, borderLeftColor: firstFolder.color } : undefined}
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1 min-w-0 pr-2">
@@ -465,34 +500,26 @@ export default function Vendors() {
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger onClick={(e) => e.stopPropagation()}>
                                   <Folder className="h-4 w-4 mr-2" />
-                                  Move to Folder
+                                  Folders
                                 </DropdownMenuSubTrigger>
                                 <DropdownMenuSubContent>
-                                  {folders.map(f => (
-                                    <DropdownMenuItem
-                                      key={f.id}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleMoveToFolder(vendor.id, f.id);
-                                      }}
-                                      className={cn(vendor.folder_id === f.id && 'bg-accent')}
-                                    >
-                                      <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: f.color }} />
-                                      {f.name}
-                                    </DropdownMenuItem>
-                                  ))}
-                                  {vendor.folder_id && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleMoveToFolder(vendor.id, null);
-                                      }}>
-                                        <X className="h-4 w-4 mr-2" />
-                                        Remove from folder
+                                  {folders.map(f => {
+                                    const isInFolder = vendor.folder_ids.includes(f.id);
+                                    return (
+                                      <DropdownMenuItem
+                                        key={f.id}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleToggleFolder(vendor.id, f.id);
+                                        }}
+                                        className="gap-2"
+                                      >
+                                        <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: f.color }} />
+                                        <span className="flex-1">{f.name}</span>
+                                        {isInFolder && <Check className="h-4 w-4 text-primary" />}
                                       </DropdownMenuItem>
-                                    </>
-                                  )}
+                                    );
+                                  })}
                                 </DropdownMenuSubContent>
                               </DropdownMenuSub>
                             )}
@@ -527,16 +554,16 @@ export default function Vendors() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4 flex-wrap">
                       <Badge variant="outline" className="text-xs">
                         {vendor.pricing_model === 'flat' ? 'Flat Rate' : vendor.pricing_model === 'hourly' ? 'Hourly' : 'Not set'}
                       </Badge>
-                      {vendorFolder && (
-                        <Badge variant="outline" className="text-xs gap-1">
-                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: vendorFolder.color }} />
-                          {vendorFolder.name}
+                      {vendorFolders.map(vf => (
+                        <Badge key={vf.id} variant="outline" className="text-xs gap-1">
+                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: vf.color }} />
+                          {vf.name}
                         </Badge>
-                      )}
+                      ))}
                     </div>
                   </div>
                 );
