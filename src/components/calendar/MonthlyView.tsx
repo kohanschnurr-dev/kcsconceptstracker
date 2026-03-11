@@ -168,7 +168,7 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
             const isCurrentMonth = isSameMonth(day, currentDate);
             
             return (
-              <DroppableDay key={day.toISOString()} day={day} isCurrentMonth={isCurrentMonth}>
+              <DroppableDay key={day.toISOString()} day={day} isCurrentMonth={isCurrentMonth} onDoubleClick={() => onDayDoubleClick?.(day)}>
                 <div className={cn(
                   'font-medium mb-0.5',
                   'text-[10px] sm:text-sm',
