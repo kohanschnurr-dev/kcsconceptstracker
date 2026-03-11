@@ -1975,10 +1975,35 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_folders: {
+        Row: {
+          color: string
+          created_at: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           created_at: string
           email: string | null
+          folder_id: string | null
           has_w9: boolean
           id: string
           name: string
@@ -1993,6 +2018,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email?: string | null
+          folder_id?: string | null
           has_w9?: boolean
           id?: string
           name: string
@@ -2007,6 +2033,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string | null
+          folder_id?: string | null
           has_w9?: boolean
           id?: string
           name?: string
@@ -2018,7 +2045,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vendors_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
