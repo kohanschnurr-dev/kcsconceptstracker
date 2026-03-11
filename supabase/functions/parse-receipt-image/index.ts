@@ -55,9 +55,28 @@ serve(async (req) => {
 
     console.log("Parsing receipt with AI Vision...");
 
-    const imageContent = image_base64
-      ? { type: "image_url", image_url: { url: image_base64 } }
-      : { type: "image_url", image_url: { url: image_url } };
+    // Always prefer base64. If only a URL was provided, download and convert it.
+    let finalBase64 = image_base64;
+    if (!finalBase64 && image_url) {
+      console.log("Downloading image from URL to convert to base64...");
+      try {
+        const imgResp = await fetch(image_url);
+        if (!imgResp.ok) throw new Error(`Image download failed: ${imgResp.status}`);
+        const imgBuffer = await imgResp.arrayBuffer();
+        const contentType = imgResp.headers.get("content-type") || "image/jpeg";
+        const base64Str = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
+        finalBase64 = `data:${contentType};base64,${base64Str}`;
+        console.log(`Image converted to base64 (${Math.round(base64Str.length / 1024)}KB)`);
+      } catch (dlErr) {
+        console.error("Failed to download image:", dlErr);
+        return new Response(JSON.stringify({ success: false, error: "Could not download receipt image. Please re-upload." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    const imageContent = { type: "image_url", image_url: { url: finalBase64 } };
 
     // Single-pass receipt parsing with a clear, focused prompt
     const requestBody = JSON.stringify({

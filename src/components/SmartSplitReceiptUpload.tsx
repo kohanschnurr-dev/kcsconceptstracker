@@ -599,13 +599,23 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
     setIsReparsing(true);
     try {
-      // Re-invoke the parse function with the existing image URL
+      // Download the image and convert to base64 (AI gateway can't fetch Supabase URLs)
+      const imageResponse = await fetch(receipt.receipt_image_url);
+      if (!imageResponse.ok) throw new Error('Failed to download receipt image');
+      const blob = await imageResponse.blob();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
       const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-receipt-image', {
-        body: { image_url: receipt.receipt_image_url },
+        body: { image_base64: base64 },
       });
 
       if (parseError) throw parseError;
-      if (!parseResult.success) throw new Error(parseResult.error);
+      if (!parseResult.success) throw new Error(parseResult.error || 'Parse failed');
 
       const receiptData = parseResult.data;
 
@@ -620,22 +630,17 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         subtotal: receiptData.subtotal,
       }).eq('id', receipt.id);
 
-      // Insert new line items (store discount info in notes if present)
+      // Insert new line items
       if (receiptData.line_items && receiptData.line_items.length > 0) {
-        const lineItemsToInsert = receiptData.line_items.map((item: any) => {
-          const discountNote = (item.discount && item.discount > 0)
-            ? `Discount: -$${item.discount.toFixed(2)} (original: $${(item.original_price || item.total_price + item.discount).toFixed(2)})`
-            : undefined;
-          return {
-            receipt_id: receipt.id,
-            item_name: item.item_name,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.total_price,
-            suggested_category: item.suggested_category,
-            notes: discountNote || null,
-          };
-        });
+        const lineItemsToInsert = receiptData.line_items.map((item: any) => ({
+          receipt_id: receipt.id,
+          item_name: item.item_name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total_price: item.total_price,
+          suggested_category: item.suggested_category,
+          notes: null,
+        }));
 
         await supabase.from('receipt_line_items').insert(lineItemsToInsert);
       }
