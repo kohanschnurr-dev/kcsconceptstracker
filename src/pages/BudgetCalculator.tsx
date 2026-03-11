@@ -505,7 +505,7 @@ export default function BudgetCalculator() {
   };
 
   const subtitleText = calculatorType === 'fix_flip'
-    ? 'Build and manage rehab budgets with real-time MAO tracking'
+    ? 'Build and manage construction budgets with real-time MAO tracking'
     : 'Analyze rental income, expenses, and cash flow projections';
 
   const analysisTitle = calculatorType === 'fix_flip'
