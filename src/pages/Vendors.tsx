@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2, FileText, Sparkles, Download, Receipt } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Star, Users, MoreVertical, Pencil, Trash2, FileText, Sparkles, Download, Receipt, Folder, FolderPlus, X, ChevronRight } from 'lucide-react';
 import { ScopeOfWorkSheet } from '@/components/vendors/ScopeOfWorkSheet';
 import { GenerateInvoiceSheet } from '@/components/project/GenerateInvoiceSheet';
 import { GenerateReceiptSheet } from '@/components/project/GenerateReceiptSheet';
@@ -10,11 +10,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { NewVendorModal } from '@/components/NewVendorModal';
+import { CreateVendorFolderModal } from '@/components/vendors/CreateVendorFolderModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -43,6 +48,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn, formatPhone } from '@/lib/utils';
+
 interface Vendor {
   id: string;
   name: string;
@@ -53,6 +59,13 @@ interface Vendor {
   reliability_rating: number | null;
   pricing_model: 'flat' | 'hourly' | null;
   notes: string | null;
+  folder_id: string | null;
+}
+
+interface VendorFolder {
+  id: string;
+  name: string;
+  color: string;
 }
 
 export default function Vendors() {
@@ -60,19 +73,25 @@ export default function Vendors() {
   const { settings, companyName } = useCompanySettings();
   const [search, setSearch] = useState('');
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [folders, setFolders] = useState<VendorFolder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [tradeFilter, setTradeFilter] = useState<string>('all');
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [scopeSheetOpen, setScopeSheetOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [deleteFolderDialogOpen, setDeleteFolderDialogOpen] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState<VendorFolder | null>(null);
 
   useEffect(() => {
     fetchVendors();
+    fetchFolders();
   }, []);
 
   const fetchVendors = async () => {
@@ -93,6 +112,52 @@ export default function Vendors() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchFolders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('vendor_folders')
+        .select('*')
+        .order('name');
+      if (error) throw error;
+      setFolders(data || []);
+    } catch (error) {
+      console.error('Error fetching folders:', error);
+    }
+  };
+
+  const handleMoveToFolder = async (vendorId: string, folderId: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .update({ folder_id: folderId })
+        .eq('id', vendorId);
+      if (error) throw error;
+      fetchVendors();
+      toast({ title: folderId ? 'Moved to folder' : 'Removed from folder' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteFolder = async () => {
+    if (!folderToDelete) return;
+    try {
+      // Unassign vendors first
+      await supabase.from('vendors').update({ folder_id: null }).eq('folder_id', folderToDelete.id);
+      const { error } = await supabase.from('vendor_folders').delete().eq('id', folderToDelete.id);
+      if (error) throw error;
+      toast({ title: 'Folder deleted', description: `"${folderToDelete.name}" removed.` });
+      if (activeFolderId === folderToDelete.id) setActiveFolderId(null);
+      fetchFolders();
+      fetchVendors();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setDeleteFolderDialogOpen(false);
+      setFolderToDelete(null);
     }
   };
 
@@ -140,8 +205,12 @@ export default function Vendors() {
     const matchesSearch = vendor.name.toLowerCase().includes(search.toLowerCase()) ||
       vendor.trades.some(t => t.toLowerCase().includes(search.toLowerCase()));
     const matchesTrade = tradeFilter === 'all' || vendor.trades.includes(tradeFilter);
-    return matchesSearch && matchesTrade;
+    const matchesFolder = activeFolderId === null || vendor.folder_id === activeFolderId;
+    return matchesSearch && matchesTrade && matchesFolder;
   });
+
+  const getFolderVendorCount = (folderId: string) =>
+    vendors.filter(v => v.folder_id === folderId).length;
 
   const handleEditVendor = (vendor: Vendor) => {
     setEditingVendor(vendor);
@@ -185,6 +254,8 @@ export default function Vendors() {
     }
   };
 
+  const activeFolder = activeFolderId ? folders.find(f => f.id === activeFolderId) : null;
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -220,6 +291,74 @@ export default function Vendors() {
             </Button>
           </div>
         </div>
+
+        {/* Folders Row */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-dashed"
+            onClick={() => setFolderModalOpen(true)}
+          >
+            <FolderPlus className="h-4 w-4" />
+            New Folder
+          </Button>
+          {folders.map((folder) => {
+            const isActive = activeFolderId === folder.id;
+            const count = getFolderVendorCount(folder.id);
+            return (
+              <div key={folder.id} className="relative group">
+                <Button
+                  variant={isActive ? 'default' : 'outline'}
+                  size="sm"
+                  className={cn(
+                    'gap-1.5 pr-2 transition-all',
+                    isActive && 'ring-2 ring-offset-1 ring-offset-background'
+                  )}
+                  style={isActive ? { backgroundColor: folder.color, borderColor: folder.color } : undefined}
+                  onClick={() => setActiveFolderId(isActive ? null : folder.id)}
+                >
+                  <Folder className="h-4 w-4" style={{ color: isActive ? undefined : folder.color }} />
+                  {folder.name}
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      'ml-1 h-5 min-w-[20px] px-1 text-[10px]',
+                      isActive && 'bg-white/20 text-white'
+                    )}
+                  >
+                    {count}
+                  </Badge>
+                </Button>
+                {/* Delete folder on right-click or hover X */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFolderToDelete(folder);
+                    setDeleteFolderDialogOpen(true);
+                  }}
+                  className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Active folder breadcrumb */}
+        {activeFolder && (
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <button onClick={() => setActiveFolderId(null)} className="hover:text-foreground transition-colors">
+              All Contractors
+            </button>
+            <ChevronRight className="h-3 w-3" />
+            <span className="font-medium text-foreground flex items-center gap-1">
+              <Folder className="h-3.5 w-3.5" style={{ color: activeFolder.color }} />
+              {activeFolder.name}
+            </span>
+          </div>
+        )}
 
         {/* Search & Filter */}
         <div className="flex flex-col sm:flex-row gap-3">
@@ -261,99 +400,144 @@ export default function Vendors() {
           <>
             {/* Vendors Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filteredVendors.map((vendor) => (
-                <div
-                  key={vendor.id}
-                  className="glass-card p-5 hover:border-primary/50 transition-all cursor-pointer animate-slide-up"
-                  onClick={() => setSelectedVendor(vendor)}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1 min-w-0 pr-2">
-                      <h3 className="font-semibold">{vendor.name}</h3>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {vendor.trades.slice(0, 5).map((trade) => (
-                          <Badge key={trade} variant="secondary" className="text-xs">
-                            {getTradeLabel(trade)}
-                          </Badge>
-                        ))}
-                        {vendor.trades.length > 5 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{vendor.trades.length - 5} more
-                          </Badge>
-                        )}
-                        {vendor.trades.length === 0 && (
-                          <Badge variant="outline" className="text-xs text-muted-foreground">
-                            No trades
-                          </Badge>
-                        )}
+              {filteredVendors.map((vendor) => {
+                const vendorFolder = vendor.folder_id ? folders.find(f => f.id === vendor.folder_id) : null;
+                return (
+                  <div
+                    key={vendor.id}
+                    className="glass-card p-5 hover:border-primary/50 transition-all cursor-pointer animate-slide-up relative"
+                    onClick={() => setSelectedVendor(vendor)}
+                    style={vendorFolder ? { borderLeftWidth: 3, borderLeftColor: vendorFolder.color } : undefined}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <h3 className="font-semibold">{vendor.name}</h3>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {vendor.trades.slice(0, 5).map((trade) => (
+                            <Badge key={trade} variant="secondary" className="text-xs">
+                              {getTradeLabel(trade)}
+                            </Badge>
+                          ))}
+                          {vendor.trades.length > 5 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{vendor.trades.length - 5} more
+                            </Badge>
+                          )}
+                          {vendor.trades.length === 0 && (
+                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                              No trades
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={cn(
-                              'h-4 w-4',
-                              i < (vendor.reliability_rating || 0)
-                                ? 'fill-primary text-primary'
-                                : 'text-muted-foreground/30'
-                            )}
-                          />
-                        ))}
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditVendor(vendor);
-                          }}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-destructive focus:text-destructive"
-                            onClick={(e) => {
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={cn(
+                                'h-4 w-4',
+                                i < (vendor.reliability_rating || 0)
+                                  ? 'fill-primary text-primary'
+                                  : 'text-muted-foreground/30'
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => {
                               e.stopPropagation();
-                              setVendorToDelete(vendor);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                              handleEditVendor(vendor);
+                            }}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            {folders.length > 0 && (
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger onClick={(e) => e.stopPropagation()}>
+                                  <Folder className="h-4 w-4 mr-2" />
+                                  Move to Folder
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent>
+                                  {folders.map(f => (
+                                    <DropdownMenuItem
+                                      key={f.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveToFolder(vendor.id, f.id);
+                                      }}
+                                      className={cn(vendor.folder_id === f.id && 'bg-accent')}
+                                    >
+                                      <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: f.color }} />
+                                      {f.name}
+                                    </DropdownMenuItem>
+                                  ))}
+                                  {vendor.folder_id && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveToFolder(vendor.id, null);
+                                      }}>
+                                        <X className="h-4 w-4 mr-2" />
+                                        Remove from folder
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                            )}
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setVendorToDelete(vendor);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      {vendor.phone && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Phone className="h-4 w-4" />
+                          <span>{formatPhone(vendor.phone)}</span>
+                        </div>
+                      )}
+                      {vendor.email && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Mail className="h-4 w-4" />
+                          <span className="truncate">{vendor.email}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+                      <Badge variant="outline" className="text-xs">
+                        {vendor.pricing_model === 'flat' ? 'Flat Rate' : vendor.pricing_model === 'hourly' ? 'Hourly' : 'Not set'}
+                      </Badge>
+                      {vendorFolder && (
+                        <Badge variant="outline" className="text-xs gap-1">
+                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: vendorFolder.color }} />
+                          {vendorFolder.name}
+                        </Badge>
+                      )}
                     </div>
                   </div>
-
-                  <div className="space-y-2 mb-4">
-                    {vendor.phone && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-4 w-4" />
-                        <span>{formatPhone(vendor.phone)}</span>
-                      </div>
-                    )}
-                    {vendor.email && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="h-4 w-4" />
-                        <span className="truncate">{vendor.email}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
-                    <Badge variant="outline" className="text-xs">
-                      {vendor.pricing_model === 'flat' ? 'Flat Rate' : vendor.pricing_model === 'hourly' ? 'Hourly' : 'Not set'}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {filteredVendors.length === 0 && (
@@ -379,6 +563,13 @@ export default function Vendors() {
         onOpenChange={handleModalClose}
         onVendorCreated={fetchVendors}
         vendor={editingVendor}
+        folders={folders}
+      />
+
+      <CreateVendorFolderModal
+        open={folderModalOpen}
+        onOpenChange={setFolderModalOpen}
+        onCreated={fetchFolders}
       />
 
       <ScopeOfWorkSheet
@@ -492,6 +683,26 @@ export default function Vendors() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteFolderDialogOpen} onOpenChange={setDeleteFolderDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Folder</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete <strong>"{folderToDelete?.name}"</strong>? Contractors in this folder will be unassigned, not deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteFolder}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Folder
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
