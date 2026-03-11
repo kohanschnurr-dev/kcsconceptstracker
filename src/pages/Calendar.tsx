@@ -51,6 +51,8 @@ export default function Calendar() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [quickCreateDate, setQuickCreateDate] = useState<Date | undefined>();
   const { toast } = useToast();
 
   const selectedProjectId = searchParams.get('project');
@@ -264,6 +266,10 @@ export default function Calendar() {
               onTaskClick={handleTaskClick}
               onTaskMove={handleTaskMove}
               onDateChange={setCurrentDate}
+              onDayDoubleClick={(date) => {
+                setQuickCreateDate(date);
+                setQuickCreateOpen(true);
+              }}
             />
           )}
           {view === 'weekly' && (
@@ -272,6 +278,10 @@ export default function Calendar() {
               tasks={filteredTasks}
               onTaskClick={handleTaskClick}
               onTaskMove={handleTaskMove}
+              onDayDoubleClick={(date) => {
+                setQuickCreateDate(date);
+                setQuickCreateOpen(true);
+              }}
             />
           )}
           {view === 'gantt' && (
@@ -311,6 +321,15 @@ export default function Calendar() {
           setSelectedTask(null);
         }}
         allTasks={filteredTasks}
+      />
+
+      <NewEventModal
+        projects={projects}
+        onEventCreated={fetchData}
+        defaultProjectId={selectedProjectId || undefined}
+        externalOpen={quickCreateOpen}
+        onExternalOpenChange={setQuickCreateOpen}
+        defaultStartDate={quickCreateDate}
       />
     </MainLayout>
   );

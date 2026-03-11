@@ -27,6 +27,7 @@ interface MonthlyViewProps {
   onTaskClick: (task: CalendarTask) => void;
   onTaskMove: (taskId: string, newStartDate: Date, newEndDate: Date) => void;
   onDateChange?: (date: Date) => void;
+  onDayDoubleClick?: (date: Date) => void;
 }
 
 function DraggableCard({ task, onTaskClick }: { task: CalendarTask; onTaskClick: () => void }) {
@@ -51,11 +52,13 @@ function DraggableCard({ task, onTaskClick }: { task: CalendarTask; onTaskClick:
 function DroppableDay({ 
   day, 
   children, 
-  isCurrentMonth 
+  isCurrentMonth,
+  onDoubleClick,
 }: { 
   day: Date; 
   children: React.ReactNode; 
   isCurrentMonth: boolean;
+  onDoubleClick?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: day.toISOString(),
@@ -65,6 +68,7 @@ function DroppableDay({
   return (
     <div
       ref={setNodeRef}
+      onDoubleClick={onDoubleClick}
       className={cn(
         'p-0.5 sm:p-2 rounded-lg border transition-colors',
         'min-h-[60px] sm:min-h-[140px]',
@@ -80,7 +84,7 @@ function DroppableDay({
   );
 }
 
-export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDateChange }: MonthlyViewProps) {
+export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDateChange, onDayDoubleClick }: MonthlyViewProps) {
   const [activeTask, setActiveTask] = useState<CalendarTask | null>(null);
   const touchStartX = useRef<number | null>(null);
   
@@ -167,7 +171,7 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
             const isCurrentMonth = isSameMonth(day, currentDate);
             
             return (
-              <DroppableDay key={day.toISOString()} day={day} isCurrentMonth={isCurrentMonth}>
+              <DroppableDay key={day.toISOString()} day={day} isCurrentMonth={isCurrentMonth} onDoubleClick={() => onDayDoubleClick?.(day)}>
                 <div className={cn(
                   'font-medium mb-0.5',
                   'text-[10px] sm:text-sm',

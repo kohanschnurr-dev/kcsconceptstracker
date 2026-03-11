@@ -52,10 +52,26 @@ interface NewEventModalProps {
   projects: Project[];
   onEventCreated: () => void;
   defaultProjectId?: string;
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+  defaultStartDate?: Date;
 }
 
-export function NewEventModal({ projects, onEventCreated, defaultProjectId }: NewEventModalProps) {
-  const [open, setOpen] = useState(false);
+export function NewEventModal({ projects, onEventCreated, defaultProjectId, externalOpen, onExternalOpenChange, defaultStartDate }: NewEventModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = externalOpen !== undefined;
+  const open = isControlled ? externalOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) {
+      onExternalOpenChange?.(v);
+    } else {
+      setInternalOpen(v);
+    }
+    if (v && defaultStartDate) {
+      setStartDate(defaultStartDate);
+      setEndDate(defaultStartDate);
+    }
+  };
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -228,13 +244,15 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId }: Ne
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2 bg-primary hover:bg-primary/90">
-          <Plus className="h-4 w-4 sm:mr-0" />
-          <span className="hidden sm:inline">Add Project Event</span>
-          <span className="sm:hidden">Add</span>
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button className="gap-2 bg-primary hover:bg-primary/90">
+            <Plus className="h-4 w-4 sm:mr-0" />
+            <span className="hidden sm:inline">Add Project Event</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-background border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">New Project Event</DialogTitle>

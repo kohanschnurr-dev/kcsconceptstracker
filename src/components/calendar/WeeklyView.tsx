@@ -19,6 +19,7 @@ interface WeeklyViewProps {
   tasks: CalendarTask[];
   onTaskClick: (task: CalendarTask) => void;
   onTaskMove: (taskId: string, newStartDate: Date, newEndDate: Date) => void;
+  onDayDoubleClick?: (date: Date) => void;
 }
 
 function DraggableCard({ task, onTaskClick }: { task: CalendarTask; onTaskClick: () => void }) {
@@ -40,7 +41,7 @@ function DraggableCard({ task, onTaskClick }: { task: CalendarTask; onTaskClick:
   );
 }
 
-function DroppableDay({ day, children }: { day: Date; children: React.ReactNode }) {
+function DroppableDay({ day, children, onDoubleClick }: { day: Date; children: React.ReactNode; onDoubleClick?: () => void }) {
   const { setNodeRef, isOver } = useDroppable({
     id: day.toISOString(),
     data: { date: day },
@@ -49,6 +50,7 @@ function DroppableDay({ day, children }: { day: Date; children: React.ReactNode 
   return (
     <div
       ref={setNodeRef}
+      onDoubleClick={onDoubleClick}
       className={cn(
         'min-h-[400px] p-3 rounded-lg border transition-colors',
         'bg-card/50 border-border',
@@ -61,7 +63,7 @@ function DroppableDay({ day, children }: { day: Date; children: React.ReactNode 
   );
 }
 
-export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove }: WeeklyViewProps) {
+export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove, onDayDoubleClick }: WeeklyViewProps) {
   const [activeTask, setActiveTask] = useState<CalendarTask | null>(null);
   
   const sensors = useSensors(
@@ -114,7 +116,7 @@ export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove }: Week
             const dayTasks = getTasksForDay(day);
             
             return (
-              <DroppableDay key={day.toISOString()} day={day}>
+              <DroppableDay key={day.toISOString()} day={day} onDoubleClick={() => onDayDoubleClick?.(day)}>
                 <div className="text-center mb-3 pb-2 border-b border-border">
                   <p className="text-xs text-muted-foreground uppercase">
                     {format(day, 'EEE')}
