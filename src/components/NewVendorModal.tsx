@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Phone, Mail, Star, X } from 'lucide-react';
+import { Users, Phone, Mail, Star, X, Folder } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,13 @@ interface Vendor {
   reliability_rating: number | null;
   pricing_model: 'flat' | 'hourly' | null;
   notes: string | null;
+  folder_id?: string | null;
+}
+
+interface VendorFolder {
+  id: string;
+  name: string;
+  color: string;
 }
 
 interface NewVendorModalProps {
@@ -40,9 +47,10 @@ interface NewVendorModalProps {
   onOpenChange: (open: boolean) => void;
   onVendorCreated?: () => void;
   vendor?: Vendor | null;
+  folders?: VendorFolder[];
 }
 
-export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: NewVendorModalProps) {
+export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor, folders = [] }: NewVendorModalProps) {
   const [name, setName] = useState('');
   const [trades, setTrades] = useState<VendorTrade[]>([]);
   const [phone, setPhone] = useState('');
@@ -51,11 +59,11 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
   const [reliabilityRating, setReliabilityRating] = useState(3);
   const [pricingModel, setPricingModel] = useState<'flat' | 'hourly'>('flat');
   const [notes, setNotes] = useState('');
+  const [folderId, setFolderId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditing = !!vendor;
 
-  // Populate form when editing
   useEffect(() => {
     if (open && vendor) {
       setName(vendor.name);
@@ -66,8 +74,8 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
       setReliabilityRating(vendor.reliability_rating || 3);
       setPricingModel(vendor.pricing_model || 'flat');
       setNotes(vendor.notes || '');
+      setFolderId(vendor.folder_id || null);
     } else if (!open) {
-      // Reset form when closing
       setName('');
       setTrades([]);
       setPhone('');
@@ -76,6 +84,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
       setReliabilityRating(3);
       setPricingModel('flat');
       setNotes('');
+      setFolderId(null);
     }
   }, [open, vendor]);
 
@@ -121,7 +130,6 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
       }
 
       if (isEditing) {
-        // Update existing vendor
         const { error } = await supabase
           .from('vendors')
           .update({
@@ -133,6 +141,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
             reliability_rating: reliabilityRating,
             pricing_model: pricingModel,
             notes: notes || null,
+            folder_id: folderId,
           })
           .eq('id', vendor.id);
 
@@ -143,7 +152,6 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
           description: `${name} has been updated.`,
         });
       } else {
-        // Create new vendor
         const { error } = await supabase
           .from('vendors')
           .insert({
@@ -156,6 +164,7 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
             pricing_model: pricingModel,
             notes: notes || null,
             user_id: user.id,
+            folder_id: folderId,
           });
 
         if (error) throw error;
@@ -268,6 +277,29 @@ export function NewVendorModal({ open, onOpenChange, onVendorCreated, vendor }: 
               </div>
             </div>
           </div>
+
+          {/* Folder assignment */}
+          {folders.length > 0 && (
+            <div className="space-y-2">
+              <Label>Folder</Label>
+              <Select value={folderId || '_none'} onValueChange={(v) => setFolderId(v === '_none' ? null : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="No folder" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">No folder</SelectItem>
+                  {folders.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      <span className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full inline-block" style={{ backgroundColor: f.color }} />
+                        {f.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Pricing Model</Label>
