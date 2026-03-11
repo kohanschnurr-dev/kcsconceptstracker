@@ -32,30 +32,44 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
     return Array.from({ length: 28 }, (_, i) => addDays(startDate, i));
   }, [startDate]);
 
-  const getCategoryIcon = (category: string) => {
-    const iconClass = 'h-3 w-3';
-    const group = getCategoryGroup(category);
-    switch (group) {
-      case 'acquisition_admin': return <FileText className={iconClass} />;
-      case 'structural_exterior': return <Landmark className={iconClass} />;
-      case 'rough_ins':
-        switch (category) {
-          case 'plumbing_rough': return <Pipette className={iconClass} />;
-          case 'electrical_rough': return <Zap className={iconClass} />;
-          case 'hvac_rough': return <Fan className={iconClass} />;
-          case 'framing': return <Hammer className={iconClass} />;
-          default: return <Wrench className={iconClass} />;
+  const getCategoryEmoji = (category: string) => {
+    switch (category) {
+      case 'plumbing_rough': return '🔧';
+      case 'electrical_rough': return '⚡';
+      case 'hvac_rough': return '❄️';
+      case 'framing': return '🔨';
+      case 'demo': return '🔨';
+      case 'painting': case 'exterior_paint': return '🎨';
+      case 'flooring': return '🪵';
+      case 'tile': return '🔲';
+      case 'cabinetry': return '🗄️';
+      case 'countertops': return '🔲';
+      case 'windows': return '🚪';
+      case 'drywall': return '🖌️';
+      case 'roofing': case 'siding': return '🏠';
+      case 'foundation_piers': return '🏛️';
+      case 'grading': return '🌳';
+      case 'garage': return '🏗️';
+      case 'stage_clean': return '✨';
+      case 'listing_date': case 'sale_closing': case 'closing': return '📅';
+      case 'open_house': return '🏠';
+      case 'purchase': case 'refinancing': return '💰';
+      case 'order': case 'item_arrived': return '📦';
+      case 'city_rough_in': case 'third_party': case 'foundation_pre_pour': case 'final_green_tag': return '✅';
+      case 'permitting': return '📋';
+      case 'due_diligence': case 'underwriting': return '📄';
+      default: {
+        const group = getCategoryGroup(category);
+        switch (group) {
+          case 'acquisition_admin': return '📄';
+          case 'structural_exterior': return '🏠';
+          case 'rough_ins': return '🔧';
+          case 'inspections': return '✅';
+          case 'interior_finishes': return '🎨';
+          case 'milestones': return '📅';
+          default: return '🔧';
         }
-      case 'inspections': return <ClipboardCheck className={iconClass} />;
-      case 'interior_finishes': return <PaintBucket className={iconClass} />;
-      case 'milestones':
-        switch (category) {
-          case 'listing_date': return <Calendar className={iconClass} />;
-          case 'open_house': return <Home className={iconClass} />;
-          case 'stage_clean': return <Sparkles className={iconClass} />;
-          default: return <Calendar className={iconClass} />;
-        }
-      default: return <Wrench className={iconClass} />;
+      }
     }
   };
 
