@@ -186,7 +186,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                       onClick={() => onTaskClick(task)}
                       className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      {getCategoryEmoji(task.eventCategory || 'due_diligence')}
+                      {getCategoryIcon(task.eventCategory || 'due_diligence', 12, 'text-muted-foreground')}
                       <span className="truncate">{task.title}</span>
                       {hasDependencyWarning(task) && (
                         <Tooltip>
