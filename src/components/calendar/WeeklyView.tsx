@@ -63,7 +63,7 @@ function DroppableDay({ day, children, onDoubleClick }: { day: Date; children: R
   );
 }
 
-export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove }: WeeklyViewProps) {
+export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove, onDayDoubleClick }: WeeklyViewProps) {
   const [activeTask, setActiveTask] = useState<CalendarTask | null>(null);
   
   const sensors = useSensors(
