@@ -244,13 +244,15 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2 bg-primary hover:bg-primary/90">
-          <Plus className="h-4 w-4 sm:mr-0" />
-          <span className="hidden sm:inline">Add Project Event</span>
-          <span className="sm:hidden">Add</span>
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button className="gap-2 bg-primary hover:bg-primary/90">
+            <Plus className="h-4 w-4 sm:mr-0" />
+            <span className="hidden sm:inline">Add Project Event</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-background border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">New Project Event</DialogTitle>

@@ -322,6 +322,15 @@ export default function Calendar() {
         }}
         allTasks={filteredTasks}
       />
+
+      <NewEventModal
+        projects={projects}
+        onEventCreated={fetchData}
+        defaultProjectId={selectedProjectId || undefined}
+        externalOpen={quickCreateOpen}
+        onExternalOpenChange={setQuickCreateOpen}
+        defaultStartDate={quickCreateDate}
+      />
     </MainLayout>
   );
 }

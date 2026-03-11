@@ -116,7 +116,7 @@ export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove, onDayD
             const dayTasks = getTasksForDay(day);
             
             return (
-              <DroppableDay key={day.toISOString()} day={day}>
+              <DroppableDay key={day.toISOString()} day={day} onDoubleClick={() => onDayDoubleClick?.(day)}>
                 <div className="text-center mb-3 pb-2 border-b border-border">
                   <p className="text-xs text-muted-foreground uppercase">
                     {format(day, 'EEE')}

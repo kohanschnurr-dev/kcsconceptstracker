@@ -68,6 +68,7 @@ function DroppableDay({
   return (
     <div
       ref={setNodeRef}
+      onDoubleClick={onDoubleClick}
       className={cn(
         'p-0.5 sm:p-2 rounded-lg border transition-colors',
         'min-h-[60px] sm:min-h-[140px]',
