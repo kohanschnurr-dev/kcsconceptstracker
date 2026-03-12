@@ -63,11 +63,11 @@ function SortableGroupRow({ group, canDelete, onDelete }: { group: RuleGroup; ca
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/50 border border-slate-700/40">
-      <button {...attributes} {...listeners} className="cursor-grab text-slate-500 hover:text-slate-300 touch-none">
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 border border-border/40">
+      <button {...attributes} {...listeners} className="cursor-grab text-muted-foreground hover:text-foreground touch-none">
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="text-sm flex-1 text-slate-200">{group.label}</span>
+      <span className="text-sm flex-1 text-foreground">{group.label}</span>
       {canDelete && (
         <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400/60 hover:text-red-400 hover:bg-red-500/15" onClick={onDelete}>
           <Trash2 className="h-3 w-3" />
@@ -95,7 +95,6 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
   const [newGroupLabel, setNewGroupLabel] = useState('');
   const [ruleMeta, setRuleMeta] = useState<Record<string, { severity: SeverityLevel; status: RuleStatus }>>(loadRuleMeta);
 
-  // Reload groups from localStorage when dialog opens
   useEffect(() => {
     if (open) {
       setGroups(loadRuleGroups());
@@ -103,7 +102,6 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
     }
   }, [open]);
 
-  // Set default category to first group
   useEffect(() => {
     if (groups.length > 0 && !category) {
       setCategory(groups[0].key);
@@ -114,7 +112,6 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  // Compliance summary
   const complianceSummary = useMemo(() => {
     const total = rules.length;
     const triggered = rules.filter(r => ruleMeta[r.id]?.status === 'triggered').length;
@@ -139,7 +136,6 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
     setIsSubmitting(true);
     try {
       await onAddRule({ title: title.trim(), category, description: description.trim() || undefined });
-      // After adding, we'll set the severity via meta on the next render cycle
       setTitle('');
       setDescription('');
       setSeverity('information');
@@ -214,11 +210,10 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
           sevConfig.cssClass,
           status === 'triggered' && "rule-status-triggered border-red-500/40",
           status === 'paused' && "opacity-60",
-          status !== 'triggered' && "border-slate-700/40"
+          status !== 'triggered' && "border-border/40"
         )}
       >
         <div className="flex items-start gap-3">
-          {/* Severity Icon */}
           <button
             onClick={() => cycleSeverity(rule.id)}
             className={cn("p-1.5 rounded-lg mt-0.5 transition-colors cursor-pointer", sevConfig.bgColor)}
@@ -227,11 +222,9 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
             <SevIcon className={cn("h-4 w-4", sevConfig.color)} />
           </button>
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <p className="font-semibold text-sm font-jakarta text-slate-100">{rule.title}</p>
-              {/* Status Badge */}
+              <p className="font-semibold text-sm font-jakarta text-foreground">{rule.title}</p>
               <button
                 onClick={() => cycleStatus(rule.id)}
                 className="flex items-center gap-1.5 cursor-pointer"
@@ -242,17 +235,16 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
                   statusConfig.dotColor,
                   status === 'active' && "rule-status-active"
                 )} />
-                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                   {statusConfig.label}
                 </span>
               </button>
             </div>
 
             {rule.description && (
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">{rule.description}</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{rule.description}</p>
             )}
 
-            {/* Severity label */}
             <div className="flex items-center gap-2 mt-2">
               <span className={cn("text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full", sevConfig.bgColor, sevConfig.color)}>
                 {sevConfig.label}
@@ -266,12 +258,11 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
             </div>
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-0.5 shrink-0">
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-700"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-secondary"
               onClick={() => cycleStatus(rule.id)}
               title={status === 'paused' ? 'Resume' : 'Pause'}
             >
@@ -300,23 +291,23 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
       className="fixed inset-0 z-50 overlay-dashboard flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false); }}
     >
-      <div className="overlay-dashboard-panel-rounded w-full max-w-lg max-h-[85vh] flex flex-col font-jakarta animate-fade-up">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col font-jakarta animate-fade-up">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-700/50">
+        <div className="flex items-center justify-between p-6 pb-4 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20">
               <ShieldAlert className="h-5 w-5 text-amber-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Operation Rules</h2>
-              <p className="text-xs text-slate-400">Active Guardrails & Compliance</p>
+              <h2 className="text-lg font-bold text-foreground">Operation Rules</h2>
+              <p className="text-xs text-muted-foreground">Active Guardrails & Compliance</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-8 w-8 rounded-lg", manageMode ? "text-amber-400 bg-amber-500/15" : "text-slate-400 hover:text-white hover:bg-slate-700/50")}
+              className={cn("h-8 w-8 rounded-lg", manageMode ? "text-amber-400 bg-amber-500/15" : "text-muted-foreground hover:text-foreground hover:bg-secondary")}
               onClick={() => setManageMode(!manageMode)}
               title="Manage Groups"
             >
@@ -325,7 +316,7 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg"
               onClick={() => onOpenChange(false)}
             >
               <X className="h-4 w-4" />
@@ -335,7 +326,7 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
 
         {/* Compliance Summary Banner */}
         {!manageMode && rules.length > 0 && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-gradient-to-r from-slate-800/80 to-slate-700/40 border border-slate-700/40">
+          <div className="mx-6 mt-4 p-3 rounded-xl bg-muted/50 border border-border">
             <div className="grid grid-cols-4 gap-3 text-center">
               <div>
                 <p className={cn(
@@ -344,19 +335,19 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
                 )}>
                   {complianceSummary.complianceRate}%
                 </p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Compliance</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Compliance</p>
               </div>
               <div>
                 <p className="text-2xl font-semibold font-jakarta text-emerald-400">{complianceSummary.active}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Active</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Active</p>
               </div>
               <div>
                 <p className="text-2xl font-semibold font-jakarta text-red-400">{complianceSummary.triggered}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Triggered</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Triggered</p>
               </div>
               <div>
-                <p className="text-2xl font-semibold font-jakarta text-slate-500">{complianceSummary.paused}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Paused</p>
+                <p className="text-2xl font-semibold font-jakarta text-muted-foreground">{complianceSummary.paused}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Paused</p>
               </div>
             </div>
           </div>
@@ -366,7 +357,7 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
         <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-5">
           {manageMode ? (
             <div className="space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Rule Groups</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rule Groups</h4>
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={groups.map(g => g.key)} strategy={verticalListSortingStrategy}>
                   <div className="space-y-2">
@@ -387,7 +378,7 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
                   value={newGroupLabel}
                   onChange={e => setNewGroupLabel(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAddGroup()}
-                  className="flex-1 bg-slate-800/80 border-slate-600"
+                  className="flex-1 bg-secondary border-border"
                 />
                 <Button
                   size="sm"
@@ -408,19 +399,19 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
                     placeholder="Rule title (e.g., Foundation First)"
                     value={title}
                     onChange={e => setTitle(e.target.value)}
-                    className="bg-slate-800/80 border-slate-600 font-jakarta"
+                    className="bg-secondary border-border font-jakarta"
                   />
                   <Textarea
                     placeholder="Why does this rule exist? What lesson was learned?"
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    className="min-h-[60px] resize-none bg-slate-800/80 border-slate-600"
+                    className="min-h-[60px] resize-none bg-secondary border-border"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-slate-400 mb-1 block">Group</label>
+                      <label className="text-xs text-muted-foreground mb-1 block">Group</label>
                       <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger className="bg-slate-800/80 border-slate-600">
+                        <SelectTrigger className="bg-secondary border-border">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -431,9 +422,9 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
                       </Select>
                     </div>
                     <div>
-                      <label className="text-xs text-slate-400 mb-1 block">Severity</label>
+                      <label className="text-xs text-muted-foreground mb-1 block">Severity</label>
                       <Select value={severity} onValueChange={(v) => setSeverity(v as SeverityLevel)}>
-                        <SelectTrigger className="bg-slate-800/80 border-slate-600">
+                        <SelectTrigger className="bg-secondary border-border">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -453,7 +444,7 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
                     >
                       {isSubmitting ? 'Adding...' : 'Add Rule'}
                     </Button>
-                    <Button size="sm" variant="ghost" className="text-slate-400 hover:text-white" onClick={() => setShowForm(false)}>
+                    <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => setShowForm(false)}>
                       Cancel
                     </Button>
                   </div>
@@ -468,8 +459,8 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
                   <div key={group.key} className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Shield className="h-4 w-4 text-amber-400" />
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">{group.label}</h4>
-                      <span className="text-[10px] text-slate-500 bg-slate-800/60 px-1.5 py-0.5 rounded-full">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{group.label}</h4>
+                      <span className="text-[10px] text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded-full">
                         {groupRules.length}
                       </span>
                     </div>
@@ -480,11 +471,11 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
 
               {rules.length === 0 && !showForm && (
                 <div className="text-center py-12">
-                  <div className="p-3 rounded-2xl bg-slate-800/50 w-fit mx-auto mb-3">
-                    <ShieldCheck className="h-6 w-6 text-slate-500" />
+                  <div className="p-3 rounded-2xl bg-secondary/50 w-fit mx-auto mb-3">
+                    <ShieldCheck className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <p className="text-slate-400 text-sm">No rules yet</p>
-                  <p className="text-slate-500 text-xs mt-1">Add your first operating principle</p>
+                  <p className="text-muted-foreground text-sm">No rules yet</p>
+                  <p className="text-muted-foreground/70 text-xs mt-1">Add your first operating principle</p>
                 </div>
               )}
 
@@ -492,7 +483,7 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
               {onAddRule && !showForm && (
                 <Button
                   variant="outline"
-                  className="w-full border-dashed border-slate-600 text-slate-300 hover:text-white hover:border-amber-500/50 hover:bg-amber-500/5 font-jakarta"
+                  className="w-full border-dashed border-border text-foreground/70 hover:text-foreground hover:border-amber-500/50 hover:bg-amber-500/5 font-jakarta"
                   onClick={() => setShowForm(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
