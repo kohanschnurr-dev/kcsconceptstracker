@@ -166,10 +166,10 @@ body[data-scroll-locked] {
   }
 
   .overlay-dashboard-panel-rounded {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.90));
-    border: 1px solid rgba(51, 65, 85, 0.6);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
     border-radius: 1rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(71, 85, 105, 0.2);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   }
 
   /* Segmented Progress Track */

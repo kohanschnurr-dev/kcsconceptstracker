@@ -134,7 +134,6 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
     const current = goal.current_value || 0;
     const target = goal.target_value;
     if (current === 0 || target === 0) return null;
-    // Simulate velocity as percentage of target achieved (contextual hint)
     const velocity = Math.round((current / target) * 100);
     if (velocity >= 80) return { value: '+' + (velocity - 75) + '%', positive: true };
     if (velocity >= 40) return { value: '+' + Math.round(velocity / 3) + '%', positive: true };
@@ -164,7 +163,7 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
             key={i}
             className={cn(
               "segment transition-all duration-300",
-              i < filledSegments ? health.trackColor : "bg-slate-700/50"
+              i < filledSegments ? health.trackColor : "bg-muted"
             )}
           />
         ))}
@@ -187,8 +186,8 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
         className={cn(
           "p-4 rounded-xl border transition-all duration-300",
           isCompleted
-            ? "border-slate-700/40 bg-slate-800/30"
-            : "border-slate-700/50 bg-gradient-to-br from-slate-800/60 to-slate-900/40 hover:border-slate-600/60"
+            ? "border-border/40 bg-secondary/30"
+            : "border-border/50 bg-card/60 hover:border-border"
         )}
       >
         {/* Header */}
@@ -198,11 +197,11 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
               <Icon className={cn("h-4 w-4", health.color)} />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-semibold font-jakarta block">{goal.title}</span>
+              <span className="text-sm font-semibold font-jakarta block text-foreground">{goal.title}</span>
               {(goal.start_date || goal.due_date) && !isCompleted && (
                 <div className="flex items-center gap-1 mt-1">
-                  <Calendar className="h-3 w-3 text-slate-500" />
-                  <span className="text-xs text-slate-500">
+                  <Calendar className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
                     {goal.start_date && goal.due_date
                       ? `${formatDateLabel(goal.start_date)} – ${formatDateLabel(goal.due_date)}`
                       : goal.due_date
@@ -212,7 +211,7 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
                 </div>
               )}
               {isCompleted && goal.completed_at && (
-                <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                   <Trophy className="h-3 w-3 text-emerald-500" />
                   Completed {format(new Date(goal.completed_at), 'MMM d, yyyy')}
                 </p>
@@ -225,16 +224,16 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
             <div className="flex items-center gap-1">
               {isTask ? (
                 <>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-700" onClick={() => handleStepValue(goal, -1)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-secondary" onClick={() => handleStepValue(goal, -1)}>
                     <Minus className="h-3 w-3" />
                   </Button>
                   <Input
                     type="number"
                     value={editValue}
                     onChange={e => setEditValue(e.target.value)}
-                    className="h-7 w-16 text-center text-xs bg-slate-800 border-slate-600"
+                    className="h-7 w-16 text-center text-xs bg-secondary border-border"
                   />
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-700" onClick={() => handleStepValue(goal, 1)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-secondary" onClick={() => handleStepValue(goal, 1)}>
                     <Plus className="h-3 w-3" />
                   </Button>
                 </>
@@ -243,21 +242,21 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
                   type="number"
                   value={editValue}
                   onChange={e => setEditValue(e.target.value)}
-                  className="h-7 w-24 text-xs bg-slate-800 border-slate-600"
+                  className="h-7 w-24 text-xs bg-secondary border-border"
                   placeholder="$"
                 />
               )}
               <Button variant="ghost" size="icon" className="h-7 w-7 text-cyan-400 hover:bg-cyan-500/20" onClick={() => handleSaveEdit(goal.id)}>
                 <Check className="h-3 w-3" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:bg-slate-700" onClick={() => setEditingGoalId(null)}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:bg-secondary" onClick={() => setEditingGoalId(null)}>
                 <X className="h-3 w-3" />
               </Button>
             </div>
           ) : !isCompleted ? (
             <div className="flex items-center gap-0.5">
               {onUpdateGoal && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-700" onClick={() => handleStartEdit(goal)}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-secondary" onClick={() => handleStartEdit(goal)}>
                   <Pencil className="h-3 w-3" />
                 </Button>
               )}
@@ -275,7 +274,7 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
           ) : (
             <div className="flex items-center gap-1">
               {onUncompleteGoal && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-700" onClick={() => onUncompleteGoal(goal.id)} title="Reopen goal">
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-secondary" onClick={() => onUncompleteGoal(goal.id)} title="Reopen goal">
                   <RotateCcw className="h-3 w-3" />
                 </Button>
               )}
@@ -300,7 +299,7 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
                 </span>
               )}
             </div>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted-foreground">
               {isTask
                 ? `${current} / ${goal.target_value}`
                 : `${formatValue(current, goal.category)} / ${formatValue(goal.target_value, goal.category)}`}
@@ -313,7 +312,7 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
 
         {/* Projected vs Actual footer */}
         <div className="flex items-center justify-between mt-2">
-          <span className="text-[11px] text-slate-500">
+          <span className="text-[11px] text-muted-foreground">
             Projected: {formatValue(goal.target_value, goal.category)}
           </span>
           <span className={cn("text-[11px] font-semibold font-jakarta", health.color)}>
@@ -334,22 +333,22 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
       className="fixed inset-0 z-50 overlay-dashboard flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false); }}
     >
-      <div className="overlay-dashboard-panel-rounded w-full max-w-lg max-h-[85vh] flex flex-col font-jakarta animate-fade-up">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col font-jakarta animate-fade-up">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-700/50">
+        <div className="flex items-center justify-between p-6 pb-4 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20">
               <Target className="h-5 w-5 text-cyan-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Quarterly Goals</h2>
-              <p className="text-xs text-slate-400">Q1 2026 Performance Dashboard</p>
+              <h2 className="text-lg font-bold text-foreground">Quarterly Goals</h2>
+              <p className="text-xs text-muted-foreground">Q1 2026 Performance Dashboard</p>
             </div>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg"
             onClick={() => onOpenChange(false)}
           >
             <X className="h-4 w-4" />
@@ -358,19 +357,19 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
 
         {/* Summary Banner */}
         {activeGoals.length > 0 && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-gradient-to-r from-slate-800/80 to-slate-700/40 border border-slate-700/40">
+          <div className="mx-6 mt-4 p-3 rounded-xl bg-muted/50 border border-border">
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-2xl font-semibold font-jakarta text-white">{summaryStats.avgProgress.toFixed(0)}%</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Avg Progress</p>
+                <p className="text-2xl font-semibold font-jakarta text-foreground">{summaryStats.avgProgress.toFixed(0)}%</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Avg Progress</p>
               </div>
               <div>
                 <p className="text-2xl font-semibold font-jakarta text-cyan-400">{summaryStats.onTrack}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">On Track</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">On Track</p>
               </div>
               <div>
                 <p className="text-2xl font-semibold font-jakarta text-amber-400">{summaryStats.atRisk}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">At Risk</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">At Risk</p>
               </div>
             </div>
           </div>
@@ -385,17 +384,17 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
                 placeholder="Goal title"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                className="bg-slate-800/80 border-slate-600 font-jakarta"
+                className="bg-secondary border-border font-jakarta"
               />
               <Input
                 type="number"
                 placeholder="Target value"
                 value={targetValue}
                 onChange={e => setTargetValue(e.target.value)}
-                className="bg-slate-800/80 border-slate-600"
+                className="bg-secondary border-border"
               />
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="bg-slate-800/80 border-slate-600">
+                <SelectTrigger className="bg-secondary border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -405,12 +404,12 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
               </Select>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Start Date</label>
-                  <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-xs bg-slate-800/80 border-slate-600" />
+                  <label className="text-xs text-muted-foreground mb-1 block">Start Date</label>
+                  <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-xs bg-secondary border-border" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Due Date</label>
-                  <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="text-xs bg-slate-800/80 border-slate-600" />
+                  <label className="text-xs text-muted-foreground mb-1 block">Due Date</label>
+                  <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="text-xs bg-secondary border-border" />
                 </div>
               </div>
               <div className="flex gap-2">
@@ -422,7 +421,7 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
                 >
                   {isSubmitting ? 'Adding...' : 'Add Goal'}
                 </Button>
-                <Button size="sm" variant="ghost" className="text-slate-400 hover:text-white" onClick={() => setShowForm(false)}>
+                <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => setShowForm(false)}>
                   Cancel
                 </Button>
               </div>
@@ -434,7 +433,7 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-cyan-400" />
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Profit Targets</h4>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Profit Targets</h4>
               </div>
               {activeFinancial.map(g => renderGoalCard(g))}
             </div>
@@ -445,7 +444,7 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Budget & Task Milestones</h4>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Budget & Task Milestones</h4>
               </div>
               {activeTasks.map(g => renderGoalCard(g))}
             </div>
@@ -453,11 +452,11 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
 
           {activeGoals.length === 0 && !showForm && (
             <div className="text-center py-12">
-              <div className="p-3 rounded-2xl bg-slate-800/50 w-fit mx-auto mb-3">
-                <Zap className="h-6 w-6 text-slate-500" />
+              <div className="p-3 rounded-2xl bg-secondary/50 w-fit mx-auto mb-3">
+                <Zap className="h-6 w-6 text-muted-foreground" />
               </div>
-              <p className="text-slate-400 text-sm">No active goals</p>
-              <p className="text-slate-500 text-xs mt-1">Create your first goal to start tracking</p>
+              <p className="text-muted-foreground text-sm">No active goals</p>
+              <p className="text-muted-foreground/70 text-xs mt-1">Create your first goal to start tracking</p>
             </div>
           )}
 
@@ -465,7 +464,7 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
           {onAddGoal && !showForm && (
             <Button
               variant="outline"
-              className="w-full border-dashed border-slate-600 text-slate-300 hover:text-white hover:border-cyan-500/50 hover:bg-cyan-500/5 font-jakarta"
+              className="w-full border-dashed border-border text-foreground/70 hover:text-foreground hover:border-cyan-500/50 hover:bg-cyan-500/5 font-jakarta"
               onClick={() => setShowForm(true)}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -477,7 +476,7 @@ export function GoalsPopout({ open, onOpenChange, goals, onAddGoal, onUpdateGoal
           {completedGoals.length > 0 && (
             <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
               <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors w-full">
+                <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full">
                   <ChevronDown className={cn("h-4 w-4 transition-transform", historyOpen && "rotate-180")} />
                   <Trophy className="h-3.5 w-3.5 text-emerald-500" />
                   Achievements ({completedGoals.length})
