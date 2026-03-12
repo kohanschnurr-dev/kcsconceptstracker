@@ -54,6 +54,7 @@ import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '
 import { format, isToday, startOfDay, startOfWeek, endOfWeek, isBefore } from 'date-fns';
 import { formatDisplayDate, parseDateString } from '@/lib/dateUtils';
 import { parseDescription, serializeDescription, type Subtask } from '@/lib/taskSubtasks';
+import { GuidelineSidebar } from '@/components/ops/GuidelineSidebar';
 
 interface DailyLog {
   id: string;
@@ -1247,6 +1248,9 @@ export default function DailyLogs() {
       </Dialog>
 
       <AddTaskDialog open={addTaskOpen} onOpenChange={setAddTaskOpen} onTaskCreated={fetchTasks} />
+
+      {/* Contextual Codex Sidebar — shows relevant guidelines for the current phase */}
+      <GuidelineSidebar phase="general" />
     </MainLayout>
   );
 }

@@ -10,15 +10,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Plus, Trash2, Settings, GripVertical, Shield, X,
-  AlertTriangle, Info, OctagonX, Eye, EyeOff, ShieldAlert,
-  ShieldCheck, Activity,
+  Plus, Trash2, Settings, GripVertical, X, BookOpen,
+  ChevronLeft, ChevronRight, FileText, Bookmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   loadRuleGroups, saveRuleGroups, toSnakeCase,
-  SEVERITY_CONFIG, STATUS_CONFIG,
-  type RuleGroup, type SeverityLevel, type RuleStatus,
+  SEED_GUIDELINES, PHASE_LABELS,
+  type RuleGroup, type ConstructionPhase, type GuidelinePage,
 } from '@/lib/ruleGroups';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
@@ -41,17 +40,27 @@ interface RulesPopoutProps {
   onUpdateRuleCategory?: (ruleId: string, newCategory: string) => Promise<void>;
 }
 
-// Local severity/status storage per rule
-function loadRuleMeta(): Record<string, { severity: SeverityLevel; status: RuleStatus }> {
-  try {
-    const stored = localStorage.getItem('rule-meta');
-    if (stored) return JSON.parse(stored);
-  } catch {}
-  return {};
+/** Parse rule description into Philosophy / Standard sections */
+function parseGuideline(rule: OperationCode): { philosophy: string; standard: string } | null {
+  if (!rule.description) return null;
+  const phMatch = rule.description.match(/\[Philosophy\]\s*([\s\S]*?)(?:\[Standard\]|$)/i);
+  const stMatch = rule.description.match(/\[Standard\]\s*([\s\S]*?)$/i);
+  if (phMatch || stMatch) {
+    return {
+      philosophy: phMatch?.[1]?.trim() || '',
+      standard: stMatch?.[1]?.trim() || '',
+    };
+  }
+  // If no sections found, treat entire description as philosophy
+  return { philosophy: rule.description, standard: '' };
 }
 
-function saveRuleMeta(meta: Record<string, { severity: SeverityLevel; status: RuleStatus }>) {
-  localStorage.setItem('rule-meta', JSON.stringify(meta));
+/** Format description with Philosophy/Standard markers for storage */
+function formatGuidelineDescription(philosophy: string, standard: string): string {
+  const parts: string[] = [];
+  if (philosophy.trim()) parts.push(`[Philosophy] ${philosophy.trim()}`);
+  if (standard.trim()) parts.push(`[Standard] ${standard.trim()}`);
+  return parts.join('\n');
 }
 
 function SortableGroupRow({ group, canDelete, onDelete }: { group: RuleGroup; canDelete: boolean; onDelete: () => void }) {
@@ -77,33 +86,147 @@ function SortableGroupRow({ group, canDelete, onDelete }: { group: RuleGroup; ca
   );
 }
 
-const SEVERITY_ICONS: Record<SeverityLevel, typeof Info> = {
-  information: Info,
-  warning: AlertTriangle,
-  hard_stop: OctagonX,
-};
+/** A single "page" in the Codex — the card layout for a guideline */
+function GuidelinePageCard({
+  title,
+  philosophy,
+  standard,
+  pageNumber,
+  totalPages,
+  phase,
+  onDelete,
+}: {
+  title: string;
+  philosophy: string;
+  standard: string;
+  pageNumber: number;
+  totalPages: number;
+  phase?: string;
+  onDelete?: () => void;
+}) {
+  return (
+    <div className="codex-page p-6 pl-8 space-y-4">
+      {/* Page header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <Bookmark className="h-3.5 w-3.5 text-slate-500" />
+            <span className="text-[10px] uppercase tracking-[0.15em] text-slate-500 font-medium">
+              Guideline {pageNumber} of {totalPages}
+              {phase && ` · ${phase}`}
+            </span>
+          </div>
+          <h3 className="text-base font-bold font-jakarta text-slate-100 leading-tight">
+            {title}
+          </h3>
+        </div>
+        {onDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-slate-500 hover:text-red-400 hover:bg-red-500/10 shrink-0"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+
+      {/* Philosophy section */}
+      {philosophy && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500 font-semibold">
+            Philosophy
+          </p>
+          <p className="text-[13px] leading-relaxed text-slate-300">
+            {philosophy}
+          </p>
+        </div>
+      )}
+
+      {/* Divider */}
+      {philosophy && standard && <div className="codex-divider" />}
+
+      {/* Standard section */}
+      {standard && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500 font-semibold">
+            Standard
+          </p>
+          <p className="text-[13px] leading-relaxed text-slate-300">
+            {standard}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule, onUpdateRuleCategory }: RulesPopoutProps) {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [philosophy, setPhilosophy] = useState('');
+  const [standard, setStandard] = useState('');
   const [category, setCategory] = useState('');
-  const [severity, setSeverity] = useState<SeverityLevel>('information');
+  const [phase, setPhase] = useState<ConstructionPhase>('general');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [manageMode, setManageMode] = useState(false);
   const [groups, setGroups] = useState<RuleGroup[]>(loadRuleGroups);
   const [newGroupLabel, setNewGroupLabel] = useState('');
-  const [ruleMeta, setRuleMeta] = useState<Record<string, { severity: SeverityLevel; status: RuleStatus }>>(loadRuleMeta);
+  const [currentPage, setCurrentPage] = useState(0);
 
-  // Reload groups from localStorage when dialog opens
+  // Build the combined "pages" — seed guidelines + user-created rules
+  const allPages = useMemo(() => {
+    const pages: Array<{
+      id: string | null;
+      title: string;
+      philosophy: string;
+      standard: string;
+      phase: string;
+      isSeed: boolean;
+    }> = [];
+
+    // Seed guidelines first
+    SEED_GUIDELINES.forEach((g, i) => {
+      pages.push({
+        id: `seed-${i}`,
+        title: g.title,
+        philosophy: g.philosophy,
+        standard: g.standard,
+        phase: PHASE_LABELS[g.phase],
+        isSeed: true,
+      });
+    });
+
+    // User-created rules
+    rules.forEach(rule => {
+      const parsed = parseGuideline(rule);
+      pages.push({
+        id: rule.id,
+        title: rule.title,
+        philosophy: parsed?.philosophy || rule.description || '',
+        standard: parsed?.standard || '',
+        phase: rule.category ? (groups.find(g => g.key === rule.category)?.label || rule.category) : 'General',
+        isSeed: false,
+      });
+    });
+
+    return pages;
+  }, [rules, groups]);
+
+  // Clamp current page
+  useEffect(() => {
+    if (currentPage >= allPages.length && allPages.length > 0) {
+      setCurrentPage(allPages.length - 1);
+    }
+  }, [allPages.length, currentPage]);
+
   useEffect(() => {
     if (open) {
       setGroups(loadRuleGroups());
-      setRuleMeta(loadRuleMeta());
     }
   }, [open]);
 
-  // Set default category to first group
   useEffect(() => {
     if (groups.length > 0 && !category) {
       setCategory(groups[0].key);
@@ -114,36 +237,19 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  // Compliance summary
-  const complianceSummary = useMemo(() => {
-    const total = rules.length;
-    const triggered = rules.filter(r => ruleMeta[r.id]?.status === 'triggered').length;
-    const active = rules.filter(r => (ruleMeta[r.id]?.status || 'active') === 'active').length;
-    const paused = rules.filter(r => ruleMeta[r.id]?.status === 'paused').length;
-    const complianceRate = total > 0 ? Math.round(((total - triggered) / total) * 100) : 100;
-    return { total, triggered, active, paused, complianceRate };
-  }, [rules, ruleMeta]);
-
-  const getRuleSeverity = (ruleId: string): SeverityLevel => ruleMeta[ruleId]?.severity || 'information';
-  const getRuleStatus = (ruleId: string): RuleStatus => ruleMeta[ruleId]?.status || 'active';
-
-  const updateRuleMeta = (ruleId: string, updates: Partial<{ severity: SeverityLevel; status: RuleStatus }>) => {
-    const current = ruleMeta[ruleId] || { severity: 'information' as SeverityLevel, status: 'active' as RuleStatus };
-    const updated = { ...ruleMeta, [ruleId]: { ...current, ...updates } };
-    setRuleMeta(updated);
-    saveRuleMeta(updated);
-  };
-
   const handleSubmit = async () => {
     if (!title.trim() || !onAddRule) return;
     setIsSubmitting(true);
     try {
-      await onAddRule({ title: title.trim(), category, description: description.trim() || undefined });
-      // After adding, we'll set the severity via meta on the next render cycle
+      const desc = formatGuidelineDescription(philosophy, standard);
+      await onAddRule({ title: title.trim(), category, description: desc || undefined });
       setTitle('');
-      setDescription('');
-      setSeverity('information');
+      setPhilosophy('');
+      setStandard('');
+      setPhase('general');
       setShowForm(false);
+      // Navigate to the last page (the new one)
+      setCurrentPage(allPages.length); // Will be clamped on next render
     } finally {
       setIsSubmitting(false);
     }
@@ -185,138 +291,44 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
     saveRuleGroups(reordered);
   };
 
-  const cycleSeverity = (ruleId: string) => {
-    const current = getRuleSeverity(ruleId);
-    const order: SeverityLevel[] = ['information', 'warning', 'hard_stop'];
-    const next = order[(order.indexOf(current) + 1) % order.length];
-    updateRuleMeta(ruleId, { severity: next });
+  const handleDeletePage = (pageId: string | null) => {
+    if (!pageId || !onDeleteRule) return;
+    if (pageId.startsWith('seed-')) return; // Can't delete seed guidelines
+    onDeleteRule(pageId);
+    if (currentPage > 0) setCurrentPage(currentPage - 1);
   };
 
-  const cycleStatus = (ruleId: string) => {
-    const current = getRuleStatus(ruleId);
-    const order: RuleStatus[] = ['active', 'paused', 'triggered'];
-    const next = order[(order.indexOf(current) + 1) % order.length];
-    updateRuleMeta(ruleId, { status: next });
-  };
-
-  const renderRuleCard = (rule: OperationCode) => {
-    const sev = getRuleSeverity(rule.id);
-    const status = getRuleStatus(rule.id);
-    const sevConfig = SEVERITY_CONFIG[sev];
-    const statusConfig = STATUS_CONFIG[status];
-    const SevIcon = SEVERITY_ICONS[sev];
-
-    return (
-      <div
-        key={rule.id}
-        className={cn(
-          "p-4 rounded-xl border transition-all duration-300",
-          sevConfig.cssClass,
-          status === 'triggered' && "rule-status-triggered border-red-500/40",
-          status === 'paused' && "opacity-60",
-          status !== 'triggered' && "border-slate-700/40"
-        )}
-      >
-        <div className="flex items-start gap-3">
-          {/* Severity Icon */}
-          <button
-            onClick={() => cycleSeverity(rule.id)}
-            className={cn("p-1.5 rounded-lg mt-0.5 transition-colors cursor-pointer", sevConfig.bgColor)}
-            title={`Severity: ${sevConfig.label} (click to change)`}
-          >
-            <SevIcon className={cn("h-4 w-4", sevConfig.color)} />
-          </button>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="font-semibold text-sm font-jakarta text-slate-100">{rule.title}</p>
-              {/* Status Badge */}
-              <button
-                onClick={() => cycleStatus(rule.id)}
-                className="flex items-center gap-1.5 cursor-pointer"
-                title={`Status: ${statusConfig.label} (click to change)`}
-              >
-                <span className={cn(
-                  "h-2 w-2 rounded-full inline-block",
-                  statusConfig.dotColor,
-                  status === 'active' && "rule-status-active"
-                )} />
-                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
-                  {statusConfig.label}
-                </span>
-              </button>
-            </div>
-
-            {rule.description && (
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">{rule.description}</p>
-            )}
-
-            {/* Severity label */}
-            <div className="flex items-center gap-2 mt-2">
-              <span className={cn("text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full", sevConfig.bgColor, sevConfig.color)}>
-                {sevConfig.label}
-              </span>
-              {status === 'triggered' && (
-                <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 flex items-center gap-1">
-                  <Activity className="h-3 w-3" />
-                  Guardrail Triggered
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-0.5 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-700"
-              onClick={() => cycleStatus(rule.id)}
-              title={status === 'paused' ? 'Resume' : 'Pause'}
-            >
-              {status === 'paused' ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-            </Button>
-            {onDeleteRule && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-red-400/60 hover:text-red-400 hover:bg-red-500/15"
-                onClick={() => onDeleteRule(rule.id)}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const goNext = () => setCurrentPage(p => Math.min(p + 1, allPages.length - 1));
+  const goPrev = () => setCurrentPage(p => Math.max(p - 1, 0));
 
   if (!open) return null;
+
+  const currentPageData = allPages[currentPage];
 
   return (
     <div
       className="fixed inset-0 z-50 overlay-dashboard flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false); }}
     >
-      <div className="overlay-dashboard-panel-rounded w-full max-w-lg max-h-[85vh] flex flex-col font-jakarta animate-fade-up">
+      <div className="overlay-dashboard-panel-rounded w-full max-w-xl max-h-[85vh] flex flex-col font-jakarta animate-fade-up">
         {/* Header */}
         <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-700/50">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20">
-              <ShieldAlert className="h-5 w-5 text-amber-400" />
+            <div className="p-2 rounded-xl bg-gradient-to-br from-slate-700/40 to-slate-600/20 border border-slate-600/30">
+              <BookOpen className="h-5 w-5 text-slate-300" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Operation Rules</h2>
-              <p className="text-xs text-slate-400">Active Guardrails & Compliance</p>
+              <h2 className="text-lg font-bold text-white">Book of Rules</h2>
+              <p className="text-xs text-slate-500">
+                {allPages.length} guideline{allPages.length !== 1 ? 's' : ''} · Institutional Knowledge
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-8 w-8 rounded-lg", manageMode ? "text-amber-400 bg-amber-500/15" : "text-slate-400 hover:text-white hover:bg-slate-700/50")}
+              className={cn("h-8 w-8 rounded-lg", manageMode ? "text-white bg-slate-700/60" : "text-slate-400 hover:text-white hover:bg-slate-700/50")}
               onClick={() => setManageMode(!manageMode)}
               title="Manage Groups"
             >
@@ -333,38 +345,10 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
           </div>
         </div>
 
-        {/* Compliance Summary Banner */}
-        {!manageMode && rules.length > 0 && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-gradient-to-r from-slate-800/80 to-slate-700/40 border border-slate-700/40">
-            <div className="grid grid-cols-4 gap-3 text-center">
-              <div>
-                <p className={cn(
-                  "text-2xl font-semibold font-jakarta",
-                  complianceSummary.complianceRate === 100 ? "text-emerald-400" : complianceSummary.complianceRate >= 80 ? "text-amber-400" : "text-red-400"
-                )}>
-                  {complianceSummary.complianceRate}%
-                </p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Compliance</p>
-              </div>
-              <div>
-                <p className="text-2xl font-semibold font-jakarta text-emerald-400">{complianceSummary.active}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Active</p>
-              </div>
-              <div>
-                <p className="text-2xl font-semibold font-jakarta text-red-400">{complianceSummary.triggered}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Triggered</p>
-              </div>
-              <div>
-                <p className="text-2xl font-semibold font-jakarta text-slate-500">{complianceSummary.paused}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Paused</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-5">
           {manageMode ? (
+            /* ─── Group Management ─── */
             <div className="space-y-3">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Rule Groups</h4>
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -391,7 +375,7 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
                 />
                 <Button
                   size="sm"
-                  className="bg-amber-600 hover:bg-amber-500 text-white"
+                  className="bg-slate-600 hover:bg-slate-500 text-white"
                   onClick={handleAddGroup}
                   disabled={!newGroupLabel.trim()}
                 >
@@ -401,24 +385,36 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
             </div>
           ) : (
             <>
-              {/* Add Rule Form */}
+              {/* ─── Add Guideline Form ─── */}
               {showForm && (
-                <div className="space-y-3 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5">
+                <div className="space-y-3 p-4 rounded-xl border border-slate-600/30 bg-slate-800/30">
                   <Input
-                    placeholder="Rule title (e.g., Foundation First)"
+                    placeholder="Guideline title (e.g., The Permit Clock)"
                     value={title}
                     onChange={e => setTitle(e.target.value)}
-                    className="bg-slate-800/80 border-slate-600 font-jakarta"
+                    className="bg-slate-800/80 border-slate-600 font-jakarta font-semibold"
                   />
-                  <Textarea
-                    placeholder="Why does this rule exist? What lesson was learned?"
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    className="min-h-[60px] resize-none bg-slate-800/80 border-slate-600"
-                  />
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1.5 block">Philosophy</label>
+                    <Textarea
+                      placeholder="Why does this rule exist? What hard lesson was learned?"
+                      value={philosophy}
+                      onChange={e => setPhilosophy(e.target.value)}
+                      className="min-h-[60px] resize-none bg-slate-800/80 border-slate-600 text-[13px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1.5 block">Standard</label>
+                    <Textarea
+                      placeholder="What is the enforceable rule? What must happen?"
+                      value={standard}
+                      onChange={e => setStandard(e.target.value)}
+                      className="min-h-[60px] resize-none bg-slate-800/80 border-slate-600 text-[13px]"
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-slate-400 mb-1 block">Group</label>
+                      <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1.5 block">Group</label>
                       <Select value={category} onValueChange={setCategory}>
                         <SelectTrigger className="bg-slate-800/80 border-slate-600">
                           <SelectValue />
@@ -431,15 +427,15 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
                       </Select>
                     </div>
                     <div>
-                      <label className="text-xs text-slate-400 mb-1 block">Severity</label>
-                      <Select value={severity} onValueChange={(v) => setSeverity(v as SeverityLevel)}>
+                      <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1.5 block">Phase</label>
+                      <Select value={phase} onValueChange={(v) => setPhase(v as ConstructionPhase)}>
                         <SelectTrigger className="bg-slate-800/80 border-slate-600">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="information">Information</SelectItem>
-                          <SelectItem value="warning">Warning</SelectItem>
-                          <SelectItem value="hard_stop">Hard Stop</SelectItem>
+                          {Object.entries(PHASE_LABELS).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -447,11 +443,11 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-jakarta font-semibold"
+                      className="flex-1 bg-slate-600 hover:bg-slate-500 text-white font-jakarta font-semibold"
                       disabled={!title.trim() || isSubmitting}
                       onClick={handleSubmit}
                     >
-                      {isSubmitting ? 'Adding...' : 'Add Rule'}
+                      {isSubmitting ? 'Adding...' : 'Add to Codex'}
                     </Button>
                     <Button size="sm" variant="ghost" className="text-slate-400 hover:text-white" onClick={() => setShowForm(false)}>
                       Cancel
@@ -460,43 +456,113 @@ export function RulesPopout({ open, onOpenChange, rules, onAddRule, onDeleteRule
                 </div>
               )}
 
-              {/* Rules grouped dynamically */}
-              {groups.map(group => {
-                const groupRules = rules.filter(r => r.category === group.key);
-                if (groupRules.length === 0) return null;
-                return (
-                  <div key={group.key} className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-amber-400" />
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">{group.label}</h4>
-                      <span className="text-[10px] text-slate-500 bg-slate-800/60 px-1.5 py-0.5 rounded-full">
-                        {groupRules.length}
-                      </span>
-                    </div>
-                    {groupRules.map(rule => renderRuleCard(rule))}
-                  </div>
-                );
-              })}
+              {/* ─── Paginated Codex View ─── */}
+              {allPages.length > 0 && !showForm ? (
+                <div className="space-y-4">
+                  {/* Current page */}
+                  {currentPageData && (
+                    <GuidelinePageCard
+                      title={currentPageData.title}
+                      philosophy={currentPageData.philosophy}
+                      standard={currentPageData.standard}
+                      pageNumber={currentPage + 1}
+                      totalPages={allPages.length}
+                      phase={currentPageData.phase}
+                      onDelete={
+                        !currentPageData.isSeed && onDeleteRule
+                          ? () => handleDeletePage(currentPageData.id)
+                          : undefined
+                      }
+                    />
+                  )}
 
-              {rules.length === 0 && !showForm && (
+                  {/* Page Navigation */}
+                  {allPages.length > 1 && (
+                    <div className="flex items-center justify-between">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-slate-400 hover:text-white hover:bg-slate-700/50 gap-1"
+                        disabled={currentPage === 0}
+                        onClick={goPrev}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Prev
+                      </Button>
+
+                      {/* Page dots */}
+                      <div className="flex items-center gap-1.5">
+                        {allPages.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentPage(i)}
+                            className={cn(
+                              "h-1.5 rounded-full transition-all",
+                              i === currentPage
+                                ? "w-6 bg-slate-300"
+                                : "w-1.5 bg-slate-600 hover:bg-slate-500"
+                            )}
+                          />
+                        ))}
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-slate-400 hover:text-white hover:bg-slate-700/50 gap-1"
+                        disabled={currentPage === allPages.length - 1}
+                        onClick={goNext}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Table of Contents — compact page list */}
+                  <div className="pt-2">
+                    <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500 font-semibold mb-2">
+                      Table of Contents
+                    </p>
+                    <div className="space-y-1">
+                      {allPages.map((page, i) => (
+                        <button
+                          key={page.id}
+                          onClick={() => setCurrentPage(i)}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors",
+                            i === currentPage
+                              ? "bg-slate-700/40 text-white"
+                              : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200"
+                          )}
+                        >
+                          <FileText className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                          <span className="text-xs font-medium truncate">{page.title}</span>
+                          <span className="text-[10px] text-slate-600 ml-auto shrink-0">{page.phase}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : !showForm && allPages.length === 0 && (
                 <div className="text-center py-12">
                   <div className="p-3 rounded-2xl bg-slate-800/50 w-fit mx-auto mb-3">
-                    <ShieldCheck className="h-6 w-6 text-slate-500" />
+                    <BookOpen className="h-6 w-6 text-slate-500" />
                   </div>
-                  <p className="text-slate-400 text-sm">No rules yet</p>
-                  <p className="text-slate-500 text-xs mt-1">Add your first operating principle</p>
+                  <p className="text-slate-400 text-sm">Your Codex is empty</p>
+                  <p className="text-slate-500 text-xs mt-1">Add your first guideline to start building institutional knowledge</p>
                 </div>
               )}
 
-              {/* Add New Rule */}
+              {/* Add New Guideline */}
               {onAddRule && !showForm && (
                 <Button
                   variant="outline"
-                  className="w-full border-dashed border-slate-600 text-slate-300 hover:text-white hover:border-amber-500/50 hover:bg-amber-500/5 font-jakarta"
+                  className="w-full border-dashed border-slate-600 text-slate-400 hover:text-white hover:border-slate-500 hover:bg-slate-800/30 font-jakarta"
                   onClick={() => setShowForm(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add New Rule
+                  Add Guideline
                 </Button>
               )}
             </>
