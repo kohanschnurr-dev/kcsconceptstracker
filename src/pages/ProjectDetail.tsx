@@ -539,26 +539,29 @@ export default function ProjectDetail() {
     setUpdatingStatus(false);
   };
 
-  const handleConvertToRental = async () => {
+  const handleConvertProjectType = async () => {
     if (!project) return;
+    const newType = isRental ? 'fix_flip' : 'rental';
     
     const { error } = await supabase
       .from('projects')
-      .update({ project_type: 'rental', status: 'active' })
+      .update({ project_type: newType })
       .eq('id', project.id);
     
     if (error) {
-      console.error('Error converting to rental:', error);
+      console.error('Error converting project type:', error);
       toast({
         title: 'Error',
-        description: 'Failed to convert project to rental',
+        description: `Failed to convert project to ${newType === 'rental' ? 'Rental' : 'Fix & Flip'}`,
         variant: 'destructive',
       });
     } else {
-      setProject({ ...project, project_type: 'rental', status: 'active' });
+      setProject({ ...project, project_type: newType });
       toast({
-        title: 'Converted to Rental',
-        description: 'Head to the Financials tab to set up your rental income details.',
+        title: newType === 'rental' ? 'Converted to Rental' : 'Converted to Fix & Flip',
+        description: newType === 'rental'
+          ? 'Head to the Financials tab to set up your rental income details.'
+          : 'The project is now a Fix & Flip with Profit Calculator.',
       });
     }
   };
