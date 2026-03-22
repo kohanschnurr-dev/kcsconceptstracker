@@ -61,7 +61,7 @@ export function CashFlowCalculator({
   const [loanAmount, setLoanAmount] = useState(initialLoanAmount);
   const [interestRate, setInterestRate] = useState(initialInterestRate);
   const [loanTermMonths, setLoanTermMonths] = useState(Math.round((initialLoanTermYears ?? 30) * 12));
-  const [useManualRehab, setUseManualRehab] = useState(initialRehabOverride != null);
+  const [rehabMode, setRehabMode] = useState<'budget' | 'spent' | 'manual'>(initialRehabOverride != null ? 'manual' : 'budget');
   const [rehabOverride, setRehabOverride] = useState(initialRehabOverride ?? totalBudget);
   const [annualPropertyTaxes, setAnnualPropertyTaxes] = useState(initialAnnualPropertyTaxes);
   const [annualInsurance, setAnnualInsurance] = useState(initialAnnualInsurance);
@@ -110,7 +110,7 @@ export function CashFlowCalculator({
     setLoanAmount(initialLoanAmount);
     setInterestRate(initialInterestRate);
     setLoanTermMonths(Math.round((initialLoanTermYears ?? 30) * 12));
-    setUseManualRehab(initialRehabOverride != null);
+    setRehabMode(initialRehabOverride != null ? 'manual' : 'budget');
     setRehabOverride(initialRehabOverride ?? totalBudget);
     setAnnualPropertyTaxes(initialAnnualPropertyTaxes);
     setAnnualInsurance(initialAnnualInsurance);
@@ -144,7 +144,7 @@ export function CashFlowCalculator({
         vacancy_rate: vacancyRate,
         monthly_maintenance: monthlyMaintenance,
         management_rate: managementRate,
-        cashflow_rehab_override: useManualRehab ? rehabOverride : null,
+        cashflow_rehab_override: rehabMode === 'manual' ? rehabOverride : null,
       } as any)
       .eq('id', projectId);
 
@@ -193,7 +193,7 @@ export function CashFlowCalculator({
   const annualCashFlow = monthlyCashFlow * 12;
 
   // Rehab budget: use manual override or project totalBudget
-  const activeRehabBudget = useManualRehab ? (rehabOverride || 0) : totalBudget;
+  const activeRehabBudget = rehabMode === 'manual' ? (rehabOverride || 0) : rehabMode === 'spent' ? totalSpent : totalBudget;
 
   // Cash invested = Purchase + Rehab - Loan Amount (money left in deal after refi)
   const totalInvestment = purchasePrice + activeRehabBudget;
@@ -275,37 +275,59 @@ export function CashFlowCalculator({
         {/* Rehab Budget */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
           <div className="sm:col-span-2">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <Label htmlFor="rehab-budget" className="mb-0">Construction Budget</Label>
-              <div className="flex items-center gap-1.5">
-                <Switch
-                  id="manual-rehab"
-                  checked={useManualRehab}
-                  onCheckedChange={(checked) => {
-                    setUseManualRehab(checked);
-                    if (!checked) setRehabOverride(totalBudget);
-                  }}
-                  className="scale-75"
-                />
-                <Label htmlFor="manual-rehab" className="text-xs text-muted-foreground mb-0 cursor-pointer">Manual</Label>
-              </div>
+              <span className="inline-flex rounded-full border border-border overflow-hidden text-[10px] font-semibold leading-none">
+                <button
+                  type="button"
+                  onClick={() => { setRehabMode('budget'); setRehabOverride(totalBudget); }}
+                  className={cn(
+                    "px-2 py-0.5 transition-colors",
+                    rehabMode === 'budget' ? "bg-primary/20 text-primary font-bold" : "text-muted-foreground hover:bg-muted/80"
+                  )}
+                >
+                  Budget
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setRehabMode('spent'); setRehabOverride(totalSpent); }}
+                  className={cn(
+                    "px-2 py-0.5 transition-colors",
+                    rehabMode === 'spent' ? "bg-primary/20 text-primary font-bold" : "text-muted-foreground hover:bg-muted/80"
+                  )}
+                >
+                  Spent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRehabMode('manual')}
+                  className={cn(
+                    "px-2 py-0.5 transition-colors",
+                    rehabMode === 'manual' ? "bg-primary/20 text-primary font-bold" : "text-muted-foreground hover:bg-muted/80"
+                  )}
+                >
+                  Manual
+                </button>
+              </span>
             </div>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="rehab-budget"
                 type="number"
-                value={useManualRehab ? (rehabOverride || '') : totalBudget}
+                value={rehabMode === 'manual' ? (rehabOverride || '') : rehabMode === 'spent' ? totalSpent : totalBudget}
                 onChange={(e) => setRehabOverride(Number(e.target.value))}
                 className="pl-9"
                 placeholder="0"
-                readOnly={!useManualRehab}
-                disabled={!useManualRehab}
+                readOnly={rehabMode !== 'manual'}
+                disabled={rehabMode !== 'manual'}
               />
             </div>
           </div>
-          {!useManualRehab && (
-            <p className="text-xs text-muted-foreground pb-2">Auto from project budget categories</p>
+          {rehabMode !== 'manual' && (
+            <p className="text-xs text-muted-foreground pb-2">
+              {rehabMode === 'budget' ? 'Auto from project budget categories' : 'Auto from total spent'}
+            </p>
           )}
         </div>
 
