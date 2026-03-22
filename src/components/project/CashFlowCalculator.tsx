@@ -597,17 +597,17 @@ export function CashFlowCalculator({
 
                 {/* Refi Analysis */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="p-4 rounded-lg bg-muted/50 text-center">
+                  <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center min-h-[80px]">
                     <p className="text-sm text-muted-foreground mb-1">Refi Loan Amount</p>
-                    <p className="text-xl font-bold font-mono">{formatCurrency(effectiveLoanAmount)}</p>
+                    <p className="text-lg sm:text-xl font-bold font-mono truncate max-w-full">{formatCurrency(effectiveLoanAmount)}</p>
                   </div>
                   <div className={cn(
-                    "p-4 rounded-lg text-center",
+                    "p-4 rounded-lg flex flex-col items-center justify-center min-h-[80px]",
                     refiCashOut >= 0 ? "bg-success/10" : "bg-warning/10"
                   )}>
                     <p className="text-sm text-muted-foreground mb-1">Cash Out at Refi</p>
                     <p className={cn(
-                      "text-xl font-bold font-mono",
+                      "text-lg sm:text-xl font-bold font-mono truncate max-w-full",
                       refiCashOut >= 0 ? "text-success" : "text-warning"
                     )}>
                       {formatCurrency(refiCashOut)}
@@ -616,9 +616,9 @@ export function CashFlowCalculator({
                       <p className="text-xs text-warning mt-1">money left in deal</p>
                     )}
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/50 text-center">
+                  <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center min-h-[80px]">
                     <p className="text-sm text-muted-foreground mb-1">Equity in Property</p>
-                    <p className="text-xl font-bold font-mono">{formatCurrency(equityInProperty)}</p>
+                    <p className="text-lg sm:text-xl font-bold font-mono truncate max-w-full">{formatCurrency(equityInProperty)}</p>
                   </div>
                 </div>
               </div>
