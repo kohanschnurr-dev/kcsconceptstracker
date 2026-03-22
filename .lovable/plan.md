@@ -1,24 +1,41 @@
 
 
-## Plan: Allow Switching Project Type Between Fix & Flip and Rental
+## Plan: Three-Mode Construction Budget Selector
 
-### Current State
-- A "Convert to Rental" option already exists in the ProjectDetail dropdown, but only shows for completed Fix & Flip projects. There's no way to convert back to Fix & Flip, and no way to do it from the Projects list page.
+### Problem
+Currently the Construction Budget field has a binary toggle (Auto / Manual). The user wants three options: **Budget** (from project budget categories), **Spent** (actual total spent), and **Manual** (free input) — presented as a sleek segmented control instead of a switch.
 
 ### Changes
 
-**`src/pages/ProjectDetail.tsx`**
-1. Remove the restriction that only completed Fix & Flip projects can convert — allow any status
-2. Add a "Convert to Fix & Flip" option when the project is currently a Rental (mirror of existing convert-to-rental)
-3. Add a `handleConvertToFlip` function that updates `project_type` to `fix_flip`
-4. Update the convert dialog to be bidirectional — show appropriate title/description based on current type
-5. Keep the confirmation dialog pattern for safety
+**`src/components/project/CashFlowCalculator.tsx`**
 
-**`src/components/dashboard/ProjectCard.tsx`** (Projects list page)
-- No changes needed here — the card is display-only and conversion is better done from the detail page where users can see the full context
+1. Replace the `useManualRehab` boolean state with a `rehabMode` state: `'budget' | 'spent' | 'manual'` (default: `'budget'`, or `'manual'` if `initialRehabOverride != null`)
 
-### Result
-- From any project's detail page dropdown (under Status), users can switch between Fix & Flip ↔ Rental regardless of project status
-- Confirmation dialog explains what will change
-- The existing one-way "Convert to Rental" becomes a bidirectional type switcher
+2. Replace the Switch + "Manual" label with a compact segmented pill control (3 buttons styled like the existing `PeriodToggle`):
+   - **Budget** → uses `totalBudget` (current auto behavior)
+   - **Spent** → uses `totalSpent` (already available as a prop)
+   - **Manual** → editable input (current manual behavior)
+
+3. Update `activeRehabBudget` logic:
+   ```
+   budget → totalBudget
+   spent  → totalSpent
+   manual → rehabOverride
+   ```
+
+4. Input field: read-only/disabled when mode is `budget` or `spent`; editable when `manual`
+
+5. Helper text below input: "Auto from project budget" / "Auto from total spent" / removed for manual
+
+6. Save logic: persist `cashflow_rehab_override` only when mode is `manual`; store null otherwise
+
+7. On init: if `initialRehabOverride != null` → `'manual'`; else `'budget'`
+
+### UI Preview
+```text
+Construction Budget   [ Budget | Spent | Manual ]
+$ 65616              Auto from project budget categories
+```
+
+Segmented control uses the same `PeriodToggle` styling already in the component — small rounded pills with primary highlight on the active option.
 
