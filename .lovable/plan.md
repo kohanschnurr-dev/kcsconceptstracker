@@ -1,41 +1,18 @@
 
 
-## Plan: Three-Mode Construction Budget Selector
+## Plan: Fix Refi Loan Amount & Equity in Property Scaling
 
 ### Problem
-Currently the Construction Budget field has a binary toggle (Auto / Manual). The user wants three options: **Budget** (from project budget categories), **Spent** (actual total spent), and **Manual** (free input) — presented as a sleek segmented control instead of a switch.
+The "Refi Loan Amount" and "Equity in Property" values use a fixed `text-xl` size that doesn't scale for larger dollar amounts, causing them to look misaligned or overflow their containers.
 
-### Changes
+### Change
 
-**`src/components/project/CashFlowCalculator.tsx`**
+**`src/components/project/CashFlowCalculator.tsx`** (lines 599-622)
 
-1. Replace the `useManualRehab` boolean state with a `rehabMode` state: `'budget' | 'spent' | 'manual'` (default: `'budget'`, or `'manual'` if `initialRehabOverride != null`)
+- Add `flex flex-col items-center justify-center` to all three refi stat boxes so content is properly centered vertically and horizontally
+- Change the value text from `text-xl` to `text-lg sm:text-xl` for better scaling on smaller viewports
+- Add `truncate` to the value `<p>` tags to prevent overflow on very large numbers
+- Apply `min-h-[80px]` to all three boxes so they stay equal height even when the "Cash Out at Refi" box has the extra "money left in deal" subtitle
 
-2. Replace the Switch + "Manual" label with a compact segmented pill control (3 buttons styled like the existing `PeriodToggle`):
-   - **Budget** → uses `totalBudget` (current auto behavior)
-   - **Spent** → uses `totalSpent` (already available as a prop)
-   - **Manual** → editable input (current manual behavior)
-
-3. Update `activeRehabBudget` logic:
-   ```
-   budget → totalBudget
-   spent  → totalSpent
-   manual → rehabOverride
-   ```
-
-4. Input field: read-only/disabled when mode is `budget` or `spent`; editable when `manual`
-
-5. Helper text below input: "Auto from project budget" / "Auto from total spent" / removed for manual
-
-6. Save logic: persist `cashflow_rehab_override` only when mode is `manual`; store null otherwise
-
-7. On init: if `initialRehabOverride != null` → `'manual'`; else `'budget'`
-
-### UI Preview
-```text
-Construction Budget   [ Budget | Spent | Manual ]
-$ 65616              Auto from project budget categories
-```
-
-Segmented control uses the same `PeriodToggle` styling already in the component — small rounded pills with primary highlight on the active option.
+This is a ~6-line class update in one file.
 
