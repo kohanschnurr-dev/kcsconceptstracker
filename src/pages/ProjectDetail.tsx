@@ -539,26 +539,29 @@ export default function ProjectDetail() {
     setUpdatingStatus(false);
   };
 
-  const handleConvertToRental = async () => {
+  const handleConvertProjectType = async () => {
     if (!project) return;
+    const newType = isRental ? 'fix_flip' : 'rental';
     
     const { error } = await supabase
       .from('projects')
-      .update({ project_type: 'rental', status: 'active' })
+      .update({ project_type: newType })
       .eq('id', project.id);
     
     if (error) {
-      console.error('Error converting to rental:', error);
+      console.error('Error converting project type:', error);
       toast({
         title: 'Error',
-        description: 'Failed to convert project to rental',
+        description: `Failed to convert project to ${newType === 'rental' ? 'Rental' : 'Fix & Flip'}`,
         variant: 'destructive',
       });
     } else {
-      setProject({ ...project, project_type: 'rental', status: 'active' });
+      setProject({ ...project, project_type: newType });
       toast({
-        title: 'Converted to Rental',
-        description: 'Head to the Financials tab to set up your rental income details.',
+        title: newType === 'rental' ? 'Converted to Rental' : 'Converted to Fix & Flip',
+        description: newType === 'rental'
+          ? 'Head to the Financials tab to set up your rental income details.'
+          : 'The project is now a Fix & Flip with Profit Calculator.',
       });
     }
   };
@@ -675,15 +678,20 @@ export default function ProjectDetail() {
         <AlertDialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Convert to Rental Property</AlertDialogTitle>
+              <AlertDialogTitle>
+                {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental Property'}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                This will convert <strong>{project.name}</strong> to a rental property. The Financials tab will switch to the Cash Flow calculator. This can't be undone.
+                {isRental
+                  ? <>This will convert <strong>{project.name}</strong> to a Fix &amp; Flip. The Financials tab will switch to the Profit Calculator.</>
+                  : <>This will convert <strong>{project.name}</strong> to a rental property. The Financials tab will switch to the Cash Flow calculator.</>
+                }
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConvertToRental}>
-                Convert to Rental
+              <AlertDialogAction onClick={handleConvertProjectType}>
+                {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -832,15 +840,11 @@ export default function ProjectDetail() {
                             <AlertTriangle className="h-4 w-4 mr-2 text-warning" />
                             On Hold
                           </DropdownMenuItem>
-                          {!isRental && project.status === 'complete' && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setShowConvertDialog(true)}>
-                                <Home className="h-4 w-4 mr-2 text-blue-500" />
-                                Convert to Rental
-                              </DropdownMenuItem>
-                            </>
-                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setShowConvertDialog(true)}>
+                            <Home className="h-4 w-4 mr-2 text-blue-500" />
+                            {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental'}
+                          </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                       <DropdownMenuSeparator />
