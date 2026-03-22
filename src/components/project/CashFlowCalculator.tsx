@@ -144,7 +144,7 @@ export function CashFlowCalculator({
         vacancy_rate: vacancyRate,
         monthly_maintenance: monthlyMaintenance,
         management_rate: managementRate,
-        cashflow_rehab_override: useManualRehab ? rehabOverride : null,
+        cashflow_rehab_override: rehabMode === 'manual' ? rehabOverride : null,
       } as any)
       .eq('id', projectId);
 
