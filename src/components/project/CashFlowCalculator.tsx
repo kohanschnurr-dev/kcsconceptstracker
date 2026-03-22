@@ -61,7 +61,7 @@ export function CashFlowCalculator({
   const [loanAmount, setLoanAmount] = useState(initialLoanAmount);
   const [interestRate, setInterestRate] = useState(initialInterestRate);
   const [loanTermMonths, setLoanTermMonths] = useState(Math.round((initialLoanTermYears ?? 30) * 12));
-  const [useManualRehab, setUseManualRehab] = useState(initialRehabOverride != null);
+  const [rehabMode, setRehabMode] = useState<'budget' | 'spent' | 'manual'>(initialRehabOverride != null ? 'manual' : 'budget');
   const [rehabOverride, setRehabOverride] = useState(initialRehabOverride ?? totalBudget);
   const [annualPropertyTaxes, setAnnualPropertyTaxes] = useState(initialAnnualPropertyTaxes);
   const [annualInsurance, setAnnualInsurance] = useState(initialAnnualInsurance);
