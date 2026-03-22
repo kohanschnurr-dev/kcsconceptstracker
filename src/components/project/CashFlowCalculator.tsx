@@ -193,7 +193,7 @@ export function CashFlowCalculator({
   const annualCashFlow = monthlyCashFlow * 12;
 
   // Rehab budget: use manual override or project totalBudget
-  const activeRehabBudget = useManualRehab ? (rehabOverride || 0) : totalBudget;
+  const activeRehabBudget = rehabMode === 'manual' ? (rehabOverride || 0) : rehabMode === 'spent' ? totalSpent : totalBudget;
 
   // Cash invested = Purchase + Rehab - Loan Amount (money left in deal after refi)
   const totalInvestment = purchasePrice + activeRehabBudget;
