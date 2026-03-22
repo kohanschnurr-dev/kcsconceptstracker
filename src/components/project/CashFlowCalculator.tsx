@@ -110,7 +110,7 @@ export function CashFlowCalculator({
     setLoanAmount(initialLoanAmount);
     setInterestRate(initialInterestRate);
     setLoanTermMonths(Math.round((initialLoanTermYears ?? 30) * 12));
-    setUseManualRehab(initialRehabOverride != null);
+    setRehabMode(initialRehabOverride != null ? 'manual' : 'budget');
     setRehabOverride(initialRehabOverride ?? totalBudget);
     setAnnualPropertyTaxes(initialAnnualPropertyTaxes);
     setAnnualInsurance(initialAnnualInsurance);
