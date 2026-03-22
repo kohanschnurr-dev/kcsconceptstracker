@@ -840,15 +840,11 @@ export default function ProjectDetail() {
                             <AlertTriangle className="h-4 w-4 mr-2 text-warning" />
                             On Hold
                           </DropdownMenuItem>
-                          {!isRental && project.status === 'complete' && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setShowConvertDialog(true)}>
-                                <Home className="h-4 w-4 mr-2 text-blue-500" />
-                                Convert to Rental
-                              </DropdownMenuItem>
-                            </>
-                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setShowConvertDialog(true)}>
+                            <Home className="h-4 w-4 mr-2 text-blue-500" />
+                            {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental'}
+                          </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                       <DropdownMenuSeparator />
