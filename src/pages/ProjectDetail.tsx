@@ -678,15 +678,20 @@ export default function ProjectDetail() {
         <AlertDialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Convert to Rental Property</AlertDialogTitle>
+              <AlertDialogTitle>
+                {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental Property'}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                This will convert <strong>{project.name}</strong> to a rental property. The Financials tab will switch to the Cash Flow calculator. This can't be undone.
+                {isRental
+                  ? <>This will convert <strong>{project.name}</strong> to a Fix &amp; Flip. The Financials tab will switch to the Profit Calculator.</>
+                  : <>This will convert <strong>{project.name}</strong> to a rental property. The Financials tab will switch to the Cash Flow calculator.</>
+                }
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConvertToRental}>
-                Convert to Rental
+              <AlertDialogAction onClick={handleConvertProjectType}>
+                {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
