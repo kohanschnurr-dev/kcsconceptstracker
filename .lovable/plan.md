@@ -1,18 +1,37 @@
 
 
-## Plan: Fix Refi Loan Amount & Equity in Property Scaling
+## Plan: Copy Budget to Clipboard (Excel-Formatted)
 
-### Problem
-The "Refi Loan Amount" and "Equity in Property" values use a fixed `text-xl` size that doesn't scale for larger dollar amounts, causing them to look misaligned or overflow their containers.
+### What
+Add a copy button next to each saved budget in the TemplatePicker dropdown. Clicking it copies the full budget breakdown to the clipboard as tab-separated text — which pastes perfectly into Excel with columns and rows already aligned.
 
-### Change
+### Format
+When copied, the clipboard will contain:
+```
+Budget: Farmers Branch Flip
+Purchase Price	$150,000
+ARV	$220,000
 
-**`src/components/project/CashFlowCalculator.tsx`** (lines 599-622)
+Category	Budget
+Painting	$5,250
+Flooring	$12,000
+Cabinets	$8,000
+...
+Total	$78,000
+```
+Tab-separated so Excel picks up the columns automatically. Currency formatted with dollar signs.
 
-- Add `flex flex-col items-center justify-center` to all three refi stat boxes so content is properly centered vertically and horizontally
-- Change the value text from `text-xl` to `text-lg sm:text-xl` for better scaling on smaller viewports
-- Add `truncate` to the value `<p>` tags to prevent overflow on very large numbers
-- Apply `min-h-[80px]` to all three boxes so they stay equal height even when the "Cash Out at Refi" box has the extra "money left in deal" subtitle
+### Changes
 
-This is a ~6-line class update in one file.
+**`src/components/budget/TemplatePicker.tsx`**
+
+1. Import `Copy` icon from lucide-react and `getBudgetCategories` from types
+2. Add a `handleCopyBudget` function that:
+   - Builds a tab-separated string with header row, purchase price, ARV, blank line, then each category with a non-zero value sorted alphabetically, then a total row
+   - Uses `navigator.clipboard.writeText()` to copy
+   - Shows a toast: "Budget copied to clipboard"
+   - Calls `e.stopPropagation()` and `e.preventDefault()` to prevent the dropdown from closing or loading the template
+3. Add a Copy icon button next to each saved budget row (between the dollar amount and the trash icon), styled consistently with the existing star/trash buttons
+
+This is ~30 lines of new code in one file.
 
