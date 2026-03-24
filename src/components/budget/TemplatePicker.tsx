@@ -229,7 +229,6 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     e.stopPropagation();
     e.preventDefault();
     const cats = getBudgetCategories();
-    const catMap = new Map(cats.map(c => [c.value, c.label]));
     const lines: string[] = [`Budget: ${template.name}`];
     if (template.purchase_price) lines.push(`Purchase Price\t${formatCurrency(template.purchase_price)}`);
     if (template.arv) lines.push(`ARV\t${formatCurrency(template.arv)}`);
