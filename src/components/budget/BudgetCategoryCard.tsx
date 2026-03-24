@@ -1,6 +1,12 @@
 import { DollarSign } from 'lucide-react';
 import { FormulaInput } from '@/components/ui/formula-input';
 import { cn } from '@/lib/utils';
+import { LoanCostCalculator } from './LoanCostCalculator';
+
+const LOAN_CATEGORIES = new Set([
+  'loan_costs', 'lending_fees', 'financing', 'loan_points',
+  'hard_money', 'interest', 'loan_origination',
+]);
 
 interface BudgetCategoryCardProps {
   category: string;
@@ -21,6 +27,10 @@ export function BudgetCategoryCard({
 }: BudgetCategoryCardProps) {
   const numericValue = parseFloat(value) || 0;
   const hasValue = numericValue > 0;
+  const isLoanCategory = LOAN_CATEGORIES.has(category) || 
+    label.toLowerCase().includes('loan') || 
+    label.toLowerCase().includes('financing') ||
+    label.toLowerCase().includes('interest');
 
   return (
     <div 
@@ -40,6 +50,9 @@ export function BudgetCategoryCard({
           <span className="ml-1 text-primary/60 text-[8px]">●</span>
         )}
       </span>
+      {isLoanCategory && (
+        <LoanCostCalculator onApply={onChange} />
+      )}
       <div className="relative flex-shrink-0">
         <DollarSign className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
         <FormulaInput
