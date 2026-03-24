@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, ChevronDown, ChevronRight, Ruler, FolderOpen, Plus, Settings, Star, Trash2 } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Ruler, FolderOpen, Plus, Settings, Star, Trash2, Copy } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +31,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getBudgetCategories } from '@/types';
 
 interface BudgetTemplate {
   id: string;
@@ -224,6 +225,30 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     }
   };
 
+  const handleCopyBudget = async (e: React.MouseEvent, template: BudgetTemplate) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const cats = getBudgetCategories();
+    const lines: string[] = [`Budget: ${template.name}`];
+    if (template.purchase_price) lines.push(`Purchase Price\t${formatCurrency(template.purchase_price)}`);
+    if (template.arv) lines.push(`ARV\t${formatCurrency(template.arv)}`);
+    if (template.sqft) lines.push(`Sqft\t${template.sqft.toLocaleString()}`);
+    lines.push('', 'Category\tBudget');
+    const entries = Object.entries(template.category_budgets)
+      .filter(([k, v]) => k !== '_meta' && k !== 'rehab_filler' && (v as number) > 0)
+      .map(([k, v]) => {
+        const found = cats.find(c => c.value === k);
+        const label = found ? found.label : k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        return { label, value: v as number };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+    entries.forEach(e => lines.push(`${e.label}\t${formatCurrency(e.value)}`));
+    const total = entries.reduce((s, e) => s + e.value, 0);
+    lines.push(`Total\t${formatCurrency(total)}`);
+    await navigator.clipboard.writeText(lines.join('\n'));
+    toast.success('Budget copied to clipboard');
+  };
+
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const handleDeleteClick = (e: React.MouseEvent, templateId: string, templateName: string) => {
@@ -356,10 +381,17 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
                         </button>
                         <span className="font-medium truncate">{template.name}</span>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-xs font-mono text-muted-foreground">
                           {formatCurrency(total)}
                         </span>
+                        <button
+                          onClick={(e) => handleCopyBudget(e, template)}
+                          className="p-0.5 hover:scale-110 transition-transform text-muted-foreground hover:text-primary"
+                          title="Copy budget to clipboard"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
                         <button
                           onClick={(e) => handleDeleteClick(e, template.id, template.name)}
                           className="p-0.5 hover:scale-110 transition-transform text-muted-foreground hover:text-destructive"
