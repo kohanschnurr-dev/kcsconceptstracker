@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, ChevronDown, ChevronRight, Ruler, FolderOpen, Plus, Settings, Star, Trash2 } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Ruler, FolderOpen, Plus, Settings, Star, Trash2, Copy } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import {
