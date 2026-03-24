@@ -225,6 +225,27 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     }
   };
 
+  const handleCopyBudget = async (e: React.MouseEvent, template: BudgetTemplate) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const cats = getBudgetCategories();
+    const catMap = new Map(cats.map(c => [c.value, c.label]));
+    const lines: string[] = [`Budget: ${template.name}`];
+    if (template.purchase_price) lines.push(`Purchase Price\t${formatCurrency(template.purchase_price)}`);
+    if (template.arv) lines.push(`ARV\t${formatCurrency(template.arv)}`);
+    if (template.sqft) lines.push(`Sqft\t${template.sqft.toLocaleString()}`);
+    lines.push('', 'Category\tBudget');
+    const entries = Object.entries(template.category_budgets)
+      .filter(([k, v]) => k !== '_meta' && k !== 'rehab_filler' && (v as number) > 0)
+      .map(([k, v]) => ({ label: catMap.get(k) || k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), value: v as number }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    entries.forEach(e => lines.push(`${e.label}\t${formatCurrency(e.value)}`));
+    const total = entries.reduce((s, e) => s + e.value, 0);
+    lines.push(`Total\t${formatCurrency(total)}`);
+    await navigator.clipboard.writeText(lines.join('\n'));
+    toast.success('Budget copied to clipboard');
+  };
+
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const handleDeleteClick = (e: React.MouseEvent, templateId: string, templateName: string) => {
