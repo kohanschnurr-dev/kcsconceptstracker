@@ -378,10 +378,17 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
                         </button>
                         <span className="font-medium truncate">{template.name}</span>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-xs font-mono text-muted-foreground">
                           {formatCurrency(total)}
                         </span>
+                        <button
+                          onClick={(e) => handleCopyBudget(e, template)}
+                          className="p-0.5 hover:scale-110 transition-transform text-muted-foreground hover:text-primary"
+                          title="Copy budget to clipboard"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
                         <button
                           onClick={(e) => handleDeleteClick(e, template.id, template.name)}
                           className="p-0.5 hover:scale-110 transition-transform text-muted-foreground hover:text-destructive"
