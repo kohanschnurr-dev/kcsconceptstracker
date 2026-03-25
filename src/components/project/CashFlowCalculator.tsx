@@ -27,6 +27,11 @@ interface CashFlowCalculatorProps {
   initialMonthlyMaintenance?: number;
   initialManagementRate?: number;
   initialRehabOverride?: number | null;
+  initialRehabMode?: string;
+  initialTaxPeriod?: string;
+  initialInsurancePeriod?: string;
+  initialHoaPeriod?: string;
+  initialMaintenancePeriod?: string;
   hmLoanAmount?: number;
   hmInterestRate?: number;
   hmLoanTermMonths?: number;
@@ -50,6 +55,11 @@ export function CashFlowCalculator({
   initialMonthlyMaintenance = 0,
   initialManagementRate = 10,
   initialRehabOverride,
+  initialRehabMode,
+  initialTaxPeriod,
+  initialInsurancePeriod,
+  initialHoaPeriod,
+  initialMaintenancePeriod,
   hmLoanAmount = 0,
   hmInterestRate = 0,
   hmLoanTermMonths = 0,
@@ -61,7 +71,9 @@ export function CashFlowCalculator({
   const [loanAmount, setLoanAmount] = useState(initialLoanAmount);
   const [interestRate, setInterestRate] = useState(initialInterestRate);
   const [loanTermMonths, setLoanTermMonths] = useState(Math.round((initialLoanTermYears ?? 30) * 12));
-  const [rehabMode, setRehabMode] = useState<'budget' | 'spent' | 'manual'>(initialRehabOverride != null ? 'manual' : 'budget');
+  const [rehabMode, setRehabMode] = useState<'budget' | 'spent' | 'manual'>(
+    (initialRehabMode as 'budget' | 'spent' | 'manual') || (initialRehabOverride != null ? 'manual' : 'budget')
+  );
   const [rehabOverride, setRehabOverride] = useState(initialRehabOverride ?? totalBudget);
   const [annualPropertyTaxes, setAnnualPropertyTaxes] = useState(initialAnnualPropertyTaxes);
   const [annualInsurance, setAnnualInsurance] = useState(initialAnnualInsurance);
@@ -71,10 +83,10 @@ export function CashFlowCalculator({
   const [managementRate, setManagementRate] = useState(initialManagementRate);
   const [saving, setSaving] = useState(false);
   const [expandedCard, setExpandedCard] = useState<'monthly' | 'annual' | 'roi' | null>(null);
-  const [taxPeriod, setTaxPeriod] = useState<'month' | 'year'>('year');
-  const [hoaPeriod, setHoaPeriod] = useState<'month' | 'year'>('year');
-  const [insurancePeriod, setInsurancePeriod] = useState<'month' | 'year'>('year');
-  const [maintenancePeriod, setMaintenancePeriod] = useState<'month' | 'year'>('month');
+  const [taxPeriod, setTaxPeriod] = useState<'month' | 'year'>((initialTaxPeriod as 'month' | 'year') || 'year');
+  const [hoaPeriod, setHoaPeriod] = useState<'month' | 'year'>((initialHoaPeriod as 'month' | 'year') || 'year');
+  const [insurancePeriod, setInsurancePeriod] = useState<'month' | 'year'>((initialInsurancePeriod as 'month' | 'year') || 'year');
+  const [maintenancePeriod, setMaintenancePeriod] = useState<'month' | 'year'>((initialMaintenancePeriod as 'month' | 'year') || 'month');
   const [refiEnabled, setRefiEnabled] = useState(initialLoanAmount > 0 || hmLoanAmount > 0);
   const [useManualLoan, setUseManualLoan] = useState(false);
 
@@ -110,7 +122,7 @@ export function CashFlowCalculator({
     setLoanAmount(initialLoanAmount);
     setInterestRate(initialInterestRate);
     setLoanTermMonths(Math.round((initialLoanTermYears ?? 30) * 12));
-    setRehabMode(initialRehabOverride != null ? 'manual' : 'budget');
+    setRehabMode((initialRehabMode as 'budget' | 'spent' | 'manual') || (initialRehabOverride != null ? 'manual' : 'budget'));
     setRehabOverride(initialRehabOverride ?? totalBudget);
     setAnnualPropertyTaxes(initialAnnualPropertyTaxes);
     setAnnualInsurance(initialAnnualInsurance);
@@ -118,13 +130,18 @@ export function CashFlowCalculator({
     setVacancyRate(initialVacancyRate);
     setMonthlyMaintenance(initialMonthlyMaintenance);
     setManagementRate(initialManagementRate);
+    setTaxPeriod((initialTaxPeriod as 'month' | 'year') || 'year');
+    setInsurancePeriod((initialInsurancePeriod as 'month' | 'year') || 'year');
+    setHoaPeriod((initialHoaPeriod as 'month' | 'year') || 'year');
+    setMaintenancePeriod((initialMaintenancePeriod as 'month' | 'year') || 'month');
     setRefiEnabled(initialLoanAmount > 0 || hmLoanAmount > 0);
     setUseManualLoan(initialLoanAmount > 0 && hmLoanAmount > 0 && (initialLoanAmount !== hmLoanAmount || initialInterestRate !== hmInterestRate));
   }, [
     initialPurchasePrice, initialArv, initialMonthlyRent, initialLoanAmount,
     initialInterestRate, initialLoanTermYears, initialAnnualPropertyTaxes,
     initialAnnualInsurance, initialAnnualHoa, initialVacancyRate, initialMonthlyMaintenance,
-    initialManagementRate, hmLoanAmount, hmInterestRate
+    initialManagementRate, hmLoanAmount, hmInterestRate, initialRehabMode,
+    initialTaxPeriod, initialInsurancePeriod, initialHoaPeriod, initialMaintenancePeriod
   ]);
 
   const handleSave = async () => {
@@ -145,6 +162,11 @@ export function CashFlowCalculator({
         monthly_maintenance: monthlyMaintenance,
         management_rate: managementRate,
         cashflow_rehab_override: rehabMode === 'manual' ? rehabOverride : null,
+        cashflow_rehab_mode: rehabMode,
+        cashflow_tax_period: taxPeriod,
+        cashflow_insurance_period: insurancePeriod,
+        cashflow_hoa_period: hoaPeriod,
+        cashflow_maintenance_period: maintenancePeriod,
       } as any)
       .eq('id', projectId);
 

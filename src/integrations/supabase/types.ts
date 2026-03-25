@@ -1366,7 +1366,12 @@ export type Database = {
           annual_insurance: number | null
           annual_property_taxes: number | null
           arv: number | null
+          cashflow_hoa_period: string | null
+          cashflow_insurance_period: string | null
+          cashflow_maintenance_period: string | null
+          cashflow_rehab_mode: string | null
           cashflow_rehab_override: number | null
+          cashflow_tax_period: string | null
           closing_costs_flat: number | null
           closing_costs_mode: string
           closing_costs_pct: number | null
@@ -1411,7 +1416,12 @@ export type Database = {
           annual_insurance?: number | null
           annual_property_taxes?: number | null
           arv?: number | null
+          cashflow_hoa_period?: string | null
+          cashflow_insurance_period?: string | null
+          cashflow_maintenance_period?: string | null
+          cashflow_rehab_mode?: string | null
           cashflow_rehab_override?: number | null
+          cashflow_tax_period?: string | null
           closing_costs_flat?: number | null
           closing_costs_mode?: string
           closing_costs_pct?: number | null
@@ -1456,7 +1466,12 @@ export type Database = {
           annual_insurance?: number | null
           annual_property_taxes?: number | null
           arv?: number | null
+          cashflow_hoa_period?: string | null
+          cashflow_insurance_period?: string | null
+          cashflow_maintenance_period?: string | null
+          cashflow_rehab_mode?: string | null
           cashflow_rehab_override?: number | null
+          cashflow_tax_period?: string | null
           closing_costs_flat?: number | null
           closing_costs_mode?: string
           closing_costs_pct?: number | null

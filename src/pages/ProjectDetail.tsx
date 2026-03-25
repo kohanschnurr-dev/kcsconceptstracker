@@ -1142,6 +1142,11 @@ export default function ProjectDetail() {
                 initialMonthlyMaintenance={project.monthly_maintenance ?? 0}
                 initialManagementRate={project.management_rate ?? 10}
                 initialRehabOverride={(project as any).cashflow_rehab_override ?? null}
+                initialRehabMode={(project as any).cashflow_rehab_mode || undefined}
+                initialTaxPeriod={(project as any).cashflow_tax_period || undefined}
+                initialInsurancePeriod={(project as any).cashflow_insurance_period || undefined}
+                initialHoaPeriod={(project as any).cashflow_hoa_period || undefined}
+                initialMaintenancePeriod={(project as any).cashflow_maintenance_period || undefined}
                 hmLoanAmount={project.hm_loan_amount || 0}
                 hmInterestRate={project.hm_interest_rate || 0}
                 hmLoanTermMonths={project.hm_loan_term_months || 0}
