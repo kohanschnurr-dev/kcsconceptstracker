@@ -27,6 +27,11 @@ interface CashFlowCalculatorProps {
   initialMonthlyMaintenance?: number;
   initialManagementRate?: number;
   initialRehabOverride?: number | null;
+  initialRehabMode?: string;
+  initialTaxPeriod?: string;
+  initialInsurancePeriod?: string;
+  initialHoaPeriod?: string;
+  initialMaintenancePeriod?: string;
   hmLoanAmount?: number;
   hmInterestRate?: number;
   hmLoanTermMonths?: number;
