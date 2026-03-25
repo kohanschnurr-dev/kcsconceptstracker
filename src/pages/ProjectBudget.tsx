@@ -185,7 +185,9 @@ export default function ProjectBudget() {
   const expensesTableRef = useRef<HTMLDivElement>(null);
 
   const handleCategoryBreakdownClick = (categoryValue: string) => {
-    setSelectedCategory(prev => prev === categoryValue ? 'all' : categoryValue);
+    const matchedCat = categories.find(c => c.category === categoryValue);
+    const filterValue = matchedCat ? matchedCat.id : categoryValue;
+    setSelectedCategory(prev => prev === filterValue ? 'all' : filterValue);
     setSearchQuery('');
     setSelectedPaymentMethod('all');
     setSelectedCostType('all');
@@ -970,7 +972,7 @@ export default function ProjectBudget() {
                 </div>
                 
                 {/* Legend as a scrollable list */}
-                <div className="flex-1 max-h-[250px] overflow-y-auto pr-2">
+                <div className="flex-1 max-h-[250px] overflow-y-auto px-1">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {categories
                       .filter(c => c.actualSpent > 0)
@@ -978,7 +980,7 @@ export default function ProjectBudget() {
                       .map((cat, index) => {
                         const percent = totalSpent > 0 ? (cat.actualSpent / totalSpent) * 100 : 0;
                         return (
-                          <div key={cat.id} className={cn("flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer", selectedCategory === cat.category && "ring-2 ring-primary bg-muted/50")} onClick={() => handleCategoryBreakdownClick(cat.category)}>
+                          <div key={cat.id} className={cn("flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer", selectedCategory === cat.id && "ring-2 ring-primary bg-muted/50")} onClick={() => handleCategoryBreakdownClick(cat.category)}>
                             <div 
                               className="w-3 h-3 rounded-sm flex-shrink-0" 
                               style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
