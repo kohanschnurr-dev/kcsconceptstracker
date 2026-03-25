@@ -184,6 +184,17 @@ export default function ProjectBudget() {
   // Ref for scrolling to expenses table
   const expensesTableRef = useRef<HTMLDivElement>(null);
 
+  const handleCategoryBreakdownClick = (categoryValue: string) => {
+    setSelectedCategory(prev => prev === categoryValue ? 'all' : categoryValue);
+    setSearchQuery('');
+    setSelectedPaymentMethod('all');
+    setSelectedCostType('all');
+    setDateRange('all');
+    setTimeout(() => {
+      expensesTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+
   const handleCardFilter = (costType: string) => {
     setSelectedCostType(prev => prev === costType ? 'all' : costType);
     setSearchQuery('');
@@ -928,6 +939,11 @@ export default function ProjectBudget() {
                               key={`cell-${index}`} 
                               fill={CHART_COLORS[index % CHART_COLORS.length]}
                               stroke="transparent"
+                              className="cursor-pointer"
+                              onClick={() => {
+                                const sorted = categories.filter(c => c.actualSpent > 0).sort((a, b) => b.actualSpent - a.actualSpent);
+                                if (sorted[index]) handleCategoryBreakdownClick(sorted[index].category);
+                              }}
                             />
                           ))}
                       </Pie>
@@ -962,7 +978,7 @@ export default function ProjectBudget() {
                       .map((cat, index) => {
                         const percent = totalSpent > 0 ? (cat.actualSpent / totalSpent) * 100 : 0;
                         return (
-                          <div key={cat.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
+                          <div key={cat.id} className={cn("flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer", selectedCategory === cat.category && "ring-2 ring-primary bg-muted/50")} onClick={() => handleCategoryBreakdownClick(cat.category)}>
                             <div 
                               className="w-3 h-3 rounded-sm flex-shrink-0" 
                               style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
