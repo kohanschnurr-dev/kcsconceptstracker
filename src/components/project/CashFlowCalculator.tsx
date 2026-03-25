@@ -122,7 +122,7 @@ export function CashFlowCalculator({
     setLoanAmount(initialLoanAmount);
     setInterestRate(initialInterestRate);
     setLoanTermMonths(Math.round((initialLoanTermYears ?? 30) * 12));
-    setRehabMode(initialRehabOverride != null ? 'manual' : 'budget');
+    setRehabMode((initialRehabMode as 'budget' | 'spent' | 'manual') || (initialRehabOverride != null ? 'manual' : 'budget'));
     setRehabOverride(initialRehabOverride ?? totalBudget);
     setAnnualPropertyTaxes(initialAnnualPropertyTaxes);
     setAnnualInsurance(initialAnnualInsurance);
@@ -130,13 +130,18 @@ export function CashFlowCalculator({
     setVacancyRate(initialVacancyRate);
     setMonthlyMaintenance(initialMonthlyMaintenance);
     setManagementRate(initialManagementRate);
+    setTaxPeriod((initialTaxPeriod as 'month' | 'year') || 'year');
+    setInsurancePeriod((initialInsurancePeriod as 'month' | 'year') || 'year');
+    setHoaPeriod((initialHoaPeriod as 'month' | 'year') || 'year');
+    setMaintenancePeriod((initialMaintenancePeriod as 'month' | 'year') || 'month');
     setRefiEnabled(initialLoanAmount > 0 || hmLoanAmount > 0);
     setUseManualLoan(initialLoanAmount > 0 && hmLoanAmount > 0 && (initialLoanAmount !== hmLoanAmount || initialInterestRate !== hmInterestRate));
   }, [
     initialPurchasePrice, initialArv, initialMonthlyRent, initialLoanAmount,
     initialInterestRate, initialLoanTermYears, initialAnnualPropertyTaxes,
     initialAnnualInsurance, initialAnnualHoa, initialVacancyRate, initialMonthlyMaintenance,
-    initialManagementRate, hmLoanAmount, hmInterestRate
+    initialManagementRate, hmLoanAmount, hmInterestRate, initialRehabMode,
+    initialTaxPeriod, initialInsurancePeriod, initialHoaPeriod, initialMaintenancePeriod
   ]);
 
   const handleSave = async () => {
@@ -157,6 +162,11 @@ export function CashFlowCalculator({
         monthly_maintenance: monthlyMaintenance,
         management_rate: managementRate,
         cashflow_rehab_override: rehabMode === 'manual' ? rehabOverride : null,
+        cashflow_rehab_mode: rehabMode,
+        cashflow_tax_period: taxPeriod,
+        cashflow_insurance_period: insurancePeriod,
+        cashflow_hoa_period: hoaPeriod,
+        cashflow_maintenance_period: maintenancePeriod,
       } as any)
       .eq('id', projectId);
 
