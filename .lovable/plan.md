@@ -1,37 +1,39 @@
 
 
-## Plan: Copy Budget to Clipboard (Excel-Formatted)
+## Plan: Persist Cash Flow Toggle States
 
-### What
-Add a copy button next to each saved budget in the TemplatePicker dropdown. Clicking it copies the full budget breakdown to the clipboard as tab-separated text — which pastes perfectly into Excel with columns and rows already aligned.
-
-### Format
-When copied, the clipboard will contain:
-```
-Budget: Farmers Branch Flip
-Purchase Price	$150,000
-ARV	$220,000
-
-Category	Budget
-Painting	$5,250
-Flooring	$12,000
-Cabinets	$8,000
-...
-Total	$78,000
-```
-Tab-separated so Excel picks up the columns automatically. Currency formatted with dollar signs.
+### Problem
+The Yr/Mo period toggles (for taxes, insurance, HOA, maintenance) and the Construction Budget mode (Budget/Spent/Manual) reset to defaults on page reload because they aren't saved to the database.
 
 ### Changes
 
-**`src/components/budget/TemplatePicker.tsx`**
+**1. Database Migration — add 5 columns to `projects`**
 
-1. Import `Copy` icon from lucide-react and `getBudgetCategories` from types
-2. Add a `handleCopyBudget` function that:
-   - Builds a tab-separated string with header row, purchase price, ARV, blank line, then each category with a non-zero value sorted alphabetically, then a total row
-   - Uses `navigator.clipboard.writeText()` to copy
-   - Shows a toast: "Budget copied to clipboard"
-   - Calls `e.stopPropagation()` and `e.preventDefault()` to prevent the dropdown from closing or loading the template
-3. Add a Copy icon button next to each saved budget row (between the dollar amount and the trash icon), styled consistently with the existing star/trash buttons
+```sql
+ALTER TABLE public.projects
+  ADD COLUMN IF NOT EXISTS cashflow_rehab_mode text DEFAULT 'budget',
+  ADD COLUMN IF NOT EXISTS cashflow_tax_period text DEFAULT 'year',
+  ADD COLUMN IF NOT EXISTS cashflow_insurance_period text DEFAULT 'year',
+  ADD COLUMN IF NOT EXISTS cashflow_hoa_period text DEFAULT 'year',
+  ADD COLUMN IF NOT EXISTS cashflow_maintenance_period text DEFAULT 'month';
+```
 
-This is ~30 lines of new code in one file.
+All nullable text columns with sensible defaults matching current UI defaults.
+
+**2. `src/components/project/CashFlowCalculator.tsx`**
+
+- Add 5 new props: `initialRehabMode`, `initialTaxPeriod`, `initialInsurancePeriod`, `initialHoaPeriod`, `initialMaintenancePeriod`
+- Initialize the corresponding state from these props instead of hardcoded defaults
+- In `handleSave`, include the 5 new columns in the update call
+- In the `useEffect` reset block, restore these states from props
+
+**3. `src/pages/ProjectDetail.tsx`**
+
+- Pass the 5 new props from the project record to `CashFlowCalculator`
+
+### Technical Details
+
+- `rehabMode` initialization: if `initialRehabMode` is provided use it, else fall back to existing logic (`initialRehabOverride != null ? 'manual' : 'budget'`)
+- Period fields map directly: `'year'` ↔ `'year'`, `'month'` ↔ `'month'`
+- Save uses `as any` cast (already in use) to handle columns not yet in generated types
 
