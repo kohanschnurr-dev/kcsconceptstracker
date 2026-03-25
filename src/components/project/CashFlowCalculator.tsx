@@ -55,6 +55,11 @@ export function CashFlowCalculator({
   initialMonthlyMaintenance = 0,
   initialManagementRate = 10,
   initialRehabOverride,
+  initialRehabMode,
+  initialTaxPeriod,
+  initialInsurancePeriod,
+  initialHoaPeriod,
+  initialMaintenancePeriod,
   hmLoanAmount = 0,
   hmInterestRate = 0,
   hmLoanTermMonths = 0,
@@ -66,7 +71,9 @@ export function CashFlowCalculator({
   const [loanAmount, setLoanAmount] = useState(initialLoanAmount);
   const [interestRate, setInterestRate] = useState(initialInterestRate);
   const [loanTermMonths, setLoanTermMonths] = useState(Math.round((initialLoanTermYears ?? 30) * 12));
-  const [rehabMode, setRehabMode] = useState<'budget' | 'spent' | 'manual'>(initialRehabOverride != null ? 'manual' : 'budget');
+  const [rehabMode, setRehabMode] = useState<'budget' | 'spent' | 'manual'>(
+    (initialRehabMode as 'budget' | 'spent' | 'manual') || (initialRehabOverride != null ? 'manual' : 'budget')
+  );
   const [rehabOverride, setRehabOverride] = useState(initialRehabOverride ?? totalBudget);
   const [annualPropertyTaxes, setAnnualPropertyTaxes] = useState(initialAnnualPropertyTaxes);
   const [annualInsurance, setAnnualInsurance] = useState(initialAnnualInsurance);
@@ -76,10 +83,10 @@ export function CashFlowCalculator({
   const [managementRate, setManagementRate] = useState(initialManagementRate);
   const [saving, setSaving] = useState(false);
   const [expandedCard, setExpandedCard] = useState<'monthly' | 'annual' | 'roi' | null>(null);
-  const [taxPeriod, setTaxPeriod] = useState<'month' | 'year'>('year');
-  const [hoaPeriod, setHoaPeriod] = useState<'month' | 'year'>('year');
-  const [insurancePeriod, setInsurancePeriod] = useState<'month' | 'year'>('year');
-  const [maintenancePeriod, setMaintenancePeriod] = useState<'month' | 'year'>('month');
+  const [taxPeriod, setTaxPeriod] = useState<'month' | 'year'>((initialTaxPeriod as 'month' | 'year') || 'year');
+  const [hoaPeriod, setHoaPeriod] = useState<'month' | 'year'>((initialHoaPeriod as 'month' | 'year') || 'year');
+  const [insurancePeriod, setInsurancePeriod] = useState<'month' | 'year'>((initialInsurancePeriod as 'month' | 'year') || 'year');
+  const [maintenancePeriod, setMaintenancePeriod] = useState<'month' | 'year'>((initialMaintenancePeriod as 'month' | 'year') || 'month');
   const [refiEnabled, setRefiEnabled] = useState(initialLoanAmount > 0 || hmLoanAmount > 0);
   const [useManualLoan, setUseManualLoan] = useState(false);
 
