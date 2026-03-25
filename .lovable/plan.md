@@ -1,39 +1,22 @@
 
 
-## Plan: Persist Cash Flow Toggle States
+## Plan: Click Category in Expense Breakdown to Filter All Expenses
 
-### Problem
-The Yr/Mo period toggles (for taxes, insurance, HOA, maintenance) and the Construction Budget mode (Budget/Spent/Manual) reset to defaults on page reload because they aren't saved to the database.
+### What
+Clicking a category name/row in the "Expense Breakdown by Category" legend (or a pie slice) will auto-set the category filter in the "All Expenses" table below and scroll to it.
 
 ### Changes
 
-**1. Database Migration — add 5 columns to `projects`**
+**`src/pages/ProjectBudget.tsx`**
 
-```sql
-ALTER TABLE public.projects
-  ADD COLUMN IF NOT EXISTS cashflow_rehab_mode text DEFAULT 'budget',
-  ADD COLUMN IF NOT EXISTS cashflow_tax_period text DEFAULT 'year',
-  ADD COLUMN IF NOT EXISTS cashflow_insurance_period text DEFAULT 'year',
-  ADD COLUMN IF NOT EXISTS cashflow_hoa_period text DEFAULT 'year',
-  ADD COLUMN IF NOT EXISTS cashflow_maintenance_period text DEFAULT 'month';
-```
+1. Add a `handleCategoryBreakdownClick` function that:
+   - Sets `selectedCategory` to the clicked category's value (or toggles back to `'all'` if already selected)
+   - Resets other filters (search, payment method, cost type, date range)
+   - Scrolls to `expensesTableRef` smoothly (same pattern as `handleCardFilter`)
 
-All nullable text columns with sensible defaults matching current UI defaults.
+2. On the legend rows (line ~965): add `onClick={() => handleCategoryBreakdownClick(cat.category)}` and `cursor-pointer` class
 
-**2. `src/components/project/CashFlowCalculator.tsx`**
+3. On the Pie chart (line ~907): add an `onClick` handler on each `<Cell>` that triggers the same filter using the sorted categories array to resolve the clicked index back to a category value
 
-- Add 5 new props: `initialRehabMode`, `initialTaxPeriod`, `initialInsurancePeriod`, `initialHoaPeriod`, `initialMaintenancePeriod`
-- Initialize the corresponding state from these props instead of hardcoded defaults
-- In `handleSave`, include the 5 new columns in the update call
-- In the `useEffect` reset block, restore these states from props
-
-**3. `src/pages/ProjectDetail.tsx`**
-
-- Pass the 5 new props from the project record to `CashFlowCalculator`
-
-### Technical Details
-
-- `rehabMode` initialization: if `initialRehabMode` is provided use it, else fall back to existing logic (`initialRehabOverride != null ? 'manual' : 'budget'`)
-- Period fields map directly: `'year'` ↔ `'year'`, `'month'` ↔ `'month'`
-- Save uses `as any` cast (already in use) to handle columns not yet in generated types
+Single file, ~15 lines of new code.
 
