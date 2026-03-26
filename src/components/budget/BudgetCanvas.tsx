@@ -371,7 +371,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   return (
     <div>
       <div className="flex items-center justify-between mb-2 gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={toggleAll}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -388,6 +388,32 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
               </>
             )}
           </button>
+
+          {/* View mode toggle */}
+          <div className="flex items-center rounded-md border border-border/50 overflow-hidden">
+            <button
+              onClick={() => handleViewModeChange('category')}
+              className={cn(
+                "px-3 py-1 text-xs font-medium transition-colors",
+                viewMode === 'category'
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              Category
+            </button>
+            <button
+              onClick={() => handleViewModeChange('timeline')}
+              className={cn(
+                "px-3 py-1 text-xs font-medium transition-colors",
+                viewMode === 'timeline'
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              Timeline
+            </button>
+          </div>
         </div>
       </div>
 
@@ -626,8 +652,8 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {dynamicGroups.map((group) => {
+      <div key={viewMode} className="grid grid-cols-1 md:grid-cols-2 gap-2 animate-in fade-in-0 duration-200">
+        {displayGroups.map((group) => {
           const GroupIcon = group.icon;
           const groupCategories = group.categories;
           const visibleCategories = groupCategories.filter(cat => !hiddenCategories.has(cat));
