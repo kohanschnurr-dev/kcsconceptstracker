@@ -123,8 +123,20 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
 
       if (projectError) throw projectError;
 
-      // Create default budget categories (all at $0)
+      // Register all categories in the enum (handles custom ones)
       const allCats = getBudgetCategories();
+      
+      // Also register any categories from the selected template
+      const templateKeys = selectedTemplate?.category_budgets
+        ? Object.keys(selectedTemplate.category_budgets as Record<string, unknown>).filter(k => k !== '_meta')
+        : [];
+      const allValues = new Set([...allCats.map(c => c.value), ...templateKeys]);
+      
+      for (const val of allValues) {
+        await supabase.rpc('add_budget_category', { new_value: val });
+      }
+
+      // Create default budget categories (all at $0)
       const categories = allCats.map(cat => ({
         project_id: project.id,
         category: cat.value,
