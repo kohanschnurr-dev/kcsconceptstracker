@@ -1,31 +1,37 @@
 
 
-## Plan: Add Star-to-Favorite Default View Mode
+## Plan: Remove Phase 9, Add Rename/Delete/Add Phase Controls
 
-### What
-Add a small star icon next to the active view mode toggle (Category | Timeline) that lets users "favorite" their preferred default view. When the calculator opens, it loads whichever view has the star.
+### Changes
 
-### How
+#### 1. `src/lib/budgetTimelinePhases.ts`
+- Remove Phase 9 (Final Systems) from `TIMELINE_PHASES` array; move `utilities` to Phase 10 (Closeout)
+- Expand `TimelineCustomization` to also store custom phase metadata:
+  - Add a new type `TimelinePhaseConfig` with `{ phases: PhaseOverride[], categoryMap: Record<string, string[]> }` where `PhaseOverride = { key, label, iconName }`
+  - Export a `PHASE_CONFIG_STORAGE_KEY` for the phase structure customizations
+  - Add helper: `getCustomPhases()` returns merged default + custom phase list (respecting renames, deletions, additions)
+  - Add helper: `getIconByName(name: string)` maps icon name strings to Lucide components (needed for serialization since icons can't be stored in localStorage)
+- Update `buildTimelineGroups` to accept the custom phase config, skipping deleted phases, using renamed labels, and including user-added phases
 
-**File: `src/components/budget/BudgetCanvas.tsx`**
+#### 2. `src/components/budget/BudgetCanvas.tsx`
 
-1. **New localStorage key**: `budget-view-mode-favorite` — stores `'category'` or `'timeline'`
+**New state:**
+- `customPhases` — stores the user's phase structure overrides (renames, deletions, added phases) in localStorage
 
-2. **State**: Add `favoriteMode` state initialized from localStorage (default: `'category'`)
+**Settings dialog enhancements (timeline mode only):**
+- Add a **rename input** at the top of the phase settings dialog — an editable text field pre-filled with the phase name
+- Add a **"Delete Phase"** button (destructive, bottom of dialog) — moves all items to "Other" and removes the phase
+- Confirmation prompt before delete
 
-3. **Startup logic**: Change the `viewMode` initializer to read from `budget-view-mode-favorite` instead of `budget-view-mode`. The favorite IS the startup default.
+**Toolbar addition (timeline mode only):**
+- Add a **"+ Add Phase"** button next to the view toggle (or at the bottom of the phase list)
+- Opens a small dialog/popover: name input + icon picker (dropdown of ~10 Lucide icons)
+- Creates a new empty phase that the user can then populate via the existing "Add item" flow
 
-4. **Star icon**: Add a `Star` icon (from Lucide, already imported in the project) to the right of the toggle pill. Clicking it sets the current `viewMode` as the favorite:
-   - If current view is already the favorite → star is filled gold (`fill-amber-400 text-amber-400`)
-   - If not → star is outline only; clicking it saves current view as favorite
-   - Tooltip: "Set as default view"
+**Icon picker:**
+- Simple Select dropdown with the ~10 construction-relevant Lucide icons already imported (ClipboardList, Shovel, Home, Zap, Layers, Trees, Paintbrush, CookingPot, Wrench, CheckCircle2, Package)
 
-5. **UI placement** (after line ~571, inside the toggle `div`):
-```
-[Category] [Timeline] [★]
-```
-The star sits inside the same border container, separated by a thin divider.
-
-### Single file change
-- `src/components/budget/BudgetCanvas.tsx` — add ~15 lines for state, star button, and persistence logic
+### Files
+- `src/lib/budgetTimelinePhases.ts` — remove Phase 9, add phase config types and helpers
+- `src/components/budget/BudgetCanvas.tsx` — rename/delete/add phase UI
 
