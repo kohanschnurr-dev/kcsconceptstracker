@@ -19,7 +19,7 @@ export const TIMELINE_PHASES: TimelinePhase[] = [
     key: 'phase_2',
     label: 'Phase 2 — Site Work & Foundation',
     icon: Shovel,
-    categories: ['demolition', 'driveway_concrete', 'foundation_repair', 'drain_line_repair'],
+    categories: ['demolition', 'driveway_concrete', 'foundation_repair', 'foundation', 'drain_line_repair'],
   },
   {
     key: 'phase_3',
@@ -71,38 +71,99 @@ export const TIMELINE_PHASES: TimelinePhase[] = [
   },
 ];
 
-/** All category values claimed by a timeline phase */
-const PHASED_CATEGORIES = new Set(TIMELINE_PHASES.flatMap(p => p.categories));
+/** Custom phase overrides: maps phase key -> ordered category value array */
+export type TimelineCustomization = Record<string, string[]>;
+
+export const TIMELINE_CUSTOM_STORAGE_KEY = 'budget-timeline-custom';
+
+/** All category values claimed by a timeline phase (default mapping) */
+const DEFAULT_PHASED_CATEGORIES = new Set(TIMELINE_PHASES.flatMap(p => p.categories));
 
 /**
  * Build timeline groups from the same categories used by the category view.
- * Returns the same shape as buildBudgetCalcGroups so the rendering loop is identical.
+ * Accepts optional customizations that override phase membership and order.
  */
-export function buildTimelineGroups(categories: CategoryItem[]) {
+export function buildTimelineGroups(
+  categories: CategoryItem[],
+  customization?: TimelineCustomization
+) {
   const categoryValues = new Set(categories.map(c => c.value));
+  const assignedByCustom = new Set<string>();
 
   const groups = TIMELINE_PHASES
-    .map(phase => ({
-      key: phase.key,
-      name: phase.label,
-      icon: phase.icon,
-      categories: phase.categories.filter(c => categoryValues.has(c)),
-    }))
+    .map(phase => {
+      // Use custom order if available, otherwise default
+      const phaseCategories = customization?.[phase.key]
+        ? customization[phase.key].filter(c => categoryValues.has(c))
+        : phase.categories.filter(c => categoryValues.has(c));
+
+      if (customization?.[phase.key]) {
+        phaseCategories.forEach(c => assignedByCustom.add(c));
+      }
+
+      return {
+        key: phase.key,
+        name: phase.label,
+        icon: phase.icon,
+        categories: phaseCategories,
+      };
+    })
     .filter(g => g.categories.length > 0);
+
+  // Build the set of all assigned categories across all phases
+  const allAssigned = new Set<string>();
+  groups.forEach(g => g.categories.forEach(c => allAssigned.add(c)));
 
   // Collect any categories not assigned to a phase into "Other"
   const unphased = categories
-    .filter(c => !PHASED_CATEGORIES.has(c.value))
+    .filter(c => !allAssigned.has(c.value))
     .map(c => c.value);
 
-  if (unphased.length > 0) {
+  // Apply custom order to Other if available
+  const otherCategories = customization?.['phase_other']
+    ? customization['phase_other'].filter(c => categoryValues.has(c) && !allAssigned.has(c))
+    : unphased;
+
+  // Also add any unphased items not captured by custom Other
+  if (customization?.['phase_other']) {
+    const otherSet = new Set(otherCategories);
+    unphased.forEach(c => {
+      if (!otherSet.has(c)) otherCategories.push(c);
+    });
+  }
+
+  if (otherCategories.length > 0) {
     groups.push({
       key: 'phase_other',
       name: 'Other',
       icon: Package,
-      categories: unphased,
+      categories: otherCategories,
     });
   }
 
   return groups;
+}
+
+/** Get all categories currently assigned to any phase (including custom) */
+export function getCategoriesInPhase(
+  phaseKey: string,
+  categories: CategoryItem[],
+  customization?: TimelineCustomization
+): string[] {
+  const groups = buildTimelineGroups(categories, customization);
+  return groups.find(g => g.key === phaseKey)?.categories || [];
+}
+
+/** Get all categories NOT in the given phase */
+export function getCategoriesNotInPhase(
+  phaseKey: string,
+  categories: CategoryItem[],
+  customization?: TimelineCustomization
+): { value: string; label: string }[] {
+  const groups = buildTimelineGroups(categories, customization);
+  const inPhase = new Set(groups.find(g => g.key === phaseKey)?.categories || []);
+  return categories
+    .filter(c => !inPhase.has(c.value))
+    .map(c => ({ value: c.value, label: c.label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }

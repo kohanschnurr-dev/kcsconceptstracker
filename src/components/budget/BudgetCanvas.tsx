@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { BudgetCategoryCard } from './BudgetCategoryCard';
 import {
   ChevronRight, ChevronsUpDown, ChevronsDownUp,
-  Settings, X, Plus, Eye, EyeOff
+  Settings, X, Plus, Eye, EyeOff, GripVertical, Minus
 } from 'lucide-react';
 import { getBudgetCalcCategories, buildBudgetCalcGroups, getAllGroupDefs } from '@/lib/budgetCalculatorCategories';
-import { buildTimelineGroups } from '@/lib/budgetTimelinePhases';
+import { buildTimelineGroups, getCategoriesNotInPhase, TIMELINE_CUSTOM_STORAGE_KEY, TimelineCustomization } from '@/lib/budgetTimelinePhases';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import { CategoryPreset, DEFAULT_CATEGORY_PRESETS, PRESETS_STORAGE_KEY } from '@/lib/budgetPresets';
 
@@ -31,7 +34,84 @@ interface BudgetCanvasProps {
   onRevealHandled?: () => void;
 }
 
+/** Sortable row for drag-reorder in timeline settings */
+function SortablePhaseItem({
+  id,
+  label,
+  isHidden,
+  onToggleVisibility,
+  onRemove,
+  isTimeline,
+}: {
+  id: string;
+  label: string;
+  isHidden: boolean;
+  onToggleVisibility: () => void;
+  onRemove: () => void;
+  isTimeline: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
 
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-2 px-2 py-2 rounded-md text-sm transition-colors",
+        isHidden
+          ? "text-muted-foreground bg-muted/20"
+          : "text-foreground bg-muted/10"
+      )}
+    >
+      {isTimeline && (
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-0.5 text-muted-foreground hover:text-foreground touch-none"
+          tabIndex={-1}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
+      )}
+      <span className={cn("flex-1", isHidden && "line-through opacity-50")}>
+        {label}
+      </span>
+      <button
+        onClick={onToggleVisibility}
+        className="p-1 rounded hover:bg-muted/30 transition-colors"
+      >
+        {isHidden ? (
+          <EyeOff className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <Eye className="h-4 w-4 text-primary" />
+        )}
+      </button>
+      {isTimeline && (
+        <button
+          onClick={onRemove}
+          className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+          title="Remove from this phase"
+        >
+          <Minus className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled, autoRevealCategory, onRevealHandled }: BudgetCanvasProps) {
   const { user } = useAuth();
@@ -59,6 +139,15 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     return new Set<string>();
   });
 
+  // Timeline customization state
+  const [timelineCustom, setTimelineCustom] = useState<TimelineCustomization>(() => {
+    try {
+      const raw = localStorage.getItem(TIMELINE_CUSTOM_STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {};
+  });
+
   // Group settings dialog state
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
@@ -66,12 +155,26 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   const [groupEditingPresets, setGroupEditingPresets] = useState<CategoryPreset[]>([]);
   const [groupNewCategoryValue, setGroupNewCategoryValue] = useState<string>('');
 
-  const dynamicGroups = useMemo(() => buildBudgetCalcGroups(getBudgetCalcCategories()), [getBudgetCalcCategories]);
-  const timelineGroups = useMemo(() => buildTimelineGroups(getBudgetCalcCategories()), [getBudgetCalcCategories]);
+  // Timeline settings drafts
+  const [phaseCategoriesDraft, setPhaseCategoriesDraft] = useState<string[]>([]);
+  const [addItemValue, setAddItemValue] = useState<string>('');
+
+  const allCategories = useMemo(() => getBudgetCalcCategories(), []);
+  const dynamicGroups = useMemo(() => buildBudgetCalcGroups(allCategories), [allCategories]);
+  const timelineGroups = useMemo(
+    () => buildTimelineGroups(allCategories, Object.keys(timelineCustom).length > 0 ? timelineCustom : undefined),
+    [allCategories, timelineCustom]
+  );
   const displayGroups = viewMode === 'timeline' ? timelineGroups : dynamicGroups;
   const allGroupNames = displayGroups.map(g => g.name);
   const allExpanded = allGroupNames.every(name => openGroups.includes(name));
   const presetCategories = new Set(presets.map(p => p.category));
+
+  // dnd-kit sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
 
   const handleViewModeChange = (mode: 'category' | 'timeline') => {
     setViewMode(mode);
@@ -89,12 +192,10 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   // Auto-reveal a specific category (unhide it and expand its parent group)
   useEffect(() => {
     if (!autoRevealCategory) return;
-    // Find the group containing this category
     const parentGroup = dynamicGroups.find(g => g.categories.includes(autoRevealCategory));
     if (parentGroup) {
       setOpenGroups(prev => prev.includes(parentGroup.name) ? prev : [...prev, parentGroup.name]);
     }
-    // Unhide the category
     setHiddenCategories(prev => {
       if (!prev.has(autoRevealCategory)) return prev;
       const next = new Set(prev);
@@ -105,7 +206,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     onRevealHandled?.();
   }, [autoRevealCategory]);
 
-  // Load presets from database on mount, fall back to localStorage for migration
+  // Load presets from database on mount
   useEffect(() => {
     if (!user || dbLoadedRef.current) return;
 
@@ -124,7 +225,6 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           setPresets(normalized);
           localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(normalized));
         } else {
-          // Migration: check localStorage for existing presets
           const stored = localStorage.getItem(PRESETS_STORAGE_KEY);
           if (stored) {
             try {
@@ -132,7 +232,6 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
               if (Array.isArray(parsed) && parsed.length > 0) {
                 const normalized = parsed.map((p: any) => ({ ...p, mode: p.mode || 'psf' }));
                 setPresets(normalized);
-                // Migrate to database
                 await supabase
                   .from('profiles')
                   .update({ budget_presets: normalized } as any)
@@ -155,9 +254,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   // Auto-calculate presets when sqft changes
   useEffect(() => {
     const sqftNum = parseFloat(sqft) || 0;
-    const prevSqftNum = parseFloat(prevSqftRef.current) || 0;
 
-    // Only auto-calculate if sqft actually changed, is > 0, and no baseline is active
     if (sqftNum > 0 && sqft !== prevSqftRef.current) {
       presets.forEach(preset => {
         const calculated = preset.mode === 'flat'
@@ -228,16 +325,12 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
 
   const addPreset = () => {
     if (!newCategoryValue) return;
-
-    // Check if already exists
     if (editingPresets.some(p => p.category === newCategoryValue)) {
       toast.error('Category already in presets');
       return;
     }
-
-    const catInfo = getBudgetCalcCategories().find(c => c.value === newCategoryValue);
+    const catInfo = allCategories.find(c => c.value === newCategoryValue);
     if (!catInfo) return;
-
     setEditingPresets(prev => [...prev, {
       category: newCategoryValue,
       label: catInfo.label,
@@ -255,6 +348,12 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     setGroupHiddenDraft(new Set(hiddenCategories));
     setGroupEditingPresets([...presets]);
     setGroupNewCategoryValue('');
+    setAddItemValue('');
+
+    // Initialize phase categories draft from current display
+    const group = displayGroups.find(g => g.key === groupKey);
+    setPhaseCategoriesDraft(group?.categories ? [...group.categories] : []);
+
     setIsGroupSettingsOpen(true);
   };
 
@@ -289,7 +388,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
       toast.error('Category already in presets');
       return;
     }
-    const catInfo = getBudgetCalcCategories().find(c => c.value === groupNewCategoryValue);
+    const catInfo = allCategories.find(c => c.value === groupNewCategoryValue);
     if (!catInfo) return;
     setGroupEditingPresets(prev => [...prev, {
       category: groupNewCategoryValue,
@@ -300,11 +399,65 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     setGroupNewCategoryValue('');
   };
 
+  // --- Timeline phase customization ---
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setPhaseCategoriesDraft(prev => {
+      const oldIndex = prev.indexOf(active.id as string);
+      const newIndex = prev.indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  };
+
+  const handleAddItemToPhase = () => {
+    if (!addItemValue || !activeGroupKey) return;
+    setPhaseCategoriesDraft(prev => [...prev, addItemValue]);
+    setAddItemValue('');
+  };
+
+  const handleRemoveFromPhase = (category: string) => {
+    setPhaseCategoriesDraft(prev => prev.filter(c => c !== category));
+  };
+
+  // Compute available items for "Add item" dropdown (items not in current phase draft)
+  const availableItemsForPhase = useMemo(() => {
+    if (!activeGroupKey || viewMode !== 'timeline') return [];
+    const inPhase = new Set(phaseCategoriesDraft);
+    return allCategories
+      .filter(c => !inPhase.has(c.value))
+      .map(c => ({ value: c.value, label: c.label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [activeGroupKey, phaseCategoriesDraft, allCategories, viewMode]);
+
   const handleSaveGroupSettings = async () => {
     setHiddenCategories(groupHiddenDraft);
     localStorage.setItem(HIDDEN_CATEGORIES_STORAGE_KEY, JSON.stringify([...groupHiddenDraft]));
     setPresets(groupEditingPresets);
     localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(groupEditingPresets));
+
+    // Save timeline customization if in timeline mode
+    if (viewMode === 'timeline' && activeGroupKey) {
+      const newCustom = { ...timelineCustom };
+
+      // Save this phase's custom category order
+      newCustom[activeGroupKey] = [...phaseCategoriesDraft];
+
+      // Clean up: remove items from other phases' custom lists if they were moved here
+      const movedHere = new Set(phaseCategoriesDraft);
+      Object.keys(newCustom).forEach(key => {
+        if (key !== activeGroupKey) {
+          newCustom[key] = newCustom[key].filter(c => !movedHere.has(c));
+          if (newCustom[key].length === 0) delete newCustom[key];
+        }
+      });
+
+      setTimelineCustom(newCustom);
+      localStorage.setItem(TIMELINE_CUSTOM_STORAGE_KEY, JSON.stringify(newCustom));
+    }
+
     setIsGroupSettingsOpen(false);
 
     if (user) {
@@ -324,7 +477,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   };
 
   const getCategoryLabel = (categoryValue: string) => {
-    const cat = getBudgetCalcCategories().find(c => c.value === categoryValue);
+    const cat = allCategories.find(c => c.value === categoryValue);
     return cat?.label || categoryValue.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
@@ -354,19 +507,21 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   const sqftNum = parseFloat(sqft) || 0;
 
   // Categories available to add (not already in presets)
-  const availableCategories = getBudgetCalcCategories().filter(
+  const availableCategories = allCategories.filter(
     cat => !editingPresets.some(p => p.category === cat.value)
   ).sort((a, b) => a.label.localeCompare(b.label));
 
   // Active group data for group settings dialog
   const activeGroup = displayGroups.find(g => g.key === activeGroupKey);
-  const activeGroupCategories = activeGroup?.categories || [];
+  const activeGroupCategories = viewMode === 'timeline' ? phaseCategoriesDraft : (activeGroup?.categories || []);
   const activeGroupName = activeGroup?.name || '';
   const groupPresetsForActive = groupEditingPresets.filter(p => activeGroupCategories.includes(p.category));
   const groupAvailableForPreset = activeGroupCategories
     .filter(cat => !groupEditingPresets.some(p => p.category === cat))
     .map(cat => ({ value: cat, label: getCategoryLabel(cat) }))
     .sort((a, b) => a.label.localeCompare(b.label));
+
+  const isTimelineSettings = viewMode === 'timeline';
 
   return (
     <div>
@@ -428,7 +583,6 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Column headers */}
             <div className="grid grid-cols-[1fr,80px,100px,40px] gap-2 text-sm font-medium text-muted-foreground">
               <span>Category</span>
               <span>Mode</span>
@@ -436,7 +590,6 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
               <span></span>
             </div>
 
-            {/* Preset rows */}
             {editingPresets.map((preset, index) => (
               <div key={preset.category} className="grid grid-cols-[1fr,80px,100px,40px] gap-2 items-center">
                 <span className="text-sm">{preset.label}</span>
@@ -474,7 +627,6 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
               </p>
             )}
 
-            {/* Add new category */}
             <div className="pt-2 border-t border-border/30">
               <p className="text-sm font-medium text-muted-foreground mb-2">Add Category</p>
               <div className="flex gap-2">
@@ -521,7 +673,10 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           <DialogHeader>
             <DialogTitle>{activeGroupName} Settings</DialogTitle>
             <DialogDescription>
-              Toggle visibility of line items and configure $/sqft presets for {activeGroupName}.
+              {isTimelineSettings
+                ? `Reorder, add, or remove items in this phase. Toggle visibility and configure presets.`
+                : `Toggle visibility of line items and configure $/sqft presets for ${activeGroupName}.`
+              }
             </DialogDescription>
           </DialogHeader>
 
@@ -577,7 +732,6 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
                 </p>
               )}
 
-              {/* Add preset for a category in this group */}
               {groupAvailableForPreset.length > 0 && (
                 <div className="pt-3 border-t border-border/30 mt-3">
                   <p className="text-xs text-muted-foreground mb-2">Add preset</p>
@@ -609,35 +763,98 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
               )}
             </div>
 
-            {/* Section 2: Visibility */}
+            {/* Section 2: Items in this phase (with drag reorder in timeline mode) */}
             <div>
-              <p className="text-sm font-semibold mb-3">Show / Hide Items</p>
-              <div className="space-y-1">
-                {activeGroupCategories.map(cat => {
-                  const isHidden = groupHiddenDraft.has(cat);
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => toggleCategoryVisibility(cat)}
-                      className={cn(
-                        "w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors",
-                        isHidden
-                          ? "text-muted-foreground bg-muted/20 hover:bg-muted/40"
-                          : "text-foreground bg-muted/10 hover:bg-muted/30"
-                      )}
+              <p className="text-sm font-semibold mb-3">
+                {isTimelineSettings ? 'Items in this phase' : 'Show / Hide Items'}
+              </p>
+              {isTimelineSettings ? (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext items={phaseCategoriesDraft} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-1">
+                      {phaseCategoriesDraft.map(cat => (
+                        <SortablePhaseItem
+                          key={cat}
+                          id={cat}
+                          label={getCategoryLabel(cat)}
+                          isHidden={groupHiddenDraft.has(cat)}
+                          onToggleVisibility={() => toggleCategoryVisibility(cat)}
+                          onRemove={() => handleRemoveFromPhase(cat)}
+                          isTimeline={true}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <div className="space-y-1">
+                  {activeGroupCategories.map(cat => {
+                    const isHidden = groupHiddenDraft.has(cat);
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => toggleCategoryVisibility(cat)}
+                        className={cn(
+                          "w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors",
+                          isHidden
+                            ? "text-muted-foreground bg-muted/20 hover:bg-muted/40"
+                            : "text-foreground bg-muted/10 hover:bg-muted/30"
+                        )}
+                      >
+                        <span className={cn(isHidden && "line-through opacity-50")}>
+                          {getCategoryLabel(cat)}
+                        </span>
+                        {isHidden ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-primary" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add item from another phase (timeline only) */}
+              {isTimelineSettings && availableItemsForPhase.length > 0 && (
+                <div className="pt-3 border-t border-border/30 mt-3">
+                  <p className="text-xs text-muted-foreground mb-2">Add item from another phase</p>
+                  <div className="flex gap-2">
+                    <Select value={addItemValue} onValueChange={setAddItemValue}>
+                      <SelectTrigger className="flex-1 h-9">
+                        <SelectValue placeholder="Select item..." />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[200px]">
+                        {availableItemsForPhase.map(cat => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddItemToPhase}
+                      disabled={!addItemValue}
+                      className="h-9"
                     >
-                      <span className={cn(isHidden && "line-through opacity-50")}>
-                        {getCategoryLabel(cat)}
-                      </span>
-                      {isHidden ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-primary" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {phaseCategoriesDraft.length === 0 && isTimelineSettings && (
+                <p className="text-sm text-muted-foreground italic mt-2">
+                  No items in this phase. Add items from the dropdown above.
+                </p>
+              )}
             </div>
           </div>
 
@@ -661,8 +878,6 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           const isOpen = openGroups.includes(group.name);
           const hasValue = groupTotal > 0;
           const hiddenCount = groupCategories.length - visibleCategories.length;
-
-          // Empty built-in groups are already filtered out by buildBudgetCalcGroups
 
           return (
             <Collapsible
