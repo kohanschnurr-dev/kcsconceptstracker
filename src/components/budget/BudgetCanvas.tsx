@@ -789,7 +789,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
       <Dialog open={isGroupSettingsOpen} onOpenChange={setIsGroupSettingsOpen}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader>
-            <DialogTitle>{activeGroupName} Settings</DialogTitle>
+            <DialogTitle>{isTimelineSettings ? phaseRenameDraft || activeGroupName : activeGroupName} Settings</DialogTitle>
             <DialogDescription>
               {isTimelineSettings
                 ? `Reorder, add, or remove items in this phase. Toggle visibility and configure presets.`
@@ -799,6 +799,19 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-6 py-2 -mx-6 px-6">
+            {/* Phase rename (timeline only) */}
+            {isTimelineSettings && activeGroupKey !== 'phase_other' && (
+              <div>
+                <p className="text-sm font-semibold mb-2">Phase Name</p>
+                <Input
+                  value={phaseRenameDraft}
+                  onChange={(e) => setPhaseRenameDraft(e.target.value)}
+                  placeholder="Phase name..."
+                  className="h-9"
+                />
+              </div>
+            )}
+
             {/* Section 1: Presets for this group */}
             <div>
               <p className="text-sm font-semibold mb-3">Presets</p>
