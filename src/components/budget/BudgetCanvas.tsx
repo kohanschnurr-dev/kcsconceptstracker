@@ -5,7 +5,7 @@ import {
   Settings, X, Plus, Eye, EyeOff, GripVertical, Minus, Star
 } from 'lucide-react';
 import { getBudgetCalcCategories, buildBudgetCalcGroups, getAllGroupDefs } from '@/lib/budgetCalculatorCategories';
-import { buildTimelineGroups, getCategoriesNotInPhase, TIMELINE_CUSTOM_STORAGE_KEY, TimelineCustomization } from '@/lib/budgetTimelinePhases';
+import { buildTimelineGroups, getCategoriesNotInPhase, TIMELINE_CUSTOM_STORAGE_KEY, PHASE_CONFIG_STORAGE_KEY, TimelineCustomization, TimelinePhaseConfig, PhaseOverride, ICON_MAP, ICON_OPTIONS, getIconByName, getEffectivePhases, TIMELINE_PHASES } from '@/lib/budgetTimelinePhases';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
