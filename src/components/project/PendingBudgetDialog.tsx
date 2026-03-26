@@ -53,7 +53,7 @@ export function PendingBudgetDialog({ projectId, pendingBudget, existingCategori
     getBudgetCategories().find(b => b.value === value)?.label || value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
   const existingMap = new Map(existingCategories.map(c => [c.category, c]));
-  const entries = Object.entries(pendingBudget.category_budgets);
+  const entries = Object.entries(pendingBudget.category_budgets || {});
 
   const handleAccept = async () => {
     setIsAccepting(true);

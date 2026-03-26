@@ -2205,6 +2205,7 @@ export type Database = {
         | "security_alarm"
         | "trims"
         | "loan_costs"
+        | "architect"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer" | "financed"
       pricing_model: "flat" | "hourly"
@@ -2470,6 +2471,7 @@ export const Constants = {
         "security_alarm",
         "trims",
         "loan_costs",
+        "architect",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer", "financed"],
