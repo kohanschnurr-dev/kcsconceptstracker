@@ -5,6 +5,7 @@ import {
   Settings, X, Plus, Eye, EyeOff
 } from 'lucide-react';
 import { getBudgetCalcCategories, buildBudgetCalcGroups, getAllGroupDefs } from '@/lib/budgetCalculatorCategories';
+import { buildTimelineGroups } from '@/lib/budgetTimelinePhases';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,13 @@ interface BudgetCanvasProps {
 
 export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled, autoRevealCategory, onRevealHandled }: BudgetCanvasProps) {
   const { user } = useAuth();
+  const [viewMode, setViewMode] = useState<'category' | 'timeline'>(() => {
+    try {
+      const saved = localStorage.getItem('budget-view-mode');
+      if (saved === 'timeline') return 'timeline';
+    } catch {}
+    return 'category';
+  });
   const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [presets, setPresets] = useState<CategoryPreset[]>(DEFAULT_CATEGORY_PRESETS);
   const [editingPresets, setEditingPresets] = useState<CategoryPreset[]>([]);
@@ -59,9 +67,16 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   const [groupNewCategoryValue, setGroupNewCategoryValue] = useState<string>('');
 
   const dynamicGroups = useMemo(() => buildBudgetCalcGroups(getBudgetCalcCategories()), [getBudgetCalcCategories]);
-  const allGroupNames = dynamicGroups.map(g => g.name);
+  const timelineGroups = useMemo(() => buildTimelineGroups(getBudgetCalcCategories()), [getBudgetCalcCategories]);
+  const displayGroups = viewMode === 'timeline' ? timelineGroups : dynamicGroups;
+  const allGroupNames = displayGroups.map(g => g.name);
   const allExpanded = allGroupNames.every(name => openGroups.includes(name));
   const presetCategories = new Set(presets.map(p => p.category));
+
+  const handleViewModeChange = (mode: 'category' | 'timeline') => {
+    setViewMode(mode);
+    localStorage.setItem('budget-view-mode', mode);
+  };
 
   // Auto-expand all groups when expandAll is triggered
   useEffect(() => {
@@ -344,7 +359,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   ).sort((a, b) => a.label.localeCompare(b.label));
 
   // Active group data for group settings dialog
-  const activeGroup = dynamicGroups.find(g => g.key === activeGroupKey);
+  const activeGroup = displayGroups.find(g => g.key === activeGroupKey);
   const activeGroupCategories = activeGroup?.categories || [];
   const activeGroupName = activeGroup?.name || '';
   const groupPresetsForActive = groupEditingPresets.filter(p => activeGroupCategories.includes(p.category));
@@ -356,7 +371,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   return (
     <div>
       <div className="flex items-center justify-between mb-2 gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={toggleAll}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -373,6 +388,32 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
               </>
             )}
           </button>
+
+          {/* View mode toggle */}
+          <div className="flex items-center rounded-md border border-border/50 overflow-hidden">
+            <button
+              onClick={() => handleViewModeChange('category')}
+              className={cn(
+                "px-3 py-1 text-xs font-medium transition-colors",
+                viewMode === 'category'
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              Category
+            </button>
+            <button
+              onClick={() => handleViewModeChange('timeline')}
+              className={cn(
+                "px-3 py-1 text-xs font-medium transition-colors",
+                viewMode === 'timeline'
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              Timeline
+            </button>
+          </div>
         </div>
       </div>
 
@@ -611,8 +652,8 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {dynamicGroups.map((group) => {
+      <div key={viewMode} className="grid grid-cols-1 md:grid-cols-2 gap-2 animate-in fade-in-0 duration-200">
+        {displayGroups.map((group) => {
           const GroupIcon = group.icon;
           const groupCategories = group.categories;
           const visibleCategories = groupCategories.filter(cat => !hiddenCategories.has(cat));
