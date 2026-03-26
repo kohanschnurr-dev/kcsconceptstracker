@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { BudgetCategoryCard } from './BudgetCategoryCard';
 import {
   ChevronRight, ChevronsUpDown, ChevronsDownUp,
-  Settings, X, Plus, Eye, EyeOff, GripVertical, Minus
+  Settings, X, Plus, Eye, EyeOff, GripVertical, Minus, Star
 } from 'lucide-react';
 import { getBudgetCalcCategories, buildBudgetCalcGroups, getAllGroupDefs } from '@/lib/budgetCalculatorCategories';
 import { buildTimelineGroups, getCategoriesNotInPhase, TIMELINE_CUSTOM_STORAGE_KEY, TimelineCustomization } from '@/lib/budgetTimelinePhases';
@@ -115,9 +115,16 @@ function SortablePhaseItem({
 
 export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled, autoRevealCategory, onRevealHandled }: BudgetCanvasProps) {
   const { user } = useAuth();
+  const [favoriteMode, setFavoriteMode] = useState<'category' | 'timeline'>(() => {
+    try {
+      const saved = localStorage.getItem('budget-view-mode-favorite');
+      if (saved === 'timeline') return 'timeline';
+    } catch {}
+    return 'category';
+  });
   const [viewMode, setViewMode] = useState<'category' | 'timeline'>(() => {
     try {
-      const saved = localStorage.getItem('budget-view-mode');
+      const saved = localStorage.getItem('budget-view-mode-favorite');
       if (saved === 'timeline') return 'timeline';
     } catch {}
     return 'category';
@@ -566,7 +573,27 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               )}
             >
-              Timeline
+             Timeline
+            </button>
+            <div className="w-px bg-border" />
+            <button
+              onClick={() => {
+                setFavoriteMode(viewMode);
+                localStorage.setItem('budget-view-mode-favorite', viewMode);
+                toast.success(`${viewMode === 'timeline' ? 'Timeline' : 'Category'} set as default view`);
+              }}
+              title="Set as default view"
+              className="px-2 py-1 transition-colors hover:bg-accent/50"
+            >
+              <Star
+                size={14}
+                className={cn(
+                  "transition-colors",
+                  viewMode === favoriteMode
+                    ? "fill-amber-400 text-amber-400"
+                    : "text-muted-foreground"
+                )}
+              />
             </button>
           </div>
         </div>
