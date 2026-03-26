@@ -235,7 +235,7 @@ export function TemplatePicker({ onSelectTemplate, onCreateNew, currentTemplateN
     if (template.sqft) lines.push(`Sqft\t${template.sqft.toLocaleString()}`);
     lines.push('', 'Category\tBudget');
     const entries = Object.entries(template.category_budgets)
-      .filter(([k, v]) => k !== '_meta' && k !== 'rehab_filler' && (v as number) > 0)
+      .filter(([k, v]) => k !== '_meta' && (v as number) > 0)
       .map(([k, v]) => {
         const found = cats.find(c => c.value === k);
         const label = found ? found.label : k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
