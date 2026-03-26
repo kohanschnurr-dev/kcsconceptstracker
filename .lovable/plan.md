@@ -1,45 +1,32 @@
 
 
-## Plan: Fix Save Budget Error + Timeline Phase Movement
+## Plan: Fix Enum Registration Before Project Category Insert
 
-### Two Issues
+### Problem
+When creating a project with a saved budget template (e.g. "Farmers Branch Flip"), the template's `category_budgets` JSONB may contain custom categories like "architect" that aren't registered in the `budget_category` Postgres enum. The code inserts all categories from `getBudgetCategories()` into `project_categories` — if any of those include custom categories not yet in the enum, Postgres rejects the insert.
 
-**Issue 1 — Save Budget fails with "column total_budget can only be updated to DEFAULT"**
-The `total_budget` column on `budget_templates` is a `GENERATED ALWAYS` column that only sums 22 hardcoded legacy categories. Postgres forbids writing to it. The frontend sends `total_budget` in both insert and update payloads (line 426 of BudgetCalculator.tsx), causing the error.
+### Root Cause
+`getBudgetCategories()` pulls from the user's custom category list (which may include "architect", etc.), but the code never calls `add_budget_category` RPC to register those values in the enum before inserting rows into `project_categories`.
 
-**Issue 2 — Moving categories between timeline phases doesn't work**
-In `handleSaveGroupSettings` (BudgetCanvas.tsx line 518), the cleanup loop only checks `Object.keys(newCustom)` — phases that already have custom overrides. Default phases like "Other" are invisible to this loop, so moved categories stay duplicated in their original phase.
+### Fix
 
-### Changes
+**File: `src/components/NewProjectModal.tsx`** — before the `project_categories` insert (~line 127)
 
-#### 1. Database migration
-- Drop the generated `total_budget` column from `budget_templates`
-- Re-add it as a normal `NUMERIC` column with a default of 0
-- Backfill all existing rows by summing all numeric values in `category_budgets` (excluding the `_meta` key), so templates like "Farmers Branch Flip" immediately show correct totals
+Add a loop that registers every category value via the existing `add_budget_category` RPC before inserting:
 
-#### 2. BudgetCalculator.tsx (~line 426)
-- Keep computing `totalBudget` client-side and sending it in the payload — once the column is no longer generated, this will work correctly and ensure the stored value always matches the actual sum
-
-#### 3. BudgetCanvas.tsx (~lines 516-523)
-Replace the cleanup loop:
-```
-Object.keys(newCustom).forEach(key => { ... })
-```
-With a loop over ALL effective phases using `timelineGroups`:
-```
-for (const group of timelineGroups) {
-  if (group.key === activeGroupKey) continue;
-  const existing = newCustom[group.key] || group.categories;
-  if (existing.some(c => movedHere.has(c))) {
-    newCustom[group.key] = existing.filter(c => !movedHere.has(c));
-    if (newCustom[group.key].length === 0) delete newCustom[group.key];
-  }
+```typescript
+// Register all categories in the enum (handles custom ones)
+const allCats = getBudgetCategories();
+for (const cat of allCats) {
+  await supabase.rpc('add_budget_category', { new_value: cat.value });
 }
 ```
-This ensures that when a category is moved to a new phase, it is removed from its source phase even if that source had no prior custom override. Removed categories go to Other (they become unassigned and fall through to the Other bucket automatically).
+
+This is the same pattern already used elsewhere in the app (CSV imports, QuickBooks reconciliation, category management) per the project's existing convention documented in memory.
+
+### Defensive Layer
+Also add the same registration step when applying a saved budget template — iterate the keys of `selectedTemplate.category_budgets` (excluding `_meta`) and register each one. This covers cases where the template contains categories the user hasn't added to their local list yet.
 
 ### Files touched
-- New migration SQL file
-- `src/pages/BudgetCalculator.tsx` (no change needed if migration succeeds — payload stays the same)
-- `src/components/budget/BudgetCanvas.tsx` (~10 lines changed)
+- `src/components/NewProjectModal.tsx` (~5 lines added)
 
