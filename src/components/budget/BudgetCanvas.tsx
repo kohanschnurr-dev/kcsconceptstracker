@@ -155,6 +155,15 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     return {};
   });
 
+  // Phase config state (renames, deletions, additions)
+  const [phaseConfig, setPhaseConfig] = useState<TimelinePhaseConfig>(() => {
+    try {
+      const raw = localStorage.getItem(PHASE_CONFIG_STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { overrides: [], deleted: [] };
+  });
+
   // Group settings dialog state
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
@@ -165,12 +174,23 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   // Timeline settings drafts
   const [phaseCategoriesDraft, setPhaseCategoriesDraft] = useState<string[]>([]);
   const [addItemValue, setAddItemValue] = useState<string>('');
+  const [phaseRenameDraft, setPhaseRenameDraft] = useState<string>('');
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  // Add Phase dialog state
+  const [isAddPhaseOpen, setIsAddPhaseOpen] = useState(false);
+  const [newPhaseName, setNewPhaseName] = useState('');
+  const [newPhaseIcon, setNewPhaseIcon] = useState('Package');
 
   const allCategories = useMemo(() => getBudgetCalcCategories(), []);
   const dynamicGroups = useMemo(() => buildBudgetCalcGroups(allCategories), [allCategories]);
   const timelineGroups = useMemo(
-    () => buildTimelineGroups(allCategories, Object.keys(timelineCustom).length > 0 ? timelineCustom : undefined),
-    [allCategories, timelineCustom]
+    () => buildTimelineGroups(
+      allCategories,
+      Object.keys(timelineCustom).length > 0 ? timelineCustom : undefined,
+      phaseConfig
+    ),
+    [allCategories, timelineCustom, phaseConfig]
   );
   const displayGroups = viewMode === 'timeline' ? timelineGroups : dynamicGroups;
   const allGroupNames = displayGroups.map(g => g.name);
