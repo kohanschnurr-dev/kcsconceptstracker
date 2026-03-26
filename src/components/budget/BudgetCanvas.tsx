@@ -35,6 +35,13 @@ interface BudgetCanvasProps {
 
 export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled, autoRevealCategory, onRevealHandled }: BudgetCanvasProps) {
   const { user } = useAuth();
+  const [viewMode, setViewMode] = useState<'category' | 'timeline'>(() => {
+    try {
+      const saved = localStorage.getItem('budget-view-mode');
+      if (saved === 'timeline') return 'timeline';
+    } catch {}
+    return 'category';
+  });
   const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [presets, setPresets] = useState<CategoryPreset[]>(DEFAULT_CATEGORY_PRESETS);
   const [editingPresets, setEditingPresets] = useState<CategoryPreset[]>([]);
@@ -60,9 +67,16 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   const [groupNewCategoryValue, setGroupNewCategoryValue] = useState<string>('');
 
   const dynamicGroups = useMemo(() => buildBudgetCalcGroups(getBudgetCalcCategories()), [getBudgetCalcCategories]);
-  const allGroupNames = dynamicGroups.map(g => g.name);
+  const timelineGroups = useMemo(() => buildTimelineGroups(getBudgetCalcCategories()), [getBudgetCalcCategories]);
+  const displayGroups = viewMode === 'timeline' ? timelineGroups : dynamicGroups;
+  const allGroupNames = displayGroups.map(g => g.name);
   const allExpanded = allGroupNames.every(name => openGroups.includes(name));
   const presetCategories = new Set(presets.map(p => p.category));
+
+  const handleViewModeChange = (mode: 'category' | 'timeline') => {
+    setViewMode(mode);
+    localStorage.setItem('budget-view-mode', mode);
+  };
 
   // Auto-expand all groups when expandAll is triggered
   useEffect(() => {
