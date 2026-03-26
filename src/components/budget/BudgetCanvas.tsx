@@ -5,6 +5,7 @@ import {
   Settings, X, Plus, Eye, EyeOff
 } from 'lucide-react';
 import { getBudgetCalcCategories, buildBudgetCalcGroups, getAllGroupDefs } from '@/lib/budgetCalculatorCategories';
+import { buildTimelineGroups } from '@/lib/budgetTimelinePhases';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
