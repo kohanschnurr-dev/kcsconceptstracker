@@ -524,6 +524,23 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
 
       setTimelineCustom(newCustom);
       localStorage.setItem(TIMELINE_CUSTOM_STORAGE_KEY, JSON.stringify(newCustom));
+
+      // Save phase rename if changed
+      if (phaseRenameDraft && phaseRenameDraft !== activeGroup?.name) {
+        const existingOverrides = (phaseConfig.overrides || []).filter(o => o.key !== activeGroupKey);
+        // Find current icon name
+        const currentOverride = (phaseConfig.overrides || []).find(o => o.key === activeGroupKey);
+        const defaultPhase = TIMELINE_PHASES.find(p => p.key === activeGroupKey);
+        const iconName = currentOverride?.iconName ||
+          Object.entries(ICON_MAP).find(([, icon]) => icon === defaultPhase?.icon)?.[0] || 'Package';
+
+        const newConfig: TimelinePhaseConfig = {
+          overrides: [...existingOverrides, { key: activeGroupKey, label: phaseRenameDraft, iconName }],
+          deleted: phaseConfig.deleted || [],
+        };
+        setPhaseConfig(newConfig);
+        localStorage.setItem(PHASE_CONFIG_STORAGE_KEY, JSON.stringify(newConfig));
+      }
     }
 
     setIsGroupSettingsOpen(false);
