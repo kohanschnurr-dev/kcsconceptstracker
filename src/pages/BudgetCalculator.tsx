@@ -423,6 +423,7 @@ export default function BudgetCalculator() {
         arv: parseFloat(arv) || 0,
         sqft: parseInt(sqft) || null,
         category_budgets: categoryBudgetsObj,
+        total_budget: totalBudget,
       };
 
       // Check if a template with this name already exists for this user
