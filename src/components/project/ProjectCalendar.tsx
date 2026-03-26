@@ -28,6 +28,8 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [quickCreateDate, setQuickCreateDate] = useState<Date | undefined>();
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
 
@@ -203,13 +205,17 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
               <div
                 key={dayKey}
                 className={cn(
-                  'min-h-[60px] sm:min-h-[100px] p-0.5 sm:p-2 rounded border transition-colors',
+                  'min-h-[60px] sm:min-h-[100px] p-0.5 sm:p-2 rounded border transition-colors cursor-pointer',
                   isCurrentMonth
                     ? 'bg-card/50 border-border'
                     : 'bg-background/50 border-border/50',
                   isToday(day) && 'ring-1 ring-primary/50',
                   isExpanded && 'ring-1 ring-primary/50'
                 )}
+                onClick={() => {
+                  setQuickCreateDate(day);
+                  setTimeout(() => setQuickCreateOpen(true), 0);
+                }}
               >
                 <button
                   onClick={() => {
@@ -294,6 +300,15 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
           </div>
         )}
       </CardContent>
+
+      <NewEventModal
+        projects={[{ id: projectId, name: projectName, address: projectAddress }]}
+        onEventCreated={fetchEvents}
+        defaultProjectId={projectId}
+        externalOpen={quickCreateOpen}
+        onExternalOpenChange={setQuickCreateOpen}
+        defaultStartDate={quickCreateDate}
+      />
 
       <TaskDetailPanel
         task={selectedTask}
