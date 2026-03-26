@@ -513,14 +513,16 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
       // Save this phase's custom category order
       newCustom[activeGroupKey] = [...phaseCategoriesDraft];
 
-      // Clean up: remove items from other phases' custom lists if they were moved here
+      // Clean up: remove items from ALL phases (including defaults without custom overrides)
       const movedHere = new Set(phaseCategoriesDraft);
-      Object.keys(newCustom).forEach(key => {
-        if (key !== activeGroupKey) {
-          newCustom[key] = newCustom[key].filter(c => !movedHere.has(c));
-          if (newCustom[key].length === 0) delete newCustom[key];
+      for (const group of timelineGroups) {
+        if (group.key === activeGroupKey) continue;
+        const existing = newCustom[group.key] || group.categories;
+        if (existing.some(c => movedHere.has(c))) {
+          newCustom[group.key] = existing.filter(c => !movedHere.has(c));
+          if (newCustom[group.key].length === 0) delete newCustom[group.key];
         }
-      });
+      }
 
       setTimelineCustom(newCustom);
       localStorage.setItem(TIMELINE_CUSTOM_STORAGE_KEY, JSON.stringify(newCustom));
