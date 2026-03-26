@@ -116,7 +116,7 @@ Identify All Data: Scan the entire document. Do not summarize; extract every lin
 
 Date: Convert to MM/DD/YYYY.
 
-Category: Map each expense to exactly one of these: Appliances, Bathroom, Cabinets, Cleaning, Closing Costs, Concrete, Countertops, Demolition, Doors, Drain Line Repair, Drywall, Electrical, Exterior Finish, Fencing, Filler, Final Punch, Flooring, Food, Foundation, Framing, Garage, Gas, Hardware, HOA, HVAC, Inspections, Insulation, Insurance, Kitchen, Landscaping, Light Fixtures, Main Bathroom, Misc., Painting, Permits, Pest Control, Plumbing, Pool, Railing, Roofing, Staging, Taxes, Tile, Trash Hauling, Trims, Utilities, Variable, Water Heater, Wholesale Fee, Windows.
+Category: Map each expense to exactly one of these: Appliances, Bathroom, Cabinets, Cleaning, Closing Costs, Concrete, Countertops, Demolition, Doors, Drain Line Repair, Drywall, Electrical, Exterior Finish, Fencing, Contingency, Final Punch, Flooring, Food, Foundation, Framing, Garage, Gas, Hardware, HOA, HVAC, Inspections, Insulation, Insurance, Kitchen, Landscaping, Light Fixtures, Main Bathroom, Misc., Painting, Permits, Pest Control, Plumbing, Pool, Railing, Roofing, Staging, Taxes, Tile, Trash Hauling, Trims, Utilities, Variable, Water Heater, Wholesale Fee, Windows.
 
 Expense Type: Use 'product' for materials/retailers or 'labor' for contractors/service providers.
 

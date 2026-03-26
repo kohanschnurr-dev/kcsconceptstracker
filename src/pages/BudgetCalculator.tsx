@@ -246,7 +246,7 @@ export default function BudgetCalculator() {
     if (fillerAmount > 0) {
       setAutoRevealCategory('rehab_filler');
       const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format;
-      toast.success(`Budget set to ${fmt(target)} — ${fmt(fillerAmount)} allocated to Filler`);
+      toast.success(`Budget set to ${fmt(target)} — ${fmt(fillerAmount)} allocated to Contingency`);
     }
   };
 
