@@ -1,5 +1,5 @@
 import { CategoryItem } from '@/hooks/useCustomCategories';
-import { LucideIcon, ClipboardList, Shovel, Home, Zap, Layers, Trees, Paintbrush, CookingPot, Wrench, CheckCircle2, Package } from 'lucide-react';
+import { LucideIcon, ClipboardList, Shovel, Home, Zap, Layers, Trees, Paintbrush, CookingPot, Wrench, CheckCircle2, Package, Hammer, Ruler, Truck, HardHat, Warehouse } from 'lucide-react';
 
 export interface TimelinePhase {
   key: string;
@@ -59,25 +59,96 @@ export const TIMELINE_PHASES: TimelinePhase[] = [
   },
   {
     key: 'phase_9',
-    label: 'Phase 9 — Final Systems',
-    icon: Wrench,
-    categories: ['utilities'],
-  },
-  {
-    key: 'phase_10',
-    label: 'Phase 10 — Closeout',
+    label: 'Phase 9 — Closeout',
     icon: CheckCircle2,
-    categories: ['final_punch', 'cleaning', 'hoa', 'food', 'rehab_filler', 'misc', 'dumpsters_trash', 'pest_control', 'staging', 'taxes', 'variable', 'wholesale_fee'],
+    categories: ['utilities', 'final_punch', 'cleaning', 'hoa', 'food', 'rehab_filler', 'misc', 'dumpsters_trash', 'pest_control', 'staging', 'taxes', 'variable', 'wholesale_fee'],
   },
 ];
+
+/** Icon name to component map for serialization */
+export const ICON_MAP: Record<string, LucideIcon> = {
+  ClipboardList,
+  Shovel,
+  Home,
+  Zap,
+  Layers,
+  Trees,
+  Paintbrush,
+  CookingPot,
+  Wrench,
+  CheckCircle2,
+  Package,
+  Hammer,
+  Ruler,
+  Truck,
+  HardHat,
+  Warehouse,
+};
+
+export const ICON_OPTIONS = Object.keys(ICON_MAP);
+
+export function getIconByName(name: string): LucideIcon {
+  return ICON_MAP[name] || Package;
+}
 
 /** Custom phase overrides: maps phase key -> ordered category value array */
 export type TimelineCustomization = Record<string, string[]>;
 
-export const TIMELINE_CUSTOM_STORAGE_KEY = 'budget-timeline-custom';
+/** Stores user phase structure overrides (renames, deletions, additions) */
+export interface PhaseOverride {
+  key: string;
+  label: string;
+  iconName: string;
+}
 
-/** All category values claimed by a timeline phase (default mapping) */
-const DEFAULT_PHASED_CATEGORIES = new Set(TIMELINE_PHASES.flatMap(p => p.categories));
+export interface TimelinePhaseConfig {
+  /** Overridden / added phases */
+  overrides: PhaseOverride[];
+  /** Phase keys that have been deleted */
+  deleted: string[];
+}
+
+export const TIMELINE_CUSTOM_STORAGE_KEY = 'budget-timeline-custom';
+export const PHASE_CONFIG_STORAGE_KEY = 'budget-phase-config';
+
+/**
+ * Build the effective list of phases, merging defaults with user config.
+ */
+export function getEffectivePhases(config?: TimelinePhaseConfig): Array<{ key: string; label: string; icon: LucideIcon }> {
+  const deletedSet = new Set(config?.deleted || []);
+  const overrideMap = new Map((config?.overrides || []).map(o => [o.key, o]));
+
+  // Start with default phases, applying renames and filtering deletions
+  const phases: Array<{ key: string; label: string; icon: LucideIcon }> = [];
+
+  for (const phase of TIMELINE_PHASES) {
+    if (deletedSet.has(phase.key)) continue;
+    const override = overrideMap.get(phase.key);
+    if (override) {
+      phases.push({
+        key: phase.key,
+        label: override.label,
+        icon: getIconByName(override.iconName),
+      });
+    } else {
+      phases.push({ key: phase.key, label: phase.label, icon: phase.icon });
+    }
+  }
+
+  // Add user-created phases (keys not in defaults)
+  const defaultKeys = new Set(TIMELINE_PHASES.map(p => p.key));
+  for (const override of (config?.overrides || [])) {
+    if (!defaultKeys.has(override.key) && !deletedSet.has(override.key)) {
+      phases.push({
+        key: override.key,
+        label: override.label,
+        icon: getIconByName(override.iconName),
+      });
+    }
+  }
+
+  return phases;
+}
 
 /**
  * Build timeline groups from the same categories used by the category view.
@@ -85,21 +156,25 @@ const DEFAULT_PHASED_CATEGORIES = new Set(TIMELINE_PHASES.flatMap(p => p.categor
  */
 export function buildTimelineGroups(
   categories: CategoryItem[],
-  customization?: TimelineCustomization
+  customization?: TimelineCustomization,
+  phaseConfig?: TimelinePhaseConfig
 ) {
   const categoryValues = new Set(categories.map(c => c.value));
-  const assignedByCustom = new Set<string>();
+  const effectivePhases = getEffectivePhases(phaseConfig);
 
-  const groups = TIMELINE_PHASES
+  // Build default category map from TIMELINE_PHASES
+  const defaultCategoryMap = new Map<string, string[]>();
+  for (const phase of TIMELINE_PHASES) {
+    defaultCategoryMap.set(phase.key, phase.categories);
+  }
+
+  const groups = effectivePhases
     .map(phase => {
       // Use custom order if available, otherwise default
+      const defaultCats = defaultCategoryMap.get(phase.key) || [];
       const phaseCategories = customization?.[phase.key]
         ? customization[phase.key].filter(c => categoryValues.has(c))
-        : phase.categories.filter(c => categoryValues.has(c));
-
-      if (customization?.[phase.key]) {
-        phaseCategories.forEach(c => assignedByCustom.add(c));
-      }
+        : defaultCats.filter(c => categoryValues.has(c));
 
       return {
         key: phase.key,
@@ -108,7 +183,8 @@ export function buildTimelineGroups(
         categories: phaseCategories,
       };
     })
-    .filter(g => g.categories.length > 0);
+    .filter(g => g.categories.length > 0 || !TIMELINE_PHASES.some(p => p.key === g.key));
+    // Keep user-created phases even if empty
 
   // Build the set of all assigned categories across all phases
   const allAssigned = new Set<string>();
@@ -122,7 +198,7 @@ export function buildTimelineGroups(
   // Apply custom order to Other if available
   const otherCategories = customization?.['phase_other']
     ? customization['phase_other'].filter(c => categoryValues.has(c) && !allAssigned.has(c))
-    : unphased;
+    : [...unphased];
 
   // Also add any unphased items not captured by custom Other
   if (customization?.['phase_other']) {
@@ -148,9 +224,10 @@ export function buildTimelineGroups(
 export function getCategoriesInPhase(
   phaseKey: string,
   categories: CategoryItem[],
-  customization?: TimelineCustomization
+  customization?: TimelineCustomization,
+  phaseConfig?: TimelinePhaseConfig
 ): string[] {
-  const groups = buildTimelineGroups(categories, customization);
+  const groups = buildTimelineGroups(categories, customization, phaseConfig);
   return groups.find(g => g.key === phaseKey)?.categories || [];
 }
 
@@ -158,9 +235,10 @@ export function getCategoriesInPhase(
 export function getCategoriesNotInPhase(
   phaseKey: string,
   categories: CategoryItem[],
-  customization?: TimelineCustomization
+  customization?: TimelineCustomization,
+  phaseConfig?: TimelinePhaseConfig
 ): { value: string; label: string }[] {
-  const groups = buildTimelineGroups(categories, customization);
+  const groups = buildTimelineGroups(categories, customization, phaseConfig);
   const inPhase = new Set(groups.find(g => g.key === phaseKey)?.categories || []);
   return categories
     .filter(c => !inPhase.has(c.value))
