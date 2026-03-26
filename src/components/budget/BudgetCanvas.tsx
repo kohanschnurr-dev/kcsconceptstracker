@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { BudgetCategoryCard } from './BudgetCategoryCard';
 import {
   ChevronRight, ChevronsUpDown, ChevronsDownUp,
-  Settings, X, Plus, Eye, EyeOff, GripVertical, Minus, Star
+  Settings, X, Plus, Eye, EyeOff, GripVertical, Minus, Star, Trash2, Pencil
 } from 'lucide-react';
 import { getBudgetCalcCategories, buildBudgetCalcGroups, getAllGroupDefs } from '@/lib/budgetCalculatorCategories';
-import { buildTimelineGroups, getCategoriesNotInPhase, TIMELINE_CUSTOM_STORAGE_KEY, TimelineCustomization } from '@/lib/budgetTimelinePhases';
+import { buildTimelineGroups, getCategoriesNotInPhase, TIMELINE_CUSTOM_STORAGE_KEY, PHASE_CONFIG_STORAGE_KEY, TimelineCustomization, TimelinePhaseConfig, PhaseOverride, ICON_MAP, ICON_OPTIONS, getIconByName, getEffectivePhases, TIMELINE_PHASES } from '@/lib/budgetTimelinePhases';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -155,6 +155,15 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     return {};
   });
 
+  // Phase config state (renames, deletions, additions)
+  const [phaseConfig, setPhaseConfig] = useState<TimelinePhaseConfig>(() => {
+    try {
+      const raw = localStorage.getItem(PHASE_CONFIG_STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { overrides: [], deleted: [] };
+  });
+
   // Group settings dialog state
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
@@ -165,12 +174,23 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   // Timeline settings drafts
   const [phaseCategoriesDraft, setPhaseCategoriesDraft] = useState<string[]>([]);
   const [addItemValue, setAddItemValue] = useState<string>('');
+  const [phaseRenameDraft, setPhaseRenameDraft] = useState<string>('');
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  // Add Phase dialog state
+  const [isAddPhaseOpen, setIsAddPhaseOpen] = useState(false);
+  const [newPhaseName, setNewPhaseName] = useState('');
+  const [newPhaseIcon, setNewPhaseIcon] = useState('Package');
 
   const allCategories = useMemo(() => getBudgetCalcCategories(), []);
   const dynamicGroups = useMemo(() => buildBudgetCalcGroups(allCategories), [allCategories]);
   const timelineGroups = useMemo(
-    () => buildTimelineGroups(allCategories, Object.keys(timelineCustom).length > 0 ? timelineCustom : undefined),
-    [allCategories, timelineCustom]
+    () => buildTimelineGroups(
+      allCategories,
+      Object.keys(timelineCustom).length > 0 ? timelineCustom : undefined,
+      phaseConfig
+    ),
+    [allCategories, timelineCustom, phaseConfig]
   );
   const displayGroups = viewMode === 'timeline' ? timelineGroups : dynamicGroups;
   const allGroupNames = displayGroups.map(g => g.name);
@@ -360,8 +380,49 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     // Initialize phase categories draft from current display
     const group = displayGroups.find(g => g.key === groupKey);
     setPhaseCategoriesDraft(group?.categories ? [...group.categories] : []);
+    setPhaseRenameDraft(group?.name || '');
 
     setIsGroupSettingsOpen(true);
+  };
+
+  const handleDeletePhase = () => {
+    if (!activeGroupKey) return;
+    const newConfig: TimelinePhaseConfig = {
+      overrides: (phaseConfig.overrides || []).filter(o => o.key !== activeGroupKey),
+      deleted: [...(phaseConfig.deleted || []), activeGroupKey],
+    };
+    setPhaseConfig(newConfig);
+    localStorage.setItem(PHASE_CONFIG_STORAGE_KEY, JSON.stringify(newConfig));
+
+    // Remove custom category mapping for this phase
+    const newCustom = { ...timelineCustom };
+    delete newCustom[activeGroupKey];
+    setTimelineCustom(newCustom);
+    localStorage.setItem(TIMELINE_CUSTOM_STORAGE_KEY, JSON.stringify(newCustom));
+
+    setIsGroupSettingsOpen(false);
+    setDeleteConfirmOpen(false);
+    toast.success('Phase deleted');
+  };
+
+  const handleAddPhase = () => {
+    if (!newPhaseName.trim()) return;
+    const key = `phase_custom_${Date.now()}`;
+    const override: PhaseOverride = {
+      key,
+      label: newPhaseName.trim(),
+      iconName: newPhaseIcon,
+    };
+    const newConfig: TimelinePhaseConfig = {
+      overrides: [...(phaseConfig.overrides || []), override],
+      deleted: phaseConfig.deleted || [],
+    };
+    setPhaseConfig(newConfig);
+    localStorage.setItem(PHASE_CONFIG_STORAGE_KEY, JSON.stringify(newConfig));
+    setIsAddPhaseOpen(false);
+    setNewPhaseName('');
+    setNewPhaseIcon('Package');
+    toast.success('Phase added');
   };
 
   const toggleCategoryVisibility = (category: string) => {
@@ -463,6 +524,23 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
 
       setTimelineCustom(newCustom);
       localStorage.setItem(TIMELINE_CUSTOM_STORAGE_KEY, JSON.stringify(newCustom));
+
+      // Save phase rename if changed
+      if (phaseRenameDraft && phaseRenameDraft !== activeGroup?.name) {
+        const existingOverrides = (phaseConfig.overrides || []).filter(o => o.key !== activeGroupKey);
+        // Find current icon name
+        const currentOverride = (phaseConfig.overrides || []).find(o => o.key === activeGroupKey);
+        const defaultPhase = TIMELINE_PHASES.find(p => p.key === activeGroupKey);
+        const iconName = currentOverride?.iconName ||
+          Object.entries(ICON_MAP).find(([, icon]) => icon === defaultPhase?.icon)?.[0] || 'Package';
+
+        const newConfig: TimelinePhaseConfig = {
+          overrides: [...existingOverrides, { key: activeGroupKey, label: phaseRenameDraft, iconName }],
+          deleted: phaseConfig.deleted || [],
+        };
+        setPhaseConfig(newConfig);
+        localStorage.setItem(PHASE_CONFIG_STORAGE_KEY, JSON.stringify(newConfig));
+      }
     }
 
     setIsGroupSettingsOpen(false);
@@ -596,6 +674,19 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
               />
             </button>
           </div>
+
+          {/* Add Phase button (timeline only) */}
+          {viewMode === 'timeline' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setIsAddPhaseOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Add Phase
+            </Button>
+          )}
         </div>
       </div>
 
@@ -698,7 +789,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
       <Dialog open={isGroupSettingsOpen} onOpenChange={setIsGroupSettingsOpen}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader>
-            <DialogTitle>{activeGroupName} Settings</DialogTitle>
+            <DialogTitle>{isTimelineSettings ? phaseRenameDraft || activeGroupName : activeGroupName} Settings</DialogTitle>
             <DialogDescription>
               {isTimelineSettings
                 ? `Reorder, add, or remove items in this phase. Toggle visibility and configure presets.`
@@ -708,6 +799,19 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-6 py-2 -mx-6 px-6">
+            {/* Phase rename (timeline only) */}
+            {isTimelineSettings && activeGroupKey !== 'phase_other' && (
+              <div>
+                <p className="text-sm font-semibold mb-2">Phase Name</p>
+                <Input
+                  value={phaseRenameDraft}
+                  onChange={(e) => setPhaseRenameDraft(e.target.value)}
+                  placeholder="Phase name..."
+                  className="h-9"
+                />
+              </div>
+            )}
+
             {/* Section 1: Presets for this group */}
             <div>
               <p className="text-sm font-semibold mb-3">Presets</p>
@@ -886,11 +990,99 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           </div>
 
           <DialogFooter className="border-t border-border bg-background pt-4 -mx-6 px-6 -mb-6 pb-6 sticky bottom-0">
-            <Button variant="ghost" onClick={() => setIsGroupSettingsOpen(false)}>
+            <div className="flex w-full justify-between">
+              {isTimelineSettings && activeGroupKey !== 'phase_other' ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteConfirmOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete Phase
+                </Button>
+              ) : (
+                <div />
+              )}
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={() => setIsGroupSettingsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveGroupSettings}>
+                  Save
+                </Button>
+              </div>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Phase Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Phase</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this phase? All items will be moved to "Other".
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteConfirmOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveGroupSettings}>
-              Save
+            <Button variant="destructive" onClick={handleDeletePhase}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Phase Dialog */}
+      <Dialog open={isAddPhaseOpen} onOpenChange={setIsAddPhaseOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add New Phase</DialogTitle>
+            <DialogDescription>
+              Create a custom phase for your timeline.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Phase Name</label>
+              <Input
+                value={newPhaseName}
+                onChange={(e) => setNewPhaseName(e.target.value)}
+                placeholder="e.g. Phase 10 — Final Systems"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Icon</label>
+              <Select value={newPhaseIcon} onValueChange={setNewPhaseIcon}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ICON_OPTIONS.map(name => {
+                    const IconComp = getIconByName(name);
+                    return (
+                      <SelectItem key={name} value={name}>
+                        <span className="flex items-center gap-2">
+                          <IconComp className="h-4 w-4" />
+                          {name}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsAddPhaseOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddPhase} disabled={!newPhaseName.trim()}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add Phase
             </Button>
           </DialogFooter>
         </DialogContent>
