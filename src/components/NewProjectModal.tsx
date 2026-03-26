@@ -232,11 +232,7 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
               )}
             </div>
             <Input
-              placeholder={
-                projectType === 'fix_flip' 
-                  ? "Oak Cliff Flip, Downtown Bungalow..." 
-                  : "Rental Property 1, Main St Duplex..."
-              }
+              placeholder="Enter project name..."
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
