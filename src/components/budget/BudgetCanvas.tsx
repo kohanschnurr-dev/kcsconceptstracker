@@ -380,8 +380,49 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     // Initialize phase categories draft from current display
     const group = displayGroups.find(g => g.key === groupKey);
     setPhaseCategoriesDraft(group?.categories ? [...group.categories] : []);
+    setPhaseRenameDraft(group?.name || '');
 
     setIsGroupSettingsOpen(true);
+  };
+
+  const handleDeletePhase = () => {
+    if (!activeGroupKey) return;
+    const newConfig: TimelinePhaseConfig = {
+      overrides: (phaseConfig.overrides || []).filter(o => o.key !== activeGroupKey),
+      deleted: [...(phaseConfig.deleted || []), activeGroupKey],
+    };
+    setPhaseConfig(newConfig);
+    localStorage.setItem(PHASE_CONFIG_STORAGE_KEY, JSON.stringify(newConfig));
+
+    // Remove custom category mapping for this phase
+    const newCustom = { ...timelineCustom };
+    delete newCustom[activeGroupKey];
+    setTimelineCustom(newCustom);
+    localStorage.setItem(TIMELINE_CUSTOM_STORAGE_KEY, JSON.stringify(newCustom));
+
+    setIsGroupSettingsOpen(false);
+    setDeleteConfirmOpen(false);
+    toast.success('Phase deleted');
+  };
+
+  const handleAddPhase = () => {
+    if (!newPhaseName.trim()) return;
+    const key = `phase_custom_${Date.now()}`;
+    const override: PhaseOverride = {
+      key,
+      label: newPhaseName.trim(),
+      iconName: newPhaseIcon,
+    };
+    const newConfig: TimelinePhaseConfig = {
+      overrides: [...(phaseConfig.overrides || []), override],
+      deleted: phaseConfig.deleted || [],
+    };
+    setPhaseConfig(newConfig);
+    localStorage.setItem(PHASE_CONFIG_STORAGE_KEY, JSON.stringify(newConfig));
+    setIsAddPhaseOpen(false);
+    setNewPhaseName('');
+    setNewPhaseIcon('Package');
+    toast.success('Phase added');
   };
 
   const toggleCategoryVisibility = (category: string) => {
