@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { BudgetCategoryCard } from './BudgetCategoryCard';
 import {
   ChevronRight, ChevronsUpDown, ChevronsDownUp,
-  Settings, X, Plus, Eye, EyeOff, GripVertical, Minus, Star
+  Settings, X, Plus, Eye, EyeOff, GripVertical, Minus, Star, Trash2, Pencil
 } from 'lucide-react';
 import { getBudgetCalcCategories, buildBudgetCalcGroups, getAllGroupDefs } from '@/lib/budgetCalculatorCategories';
 import { buildTimelineGroups, getCategoriesNotInPhase, TIMELINE_CUSTOM_STORAGE_KEY, PHASE_CONFIG_STORAGE_KEY, TimelineCustomization, TimelinePhaseConfig, PhaseOverride, ICON_MAP, ICON_OPTIONS, getIconByName, getEffectivePhases, TIMELINE_PHASES } from '@/lib/budgetTimelinePhases';
