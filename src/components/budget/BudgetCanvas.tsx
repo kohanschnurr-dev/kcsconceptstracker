@@ -359,7 +359,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
   ).sort((a, b) => a.label.localeCompare(b.label));
 
   // Active group data for group settings dialog
-  const activeGroup = dynamicGroups.find(g => g.key === activeGroupKey);
+  const activeGroup = displayGroups.find(g => g.key === activeGroupKey);
   const activeGroupCategories = activeGroup?.categories || [];
   const activeGroupName = activeGroup?.name || '';
   const groupPresetsForActive = groupEditingPresets.filter(p => activeGroupCategories.includes(p.category));
