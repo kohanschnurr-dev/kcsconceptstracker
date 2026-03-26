@@ -990,11 +990,99 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           </div>
 
           <DialogFooter className="border-t border-border bg-background pt-4 -mx-6 px-6 -mb-6 pb-6 sticky bottom-0">
-            <Button variant="ghost" onClick={() => setIsGroupSettingsOpen(false)}>
+            <div className="flex w-full justify-between">
+              {isTimelineSettings && activeGroupKey !== 'phase_other' ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteConfirmOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete Phase
+                </Button>
+              ) : (
+                <div />
+              )}
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={() => setIsGroupSettingsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveGroupSettings}>
+                  Save
+                </Button>
+              </div>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Phase Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Phase</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this phase? All items will be moved to "Other".
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteConfirmOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveGroupSettings}>
-              Save
+            <Button variant="destructive" onClick={handleDeletePhase}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Phase Dialog */}
+      <Dialog open={isAddPhaseOpen} onOpenChange={setIsAddPhaseOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add New Phase</DialogTitle>
+            <DialogDescription>
+              Create a custom phase for your timeline.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Phase Name</label>
+              <Input
+                value={newPhaseName}
+                onChange={(e) => setNewPhaseName(e.target.value)}
+                placeholder="e.g. Phase 10 — Final Systems"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Icon</label>
+              <Select value={newPhaseIcon} onValueChange={setNewPhaseIcon}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ICON_OPTIONS.map(name => {
+                    const IconComp = getIconByName(name);
+                    return (
+                      <SelectItem key={name} value={name}>
+                        <span className="flex items-center gap-2">
+                          <IconComp className="h-4 w-4" />
+                          {name}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsAddPhaseOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddPhase} disabled={!newPhaseName.trim()}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add Phase
             </Button>
           </DialogFooter>
         </DialogContent>
