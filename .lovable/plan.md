@@ -1,32 +1,41 @@
 
 
-## Plan: Fix Enum Registration Before Project Category Insert
+## Plan: Add Click-to-Create Event on Project Calendar
 
-### Problem
-When creating a project with a saved budget template (e.g. "Farmers Branch Flip"), the template's `category_budgets` JSONB may contain custom categories like "architect" that aren't registered in the `budget_category` Postgres enum. The code inserts all categories from `getBudgetCategories()` into `project_categories` — if any of those include custom categories not yet in the enum, Postgres rejects the insert.
+### What
+Allow clicking on any date cell in the Project Schedule calendar to open the "New Event" modal with that date pre-filled — same pattern already used in the main Calendar page's MonthlyView.
 
-### Root Cause
-`getBudgetCategories()` pulls from the user's custom category list (which may include "architect", etc.), but the code never calls `add_budget_category` RPC to register those values in the enum before inserting rows into `project_categories`.
+### Changes
 
-### Fix
+**File: `src/components/project/ProjectCalendar.tsx`**
 
-**File: `src/components/NewProjectModal.tsx`** — before the `project_categories` insert (~line 127)
+1. Add state for the quick-create modal:
+   ```typescript
+   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+   const [quickCreateDate, setQuickCreateDate] = useState<Date | undefined>();
+   ```
 
-Add a loop that registers every category value via the existing `add_budget_category` RPC before inserting:
+2. Add an `onClick` handler to each day cell `<div>` (the outer container, not the date number button) that sets the date and opens the modal:
+   ```typescript
+   onClick={() => {
+     setQuickCreateDate(day);
+     setTimeout(() => setQuickCreateOpen(true), 0);
+   }}
+   ```
+   Also add `cursor-pointer` to the day cell styling.
 
-```typescript
-// Register all categories in the enum (handles custom ones)
-const allCats = getBudgetCategories();
-for (const cat of allCats) {
-  await supabase.rpc('add_budget_category', { new_value: cat.value });
-}
-```
-
-This is the same pattern already used elsewhere in the app (CSV imports, QuickBooks reconciliation, category management) per the project's existing convention documented in memory.
-
-### Defensive Layer
-Also add the same registration step when applying a saved budget template — iterate the keys of `selectedTemplate.category_budgets` (excluding `_meta`) and register each one. This covers cases where the template contains categories the user hasn't added to their local list yet.
+3. Add a second `<NewEventModal>` instance at the bottom (before `</Card>`) controlled externally — same pattern as the main Calendar page:
+   ```tsx
+   <NewEventModal
+     projects={[{ id: projectId, name: projectName, address: projectAddress }]}
+     onEventCreated={fetchEvents}
+     defaultProjectId={projectId}
+     externalOpen={quickCreateOpen}
+     onExternalOpenChange={setQuickCreateOpen}
+     defaultStartDate={quickCreateDate}
+   />
+   ```
 
 ### Files touched
-- `src/components/NewProjectModal.tsx` (~5 lines added)
+- `src/components/project/ProjectCalendar.tsx` (~10 lines added)
 
