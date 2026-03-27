@@ -216,29 +216,29 @@ export function CompactDashboardWidgets({
             "flex flex-col justify-between text-left",
             "transition-all cursor-pointer group",
             goalsSummary.avgProgress >= 70
-              ? "border-cyan-500/30 bg-gradient-to-br from-cyan-950/30 to-slate-900/50 hover:border-cyan-400/50"
+              ? "border-primary/30 bg-primary/5 hover:border-primary/50"
               : goalsSummary.avgProgress >= 40
-              ? "border-amber-500/30 bg-gradient-to-br from-amber-950/20 to-slate-900/50 hover:border-amber-400/50"
-              : "border-slate-700/40 bg-muted/20 hover:border-slate-600/50"
+              ? "border-warning/30 bg-warning/5 hover:border-warning/50"
+              : "border-border/40 bg-muted/20 hover:border-border/60"
           )}
         >
           <div className="flex items-center gap-2">
             <div className={cn(
               "p-1 rounded-md",
-              goalsSummary.avgProgress >= 70 ? "bg-cyan-500/15" : goalsSummary.avgProgress >= 40 ? "bg-amber-500/15" : "bg-slate-700/50"
+              goalsSummary.avgProgress >= 70 ? "bg-primary/15" : goalsSummary.avgProgress >= 40 ? "bg-warning/15" : "bg-muted"
             )}>
               {goalsSummary.avgProgress >= 90 ? (
-                <Trophy className="h-3.5 w-3.5 text-cyan-400" />
+                <Trophy className="h-3.5 w-3.5 text-primary" />
               ) : (
-                <Target className="h-3.5 w-3.5 text-cyan-400" />
+                <Target className="h-3.5 w-3.5 text-primary" />
               )}
             </div>
-            <span className="text-xs text-slate-400 uppercase tracking-wide font-jakarta">Goals</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wide font-jakarta">Goals</span>
           </div>
 
           <p className={cn(
             "text-sm font-semibold font-jakarta leading-tight",
-            goalsSummary.avgProgress >= 70 ? "text-cyan-300" : goalsSummary.avgProgress >= 40 ? "text-amber-300" : "text-slate-200"
+            goalsSummary.avgProgress >= 70 ? "text-primary" : goalsSummary.avgProgress >= 40 ? "text-warning" : "text-foreground"
           )}>
             {goalsSummary.label}
           </p>
@@ -248,11 +248,11 @@ export function CompactDashboardWidgets({
             {goals.filter(g => !g.completed_at).slice(0, 5).map((goal) => {
               const percent = Math.min(((goal.current_value || 0) / goal.target_value) * 100, 100);
               return (
-                <div key={goal.id} className="flex-1 h-1.5 rounded-full bg-slate-700/60 overflow-hidden">
+                <div key={goal.id} className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                   <div
                     className={cn(
                       "h-full rounded-full transition-all",
-                      percent >= 60 ? "bg-cyan-400" : percent >= 30 ? "bg-amber-400" : "bg-red-400"
+                      percent >= 60 ? "bg-primary" : percent >= 30 ? "bg-warning" : "bg-destructive"
                     )}
                     style={{ width: `${percent}%` }}
                   />
@@ -270,29 +270,29 @@ export function CompactDashboardWidgets({
             "flex flex-col justify-between text-left",
             "transition-all cursor-pointer group",
             rulesSummary.complianceRate === 100
-              ? "border-emerald-500/30 bg-gradient-to-br from-emerald-950/20 to-slate-900/50 hover:border-emerald-400/50"
+              ? "border-success/30 bg-success/5 hover:border-success/50"
               : rulesSummary.triggered > 0
-              ? "border-red-500/30 bg-gradient-to-br from-red-950/20 to-slate-900/50 hover:border-red-400/50"
-              : "border-slate-700/40 bg-muted/20 hover:border-slate-600/50"
+              ? "border-destructive/30 bg-destructive/5 hover:border-destructive/50"
+              : "border-border/40 bg-muted/20 hover:border-border/60"
           )}
         >
           <div className="flex items-center gap-2">
             <div className={cn(
               "p-1 rounded-md",
-              rulesSummary.complianceRate === 100 ? "bg-emerald-500/15" : rulesSummary.triggered > 0 ? "bg-red-500/15" : "bg-slate-700/50"
+              rulesSummary.complianceRate === 100 ? "bg-success/15" : rulesSummary.triggered > 0 ? "bg-destructive/15" : "bg-muted"
             )}>
               {rulesSummary.triggered > 0 ? (
-                <AlertTriangle className="h-3.5 w-3.5 text-red-400" />
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
               ) : (
-                <ShieldAlert className="h-3.5 w-3.5 text-emerald-400" />
+                <ShieldAlert className="h-3.5 w-3.5 text-success" />
               )}
             </div>
-            <span className="text-xs text-slate-400 uppercase tracking-wide font-jakarta">Rules</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wide font-jakarta">Rules</span>
           </div>
 
           <p className={cn(
             "text-sm font-semibold font-jakarta leading-tight",
-            rulesSummary.complianceRate === 100 ? "text-emerald-300" : rulesSummary.triggered > 0 ? "text-red-300" : "text-slate-200"
+            rulesSummary.complianceRate === 100 ? "text-success" : rulesSummary.triggered > 0 ? "text-destructive" : "text-foreground"
           )}>
             {rulesSummary.label}
           </p>
@@ -300,13 +300,13 @@ export function CompactDashboardWidgets({
           {/* Status dots row */}
           <div className="flex gap-1.5 items-center">
             {rules.slice(0, 8).map((rule) => {
-              let dotColor = 'bg-emerald-400';
+              let dotColor = 'bg-success';
               try {
                 const stored = localStorage.getItem('rule-meta');
                 if (stored) {
                   const meta = JSON.parse(stored);
-                  if (meta[rule.id]?.status === 'triggered') dotColor = 'bg-red-400';
-                  else if (meta[rule.id]?.status === 'paused') dotColor = 'bg-slate-500';
+                  if (meta[rule.id]?.status === 'triggered') dotColor = 'bg-destructive';
+                  else if (meta[rule.id]?.status === 'paused') dotColor = 'bg-muted-foreground';
                 }
               } catch {}
               return (
@@ -314,7 +314,7 @@ export function CompactDashboardWidgets({
               );
             })}
             {rules.length > 8 && (
-              <span className="text-[10px] text-slate-500 ml-1">+{rules.length - 8}</span>
+              <span className="text-[10px] text-muted-foreground ml-1">+{rules.length - 8}</span>
             )}
           </div>
         </button>
