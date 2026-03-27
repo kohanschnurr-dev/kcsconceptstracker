@@ -96,7 +96,7 @@ export default function Projects() {
 
       const { data: expensesData } = await supabase
         .from('expenses')
-        .select('category_id, amount, project_id, cost_type');
+        .select('category_id, amount, project_id, cost_type, qb_expense_id');
 
       const { data: qbExpensesData } = await supabase
         .from('quickbooks_expenses')
@@ -119,7 +119,13 @@ export default function Projects() {
           holdingByProject[e.project_id] = (holdingByProject[e.project_id] || 0) + Number(e.amount);
         }
       });
-      (qbExpensesData || []).forEach(e => {
+      const importedQbIds = new Set(
+        (expensesData || [])
+          .filter(e => e.qb_expense_id)
+          .map(e => e.qb_expense_id)
+      );
+      const dedupedQbExpenses = (qbExpensesData || []).filter(e => !importedQbIds.has(e.id));
+      dedupedQbExpenses.forEach(e => {
         if (e.category_id) {
           expensesByCategory[e.category_id] = (expensesByCategory[e.category_id] || 0) + Number(e.amount);
         }
