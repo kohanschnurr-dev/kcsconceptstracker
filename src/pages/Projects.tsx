@@ -100,7 +100,7 @@ export default function Projects() {
 
       const { data: qbExpensesData } = await supabase
         .from('quickbooks_expenses')
-        .select('category_id, amount, project_id, cost_type')
+        .select('id, category_id, amount, project_id, cost_type')
         .eq('is_imported', true);
 
       const expensesByCategory: Record<string, number> = {};
