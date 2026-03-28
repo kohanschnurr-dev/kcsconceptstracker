@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Calculator, DollarSign, TrendingUp, Save, Loader2, Home, Percent, Building, Settings2, ArrowDownToLine, Pencil } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, Save, Loader2, Home, Percent, Building, Settings2, ArrowDownToLine, Pencil, FileText } from 'lucide-react';
+import { generateCashFlowPdf } from '@/lib/cashFlowPdfExport';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +14,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 interface CashFlowCalculatorProps {
   projectId: string;
+  propertyAddress?: string;
   totalBudget: number;
   totalSpent: number;
   initialPurchasePrice?: number;
@@ -39,7 +42,8 @@ interface CashFlowCalculatorProps {
 }
 
 export function CashFlowCalculator({ 
-  projectId, 
+  projectId,
+  propertyAddress = '',
   totalBudget, 
   totalSpent,
   initialPurchasePrice = 0,
@@ -89,6 +93,7 @@ export function CashFlowCalculator({
   const [maintenancePeriod, setMaintenancePeriod] = useState<'month' | 'year'>((initialMaintenancePeriod as 'month' | 'year') || 'month');
   const [refiEnabled, setRefiEnabled] = useState(initialLoanAmount > 0 || hmLoanAmount > 0);
   const [useManualLoan, setUseManualLoan] = useState(false);
+  const { companyName, logoUrl } = useCompanySettings();
 
   const PeriodToggle = ({ value, onChange }: { value: 'month' | 'year'; onChange: (v: 'month' | 'year') => void }) => (
     <span className="inline-flex rounded-full border border-border overflow-hidden text-[10px] font-semibold leading-none">
@@ -242,10 +247,35 @@ export function CashFlowCalculator({
           <Home className="h-5 w-5" />
           Cash Flow Calculator
         </CardTitle>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-          Save
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => generateCashFlowPdf({
+            propertyAddress,
+            companyName: companyName !== 'Business Expenses' ? companyName : undefined,
+            logoUrl: logoUrl || undefined,
+            purchasePrice,
+            arv,
+            monthlyRent,
+            vacancyRate,
+            monthlyTaxes,
+            monthlyInsurance,
+            monthlyHoa,
+            monthlyMaintenance,
+            managementRate,
+            managementFee,
+            monthlyMortgage,
+            loanAmount: effectiveLoanAmount,
+            interestRate: effectiveRate,
+            loanTermMonths: effectiveTerm,
+            rehabBudget: activeRehabBudget,
+          })}>
+            <FileText className="h-4 w-4 mr-1" />
+            Export PDF
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+            Save
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Property Details */}

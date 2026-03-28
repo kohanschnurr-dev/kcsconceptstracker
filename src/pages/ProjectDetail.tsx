@@ -1127,6 +1127,7 @@ export default function ProjectDetail() {
             <TabsContent value="cashflow" className="space-y-6">
               <CashFlowCalculator 
                 projectId={id!}
+                propertyAddress={project.address || project.name}
                 totalBudget={totalBudget}
                 totalSpent={totalSpent}
                 initialPurchasePrice={project.purchase_price || 0}
