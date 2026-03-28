@@ -1370,7 +1370,7 @@ export default function ProjectBudget() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !customDateStart && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+                        <Calendar className="mr-1 h-3.5 w-3.5" />
                         {customDateStart ? format(customDateStart, "MMM d, yyyy") : "From"}
                       </Button>
                     </PopoverTrigger>
@@ -1382,7 +1382,7 @@ export default function ProjectBudget() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !customDateEnd && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+                        <Calendar className="mr-1 h-3.5 w-3.5" />
                         {customDateEnd ? format(customDateEnd, "MMM d, yyyy") : "To"}
                       </Button>
                     </PopoverTrigger>
