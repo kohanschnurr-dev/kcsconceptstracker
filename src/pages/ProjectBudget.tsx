@@ -44,7 +44,7 @@ import { FormulaInput } from '@/components/ui/formula-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+
 import { format } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
