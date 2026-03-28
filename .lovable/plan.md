@@ -1,39 +1,19 @@
 
 
-## Plan: Add Custom Date Range Filter to Project Budget Expenses
-
-### What
-Add a "Custom Range" option to the date range filter dropdown in the All Expenses table. When selected, two date pickers appear (From / To) letting users pick exact start and end dates for quarterly reports or any custom period.
+## Plan: Simplify Cash Flow PDF — Remove Property Overview, Conditionally Hide Loan
 
 ### Changes
 
-**File: `src/pages/ProjectBudget.tsx`**
+**File: `src/lib/cashFlowPdfExport.ts`**
 
-1. **Update state type** (line 148): Change `dateRange` type to include `'custom'` and add two new state variables for custom start/end dates:
-   ```typescript
-   const [dateRange, setDateRange] = useState<'all' | '7d' | '30d' | '90d' | 'year' | 'custom'>('all');
-   const [customDateStart, setCustomDateStart] = useState<Date | undefined>();
-   const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>();
-   ```
+1. **Remove the Property Overview section** (lines 116-130) — delete the "Property Overview" title and the 3-card grid showing Purchase Price, ARV, and Rehab Budget entirely.
 
-2. **Update filter logic** (lines 449-453): Add a `custom` case that filters using the two custom dates:
-   ```typescript
-   if (dateRange === 'custom') {
-     if (customDateStart) filtered = filtered.filter(exp => parseDateString(exp.date) >= customDateStart);
-     if (customDateEnd) filtered = filtered.filter(exp => parseDateString(exp.date) <= customDateEnd);
-   } else if (dateRange !== 'all') { ... existing logic ... }
-   ```
+2. **Conditionally include Debt Service row** — only add the "Less: Debt Service (P&I)" row to the table when `data.monthlyMortgage > 0`. When there's no loan, cash flow = NOI directly.
 
-3. **Add `customDateStart`/`customDateEnd` to the `useMemo` deps** (line 483).
+3. **Remove loan info line** (line 148) — the `Loan: $X at Y% for Z months` text below the table is removed entirely (already conditional, but should be fully removed).
 
-4. **Update clear filters** (lines 539-541, 195, 206): Reset custom dates when clearing.
-
-5. **Update `hasActiveFilters`** (line 544): Include custom date check.
-
-6. **Add "Custom Range" option to the Select** (line 1348): Add `<SelectItem value="custom">Custom Range</SelectItem>`.
-
-7. **Add date picker row** below the Select (after line 1350): When `dateRange === 'custom'`, render two `Popover` + `Calendar` date pickers (From / To) inline, using the existing shadcn Calendar component and `parseDateString`/`formatDateString` utilities.
+4. **Conditionally show CoC ROI** — only include the Cash-on-Cash ROI summary card when there's a loan (it's meaningless without one). Keep Monthly Cash Flow, Annual Cash Flow, and Cap Rate.
 
 ### Files touched
-- `src/pages/ProjectBudget.tsx` (~30 lines added)
+- `src/lib/cashFlowPdfExport.ts` (~15 lines changed/removed)
 
