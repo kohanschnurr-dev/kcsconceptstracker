@@ -112,6 +112,7 @@ interface DBExpense {
   notes?: string | null;
   receipt_url?: string | null;
   qb_id?: string;
+  qb_expense_id?: string | null;
 }
 
 type SortField = 'date' | 'amount' | 'vendor' | 'category';
@@ -1627,6 +1628,7 @@ export default function ProjectBudget() {
           notes: selectedExpense.notes || null,
           source: selectedExpense.isQuickBooks ? 'quickbooks' : 'manual',
           qb_id: selectedExpense.qb_id,
+          qb_expense_id: selectedExpense.qb_expense_id || null,
         } : null}
         projectName={project?.name || ''}
         categoryLabel={selectedExpense ? getCategoryLabel(selectedExpense.category_id) : ''}

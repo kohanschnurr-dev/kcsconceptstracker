@@ -36,6 +36,7 @@ interface ExpenseDetailModalProps {
     receipt_url?: string | null;
     source?: 'manual' | 'quickbooks';
     qb_id?: string;
+    qb_expense_id?: string | null;
   } | null;
   projectName: string;
   categoryLabel: string;
@@ -78,6 +79,8 @@ export function ExpenseDetailModal({
   if (!expense) return null;
 
   const isQuickBooks = expense.source === 'quickbooks';
+  const isQbLinked = !!expense.qb_expense_id;
+  const canSendBackToQueue = isQuickBooks || isQbLinked;
   const tableName = isQuickBooks ? 'quickbooks_expenses' : 'expenses';
 
   const formatCurrency = (amount: number) => {
@@ -199,37 +202,61 @@ export function ExpenseDetailModal({
   const handleSendBackToQueue = async () => {
     setIsResetting(true);
     try {
-      // Delete any split records first (if this is a parent of splits)
-      const { data: expenseData } = await supabase
-        .from('quickbooks_expenses')
-        .select('qb_id')
-        .eq('id', expense.id)
-        .single();
-      
-      if (expenseData?.qb_id) {
-        await supabase
-          .from('quickbooks_expenses')
+      if (isQbLinked && !isQuickBooks) {
+        // This is a regular expense linked to a QB record via qb_expense_id
+        // 1. Delete the regular expense
+        const { error: deleteError } = await supabase
+          .from('expenses')
           .delete()
-          .like('qb_id', `${expenseData.qb_id}_split_%`);
+          .eq('id', expense.id);
+        if (deleteError) throw deleteError;
+
+        // 2. Reset the original QB record back to pending
+        const { error: resetError } = await supabase
+          .from('quickbooks_expenses')
+          .update({
+            is_imported: false,
+            project_id: null,
+            category_id: null,
+            expense_type: null,
+            notes: null,
+            receipt_url: null,
+          })
+          .eq('id', expense.qb_expense_id!);
+        if (resetError) throw resetError;
+      } else {
+        // This is a direct QB expense record
+        // Delete any split records first
+        const { data: expenseData } = await supabase
+          .from('quickbooks_expenses')
+          .select('qb_id')
+          .eq('id', expense.id)
+          .single();
+        
+        if (expenseData?.qb_id) {
+          await supabase
+            .from('quickbooks_expenses')
+            .delete()
+            .like('qb_id', `${expenseData.qb_id}_split_%`);
+        }
+
+        // Delete linked expenses from the expenses table
+        await (supabase.from('expenses').delete() as any).eq('qb_expense_id', expense.id);
+        
+        // Reset the expense to pending
+        const { error } = await supabase
+          .from('quickbooks_expenses')
+          .update({
+            is_imported: false,
+            project_id: null,
+            category_id: null,
+            expense_type: null,
+            notes: null,
+            receipt_url: null,
+          })
+          .eq('id', expense.id);
+        if (error) throw error;
       }
-
-      // Delete linked expenses from the expenses table
-      await (supabase.from('expenses').delete() as any).eq('qb_expense_id', expense.id);
-      
-      // Reset the expense to pending
-      const { error } = await supabase
-        .from('quickbooks_expenses')
-        .update({
-          is_imported: false,
-          project_id: null,
-          category_id: null,
-          expense_type: null,
-          notes: null,
-          receipt_url: null,
-        })
-        .eq('id', expense.id);
-
-      if (error) throw error;
       
       toast({ title: 'Expense sent back to queue' });
       onExpenseUpdated();
@@ -596,7 +623,7 @@ export function ExpenseDetailModal({
 
             {/* Actions */}
             <div className="space-y-2 pt-2">
-              {isQuickBooks && (
+              {canSendBackToQueue && (
                 <Button
                   type="button"
                   variant="outline"
