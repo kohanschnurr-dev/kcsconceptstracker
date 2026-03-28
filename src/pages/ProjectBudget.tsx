@@ -199,6 +199,8 @@ export default function ProjectBudget() {
     setSelectedPaymentMethod('all');
     setSelectedCostType('all');
     setDateRange('all');
+    setCustomDateStart(undefined);
+    setCustomDateEnd(undefined);
     setTimeout(() => {
       expensesTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -210,6 +212,8 @@ export default function ProjectBudget() {
     setSelectedCategory('all');
     setSelectedPaymentMethod('all');
     setDateRange('all');
+    setCustomDateStart(undefined);
+    setCustomDateEnd(undefined);
     setTimeout(() => {
       expensesTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
