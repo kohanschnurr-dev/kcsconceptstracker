@@ -43,6 +43,10 @@ import { Input } from '@/components/ui/input';
 import { FormulaInput } from '@/components/ui/formula-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { parseDateString } from '@/lib/dateUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ExportReports } from '@/components/project/ExportReports';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -145,7 +149,9 @@ export default function ProjectBudget() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all');
   const [selectedCostType, setSelectedCostType] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<'all' | '7d' | '30d' | '90d' | 'year'>('all');
+  const [dateRange, setDateRange] = useState<'all' | '7d' | '30d' | '90d' | 'year' | 'custom'>('all');
+  const [customDateStart, setCustomDateStart] = useState<Date | undefined>();
+  const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>();
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   
@@ -446,11 +452,14 @@ export default function ProjectBudget() {
     }
     
     // Date range filter
-    if (dateRange !== 'all') {
+    if (dateRange === 'custom') {
+      if (customDateStart) filtered = filtered.filter(exp => parseDateString(exp.date) >= customDateStart);
+      if (customDateEnd) filtered = filtered.filter(exp => parseDateString(exp.date) <= customDateEnd);
+    } else if (dateRange !== 'all') {
       const now = new Date();
       const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : dateRange === '90d' ? 90 : 365;
       const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(exp => new Date(exp.date) >= cutoff);
+      filtered = filtered.filter(exp => parseDateString(exp.date) >= cutoff);
     }
     
     // Cost type filter
@@ -480,7 +489,7 @@ export default function ProjectBudget() {
     });
     
     return filtered;
-  }, [expenses, searchQuery, selectedCategory, selectedPaymentMethod, selectedCostType, dateRange, sortField, sortOrder, categories]);
+  }, [expenses, searchQuery, selectedCategory, selectedPaymentMethod, selectedCostType, dateRange, customDateStart, customDateEnd, sortField, sortOrder, categories]);
 
   // Calculate total budget - manual override takes precedence
   const categoryTotal = categories.reduce((sum, cat) => sum + Number(cat.estimated_budget), 0);
@@ -539,6 +548,8 @@ export default function ProjectBudget() {
     setSelectedPaymentMethod('all');
     setSelectedCostType('all');
     setDateRange('all');
+    setCustomDateStart(undefined);
+    setCustomDateEnd(undefined);
   };
 
   const hasActiveFilters = searchQuery || selectedCategory !== 'all' || selectedPaymentMethod !== 'all' || selectedCostType !== 'all' || dateRange !== 'all';
@@ -1346,8 +1357,37 @@ export default function ProjectBudget() {
                   <SelectItem value="30d">Last 30 Days</SelectItem>
                   <SelectItem value="90d">Last 90 Days</SelectItem>
                   <SelectItem value="year">Last Year</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
                 </SelectContent>
               </Select>
+              
+              {dateRange === 'custom' && (
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !customDateStart && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+                        {customDateStart ? format(customDateStart, "MMM d, yyyy") : "From"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarPicker mode="single" selected={customDateStart} onSelect={setCustomDateStart} initialFocus className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
+                  <span className="text-muted-foreground text-xs">→</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !customDateEnd && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+                        {customDateEnd ? format(customDateEnd, "MMM d, yyyy") : "To"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarPicker mode="single" selected={customDateEnd} onSelect={setCustomDateEnd} initialFocus className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
               
               <Select value={selectedCostType} onValueChange={setSelectedCostType}>
                 <SelectTrigger>
