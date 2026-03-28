@@ -1,33 +1,38 @@
 
 
-## Plan: Fix QuickBooks Expense Double-Counting on Projects Page
+## Plan: Add "Send Back to Queue" for QB-Linked Regular Expenses
 
 ### Problem
-The Dashboard (`Index.tsx`) deduplicates QuickBooks expenses by checking each QB expense against `qb_expense_id` on regular expenses, using only non-duplicated entries. The Projects page (`Projects.tsx`) skips this step entirely — it adds ALL QB imported expenses on top of regular expenses, double-counting any that were already imported as regular expenses.
+When a QuickBooks transaction is categorized and linked into the `expenses` table (via `qb_expense_id`), it no longer shows the "Send Back to Queue" button because `isQuickBooks` is `false` — it's stored as a regular expense. The user has no way to undo a wrong project assignment.
 
-This inflates `constructionByProject`, `transactionByProject`, and `holdingByProject` totals on the Projects page, producing different profit numbers than the Dashboard.
+### Solution
+Two changes:
 
-### Fix
+1. **Pass `qb_expense_id` to the modal** so it knows the expense originated from QuickBooks even when stored in the `expenses` table.
+2. **Show "Send Back to Queue" for any expense with a QB origin** — either `source === 'quickbooks'` (QB expenses table) or has a `qb_expense_id` (linked regular expense).
 
-**File: `src/pages/Projects.tsx`**
+### Changes
 
-1. Expand the regular expenses query to also fetch `qb_expense_id`:
-   ```typescript
-   .select('category_id, amount, project_id, cost_type, qb_expense_id')
-   ```
+**File: `src/components/ExpenseDetailModal.tsx`**
+- Add `qb_expense_id?: string` to the expense interface
+- Change the visibility condition from `isQuickBooks` to `isQuickBooks || !!expense.qb_expense_id`
+- Update `handleSendBackToQueue` to handle both cases:
+  - If `isQuickBooks` (from QB table): existing logic — reset the QB record
+  - If `qb_expense_id` (linked regular expense): delete the regular expense row, then reset the original QB record back to pending
 
-2. Before processing QB expenses, build a dedup set and filter — same pattern as `Index.tsx`:
-   ```typescript
-   const importedQbIds = new Set(
-     (expensesData || [])
-       .filter(e => e.qb_expense_id)
-       .map(e => e.qb_expense_id)
-   );
-   const dedupedQbExpenses = (qbExpensesData || []).filter(e => !importedQbIds.has(e.id));
-   ```
+**File: `src/pages/ProjectBudget.tsx`**
+- Pass `qb_expense_id` from the selected expense data to the modal's expense prop (~1 line)
+- Ensure `qb_expense_id` is included in the `DBExpense` type and fetched in the query
 
-3. Replace `(qbExpensesData || [])` with `dedupedQbExpenses` in the two forEach loops (lines 122-137).
+### How "Send Back" works for linked expenses
+```
+1. Delete the regular expense row (from `expenses` table)
+2. Find the original QB record using qb_expense_id
+3. Reset it: is_imported=false, project_id=null, category_id=null
+4. User sees it back in the QB pending queue
+```
 
 ### Files touched
-- `src/pages/Projects.tsx` (~6 lines changed)
+- `src/components/ExpenseDetailModal.tsx` (~15 lines changed)
+- `src/pages/ProjectBudget.tsx` (~3 lines changed)
 
