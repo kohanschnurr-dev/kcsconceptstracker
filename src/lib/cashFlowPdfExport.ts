@@ -51,7 +51,7 @@ export function generateCashFlowPdf(data: CashFlowPdfData) {
     { label: 'Total Operating Expenses', amount: totalExpenses, bold: true, divider: true },
     { label: '', amount: 0, spacer: true },
     { label: 'Net Operating Income (NOI)', amount: noi, bold: true },
-    { label: 'Less: Debt Service (P&I)', amount: -data.monthlyMortgage },
+    ...(data.monthlyMortgage > 0 ? [{ label: 'Less: Debt Service (P&I)', amount: -data.monthlyMortgage }] : []),
     { label: 'Monthly Cash Flow', amount: monthlyCashFlow, bold: true, highlight: true },
   ];
 
@@ -113,22 +113,6 @@ export function generateCashFlowPdf(data: CashFlowPdfData) {
     </div>
   </div>
 
-  <div class="section-title">Property Overview</div>
-  <div class="prop-grid">
-    <div class="prop-card">
-      <div class="label">Purchase Price</div>
-      <div class="value">${fmt(data.purchasePrice)}</div>
-    </div>
-    <div class="prop-card">
-      <div class="label">After Repair Value (ARV)</div>
-      <div class="value">${fmt(data.arv)}</div>
-    </div>
-    <div class="prop-card">
-      <div class="label">Rehab Budget</div>
-      <div class="value">${fmt(data.rehabBudget)}</div>
-    </div>
-  </div>
-
   <div class="section-title">Monthly Income &amp; Expense Breakdown</div>
   <table>
     <thead>
@@ -145,8 +129,6 @@ export function generateCashFlowPdf(data: CashFlowPdfData) {
     </tbody>
   </table>
 
-  ${data.loanAmount > 0 ? `<div class="loan-info">Loan: ${fmt(data.loanAmount)} at ${fmtPct(data.interestRate)} for ${data.loanTermMonths} months</div>` : ''}
-
   <div class="summary-grid">
     <div class="summary-card">
       <div class="label">Monthly Cash Flow</div>
@@ -156,10 +138,10 @@ export function generateCashFlowPdf(data: CashFlowPdfData) {
       <div class="label">Annual Cash Flow</div>
       <div class="value ${annualCashFlow >= 0 ? 'positive' : 'negative'}">${fmt(annualCashFlow)}</div>
     </div>
-    <div class="summary-card">
+    ${data.monthlyMortgage > 0 ? `<div class="summary-card">
       <div class="label">Cash-on-Cash ROI</div>
       <div class="value">${fmtPct(cocRoi)}</div>
-    </div>
+    </div>` : ''}
     <div class="summary-card">
       <div class="label">Cap Rate</div>
       <div class="value">${fmtPct(capRate)}</div>
