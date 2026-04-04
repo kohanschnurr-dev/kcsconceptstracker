@@ -4,7 +4,7 @@ import {
   ChevronRight, ChevronsUpDown, ChevronsDownUp,
   Settings, X, Plus, Eye, EyeOff, GripVertical, Minus, Star, Trash2, Pencil
 } from 'lucide-react';
-import { getBudgetCalcCategories, buildBudgetCalcGroups, getAllGroupDefs } from '@/lib/budgetCalculatorCategories';
+import { getBudgetCalcCategories, buildBudgetCalcGroups, buildCostTypeGroups, getAllGroupDefs } from '@/lib/budgetCalculatorCategories';
 import { buildTimelineGroups, getCategoriesNotInPhase, TIMELINE_CUSTOM_STORAGE_KEY, PHASE_CONFIG_STORAGE_KEY, TimelineCustomization, TimelinePhaseConfig, PhaseOverride, ICON_MAP, ICON_OPTIONS, getIconByName, getEffectivePhases, TIMELINE_PHASES } from '@/lib/budgetTimelinePhases';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
@@ -115,17 +115,17 @@ function SortablePhaseItem({
 
 export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled, autoRevealCategory, onRevealHandled }: BudgetCanvasProps) {
   const { user } = useAuth();
-  const [favoriteMode, setFavoriteMode] = useState<'category' | 'timeline'>(() => {
+  const [favoriteMode, setFavoriteMode] = useState<'category' | 'timeline' | 'costtype'>(() => {
     try {
       const saved = localStorage.getItem('budget-view-mode-favorite');
-      if (saved === 'timeline') return 'timeline';
+      if (saved === 'timeline' || saved === 'costtype') return saved;
     } catch {}
     return 'category';
   });
-  const [viewMode, setViewMode] = useState<'category' | 'timeline'>(() => {
+  const [viewMode, setViewMode] = useState<'category' | 'timeline' | 'costtype'>(() => {
     try {
       const saved = localStorage.getItem('budget-view-mode-favorite');
-      if (saved === 'timeline') return 'timeline';
+      if (saved === 'timeline' || saved === 'costtype') return saved;
     } catch {}
     return 'category';
   });
@@ -192,7 +192,8 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     ),
     [allCategories, timelineCustom, phaseConfig]
   );
-  const displayGroups = viewMode === 'timeline' ? timelineGroups : dynamicGroups;
+  const costTypeGroups = useMemo(() => buildCostTypeGroups(allCategories), [allCategories]);
+  const displayGroups = viewMode === 'costtype' ? costTypeGroups : viewMode === 'timeline' ? timelineGroups : dynamicGroups;
   const allGroupNames = displayGroups.map(g => g.name);
   const allExpanded = allGroupNames.every(name => openGroups.includes(name));
   const presetCategories = new Set(presets.map(p => p.category));
@@ -203,7 +204,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     useSensor(KeyboardSensor)
   );
 
-  const handleViewModeChange = (mode: 'category' | 'timeline') => {
+  const handleViewModeChange = (mode: 'category' | 'timeline' | 'costtype') => {
     setViewMode(mode);
     localStorage.setItem('budget-view-mode', mode);
   };
@@ -655,12 +656,24 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
             >
              Timeline
             </button>
+            <button
+              onClick={() => handleViewModeChange('costtype')}
+              className={cn(
+                "px-3 py-1 text-xs font-medium transition-colors",
+                viewMode === 'costtype'
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              Cost Type
+            </button>
             <div className="w-px bg-border" />
             <button
               onClick={() => {
                 setFavoriteMode(viewMode);
                 localStorage.setItem('budget-view-mode-favorite', viewMode);
-                toast.success(`${viewMode === 'timeline' ? 'Timeline' : 'Category'} set as default view`);
+                const modeLabel = viewMode === 'timeline' ? 'Timeline' : viewMode === 'costtype' ? 'Cost Type' : 'Category';
+                toast.success(`${modeLabel} set as default view`);
               }}
               title="Set as default view"
               className="px-2 py-1 transition-colors hover:bg-accent/50"
