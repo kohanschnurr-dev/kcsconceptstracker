@@ -529,6 +529,7 @@ export default function BudgetCalculator() {
   const isMobile = useIsMobile();
 
   return (
+    <>
     <MainLayout>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* Header */}
