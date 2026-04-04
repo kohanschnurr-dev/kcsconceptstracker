@@ -546,6 +546,9 @@ export default function BudgetCalculator() {
               onSqftChange={setSqft}
               refreshKey={templateRefreshKey}
             />
+            <Button variant="outline" size="icon" onClick={() => setImportModalOpen(true)} title="Import budget">
+              <Upload className="h-4 w-4" />
+            </Button>
             <Button variant="outline" size="icon" onClick={handleClearAll} title="Clear all">
               <RotateCcw className="h-4 w-4" />
             </Button>
