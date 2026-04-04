@@ -108,6 +108,17 @@ function autoMatch(name: string, lookup: { keywords: string[]; value: string }[]
   return null;
 }
 
+// Keywords that indicate a row is a summary/header, not a real line item
+const JUNK_ROW_PATTERNS = /\b(subtotal|sub total|all[- ]in total|totals?$|project inputs|financing costs?|ebt|roi|arv|ltc|delivery|sale \(\$|cost category|quantity|notes|total cost|\$\/sqft|formula:|grand total|section total)\b/i;
+
+const HEADER_PATTERNS = /\b(category|description|item|line item|cost category|budget|qty|quantity|unit|unit price|total cost|notes|comments)\b/i;
+
+function isHeaderRow(parts: string[]): boolean {
+  const joined = parts.join(' ').toLowerCase();
+  const headerHits = (joined.match(new RegExp(HEADER_PATTERNS.source, 'gi')) || []).length;
+  return headerHits >= 2;
+}
+
 function parseCSVText(text: string): { name: string; amount: number }[] {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const results: { name: string; amount: number }[] = [];
@@ -117,30 +128,49 @@ function parseCSVText(text: string): { name: string; amount: number }[] {
     const parts = line.includes('\t') ? line.split('\t') : line.split(',');
     if (parts.length < 2) continue;
 
-    // Find the amount - look for numeric values
-    let name = '';
-    let amount = 0;
-    let foundAmount = false;
+    // Skip header-like rows (multiple header keywords)
+    if (isHeaderRow(parts)) continue;
 
-    for (let i = parts.length - 1; i >= 0; i--) {
+    const name = parts[0].trim();
+    const lowerName = name.toLowerCase();
+
+    // Skip junk/summary rows
+    if (!name) continue;
+    if (JUNK_ROW_PATTERNS.test(line)) continue;
+
+    // Collect all numeric values from columns
+    const numericValues: { value: number; index: number }[] = [];
+    for (let i = 1; i < parts.length; i++) {
       const cleaned = parts[i].trim().replace(/[$,]/g, '');
+      // Skip percentage values
+      if (parts[i].trim().includes('%')) continue;
       const num = parseFloat(cleaned);
-      if (!isNaN(num) && num > 0 && !foundAmount) {
-        amount = num;
-        foundAmount = true;
+      if (!isNaN(num)) {
+        numericValues.push({ value: num, index: i });
       }
     }
 
-    // Name is the first non-empty non-numeric part
-    name = parts[0].trim();
+    if (numericValues.length === 0) continue;
 
-    // Skip header-like rows and total rows
-    const lowerName = name.toLowerCase();
-    if (!name || !foundAmount) continue;
-    if (lowerName === 'category' || lowerName === 'cost category' || lowerName === 'total' || lowerName === 'total cost') continue;
-    if (lowerName.startsWith('phase ') || lowerName.startsWith('hard cost') || lowerName.startsWith('soft cost')) continue;
+    // Smart amount extraction: prefer the largest absolute value > $10
+    // This picks the "Total Cost" column over $/sqft or quantity columns
+    let amount = 0;
+    const bigValues = numericValues.filter(n => Math.abs(n.value) > 10);
+    if (bigValues.length > 0) {
+      // Pick the largest value (most likely the total)
+      amount = bigValues.reduce((best, n) => Math.abs(n.value) > Math.abs(best.value) ? n : best).value;
+    } else {
+      // All values small — just take the largest
+      amount = numericValues.reduce((best, n) => Math.abs(n.value) > Math.abs(best.value) ? n : best).value;
+    }
 
-    results.push({ name, amount });
+    // Skip rows with zero or negligible amounts
+    if (Math.abs(amount) < 1) continue;
+
+    // Skip rows that look like per-sqft or percentage rows (name has $/sqft pattern)
+    if (/\$\s*\/\s*sq\s*ft/i.test(name) || /per\s*sq\s*ft/i.test(name)) continue;
+
+    results.push({ name, amount: Math.abs(amount) });
   }
 
   return results;
