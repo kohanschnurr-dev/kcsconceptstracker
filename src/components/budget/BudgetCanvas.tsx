@@ -656,11 +656,18 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
             >
              Timeline
             </button>
-            <div className="w-px bg-border" />
             <button
-              onClick={() => {
-                setFavoriteMode(viewMode);
-                localStorage.setItem('budget-view-mode-favorite', viewMode);
+              onClick={() => handleViewModeChange('costtype')}
+              className={cn(
+                "px-3 py-1 text-xs font-medium transition-colors",
+                viewMode === 'costtype'
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              Cost Type
+            </button>
+            <div className="w-px bg-border" />
                 toast.success(`${viewMode === 'timeline' ? 'Timeline' : 'Category'} set as default view`);
               }}
               title="Set as default view"
