@@ -675,7 +675,6 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
                 const modeLabel = viewMode === 'timeline' ? 'Timeline' : viewMode === 'costtype' ? 'Cost Type' : 'Category';
                 toast.success(`${modeLabel} set as default view`);
               }}
-              }}
               title="Set as default view"
               className="px-2 py-1 transition-colors hover:bg-accent/50"
             >
