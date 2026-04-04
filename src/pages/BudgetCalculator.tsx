@@ -346,6 +346,18 @@ export default function BudgetCalculator() {
     setCategoryBudgets(cleared);
   };
 
+  const handleImportBudgets = (budgets: Record<string, number>) => {
+    setCategoryBudgets(prev => {
+      const next = { ...prev };
+      for (const [key, val] of Object.entries(budgets)) {
+        const existing = parseFloat(next[key]) || 0;
+        next[key] = (existing + val).toString();
+      }
+      return next;
+    });
+    setTemplateJustApplied(true);
+  };
+
   // Recalculate Filler when sqft changes while a baseline is active
   useEffect(() => {
     if (activeBaselineRate !== null) {
