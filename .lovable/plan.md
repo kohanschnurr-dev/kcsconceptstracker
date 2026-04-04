@@ -1,3 +1,5 @@
+
+
 ## Plan: Smarter Budget Import Parser
 
 The current parser is too naive — it doesn't filter out summary rows, subtotals, section headers, formula descriptions, or percentage values. When pasting a full construction cost estimator, it picks up junk rows and mismatches categories.
@@ -18,15 +20,13 @@ The current parser is too naive — it doesn't filter out summary rows, subtotal
    - Ignore numbers that look like quantities (small integers next to "Quantity" headers)
 
 3. **Better auto-matching with expanded aliases**:
-   - Add: `"site work" → misc`, `"lumber package" → framing`, `"drywall package" → drywall`, `"drywall labor" → drywall`, `"roofing" → roofing`, `"exterior doors" → doors`, `"garage door" → garage`, `"termite treatment" → pest_control`, `"punch out" → final_punch`, `"final clean" → cleaning`, `"driveway" / "concrete work" → driveway_concrete`, `"survey" → misc` (or a soft cost category), `"energy" → inspections`, `"structural" / "civil engineering" → permits`
-   - Smarter partial matching: tokenize the name and check if any token matches a keyword, not just substring containment
+   - Add: `"site work" → misc`, `"lumber package" → framing`, `"drywall package/labor" → drywall`, `"exterior doors" → doors`, `"garage door" → garage`, `"termite treatment" → pest_control`, `"punch out" → final_punch`, `"final clean" → cleaning`, `"driveway"/"concrete work" → driveway_concrete`, `"survey" → permits`, `"energy" → inspections`, `"structural/civil engineering" → permits`, `"architecture/plans" → permits`
+   - Tokenized matching: split the name into words and check if any word matches a keyword
 
-4. **Aggregate duplicate categories before showing the map step**:
-   - When multiple lines map to the same category (e.g., "Drywall Package" and "Drywall Labor" both → drywall), optionally show them individually but pre-aggregate in the final output (already done, just confirming)
-
-5. **Pre-clean pasted text**:
-   - Strip dollar signs, handle tab-separated columns with headers like `$/SQFT`, `TOTAL COST`, `QUANTITY`, `NOTES`
-   - Detect and skip header rows more aggressively (look for column header patterns)
+4. **Pre-clean pasted text**:
+   - Detect and skip header rows more aggressively (look for column header patterns like "$/SQFT", "TOTAL COST", "QUANTITY", "NOTES", "COST CATEGORY")
+   - Strip dollar signs and handle multi-column tab-separated data
 
 ### Files touched
 - `src/components/budget/ImportBudgetModal.tsx` (~60 lines changed in parsing logic)
+
