@@ -3,7 +3,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calculator, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ChevronDown, RotateCcw } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ChevronDown, RotateCcw, Upload } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,6 +13,7 @@ import { TemplatePicker } from '@/components/budget/TemplatePicker';
 import { DealSidebar, type CalculatorType } from '@/components/budget/DealSidebar';
 import { RentalAnalysis } from '@/components/budget/RentalAnalysis';
 import { BRRRAnalysis } from '@/components/budget/BRRRAnalysis';
+import { ImportBudgetModal } from '@/components/budget/ImportBudgetModal';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import type { RentalFieldValues } from '@/components/budget/RentalFields';
 import { getBudgetCategories } from '@/types';
@@ -92,7 +93,7 @@ export default function BudgetCalculator() {
   const [sellClosingFlat, setSellClosingFlat] = useState<string>('');
   const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
   const [autoRevealCategory, setAutoRevealCategory] = useState<string | null>(null);
-  
+  const [importModalOpen, setImportModalOpen] = useState(false);
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
@@ -345,6 +346,18 @@ export default function BudgetCalculator() {
     setCategoryBudgets(cleared);
   };
 
+  const handleImportBudgets = (budgets: Record<string, number>) => {
+    setCategoryBudgets(prev => {
+      const next = { ...prev };
+      for (const [key, val] of Object.entries(budgets)) {
+        const existing = parseFloat(next[key]) || 0;
+        next[key] = (existing + val).toString();
+      }
+      return next;
+    });
+    setTemplateJustApplied(true);
+  };
+
   // Recalculate Filler when sqft changes while a baseline is active
   useEffect(() => {
     if (activeBaselineRate !== null) {
@@ -516,6 +529,7 @@ export default function BudgetCalculator() {
   const isMobile = useIsMobile();
 
   return (
+    <>
     <MainLayout>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* Header */}
@@ -533,6 +547,9 @@ export default function BudgetCalculator() {
               onSqftChange={setSqft}
               refreshKey={templateRefreshKey}
             />
+            <Button variant="outline" size="icon" onClick={() => setImportModalOpen(true)} title="Import budget">
+              <Upload className="h-4 w-4" />
+            </Button>
             <Button variant="outline" size="icon" onClick={handleClearAll} title="Clear all">
               <RotateCcw className="h-4 w-4" />
             </Button>
@@ -797,5 +814,12 @@ export default function BudgetCalculator() {
         </div>
       </div>
     </MainLayout>
+
+    <ImportBudgetModal
+      open={importModalOpen}
+      onOpenChange={setImportModalOpen}
+      onImport={handleImportBudgets}
+    />
+    </>
   );
 }
