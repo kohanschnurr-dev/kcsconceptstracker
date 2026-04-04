@@ -813,5 +813,12 @@ export default function BudgetCalculator() {
         </div>
       </div>
     </MainLayout>
+
+    <ImportBudgetModal
+      open={importModalOpen}
+      onOpenChange={setImportModalOpen}
+      onImport={handleImportBudgets}
+    />
+    </>
   );
 }
