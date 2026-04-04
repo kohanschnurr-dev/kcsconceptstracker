@@ -1,27 +1,32 @@
+## Plan: Smarter Budget Import Parser
 
-
-## Plan: Add Hard Costs / Soft Costs View Mode
-
-Add a third view mode ("Cost Type") to the existing Category / Timeline toggle in BudgetCanvas that splits all budget line items into two collapsible groups: **Hard Costs** and **Soft Costs**.
-
-### How it works
-
-Users click a new "Cost Type" button in the existing view mode toggle bar (alongside Category and Timeline). Categories are classified as either Hard or Soft based on a static mapping — the same classification used in new construction estimating (permits, closing costs, architecture, engineering, insurance = soft; everything else = hard).
+The current parser is too naive — it doesn't filter out summary rows, subtotals, section headers, formula descriptions, or percentage values. When pasting a full construction cost estimator, it picks up junk rows and mismatches categories.
 
 ### Changes
 
-**File: `src/lib/budgetCalculatorCategories.ts`**
-- Add a `COST_TYPE_MAP` that classifies categories as `'hard'` or `'soft'`. Soft costs include: permits, inspections, closing_costs, insurance_project, taxes, hoa, architecture/plans-type items, staging, and any financing-related custom groups. Default = `'hard'`.
-- Add a `buildCostTypeGroups()` function that returns two groups (Hard Costs with a `Hammer` icon, Soft Costs with a `FileText` icon), each containing the relevant category values — same shape as `buildBudgetCalcGroups` output.
+**File: `src/components/budget/ImportBudgetModal.tsx`**
 
-**File: `src/components/budget/BudgetCanvas.tsx`**
-- Expand `viewMode` state type from `'category' | 'timeline'` to `'category' | 'timeline' | 'costtype'`.
-- Import `buildCostTypeGroups` and compute a `costTypeGroups` memo.
-- Update `displayGroups` to use `costTypeGroups` when `viewMode === 'costtype'`.
-- Add a third "Cost Type" button in the view mode toggle bar (between Timeline and the star).
-- Hide the "Add Phase" button when in costtype mode (it's timeline-only).
+1. **Smarter row filtering in `parseCSVText`**:
+   - Skip rows containing summary keywords: "SUBTOTAL", "ALL-IN TOTAL", "TOTALS", "PROJECT INPUTS", "FINANCING COSTS", "EBT", "ROI", "ARV", "LTC", "Delivery", "Sale ($/sqft)"
+   - Skip rows where the "amount" is actually a percentage (contains `%`)
+   - Skip rows that are clearly formulas/notes (e.g., "Formula:", lines with no real amount)
+   - Skip $/sqft-only rows (amounts under ~$10 that look like per-unit costs when a larger total exists on the same row)
+
+2. **Smarter amount extraction**:
+   - When multiple numeric columns exist, prefer the largest value (the total) over $/sqft or per-unit costs
+   - Handle negative amounts (refunds/credits)
+   - Ignore numbers that look like quantities (small integers next to "Quantity" headers)
+
+3. **Better auto-matching with expanded aliases**:
+   - Add: `"site work" → misc`, `"lumber package" → framing`, `"drywall package" → drywall`, `"drywall labor" → drywall`, `"roofing" → roofing`, `"exterior doors" → doors`, `"garage door" → garage`, `"termite treatment" → pest_control`, `"punch out" → final_punch`, `"final clean" → cleaning`, `"driveway" / "concrete work" → driveway_concrete`, `"survey" → misc` (or a soft cost category), `"energy" → inspections`, `"structural" / "civil engineering" → permits`
+   - Smarter partial matching: tokenize the name and check if any token matches a keyword, not just substring containment
+
+4. **Aggregate duplicate categories before showing the map step**:
+   - When multiple lines map to the same category (e.g., "Drywall Package" and "Drywall Labor" both → drywall), optionally show them individually but pre-aggregate in the final output (already done, just confirming)
+
+5. **Pre-clean pasted text**:
+   - Strip dollar signs, handle tab-separated columns with headers like `$/SQFT`, `TOTAL COST`, `QUANTITY`, `NOTES`
+   - Detect and skip header rows more aggressively (look for column header patterns)
 
 ### Files touched
-- `src/lib/budgetCalculatorCategories.ts` (~25 lines added)
-- `src/components/budget/BudgetCanvas.tsx` (~15 lines changed)
-
+- `src/components/budget/ImportBudgetModal.tsx` (~60 lines changed in parsing logic)
