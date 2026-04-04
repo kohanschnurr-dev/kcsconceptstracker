@@ -29,50 +29,51 @@ function buildCategoryLookup() {
 
   const aliases: Record<string, string[]> = {
     flooring: ['flooring', 'floor', 'lvp', 'hardwood', 'carpet'],
-    painting: ['paint', 'painting', 'primer'],
-    electrical: ['electrical', 'electric', 'wiring'],
-    plumbing: ['plumbing', 'plumber', 'pipe'],
-    hvac: ['hvac', 'mechanical', 'ac', 'air condition', 'condenser', 'furnace'],
-    roofing: ['roofing', 'roof', 'shingle'],
-    drywall: ['drywall', 'sheetrock'],
-    insulation: ['insulation', 'batt', 'blown'],
-    framing: ['framing', 'framer', 'lumber', 'lumber package'],
-    foundation_repair: ['foundation'],
-    cabinets: ['cabinets', 'cabinet'],
+    painting: ['paint', 'painting', 'primer', 'interior paint', 'exterior paint'],
+    electrical: ['electrical', 'electric', 'wiring', 'panel', 'breaker'],
+    plumbing: ['plumbing', 'plumber', 'pipe', 'rough-in plumbing', 'plumbing rough'],
+    hvac: ['hvac', 'mechanical', 'ac', 'air condition', 'condenser', 'furnace', 'ductwork', 'mini split'],
+    roofing: ['roofing', 'roof', 'shingle', 'roof tear', 'reroof'],
+    drywall: ['drywall', 'sheetrock', 'drywall package', 'drywall labor', 'drywall hang', 'drywall finish', 'drywall tape'],
+    insulation: ['insulation', 'batt', 'blown', 'spray foam'],
+    framing: ['framing', 'framer', 'lumber', 'lumber package', 'framing labor', 'framing package', 'structural framing'],
+    foundation_repair: ['foundation', 'foundation repair', 'pier', 'underpinning'],
+    cabinets: ['cabinets', 'cabinet', 'cabinet install'],
     countertops: ['countertops', 'countertop', 'granite', 'quartz'],
-    tile: ['tile', 'tiling', 'backsplash'],
-    appliances: ['appliances', 'appliance', 'refrigerator', 'stove', 'dishwasher'],
-    windows: ['windows', 'window'],
-    doors: ['doors', 'door', 'exterior door'],
-    fencing: ['fencing', 'fence'],
-    landscaping: ['landscaping', 'landscape', 'sod', 'irrigation'],
-    driveway_concrete: ['driveway', 'concrete', 'sidewalk'],
-    demolition: ['demolition', 'demo'],
-    permits: ['permits', 'permit', 'tap fee'],
-    pest_control: ['termite', 'pest'],
-    dumpsters_trash: ['dumpster', 'trash', 'hauling', 'debris'],
-    cleaning: ['clean', 'final clean'],
-    final_punch: ['punch', 'punch out'],
-    brick_siding_stucco: ['siding', 'stucco', 'brick', 'exterior finish'],
-    garage: ['garage', 'garage door'],
-    light_fixtures: ['fixture', 'light fixture', 'lighting'],
-    carpentry: ['trim', 'trim out', 'trims', 'carpentry', 'molding', 'baseboard'],
-    water_heater: ['water heater', 'hot water'],
-    utilities: ['utilities', 'utility', 'temporary util'],
-    misc: ['misc', 'miscellaneous', 'site work'],
-    railing: ['railing', 'rail', 'handrail'],
-    natural_gas: ['gas line', 'natural gas'],
-    pool: ['pool'],
-    staging: ['staging'],
-    kitchen: ['kitchen'],
-    bathroom: ['bathroom', 'bath'],
-    main_bathroom: ['master bath', 'main bath'],
-    hardware: ['hardware'],
-    hoa: ['hoa'],
-    insurance_project: ['insurance'],
-    taxes: ['tax', 'taxes'],
-    closing_costs: ['closing cost'],
-    drain_line_repair: ['drain line', 'sewer'],
+    tile: ['tile', 'tiling', 'backsplash', 'shower tile'],
+    appliances: ['appliances', 'appliance', 'refrigerator', 'stove', 'dishwasher', 'range', 'microwave', 'washer', 'dryer'],
+    windows: ['windows', 'window', 'window install', 'window replacement'],
+    doors: ['doors', 'door', 'exterior door', 'exterior doors', 'interior door', 'interior doors', 'entry door'],
+    fencing: ['fencing', 'fence', 'gate'],
+    landscaping: ['landscaping', 'landscape', 'sod', 'irrigation', 'sprinkler', 'yard'],
+    driveway_concrete: ['driveway', 'concrete', 'sidewalk', 'concrete work', 'flatwork', 'patio concrete'],
+    demolition: ['demolition', 'demo', 'tear out', 'tearout', 'selective demo'],
+    permits: ['permits', 'permit', 'tap fee', 'survey', 'structural', 'civil engineering', 'civil', 'engineering', 'architecture', 'architect', 'plans', 'plan review', 'impact fee'],
+    inspections: ['inspection', 'inspections', 'energy', 'energy audit', 'energy compliance'],
+    pest_control: ['termite', 'pest', 'termite treatment', 'pest control', 'termite bond'],
+    dumpsters_trash: ['dumpster', 'trash', 'hauling', 'debris', 'trash hauling', 'debris removal'],
+    cleaning: ['clean', 'final clean', 'construction clean', 'cleaning', 'maid'],
+    final_punch: ['punch', 'punch out', 'punch list', 'final punch'],
+    brick_siding_stucco: ['siding', 'stucco', 'brick', 'exterior finish', 'hardie', 'hardy board'],
+    garage: ['garage', 'garage door', 'garage door opener'],
+    light_fixtures: ['fixture', 'light fixture', 'lighting', 'light fixtures', 'recessed light', 'can light'],
+    carpentry: ['trim', 'trim out', 'trims', 'carpentry', 'molding', 'baseboard', 'crown', 'casing', 'trim package'],
+    water_heater: ['water heater', 'hot water', 'tankless'],
+    utilities: ['utilities', 'utility', 'temporary util', 'temp utilities'],
+    misc: ['misc', 'miscellaneous', 'site work', 'general conditions', 'general'],
+    railing: ['railing', 'rail', 'handrail', 'stair rail', 'iron railing'],
+    natural_gas: ['gas line', 'natural gas', 'gas piping'],
+    pool: ['pool', 'pool plaster', 'pool equipment'],
+    staging: ['staging', 'stage'],
+    kitchen: ['kitchen', 'kitchen remodel'],
+    bathroom: ['bathroom', 'bath', 'bath remodel'],
+    main_bathroom: ['master bath', 'main bath', 'master bathroom'],
+    hardware: ['hardware', 'door hardware', 'cabinet hardware'],
+    hoa: ['hoa', 'homeowner association'],
+    insurance_project: ['insurance', 'builder risk', 'builders risk'],
+    taxes: ['tax', 'taxes', 'property tax'],
+    closing_costs: ['closing cost', 'closing costs', 'title', 'escrow'],
+    drain_line_repair: ['drain line', 'sewer', 'sewer line', 'drain'],
   };
 
   for (const cat of cats) {
@@ -90,10 +91,18 @@ function autoMatch(name: string, lookup: { keywords: string[]; value: string }[]
       if (lower === kw) return entry.value;
     }
   }
-  // Partial match
+  // Partial match — full string contains keyword
   for (const entry of lookup) {
     for (const kw of entry.keywords) {
       if (lower.includes(kw) || kw.includes(lower)) return entry.value;
+    }
+  }
+  // Token-based match — any word in the name matches a keyword
+  const tokens = lower.split(/[\s/&,\-–—]+/).filter(Boolean);
+  for (const entry of lookup) {
+    for (const kw of entry.keywords) {
+      const kwTokens = kw.split(/\s+/);
+      if (kwTokens.length === 1 && tokens.includes(kwTokens[0])) return entry.value;
     }
   }
   return null;
