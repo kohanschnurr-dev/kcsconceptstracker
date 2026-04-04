@@ -115,17 +115,17 @@ function SortablePhaseItem({
 
 export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled, autoRevealCategory, onRevealHandled }: BudgetCanvasProps) {
   const { user } = useAuth();
-  const [favoriteMode, setFavoriteMode] = useState<'category' | 'timeline'>(() => {
+  const [favoriteMode, setFavoriteMode] = useState<'category' | 'timeline' | 'costtype'>(() => {
     try {
       const saved = localStorage.getItem('budget-view-mode-favorite');
-      if (saved === 'timeline') return 'timeline';
+      if (saved === 'timeline' || saved === 'costtype') return saved;
     } catch {}
     return 'category';
   });
-  const [viewMode, setViewMode] = useState<'category' | 'timeline'>(() => {
+  const [viewMode, setViewMode] = useState<'category' | 'timeline' | 'costtype'>(() => {
     try {
       const saved = localStorage.getItem('budget-view-mode-favorite');
-      if (saved === 'timeline') return 'timeline';
+      if (saved === 'timeline' || saved === 'costtype') return saved;
     } catch {}
     return 'category';
   });

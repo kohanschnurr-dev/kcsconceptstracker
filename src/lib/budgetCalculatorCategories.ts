@@ -193,9 +193,6 @@ export function buildCostTypeGroups(categories: CategoryItem[]) {
 export function resolveTradeGroup(item: CategoryItem): string {
   return item.group || CATEGORY_GROUP_MAP[item.value] || 'other';
 }
-export function resolveTradeGroup(item: CategoryItem): string {
-  return item.group || CATEGORY_GROUP_MAP[item.value] || 'other';
-}
 
 /** Build grouped structure from expense categories for BudgetCanvas rendering */
 export function buildBudgetCalcGroups(categories: CategoryItem[]) {
