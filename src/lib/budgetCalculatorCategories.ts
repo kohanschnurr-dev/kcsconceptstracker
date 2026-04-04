@@ -167,7 +167,32 @@ export function getBudgetCalcCategories(): CategoryItem[] {
   }));
 }
 
+/** Classify a category as hard or soft cost. Default = hard. */
+export const SOFT_COST_CATEGORIES = new Set([
+  'permits', 'inspections', 'permits_inspections', 'closing_costs',
+  'insurance_project', 'insurance', 'taxes', 'property_tax', 'hoa',
+  'staging', 'architect', 'licensing_fees', 'professional_dues',
+  'survey', 'loan_costs',
+]);
+
+export function getCostType(categoryValue: string): 'hard' | 'soft' {
+  return SOFT_COST_CATEGORIES.has(categoryValue) ? 'soft' : 'hard';
+}
+
+/** Build two groups: Hard Costs and Soft Costs */
+export function buildCostTypeGroups(categories: CategoryItem[]) {
+  const hard = categories.filter(c => getCostType(c.value) === 'hard').map(c => c.value);
+  const soft = categories.filter(c => getCostType(c.value) === 'soft').map(c => c.value);
+  return [
+    { key: 'hard_costs', name: 'Hard Costs', icon: Hammer, categories: hard },
+    { key: 'soft_costs', name: 'Soft Costs', icon: FileText, categories: soft },
+  ].filter(g => g.categories.length > 0);
+}
+
 /** Resolve the trade group for a category, checking item.group first then the static map */
+export function resolveTradeGroup(item: CategoryItem): string {
+  return item.group || CATEGORY_GROUP_MAP[item.value] || 'other';
+}
 export function resolveTradeGroup(item: CategoryItem): string {
   return item.group || CATEGORY_GROUP_MAP[item.value] || 'other';
 }
