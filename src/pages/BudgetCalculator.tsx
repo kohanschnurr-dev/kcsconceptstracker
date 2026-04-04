@@ -13,6 +13,7 @@ import { TemplatePicker } from '@/components/budget/TemplatePicker';
 import { DealSidebar, type CalculatorType } from '@/components/budget/DealSidebar';
 import { RentalAnalysis } from '@/components/budget/RentalAnalysis';
 import { BRRRAnalysis } from '@/components/budget/BRRRAnalysis';
+import { ImportBudgetModal } from '@/components/budget/ImportBudgetModal';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import type { RentalFieldValues } from '@/components/budget/RentalFields';
 import { getBudgetCategories } from '@/types';
