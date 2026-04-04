@@ -192,7 +192,8 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     ),
     [allCategories, timelineCustom, phaseConfig]
   );
-  const displayGroups = viewMode === 'timeline' ? timelineGroups : dynamicGroups;
+  const costTypeGroups = useMemo(() => buildCostTypeGroups(allCategories), [allCategories]);
+  const displayGroups = viewMode === 'costtype' ? costTypeGroups : viewMode === 'timeline' ? timelineGroups : dynamicGroups;
   const allGroupNames = displayGroups.map(g => g.name);
   const allExpanded = allGroupNames.every(name => openGroups.includes(name));
   const presetCategories = new Set(presets.map(p => p.category));
@@ -203,7 +204,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     useSensor(KeyboardSensor)
   );
 
-  const handleViewModeChange = (mode: 'category' | 'timeline') => {
+  const handleViewModeChange = (mode: 'category' | 'timeline' | 'costtype') => {
     setViewMode(mode);
     localStorage.setItem('budget-view-mode', mode);
   };
