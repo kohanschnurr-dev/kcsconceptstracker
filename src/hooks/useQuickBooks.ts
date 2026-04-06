@@ -912,7 +912,7 @@ export function useQuickBooks() {
     try {
       const { error } = await supabase
         .from('quickbooks_expenses')
-        .update({ is_hidden: true })
+        .update({ is_hidden: true, hidden_at: new Date().toISOString() } as any)
         .eq('id', expenseId);
 
       if (error) {
@@ -935,7 +935,7 @@ export function useQuickBooks() {
     try {
       const { error } = await supabase
         .from('quickbooks_expenses')
-        .update({ is_hidden: false })
+        .update({ is_hidden: false, hidden_at: null } as any)
         .eq('id', expenseId);
 
       if (error) {
@@ -982,6 +982,35 @@ export function useQuickBooks() {
     }
   }, [isConnected, isDemoMode, fetchHiddenExpenses]);
 
+  const fetchStaleHiddenExpenses = useCallback(async () => {
+    if (isDemoMode) return [];
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('quickbooks_expenses')
+        .select('*')
+        .eq('is_imported', false)
+        .eq('is_hidden', true)
+        .lt('hidden_at', thirtyDaysAgo)
+        .order('date', { ascending: false });
+      if (error) { console.error('Error fetching stale hidden:', error); return []; }
+      return data || [];
+    } catch (e) { console.error('Error fetching stale hidden:', e); return []; }
+  }, [isDemoMode]);
+
+  const deleteStaleHidden = useCallback(async (ids: string[]) => {
+    if (!ids.length) return;
+    try {
+      const { error } = await supabase
+        .from('quickbooks_expenses')
+        .delete()
+        .in('id', ids);
+      if (error) { console.error('Error deleting stale hidden:', error); return false; }
+      setHiddenExpenses(prev => prev.filter(e => !ids.includes(e.id)));
+      return true;
+    } catch (e) { console.error('Error deleting stale hidden:', e); return false; }
+  }, []);
+
   return {
     isConnected,
     isDemoMode,
@@ -1003,5 +1032,7 @@ export function useQuickBooks() {
     fetchHiddenExpenses,
     enableDemoMode,
     importAllSplits,
+    fetchStaleHiddenExpenses,
+    deleteStaleHidden,
   };
 }
