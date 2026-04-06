@@ -29,6 +29,7 @@ interface AddTaskModalProps {
 
 export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTaskCreated }: AddTaskModalProps) {
   const { toast } = useToast();
+  const allProjects = useProjectOptions();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
