@@ -67,7 +67,7 @@ const getCategoryIcon = (category: string, size = 12, className = ''): ReactNode
 
 export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: GanttViewProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
-  const [zoomDays, setZoomDays] = useState(28);
+  const [zoomDays, setZoomDays] = useState(7);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
