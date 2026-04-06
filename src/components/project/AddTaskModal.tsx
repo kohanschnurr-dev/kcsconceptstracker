@@ -333,7 +333,7 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
 
       {/* Calendar Event Modal */}
       <NewEventModal
-        projects={[{ id: projectId, name: projectName, address: '' }]}
+        projects={allProjects.map(p => ({ id: p.id, name: p.name, address: p.address || '' }))}
         onEventCreated={() => setCalendarModalOpen(false)}
         defaultProjectId={calendarDefaults?.projectId}
         defaultTitle={calendarDefaults?.title}
