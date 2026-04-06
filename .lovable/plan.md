@@ -1,12 +1,22 @@
 
 
-## Plan: Make Calendar Legend Labels Black
+## Plan: Make Critical Path Card Icons Black
 
-**Problem**: The category legend labels (e.g., "Electrical", "Rough-ins") use `text-muted-foreground` which is too light to read easily.
+**Problem**: The compact critical-path cards on the monthly calendar show orange/red icons (warning triangle + category icon) instead of black text. The title text is already `text-foreground` (black), but the icons remain colored.
 
 ### Change
 
-**`src/components/calendar/CalendarLegend.tsx`** — Lines 10 and 15: Replace `text-muted-foreground` with `text-foreground` on both the category labels and the "Critical Path" label.
+**`src/components/calendar/DealCard.tsx`** — Line 85: Change the `AlertTriangle` icon from `text-red-400` to `text-foreground` so it renders black in light mode.
 
-This makes all legend text black in light mode (white in dark mode) for maximum readability, while the colored dot swatches still communicate category identity.
+Additionally, ensure the category icon also renders black for critical path items by adding a `text-foreground` override on line 86 when `isCriticalPath` is true.
+
+```tsx
+// Line 85: before
+{task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-red-400 shrink-0" />}
+
+// Line 85: after
+{task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-foreground shrink-0" />}
+```
+
+**Files**: `src/components/calendar/DealCard.tsx` (1 line edit)
 
