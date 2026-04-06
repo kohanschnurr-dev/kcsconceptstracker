@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, MapPin, DollarSign, Calendar as CalendarIcon, Hammer, CopyCheck, Calculator, Home } from 'lucide-react';
+import { Building2, MapPin, DollarSign, Calendar as CalendarIcon, Hammer, CopyCheck, Calculator, Home, HardHat } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   Dialog,
@@ -203,13 +203,17 @@ export function NewProjectModal({ open, onOpenChange, onProjectCreated, defaultP
           <div className="space-y-2">
             <Label>Project Type</Label>
             <Tabs value={projectType} onValueChange={(v) => setProjectType(v as ProjectType)}>
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="fix_flip" className="gap-1 text-xs">
-                  <Hammer className="h-4 w-4" />
+                  <Hammer className="h-3.5 w-3.5" />
                   Fix & Flip
                 </TabsTrigger>
+                <TabsTrigger value="new_construction" className="gap-1 text-xs">
+                  <HardHat className="h-3.5 w-3.5" />
+                  New Build
+                </TabsTrigger>
                 <TabsTrigger value="rental" className="gap-1 text-xs">
-                  <Home className="h-4 w-4" />
+                  <Home className="h-3.5 w-3.5" />
                   Rental
                 </TabsTrigger>
               </TabsList>

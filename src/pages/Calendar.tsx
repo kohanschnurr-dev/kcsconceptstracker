@@ -39,7 +39,7 @@ interface Project {
   id: string;
   name: string;
   address: string;
-  projectType?: 'fix_flip' | 'rental';
+  projectType?: 'fix_flip' | 'rental' | 'new_construction';
 }
 
 export default function Calendar() {

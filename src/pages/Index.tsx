@@ -320,7 +320,7 @@ export default function Index() {
       const raw = localStorage.getItem('dashboard-profit-filters');
       if (raw) return JSON.parse(raw) as { types: string[]; statuses: string[]; timeline?: TimelinePreset; timelineStart?: string; timelineEnd?: string };
     } catch {}
-    return { types: ['fix_flip', 'rental'], statuses: ['active'], timeline: 'all' as TimelinePreset };
+    return { types: ['fix_flip', 'new_construction', 'rental'], statuses: ['active'], timeline: 'all' as TimelinePreset };
   })();
 
   const timelineRange = resolveTimeline(

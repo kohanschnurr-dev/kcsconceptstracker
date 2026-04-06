@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FolderKanban, Home, Hammer, Settings, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
+import { Plus, Search, FolderKanban, Home, Hammer, HardHat, Settings, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
 import { arrayMove } from '@dnd-kit/sortable';
 import { cn } from '@/lib/utils';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -22,10 +22,11 @@ interface DBCategory {
   estimated_budget: number;
 }
 
-const DEFAULT_TAB_ORDER: ProjectType[] = ['fix_flip', 'rental'];
+const DEFAULT_TAB_ORDER: ProjectType[] = ['fix_flip', 'new_construction', 'rental'];
 
 const TAB_CONFIG: Record<string, { label: string; icon: typeof Hammer; createLabel: string }> = {
   fix_flip: { label: 'Fix & Flips', icon: Hammer, createLabel: 'Flip' },
+  new_construction: { label: 'New Construction', icon: HardHat, createLabel: 'Build' },
   rental: { label: 'Rentals', icon: Home, createLabel: 'Rental' },
 };
 

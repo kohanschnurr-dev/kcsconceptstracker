@@ -1,4 +1,4 @@
-import { MapPin, Calendar, Home, Hammer, Star } from 'lucide-react';
+import { MapPin, Calendar, Home, Hammer, HardHat, Star } from 'lucide-react';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -98,6 +98,8 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
               )}
               {isRental ? (
                 <Home className="h-4 w-4 text-muted-foreground shrink-0" />
+              ) : project.projectType === 'new_construction' ? (
+                <HardHat className="h-4 w-4 text-muted-foreground shrink-0" />
               ) : (
                 <Hammer className="h-4 w-4 text-muted-foreground shrink-0" />
               )}
