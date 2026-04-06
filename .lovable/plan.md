@@ -1,23 +1,35 @@
 
 
-## Plan: Fix Category Color Dots to Use Dark, Readable Colors
+## Plan: Fix "No Projects Found" in Calendar Modal from Add Task
 
-**Problem**: The colored dots next to category items in the calendar dropdown use CSS `var(--red-500, red)` which falls back to basic CSS color names (`red`, `blue`, `orange`). These are washed-out browser default colors that are hard to read on white backgrounds.
+**Root Causes** (two bugs):
 
-**Fix**: Replace the dynamic `style` approach with the existing `swatchClass` from `CATEGORY_GROUPS`, which already uses proper Tailwind classes like `bg-red-500`, `bg-blue-500`, etc. These are bold, saturated colors.
+1. **Projects invisible in dropdown**: `AddTaskModal` passes the project as `{ id, name, address: '' }` with no `status` or `projectType`. The `ProjectAutocomplete` component groups projects by `projectType` (`fix_flip` / `rental`), so projects without a type are silently dropped — showing "No projects found."
 
-### Changes — `src/components/calendar/NewEventModal.tsx`
+2. **Project not pre-selected**: The `useEffect` in `NewEventModal` (line 73-83) sets `title` and `startDate` when opened externally, but never updates `projectId` from the `defaultProjectId` prop.
 
-1. **Line 351-354** — Replace the inline `style` on category item dots:
-   - From: `style={{ backgroundColor: var(--${CATEGORY_GROUPS[groupKey].color}-500, ...) }}`
-   - To: `className="w-2 h-2 rounded-full mr-2 ${CATEGORY_GROUPS[groupKey].swatchClass}"`
+### Changes
 
-2. **Line 300-303** — Replace the inline `style` on the selected category dot in the trigger button:
-   - From: `style={{ backgroundColor: var(--${selectedCategoryStyles.color}-500, ...) }}`
-   - To: `className={cn("w-2 h-2 rounded-full", selectedCategoryStyles?.swatchClass)}`
+#### 1. `src/components/project/AddTaskModal.tsx` — Fetch full project data
+Instead of passing a manually constructed project object with missing fields, query the actual project data from the database (or use the existing props more completely). The simplest fix: use `useProjectOptions()` to get the full project list with `status` and `projectType` fields, and pass that to `NewEventModal`.
 
-Both changes switch from broken CSS custom properties to the existing Tailwind swatch classes (`bg-red-500`, `bg-blue-500`, `bg-orange-500`, `bg-purple-500`, `bg-emerald-500`, `bg-amber-500`) which render as bold, dark, readable colors.
+- Replace `projects={[{ id: projectId, name: projectName, address: '' }]}` with the full project list from `useProjectOptions()`
+- Import `useProjectOptions` hook
+
+#### 2. `src/components/calendar/NewEventModal.tsx` — Pre-select project on external open
+Add `defaultProjectId` to the `useEffect` that fires when `externalOpen` becomes true:
+
+```typescript
+useEffect(() => {
+  if (externalOpen) {
+    if (defaultStartDate) { setStartDate(defaultStartDate); setEndDate(defaultStartDate); }
+    if (defaultTitle) { setTitle(defaultTitle); }
+    if (defaultProjectId) { setProjectId(defaultProjectId); } // ADD THIS
+  }
+}, [externalOpen, defaultStartDate, defaultTitle, defaultProjectId]);
+```
 
 ### Files
-- `src/components/calendar/NewEventModal.tsx` (2 line changes)
+- `src/components/project/AddTaskModal.tsx` (1 import + 1 line change)
+- `src/components/calendar/NewEventModal.tsx` (1 line addition in useEffect)
 
