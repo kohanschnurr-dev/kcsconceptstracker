@@ -1,19 +1,33 @@
 
 
-## Plan: Fix Grey Blocks in Gantt Chart
+## Plan: Improve Calendar Card Color Readability
 
-The grey rectangular blocks visible in task rows when zoomed out are caused by the background day-cell grid (lines 282–292). Each task row renders a full set of `flex-1` day divider `<div>` elements behind the task bar. When columns are narrow at wider zoom levels, these empty flex children can produce visible grey artifacts due to sub-pixel rendering and flex layout boundaries.
+The current category colors use very low-opacity backgrounds (`bg-X-500/20`) with generic `text-foreground`, producing washed-out cards that are hard to read — especially red and orange categories on a light background.
 
-### Fix — `src/components/calendar/GanttView.tsx`
+### Changes
 
-**Remove the background day-cell grid from task rows (lines 282–293)**
-- Delete the entire `<div className="absolute inset-0 flex">` block containing the day-cell loop inside task rows
-- Replace with a single today-highlight element: if any day is today, render one positioned `<div>` at the correct percentage offset with `bg-primary/5`, calculated the same way as task positions
-- This eliminates all the empty flex children that create the grey artifacts while preserving the today column highlight
+**File: `src/lib/calendarCategories.ts`** — Update `CATEGORY_GROUPS` color definitions
 
-### Result
-Clean task rows with only the colored task bars — no phantom grey rectangles at any zoom level.
+Replace the current pastel-on-generic scheme with higher-contrast combinations:
+
+| Group | Current bg | New bg | Current text | New text |
+|-------|-----------|--------|-------------|----------|
+| acquisition_admin (blue) | `bg-blue-500/20` | `bg-blue-50` | `text-foreground` | `text-blue-800` |
+| structural_exterior (red) | `bg-red-500/20` | `bg-red-50` | `text-foreground` | `text-red-800` |
+| rough_ins (orange) | `bg-orange-500/20` | `bg-orange-50` | `text-foreground` | `text-orange-800` |
+| inspections (purple) | `bg-purple-500/20` | `bg-purple-50` | `text-foreground` | `text-purple-800` |
+| interior_finishes (green) | `bg-emerald-500/20` | `bg-emerald-50` | `text-foreground` | `text-emerald-800` |
+| milestones (amber) | `bg-amber-500/20` | `bg-amber-50` | `text-foreground` | `text-amber-800` |
+
+Also update `borderClass` to use `-200` variants (e.g., `border-blue-200`) for a cleaner outline.
+
+**For dark mode compatibility**, add dark-mode overrides:
+- bg: `dark:bg-blue-500/20` (keep the current values as dark-mode variants)
+- text: `dark:text-blue-200`
+- border: `dark:border-blue-500/30`
+
+This ensures cards are readable in both light and dark themes — solid pastels with strong text in light mode, translucent with light text in dark mode.
 
 ### Files
-- `src/components/calendar/GanttView.tsx`
+- `src/lib/calendarCategories.ts` (only file)
 
