@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Paperclip } from 'lucide-react';
+import { ChevronDown, ChevronRight, Paperclip, EyeOff, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -30,6 +30,9 @@ interface GroupedExpenseRowProps {
   handleViewReceipt: (receiptUrl: string, e: React.MouseEvent) => void;
   onExpenseClick: (expense: DBExpense) => void;
   onGroupClick?: (expenses: DBExpense[]) => void;
+  onHide?: (expenseId: string) => void;
+  onUnhide?: (expenseId: string) => void;
+  isHiddenView?: boolean;
 }
 
 export function GroupedExpenseRow({
@@ -40,6 +43,9 @@ export function GroupedExpenseRow({
   handleViewReceipt,
   onExpenseClick,
   onGroupClick,
+  onHide,
+  onUnhide,
+  isHiddenView,
 }: GroupedExpenseRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
@@ -69,7 +75,7 @@ export function GroupedExpenseRow({
     const expense = sortedExpenses[0];
     return (
       <tr 
-        className="hover:bg-muted/20 transition-colors cursor-pointer"
+        className="hover:bg-muted/20 transition-colors cursor-pointer group/row"
         onClick={() => onExpenseClick(expense)}
       >
         <td className="whitespace-nowrap">{formatDisplayDate(expense.date)}</td>
@@ -119,6 +125,24 @@ export function GroupedExpenseRow({
                 <span className="text-xs text-muted-foreground ml-1">+tax</span>
               )}
             </span>
+            {onHide && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onHide(expense.id); }}
+                className="opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                title="Hide expense"
+              >
+                <EyeOff className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {onUnhide && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onUnhide(expense.id); }}
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title="Restore expense"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </td>
       </tr>
@@ -130,7 +154,7 @@ export function GroupedExpenseRow({
     <>
       {/* Parent row - clickable to open group modal, arrow to expand */}
       <tr 
-        className="hover:bg-muted/20 transition-colors cursor-pointer"
+        className="hover:bg-muted/20 transition-colors cursor-pointer group/row"
         onClick={() => onGroupClick ? onGroupClick(sortedExpenses) : onExpenseClick(parentExpense)}
       >
         <td 
@@ -192,6 +216,24 @@ export function GroupedExpenseRow({
             <span className="font-mono font-semibold">
               {formatCurrency(totalAmount)}
             </span>
+            {onHide && (
+              <button
+                onClick={(e) => { e.stopPropagation(); sortedExpenses.forEach(exp => onHide(exp.id)); }}
+                className="opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                title="Hide all in group"
+              >
+                <EyeOff className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {onUnhide && (
+              <button
+                onClick={(e) => { e.stopPropagation(); sortedExpenses.forEach(exp => onUnhide(exp.id)); }}
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title="Restore all in group"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </td>
       </tr>

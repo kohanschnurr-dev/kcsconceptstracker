@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Search, Download, Receipt, Calendar, Paperclip, ChevronDown, X } from 'lucide-react';
+import { Plus, Search, Download, Receipt, Calendar, Paperclip, ChevronDown, X, EyeOff, Eye } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -67,6 +67,7 @@ interface DBExpense {
   receipt_url?: string | null;
   source?: 'manual' | 'quickbooks';
   qb_id?: string | null;
+  is_hidden?: boolean;
 }
 
 interface DBQuickBooksExpense {
@@ -98,6 +99,7 @@ export default function Expenses() {
   const [selectedExpenseGroup, setSelectedExpenseGroup] = useState<DBExpense[] | null>(null);
   const [groupDetailModalOpen, setGroupDetailModalOpen] = useState(false);
   const [expensesTableOpen, setExpensesTableOpen] = useState(true);
+  const [showHidden, setShowHidden] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -283,17 +285,25 @@ export default function Expenses() {
     }
   };
 
+  const hiddenCount = useMemo(() => expenses.filter(e => e.is_hidden).length, [expenses]);
+
   const filteredExpenses = useMemo(() => {
     return expenses.filter((expense) => {
-      const searchLower = search.toLowerCase().replace(/[$,]/g, ''); // Strip $ and commas for amount search
+      // Filter by hidden status
+      if (showHidden) {
+        if (!expense.is_hidden) return false;
+      } else {
+        if (expense.is_hidden) return false;
+      }
+
+      const searchLower = search.toLowerCase().replace(/[$,]/g, '');
       
-      // Get resolved names for searching
       const projectName = getProjectName(expense.project_id).toLowerCase();
       const categoryLabel = (expense.category_id ? getCategoryLabel(expense.category_id, expense.project_id) : '').toLowerCase();
       const amountStr = expense.amount.toString();
       
       const matchesSearch = 
-        !search || // If no search, match everything
+        !search ||
         (expense.vendor_name?.toLowerCase() || '').includes(searchLower) ||
         (expense.description?.toLowerCase() || '').includes(searchLower) ||
         (expense.notes?.toLowerCase() || '').includes(searchLower) ||
@@ -304,7 +314,6 @@ export default function Expenses() {
       
       const matchesProject = projectFilter === 'all' || expense.project_id === projectFilter;
       
-      // For category filter, we need to check the category of the expense
       let matchesCategory = categoryFilter === 'all';
       if (!matchesCategory) {
         const project = projects.find(p => p.id === expense.project_id);
@@ -312,7 +321,6 @@ export default function Expenses() {
         matchesCategory = category?.category === categoryFilter;
       }
 
-      // Date range filter
       let matchesDateRange = true;
       if (dateRange?.from) {
         const expenseDate = new Date(expense.date);
@@ -327,7 +335,7 @@ export default function Expenses() {
 
       return matchesSearch && matchesProject && matchesCategory && matchesDateRange;
     });
-  }, [expenses, search, projectFilter, categoryFilter, dateRange, projects, getProjectName, getCategoryLabel]);
+  }, [expenses, search, projectFilter, categoryFilter, dateRange, projects, getProjectName, getCategoryLabel, showHidden]);
 
   // Group expenses by parent QB transaction ID (for split expenses)
   const groupedExpenses = useMemo(() => {
@@ -381,6 +389,36 @@ export default function Expenses() {
     setProjectFilter('all');
     setCategoryFilter('all');
     setDateRange(undefined);
+  };
+
+  const handleHideExpense = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update({ is_hidden: true } as any)
+        .eq('id', id);
+      if (error) throw error;
+      setExpenses(prev => prev.map(e => e.id === id ? { ...e, is_hidden: true } : e));
+      toast({ title: 'Expense hidden' });
+    } catch (error) {
+      console.error('Error hiding expense:', error);
+      toast({ title: 'Error', description: 'Failed to hide expense', variant: 'destructive' });
+    }
+  };
+
+  const handleUnhideExpense = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update({ is_hidden: false } as any)
+        .eq('id', id);
+      if (error) throw error;
+      setExpenses(prev => prev.map(e => e.id === id ? { ...e, is_hidden: false } : e));
+      toast({ title: 'Expense restored' });
+    } catch (error) {
+      console.error('Error unhiding expense:', error);
+      toast({ title: 'Error', description: 'Failed to restore expense', variant: 'destructive' });
+    }
   };
 
   const exportToCSV = () => {
@@ -531,11 +569,22 @@ export default function Expenses() {
                 )}
               </div>
 
-              {/* Row 3: Summary + Export */}
+              {/* Row 3: Summary + Hidden toggle + Export */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{filteredExpenses.length} expenses</span>
+                <span>{filteredExpenses.length} {showHidden ? 'hidden ' : ''}expenses</span>
                 <span>•</span>
                 <span className="font-mono font-medium">{formatCurrency(totalExpenses)}</span>
+                {hiddenCount > 0 && (
+                  <Button
+                    variant={showHidden ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="gap-1 h-6 px-2 text-xs"
+                    onClick={() => setShowHidden(!showHidden)}
+                  >
+                    {showHidden ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                    {showHidden ? 'Show Active' : `Hidden (${hiddenCount})`}
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" className="gap-1 h-6 ml-auto px-2 text-xs" onClick={exportToCSV}>
                   <Download className="h-3 w-3" />
                   Export
@@ -573,6 +622,9 @@ export default function Expenses() {
                           setSelectedExpenseGroup(expenses);
                           setGroupDetailModalOpen(true);
                         }}
+                        onHide={showHidden ? undefined : handleHideExpense}
+                        onUnhide={showHidden ? handleUnhideExpense : undefined}
+                        isHiddenView={showHidden}
                       />
                     ))}
                   </tbody>
