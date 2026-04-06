@@ -13,11 +13,12 @@ import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { RentalFields, type RentalFieldValues } from '@/components/budget/RentalFields';
 
-export type CalculatorType = 'fix_flip' | 'rental';
+export type CalculatorType = 'fix_flip' | 'rental' | 'new_construction';
 
-const DEFAULT_CALC_TAB_ORDER: CalculatorType[] = ['fix_flip', 'rental'];
+const DEFAULT_CALC_TAB_ORDER: CalculatorType[] = ['fix_flip', 'new_construction', 'rental'];
 const CALC_TAB_LABELS: Record<CalculatorType, string> = {
   fix_flip: 'Sale',
+  new_construction: 'New Build',
   rental: 'Rental',
 };
 
@@ -138,7 +139,7 @@ export function DealSidebar({
       if (saved) {
         const parsed = JSON.parse(saved) as string[];
         // Filter out removed types
-        const valid = parsed.filter(t => t === 'fix_flip' || t === 'rental') as CalculatorType[];
+        const valid = parsed.filter(t => t === 'fix_flip' || t === 'rental' || t === 'new_construction') as CalculatorType[];
         if (valid.length > 0) return valid;
       }
     } catch {}
@@ -173,7 +174,7 @@ export function DealSidebar({
     }).format(value);
   };
 
-  const showEstimatedCosts = calculatorType === 'fix_flip';
+  const showEstimatedCosts = calculatorType === 'fix_flip' || calculatorType === 'new_construction';
 
   if (isCollapsed) {
     if (isMobile) {

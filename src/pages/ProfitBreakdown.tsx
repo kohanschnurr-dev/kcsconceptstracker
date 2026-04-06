@@ -13,7 +13,7 @@ import { calcAnnualCashFlow } from '@/lib/rentalCashFlow';
 
 type StatusFilter = 'all' | 'active' | 'complete';
 
-const ALL_TYPES = ['fix_flip', 'rental'];
+const ALL_TYPES = ['fix_flip', 'new_construction', 'rental'];
 const ALL_STATUSES = ['active', 'complete'];
 
 // Read dashboard preferences once at module level for initial state
@@ -77,6 +77,7 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'all', label: 'All Types' },
   { value: 'fix_flip', label: 'Fix & Flip' },
+  { value: 'new_construction', label: 'New Construction' },
   { value: 'rental', label: 'Rental' },
 ];
 

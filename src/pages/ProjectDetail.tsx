@@ -40,7 +40,7 @@ function SortableTabItem({ id, label }: { id: string; label: string }) {
   );
 }
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Home, FileText } from 'lucide-react';
+import { Home, FileText, HardHat, Hammer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -102,6 +102,7 @@ import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { ProjectReport } from '@/components/project/ProjectReport';
 import { LeaseTab } from '@/components/project/LeaseTab';
+import { PhasesDrawsTab } from '@/components/project/PhasesDrawsTab';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
 import { Input } from '@/components/ui/input';
@@ -111,7 +112,7 @@ interface DBProject {
   name: string;
   address: string;
   status: 'active' | 'complete' | 'on_hold';
-  project_type: 'fix_flip' | 'rental';
+  project_type: 'fix_flip' | 'rental' | 'new_construction';
   total_budget: number;
   start_date: string;
   purchase_price?: number;
@@ -167,6 +168,7 @@ const CORE_TABS = ['schedule', 'tasks', 'financials', 'documents', 'team', 'info
 
 const DEFAULT_DETAIL_TAB_ORDER_BY_TYPE: Record<string, string[]> = {
   fix_flip: [...CORE_TABS, 'loan'],
+  new_construction: [...CORE_TABS, 'loan', 'draws'],
   rental: [...CORE_TABS, 'loan', 'lease', 'cashflow'],
 };
 
@@ -185,6 +187,7 @@ const TAB_LABELS: Record<string, string> = {
   info: 'Info',
   procurement: 'Procurement',
   lease: 'Lease',
+  draws: 'Phases & Draws',
 };
 
 function getTabLabel(tab: string): string {
@@ -214,6 +217,7 @@ export default function ProjectDetail() {
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [convertTarget, setConvertTarget] = useState<string>('fix_flip');
   const [nameValue, setNameValue] = useState('');
   const [addressValue, setAddressValue] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -539,29 +543,35 @@ export default function ProjectDetail() {
     setUpdatingStatus(false);
   };
 
-  const handleConvertProjectType = async () => {
+  const handleConvertProjectType = async (newType?: string) => {
     if (!project) return;
-    const newType = isRental ? 'fix_flip' : 'rental';
+    const targetType = newType || (isRental ? 'fix_flip' : 'rental');
     
     const { error } = await supabase
       .from('projects')
-      .update({ project_type: newType })
+      .update({ project_type: targetType as any })
       .eq('id', project.id);
+    
+    const typeLabels: Record<string, string> = {
+      fix_flip: 'Fix & Flip',
+      new_construction: 'New Construction',
+      rental: 'Rental',
+    };
     
     if (error) {
       console.error('Error converting project type:', error);
       toast({
         title: 'Error',
-        description: `Failed to convert project to ${newType === 'rental' ? 'Rental' : 'Fix & Flip'}`,
+        description: `Failed to convert project to ${typeLabels[targetType] || targetType}`,
         variant: 'destructive',
       });
     } else {
-      setProject({ ...project, project_type: newType });
+      setProject({ ...project, project_type: targetType as any });
       toast({
-        title: newType === 'rental' ? 'Converted to Rental' : 'Converted to Fix & Flip',
-        description: newType === 'rental'
+        title: `Converted to ${typeLabels[targetType]}`,
+        description: targetType === 'rental'
           ? 'Head to the Financials tab to set up your rental income details.'
-          : 'The project is now a Fix & Flip with Profit Calculator.',
+          : `The project is now a ${typeLabels[targetType]}.`,
       });
     }
   };
@@ -592,6 +602,7 @@ export default function ProjectDetail() {
   };
 
   const isRental = project?.project_type === 'rental';
+  const isNewConstruction = project?.project_type === 'new_construction';
 
   const defaultPreset = useMemo(() => {
     try {
@@ -679,19 +690,16 @@ export default function ProjectDetail() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental Property'}
+                Convert to {convertTarget === 'fix_flip' ? 'Fix & Flip' : convertTarget === 'new_construction' ? 'New Construction' : 'Rental Property'}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {isRental
-                  ? <>This will convert <strong>{project.name}</strong> to a Fix &amp; Flip. The Financials tab will switch to the Profit Calculator.</>
-                  : <>This will convert <strong>{project.name}</strong> to a rental property. The Financials tab will switch to the Cash Flow calculator.</>
-                }
+                This will convert <strong>{project.name}</strong> to a {convertTarget === 'fix_flip' ? 'Fix & Flip' : convertTarget === 'new_construction' ? 'New Construction' : 'Rental'} project. All existing data will be preserved.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConvertProjectType}>
-                {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental'}
+              <AlertDialogAction onClick={() => handleConvertProjectType(convertTarget)}>
+                Convert
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -841,10 +849,15 @@ export default function ProjectDetail() {
                             On Hold
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setShowConvertDialog(true)}>
-                            <Home className="h-4 w-4 mr-2 text-blue-500" />
-                            {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental'}
-                          </DropdownMenuItem>
+                          {(['fix_flip', 'new_construction', 'rental'] as const)
+                            .filter(t => t !== project.project_type)
+                            .map(t => (
+                              <DropdownMenuItem key={t} onClick={() => { setConvertTarget(t); setShowConvertDialog(true); }}>
+                                {t === 'fix_flip' ? <Hammer className="h-4 w-4 mr-2" /> : t === 'new_construction' ? <HardHat className="h-4 w-4 mr-2" /> : <Home className="h-4 w-4 mr-2" />}
+                                Convert to {t === 'fix_flip' ? 'Fix & Flip' : t === 'new_construction' ? 'New Construction' : 'Rental'}
+                              </DropdownMenuItem>
+                            ))
+                          }
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                       <DropdownMenuSeparator />
@@ -1471,6 +1484,10 @@ export default function ProjectDetail() {
 
           <TabsContent value="lease">
             <LeaseTab projectId={id!} />
+          </TabsContent>
+
+          <TabsContent value="draws">
+            <PhasesDrawsTab projectId={id!} totalLoanAmount={(project as any).hm_loan_amount || 0} />
           </TabsContent>
           </div>
         </Tabs>
