@@ -279,18 +279,15 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={handleDragEnd}
                       >
-                        <div className="absolute inset-0 flex">
-                          {days.map((day, i) => (
-                            <div 
-                              key={i} 
-                              className={cn(
-                                'flex-1',
-                                isToday(day) && 'bg-primary/5'
-                              )}
-                              style={colMinWidth ? { minWidth: colMinWidth } : undefined}
-                            />
-                          ))}
-                        </div>
+                        {days.findIndex(d => isToday(d)) >= 0 && (
+                          <div
+                            className="absolute top-0 bottom-0 bg-primary/5"
+                            style={{
+                              left: `${(days.findIndex(d => isToday(d)) / zoomDays) * 100}%`,
+                              width: `${(1 / zoomDays) * 100}%`,
+                            }}
+                          />
+                        )}
 
                         <Tooltip>
                           <TooltipTrigger asChild>
