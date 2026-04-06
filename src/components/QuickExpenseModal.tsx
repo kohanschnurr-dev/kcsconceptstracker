@@ -667,7 +667,10 @@ function ExpenseForm({
         </div>
         <div className="flex items-center gap-2">
           <Label className="text-sm">Cost Type:</Label>
-          <Select value={costType} onValueChange={setCostType}>
+          <Select value={costType} onValueChange={(val) => {
+            setCostType(val);
+            if (val === 'loan') setCategory('loan_costs');
+          }}>
             <SelectTrigger className="h-8 text-sm w-[140px]">
               <SelectValue />
             </SelectTrigger>
