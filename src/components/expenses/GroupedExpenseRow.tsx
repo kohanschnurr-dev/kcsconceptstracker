@@ -216,6 +216,24 @@ export function GroupedExpenseRow({
             <span className="font-mono font-semibold">
               {formatCurrency(totalAmount)}
             </span>
+            {onHide && (
+              <button
+                onClick={(e) => { e.stopPropagation(); sortedExpenses.forEach(exp => onHide(exp.id)); }}
+                className="opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                title="Hide all in group"
+              >
+                <EyeOff className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {onUnhide && (
+              <button
+                onClick={(e) => { e.stopPropagation(); sortedExpenses.forEach(exp => onUnhide(exp.id)); }}
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title="Restore all in group"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </td>
       </tr>
