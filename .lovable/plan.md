@@ -1,35 +1,27 @@
 
-Goal: remove the washed-out calendar colors and make every category read as a solid, dark, high-contrast color in light mode, especially Rough-ins and red categories.
 
-1. Update the shared calendar palette in `src/lib/calendarCategories.ts`
-- Replace the current soft/light-mode classes with darker, more solid values.
-- Set `rough_ins` to a true dark yellow/amber palette, not pale orange:
-  - darker swatch
-  - darker header/text
-  - stronger background and border
-- Deepen `structural_exterior` to a dark red palette.
-- Keep the other groups equally strong so nothing looks faded.
-- Use solid light-mode classes instead of anything that reads like white opacity.
+## Plan: Make Calendar Task Text Black and Readable
 
-2. Fix the category dropdown rendering in `src/components/calendar/NewEventModal.tsx`
-- Keep using the shared `swatchClass` dots.
-- Make the group heading text and selected-category helper text explicitly use the darker palette so “Rough-ins” cannot appear muted.
-- Add stronger class precedence if needed, because the command menu component applies muted heading styling by default.
+**Problem**: The calendar task chips use category-colored text (`text-blue-950`, `text-amber-950`, etc.) which, despite being "dark" variants, still appear washed out and unreadable against their colored backgrounds in the screenshot. The user wants plain **black text** on all calendar task cards.
 
-3. Fix remaining faded red chips in `src/components/calendar/DealCard.tsx`
-- Replace the still-faded critical-path styling with dark red text/background/border in light mode so those pills are readable everywhere.
+**Solution**: Force the task title text to always be black (`text-foreground` for theme compatibility) instead of category-colored text. The colored background + border already conveys the category — the text doesn't need to match.
 
-4. Verify all other category UI that reuses the shared palette
-- `src/components/calendar/TaskDetailPanel.tsx`
-- `src/components/calendar/CalendarLegend.tsx`
-- `src/components/settings/ManageSourcesCard.tsx`
-Because these read from `CATEGORY_GROUPS`, the darker palette should propagate automatically. Only add local overrides if any shared component still forces muted colors.
+### Changes
 
-5. QA pass
-- Check the New Event modal list, selected category state, and calendar cards in light mode.
-- Confirm:
-  - “Rough-ins” is dark yellow/amber
-  - red categories are dark red
-  - dots, labels, and helper text are all easy to read
-  - no pastel/faded appearance remains
-  - dark mode still looks correct
+**1. `src/components/calendar/DealCard.tsx`**
+- In the **compact** card (line 77-82): Replace `getCategoryColor()` which applies `textClass` (colored text) with only `bgClass` + `borderClass`, and add `text-foreground` so the title is always black/white per theme.
+- In the **full** card (line 95-130): Same approach — keep colored backgrounds and borders but force `text-foreground` on text elements.
+- Specifically update `getCategoryColor()` (line 64-66) to exclude `textClass` and always include `text-foreground`:
+  ```typescript
+  const getCategoryColor = (category: string) => {
+    const styles = getCategoryStyles(category);
+    return `${styles.bgClass} text-foreground ${styles.borderClass}`;
+  };
+  ```
+
+**2. `src/components/calendar/DealCard.tsx` — Icon visibility**  
+- The category icons inside compact cards inherit the button's text color. With `text-foreground` they'll be black, which is fine for readability.
+
+### Files
+- `src/components/calendar/DealCard.tsx` (1 function change — `getCategoryColor`)
+
