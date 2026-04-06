@@ -1,32 +1,27 @@
 
 
-## Plan: Per-Category $/PSF Toggle on Budget Calculator
+## Plan: Clean Up Gantt Chart Visual Clutter
 
-Each budget category card currently has only a flat dollar input. This adds a tiny toggle on each card so users can switch between entering a flat dollar amount or a $/PSF (per square foot) rate. When in PSF mode, the entered rate is multiplied by the project's sqft to compute the actual budget value.
+The screenshot shows two UI issues with extra lines:
 
-### Changes
+1. **Day column divider lines in task rows** — Each task row renders vertical `border-l border-border/50` lines for every day column. These thin lines clutter the space around task bars and labels, creating the small lines you see to the right of "Call Surveyor", "Get Business Insurance", etc.
 
-**`src/components/budget/BudgetCategoryCard.tsx`**
-- Add `sqft` prop (string) passed down from the canvas
-- Add local state `isPsf` (boolean, default false) tracking the input mode per card
-- Persist PSF mode selections in localStorage (`budget-psf-modes`) as a `Record<string, boolean>` keyed by category
-- Add a small clickable toggle button between the label and the input showing either `$/sf` or `$` — clicking it switches modes
-- When in PSF mode:
-  - Show the input prefixed with `$/sf` instead of `$`
-  - Store the PSF rate in local state; on change, multiply by sqft and call `onChange` with the computed flat amount
-  - Back-calculate the PSF rate from the current value when switching into PSF mode (value / sqft)
-- When in flat `$` mode: behave exactly as today
+2. **Project header horizontal line** — Each project name row has both a `border-b` on the flex container AND a separate `<div className="flex-1 h-px bg-border" />` stretching to the right, creating a doubled/split line effect across the chart.
 
-**`src/components/budget/BudgetCanvas.tsx`**
-- Pass the existing `sqft` prop through to every `<BudgetCategoryCard>` instance (approx 3 render sites across category/timeline/costtype views)
+### Changes — `src/components/calendar/GanttView.tsx`
 
-### UI Details
-- Toggle is a tiny pill/chip (`text-[9px]`, `px-1`, `h-5`) positioned to the left of the input, styled with `bg-muted hover:bg-muted-foreground/20 rounded cursor-pointer`
-- Active PSF mode shows the pill highlighted with `bg-primary/20 text-primary`
-- Input width stays at `w-20`; the PSF rate naturally fits (e.g., "4" for $4/sqft)
-- When sqft is 0 or empty, PSF toggle is hidden (can't calculate)
+**Remove day column dividers from task rows (line 282)**
+- Remove `border-l border-border/50` from the day cell dividers inside task rows. Keep only the today highlight (`bg-primary/5`). This eliminates all the tiny vertical lines cluttering the chart body.
+
+**Simplify project header row (lines 238–243)**
+- Remove the separate `<div className="flex-1 h-px bg-border" />` element — the `border-b` on the parent flex container already provides the separation line. This eliminates the doubled line / split-line effect.
+
+**Remove outer `space-y-1` gap (line 235)**
+- Remove `space-y-1` from the body container so rows sit flush without extra spacing gaps between projects.
+
+### Result
+A clean Gantt chart with task bars floating on a minimal grid — no extra vertical lines in task rows, no doubled horizontal lines on project headers.
 
 ### Files
-- `src/components/budget/BudgetCategoryCard.tsx`
-- `src/components/budget/BudgetCanvas.tsx`
+- `src/components/calendar/GanttView.tsx`
 
