@@ -1,25 +1,18 @@
 
 
-## Plan: Add "Add to Calendar" Button to Add Task Modal
+## Plan: Darken Category Dropdown Highlight
 
-After creating a task, the user will have the option to also add it as a calendar event — all from the same modal.
+The selected/hovered item in the category command list uses `bg-accent` (line 114 of `src/components/ui/command.tsx`), which is too pale on light backgrounds.
 
-### Changes — `src/components/project/AddTaskModal.tsx`
+### Change — `src/components/ui/command.tsx`
 
-1. **Add state** for calendar modal (`calendarModalOpen`, `calendarDefaults`, `calendarProjects`)
+**Line 114** — Replace the `data-[selected='true']` styles with a darker highlight:
 
-2. **Modify `handleSave`** — after successful task creation, if the user toggled "Add to Calendar", fetch projects and open the `NewEventModal` with the task's title and due date pre-filled
+- Change `data-[selected='true']:bg-accent` → `data-[selected='true']:bg-primary/15 dark:data-[selected='true']:bg-accent`
+- Change `data-[selected=true]:text-accent-foreground` → `data-[selected=true]:text-foreground dark:data-[selected=true]:text-accent-foreground`
 
-3. **Add a checkbox or button** in the modal footer (next to Save) with a `CalendarPlus` icon labeled "Add to Calendar" — toggling sets a flag so that after save, the calendar modal opens
-
-4. **Render `NewEventModal`** at the bottom of the component (same pattern as `ProjectTasks.tsx`), passing `defaultTitle`, `defaultStartDate`, `defaultProjectId`, and the project list
-
-### Approach
-- Add a `addToCalendar` boolean state, defaulting to `false`
-- In the footer, add a toggle button before Save: `CalendarPlus` icon + "Add to Calendar"
-- On save success, if `addToCalendar` is true, fetch projects, close the Add Task modal, then open `NewEventModal`
-- Import `NewEventModal` and `CalendarPlus`
+This gives a visible gold-tinted highlight in light mode (using the primary/15 opacity) while keeping the existing dark-mode behavior.
 
 ### Files
-- `src/components/project/AddTaskModal.tsx`
+- `src/components/ui/command.tsx` (single line change)
 
