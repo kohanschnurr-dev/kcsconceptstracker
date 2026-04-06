@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import type { CalendarTask } from '@/pages/Calendar';
-import { getCategoryGroup } from '@/lib/calendarCategories';
+import { getCategoryGroup, CATEGORY_GROUPS } from '@/lib/calendarCategories';
 
 interface GanttViewProps {
   currentDate: Date;
@@ -79,13 +79,19 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
   const isZoomed = zoomDays < 28;
   const colMinWidth = isZoomed ? 80 : undefined;
 
+  const groupColorMap: Record<string, string> = {
+    acquisition_admin: 'bg-blue-500',
+    structural_exterior: 'bg-red-500',
+    rough_ins: 'bg-orange-500',
+    inspections: 'bg-purple-500',
+    interior_finishes: 'bg-emerald-500',
+    milestones: 'bg-amber-500',
+  };
+
   const getBarColor = (task: CalendarTask) => {
-    if (task.status === 'complete') return 'bg-emerald-600';
-    switch (task.budgetHealth) {
-      case 'green': return 'bg-emerald-500';
-      case 'yellow': return 'bg-amber-500';
-      case 'red': return 'bg-red-500';
-    }
+    const group = getCategoryGroup(task.eventCategory || 'due_diligence');
+    const color = groupColorMap[group] || 'bg-slate-500';
+    return task.status === 'complete' ? `${color} opacity-60` : color;
   };
 
   const getTaskPosition = (task: CalendarTask) => {
