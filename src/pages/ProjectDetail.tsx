@@ -217,6 +217,7 @@ export default function ProjectDetail() {
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [convertTarget, setConvertTarget] = useState<string>('fix_flip');
   const [nameValue, setNameValue] = useState('');
   const [addressValue, setAddressValue] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -689,19 +690,16 @@ export default function ProjectDetail() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental Property'}
+                Convert to {convertTarget === 'fix_flip' ? 'Fix & Flip' : convertTarget === 'new_construction' ? 'New Construction' : 'Rental Property'}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {isRental
-                  ? <>This will convert <strong>{project.name}</strong> to a Fix &amp; Flip. The Financials tab will switch to the Profit Calculator.</>
-                  : <>This will convert <strong>{project.name}</strong> to a rental property. The Financials tab will switch to the Cash Flow calculator.</>
-                }
+                This will convert <strong>{project.name}</strong> to a {convertTarget === 'fix_flip' ? 'Fix & Flip' : convertTarget === 'new_construction' ? 'New Construction' : 'Rental'} project. All existing data will be preserved.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConvertProjectType}>
-                {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental'}
+              <AlertDialogAction onClick={() => handleConvertProjectType(convertTarget)}>
+                Convert
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -851,10 +849,15 @@ export default function ProjectDetail() {
                             On Hold
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setShowConvertDialog(true)}>
-                            <Home className="h-4 w-4 mr-2 text-blue-500" />
-                            {isRental ? 'Convert to Fix & Flip' : 'Convert to Rental'}
-                          </DropdownMenuItem>
+                          {(['fix_flip', 'new_construction', 'rental'] as const)
+                            .filter(t => t !== project.project_type)
+                            .map(t => (
+                              <DropdownMenuItem key={t} onClick={() => { setConvertTarget(t); setShowConvertDialog(true); }}>
+                                {t === 'fix_flip' ? <Hammer className="h-4 w-4 mr-2" /> : t === 'new_construction' ? <HardHat className="h-4 w-4 mr-2" /> : <Home className="h-4 w-4 mr-2" />}
+                                Convert to {t === 'fix_flip' ? 'Fix & Flip' : t === 'new_construction' ? 'New Construction' : 'Rental'}
+                              </DropdownMenuItem>
+                            ))
+                          }
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                       <DropdownMenuSeparator />
@@ -1481,6 +1484,10 @@ export default function ProjectDetail() {
 
           <TabsContent value="lease">
             <LeaseTab projectId={id!} />
+          </TabsContent>
+
+          <TabsContent value="draws">
+            <PhasesDrawsTab projectId={id!} totalLoanAmount={(project as any).hm_loan_amount || 0} />
           </TabsContent>
           </div>
         </Tabs>
