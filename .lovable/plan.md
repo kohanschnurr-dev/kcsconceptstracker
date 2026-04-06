@@ -1,35 +1,35 @@
 
+Goal: remove the washed-out calendar colors and make every category read as a solid, dark, high-contrast color in light mode, especially Rough-ins and red categories.
 
-## Plan: Fix "No Projects Found" in Calendar Modal from Add Task
+1. Update the shared calendar palette in `src/lib/calendarCategories.ts`
+- Replace the current soft/light-mode classes with darker, more solid values.
+- Set `rough_ins` to a true dark yellow/amber palette, not pale orange:
+  - darker swatch
+  - darker header/text
+  - stronger background and border
+- Deepen `structural_exterior` to a dark red palette.
+- Keep the other groups equally strong so nothing looks faded.
+- Use solid light-mode classes instead of anything that reads like white opacity.
 
-**Root Causes** (two bugs):
+2. Fix the category dropdown rendering in `src/components/calendar/NewEventModal.tsx`
+- Keep using the shared `swatchClass` dots.
+- Make the group heading text and selected-category helper text explicitly use the darker palette so “Rough-ins” cannot appear muted.
+- Add stronger class precedence if needed, because the command menu component applies muted heading styling by default.
 
-1. **Projects invisible in dropdown**: `AddTaskModal` passes the project as `{ id, name, address: '' }` with no `status` or `projectType`. The `ProjectAutocomplete` component groups projects by `projectType` (`fix_flip` / `rental`), so projects without a type are silently dropped — showing "No projects found."
+3. Fix remaining faded red chips in `src/components/calendar/DealCard.tsx`
+- Replace the still-faded critical-path styling with dark red text/background/border in light mode so those pills are readable everywhere.
 
-2. **Project not pre-selected**: The `useEffect` in `NewEventModal` (line 73-83) sets `title` and `startDate` when opened externally, but never updates `projectId` from the `defaultProjectId` prop.
+4. Verify all other category UI that reuses the shared palette
+- `src/components/calendar/TaskDetailPanel.tsx`
+- `src/components/calendar/CalendarLegend.tsx`
+- `src/components/settings/ManageSourcesCard.tsx`
+Because these read from `CATEGORY_GROUPS`, the darker palette should propagate automatically. Only add local overrides if any shared component still forces muted colors.
 
-### Changes
-
-#### 1. `src/components/project/AddTaskModal.tsx` — Fetch full project data
-Instead of passing a manually constructed project object with missing fields, query the actual project data from the database (or use the existing props more completely). The simplest fix: use `useProjectOptions()` to get the full project list with `status` and `projectType` fields, and pass that to `NewEventModal`.
-
-- Replace `projects={[{ id: projectId, name: projectName, address: '' }]}` with the full project list from `useProjectOptions()`
-- Import `useProjectOptions` hook
-
-#### 2. `src/components/calendar/NewEventModal.tsx` — Pre-select project on external open
-Add `defaultProjectId` to the `useEffect` that fires when `externalOpen` becomes true:
-
-```typescript
-useEffect(() => {
-  if (externalOpen) {
-    if (defaultStartDate) { setStartDate(defaultStartDate); setEndDate(defaultStartDate); }
-    if (defaultTitle) { setTitle(defaultTitle); }
-    if (defaultProjectId) { setProjectId(defaultProjectId); } // ADD THIS
-  }
-}, [externalOpen, defaultStartDate, defaultTitle, defaultProjectId]);
-```
-
-### Files
-- `src/components/project/AddTaskModal.tsx` (1 import + 1 line change)
-- `src/components/calendar/NewEventModal.tsx` (1 line addition in useEffect)
-
+5. QA pass
+- Check the New Event modal list, selected category state, and calendar cards in light mode.
+- Confirm:
+  - “Rough-ins” is dark yellow/amber
+  - red categories are dark red
+  - dots, labels, and helper text are all easy to read
+  - no pastel/faded appearance remains
+  - dark mode still looks correct
