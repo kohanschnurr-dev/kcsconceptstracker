@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Paperclip } from 'lucide-react';
+import { ChevronDown, ChevronRight, Paperclip, EyeOff, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -30,6 +30,9 @@ interface GroupedExpenseRowProps {
   handleViewReceipt: (receiptUrl: string, e: React.MouseEvent) => void;
   onExpenseClick: (expense: DBExpense) => void;
   onGroupClick?: (expenses: DBExpense[]) => void;
+  onHide?: (expenseId: string) => void;
+  onUnhide?: (expenseId: string) => void;
+  isHiddenView?: boolean;
 }
 
 export function GroupedExpenseRow({
@@ -40,6 +43,9 @@ export function GroupedExpenseRow({
   handleViewReceipt,
   onExpenseClick,
   onGroupClick,
+  onHide,
+  onUnhide,
+  isHiddenView,
 }: GroupedExpenseRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
