@@ -22,7 +22,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     color: 'blue',
     bgClass: 'bg-blue-200 dark:bg-blue-500/20',
     swatchClass: 'bg-blue-600',
-    textClass: 'text-blue-950 dark:text-blue-200',
+    textClass: 'text-blue-700 dark:text-blue-200',
     borderClass: 'border-blue-400 dark:border-blue-500/30',
   },
   structural_exterior: {
@@ -30,7 +30,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     color: 'red',
     bgClass: 'bg-red-200 dark:bg-red-500/20',
     swatchClass: 'bg-red-700',
-    textClass: 'text-red-950 dark:text-red-200',
+    textClass: 'text-red-700 dark:text-red-200',
     borderClass: 'border-red-400 dark:border-red-500/30',
   },
   rough_ins: {
@@ -38,7 +38,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     color: 'amber',
     bgClass: 'bg-amber-200 dark:bg-amber-500/20',
     swatchClass: 'bg-amber-600',
-    textClass: 'text-amber-950 dark:text-amber-200',
+    textClass: 'text-amber-700 dark:text-amber-200',
     borderClass: 'border-amber-400 dark:border-amber-500/30',
   },
   inspections: {
@@ -46,7 +46,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     color: 'purple',
     bgClass: 'bg-purple-200 dark:bg-purple-500/20',
     swatchClass: 'bg-purple-700',
-    textClass: 'text-purple-950 dark:text-purple-200',
+    textClass: 'text-purple-700 dark:text-purple-200',
     borderClass: 'border-purple-400 dark:border-purple-500/30',
   },
   interior_finishes: {
@@ -54,7 +54,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     color: 'green',
     bgClass: 'bg-emerald-200 dark:bg-emerald-500/20',
     swatchClass: 'bg-emerald-600',
-    textClass: 'text-emerald-950 dark:text-emerald-200',
+    textClass: 'text-emerald-700 dark:text-emerald-200',
     borderClass: 'border-emerald-400 dark:border-emerald-500/30',
   },
   milestones: {
@@ -62,7 +62,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     color: 'gold',
     bgClass: 'bg-yellow-200 dark:bg-amber-500/20',
     swatchClass: 'bg-yellow-600',
-    textClass: 'text-yellow-950 dark:text-amber-200',
+    textClass: 'text-yellow-700 dark:text-amber-200',
     borderClass: 'border-yellow-400 dark:border-amber-500/30',
   },
 };
