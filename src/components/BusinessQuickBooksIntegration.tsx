@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { format, subDays } from 'date-fns';
-import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Settings } from 'lucide-react';
+import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, Trash2, CalendarIcon, Settings, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
@@ -43,10 +43,15 @@ export function BusinessQuickBooksIntegration({ onExpenseImported, projects = []
     isLoading,
     isSyncing,
     pendingExpenses,
+    hiddenExpenses,
+    showHidden,
+    setShowHidden,
     connect,
     disconnect,
     syncExpenses,
     deleteExpense,
+    hideExpense,
+    unhideExpense,
     enableDemoMode,
     fetchPendingExpenses,
   } = useQuickBooks();
@@ -297,10 +302,19 @@ export function BusinessQuickBooksIntegration({ onExpenseImported, projects = []
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
                                 <p className="font-medium">{expense.vendor_name || 'Unknown Contractor'}</p>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
                                   <p className="font-mono font-semibold">
                                     {formatCurrency(expense.amount)}
                                   </p>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                    onClick={() => hideExpense(expense.id)}
+                                    title="Hide this expense"
+                                  >
+                                    <EyeOff className="h-4 w-4" />
+                                  </Button>
                                   <Button
                                     variant="ghost"
                                     size="icon"
