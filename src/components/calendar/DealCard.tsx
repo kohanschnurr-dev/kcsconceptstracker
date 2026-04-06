@@ -63,7 +63,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
 
   const getCategoryColor = (category: string) => {
     const styles = getCategoryStyles(category);
-    return `${styles.bgClass} ${styles.textClass} ${styles.borderClass}`;
+    return `${styles.bgClass} text-foreground ${styles.borderClass}`;
   };
 
   const categoryStyles = getCategoryStyles(task.eventCategory || 'due_diligence');
