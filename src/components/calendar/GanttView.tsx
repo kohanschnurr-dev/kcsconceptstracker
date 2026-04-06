@@ -76,7 +76,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
     return Array.from({ length: zoomDays }, (_, i) => addDays(startDate, i));
   }, [startDate, zoomDays]);
 
-  const isZoomed = zoomDays < 28;
+  const isZoomed = zoomDays < 21;
   const colMinWidth = isZoomed ? 80 : undefined;
 
   const groupColorMap: Record<string, string> = {
@@ -163,7 +163,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
             )}
             onClick={() => setZoomDays(7)}
           >
-            1W
+            7d
           </Button>
           <Button
             variant="outline"
@@ -174,18 +174,18 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
             )}
             onClick={() => setZoomDays(14)}
           >
-            2W
+            14d
           </Button>
           <Button
             variant="outline"
             size="sm"
             className={cn(
               'h-7 px-2.5 text-xs rounded-full',
-              zoomDays === 28 && 'bg-primary text-primary-foreground border-primary'
+              zoomDays === 21 && 'bg-primary text-primary-foreground border-primary'
             )}
-            onClick={() => setZoomDays(28)}
+            onClick={() => setZoomDays(21)}
           >
-            4W
+            21d
           </Button>
         </div>
         <div className="flex items-center gap-2 flex-1 min-w-[120px] max-w-[200px]">
@@ -193,7 +193,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
             value={[zoomDays]}
             onValueChange={([v]) => setZoomDays(v)}
             min={7}
-            max={28}
+            max={21}
             step={1}
             className="flex-1"
           />
