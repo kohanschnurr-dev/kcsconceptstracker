@@ -1,31 +1,37 @@
 
 
-## Plan: Hide Expenses Feature
+## Plan: Add "Upload to Calendar" Button in Edit Task Dialog
 
-Add an `is_hidden` column to the expenses table so users can hide expenses without deleting them (important since QB expenses re-sync). A small "View Hidden" toggle lets them see and unhide expenses when needed.
+Add a calendar icon button in the Edit Task dialog footer that, when clicked, opens the `NewEventModal` with the task's details (title, due date, project) pre-filled. The user then picks a calendar category and finalizes the event.
 
 ### Changes
 
-**1. Database Migration**
-- Add `is_hidden boolean default false` to the `expenses` table
+**`src/components/project/ProjectTasks.tsx`**
 
-**2. `src/pages/Expenses.tsx`**
-- Add `showHidden` state toggle (default `false`)
-- Filter out `is_hidden = true` expenses from the main list when `showHidden` is false
-- Add a small discrete "🗑 Hidden (N)" toggle button next to the search/filter bar — only visible when hidden expenses exist
-- When `showHidden` is true, show only hidden expenses with an "Unhide" action on each row
+1. **New state**: `calendarModalOpen` (boolean) and `calendarTask` (stores the task data to pass)
+2. **"Add to Calendar" button** in `editFooterContent` — a subtle icon button with `CalendarPlus` icon, placed between Delete and Cancel. On click:
+   - Sets `calendarTask` with current edit form values (title, due date, project)
+   - Opens the `NewEventModal` via controlled props
+   - Closes the edit dialog
+3. **Render `NewEventModal`** at the bottom of the component with:
+   - `externalOpen={calendarModalOpen}`
+   - `onExternalOpenChange` to control visibility
+   - `defaultProjectId={projectId}`
+   - `defaultStartDate` from the task's due date (or today if none)
+   - Pre-filled title passed via a new optional `defaultTitle` prop
 
-**3. `src/components/expenses/GroupedExpenseRow.tsx`**
-- Add an optional `onHide` callback prop
-- Show a small hide button (EyeOff icon) on hover for each expense row
-- When clicked, calls `onHide(expenseId)` which sets `is_hidden = true` in the DB
+**`src/components/calendar/NewEventModal.tsx`**
 
-**4. `src/pages/Expenses.tsx` — hide/unhide handlers**
-- `handleHideExpense(id)`: updates `is_hidden = true` and refreshes
-- `handleUnhideExpense(id)`: updates `is_hidden = false` and refreshes
+4. **Add `defaultTitle` prop** to `NewEventModalProps`
+5. **Populate title** from `defaultTitle` when the modal opens externally (in the existing `useEffect` that handles `externalOpen`)
+
+### UI Details
+- The button sits in the footer row: `[Delete] ... [📅 Add to Calendar] [Cancel] [Save]`
+- Uses `CalendarPlus` icon from lucide with tooltip text "Add to Calendar"
+- Styled as `variant="outline" size="sm"` to match existing footer buttons
+- The `NewEventModal` opens with title and date pre-filled; user picks the category (the key part the user mentioned) and submits
 
 ### Files touched
-- 1 migration (add `is_hidden` column)
-- `src/pages/Expenses.tsx`
-- `src/components/expenses/GroupedExpenseRow.tsx`
+- `src/components/project/ProjectTasks.tsx`
+- `src/components/calendar/NewEventModal.tsx`
 
