@@ -1,27 +1,28 @@
 
 
-## Plan: Clean Up Gantt Chart Visual Clutter
+## Plan: Color Gantt Bars by Category Group
 
-The screenshot shows two UI issues with extra lines:
-
-1. **Day column divider lines in task rows** — Each task row renders vertical `border-l border-border/50` lines for every day column. These thin lines clutter the space around task bars and labels, creating the small lines you see to the right of "Call Surveyor", "Get Business Insurance", etc.
-
-2. **Project header horizontal line** — Each project name row has both a `border-b` on the flex container AND a separate `<div className="flex-1 h-px bg-border" />` stretching to the right, creating a doubled/split line effect across the chart.
+Currently, Gantt bars are colored by budget health (green/yellow/red), making all bars look the same emerald color. The user wants bars colored by their **category group** to match the legend (Acquisition/Admin = blue, Structural/Exterior = red, Rough-ins = orange, Inspections = purple, Interior Finishes = green, Milestones = amber).
 
 ### Changes — `src/components/calendar/GanttView.tsx`
 
-**Remove day column dividers from task rows (line 282)**
-- Remove `border-l border-border/50` from the day cell dividers inside task rows. Keep only the today highlight (`bg-primary/5`). This eliminates all the tiny vertical lines cluttering the chart body.
+**Replace `getBarColor` logic (lines 82–88)**
+- Instead of coloring by `task.budgetHealth`, color by the task's category group using `getCategoryGroup` + `CATEGORY_GROUPS`
+- Map each group to a solid Tailwind bg class:
+  - `acquisition_admin` → `bg-blue-500`
+  - `structural_exterior` → `bg-red-500`
+  - `rough_ins` → `bg-orange-500`
+  - `inspections` → `bg-purple-500`
+  - `interior_finishes` → `bg-emerald-500`
+  - `milestones` → `bg-amber-500`
+- Completed tasks get a slightly muted variant (e.g., `opacity-60`) instead of overriding the color
 
-**Simplify project header row (lines 238–243)**
-- Remove the separate `<div className="flex-1 h-px bg-border" />` element — the `border-b` on the parent flex container already provides the separation line. This eliminates the doubled line / split-line effect.
-
-**Remove outer `space-y-1` gap (line 235)**
-- Remove `space-y-1` from the body container so rows sit flush without extra spacing gaps between projects.
+**Add import for `CATEGORY_GROUPS`**
+- Already importing `getCategoryGroup`; add `CATEGORY_GROUPS` to the import
 
 ### Result
-A clean Gantt chart with task bars floating on a minimal grid — no extra vertical lines in task rows, no doubled horizontal lines on project headers.
+Bars will visually match the color legend at the bottom — blue for admin tasks, orange for rough-ins, etc. — giving an instant visual grouping by trade/phase.
 
 ### Files
-- `src/components/calendar/GanttView.tsx`
+- `src/components/calendar/GanttView.tsx` (only file)
 
