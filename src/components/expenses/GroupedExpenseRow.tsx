@@ -75,7 +75,7 @@ export function GroupedExpenseRow({
     const expense = sortedExpenses[0];
     return (
       <tr 
-        className="hover:bg-muted/20 transition-colors cursor-pointer"
+        className="hover:bg-muted/20 transition-colors cursor-pointer group/row"
         onClick={() => onExpenseClick(expense)}
       >
         <td className="whitespace-nowrap">{formatDisplayDate(expense.date)}</td>
