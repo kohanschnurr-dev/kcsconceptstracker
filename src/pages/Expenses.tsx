@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Plus, Search, Download, Receipt, Calendar, Paperclip, ChevronDown, X, EyeOff, Eye } from 'lucide-react';
 import {
   Collapsible,
@@ -28,12 +28,15 @@ import { QuickBooksIntegration } from '@/components/QuickBooksIntegration';
 import { ExpenseDetailModal } from '@/components/ExpenseDetailModal';
 import { GroupedExpenseDetailModal } from '@/components/GroupedExpenseDetailModal';
 import { GroupedExpenseRow } from '@/components/expenses/GroupedExpenseRow';
+import { StaleHiddenExpensesDialog } from '@/components/StaleHiddenExpensesDialog';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useProfile } from '@/hooks/useProfile';
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { formatDisplayDate } from '@/lib/dateUtils';
+import { toast as sonnerToast } from 'sonner';
 
 interface DBProject {
   id: string;
