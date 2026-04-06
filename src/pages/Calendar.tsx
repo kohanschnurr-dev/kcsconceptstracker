@@ -92,11 +92,12 @@ export default function Calendar() {
 
       if (projectsData) {
         const sortedProjects = projectsData
-          .map(p => ({ ...p, projectType: p.project_type as 'fix_flip' | 'rental' }))
+          .map(p => ({ ...p, projectType: p.project_type as 'fix_flip' | 'rental' | 'new_construction' }))
           .sort((a, b) => {
-            if (a.projectType === 'fix_flip' && b.projectType !== 'fix_flip') return -1;
-            if (a.projectType !== 'fix_flip' && b.projectType === 'fix_flip') return 1;
-            return 0;
+            const order = { new_construction: 0, fix_flip: 1, rental: 2 };
+            const aOrder = order[a.projectType as keyof typeof order] ?? 3;
+            const bOrder = order[b.projectType as keyof typeof order] ?? 3;
+            return aOrder - bOrder;
           });
         setProjects(sortedProjects);
         setAllProjects(sortedProjects);
