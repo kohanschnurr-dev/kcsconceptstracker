@@ -1,20 +1,23 @@
 
 
-## Plan: Make Critical Path Text Black
+## Plan: Make Category Text Much Darker on Calendar
 
-**Problem**: Critical path tasks use `text-red-950` which appears washed out and unreadable, same issue as the category colors we already fixed.
+**Problem**: The `-700` text colors (amber-700, purple-700, red-700, etc.) on pastel backgrounds are still too faint. The user wants text that is clearly dark and readable — essentially near-black.
 
 ### Change
 
-**`src/components/calendar/DealCard.tsx`** — Line 80: Replace `text-red-950` with `text-foreground` in the critical path compact card styling:
+**`src/lib/calendarCategories.ts`** — Update all `textClass` values to use `-900` shades, which are very dark versions of each color (nearly black but with a color tint):
 
-```
-// Before
-'bg-red-200 dark:bg-red-500/30 text-red-950 dark:text-red-300 border-red-500'
+| Category | Current | New |
+|---|---|---|
+| acquisition_admin | `text-blue-700` | `text-blue-900` |
+| structural_exterior | `text-red-700` | `text-red-900` |
+| rough_ins | `text-amber-700` | `text-amber-900` |
+| inspections | `text-purple-700` | `text-purple-900` |
+| interior_finishes | `text-emerald-700` | `text-emerald-900` |
+| milestones | `text-yellow-700` | `text-yellow-900` |
 
-// After  
-'bg-red-200 dark:bg-red-500/30 text-foreground dark:text-red-300 border-red-500'
-```
+Dark mode values stay as-is (`-200`). The `-900` shades are near-black with enough color tint to still feel categorized, but dark enough to be immediately readable on the pastel `-200` backgrounds used for Gantt bars, dropdown headings, and task cards.
 
-The red background + red border + alert icon already clearly convey "critical path" — the text itself should be black for readability, consistent with all other task cards.
+**Files**: `src/lib/calendarCategories.ts` only (6 line edits)
 
