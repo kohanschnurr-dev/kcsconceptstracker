@@ -232,14 +232,13 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
           </div>
 
           {/* Gantt chart body */}
-          <div className="space-y-1">
+          <div>
             {Object.entries(groupedTasks).map(([projectName, projectTasks]) => (
               <div key={projectName}>
                 <div className="flex items-center py-2 border-b border-border">
                   <div className="w-48 shrink-0">
                     <span className="text-sm font-semibold text-foreground">{projectName}</span>
                   </div>
-                  <div className="flex-1 h-px bg-border" />
                 </div>
 
                 {projectTasks.map(task => {
@@ -279,7 +278,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                             <div 
                               key={i} 
                               className={cn(
-                                'flex-1 border-l border-border/50',
+                                'flex-1',
                                 isToday(day) && 'bg-primary/5'
                               )}
                               style={colMinWidth ? { minWidth: colMinWidth } : undefined}
