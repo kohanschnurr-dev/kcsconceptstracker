@@ -405,7 +405,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                       </div>
                     )}
                   </div>
-                )
+                )}
 
                 <div className="pt-4 border-t border-border">
                   <Button
