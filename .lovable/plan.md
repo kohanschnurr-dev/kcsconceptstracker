@@ -1,18 +1,26 @@
 
 
-## Plan: Darken Category Dropdown Highlight
+## Plan: Make "Add to Calendar" Immediately Save & Open Calendar
 
-The selected/hovered item in the category command list uses `bg-accent` (line 114 of `src/components/ui/command.tsx`), which is too pale on light backgrounds.
+**Problem**: The "Add to Calendar" button currently just toggles a boolean flag. The calendar modal only appears after clicking Save separately — making it feel like the button does nothing.
 
-### Change — `src/components/ui/command.tsx`
+**Fix**: Change "Add to Calendar" from a toggle to a direct action button that saves the task and immediately opens the calendar event modal.
 
-**Line 114** — Replace the `data-[selected='true']` styles with a darker highlight:
+### Changes — `src/components/project/AddTaskModal.tsx`
 
-- Change `data-[selected='true']:bg-accent` → `data-[selected='true']:bg-primary/15 dark:data-[selected='true']:bg-accent`
-- Change `data-[selected=true]:text-accent-foreground` → `data-[selected=true]:text-foreground dark:data-[selected=true]:text-accent-foreground`
+1. **Remove the `addToCalendar` toggle state** — no longer needed as a separate flag.
 
-This gives a visible gold-tinted highlight in light mode (using the primary/15 opacity) while keeping the existing dark-mode behavior.
+2. **Create a new `handleSaveAndCalendar` function** that:
+   - Saves the task (same logic as `handleSave`)
+   - On success, sets calendar defaults and opens the `NewEventModal` immediately
+
+3. **Update the footer layout**:
+   - Replace the toggle-style button with a direct action button: "Add to Calendar" 
+   - Keep Cancel and Save as they are
+   - "Add to Calendar" calls `handleSaveAndCalendar` (validates title, saves task, opens calendar modal)
+
+4. **Clean up `handleSave`** — remove the `addToCalendar` branching logic; it always just saves and closes.
 
 ### Files
-- `src/components/ui/command.tsx` (single line change)
+- `src/components/project/AddTaskModal.tsx`
 
