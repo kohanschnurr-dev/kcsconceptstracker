@@ -542,29 +542,35 @@ export default function ProjectDetail() {
     setUpdatingStatus(false);
   };
 
-  const handleConvertProjectType = async () => {
+  const handleConvertProjectType = async (newType?: string) => {
     if (!project) return;
-    const newType = isRental ? 'fix_flip' : 'rental';
+    const targetType = newType || (isRental ? 'fix_flip' : 'rental');
     
     const { error } = await supabase
       .from('projects')
-      .update({ project_type: newType })
+      .update({ project_type: targetType })
       .eq('id', project.id);
+    
+    const typeLabels: Record<string, string> = {
+      fix_flip: 'Fix & Flip',
+      new_construction: 'New Construction',
+      rental: 'Rental',
+    };
     
     if (error) {
       console.error('Error converting project type:', error);
       toast({
         title: 'Error',
-        description: `Failed to convert project to ${newType === 'rental' ? 'Rental' : 'Fix & Flip'}`,
+        description: `Failed to convert project to ${typeLabels[targetType] || targetType}`,
         variant: 'destructive',
       });
     } else {
-      setProject({ ...project, project_type: newType });
+      setProject({ ...project, project_type: targetType as any });
       toast({
-        title: newType === 'rental' ? 'Converted to Rental' : 'Converted to Fix & Flip',
-        description: newType === 'rental'
+        title: `Converted to ${typeLabels[targetType]}`,
+        description: targetType === 'rental'
           ? 'Head to the Financials tab to set up your rental income details.'
-          : 'The project is now a Fix & Flip with Profit Calculator.',
+          : `The project is now a ${typeLabels[targetType]}.`,
       });
     }
   };
@@ -595,6 +601,7 @@ export default function ProjectDetail() {
   };
 
   const isRental = project?.project_type === 'rental';
+  const isNewConstruction = project?.project_type === 'new_construction';
 
   const defaultPreset = useMemo(() => {
     try {
