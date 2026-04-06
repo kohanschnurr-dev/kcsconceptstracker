@@ -327,8 +327,8 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
                     {(Object.keys(CATEGORY_GROUPS) as CategoryGroup[]).filter(g => filteredGrouped[g]?.length).map((groupKey) => { const cats = filteredGrouped[groupKey]; return (
                       <CommandGroup 
                         key={groupKey} 
-                        heading={
-                          <span className={cn("text-xs font-semibold", CATEGORY_GROUPS[groupKey].textClass)}>
+                         heading={
+                          <span className={cn("text-xs font-bold tracking-wide uppercase", CATEGORY_GROUPS[groupKey].textClass)}>
                             {CATEGORY_GROUPS[groupKey].label}
                           </span>
                         }
