@@ -1,29 +1,23 @@
 
 
-## Plan: Improve Calendar Event Card Text Readability
+## Plan: Fix Category Color Dots to Use Dark, Readable Colors
 
-**Problem**: Event cards on the calendar have text that's too light/hard to read in light mode, especially critical path items and small compact cards.
+**Problem**: The colored dots next to category items in the calendar dropdown use CSS `var(--red-500, red)` which falls back to basic CSS color names (`red`, `blue`, `orange`). These are washed-out browser default colors that are hard to read on white backgrounds.
 
-### Changes
+**Fix**: Replace the dynamic `style` approach with the existing `swatchClass` from `CATEGORY_GROUPS`, which already uses proper Tailwind classes like `bg-red-500`, `bg-blue-500`, etc. These are bold, saturated colors.
 
-#### 1. `src/lib/calendarCategories.ts` — Darken light-mode text colors
-Replace the `-800` shades with `-900` for stronger contrast:
-- `text-blue-800` → `text-blue-900`
-- `text-red-800` → `text-red-900`
-- `text-orange-800` → `text-orange-900`
-- `text-purple-800` → `text-purple-900`
-- `text-emerald-800` → `text-emerald-900`
-- `text-amber-800` → `text-amber-900`
+### Changes — `src/components/calendar/NewEventModal.tsx`
 
-Also darken backgrounds slightly for better visibility:
-- `bg-blue-50` → `bg-blue-100`
-- Same pattern for all other colors
+1. **Line 351-354** — Replace the inline `style` on category item dots:
+   - From: `style={{ backgroundColor: var(--${CATEGORY_GROUPS[groupKey].color}-500, ...) }}`
+   - To: `className="w-2 h-2 rounded-full mr-2 ${CATEGORY_GROUPS[groupKey].swatchClass}"`
 
-#### 2. `src/components/calendar/DealCard.tsx` — Fix critical path compact styling
-- Line 80: Change `text-red-300` → `text-red-900 dark:text-red-300` so critical path text is dark/readable in light mode
-- Line 80: Change `bg-red-500/30` → `bg-red-100 dark:bg-red-500/30`
+2. **Line 300-303** — Replace the inline `style` on the selected category dot in the trigger button:
+   - From: `style={{ backgroundColor: var(--${selectedCategoryStyles.color}-500, ...) }}`
+   - To: `className={cn("w-2 h-2 rounded-full", selectedCategoryStyles?.swatchClass)}`
+
+Both changes switch from broken CSS custom properties to the existing Tailwind swatch classes (`bg-red-500`, `bg-blue-500`, `bg-orange-500`, `bg-purple-500`, `bg-emerald-500`, `bg-amber-500`) which render as bold, dark, readable colors.
 
 ### Files
-- `src/lib/calendarCategories.ts`
-- `src/components/calendar/DealCard.tsx`
+- `src/components/calendar/NewEventModal.tsx` (2 line changes)
 
