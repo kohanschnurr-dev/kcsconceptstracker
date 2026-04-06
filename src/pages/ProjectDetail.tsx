@@ -40,7 +40,7 @@ function SortableTabItem({ id, label }: { id: string; label: string }) {
   );
 }
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Home, FileText } from 'lucide-react';
+import { Home, FileText, HardHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -102,6 +102,7 @@ import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { ProjectReport } from '@/components/project/ProjectReport';
 import { LeaseTab } from '@/components/project/LeaseTab';
+import { PhasesDrawsTab } from '@/components/project/PhasesDrawsTab';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
 import { Input } from '@/components/ui/input';
@@ -111,7 +112,7 @@ interface DBProject {
   name: string;
   address: string;
   status: 'active' | 'complete' | 'on_hold';
-  project_type: 'fix_flip' | 'rental';
+  project_type: 'fix_flip' | 'rental' | 'new_construction';
   total_budget: number;
   start_date: string;
   purchase_price?: number;
@@ -167,6 +168,7 @@ const CORE_TABS = ['schedule', 'tasks', 'financials', 'documents', 'team', 'info
 
 const DEFAULT_DETAIL_TAB_ORDER_BY_TYPE: Record<string, string[]> = {
   fix_flip: [...CORE_TABS, 'loan'],
+  new_construction: [...CORE_TABS, 'loan', 'draws'],
   rental: [...CORE_TABS, 'loan', 'lease', 'cashflow'],
 };
 
@@ -185,6 +187,7 @@ const TAB_LABELS: Record<string, string> = {
   info: 'Info',
   procurement: 'Procurement',
   lease: 'Lease',
+  draws: 'Phases & Draws',
 };
 
 function getTabLabel(tab: string): string {
