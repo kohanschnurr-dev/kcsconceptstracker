@@ -79,8 +79,11 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
       if (defaultTitle) {
         setTitle(defaultTitle);
       }
+      if (defaultProjectId) {
+        setProjectId(defaultProjectId);
+      }
     }
-  }, [externalOpen, defaultStartDate, defaultTitle]);
+  }, [externalOpen, defaultStartDate, defaultTitle, defaultProjectId]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
