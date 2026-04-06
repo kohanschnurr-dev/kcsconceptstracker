@@ -1,22 +1,42 @@
 
 
-## Plan: Make Critical Path Card Icons Black
+## Plan: Add Accruing Interest Tracking to Phases & Draws
 
-**Problem**: The compact critical-path cards on the monthly calendar show orange/red icons (warning triangle + category icon) instead of black text. The title text is already `text-foreground` (black), but the icons remain colored.
+**What changes**: Each funded draw will calculate accruing interest from its funded date to today. There will be a global default interest rate at the top, with the ability to override the rate on individual phases.
 
-### Change
+### Data Model Changes
 
-**`src/components/calendar/DealCard.tsx`** — Line 85: Change the `AlertTriangle` icon from `text-red-400` to `text-foreground` so it renders black in light mode.
+Add to the `DrawPhase` interface:
+- `interestRateOverride?: number` — optional per-phase rate; when empty, uses the global rate
 
-Additionally, ensure the category icon also renders black for critical path items by adding a `text-foreground` override on line 86 when `isCriticalPath` is true.
+Add top-level state:
+- `globalInterestRate: number` — default annual interest rate (persisted in localStorage alongside phases)
 
-```tsx
-// Line 85: before
-{task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-red-400 shrink-0" />}
+### Interest Calculation Logic
 
-// Line 85: after
-{task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-foreground shrink-0" />}
-```
+For each funded phase with a `dateFunded`:
+- Days elapsed = difference between today and `dateFunded`
+- Monthly interest = `budgetedAmount × (rate / 100 / 12)`
+- Accrued interest = `monthlyInterest × (daysElapsed / 30.44)`
+- Effective rate = phase's `interestRateOverride` if set, otherwise `globalInterestRate`
 
-**Files**: `src/components/calendar/DealCard.tsx` (1 line edit)
+### UI Changes
+
+**1. Summary Card** — Add a new "Accrued Interest" stat (5th column) showing the total accrued interest across all funded phases in red/warning text.
+
+**2. Global Rate Input** — In the summary card header area, add an editable interest rate field (e.g., `10%`) labeled "Annual Rate" that applies to all phases by default.
+
+**3. Per-Phase Row** — For funded phases, add:
+- A small rate input (e.g., `w-20`) next to the status selector, pre-filled with the global rate but editable per-phase. Shown with a `%` suffix.
+- A read-only "Accrued" dollar amount displayed inline, showing interest accrued since the funded date.
+
+**4. Interest Summary Card** — New card below the phases list showing a breakdown table: phase name, principal, rate, days outstanding, accrued interest — with a total row at the bottom.
+
+### Files to Change
+
+- `src/components/project/PhasesDrawsTab.tsx` — All changes in this single file
+
+### Persistence
+
+The global rate and per-phase overrides are stored in the same localStorage key (`phases-draws-{projectId}`) as a wrapper object: `{ globalRate: number, phases: DrawPhase[] }`.
 
