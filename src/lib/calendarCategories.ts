@@ -129,7 +129,7 @@ export function getCalendarCategories(): CalendarCategory[] {
           groupLabel: c.groupLabel || CATEGORY_GROUPS[c.group as CategoryGroup]?.label || c.group,
         }));
       if (valid.length > 0) {
-        return valid.sort((a, b) => a.label.localeCompare(b.label));
+        return valid;
       }
       // All entries invalid — clear corrupted data
       localStorage.removeItem('custom-calendar-categories');
@@ -138,7 +138,7 @@ export function getCalendarCategories(): CalendarCategory[] {
     console.error('Error loading custom calendar categories:', e);
     localStorage.removeItem('custom-calendar-categories');
   }
-  return [...CALENDAR_CATEGORIES].sort((a, b) => a.label.localeCompare(b.label));
+  return [...CALENDAR_CATEGORIES];
 }
 
 export function getCategoryGroup(categoryValue: string): CategoryGroup {
@@ -201,12 +201,23 @@ export const CATEGORY_CHECKLIST_PRESETS: Record<string, string[]> = {
 };
 
 // Group categories for the dropdown
+export const GROUP_ORDER: CategoryGroup[] = [
+  'acquisition_admin',
+  'structural_exterior',
+  'rough_ins',
+  'inspections',
+  'interior_finishes',
+  'milestones',
+];
+
 export function getGroupedCategories(): Record<CategoryGroup, CalendarCategory[]> {
-  return getCalendarCategories().reduce((acc, category) => {
-    if (!acc[category.group]) {
-      acc[category.group] = [];
+  const categories = getCalendarCategories();
+  const result = {} as Record<CategoryGroup, CalendarCategory[]>;
+  for (const group of GROUP_ORDER) {
+    const cats = categories.filter(c => c.group === group);
+    if (cats.length > 0) {
+      result[group] = cats;
     }
-    acc[category.group].push(category);
-    return acc;
-  }, {} as Record<CategoryGroup, CalendarCategory[]>);
+  }
+  return result;
 }
