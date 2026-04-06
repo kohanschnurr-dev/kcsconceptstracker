@@ -569,11 +569,22 @@ export default function Expenses() {
                 )}
               </div>
 
-              {/* Row 3: Summary + Export */}
+              {/* Row 3: Summary + Hidden toggle + Export */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{filteredExpenses.length} expenses</span>
+                <span>{filteredExpenses.length} {showHidden ? 'hidden ' : ''}expenses</span>
                 <span>•</span>
                 <span className="font-mono font-medium">{formatCurrency(totalExpenses)}</span>
+                {hiddenCount > 0 && (
+                  <Button
+                    variant={showHidden ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="gap-1 h-6 px-2 text-xs"
+                    onClick={() => setShowHidden(!showHidden)}
+                  >
+                    {showHidden ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                    {showHidden ? 'Show Active' : `Hidden (${hiddenCount})`}
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" className="gap-1 h-6 ml-auto px-2 text-xs" onClick={exportToCSV}>
                   <Download className="h-3 w-3" />
                   Export
