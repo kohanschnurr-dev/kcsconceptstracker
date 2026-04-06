@@ -7,12 +7,12 @@ export function CalendarLegend() {
       {Object.entries(CATEGORY_GROUPS).map(([key, group]) => (
         <div key={key} className="flex items-center gap-1.5 shrink-0">
           <span className={cn('w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-sm shrink-0', group.swatchClass)} />
-          <span className="text-muted-foreground whitespace-nowrap">{group.label}</span>
+          <span className="text-foreground whitespace-nowrap">{group.label}</span>
         </div>
       ))}
       <div className="flex items-center gap-1.5 shrink-0">
         <span className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-sm shrink-0 bg-red-500/50 border border-red-500" />
-        <span className="text-muted-foreground whitespace-nowrap">Critical Path</span>
+        <span className="text-foreground whitespace-nowrap">Critical Path</span>
       </div>
     </div>
   );
