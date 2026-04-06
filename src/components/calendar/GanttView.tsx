@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import type { CalendarTask } from '@/pages/Calendar';
-import { getCategoryGroup } from '@/lib/calendarCategories';
+import { getCategoryGroup, CATEGORY_GROUPS } from '@/lib/calendarCategories';
 
 interface GanttViewProps {
   currentDate: Date;
