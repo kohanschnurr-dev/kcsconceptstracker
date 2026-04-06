@@ -40,7 +40,7 @@ function SortableTabItem({ id, label }: { id: string; label: string }) {
   );
 }
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Home, FileText, HardHat } from 'lucide-react';
+import { Home, FileText, HardHat, Hammer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -549,7 +549,7 @@ export default function ProjectDetail() {
     
     const { error } = await supabase
       .from('projects')
-      .update({ project_type: targetType })
+      .update({ project_type: targetType as any })
       .eq('id', project.id);
     
     const typeLabels: Record<string, string> = {
