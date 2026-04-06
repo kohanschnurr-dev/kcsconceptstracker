@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
-import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, CalendarIcon, Settings } from 'lucide-react';
+import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, CalendarIcon, Settings, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
@@ -35,12 +35,17 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     isLoading,
     isSyncing,
     pendingExpenses,
+    hiddenExpenses,
+    showHidden,
+    setShowHidden,
     connect,
     disconnect,
     syncExpenses,
     categorizeExpense,
     splitExpense,
     deleteExpense,
+    hideExpense,
+    unhideExpense,
     fetchPendingExpenses,
     enableDemoMode,
     importAllSplits,
@@ -306,6 +311,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                           projects={projects}
                           onCategorize={handleCategorize}
                           onDelete={handleDelete}
+                          onHide={async (id) => { await hideExpense(id); }}
                           onImportAll={handleImportAll}
                           onOpenSplitModal={handleOpenSplitModal}
                           formatCurrency={formatCurrency}
