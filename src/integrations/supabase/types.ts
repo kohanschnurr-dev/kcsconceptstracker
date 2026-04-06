@@ -1570,6 +1570,7 @@ export type Database = {
           date: string
           description: string | null
           expense_type: string | null
+          hidden_at: string | null
           id: string
           is_hidden: boolean
           is_imported: boolean
@@ -1592,6 +1593,7 @@ export type Database = {
           date: string
           description?: string | null
           expense_type?: string | null
+          hidden_at?: string | null
           id?: string
           is_hidden?: boolean
           is_imported?: boolean
@@ -1614,6 +1616,7 @@ export type Database = {
           date?: string
           description?: string | null
           expense_type?: string | null
+          hidden_at?: string | null
           id?: string
           is_hidden?: boolean
           is_imported?: boolean
