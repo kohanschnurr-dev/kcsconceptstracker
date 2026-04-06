@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
-import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, CalendarIcon, Settings } from 'lucide-react';
+import { RefreshCw, Link2, Link2Off, ChevronDown, ChevronUp, Check, CalendarIcon, Settings, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
@@ -35,12 +35,17 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     isLoading,
     isSyncing,
     pendingExpenses,
+    hiddenExpenses,
+    showHidden,
+    setShowHidden,
     connect,
     disconnect,
     syncExpenses,
     categorizeExpense,
     splitExpense,
     deleteExpense,
+    hideExpense,
+    unhideExpense,
     fetchPendingExpenses,
     enableDemoMode,
     importAllSplits,
@@ -306,6 +311,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                           projects={projects}
                           onCategorize={handleCategorize}
                           onDelete={handleDelete}
+                          onHide={async (id) => { await hideExpense(id); }}
                           onImportAll={handleImportAll}
                           onOpenSplitModal={handleOpenSplitModal}
                           formatCurrency={formatCurrency}
@@ -356,6 +362,48 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                     >
                       <div className="w-12 h-1 rounded-full bg-border group-hover:bg-muted-foreground/50 transition-colors" />
                     </div>
+                  </div>
+                )}
+
+                {/* Hidden expenses toggle */}
+                {hiddenExpenses.length > 0 && (
+                  <div className="space-y-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowHidden(!showHidden)}
+                      className="gap-2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      Hidden ({hiddenExpenses.length})
+                    </Button>
+                    
+                    {showHidden && (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {hiddenExpenses.map((expense) => (
+                          <div
+                            key={expense.id}
+                            className="p-3 rounded-lg border border-border bg-muted/10 opacity-60 hover:opacity-100 transition-opacity"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-sm">{expense.vendor_name || 'Unknown'}</p>
+                                <p className="text-xs text-muted-foreground">{formatCurrency(expense.amount)}</p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                onClick={() => unhideExpense(expense.id)}
+                                title="Restore this expense"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

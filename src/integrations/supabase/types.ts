@@ -1571,6 +1571,7 @@ export type Database = {
           description: string | null
           expense_type: string | null
           id: string
+          is_hidden: boolean
           is_imported: boolean
           notes: string | null
           original_amount: number | null
@@ -1592,6 +1593,7 @@ export type Database = {
           description?: string | null
           expense_type?: string | null
           id?: string
+          is_hidden?: boolean
           is_imported?: boolean
           notes?: string | null
           original_amount?: number | null
@@ -1613,6 +1615,7 @@ export type Database = {
           description?: string | null
           expense_type?: string | null
           id?: string
+          is_hidden?: boolean
           is_imported?: boolean
           notes?: string | null
           original_amount?: number | null

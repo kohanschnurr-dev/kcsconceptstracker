@@ -151,6 +151,8 @@ export function useQuickBooks() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingExpenses, setPendingExpenses] = useState<QuickBooksExpense[]>([]);
+  const [hiddenExpenses, setHiddenExpenses] = useState<QuickBooksExpense[]>([]);
+  const [showHidden, setShowHidden] = useState(false);
   const [hasAutoSynced, setHasAutoSynced] = useState(false);
   const { toast } = useToast();
 
@@ -314,6 +316,7 @@ export function useQuickBooks() {
         .from('quickbooks_expenses')
         .select('*')
         .eq('is_imported', false)
+        .eq('is_hidden', false)
         .order('date', { ascending: false });
 
       if (error) {
@@ -899,19 +902,105 @@ export function useQuickBooks() {
     }
   }, [pendingExpenses, fetchPendingExpenses, toast]);
 
+  const hideExpense = useCallback(async (expenseId: string) => {
+    if (isDemoMode) {
+      setPendingExpenses(prev => prev.filter(e => e.id !== expenseId));
+      toast({ title: 'Hidden', description: 'Expense hidden from view' });
+      return true;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('quickbooks_expenses')
+        .update({ is_hidden: true })
+        .eq('id', expenseId);
+
+      if (error) {
+        toast({ title: 'Error', description: 'Failed to hide expense', variant: 'destructive' });
+        return false;
+      }
+
+      setPendingExpenses(prev => prev.filter(e => e.id !== expenseId));
+      // Also refresh hidden count
+      await fetchHiddenExpenses();
+      toast({ title: 'Hidden', description: 'Expense hidden from view' });
+      return true;
+    } catch (error) {
+      console.error('Error hiding expense:', error);
+      return false;
+    }
+  }, [toast, isDemoMode]);
+
+  const unhideExpense = useCallback(async (expenseId: string) => {
+    try {
+      const { error } = await supabase
+        .from('quickbooks_expenses')
+        .update({ is_hidden: false })
+        .eq('id', expenseId);
+
+      if (error) {
+        toast({ title: 'Error', description: 'Failed to unhide expense', variant: 'destructive' });
+        return false;
+      }
+
+      setHiddenExpenses(prev => prev.filter(e => e.id !== expenseId));
+      await fetchPendingExpenses();
+      toast({ title: 'Restored', description: 'Expense restored to pending list' });
+      return true;
+    } catch (error) {
+      console.error('Error unhiding expense:', error);
+      return false;
+    }
+  }, [toast, fetchPendingExpenses]);
+
+  const fetchHiddenExpenses = useCallback(async () => {
+    if (isDemoMode) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('quickbooks_expenses')
+        .select('*')
+        .eq('is_imported', false)
+        .eq('is_hidden', true)
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching hidden expenses:', error);
+        return;
+      }
+
+      setHiddenExpenses(data || []);
+    } catch (error) {
+      console.error('Error fetching hidden expenses:', error);
+    }
+  }, [isDemoMode]);
+
+  // Fetch hidden expenses count when connected
+  useEffect(() => {
+    if (isConnected && !isDemoMode) {
+      fetchHiddenExpenses();
+    }
+  }, [isConnected, isDemoMode, fetchHiddenExpenses]);
+
   return {
     isConnected,
     isDemoMode,
     isLoading,
     isSyncing,
     pendingExpenses,
+    hiddenExpenses,
+    showHidden,
+    setShowHidden,
     connect,
     disconnect,
     syncExpenses,
     categorizeExpense,
     splitExpense,
     deleteExpense,
+    hideExpense,
+    unhideExpense,
     fetchPendingExpenses,
+    fetchHiddenExpenses,
     enableDemoMode,
     importAllSplits,
   };

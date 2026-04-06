@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { formatDisplayDate } from '@/lib/dateUtils';
-import { ChevronDown, ChevronUp, Check, Trash2, Receipt, Package, Wrench, StickyNote, Split } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, Trash2, Receipt, Package, Wrench, StickyNote, Split, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -55,6 +55,7 @@ interface GroupedPendingExpenseCardProps {
   projects: Project[];
   onCategorize: (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor', notes?: string, costType?: string) => Promise<void>;
   onDelete: (expenseId: string) => Promise<void>;
+  onHide?: (expenseId: string) => Promise<void>;
   onImportAll: (expenseIds: string[], projectId: string) => Promise<void>;
   onOpenSplitModal?: (expense: PendingExpense) => void;
   formatCurrency: (amount: number) => string;
@@ -65,6 +66,7 @@ export function GroupedPendingExpenseCard({
   projects,
   onCategorize,
   onDelete,
+  onHide,
   onImportAll,
   onOpenSplitModal,
   formatCurrency,
@@ -157,6 +159,17 @@ export function GroupedPendingExpenseCard({
                 <p className="font-mono font-semibold">
                   {formatCurrency(primaryExpense.amount)}
                 </p>
+                {onHide && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    onClick={() => onHide(primaryExpense.id)}
+                    title="Hide this expense"
+                  >
+                    <EyeOff className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -352,6 +365,21 @@ export function GroupedPendingExpenseCard({
               <p className="font-mono font-semibold">
                 {formatCurrency(totalAmount)}
               </p>
+              {onHide && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Hide all expenses in the group
+                    expenses.forEach(exp => onHide(exp.id));
+                  }}
+                  title="Hide all split expenses"
+                >
+                  <EyeOff className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
