@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.generate-receipt]
 verify_jwt = false
+
+[functions.clean-budget-import]
+verify_jwt = false

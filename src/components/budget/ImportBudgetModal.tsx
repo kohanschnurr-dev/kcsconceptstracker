@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Upload, FileSpreadsheet, AlertCircle, Check, ChevronDown } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, Check, Sparkles, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,12 +8,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { getBudgetCategories } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ParsedLine {
   name: string;
   amount: number;
-  mappedCategory: string; // category value or 'rehab_filler'
+  mappedCategory: string;
   autoMatched: boolean;
+  aiMatched?: boolean;
+  confidence?: number;
 }
 
 interface ImportBudgetModalProps {
@@ -85,19 +88,16 @@ function buildCategoryLookup() {
 
 function autoMatch(name: string, lookup: { keywords: string[]; value: string }[]): string | null {
   const lower = name.toLowerCase().trim();
-  // Exact label match first
   for (const entry of lookup) {
     for (const kw of entry.keywords) {
       if (lower === kw) return entry.value;
     }
   }
-  // Partial match — full string contains keyword
   for (const entry of lookup) {
     for (const kw of entry.keywords) {
       if (lower.includes(kw) || kw.includes(lower)) return entry.value;
     }
   }
-  // Token-based match — any word in the name matches a keyword
   const tokens = lower.split(/[\s/&,\-–—]+/).filter(Boolean);
   for (const entry of lookup) {
     for (const kw of entry.keywords) {
@@ -108,9 +108,7 @@ function autoMatch(name: string, lookup: { keywords: string[]; value: string }[]
   return null;
 }
 
-// Keywords that indicate a row is a summary/header, not a real line item
 const JUNK_ROW_PATTERNS = /\b(subtotal|sub total|all[- ]in total|totals?$|project inputs|financing costs?|ebt|roi|arv|ltc|delivery|sale \(\$|cost category|quantity|notes|total cost|\$\/sqft|formula:|grand total|section total)\b/i;
-
 const HEADER_PATTERNS = /\b(category|description|item|line item|cost category|budget|qty|quantity|unit|unit price|total cost|notes|comments)\b/i;
 
 function isHeaderRow(parts: string[]): boolean {
@@ -124,25 +122,17 @@ function parseCSVText(text: string): { name: string; amount: number }[] {
   const results: { name: string; amount: number }[] = [];
 
   for (const line of lines) {
-    // Try tab-separated first, then comma
     const parts = line.includes('\t') ? line.split('\t') : line.split(',');
     if (parts.length < 2) continue;
-
-    // Skip header-like rows (multiple header keywords)
     if (isHeaderRow(parts)) continue;
 
     const name = parts[0].trim();
-    const lowerName = name.toLowerCase();
-
-    // Skip junk/summary rows
     if (!name) continue;
     if (JUNK_ROW_PATTERNS.test(line)) continue;
 
-    // Collect all numeric values from columns
     const numericValues: { value: number; index: number }[] = [];
     for (let i = 1; i < parts.length; i++) {
       const cleaned = parts[i].trim().replace(/[$,]/g, '');
-      // Skip percentage values
       if (parts[i].trim().includes('%')) continue;
       const num = parseFloat(cleaned);
       if (!isNaN(num)) {
@@ -152,22 +142,15 @@ function parseCSVText(text: string): { name: string; amount: number }[] {
 
     if (numericValues.length === 0) continue;
 
-    // Smart amount extraction: prefer the largest absolute value > $10
-    // This picks the "Total Cost" column over $/sqft or quantity columns
     let amount = 0;
     const bigValues = numericValues.filter(n => Math.abs(n.value) > 10);
     if (bigValues.length > 0) {
-      // Pick the largest value (most likely the total)
       amount = bigValues.reduce((best, n) => Math.abs(n.value) > Math.abs(best.value) ? n : best).value;
     } else {
-      // All values small — just take the largest
       amount = numericValues.reduce((best, n) => Math.abs(n.value) > Math.abs(best.value) ? n : best).value;
     }
 
-    // Skip rows with zero or negligible amounts
     if (Math.abs(amount) < 1) continue;
-
-    // Skip rows that look like per-sqft or percentage rows (name has $/sqft pattern)
     if (/\$\s*\/\s*sq\s*ft/i.test(name) || /per\s*sq\s*ft/i.test(name)) continue;
 
     results.push({ name, amount: Math.abs(amount) });
@@ -180,6 +163,7 @@ export function ImportBudgetModal({ open, onOpenChange, onImport }: ImportBudget
   const [step, setStep] = useState<'upload' | 'map'>('upload');
   const [parsedLines, setParsedLines] = useState<ParsedLine[]>([]);
   const [rawText, setRawText] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
 
   const categories = useMemo(() => getBudgetCategories(), []);
   const lookup = useMemo(() => buildCategoryLookup(), []);
@@ -187,22 +171,21 @@ export function ImportBudgetModal({ open, onOpenChange, onImport }: ImportBudget
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      processText(text);
+      setRawText(text);
+      processTextLocal(text);
     };
     reader.readAsText(file);
   }, [lookup]);
 
-  const processText = useCallback((text: string) => {
+  const processTextLocal = useCallback((text: string) => {
     const items = parseCSVText(text);
     if (items.length === 0) {
       toast.error('No budget items found. Paste data as: Category, Amount');
       return;
     }
-
     const lines: ParsedLine[] = items.map(item => {
       const match = autoMatch(item.name, lookup);
       return {
@@ -212,22 +195,71 @@ export function ImportBudgetModal({ open, onOpenChange, onImport }: ImportBudget
         autoMatched: !!match,
       };
     });
-
     setParsedLines(lines);
     setStep('map');
   }, [lookup]);
+
+  const processTextAI = useCallback(async (text: string) => {
+    if (!text.trim()) {
+      toast.error('Paste your budget data first');
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('clean-budget-import', {
+        body: { rawText: text },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const items = data?.items;
+      if (!items || items.length === 0) {
+        toast.error('AI could not parse any items. Try the manual process instead.');
+        setAiLoading(false);
+        return;
+      }
+
+      const lines: ParsedLine[] = items.map((item: any) => ({
+        name: item.name,
+        amount: item.amount,
+        mappedCategory: item.category,
+        autoMatched: true,
+        aiMatched: true,
+        confidence: item.confidence,
+      }));
+
+      setParsedLines(lines);
+      setStep('map');
+      toast.success(`AI cleaned ${lines.length} items`);
+    } catch (err: any) {
+      console.error('AI clean error:', err);
+      toast.error('AI cleaning failed — falling back to manual parse');
+      processTextLocal(text);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [processTextLocal]);
 
   const handlePasteProcess = () => {
     if (!rawText.trim()) {
       toast.error('Paste your budget data first');
       return;
     }
-    processText(rawText);
+    processTextLocal(rawText);
+  };
+
+  const handleSmartClean = () => {
+    if (!rawText.trim()) {
+      toast.error('Paste your budget data first');
+      return;
+    }
+    processTextAI(rawText);
   };
 
   const handleCategoryChange = (index: number, value: string) => {
     setParsedLines(prev => prev.map((line, i) =>
-      i === index ? { ...line, mappedCategory: value, autoMatched: false } : line
+      i === index ? { ...line, mappedCategory: value, autoMatched: false, aiMatched: false } : line
     ));
   };
 
@@ -251,7 +283,8 @@ export function ImportBudgetModal({ open, onOpenChange, onImport }: ImportBudget
     setRawText('');
   };
 
-  const unmatchedCount = parsedLines.filter(l => l.mappedCategory === 'rehab_filler' && !l.autoMatched).length;
+  const unmatchedCount = parsedLines.filter(l => l.mappedCategory === 'rehab_filler' && !l.autoMatched && !l.aiMatched).length;
+  const lowConfidenceCount = parsedLines.filter(l => l.aiMatched && (l.confidence ?? 1) < 0.7).length;
   const totalImportAmount = parsedLines.reduce((s, l) => s + l.amount, 0);
 
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
@@ -300,18 +333,46 @@ export function ImportBudgetModal({ open, onOpenChange, onImport }: ImportBudget
               className="w-full h-40 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
 
-            <Button onClick={handlePasteProcess} className="w-full" disabled={!rawText.trim()}>
-              Process Pasted Data
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handlePasteProcess}
+                className="flex-1"
+                disabled={!rawText.trim() || aiLoading}
+              >
+                Process Manually
+              </Button>
+              <Button
+                onClick={handleSmartClean}
+                className="flex-1 gap-2"
+                disabled={!rawText.trim() || aiLoading}
+              >
+                {aiLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {aiLoading ? 'Cleaning…' : 'Smart Clean'}
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              Smart Clean uses AI to normalize names, merge duplicates, and auto-map categories
+            </p>
           </div>
         )}
 
         {step === 'map' && (
           <>
-            {unmatchedCount > 0 && (
+            {(unmatchedCount > 0 || lowConfidenceCount > 0) && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-sm">
                 <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                <span>{unmatchedCount} item{unmatchedCount > 1 ? 's' : ''} unmatched — assign a category or leave as Contingency</span>
+                <span>
+                  {unmatchedCount > 0 && `${unmatchedCount} unmatched`}
+                  {unmatchedCount > 0 && lowConfidenceCount > 0 && ', '}
+                  {lowConfidenceCount > 0 && `${lowConfidenceCount} low-confidence`}
+                  {' — review highlighted rows'}
+                </span>
               </div>
             )}
 
@@ -323,41 +384,48 @@ export function ImportBudgetModal({ open, onOpenChange, onImport }: ImportBudget
                   <span>Category</span>
                 </div>
 
-                {parsedLines.map((line, idx) => (
-                  <div
-                    key={idx}
-                    className={`grid grid-cols-[1fr,100px,180px] gap-2 items-center px-1 py-1.5 rounded-sm ${
-                      line.mappedCategory === 'rehab_filler' && !line.autoMatched
-                        ? 'bg-amber-500/5'
-                        : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      {line.autoMatched ? (
-                        <Check className="h-3 w-3 text-green-500 shrink-0" />
-                      ) : (
-                        <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
-                      )}
-                      <span className="text-sm truncate">{line.name}</span>
-                    </div>
-                    <span className="text-sm font-mono text-right">{fmt(line.amount)}</span>
-                    <Select
-                      value={line.mappedCategory}
-                      onValueChange={(v) => handleCategoryChange(idx, v)}
+                {parsedLines.map((line, idx) => {
+                  const isLowConfidence = line.aiMatched && (line.confidence ?? 1) < 0.7;
+                  const isUnmatched = line.mappedCategory === 'rehab_filler' && !line.autoMatched && !line.aiMatched;
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`grid grid-cols-[1fr,100px,180px] gap-2 items-center px-1 py-1.5 rounded-sm ${
+                        isUnmatched || isLowConfidence ? 'bg-amber-500/5' : ''
+                      }`}
                     >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(cat => (
-                          <SelectItem key={cat.value} value={cat.value} className="text-xs">
-                            {cat.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {line.aiMatched ? (
+                          <Badge variant="secondary" className="shrink-0 text-[10px] px-1.5 py-0 h-4 bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30">
+                            AI
+                          </Badge>
+                        ) : line.autoMatched ? (
+                          <Check className="h-3 w-3 text-green-500 shrink-0" />
+                        ) : (
+                          <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
+                        )}
+                        <span className="text-sm truncate">{line.name}</span>
+                      </div>
+                      <span className="text-sm font-mono text-right">{fmt(line.amount)}</span>
+                      <Select
+                        value={line.mappedCategory}
+                        onValueChange={(v) => handleCategoryChange(idx, v)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map(cat => (
+                            <SelectItem key={cat.value} value={cat.value} className="text-xs">
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })}
               </div>
             </ScrollArea>
 
