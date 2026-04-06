@@ -399,31 +399,35 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
   };
 
   const editFooterContent = (
-    <div className="flex flex-col gap-2 w-full">
-      <div className="flex items-center justify-between">
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => {
-            if (selectedTask) setDeleteTaskId(selectedTask.id);
-          }}
-        >
-          <Trash2 className="h-4 w-4 mr-1" />
-          Delete
-        </Button>
+    <div className="flex items-center justify-between w-full gap-2">
+      <div className="flex items-center gap-1">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" onClick={handleAddToCalendar}>
-                <CalendarPlus className="h-4 w-4 mr-1" />
-                Add to Calendar
+              <Button
+                variant="destructive"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => {
+                  if (selectedTask) setDeleteTaskId(selectedTask.id);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Delete</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" className="h-9 w-9" onClick={handleAddToCalendar}>
+                <CalendarPlus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Add to Calendar</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center gap-2">
         <Button variant="outline" onClick={() => setSelectedTask(null)}>Cancel</Button>
         <Button onClick={handleSaveEdit} disabled={isSaving}>
           {isSaving ? 'Saving...' : 'Save'}
