@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useProjectOptions } from '@/hooks/useProjectOptions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ interface AddTaskModalProps {
 
 export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTaskCreated }: AddTaskModalProps) {
   const { toast } = useToast();
+  const allProjects = useProjectOptions();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
@@ -331,7 +333,7 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
 
       {/* Calendar Event Modal */}
       <NewEventModal
-        projects={[{ id: projectId, name: projectName, address: '' }]}
+        projects={allProjects.map(p => ({ id: p.id, name: p.name, address: p.address || '' }))}
         onEventCreated={() => setCalendarModalOpen(false)}
         defaultProjectId={calendarDefaults?.projectId}
         defaultTitle={calendarDefaults?.title}
