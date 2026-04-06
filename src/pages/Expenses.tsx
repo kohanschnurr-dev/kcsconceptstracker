@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Search, Download, Receipt, Calendar, Paperclip, ChevronDown, X } from 'lucide-react';
+import { Plus, Search, Download, Receipt, Calendar, Paperclip, ChevronDown, X, EyeOff, Eye } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
