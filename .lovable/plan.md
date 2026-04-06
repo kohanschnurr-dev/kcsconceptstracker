@@ -1,26 +1,29 @@
 
 
-## Plan: Make "Add to Calendar" Immediately Save & Open Calendar
+## Plan: Improve Calendar Event Card Text Readability
 
-**Problem**: The "Add to Calendar" button currently just toggles a boolean flag. The calendar modal only appears after clicking Save separately — making it feel like the button does nothing.
+**Problem**: Event cards on the calendar have text that's too light/hard to read in light mode, especially critical path items and small compact cards.
 
-**Fix**: Change "Add to Calendar" from a toggle to a direct action button that saves the task and immediately opens the calendar event modal.
+### Changes
 
-### Changes — `src/components/project/AddTaskModal.tsx`
+#### 1. `src/lib/calendarCategories.ts` — Darken light-mode text colors
+Replace the `-800` shades with `-900` for stronger contrast:
+- `text-blue-800` → `text-blue-900`
+- `text-red-800` → `text-red-900`
+- `text-orange-800` → `text-orange-900`
+- `text-purple-800` → `text-purple-900`
+- `text-emerald-800` → `text-emerald-900`
+- `text-amber-800` → `text-amber-900`
 
-1. **Remove the `addToCalendar` toggle state** — no longer needed as a separate flag.
+Also darken backgrounds slightly for better visibility:
+- `bg-blue-50` → `bg-blue-100`
+- Same pattern for all other colors
 
-2. **Create a new `handleSaveAndCalendar` function** that:
-   - Saves the task (same logic as `handleSave`)
-   - On success, sets calendar defaults and opens the `NewEventModal` immediately
-
-3. **Update the footer layout**:
-   - Replace the toggle-style button with a direct action button: "Add to Calendar" 
-   - Keep Cancel and Save as they are
-   - "Add to Calendar" calls `handleSaveAndCalendar` (validates title, saves task, opens calendar modal)
-
-4. **Clean up `handleSave`** — remove the `addToCalendar` branching logic; it always just saves and closes.
+#### 2. `src/components/calendar/DealCard.tsx` — Fix critical path compact styling
+- Line 80: Change `text-red-300` → `text-red-900 dark:text-red-300` so critical path text is dark/readable in light mode
+- Line 80: Change `bg-red-500/30` → `bg-red-100 dark:bg-red-500/30`
 
 ### Files
-- `src/components/project/AddTaskModal.tsx`
+- `src/lib/calendarCategories.ts`
+- `src/components/calendar/DealCard.tsx`
 
