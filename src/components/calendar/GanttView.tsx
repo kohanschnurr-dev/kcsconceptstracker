@@ -279,15 +279,6 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={handleDragEnd}
                       >
-                        {days.findIndex(d => isToday(d)) >= 0 && (
-                          <div
-                            className="absolute top-0 bottom-0 bg-primary/5"
-                            style={{
-                              left: `${(days.findIndex(d => isToday(d)) / zoomDays) * 100}%`,
-                              width: `${(1 / zoomDays) * 100}%`,
-                            }}
-                          />
-                        )}
 
                         <Tooltip>
                           <TooltipTrigger asChild>
