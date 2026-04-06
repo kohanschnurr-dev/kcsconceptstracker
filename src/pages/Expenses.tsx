@@ -67,6 +67,7 @@ interface DBExpense {
   receipt_url?: string | null;
   source?: 'manual' | 'quickbooks';
   qb_id?: string | null;
+  is_hidden?: boolean;
 }
 
 interface DBQuickBooksExpense {
@@ -98,6 +99,7 @@ export default function Expenses() {
   const [selectedExpenseGroup, setSelectedExpenseGroup] = useState<DBExpense[] | null>(null);
   const [groupDetailModalOpen, setGroupDetailModalOpen] = useState(false);
   const [expensesTableOpen, setExpensesTableOpen] = useState(true);
+  const [showHidden, setShowHidden] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -283,17 +285,25 @@ export default function Expenses() {
     }
   };
 
+  const hiddenCount = useMemo(() => expenses.filter(e => e.is_hidden).length, [expenses]);
+
   const filteredExpenses = useMemo(() => {
     return expenses.filter((expense) => {
-      const searchLower = search.toLowerCase().replace(/[$,]/g, ''); // Strip $ and commas for amount search
+      // Filter by hidden status
+      if (showHidden) {
+        if (!expense.is_hidden) return false;
+      } else {
+        if (expense.is_hidden) return false;
+      }
+
+      const searchLower = search.toLowerCase().replace(/[$,]/g, '');
       
-      // Get resolved names for searching
       const projectName = getProjectName(expense.project_id).toLowerCase();
       const categoryLabel = (expense.category_id ? getCategoryLabel(expense.category_id, expense.project_id) : '').toLowerCase();
       const amountStr = expense.amount.toString();
       
       const matchesSearch = 
-        !search || // If no search, match everything
+        !search ||
         (expense.vendor_name?.toLowerCase() || '').includes(searchLower) ||
         (expense.description?.toLowerCase() || '').includes(searchLower) ||
         (expense.notes?.toLowerCase() || '').includes(searchLower) ||
@@ -304,7 +314,6 @@ export default function Expenses() {
       
       const matchesProject = projectFilter === 'all' || expense.project_id === projectFilter;
       
-      // For category filter, we need to check the category of the expense
       let matchesCategory = categoryFilter === 'all';
       if (!matchesCategory) {
         const project = projects.find(p => p.id === expense.project_id);
@@ -312,7 +321,6 @@ export default function Expenses() {
         matchesCategory = category?.category === categoryFilter;
       }
 
-      // Date range filter
       let matchesDateRange = true;
       if (dateRange?.from) {
         const expenseDate = new Date(expense.date);
@@ -327,7 +335,7 @@ export default function Expenses() {
 
       return matchesSearch && matchesProject && matchesCategory && matchesDateRange;
     });
-  }, [expenses, search, projectFilter, categoryFilter, dateRange, projects, getProjectName, getCategoryLabel]);
+  }, [expenses, search, projectFilter, categoryFilter, dateRange, projects, getProjectName, getCategoryLabel, showHidden]);
 
   // Group expenses by parent QB transaction ID (for split expenses)
   const groupedExpenses = useMemo(() => {
