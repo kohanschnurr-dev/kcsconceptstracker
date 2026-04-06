@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ListTodo, Check, Clock, AlertCircle, Plus, Calendar, Trash2, Camera, X, Loader2, FileText, ChevronDown } from 'lucide-react';
+import { ListTodo, Check, Clock, AlertCircle, Plus, Calendar, CalendarPlus, Trash2, Camera, X, Loader2, FileText, ChevronDown } from 'lucide-react';
 import { parseDateString, formatDisplayDateShort } from '@/lib/dateUtils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +21,8 @@ import { TASK_PRIORITY_COLORS, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '
 import type { TaskStatus, TaskPriority } from '@/types/task';
 import { parseDescription, serializeDescription, type Subtask } from '@/lib/taskSubtasks';
 import { AddTaskModal } from './AddTaskModal';
+import { NewEventModal } from '@/components/calendar/NewEventModal';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 const PRIORITY_ICON_COLORS: Record<TaskPriority, string> = {
   low: 'text-muted-foreground',
@@ -127,6 +129,9 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
   const [editSubtasks, setEditSubtasks] = useState<Subtask[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [calendarDefaults, setCalendarDefaults] = useState<{ title: string; date?: Date }>({ title: '' });
+  const [calendarProjects, setCalendarProjects] = useState<{ id: string; name: string; address: string }[]>([]);
 
   useEffect(() => {
     fetchTasks();
@@ -378,6 +383,21 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
     </div>
   );
 
+  const handleAddToCalendar = async () => {
+    // Fetch project list for the calendar modal
+    const { data } = await supabase
+      .from('projects')
+      .select('id, name, address')
+      .order('name');
+    setCalendarProjects(data || []);
+    setCalendarDefaults({
+      title: editTitle,
+      date: editDueDate ? new Date(editDueDate + 'T00:00:00') : new Date(),
+    });
+    setSelectedTask(null);
+    setCalendarModalOpen(true);
+  };
+
   const editFooterContent = (
     <div className="flex items-center justify-between w-full gap-2">
       <Button
@@ -391,6 +411,17 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
         Delete
       </Button>
       <div className="flex gap-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={handleAddToCalendar}>
+                <CalendarPlus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Add to Calendar</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Add to Calendar</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <Button variant="outline" onClick={() => setSelectedTask(null)}>Cancel</Button>
         <Button onClick={handleSaveEdit} disabled={isSaving}>
           {isSaving ? 'Saving...' : 'Save Changes'}
@@ -506,6 +537,17 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Calendar Event Modal */}
+      <NewEventModal
+        projects={calendarProjects}
+        onEventCreated={() => {}}
+        defaultProjectId={projectId}
+        externalOpen={calendarModalOpen}
+        onExternalOpenChange={setCalendarModalOpen}
+        defaultStartDate={calendarDefaults.date}
+        defaultTitle={calendarDefaults.title}
+      />
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTaskId} onOpenChange={(open) => { if (!open) setDeleteTaskId(null); }}>

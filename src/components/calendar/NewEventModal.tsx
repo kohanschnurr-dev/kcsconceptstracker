@@ -55,9 +55,10 @@ interface NewEventModalProps {
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
   defaultStartDate?: Date;
+  defaultTitle?: string;
 }
 
-export function NewEventModal({ projects, onEventCreated, defaultProjectId, externalOpen, onExternalOpenChange, defaultStartDate }: NewEventModalProps) {
+export function NewEventModal({ projects, onEventCreated, defaultProjectId, externalOpen, onExternalOpenChange, defaultStartDate, defaultTitle }: NewEventModalProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = externalOpen !== undefined;
   const open = isControlled ? externalOpen : internalOpen;
@@ -70,11 +71,16 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
   };
 
   useEffect(() => {
-    if (externalOpen && defaultStartDate) {
-      setStartDate(defaultStartDate);
-      setEndDate(defaultStartDate);
+    if (externalOpen) {
+      if (defaultStartDate) {
+        setStartDate(defaultStartDate);
+        setEndDate(defaultStartDate);
+      }
+      if (defaultTitle) {
+        setTitle(defaultTitle);
+      }
     }
-  }, [externalOpen, defaultStartDate]);
+  }, [externalOpen, defaultStartDate, defaultTitle]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
