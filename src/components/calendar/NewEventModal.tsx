@@ -322,7 +322,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
                     <CommandEmpty className="text-muted-foreground py-6 text-center text-sm">
                       No categories found
                     </CommandEmpty>
-                    {(Object.entries(filteredGrouped) as [CategoryGroup, CalendarCategory[]][]).map(([groupKey, cats]) => (
+                    {(Object.keys(CATEGORY_GROUPS) as CategoryGroup[]).filter(g => filteredGrouped[g]?.length).map((groupKey) => { const cats = filteredGrouped[groupKey]; return (
                       <CommandGroup 
                         key={groupKey} 
                         heading={
@@ -356,7 +356,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
                           </CommandItem>
                         ))}
                       </CommandGroup>
-                    ))}
+                    ); })}
                   </CommandList>
                   </div>
                 </Command>

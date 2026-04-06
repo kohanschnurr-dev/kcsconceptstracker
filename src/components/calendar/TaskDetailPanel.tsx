@@ -360,7 +360,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent className="bg-card border-border max-h-[300px]">
-                {(Object.entries(groupedCategories) as [keyof typeof CATEGORY_GROUPS, typeof groupedCategories[keyof typeof groupedCategories]][]).map(([groupKey, categories]) => (
+                {(Object.keys(CATEGORY_GROUPS) as (keyof typeof CATEGORY_GROUPS)[]).filter(g => groupedCategories[g]?.length).map((groupKey) => (
                   <SelectGroup key={groupKey}>
                     <SelectLabel className={cn(
                       "text-xs font-semibold py-2",
@@ -368,7 +368,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                     )}>
                       {CATEGORY_GROUPS[groupKey].label}
                     </SelectLabel>
-                    {categories.map((cat) => (
+                    {groupedCategories[groupKey].map((cat) => (
                       <SelectItem 
                         key={cat.value} 
                         value={cat.value} 
