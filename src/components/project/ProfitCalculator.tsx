@@ -7,11 +7,13 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import type { ProjectType } from '@/types';
 
 type CostMode = 'pct' | 'flat' | 'actual';
 
 interface ProfitCalculatorProps {
   projectId: string;
+  projectType?: ProjectType;
   totalBudget: number;
   totalSpent: number;
   initialPurchasePrice?: number;
@@ -28,7 +30,8 @@ interface ProfitCalculatorProps {
 }
 
 export function ProfitCalculator({ 
-  projectId, 
+  projectId,
+  projectType = 'fix_flip',
   totalBudget, 
   totalSpent,
   initialPurchasePrice = 0,
@@ -153,7 +156,7 @@ export function ProfitCalculator({
         {/* Inputs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="purchase-price">Purchase Price</Label>
+            <Label htmlFor="purchase-price">{projectType === 'new_construction' ? 'Land Price' : 'Purchase Price'}</Label>
             <FormulaInput
               id="purchase-price"
               type="number"
@@ -283,7 +286,7 @@ export function ProfitCalculator({
               <span className="font-semibold">{formatCurrency(arv)}</span>
             </div>
             <div className="flex justify-between text-destructive">
-              <span>− Purchase Price</span>
+              <span>− {projectType === 'new_construction' ? 'Land Price' : 'Purchase Price'}</span>
               <span>{formatCurrency(purchasePrice)}</span>
             </div>
             <div className="flex justify-between text-destructive">
@@ -328,7 +331,7 @@ export function ProfitCalculator({
             </div>
             <div className="pl-4 space-y-1 text-xs text-muted-foreground">
               <div className="flex justify-between">
-                <span>Purchase Price</span>
+                <span>{projectType === 'new_construction' ? 'Land Price' : 'Purchase Price'}</span>
                 <span>{formatCurrency(purchasePrice)}</span>
               </div>
               <div className="flex justify-between">
