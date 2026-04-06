@@ -1,32 +1,65 @@
 
 
-## Plan: Smarter Budget Import Parser
+## Plan: Add New Construction Project Type
 
-The current parser is too naive — it doesn't filter out summary rows, subtotals, section headers, formula descriptions, or percentage values. When pasting a full construction cost estimator, it picks up junk rows and mismatches categories.
+Add "New Construction" as a third project type with the same financial model as Fix & Flip (Sale/Profit) plus a Phases/Draws tab for tracking construction loan draws tied to milestones.
 
 ### Changes
 
-**File: `src/components/budget/ImportBudgetModal.tsx`**
+**1. Type System — `src/types/index.ts`**
+- Expand `ProjectType` to `'fix_flip' | 'rental' | 'new_construction'`
 
-1. **Smarter row filtering in `parseCSVText`**:
-   - Skip rows containing summary keywords: "SUBTOTAL", "ALL-IN TOTAL", "TOTALS", "PROJECT INPUTS", "FINANCING COSTS", "EBT", "ROI", "ARV", "LTC", "Delivery", "Sale ($/sqft)"
-   - Skip rows where the "amount" is actually a percentage (contains `%`)
-   - Skip rows that are clearly formulas/notes (e.g., "Formula:", lines with no real amount)
-   - Skip $/sqft-only rows (amounts under ~$10 that look like per-unit costs when a larger total exists on the same row)
+**2. Projects Page — `src/pages/Projects.tsx`**
+- Add `new_construction` to `DEFAULT_TAB_ORDER`
+- Add to `TAB_CONFIG`: label "New Construction", icon `HardHat` (lucide `HardHat`), createLabel "Build"
+- The existing tab visibility, reorder, and filtering logic all works automatically
 
-2. **Smarter amount extraction**:
-   - When multiple numeric columns exist, prefer the largest value (the total) over $/sqft or per-unit costs
-   - Handle negative amounts (refunds/credits)
-   - Ignore numbers that look like quantities (small integers next to "Quantity" headers)
+**3. New Project Modal — `src/components/NewProjectModal.tsx`**
+- Change `grid-cols-2` → `grid-cols-3` for the project type tabs
+- Add a third TabsTrigger for `new_construction` with HardHat icon
 
-3. **Better auto-matching with expanded aliases**:
-   - Add: `"site work" → misc`, `"lumber package" → framing`, `"drywall package/labor" → drywall`, `"exterior doors" → doors`, `"garage door" → garage`, `"termite treatment" → pest_control`, `"punch out" → final_punch`, `"final clean" → cleaning`, `"driveway"/"concrete work" → driveway_concrete`, `"survey" → permits`, `"energy" → inspections`, `"structural/civil engineering" → permits`, `"architecture/plans" → permits`
-   - Tokenized matching: split the name into words and check if any word matches a keyword
+**4. Project Detail — `src/pages/ProjectDetail.tsx`**
+- Add `new_construction` entry in `DEFAULT_DETAIL_TAB_ORDER_BY_TYPE` with the same tabs as `fix_flip` plus `'draws'`
+- Add `'draws'` to `TAB_LABELS` → "Phases & Draws"
+- Add a new `TabsContent` for `draws` rendering a `<PhasesDrawsTab />` component
+- Update `handleConvertProjectType` to support cycling between fix_flip / new_construction / rental (dropdown menu with options instead of a single toggle)
+- The `isRental` checks stay as-is — new_construction follows the same profit logic as fix_flip
 
-4. **Pre-clean pasted text**:
-   - Detect and skip header rows more aggressively (look for column header patterns like "$/SQFT", "TOTAL COST", "QUANTITY", "NOTES", "COST CATEGORY")
-   - Strip dollar signs and handle multi-column tab-separated data
+**5. Project Card — `src/components/dashboard/ProjectCard.tsx`**
+- Add `HardHat` icon import; show it when `projectType === 'new_construction'`
+- New construction uses the same profit/budget display as fix_flip (not rental)
 
-### Files touched
-- `src/components/budget/ImportBudgetModal.tsx` (~60 lines changed in parsing logic)
+**6. New Component — `src/components/project/PhasesDrawsTab.tsx`**
+A simple but functional tab for tracking construction loan draws:
+- Displays a list of draw phases (Foundation, Framing, Dry-In, Rough-Ins, Drywall, Finishes, Final) with default milestones
+- Each phase row: name, budgeted amount (editable), draw status (Pending / Requested / Funded), date funded
+- Summary bar at top: Total Draws Funded vs Total Loan Amount
+- Data stored in localStorage keyed by project ID initially (can migrate to DB later)
+- Clean card-based UI matching existing project detail style
+
+**7. Dashboard & Settings Updates**
+- `src/components/settings/DashboardPreferencesCard.tsx` — add `new_construction` to `PROJECT_TYPES` array
+- `src/pages/ProfitBreakdown.tsx` — add to `ALL_TYPES`; new_construction uses profit (not cash flow)
+- `src/pages/Index.tsx` — add to default profit filter types
+- `src/pages/Expenses.tsx` — handle `new_construction` in type cast
+- `src/pages/Calendar.tsx` — handle in type cast
+
+**8. Budget Calculator — `src/components/budget/DealSidebar.tsx`**
+- Add `'new_construction'` to `CalculatorType` and tab config (label: "New Build", same Sale analysis)
+
+**9. Database Migration**
+- ALTER the `project_type` column's allowed values to include `'new_construction'` (if using a check constraint or enum). The column appears to be text-based, so this may just work — will verify.
+
+### Files touched (~10 files)
+- `src/types/index.ts`
+- `src/pages/Projects.tsx`
+- `src/components/NewProjectModal.tsx`
+- `src/pages/ProjectDetail.tsx`
+- `src/components/dashboard/ProjectCard.tsx`
+- `src/components/project/PhasesDrawsTab.tsx` (new)
+- `src/components/settings/DashboardPreferencesCard.tsx`
+- `src/pages/ProfitBreakdown.tsx`
+- `src/pages/Index.tsx`
+- `src/pages/Expenses.tsx`
+- `src/components/budget/DealSidebar.tsx`
 
