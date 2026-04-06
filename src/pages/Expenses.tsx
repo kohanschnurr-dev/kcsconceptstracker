@@ -391,6 +391,36 @@ export default function Expenses() {
     setDateRange(undefined);
   };
 
+  const handleHideExpense = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update({ is_hidden: true } as any)
+        .eq('id', id);
+      if (error) throw error;
+      setExpenses(prev => prev.map(e => e.id === id ? { ...e, is_hidden: true } : e));
+      toast({ title: 'Expense hidden' });
+    } catch (error) {
+      console.error('Error hiding expense:', error);
+      toast({ title: 'Error', description: 'Failed to hide expense', variant: 'destructive' });
+    }
+  };
+
+  const handleUnhideExpense = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update({ is_hidden: false } as any)
+        .eq('id', id);
+      if (error) throw error;
+      setExpenses(prev => prev.map(e => e.id === id ? { ...e, is_hidden: false } : e));
+      toast({ title: 'Expense restored' });
+    } catch (error) {
+      console.error('Error unhiding expense:', error);
+      toast({ title: 'Error', description: 'Failed to restore expense', variant: 'destructive' });
+    }
+  };
+
   const exportToCSV = () => {
     const headers = ['Date', 'Contractor', 'Project', 'Category', 'Payment Method', 'Amount', 'Tax', 'Status', 'Description'];
     const rows = filteredExpenses.map(e => [
