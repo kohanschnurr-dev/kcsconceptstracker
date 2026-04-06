@@ -1,24 +1,20 @@
 
 
-## Plan: Darken Category Group Heading Colors in New Event Dropdown
+## Plan: Make Critical Path Text Black
 
-**Problem**: The group headings ("ROUGH-INS", "INSPECTIONS", etc.) in the New Event category dropdown use `-950` text colors that appear faint/washed-out against the white popover background. The user cannot read them.
+**Problem**: Critical path tasks use `text-red-950` which appears washed out and unreadable, same issue as the category colors we already fixed.
 
-**Root cause**: `text-amber-950`, `text-purple-950`, `text-yellow-950` etc. are extremely dark near-black shades that lose their color identity on white. They need to be replaced with mid-range saturated colors that are both readable AND clearly colored.
+### Change
 
-### Changes
+**`src/components/calendar/DealCard.tsx`** — Line 80: Replace `text-red-950` with `text-foreground` in the critical path compact card styling:
 
-**1. `src/lib/calendarCategories.ts`** — Replace `textClass` with stronger, more saturated mid-tone colors:
-- `acquisition_admin`: `text-blue-950` → `text-blue-700 dark:text-blue-200`
-- `structural_exterior`: `text-red-950` → `text-red-700 dark:text-red-200`
-- `rough_ins`: `text-amber-950` → `text-amber-700 dark:text-amber-200`
-- `inspections`: `text-purple-950` → `text-purple-700 dark:text-purple-200`
-- `interior_finishes`: `text-emerald-950` → `text-emerald-700 dark:text-emerald-200`
-- `milestones`: `text-yellow-950` → `text-yellow-700 dark:text-amber-200`
+```
+// Before
+'bg-red-200 dark:bg-red-500/30 text-red-950 dark:text-red-300 border-red-500'
 
-The `-700` shades are saturated and bold — clearly readable as their respective colors on white backgrounds, while still dark enough to be legible.
+// After  
+'bg-red-200 dark:bg-red-500/30 text-foreground dark:text-red-300 border-red-500'
+```
 
-**2. `src/components/calendar/DealCard.tsx`** — Already uses `text-foreground` (black) for task card text, so no changes needed there.
-
-**Files**: `src/lib/calendarCategories.ts` (6 line changes)
+The red background + red border + alert icon already clearly convey "critical path" — the text itself should be black for readability, consistent with all other task cards.
 
