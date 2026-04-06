@@ -1,31 +1,32 @@
 
 
-## Plan: Gantt Chart Zoom Control
+## Plan: Per-Category $/PSF Toggle on Budget Calculator
 
-Currently the Gantt chart always shows 28 days (4 weeks) with fixed-width columns, making bars hard to read. Add a zoom slider that lets the user control how many days are visible (7–28), with the chart scrolling horizontally when zoomed in.
+Each budget category card currently has only a flat dollar input. This adds a tiny toggle on each card so users can switch between entering a flat dollar amount or a $/PSF (per square foot) rate. When in PSF mode, the entered rate is multiplied by the project's sqft to compute the actual budget value.
 
 ### Changes
 
-**`src/components/calendar/GanttView.tsx`**
+**`src/components/budget/BudgetCategoryCard.tsx`**
+- Add `sqft` prop (string) passed down from the canvas
+- Add local state `isPsf` (boolean, default false) tracking the input mode per card
+- Persist PSF mode selections in localStorage (`budget-psf-modes`) as a `Record<string, boolean>` keyed by category
+- Add a small clickable toggle button between the label and the input showing either `$/sf` or `$` — clicking it switches modes
+- When in PSF mode:
+  - Show the input prefixed with `$/sf` instead of `$`
+  - Store the PSF rate in local state; on change, multiply by sqft and call `onChange` with the computed flat amount
+  - Back-calculate the PSF rate from the current value when switching into PSF mode (value / sqft)
+- When in flat `$` mode: behave exactly as today
 
-- Add a `zoomDays` state (default 28, range 7–28) controlling how many days are rendered
-- Add a zoom toolbar row at the top with:
-  - A `Slider` (from existing `ui/slider`) going from 7 to 28
-  - Label showing current zoom level (e.g. "7 days" / "28 days")
-  - Quick preset buttons: "1W" (7 days) and "4W" (28 days)
-- Replace the hardcoded `28` with `zoomDays` everywhere (days array length, position calculations, drag logic)
-- When `zoomDays < 28`, give each day column a minimum width (e.g. `minWidth: 80px`) so bars and labels are readable, and wrap the chart in a horizontally scrollable container (`overflow-x-auto`)
-- When `zoomDays === 28`, keep current flex layout (no min-width, no scroll)
-- The header row and body columns stay aligned via a shared `min-width` on each day cell
-- Smooth scroll behavior on the container
+**`src/components/budget/BudgetCanvas.tsx`**
+- Pass the existing `sqft` prop through to every `<BudgetCategoryCard>` instance (approx 3 render sites across category/timeline/costtype views)
 
 ### UI Details
-- Zoom bar sits flush above the date header row, styled with `bg-secondary/50 rounded-lg p-2`
-- Slider uses the existing `ui/slider` component, accent color matches primary
-- "1W" and "4W" pill buttons use `variant="outline"` with active state highlighting
-- At 7-day zoom, each column is wide enough to show the full task title inside the bar (not just the icon)
-- Responsive: on mobile, the zoom bar stacks the slider below the preset buttons
+- Toggle is a tiny pill/chip (`text-[9px]`, `px-1`, `h-5`) positioned to the left of the input, styled with `bg-muted hover:bg-muted-foreground/20 rounded cursor-pointer`
+- Active PSF mode shows the pill highlighted with `bg-primary/20 text-primary`
+- Input width stays at `w-20`; the PSF rate naturally fits (e.g., "4" for $4/sqft)
+- When sqft is 0 or empty, PSF toggle is hidden (can't calculate)
 
-### Files touched
-- `src/components/calendar/GanttView.tsx` (only file)
+### Files
+- `src/components/budget/BudgetCategoryCard.tsx`
+- `src/components/budget/BudgetCanvas.tsx`
 
