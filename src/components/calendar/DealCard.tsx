@@ -122,7 +122,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
         <span className={cn(
           'text-[10px] px-2 py-0.5 rounded-full border',
           task.isCriticalPath 
-            ? 'bg-red-200 dark:bg-red-500/20 text-red-950 dark:text-red-400 border-red-500' 
+            ? 'bg-red-200 dark:bg-red-500/20 text-foreground dark:text-red-400 border-red-500' 
             : `${categoryStyles.bgClass} ${categoryStyles.textClass} ${categoryStyles.borderClass}`
         )}>
           {task.isCriticalPath ? 'Critical Path' : categoryLabel}
