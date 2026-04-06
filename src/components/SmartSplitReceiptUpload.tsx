@@ -1396,10 +1396,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                       </div>
                       <div className="flex items-center gap-2">
                         <Label className="text-sm text-muted-foreground">Cost Type:</Label>
-                        <Select value={costType} onValueChange={(val) => {
-                          setCostType(val);
-                          if (val === 'loan') setSelectedCategory('loan_costs');
-                        }}>
+                        <Select value={costType} onValueChange={setCostType}>
                           <SelectTrigger className="h-8 text-sm w-[140px]">
                             <SelectValue />
                           </SelectTrigger>

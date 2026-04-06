@@ -669,7 +669,7 @@ function ExpenseForm({
           <Label className="text-sm">Cost Type:</Label>
           <Select value={costType} onValueChange={(val) => {
             setCostType(val);
-            if (val === 'loan') setCategory('loan_costs');
+            if (val === 'loan') setSelectedCategory('loan_costs');
           }}>
             <SelectTrigger className="h-8 text-sm w-[140px]">
               <SelectValue />

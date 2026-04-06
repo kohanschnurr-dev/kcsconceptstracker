@@ -224,7 +224,10 @@ export function GroupedPendingExpenseCard({
             </Select>
             <Select
               value={selectedCostType}
-              onValueChange={setSelectedCostType}
+              onValueChange={(val) => {
+                setSelectedCostType(val);
+                if (val === 'loan') setSelectedCategory('loan_costs');
+              }}
             >
               <SelectTrigger className="flex-1">
                 <SelectValue placeholder="Type" />
