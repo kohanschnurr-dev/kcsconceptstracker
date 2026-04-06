@@ -126,7 +126,7 @@ export default function Expenses() {
 
         if (error || !data?.length) return;
 
-        const settingsData = (profile?.settings_data || {}) as Record<string, unknown>;
+        const settingsData = ((profile as any)?.settings_data || {}) as Record<string, unknown>;
         const autoDelete = settingsData.auto_delete_stale_hidden === true;
 
         if (autoDelete) {
@@ -166,7 +166,7 @@ export default function Expenses() {
 
   const handleAutoDeleteChange = async (enabled: boolean) => {
     try {
-      const current = ((profile?.settings_data || {}) as Record<string, unknown>);
+      const current = (((profile as any)?.settings_data || {}) as Record<string, unknown>);
       const updated = { ...current, auto_delete_stale_hidden: enabled };
       await supabase
         .from('profiles')
