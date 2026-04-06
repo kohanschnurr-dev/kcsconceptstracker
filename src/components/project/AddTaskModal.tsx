@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, X, Plus, Camera, Upload, Clipboard, ChevronDown, ListTodo } from 'lucide-react';
+import { Loader2, X, Plus, Camera, Upload, Clipboard, ChevronDown, ListTodo, CalendarPlus } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ import { toast as sonnerToast } from 'sonner';
 import type { TaskPriority, TaskStatus } from '@/types/task';
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/types/task';
 import { type Subtask, serializeDescription } from '@/lib/taskSubtasks';
+import { NewEventModal } from '@/components/calendar/NewEventModal';
 
 interface AddTaskModalProps {
   open: boolean;
@@ -38,6 +39,9 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [addToCalendar, setAddToCalendar] = useState(false);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [calendarDefaults, setCalendarDefaults] = useState<{ title: string; startDate?: Date; projectId: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,6 +53,7 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
     setDueDate('');
     setPhotoUrls([]);
     setSubtasks([]);
+    setAddToCalendar(false);
   };
 
   const uploadFile = useCallback(async (file: File) => {
@@ -111,7 +116,19 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
 
       toast({ title: 'Task added', description: 'Your task has been created.' });
       onTaskCreated();
-      handleClose();
+
+      if (addToCalendar) {
+        setCalendarDefaults({
+          title: title.trim(),
+          startDate: dueDate ? new Date(dueDate + 'T00:00:00') : undefined,
+          projectId,
+        });
+        resetForm();
+        onOpenChange(false);
+        setCalendarModalOpen(true);
+      } else {
+        handleClose();
+      }
     } catch (error) {
       console.error('Error creating task:', error);
       toast({ title: 'Failed to create task', variant: 'destructive' });
@@ -274,12 +291,24 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={handleClose}>Cancel</Button>
-            <Button onClick={handleSave} disabled={!title.trim() || isSubmitting}>
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Save
+          <DialogFooter className="flex items-center sm:justify-between">
+            <Button
+              type="button"
+              variant={addToCalendar ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setAddToCalendar(v => !v)}
+              className="gap-1.5 mr-auto"
+            >
+              <CalendarPlus className="h-4 w-4" />
+              Add to Calendar
             </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleClose}>Cancel</Button>
+              <Button onClick={handleSave} disabled={!title.trim() || isSubmitting}>
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Save
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -290,6 +319,17 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
           {previewUrl && <img src={previewUrl} alt="Preview" className="w-full rounded" />}
         </DialogContent>
       </Dialog>
+
+      {/* Calendar Event Modal */}
+      <NewEventModal
+        projects={[{ id: projectId, name: projectName, address: '' }]}
+        onEventCreated={() => setCalendarModalOpen(false)}
+        defaultProjectId={calendarDefaults?.projectId}
+        defaultTitle={calendarDefaults?.title}
+        defaultStartDate={calendarDefaults?.startDate}
+        externalOpen={calendarModalOpen}
+        onExternalOpenChange={setCalendarModalOpen}
+      />
     </>
   );
 }
