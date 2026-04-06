@@ -134,30 +134,39 @@ export function BudgetCategoryCard({
       {isLoanCategory && (
         <LoanCostCalculator onApply={onChange} />
       )}
-      <div className="relative flex-shrink-0">
-        {isPsf ? (
-          <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground font-medium pointer-events-none">$/sf</span>
-        ) : (
-          <DollarSign className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-        )}
-        {isPsf ? (
-          <FormulaInput
-            type="number"
-            placeholder="0"
-            value={psfRate}
-            onChange={(e) => handlePsfChange(e.target.value)}
-            className="pl-6 pr-1.5 font-mono text-right h-7 w-20 text-xs bg-transparent border-0 focus-visible:ring-1"
-            showHint={false}
-          />
-        ) : (
-          <FormulaInput
-            type="number"
-            placeholder="0"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="pl-5 pr-1.5 font-mono text-right h-7 w-20 text-xs bg-transparent border-0 focus-visible:ring-1"
-            showHint={false}
-          />
+      <div className="flex flex-col items-end flex-shrink-0">
+        <div className="relative">
+          {isPsf ? (
+            <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground font-medium pointer-events-none">$/sf</span>
+          ) : (
+            <DollarSign className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          )}
+          {isPsf ? (
+            <FormulaInput
+              type="number"
+              placeholder="0"
+              value={psfRate}
+              onChange={(e) => handlePsfChange(e.target.value)}
+              className="pl-6 pr-1.5 font-mono text-right h-7 w-20 text-xs bg-transparent border-0 focus-visible:ring-1"
+              showHint={false}
+            />
+          ) : (
+            <FormulaInput
+              type="number"
+              placeholder="0"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              className="pl-5 pr-1.5 font-mono text-right h-7 w-20 text-xs bg-transparent border-0 focus-visible:ring-1"
+              showHint={false}
+            />
+          )}
+        </div>
+        {hasSqft && hasValue && (
+          <span className="text-[9px] text-muted-foreground font-mono pr-1.5 leading-none">
+            {isPsf
+              ? `$${numericValue.toLocaleString()}`
+              : `$${(Math.round((numericValue / sqftNum) * 100) / 100).toFixed(2)}/sf`}
+          </span>
         )}
       </div>
     </div>
