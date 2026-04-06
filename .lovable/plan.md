@@ -1,27 +1,19 @@
 
 
-## Plan: Make Calendar Task Text Black and Readable
+## Plan: Update Gantt Zoom Controls
 
-**Problem**: The calendar task chips use category-colored text (`text-blue-950`, `text-amber-950`, etc.) which, despite being "dark" variants, still appear washed out and unreadable against their colored backgrounds in the screenshot. The user wants plain **black text** on all calendar task cards.
+**Changes to `src/components/calendar/GanttView.tsx`:**
 
-**Solution**: Force the task title text to always be black (`text-foreground` for theme compatibility) instead of category-colored text. The colored background + border already conveys the category — the text doesn't need to match.
+1. **Default to 7 days** — Change `useState(28)` to `useState(7)` on line 70.
 
-### Changes
+2. **Rename buttons from week labels to day labels** — Replace the three preset buttons:
+   - `1W` → `7d` (7 days)
+   - `2W` → `14d` (14 days)  
+   - `4W` → `21d` (21 days, changed from 28)
 
-**1. `src/components/calendar/DealCard.tsx`**
-- In the **compact** card (line 77-82): Replace `getCategoryColor()` which applies `textClass` (colored text) with only `bgClass` + `borderClass`, and add `text-foreground` so the title is always black/white per theme.
-- In the **full** card (line 95-130): Same approach — keep colored backgrounds and borders but force `text-foreground` on text elements.
-- Specifically update `getCategoryColor()` (line 64-66) to exclude `textClass` and always include `text-foreground`:
-  ```typescript
-  const getCategoryColor = (category: string) => {
-    const styles = getCategoryStyles(category);
-    return `${styles.bgClass} text-foreground ${styles.borderClass}`;
-  };
-  ```
+3. **Update slider max** — Change the slider `max` from 28 to 21 to match the new 21d maximum.
 
-**2. `src/components/calendar/DealCard.tsx` — Icon visibility**  
-- The category icons inside compact cards inherit the button's text color. With `text-foreground` they'll be black, which is fine for readability.
+4. **Update the `isZoomed` check** — Adjust the threshold from `< 28` to `< 21` (or remove it if no longer needed).
 
-### Files
-- `src/components/calendar/DealCard.tsx` (1 function change — `getCategoryColor`)
+5. **Update the days label** — The text that shows `"{zoomDays} days"` (line ~201) stays as-is since it already dynamically shows the count.
 
