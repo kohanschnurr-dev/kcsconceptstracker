@@ -71,6 +71,7 @@ export function ProjectAutocomplete({
 
   // Group projects by type
   const PROJECT_TYPE_GROUPS: { type: string; label: string }[] = [
+    { type: 'new_construction', label: 'New Construction' },
     { type: 'fix_flip', label: 'Fix & Flips' },
     { type: 'rental', label: 'Rentals' },
   ];
