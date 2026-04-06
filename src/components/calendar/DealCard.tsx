@@ -82,7 +82,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
         )}
       >
         <div className="flex items-center gap-1">
-          {task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-red-400 shrink-0" />}
+          {task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-foreground shrink-0" />}
           {getCategoryIcon(task.eventCategory || 'due_diligence')}
           <span className="line-clamp-1 min-w-0">{task.title}</span>
         </div>
