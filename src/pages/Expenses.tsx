@@ -104,6 +104,78 @@ export default function Expenses() {
   const [expensesTableOpen, setExpensesTableOpen] = useState(true);
   const [showHidden, setShowHidden] = useState(false);
   const { toast } = useToast();
+  const { profile } = useProfile();
+  const [staleDialogOpen, setStaleDialogOpen] = useState(false);
+  const [staleExpenses, setStaleExpenses] = useState<{ id: string; amount: number }[]>([]);
+  const staleCheckDone = useRef(false);
+
+  // Check for stale hidden expenses on mount
+  useEffect(() => {
+    if (staleCheckDone.current || !profile) return;
+    staleCheckDone.current = true;
+
+    const checkStale = async () => {
+      try {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const { data, error } = await supabase
+          .from('quickbooks_expenses')
+          .select('id, amount')
+          .eq('is_imported', false)
+          .eq('is_hidden', true)
+          .lt('hidden_at', thirtyDaysAgo);
+
+        if (error || !data?.length) return;
+
+        const settingsData = (profile?.settings_data || {}) as Record<string, unknown>;
+        const autoDelete = settingsData.auto_delete_stale_hidden === true;
+
+        if (autoDelete) {
+          // Silently delete
+          const ids = data.map(e => e.id);
+          const { error: delError } = await supabase
+            .from('quickbooks_expenses')
+            .delete()
+            .in('id', ids);
+          if (!delError) {
+            sonnerToast.success(`Deleted ${data.length} hidden expense${data.length !== 1 ? 's' : ''} older than 30 days`);
+          }
+        } else {
+          setStaleExpenses(data);
+          setStaleDialogOpen(true);
+        }
+      } catch (e) {
+        console.error('Error checking stale hidden expenses:', e);
+      }
+    };
+
+    checkStale();
+  }, [profile]);
+
+  const handleDeleteStale = async () => {
+    const ids = staleExpenses.map(e => e.id);
+    const { error } = await supabase
+      .from('quickbooks_expenses')
+      .delete()
+      .in('id', ids);
+    if (!error) {
+      sonnerToast.success(`Deleted ${ids.length} hidden expense${ids.length !== 1 ? 's' : ''}`);
+    }
+    setStaleDialogOpen(false);
+    setStaleExpenses([]);
+  };
+
+  const handleAutoDeleteChange = async (enabled: boolean) => {
+    try {
+      const current = ((profile?.settings_data || {}) as Record<string, unknown>);
+      const updated = { ...current, auto_delete_stale_hidden: enabled };
+      await supabase
+        .from('profiles')
+        .update({ settings_data: updated } as any)
+        .eq('user_id', profile?.user_id);
+    } catch (e) {
+      console.error('Error saving auto-delete preference:', e);
+    }
+  };
 
   useEffect(() => {
     fetchData();
