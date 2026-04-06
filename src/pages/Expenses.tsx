@@ -622,6 +622,9 @@ export default function Expenses() {
                           setSelectedExpenseGroup(expenses);
                           setGroupDetailModalOpen(true);
                         }}
+                        onHide={showHidden ? undefined : handleHideExpense}
+                        onUnhide={showHidden ? handleUnhideExpense : undefined}
+                        isHiddenView={showHidden}
                       />
                     ))}
                   </tbody>
