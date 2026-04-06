@@ -39,7 +39,6 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [addToCalendar, setAddToCalendar] = useState(false);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [calendarDefaults, setCalendarDefaults] = useState<{ title: string; startDate?: Date; projectId: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,7 +52,6 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
     setDueDate('');
     setPhotoUrls([]);
     setSubtasks([]);
-    setAddToCalendar(false);
   };
 
   const uploadFile = useCallback(async (file: File) => {
@@ -90,12 +88,12 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
     }
   }, [uploadFile]);
 
-  const handleSave = async () => {
-    if (!title.trim() || isSubmitting) return;
+  const saveTask = async (): Promise<boolean> => {
+    if (!title.trim() || isSubmitting) return false;
     setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { toast({ title: 'You must be logged in', variant: 'destructive' }); return; }
+      if (!user) { toast({ title: 'You must be logged in', variant: 'destructive' }); return false; }
 
       const finalDescription = serializeDescription(description.trim(), subtasks);
 
@@ -116,24 +114,34 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
 
       toast({ title: 'Task added', description: 'Your task has been created.' });
       onTaskCreated();
-
-      if (addToCalendar) {
-        setCalendarDefaults({
-          title: title.trim(),
-          startDate: dueDate ? new Date(dueDate + 'T00:00:00') : undefined,
-          projectId,
-        });
-        resetForm();
-        onOpenChange(false);
-        setCalendarModalOpen(true);
-      } else {
-        handleClose();
-      }
+      return true;
     } catch (error) {
       console.error('Error creating task:', error);
       toast({ title: 'Failed to create task', variant: 'destructive' });
+      return false;
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSave = async () => {
+    const success = await saveTask();
+    if (success) handleClose();
+  };
+
+  const handleSaveAndCalendar = async () => {
+    const savedTitle = title.trim();
+    const savedDueDate = dueDate;
+    const success = await saveTask();
+    if (success) {
+      setCalendarDefaults({
+        title: savedTitle,
+        startDate: savedDueDate ? new Date(savedDueDate + 'T00:00:00') : undefined,
+        projectId,
+      });
+      resetForm();
+      onOpenChange(false);
+      setCalendarModalOpen(true);
     }
   };
 
@@ -294,13 +302,14 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
           <DialogFooter className="flex items-center sm:justify-between">
             <Button
               type="button"
-              variant={addToCalendar ? 'secondary' : 'ghost'}
+              variant="outline"
               size="sm"
-              onClick={() => setAddToCalendar(v => !v)}
+              onClick={handleSaveAndCalendar}
+              disabled={!title.trim() || isSubmitting}
               className="gap-1.5 mr-auto"
             >
               <CalendarPlus className="h-4 w-4" />
-              Add to Calendar
+              Save & Add to Calendar
             </Button>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleClose}>Cancel</Button>
