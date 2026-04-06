@@ -76,8 +76,8 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
         className={cn(
           'w-full text-left px-2 py-1 rounded text-xs transition-all border',
           'hover:ring-1 hover:ring-primary/50 cursor-grab active:cursor-grabbing',
-          task.isCriticalPath 
-            ? 'bg-red-100 dark:bg-red-500/30 text-red-900 dark:text-red-300 border-red-500/50' 
+        task.isCriticalPath 
+            ? 'bg-red-200 dark:bg-red-500/30 text-red-950 dark:text-red-300 border-red-500' 
             : getCategoryColor(task.eventCategory || 'due_diligence')
         )}
       >
@@ -97,7 +97,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
         'w-full text-left p-3 rounded-lg border transition-all',
         'hover:ring-2 hover:ring-primary/50 cursor-grab active:cursor-grabbing',
         task.isCriticalPath
-          ? 'bg-red-500/10 border-red-500/50'
+          ? 'bg-red-200 dark:bg-red-500/10 border-red-500'
           : 'bg-card/50 border-border'
       )}
     >
@@ -106,7 +106,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
           <span className={cn(
             'p-1.5 rounded border',
             task.isCriticalPath 
-              ? 'bg-red-500/20 text-red-400 border-red-500/30' 
+              ? 'bg-red-200 dark:bg-red-500/20 text-red-950 dark:text-red-400 border-red-500' 
               : `${categoryStyles.bgClass} ${categoryStyles.textClass} ${categoryStyles.borderClass}`
           )}>
             {task.isCriticalPath ? <AlertTriangle className="h-3 w-3" /> : getCategoryIcon(task.eventCategory || 'due_diligence')}
@@ -122,7 +122,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
         <span className={cn(
           'text-[10px] px-2 py-0.5 rounded-full border',
           task.isCriticalPath 
-            ? 'bg-red-500/20 text-red-400 border-red-500/30' 
+            ? 'bg-red-200 dark:bg-red-500/20 text-red-950 dark:text-red-400 border-red-500' 
             : `${categoryStyles.bgClass} ${categoryStyles.textClass} ${categoryStyles.borderClass}`
         )}>
           {task.isCriticalPath ? 'Critical Path' : categoryLabel}
