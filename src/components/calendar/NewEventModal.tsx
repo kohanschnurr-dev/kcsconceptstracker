@@ -356,7 +356,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
                           </CommandItem>
                         ))}
                       </CommandGroup>
-                    ))}
+                    ); })}
                   </CommandList>
                   </div>
                 </Command>
