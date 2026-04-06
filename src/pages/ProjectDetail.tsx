@@ -1119,6 +1119,7 @@ export default function ProjectDetail() {
               <>
                 <ProfitCalculator 
                   projectId={id!}
+                  projectType={project.project_type as any}
                   totalBudget={totalBudget}
                   totalSpent={constructionSpent}
                   initialPurchasePrice={project.purchase_price || 0}
