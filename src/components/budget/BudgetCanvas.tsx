@@ -1164,6 +1164,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
                         value={categoryBudgets[category] || ''}
                         onChange={(value) => onCategoryChange(category, value)}
                         hasPreset={presetCategories.has(category)}
+                        sqft={sqft}
                       />
                     ))}
                   </div>
