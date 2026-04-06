@@ -298,8 +298,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
                   {category ? (
                     <div className="flex items-center gap-2">
                       <span 
-                        className="w-2 h-2 rounded-full" 
-                        style={{ backgroundColor: selectedCategoryStyles ? `var(--${selectedCategoryStyles.color}-500, ${selectedCategoryStyles.color})` : undefined }} 
+                        className={cn("w-2 h-2 rounded-full", selectedCategoryStyles?.swatchClass)}
                       />
                       {getCategoryLabel(category)}
                     </div>
@@ -349,8 +348,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
                               )}
                             />
                             <span 
-                              className="w-2 h-2 rounded-full mr-2" 
-                              style={{ backgroundColor: `var(--${CATEGORY_GROUPS[groupKey].color}-500, ${CATEGORY_GROUPS[groupKey].color})` }} 
+                              className={cn("w-2 h-2 rounded-full mr-2", CATEGORY_GROUPS[groupKey].swatchClass)}
                             />
                             {cat.label}
                           </CommandItem>
