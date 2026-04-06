@@ -77,7 +77,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
           'w-full text-left px-2 py-1 rounded text-xs transition-all border',
           'hover:ring-1 hover:ring-primary/50 cursor-grab active:cursor-grabbing',
           task.isCriticalPath 
-            ? 'bg-red-500/30 text-red-300 border-red-500/50' 
+            ? 'bg-red-100 dark:bg-red-500/30 text-red-900 dark:text-red-300 border-red-500/50' 
             : getCategoryColor(task.eventCategory || 'due_diligence')
         )}
       >
