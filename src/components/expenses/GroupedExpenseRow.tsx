@@ -154,7 +154,7 @@ export function GroupedExpenseRow({
     <>
       {/* Parent row - clickable to open group modal, arrow to expand */}
       <tr 
-        className="hover:bg-muted/20 transition-colors cursor-pointer"
+        className="hover:bg-muted/20 transition-colors cursor-pointer group/row"
         onClick={() => onGroupClick ? onGroupClick(sortedExpenses) : onExpenseClick(parentExpense)}
       >
         <td 
