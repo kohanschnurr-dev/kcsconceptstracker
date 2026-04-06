@@ -159,6 +159,17 @@ export function GroupedPendingExpenseCard({
                 <p className="font-mono font-semibold">
                   {formatCurrency(primaryExpense.amount)}
                 </p>
+                {onHide && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    onClick={() => onHide(primaryExpense.id)}
+                    title="Hide this expense"
+                  >
+                    <EyeOff className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -354,6 +365,21 @@ export function GroupedPendingExpenseCard({
               <p className="font-mono font-semibold">
                 {formatCurrency(totalAmount)}
               </p>
+              {onHide && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Hide all expenses in the group
+                    expenses.forEach(exp => onHide(exp.id));
+                  }}
+                  title="Hide all split expenses"
+                >
+                  <EyeOff className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
