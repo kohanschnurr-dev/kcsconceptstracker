@@ -125,6 +125,24 @@ export function GroupedExpenseRow({
                 <span className="text-xs text-muted-foreground ml-1">+tax</span>
               )}
             </span>
+            {onHide && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onHide(expense.id); }}
+                className="opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                title="Hide expense"
+              >
+                <EyeOff className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {onUnhide && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onUnhide(expense.id); }}
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title="Restore expense"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </td>
       </tr>
