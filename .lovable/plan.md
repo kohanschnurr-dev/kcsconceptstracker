@@ -1,25 +1,36 @@
 
 
-## Plan: Prevent Add Loan Modal from Resetting on Outside Click
+## Fix: Differentiate Interest Calculation Methods Properly
 
-### Problem
-When the user clicks outside the modal (or it loses focus), the `Dialog` fires `onOpenChange(false)`, which sets `open` to `false`. Then if reopened, the `useEffect` on line 93-102 resets the step to 0 and clears all form data.
+### The Issue
+Standard (30/360), Actual/360, and Actual/365 all produce the same monthly payment because the code computes the monthly rate as essentially `annual_rate / 12` for all three — the math is equivalent.
 
-### Fix
+The real difference between these methods is **daily interest accrual per period**, which affects how much of each payment goes to interest vs. principal:
 
-**File: `src/components/loans/AddLoanModal.tsx`**
+- **Standard (30/360)**: Every month = exactly 30 days. Monthly interest = `balance × rate / 12`
+- **Actual/360**: Uses actual days in the month (28–31) over a 360-day year. Monthly interest = `balance × rate × actual_days / 360` — this means months with 31 days charge *more* interest, and Feb charges less. Over a year, total interest is slightly **higher** (~365/360 = 1.4% more).
+- **Actual/365**: Uses actual days in the month over a 365-day year. Monthly interest = `balance × rate × actual_days / 365` — closest to true daily accrual.
 
-1. **Prevent closing on outside click** — Add `onInteractOutside={(e) => e.preventDefault()}` to `DialogContent`. This stops the modal from closing when clicking the backdrop or pressing Escape accidentally.
+### Changes
 
-2. **Only reset form on fresh open, not every toggle** — Change the reset `useEffect` to track a ref for whether the modal was previously closed, so it only resets when transitioning from closed → open (not on every render). Alternatively, gate the reset with a `prevOpen` ref:
-   - Use a `useRef` to track the previous `open` value
-   - Only reset form/step when `open` becomes `true` and was previously `false`
+**File: `src/types/loans.ts`**
 
-This ensures:
-- Clicking outside the modal does nothing (modal stays open)
-- Form data persists throughout the multi-step flow
-- The form only resets when the modal is freshly opened via the "Add Loan" button
+1. **`calcMonthlyPayment`** — For the estimated monthly payment display, keep Standard formula for all three amortizing methods (they target the same nominal payment). Add a comment explaining this is the nominal payment and that the per-period interest allocation differs in the amortization schedule.
+
+2. **`buildAmortizationSchedule`** — This is where the real fix matters. Update the interest calculation inside the loop:
+   - **Standard**: `interest = balance * rate / 12` (unchanged)
+   - **Actual/360**: `interest = balance * rate * daysInMonth / 360`
+   - **Actual/365**: `interest = balance * rate * daysInMonth / 365`
+   
+   Where `daysInMonth` is computed from the actual payment date's month.
+
+3. Add a helper function `daysInMonth(date: Date): number` that returns the actual number of days.
+
+This means:
+- The **estimated monthly payment** shown in the modal stays the same across the three (correct — it's a target payment)
+- The **amortization table** will show different interest/principal splits per row depending on method
+- Actual/360 will show slightly higher total interest over the life of the loan
 
 ### Files to change
-- `src/components/loans/AddLoanModal.tsx`
+- `src/types/loans.ts` — Update `buildAmortizationSchedule` to use day-count-aware interest; add `daysInMonth` helper
 
