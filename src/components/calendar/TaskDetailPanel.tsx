@@ -95,6 +95,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [togglingComplete, setTogglingComplete] = useState(false);
   
   const groupedCategories = getGroupedCategories();
 
@@ -323,7 +324,78 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg bg-background border-border overflow-y-auto">
         <SheetHeader className="pb-4 border-b border-border">
-          <div className="flex items-start gap-2">
+          {/* Completion Toggle */}
+          <button
+            disabled={togglingComplete}
+            onClick={async () => {
+              if (!task) return;
+              setTogglingComplete(true);
+              const newCompleted = !task.isCompleted;
+              const now = new Date().toISOString();
+              const { error } = await supabase
+                .from('calendar_events')
+                .update({
+                  is_completed: newCompleted,
+                  completed_at: newCompleted ? now : null,
+                })
+                .eq('id', task.id);
+
+              if (error) {
+                toast({ title: 'Error', description: 'Failed to update completion', variant: 'destructive' });
+                setTogglingComplete(false);
+                return;
+              }
+
+              // If linked to a task, sync completion status
+              if (task.linkedTaskId) {
+                await supabase
+                  .from('tasks')
+                  .update({ status: newCompleted ? 'completed' : 'pending' })
+                  .eq('id', task.linkedTaskId);
+              }
+
+              const updatedTask: CalendarTask = {
+                ...task,
+                isCompleted: newCompleted,
+                completedAt: newCompleted ? now : null,
+              };
+              onTaskUpdate(updatedTask);
+              setTogglingComplete(false);
+
+              toast({
+                title: newCompleted ? 'Event completed' : 'Event reopened',
+                description: task.linkedTaskId
+                  ? `Linked task also marked ${newCompleted ? 'complete' : 'pending'}`
+                  : undefined,
+              });
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
+              task.isCompleted
+                ? "bg-green-500/10 border-green-500/30 hover:bg-green-500/20"
+                : "bg-card border-border hover:bg-secondary"
+            )}
+          >
+            {task.isCompleted ? (
+              <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+            ) : (
+              <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
+            )}
+            <span className={cn(
+              "text-sm font-medium",
+              task.isCompleted ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+            )}>
+              {task.isCompleted ? 'Completed' : 'Mark as complete'}
+            </span>
+            {task.linkedTaskId && (
+              <Badge variant="outline" className="ml-auto text-[10px] border-muted-foreground/30">
+                <Link2 className="h-3 w-3 mr-1" />
+                Linked task
+              </Badge>
+            )}
+          </button>
+
+          <div className="flex items-start gap-2 mt-3">
             <div className="flex-1">
               {isEditingTitle ? (
                 <Input
@@ -337,7 +409,10 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                 />
               ) : (
                 <h2
-                  className="text-xl font-semibold text-foreground cursor-pointer hover:text-primary transition-colors py-1"
+                  className={cn(
+                    "text-xl font-semibold cursor-pointer hover:text-primary transition-colors py-1",
+                    task.isCompleted ? "line-through text-muted-foreground" : "text-foreground"
+                  )}
                   onClick={() => setIsEditingTitle(true)}
                 >
                   {editedTitle || 'Untitled Event'}
