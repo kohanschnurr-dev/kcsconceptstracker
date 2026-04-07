@@ -339,6 +339,7 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
         defaultProjectId={calendarDefaults?.projectId}
         defaultTitle={calendarDefaults?.title}
         defaultStartDate={calendarDefaults?.startDate}
+        linkedTaskId={calendarDefaults?.linkedTaskId}
         externalOpen={calendarModalOpen}
         onExternalOpenChange={setCalendarModalOpen}
       />
