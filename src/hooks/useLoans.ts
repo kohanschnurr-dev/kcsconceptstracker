@@ -165,6 +165,20 @@ export function useLoanDetail(loanId: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['loan_payments', loanId] }),
   });
 
+  const updateLoan = useMutation({
+    mutationFn: async ({ id, ...payload }: Partial<Loan> & { id: string }) => {
+      const { data, error } = await loansTable().update(payload).eq('id', id).select().single();
+      if (error) throw error;
+      return data as unknown as Loan;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loan', loanId] });
+      queryClient.invalidateQueries({ queryKey: ['loans'] });
+      toast({ title: 'Loan updated' });
+    },
+    onError: (e: Error) => toast({ title: 'Error updating loan', description: e.message, variant: 'destructive' }),
+  });
+
   return {
     loan,
     draws,
@@ -174,5 +188,6 @@ export function useLoanDetail(loanId: string) {
     deleteDraw,
     addPayment,
     deletePayment,
+    updateLoan,
   };
 }
