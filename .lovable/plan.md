@@ -1,32 +1,33 @@
 
 
-## Fix: Simple Interest Should Be Interest-Only for Investor Loans
+## Plan: Create Missing Database Tables for Loans
 
 ### Problem
-The "Simple Interest" calculation method currently computes:
-`(principal / amortMonths) + (principal × rate / 12)`
+The `loans` and `loan_draws` tables don't exist in the database. The code references them via `supabase.from('loans')` and `supabase.from('loan_draws')`, causing the error "Could not find the table 'public.loans' in the schema cache."
 
-This includes monthly principal repayment, making it more expensive than standard amortization. For investor/hard money loans, "simple interest" means interest is calculated on the outstanding balance without compounding — payments are typically interest-only with principal due at maturity.
+The existing `loan_payments` table has a different schema (project-based with `project_id` and `user_id`) than what the code expects (loan-based with `loan_id`).
 
-### Fix
+### Changes
 
-**File: `src/types/loans.ts`**
+**Database Migration** -- Create two new tables:
 
-1. **`calcMonthlyPayment`** — Change simple interest formula to interest-only:
-   - `return (principal × annualRate / 100 / 12)` — same as interest-only payment
-   - No principal component in monthly payment
+1. **`loans`** table with all columns matching the `Loan` TypeScript interface:
+   - Core: `id`, `user_id`, `project_id`, `nickname`, `lender_name`, `lender_contact`, `loan_type`, `loan_type_other`
+   - Financial: `original_amount`, `outstanding_balance`, `interest_rate`, `rate_type`, variable rate fields
+   - Terms: `loan_term_months`, `amortization_period_months`, `payment_frequency`, `payment_frequency_custom`, `interest_calc_method`
+   - Dates: `start_date`, `maturity_date`, `first_payment_date`
+   - Fees: `origination_fee_points`, `origination_fee_dollars`, `other_closing_costs`, prepayment/extension fields
+   - Draws: `has_draws`, `total_draw_amount`, `draw_structure`, `custom_draw_terms`
+   - Collateral: `collateral_type`, `collateral_description`, `ltv_at_origination`, `has_personal_guarantee`
+   - Meta: `notes`, `status`, `monthly_payment`, `created_at`, `updated_at`
+   - RLS: owner CRUD + team member SELECT
 
-2. **`buildAmortizationSchedule`** — When method is `simple`:
-   - Each period: interest = `balance × rate / 12` (flat, non-compounding)
-   - Principal = 0 each month until final payment
-   - Last payment = balloon (remaining balance + final interest)
-   - This differs from the standard interest-only path because simple interest always uses `balance × rate / 12` regardless of day count
+2. **`loan_draws`** table matching the `LoanDraw` interface:
+   - `id`, `loan_id` (FK to loans), `draw_number`, `milestone_name`, `draw_percentage`, `draw_amount`, `expected_date`, `status`, `date_funded`, `notes`, `created_at`
+   - RLS: via loan ownership
 
-### Result
-- Simple Interest monthly payment on $58K at 4.85% = **$234.42/mo** (interest only)
-- Final month includes balloon payment of ~$58,234
-- Standard 30/360 stays at ~$306/mo (amortizing over 360 months)
+3. **Update `loan_payments`** -- Add a `loan_id` column (nullable, so existing data isn't broken) to link payments to specific loans, matching what the code expects when querying `.eq('loan_id', loanId)`.
 
 ### Files
-- `src/types/loans.ts`
+- Database migration only (no code changes needed -- the code already references these tables correctly)
 
