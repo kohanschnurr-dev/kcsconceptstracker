@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, ChevronLeft, ChevronRight, Check, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -90,15 +90,18 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
   const [draws, setDraws] = useState<Omit<LoanDraw, 'id' | 'created_at' | 'loan_id'>[]>([emptyDraw(1)]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
 
+  const prevOpen = useRef(false);
   useEffect(() => {
-    if (!open) return;
-    setStep(0);
-    if (initialData) {
-      setForm(f => ({ ...f, ...initialData, user_id: user?.id ?? '' }));
-    } else {
-      setForm({ ...empty(), user_id: user?.id ?? '' });
-      setDraws([emptyDraw(1)]);
+    if (open && !prevOpen.current) {
+      setStep(0);
+      if (initialData) {
+        setForm(f => ({ ...f, ...initialData, user_id: user?.id ?? '' }));
+      } else {
+        setForm({ ...empty(), user_id: user?.id ?? '' });
+        setDraws([emptyDraw(1)]);
+      }
     }
+    prevOpen.current = open;
   }, [open, user, initialData]);
 
   useEffect(() => {
@@ -175,7 +178,7 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{initialData?.id ? 'Edit Loan' : 'Add New Loan'}</DialogTitle>
         </DialogHeader>
