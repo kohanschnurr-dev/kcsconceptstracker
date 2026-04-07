@@ -77,18 +77,16 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
       className={cn(
         'w-full text-left px-2 py-1 rounded text-xs transition-all border',
         'hover:ring-1 hover:ring-primary/50 cursor-grab active:cursor-grabbing',
-        task.isCompleted
-          ? 'bg-green-500/10 text-muted-foreground border-green-500/30'
-          : task.isCriticalPath 
-            ? 'bg-red-200 dark:bg-red-500/30 text-foreground border-red-500' 
-            : getCategoryColor(task.eventCategory || 'due_diligence')
+        task.isCriticalPath && !task.isCompleted
+          ? 'bg-red-200 dark:bg-red-500/30 text-foreground border-red-500' 
+          : getCategoryColor(task.eventCategory || 'due_diligence')
       )}
       >
         <div className="flex items-center gap-1">
           {task.isCompleted && <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />}
           {!task.isCompleted && task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-foreground shrink-0" />}
           {!task.isCompleted && !task.isCriticalPath && getCategoryIcon(task.eventCategory || 'due_diligence')}
-          <span className={cn("line-clamp-1 min-w-0", task.isCompleted && "line-through opacity-60")}>{task.title}</span>
+          <span className="line-clamp-1 min-w-0">{task.title}</span>
         </div>
       </button>
     );
@@ -100,27 +98,23 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
       className={cn(
         'w-full text-left p-3 rounded-lg border transition-all',
         'hover:ring-2 hover:ring-primary/50 cursor-grab active:cursor-grabbing',
-        task.isCompleted
-          ? 'bg-green-500/10 border-green-500/30 opacity-75'
-          : task.isCriticalPath
-            ? 'bg-red-200 dark:bg-red-500/10 border-red-500'
-            : 'bg-card/50 border-border'
+        task.isCriticalPath && !task.isCompleted
+          ? 'bg-red-200 dark:bg-red-500/10 border-red-500'
+          : 'bg-card/50 border-border'
       )}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
           <span className={cn(
             'p-1.5 rounded border',
-            task.isCompleted
-              ? 'bg-green-500/20 text-green-600 border-green-500/30'
-              : task.isCriticalPath 
-                ? 'bg-red-200 dark:bg-red-500/20 text-foreground dark:text-red-400 border-red-500' 
-                : `${categoryStyles.bgClass} ${categoryStyles.textClass} ${categoryStyles.borderClass}`
+            task.isCriticalPath && !task.isCompleted
+              ? 'bg-red-200 dark:bg-red-500/20 text-foreground dark:text-red-400 border-red-500' 
+              : `${categoryStyles.bgClass} ${categoryStyles.textClass} ${categoryStyles.borderClass}`
           )}>
-            {task.isCompleted ? <CheckCircle2 className="h-3 w-3" /> : task.isCriticalPath ? <AlertTriangle className="h-3 w-3" /> : getCategoryIcon(task.eventCategory || 'due_diligence')}
+            {task.isCompleted ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : task.isCriticalPath ? <AlertTriangle className="h-3 w-3" /> : getCategoryIcon(task.eventCategory || 'due_diligence')}
           </span>
           <div>
-            <h4 className={cn("text-sm font-medium text-foreground truncate", task.isCompleted && "line-through opacity-60")}>{task.title}</h4>
+            <h4 className="text-sm font-medium text-foreground truncate">{task.title}</h4>
             <p className="text-xs text-muted-foreground truncate">{task.projectName}</p>
           </div>
         </div>
@@ -133,7 +127,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
             ? 'bg-red-200 dark:bg-red-500/20 text-foreground dark:text-red-400 border-red-500' 
             : `${categoryStyles.bgClass} ${categoryStyles.textClass} ${categoryStyles.borderClass}`
         )}>
-          {task.isCompleted ? 'Completed' : task.isCriticalPath ? 'Critical Path' : categoryLabel}
+          {task.isCriticalPath && !task.isCompleted ? 'Critical Path' : categoryLabel}
         </span>
         <span className="text-[10px] text-muted-foreground">
           {task.checklist.filter(c => c.completed).length}/{task.checklist.length} tasks
