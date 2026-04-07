@@ -1,42 +1,27 @@
 
 
-## Plan: Add Accruing Interest Tracking to Phases & Draws
+## Plan: Add Info Tooltips to Interest Calculation Options + Fix Build Errors
 
-**What changes**: Each funded draw will calculate accruing interest from its funded date to today. There will be a global default interest rate at the top, with the ability to override the rate on individual phases.
+### 1. Add info tooltips to Interest Calculation dropdown
 
-### Data Model Changes
+**File: `src/components/loans/AddLoanModal.tsx`**
 
-Add to the `DrawPhase` interface:
-- `interestRateOverride?: number` — optional per-phase rate; when empty, uses the global rate
+Add a tooltip (info "i" icon) next to each interest calculation option in the dropdown, explaining what each method means:
 
-Add top-level state:
-- `globalInterestRate: number` — default annual interest rate (persisted in localStorage alongside phases)
+- **Standard (30/360)**: Assumes 30-day months and 360-day year. Most common for conventional and commercial loans.
+- **Actual/360**: Uses actual days in the month but divides by 360. Common for hard money and bridge loans — results in slightly higher interest.
+- **Actual/365**: Uses actual days in the month divided by 365. More precise, common for private money loans.
+- **Simple Interest**: Interest = Principal × Rate × Time. No compounding. Common for short-term or seller-financing deals.
 
-### Interest Calculation Logic
+Each `SelectItem` will include a small description below the label text, using a two-line layout (label + muted description). An info icon (`Info`) will also be added next to the "Interest Calculation" label with a tooltip summarizing the field.
 
-For each funded phase with a `dateFunded`:
-- Days elapsed = difference between today and `dateFunded`
-- Monthly interest = `budgetedAmount × (rate / 100 / 12)`
-- Accrued interest = `monthlyInterest × (daysElapsed / 30.44)`
-- Effective rate = phase's `interestRateOverride` if set, otherwise `globalInterestRate`
+### 2. Fix build errors in `useLoans.ts`
 
-### UI Changes
+**File: `src/hooks/useLoans.ts`** — Lines 40, 53, 103, 116
 
-**1. Summary Card** — Add a new "Accrued Interest" stat (5th column) showing the total accrued interest across all funded phases in red/warning text.
+Change `as Loan` / `as LoanDraw[]` / `as LoanPayment[]` casts to use `as unknown as` to satisfy TypeScript when Supabase generated types don't match the app types exactly.
 
-**2. Global Rate Input** — In the summary card header area, add an editable interest rate field (e.g., `10%`) labeled "Annual Rate" that applies to all phases by default.
-
-**3. Per-Phase Row** — For funded phases, add:
-- A small rate input (e.g., `w-20`) next to the status selector, pre-filled with the global rate but editable per-phase. Shown with a `%` suffix.
-- A read-only "Accrued" dollar amount displayed inline, showing interest accrued since the funded date.
-
-**4. Interest Summary Card** — New card below the phases list showing a breakdown table: phase name, principal, rate, days outstanding, accrued interest — with a total row at the bottom.
-
-### Files to Change
-
-- `src/components/project/PhasesDrawsTab.tsx` — All changes in this single file
-
-### Persistence
-
-The global rate and per-phase overrides are stored in the same localStorage key (`phases-draws-{projectId}`) as a wrapper object: `{ globalRate: number, phases: DrawPhase[] }`.
+### Files to change
+- `src/components/loans/AddLoanModal.tsx` — Enhanced dropdown with descriptions
+- `src/hooks/useLoans.ts` — Fix 4 type cast errors
 
