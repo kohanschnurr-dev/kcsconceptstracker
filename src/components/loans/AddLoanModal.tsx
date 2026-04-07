@@ -44,7 +44,7 @@ const empty = (): Omit<Loan, 'id' | 'created_at' | 'updated_at' | 'project_name'
   variable_rate_floor: null,
   variable_adjustment_frequency: null,
   loan_term_months: 12,
-  amortization_period_months: null,
+  amortization_period_months: 360,
   payment_frequency: 'monthly',
   payment_frequency_custom: null,
   interest_calc_method: 'standard',
