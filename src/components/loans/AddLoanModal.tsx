@@ -139,8 +139,9 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
       form.loan_term_months,
       form.amortization_period_months,
       form.payment_frequency,
+      form.interest_calc_method,
     );
-  }, [form.original_amount, form.interest_rate, form.loan_term_months, form.amortization_period_months, form.payment_frequency]);
+  }, [form.original_amount, form.interest_rate, form.loan_term_months, form.amortization_period_months, form.payment_frequency, form.interest_calc_method]);
 
   const set = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
