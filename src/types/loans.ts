@@ -161,14 +161,32 @@ export function calcMonthlyPayment(
   return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }
 
+/** Return actual number of days in the month of the given date */
+function daysInMonth(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+/** Compute period interest based on the interest calculation method */
+function periodInterest(balance: number, annualRate: number, paymentDate: Date, method?: string): number {
+  const rate = annualRate / 100;
+  if (method === 'actual_360') {
+    return balance * rate * daysInMonth(paymentDate) / 360;
+  }
+  if (method === 'actual_365') {
+    return balance * rate * daysInMonth(paymentDate) / 365;
+  }
+  // Standard 30/360
+  return balance * rate / 12;
+}
+
 /** Build full amortization schedule */
 export function buildAmortizationSchedule(loan: Loan): AmortizationRow[] {
   const rows: AmortizationRow[] = [];
-  const r = loan.interest_rate / 100 / 12;
   const amort = loan.amortization_period_months ?? loan.loan_term_months;
   const term = loan.loan_term_months;
   const monthly = loan.monthly_payment ?? calcMonthlyPayment(loan.original_amount, loan.interest_rate, term, amort, loan.payment_frequency, loan.interest_calc_method);
   const start = new Date(loan.first_payment_date ?? loan.start_date);
+  const method = loan.interest_calc_method;
 
   let balance = loan.original_amount;
 
@@ -176,8 +194,9 @@ export function buildAmortizationSchedule(loan: Loan): AmortizationRow[] {
     const paymentDate = new Date(start);
     paymentDate.setMonth(start.getMonth() + i - 1);
 
+    const interest = periodInterest(balance, loan.interest_rate, paymentDate, method);
+
     if (loan.payment_frequency === 'interest_only') {
-      const interest = balance * r;
       const isBalloon = i === term;
       rows.push({
         payment_number: i,
@@ -190,7 +209,6 @@ export function buildAmortizationSchedule(loan: Loan): AmortizationRow[] {
       });
       if (isBalloon) balance = 0;
     } else {
-      const interest = balance * r;
       const principal = Math.min(monthly - interest, balance);
       balance = Math.max(balance - principal, 0);
       const isBalloon = i === term && balance > 0.01;
