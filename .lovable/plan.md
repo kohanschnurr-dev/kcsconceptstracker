@@ -1,36 +1,25 @@
 
 
-## Fix: Monthly Payment Calculation Bugs
+## Plan: Prevent Add Loan Modal from Resetting on Outside Click
 
 ### Problem
-Two issues inflate the displayed payment:
+When the user clicks outside the modal (or it loses focus), the `Dialog` fires `onOpenChange(false)`, which sets `open` to `false`. Then if reopened, the `useEffect` on line 93-102 resets the step to 0 and clears all form data.
 
-1. **Amortization placeholder misleads** — The field shows "360" as placeholder text (gray), but the actual value is `null`. The calculation then amortizes over the 12-month term instead of 360 months. With $58K over 12 months → ~$4,961/mo. Over 360 months → ~$306/mo.
+### Fix
 
-2. **`interest_calc_method` is ignored** — `calcMonthlyPayment()` never receives or uses this field. "Simple Interest" selection has zero effect.
+**File: `src/components/loans/AddLoanModal.tsx`**
 
-### Changes
+1. **Prevent closing on outside click** — Add `onInteractOutside={(e) => e.preventDefault()}` to `DialogContent`. This stops the modal from closing when clicking the backdrop or pressing Escape accidentally.
 
-**File: `src/types/loans.ts`** — Update `calcMonthlyPayment`
-- Add `interestCalcMethod?: string` parameter
-- When method is `"simple"`: monthly payment = `(principal / termMonths) + (principal × annualRate / 100 / 12)`
-- When method is `"actual_360"` or `"actual_365"`: adjust the rate divisor accordingly (use 360 or 365 day-based rate instead of monthly)
-- Default ("standard" / 30/360) stays as-is
+2. **Only reset form on fresh open, not every toggle** — Change the reset `useEffect` to track a ref for whether the modal was previously closed, so it only resets when transitioning from closed → open (not on every render). Alternatively, gate the reset with a `prevOpen` ref:
+   - Use a `useRef` to track the previous `open` value
+   - Only reset form/step when `open` becomes `true` and was previously `false`
 
-**File: `src/components/loans/AddLoanModal.tsx`** — Pass `interest_calc_method` to the calculation
-- Update the `useMemo` call on line 136 to pass `form.interest_calc_method` as the new parameter
-- Add it to the dependency array
+This ensures:
+- Clicking outside the modal does nothing (modal stays open)
+- Form data persists throughout the multi-step flow
+- The form only resets when the modal is freshly opened via the "Add Loan" button
 
-**File: `src/types/loans.ts`** — Update `buildAmortizationSchedule`
-- Pass `loan.interest_calc_method` through to `calcMonthlyPayment` so the amortization table also respects the selected method
-
-### Calculation Details
-
-For Simple Interest ($58K, 4.85%, 12 months):
-- Monthly interest = $58,000 × 4.85% / 12 = $234.42
-- Monthly principal = $58,000 / 12 = $4,833.33
-- Total monthly = **$5,067.75**
-
-For Standard Amortization with 360-month amort:
-- Payment ≈ **$306/mo** (plus balloon at maturity)
+### Files to change
+- `src/components/loans/AddLoanModal.tsx`
 
