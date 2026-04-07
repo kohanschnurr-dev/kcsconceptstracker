@@ -111,9 +111,12 @@ export function useLoanDetail(loanId: string) {
       const { data, error } = await paymentsTable()
         .select('*')
         .eq('loan_id', loanId)
-        .order('payment_date', { ascending: false });
+        .order('date', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as LoanPayment[];
+      return (data ?? []).map((p: any) => ({
+        ...p,
+        payment_date: p.date ?? p.payment_date,
+      })) as unknown as LoanPayment[];
     },
   });
 
@@ -142,7 +145,9 @@ export function useLoanDetail(loanId: string) {
 
   const addPayment = useMutation({
     mutationFn: async (payment: Omit<LoanPayment, 'id' | 'created_at'>) => {
-      const { error } = await paymentsTable().insert(payment);
+      const { payment_date, ...rest } = payment as any;
+      const row = { ...rest, date: payment_date ?? rest.date };
+      const { error } = await paymentsTable().insert(row);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -160,6 +165,20 @@ export function useLoanDetail(loanId: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['loan_payments', loanId] }),
   });
 
+  const updateLoan = useMutation({
+    mutationFn: async ({ id, ...payload }: Partial<Loan> & { id: string }) => {
+      const { data, error } = await loansTable().update(payload).eq('id', id).select().single();
+      if (error) throw error;
+      return data as unknown as Loan;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loan', loanId] });
+      queryClient.invalidateQueries({ queryKey: ['loans'] });
+      toast({ title: 'Loan updated' });
+    },
+    onError: (e: Error) => toast({ title: 'Error updating loan', description: e.message, variant: 'destructive' }),
+  });
+
   return {
     loan,
     draws,
@@ -169,5 +188,6 @@ export function useLoanDetail(loanId: string) {
     deleteDraw,
     addPayment,
     deletePayment,
+    updateLoan,
   };
 }
