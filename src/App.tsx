@@ -38,6 +38,8 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import EULA from "./pages/EULA";
 import Settings from "./pages/Settings";
 import ProfitBreakdown from "./pages/ProfitBreakdown";
+import Loans from "./pages/Loans";
+import LoanDetail from "./pages/LoanDetail";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 
@@ -84,6 +86,8 @@ const App = () => (
             <Route path="/bundles/:id" element={<ProtectedRoute><BundleDetail /></ProtectedRoute>} />
             <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
             <Route path="/profit" element={<ProtectedRoute><ProfitBreakdown /></ProtectedRoute>} />
+            <Route path="/loans" element={<ProtectedRoute><Loans /></ProtectedRoute>} />
+            <Route path="/loans/:id" element={<ProtectedRoute><LoanDetail /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
             {/* Admin — email-gated, no nav links */}

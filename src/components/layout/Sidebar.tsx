@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { 
-  LayoutDashboard, 
-  FolderKanban, 
-  Receipt, 
-  Users, 
+import {
+  LayoutDashboard,
+  FolderKanban,
+  Receipt,
+  Users,
   ClipboardList,
   Briefcase,
   LogOut,
@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Settings,
   Bell,
+  Landmark,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,7 @@ export function Sidebar() {
     { icon: FolderKanban, label: 'Projects', path: '/projects' },
     { icon: CalendarDays, label: 'Calendar', path: '/calendar' },
     { icon: Receipt, label: 'Expenses', path: '/expenses' },
+    { icon: Landmark, label: 'Loans', path: '/loans' },
     { icon: ClipboardList, label: 'Daily Logs', path: '/logs' },
     { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
     { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
