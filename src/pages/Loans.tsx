@@ -1,0 +1,141 @@
+import { useState, useMemo } from 'react';
+import { Landmark, Plus } from 'lucide-react';
+import { MainLayout } from '@/components/layout/MainLayout';
+import { Button } from '@/components/ui/button';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { LoanStatsRow } from '@/components/loans/LoanStatsRow';
+import { LoanTable } from '@/components/loans/LoanTable';
+import { LoanCharts } from '@/components/loans/LoanCharts';
+import { AddLoanModal } from '@/components/loans/AddLoanModal';
+import { useLoans } from '@/hooks/useLoans';
+import { calcMonthlyPayment } from '@/types/loans';
+import type { Loan, LoanDraw } from '@/types/loans';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+
+type ViewMode = 'portfolio' | 'project';
+
+export default function Loans() {
+  const { loans, isLoading, createLoan } = useLoans();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [view, setView] = useState<ViewMode>('portfolio');
+  const [selectedProject, setSelectedProject] = useState<string>('all');
+  const [addOpen, setAddOpen] = useState(false);
+
+  const projectNames = useMemo(
+    () => [...new Set(loans.map(l => l.project_name).filter(Boolean) as string[])].sort(),
+    [loans],
+  );
+
+  const visibleLoans = useMemo(() => {
+    if (view === 'project' && selectedProject !== 'all') {
+      return loans.filter(l => l.project_name === selectedProject);
+    }
+    return loans;
+  }, [loans, view, selectedProject]);
+
+  const handleAddLoan = async (
+    payload: Omit<Loan, 'id' | 'created_at' | 'updated_at' | 'project_name'>,
+    draws: Omit<LoanDraw, 'id' | 'created_at' | 'loan_id'>[],
+  ) => {
+    const loanData = await createLoan.mutateAsync(payload);
+    if (draws.length > 0 && loanData?.id) {
+      const drawRows = draws.map(d => ({ ...d, loan_id: loanData.id }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from('loan_draws' as any) as any).insert(drawRows);
+      if (error) toast({ title: 'Draws saved with errors', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  return (
+    <MainLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Landmark className="h-6 w-6 text-primary" />
+              Loans
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Track debt across your entire portfolio</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex rounded-lg border border-border p-0.5 bg-muted">
+              <button
+                onClick={() => setView('portfolio')}
+                className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                  view === 'portfolio' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Portfolio
+              </button>
+              <button
+                onClick={() => setView('project')}
+                className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                  view === 'project' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                By Project
+              </button>
+            </div>
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4 mr-1.5" /> Add Loan
+            </Button>
+          </div>
+        </div>
+
+        {/* Project selector for project view */}
+        {view === 'project' && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Project:</span>
+            <Select value={selectedProject} onValueChange={setSelectedProject}>
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Select a project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Projects</SelectItem>
+                {projectNames.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Stats */}
+        <LoanStatsRow loans={visibleLoans} />
+
+        {/* Empty state */}
+        {!isLoading && loans.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
+            <div className="rounded-full bg-primary/10 p-5 mb-4">
+              <Landmark className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold">No loans yet</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+              Add your first loan to start tracking debt, draw schedules, and amortization across your portfolio.
+            </p>
+            <Button className="mt-5" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4 mr-1.5" /> Add Your First Loan
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Loans table */}
+            <LoanTable loans={visibleLoans} projectNames={projectNames} />
+
+            {/* Charts — portfolio view only */}
+            {view === 'portfolio' && <LoanCharts loans={visibleLoans} />}
+          </>
+        )}
+      </div>
+
+      <AddLoanModal
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onSubmit={handleAddLoan}
+      />
+    </MainLayout>
+  );
+}
