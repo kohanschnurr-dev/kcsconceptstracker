@@ -1,22 +1,27 @@
 
 
-## Make Acquisition/Admin Label Text Darker
+## Fix "Could not find 'project_name' column" Error on Loan Edit
 
 ### Problem
-The "Acquisition/Admin" group label below the Category dropdown in the New Event modal is hard to read against the white background.
+When saving edits to a loan, the `updateLoan` mutation sends `project_name` (a virtual/joined field) to the database. The `loans` table doesn't have a `project_name` column, causing the error.
 
 ### Change
 
-**File: `src/lib/calendarCategories.ts`** (line 25)
+**File: `src/hooks/useLoans.ts`** (~line 169)
 
-Update the `textClass` for `acquisition_admin` from:
-```
-text-blue-900 dark:text-blue-200
-```
-to:
-```
-text-blue-950 dark:text-blue-200
+Strip non-database fields (`project_name`, `created_at`, `updated_at`) from the update payload before sending:
+
+```typescript
+const updateLoan = useMutation({
+  mutationFn: async ({ id, ...payload }: Partial<Loan> & { id: string }) => {
+    const { project_name, created_at, updated_at, ...dbPayload } = payload as any;
+    const { data, error } = await loansTable().update(dbPayload).eq('id', id).select().single();
+    if (error) throw error;
+    return data as unknown as Loan;
+  },
+  // ...rest unchanged
+});
 ```
 
-`blue-950` is the darkest blue in Tailwind (`#172554`), ensuring maximum contrast against white in light mode while keeping dark mode unchanged.
+One line added to destructure out virtual fields. No other files affected.
 
