@@ -142,9 +142,9 @@ export function calcMonthlyPayment(
   const amort = amortMonths ?? termMonths;
   if (amort === 0 || annualRate === 0) return principal / termMonths;
 
-  // Simple interest: flat principal + flat interest per month
+  // Simple interest for investor loans: interest-only with balloon at maturity
   if (interestCalcMethod === 'simple') {
-    return (principal / amort) + (principal * annualRate / 100 / 12);
+    return (principal * annualRate / 100 / 12);
   }
 
   // Compute monthly rate based on calc method
@@ -196,7 +196,8 @@ export function buildAmortizationSchedule(loan: Loan): AmortizationRow[] {
 
     const interest = periodInterest(balance, loan.interest_rate, paymentDate, method);
 
-    if (loan.payment_frequency === 'interest_only') {
+    if (loan.payment_frequency === 'interest_only' || method === 'simple') {
+      // Interest-only: no principal until final balloon payment
       const isBalloon = i === term;
       rows.push({
         payment_number: i,
