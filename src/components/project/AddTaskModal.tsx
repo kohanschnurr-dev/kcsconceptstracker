@@ -90,16 +90,16 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
     }
   }, [uploadFile]);
 
-  const saveTask = async (): Promise<boolean> => {
-    if (!title.trim() || isSubmitting) return false;
+  const saveTask = async (): Promise<string | null> => {
+    if (!title.trim() || isSubmitting) return null;
     setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { toast({ title: 'You must be logged in', variant: 'destructive' }); return false; }
+      if (!user) { toast({ title: 'You must be logged in', variant: 'destructive' }); return null; }
 
       const finalDescription = serializeDescription(description.trim(), subtasks);
 
-      const { error } = await supabase.from('tasks').insert({
+      const { data, error } = await supabase.from('tasks').insert({
         user_id: user.id,
         project_id: projectId,
         title: title.trim(),
@@ -110,36 +110,37 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
         photo_urls: photoUrls.length > 0 ? photoUrls : [],
         is_daily: false,
         is_scheduled: false,
-      });
+      }).select('id').single();
 
       if (error) throw error;
 
       toast({ title: 'Task added', description: 'Your task has been created.' });
       onTaskCreated();
-      return true;
+      return data?.id || null;
     } catch (error) {
       console.error('Error creating task:', error);
       toast({ title: 'Failed to create task', variant: 'destructive' });
-      return false;
+      return null;
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleSave = async () => {
-    const success = await saveTask();
-    if (success) handleClose();
+    const taskId = await saveTask();
+    if (taskId) handleClose();
   };
 
   const handleSaveAndCalendar = async () => {
     const savedTitle = title.trim();
     const savedDueDate = dueDate;
-    const success = await saveTask();
-    if (success) {
+    const taskId = await saveTask();
+    if (taskId) {
       setCalendarDefaults({
         title: savedTitle,
         startDate: savedDueDate ? new Date(savedDueDate + 'T00:00:00') : undefined,
         projectId,
+        linkedTaskId: taskId,
       });
       resetForm();
       onOpenChange(false);
