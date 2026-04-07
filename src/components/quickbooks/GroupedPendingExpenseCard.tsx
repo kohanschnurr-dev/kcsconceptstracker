@@ -240,6 +240,7 @@ export function GroupedPendingExpenseCard({
               onValueChange={(val) => {
                 setSelectedCostType(val);
                 if (val === 'loan') setSelectedCategory('loan_costs');
+                if (val === 'monthly') setSelectedCategory('utilities');
               }}
             >
               <SelectTrigger className="flex-1">
