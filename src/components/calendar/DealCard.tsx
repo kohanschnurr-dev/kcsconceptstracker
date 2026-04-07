@@ -2,6 +2,7 @@ import {
   Hammer, Droplets, Zap, Fan, PaintBucket, Wrench, AlertTriangle,
   FileText, Home, ClipboardCheck, Calendar, Sparkles, Layers, Grid2x2,
   DoorOpen, Trees, Landmark, ShieldCheck, Warehouse, Package, Fence, Square,
+  CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarTask } from '@/pages/Calendar';
@@ -73,18 +74,21 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
     return (
       <button
         onClick={onClick}
-        className={cn(
-          'w-full text-left px-2 py-1 rounded text-xs transition-all border',
-          'hover:ring-1 hover:ring-primary/50 cursor-grab active:cursor-grabbing',
-        task.isCriticalPath 
+      className={cn(
+        'w-full text-left px-2 py-1 rounded text-xs transition-all border',
+        'hover:ring-1 hover:ring-primary/50 cursor-grab active:cursor-grabbing',
+        task.isCompleted
+          ? 'bg-green-500/10 text-muted-foreground border-green-500/30'
+          : task.isCriticalPath 
             ? 'bg-red-200 dark:bg-red-500/30 text-foreground border-red-500' 
             : getCategoryColor(task.eventCategory || 'due_diligence')
-        )}
+      )}
       >
         <div className="flex items-center gap-1">
-          {task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-foreground shrink-0" />}
-          {getCategoryIcon(task.eventCategory || 'due_diligence')}
-          <span className="line-clamp-1 min-w-0">{task.title}</span>
+          {task.isCompleted && <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />}
+          {!task.isCompleted && task.isCriticalPath && <AlertTriangle className="h-3 w-3 text-foreground shrink-0" />}
+          {!task.isCompleted && !task.isCriticalPath && getCategoryIcon(task.eventCategory || 'due_diligence')}
+          <span className={cn("line-clamp-1 min-w-0", task.isCompleted && "line-through opacity-60")}>{task.title}</span>
         </div>
       </button>
     );
@@ -125,7 +129,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
             ? 'bg-red-200 dark:bg-red-500/20 text-foreground dark:text-red-400 border-red-500' 
             : `${categoryStyles.bgClass} ${categoryStyles.textClass} ${categoryStyles.borderClass}`
         )}>
-          {task.isCriticalPath ? 'Critical Path' : categoryLabel}
+          {task.isCompleted ? 'Completed' : task.isCriticalPath ? 'Critical Path' : categoryLabel}
         </span>
         <span className="text-[10px] text-muted-foreground">
           {task.checklist.filter(c => c.completed).length}/{task.checklist.length} tasks

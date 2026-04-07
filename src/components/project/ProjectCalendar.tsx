@@ -62,6 +62,9 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
       leadTimeDays: event.lead_time_days,
       expectedDate: event.expected_date ? parseDateString(event.expected_date) : undefined,
       recurrenceGroupId: event.recurrence_group_id,
+      isCompleted: event.is_completed || false,
+      completedAt: event.completed_at,
+      linkedTaskId: event.linked_task_id,
     }));
 
     setTasks(calendarTasks);

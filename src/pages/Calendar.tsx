@@ -33,6 +33,9 @@ export interface CalendarTask {
   leadTimeDays?: number;
   expectedDate?: Date;
   recurrenceGroupId?: string | null;
+  isCompleted?: boolean;
+  completedAt?: string | null;
+  linkedTaskId?: string | null;
 }
 
 interface Project {
@@ -164,6 +167,9 @@ export default function Calendar() {
           leadTimeDays: event.lead_time_days,
           expectedDate: event.expected_date ? parseDateString(event.expected_date) : undefined,
           recurrenceGroupId: event.recurrence_group_id,
+          isCompleted: event.is_completed || false,
+          completedAt: event.completed_at,
+          linkedTaskId: event.linked_task_id,
         };
       });
 
