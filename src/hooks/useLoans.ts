@@ -37,7 +37,7 @@ export function useLoans() {
     mutationFn: async (payload: Omit<Loan, 'id' | 'created_at' | 'updated_at' | 'project_name'>) => {
       const { data, error } = await loansTable().insert(payload).select().single();
       if (error) throw error;
-      return data as Loan;
+      return data as unknown as Loan;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loans', user?.id] });
@@ -50,7 +50,7 @@ export function useLoans() {
     mutationFn: async ({ id, ...payload }: Partial<Loan> & { id: string }) => {
       const { data, error } = await loansTable().update(payload).eq('id', id).select().single();
       if (error) throw error;
-      return data as Loan;
+      return data as unknown as Loan;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loans', user?.id] });
@@ -100,7 +100,7 @@ export function useLoanDetail(loanId: string) {
         .eq('loan_id', loanId)
         .order('draw_number', { ascending: true });
       if (error) throw error;
-      return (data ?? []) as LoanDraw[];
+      return (data ?? []) as unknown as LoanDraw[];
     },
   });
 
@@ -113,7 +113,7 @@ export function useLoanDetail(loanId: string) {
         .eq('loan_id', loanId)
         .order('payment_date', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as LoanPayment[];
+      return (data ?? []) as unknown as LoanPayment[];
     },
   });
 
