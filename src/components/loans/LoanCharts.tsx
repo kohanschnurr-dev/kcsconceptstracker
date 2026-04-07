@@ -87,7 +87,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
               />
               <Legend
                 formatter={(value) => (
-                  <span style={{ color: 'hsl(210, 10%, 35%)', fontSize: 13, fontWeight: 500 }}>{value}</span>
+                  <span style={{ color: 'hsl(210, 10%, 15%)', fontSize: 13, fontWeight: 600 }}>{value}</span>
                 )}
               />
             </PieChart>
