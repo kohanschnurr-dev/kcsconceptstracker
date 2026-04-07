@@ -498,9 +498,12 @@ export type Database = {
           description: string | null
           expense_id: string | null
           id: string
+          interest_portion: number | null
+          late_fee: number | null
           loan_id: string | null
           notes: string | null
           payment_type: string
+          principal_portion: number | null
           project_id: string
           source: string
           updated_at: string
@@ -514,9 +517,12 @@ export type Database = {
           description?: string | null
           expense_id?: string | null
           id?: string
+          interest_portion?: number | null
+          late_fee?: number | null
           loan_id?: string | null
           notes?: string | null
           payment_type?: string
+          principal_portion?: number | null
           project_id: string
           source?: string
           updated_at?: string
@@ -530,9 +536,12 @@ export type Database = {
           description?: string | null
           expense_id?: string | null
           id?: string
+          interest_portion?: number | null
+          late_fee?: number | null
           loan_id?: string | null
           notes?: string | null
           payment_type?: string
+          principal_portion?: number | null
           project_id?: string
           source?: string
           updated_at?: string
