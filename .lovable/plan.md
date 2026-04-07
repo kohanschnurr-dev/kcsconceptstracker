@@ -1,19 +1,27 @@
 
 
-## Fix: "All Projects" option missing from calendar project filter
+## Subtle "Today" Column Highlight on Gantt View
 
 ### Problem
-The `ProjectAutocomplete` component groups items by `projectType` (New Construction, Fix & Flips, Rentals). The synthetic "All Projects" entry (`{id: 'all', name: 'All Projects', address: ''}`) has no `projectType`, so it never appears in any group and is never rendered in the dropdown. Once a project is selected, there's no way to go back to viewing all projects.
+There's no visual indicator for which column represents today in the Gantt chart. The user wants a subtle darker-white background on today's column so it's easy to spot without being distracting.
 
-### Solution
+### Changes
 
-**File: `src/components/ProjectAutocomplete.tsx`**
+**File: `src/components/calendar/GanttView.tsx`**
 
-Render "All Projects" (and any other ungrouped items like `id === 'all'`) as a separate item **above** the grouped project lists. Specifically:
+Add a subtle vertical background highlight on today's column throughout the entire Gantt body:
 
-1. Before the `groupedProjects.map(...)` block, check if `filteredProjects` contains an item with `id === 'all'`
-2. If so, render it as a standalone `CommandItem` (outside any `CommandGroup`) at the top of the list
-3. This ensures "All Projects" is always visible and selectable regardless of grouping logic
+1. **Header row** — already highlights today's date text in primary color; no change needed there
+2. **Task rows** — add a faint background behind today's column cell. Since the Gantt uses a flex layout with `flex-1` columns, we need to add a background layer per row at today's column position, or overlay a single vertical strip
 
-This is a small, targeted change — just ~10 lines added to the render section of `ProjectAutocomplete.tsx`.
+**Approach**: For each task row's relative container (`flex-1 relative h-7`), render a subtle background div at today's column position. More cleanly, add a full-height "today column" overlay in the chart body using absolute positioning based on `dayIndex / zoomDays` width calculation.
+
+Specifically:
+- Compute `todayIndex` from the `days` array using `isToday()`
+- In the chart body wrapper (`div` at line 241), add `position: relative` and render an absolutely-positioned vertical stripe at `left: (todayIndex / zoomDays * 100)%` with `width: (1/zoomDays * 100)%`
+- Style: `bg-foreground/[0.03]` (very subtle darkening — sleek hint, not overbearing)
+- Account for the 48-unit (w-48) left label column offset by placing the overlay inside the flex-1 area
+
+### Files
+- `src/components/calendar/GanttView.tsx` — add today column overlay
 
