@@ -76,6 +76,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
     return Array.from({ length: zoomDays }, (_, i) => addDays(startDate, i));
   }, [startDate, zoomDays]);
 
+  const todayIndex = days.findIndex(day => isToday(day));
   const isZoomed = zoomDays < 21;
   const colMinWidth = isZoomed ? 80 : undefined;
 
@@ -279,6 +280,15 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: Gantt
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={handleDragEnd}
                       >
+                        {todayIndex !== -1 && (
+                          <div
+                            className="absolute top-0 bottom-0 bg-foreground/[0.03] pointer-events-none"
+                            style={{
+                              left: `${(todayIndex / zoomDays) * 100}%`,
+                              width: `${(1 / zoomDays) * 100}%`,
+                            }}
+                          />
+                        )}
 
                         <Tooltip>
                           <TooltipTrigger asChild>
