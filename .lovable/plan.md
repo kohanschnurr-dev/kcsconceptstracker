@@ -1,20 +1,22 @@
 
 
-## Auto-select "Utilities" When "Monthly" Cost Type Is Chosen
+## Make Acquisition/Admin Label Text Darker
+
+### Problem
+The "Acquisition/Admin" group label below the Category dropdown in the New Event modal is hard to read against the white background.
 
 ### Change
 
-**File: `src/components/quickbooks/GroupedPendingExpenseCard.tsx`**
+**File: `src/lib/calendarCategories.ts`** (line 25)
 
-In the cost type `onValueChange` handler (line 240-243), add a case for `monthly` that auto-sets the category to `utilities`, mirroring the existing pattern for `loan` → `loan_costs`:
-
-```typescript
-onValueChange={(val) => {
-  setSelectedCostType(val);
-  if (val === 'loan') setSelectedCategory('loan_costs');
-  if (val === 'monthly') setSelectedCategory('utilities');
-}}
+Update the `textClass` for `acquisition_admin` from:
+```
+text-blue-900 dark:text-blue-200
+```
+to:
+```
+text-blue-950 dark:text-blue-200
 ```
 
-The category dropdown remains fully interactive, so the user can still change it after the auto-selection. One file, one line added.
+`blue-950` is the darkest blue in Tailwind (`#172554`), ensuring maximum contrast against white in light mode while keeping dark mode unchanged.
 
