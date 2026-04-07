@@ -124,13 +124,16 @@ export type Database = {
       calendar_events: {
         Row: {
           checklist: Json | null
+          completed_at: string | null
           created_at: string
           end_date: string
           event_category: string
           expected_date: string | null
           id: string
+          is_completed: boolean
           is_critical_path: boolean
           lead_time_days: number | null
+          linked_task_id: string | null
           notes: string | null
           project_id: string
           recurrence_group_id: string | null
@@ -144,13 +147,16 @@ export type Database = {
         }
         Insert: {
           checklist?: Json | null
+          completed_at?: string | null
           created_at?: string
           end_date: string
           event_category: string
           expected_date?: string | null
           id?: string
+          is_completed?: boolean
           is_critical_path?: boolean
           lead_time_days?: number | null
+          linked_task_id?: string | null
           notes?: string | null
           project_id: string
           recurrence_group_id?: string | null
@@ -164,13 +170,16 @@ export type Database = {
         }
         Update: {
           checklist?: Json | null
+          completed_at?: string | null
           created_at?: string
           end_date?: string
           event_category?: string
           expected_date?: string | null
           id?: string
+          is_completed?: boolean
           is_critical_path?: boolean
           lead_time_days?: number | null
+          linked_task_id?: string | null
           notes?: string | null
           project_id?: string
           recurrence_group_id?: string | null
@@ -183,6 +192,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "calendar_events_linked_task_id_fkey"
+            columns: ["linked_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "calendar_events_project_id_fkey"
             columns: ["project_id"]

@@ -56,9 +56,10 @@ interface NewEventModalProps {
   onExternalOpenChange?: (open: boolean) => void;
   defaultStartDate?: Date;
   defaultTitle?: string;
+  linkedTaskId?: string;
 }
 
-export function NewEventModal({ projects, onEventCreated, defaultProjectId, externalOpen, onExternalOpenChange, defaultStartDate, defaultTitle }: NewEventModalProps) {
+export function NewEventModal({ projects, onEventCreated, defaultProjectId, externalOpen, onExternalOpenChange, defaultStartDate, defaultTitle, linkedTaskId }: NewEventModalProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = externalOpen !== undefined;
   const open = isControlled ? externalOpen : internalOpen;
@@ -183,6 +184,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
       is_critical_path: isCriticalPath,
       notes: notes || null,
       checklist: checklist.length > 0 ? checklist : null,
+      linked_task_id: linkedTaskId || null,
     };
 
     let eventsToInsert: any[] = [];
