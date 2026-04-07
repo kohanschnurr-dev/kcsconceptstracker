@@ -22,7 +22,7 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
     color: 'blue',
     bgClass: 'bg-blue-200 dark:bg-blue-500/20',
     swatchClass: 'bg-blue-600',
-    textClass: 'text-blue-900 dark:text-blue-200',
+    textClass: 'text-blue-950 dark:text-blue-200',
     borderClass: 'border-blue-400 dark:border-blue-500/30',
   },
   structural_exterior: {
