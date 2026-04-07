@@ -1,25 +1,19 @@
 
 
-## Plan: Soften Completed Event Styling on Calendar
+## Fix: "All Projects" option missing from calendar project filter
 
 ### Problem
-Completed events currently get `line-through`, `opacity-60`, and a green overlay that makes them hard to read. The user wants completed events to remain fully readable while still indicating completion.
+The `ProjectAutocomplete` component groups items by `projectType` (New Construction, Fix & Flips, Rentals). The synthetic "All Projects" entry (`{id: 'all', name: 'All Projects', address: ''}`) has no `projectType`, so it never appears in any group and is never rendered in the dropdown. Once a project is selected, there's no way to go back to viewing all projects.
 
-### Changes
+### Solution
 
-**File: `src/components/calendar/DealCard.tsx`**
+**File: `src/components/ProjectAutocomplete.tsx`**
 
-Replace the current completed styling with a subtle indicator that preserves readability:
+Render "All Projects" (and any other ungrouped items like `id === 'all'`) as a separate item **above** the grouped project lists. Specifically:
 
-- **Remove** `line-through` and `opacity-60` from task titles
-- **Remove** the green background override — keep the original category color so the card looks normal
-- **Add** a small green checkmark icon (already present) as the sole completion indicator
-- **Keep** the `CheckCircle2` icon next to the title in compact mode and in the icon badge for expanded mode
-- In compact mode: keep original category colors, just prepend the green check icon
-- In expanded mode: keep original card styling, just swap the category icon for a green check and show "Completed" badge alongside the category badge
+1. Before the `groupedProjects.map(...)` block, check if `filteredProjects` contains an item with `id === 'all'`
+2. If so, render it as a standalone `CommandItem` (outside any `CommandGroup`) at the top of the list
+3. This ensures "All Projects" is always visible and selectable regardless of grouping logic
 
-Essentially: the card looks exactly like a normal event, but with a small green checkmark added. No color changes, no strikethrough, no opacity reduction.
-
-### Files
-- `src/components/calendar/DealCard.tsx`
+This is a small, targeted change — just ~10 lines added to the render section of `ProjectAutocomplete.tsx`.
 
