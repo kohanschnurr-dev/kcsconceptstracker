@@ -1,33 +1,41 @@
 
 
-## Plan: Create Missing Database Tables for Loans
+## Add "Mark Complete" Check-off to Calendar Events
 
 ### Problem
-The `loans` and `loan_draws` tables don't exist in the database. The code references them via `supabase.from('loans')` and `supabase.from('loan_draws')`, causing the error "Could not find the table 'public.loans' in the schema cache."
-
-The existing `loan_payments` table has a different schema (project-based with `project_id` and `user_id`) than what the code expects (loan-based with `loan_id`).
+Calendar events have no completion toggle. Some events originate from tasks (via "Save & Add to Calendar"), but there's no link between them, so completing an event doesn't update the source task. Overdue tasks that were actually done require navigating to the tasks list to mark them complete.
 
 ### Changes
 
-**Database Migration** -- Create two new tables:
+#### 1. Database Migration
+- Add `is_completed` (boolean, default false) and `completed_at` (timestamptz, nullable) to `calendar_events`
+- Add `linked_task_id` (UUID, nullable, FK to `tasks`) to `calendar_events` — this links events created via "Save & Add to Calendar" back to their source task
 
-1. **`loans`** table with all columns matching the `Loan` TypeScript interface:
-   - Core: `id`, `user_id`, `project_id`, `nickname`, `lender_name`, `lender_contact`, `loan_type`, `loan_type_other`
-   - Financial: `original_amount`, `outstanding_balance`, `interest_rate`, `rate_type`, variable rate fields
-   - Terms: `loan_term_months`, `amortization_period_months`, `payment_frequency`, `payment_frequency_custom`, `interest_calc_method`
-   - Dates: `start_date`, `maturity_date`, `first_payment_date`
-   - Fees: `origination_fee_points`, `origination_fee_dollars`, `other_closing_costs`, prepayment/extension fields
-   - Draws: `has_draws`, `total_draw_amount`, `draw_structure`, `custom_draw_terms`
-   - Collateral: `collateral_type`, `collateral_description`, `ltv_at_origination`, `has_personal_guarantee`
-   - Meta: `notes`, `status`, `monthly_payment`, `created_at`, `updated_at`
-   - RLS: owner CRUD + team member SELECT
+#### 2. Wire up the link: `AddTaskModal.tsx`
+- When "Save & Add to Calendar" creates the calendar event, pass the newly created task's ID as `linked_task_id` in the event insert
+- Requires the `saveTask` function to return the created task ID (currently it doesn't)
 
-2. **`loan_draws`** table matching the `LoanDraw` interface:
-   - `id`, `loan_id` (FK to loans), `draw_number`, `milestone_name`, `draw_percentage`, `draw_amount`, `expected_date`, `status`, `date_funded`, `notes`, `created_at`
-   - RLS: via loan ownership
+#### 3. Add completion toggle: `TaskDetailPanel.tsx`
+- Add a prominent check-off button at the top of the event detail panel (next to the title) — a circle/checkmark toggle
+- When toggled to complete:
+  - Update `calendar_events` row: set `is_completed = true`, `completed_at = now()`
+  - If `linked_task_id` exists, also update the linked task's status to `'completed'` in the `tasks` table
+  - Show a success toast: "Event completed" (and "Linked task also marked complete" if applicable)
+- When toggled back to incomplete: reverse both updates
+- Visual: completed events get a strikethrough title and muted styling
 
-3. **Update `loan_payments`** -- Add a `loan_id` column (nullable, so existing data isn't broken) to link payments to specific loans, matching what the code expects when querying `.eq('loan_id', loanId)`.
+#### 4. Visual indicator on calendar grid: `DealCard.tsx`
+- Show a small checkmark icon or reduced opacity on completed events in the calendar grid so users can see at a glance what's done
 
-### Files
-- Database migration only (no code changes needed -- the code already references these tables correctly)
+#### 5. Update `CalendarTask` type (`Calendar.tsx`)
+- Add `isCompleted`, `completedAt`, and `linkedTaskId` fields to the `CalendarTask` interface
+- Map these from the DB response in all fetch functions
+
+### Files to change
+- **Database migration** — add columns to `calendar_events`
+- `src/pages/Calendar.tsx` — update `CalendarTask` type
+- `src/components/calendar/TaskDetailPanel.tsx` — add completion toggle + linked task update
+- `src/components/calendar/DealCard.tsx` — visual completed state
+- `src/components/project/AddTaskModal.tsx` — return task ID from save, pass to calendar event
+- `src/components/project/ProjectCalendar.tsx` — map new fields when fetching events
 
