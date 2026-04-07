@@ -1,27 +1,36 @@
 
 
-## Plan: Add Info Tooltips to Interest Calculation Options + Fix Build Errors
+## Fix: Monthly Payment Calculation Bugs
 
-### 1. Add info tooltips to Interest Calculation dropdown
+### Problem
+Two issues inflate the displayed payment:
 
-**File: `src/components/loans/AddLoanModal.tsx`**
+1. **Amortization placeholder misleads** — The field shows "360" as placeholder text (gray), but the actual value is `null`. The calculation then amortizes over the 12-month term instead of 360 months. With $58K over 12 months → ~$4,961/mo. Over 360 months → ~$306/mo.
 
-Add a tooltip (info "i" icon) next to each interest calculation option in the dropdown, explaining what each method means:
+2. **`interest_calc_method` is ignored** — `calcMonthlyPayment()` never receives or uses this field. "Simple Interest" selection has zero effect.
 
-- **Standard (30/360)**: Assumes 30-day months and 360-day year. Most common for conventional and commercial loans.
-- **Actual/360**: Uses actual days in the month but divides by 360. Common for hard money and bridge loans — results in slightly higher interest.
-- **Actual/365**: Uses actual days in the month divided by 365. More precise, common for private money loans.
-- **Simple Interest**: Interest = Principal × Rate × Time. No compounding. Common for short-term or seller-financing deals.
+### Changes
 
-Each `SelectItem` will include a small description below the label text, using a two-line layout (label + muted description). An info icon (`Info`) will also be added next to the "Interest Calculation" label with a tooltip summarizing the field.
+**File: `src/types/loans.ts`** — Update `calcMonthlyPayment`
+- Add `interestCalcMethod?: string` parameter
+- When method is `"simple"`: monthly payment = `(principal / termMonths) + (principal × annualRate / 100 / 12)`
+- When method is `"actual_360"` or `"actual_365"`: adjust the rate divisor accordingly (use 360 or 365 day-based rate instead of monthly)
+- Default ("standard" / 30/360) stays as-is
 
-### 2. Fix build errors in `useLoans.ts`
+**File: `src/components/loans/AddLoanModal.tsx`** — Pass `interest_calc_method` to the calculation
+- Update the `useMemo` call on line 136 to pass `form.interest_calc_method` as the new parameter
+- Add it to the dependency array
 
-**File: `src/hooks/useLoans.ts`** — Lines 40, 53, 103, 116
+**File: `src/types/loans.ts`** — Update `buildAmortizationSchedule`
+- Pass `loan.interest_calc_method` through to `calcMonthlyPayment` so the amortization table also respects the selected method
 
-Change `as Loan` / `as LoanDraw[]` / `as LoanPayment[]` casts to use `as unknown as` to satisfy TypeScript when Supabase generated types don't match the app types exactly.
+### Calculation Details
 
-### Files to change
-- `src/components/loans/AddLoanModal.tsx` — Enhanced dropdown with descriptions
-- `src/hooks/useLoans.ts` — Fix 4 type cast errors
+For Simple Interest ($58K, 4.85%, 12 months):
+- Monthly interest = $58,000 × 4.85% / 12 = $234.42
+- Monthly principal = $58,000 / 12 = $4,833.33
+- Total monthly = **$5,067.75**
+
+For Standard Amortization with 360-month amort:
+- Payment ≈ **$306/mo** (plus balloon at maturity)
 
