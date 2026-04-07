@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, Check, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -338,14 +339,46 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
                 </Select>
               </div>
               <div>
-                <Label>Interest Calculation</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label>Interest Calculation</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs text-xs">
+                        How daily interest is calculated. Different methods yield slightly different amounts.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <Select value={form.interest_calc_method} onValueChange={v => set('interest_calc_method', v)}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="standard">Standard (30/360)</SelectItem>
-                    <SelectItem value="actual_360">Actual/360</SelectItem>
-                    <SelectItem value="actual_365">Actual/365</SelectItem>
-                    <SelectItem value="simple">Simple Interest</SelectItem>
+                    <SelectItem value="standard">
+                      <div className="flex flex-col items-start">
+                        <span>Standard (30/360)</span>
+                        <span className="text-xs text-muted-foreground">30-day months, 360-day year</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="actual_360">
+                      <div className="flex flex-col items-start">
+                        <span>Actual/360</span>
+                        <span className="text-xs text-muted-foreground">Actual days / 360 — common for hard money</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="actual_365">
+                      <div className="flex flex-col items-start">
+                        <span>Actual/365</span>
+                        <span className="text-xs text-muted-foreground">Actual days / 365 — more precise</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="simple">
+                      <div className="flex flex-col items-start">
+                        <span>Simple Interest</span>
+                        <span className="text-xs text-muted-foreground">P × R × T — no compounding</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
