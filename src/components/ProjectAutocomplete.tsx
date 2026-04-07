@@ -141,6 +141,22 @@ export function ProjectAutocomplete({
                 No projects found
               </div>
             </CommandEmpty>
+            {filteredProjects.filter(p => !p.projectType).map((project) => (
+              <CommandItem
+                key={project.id}
+                value={project.id}
+                onSelect={() => handleSelect(project.id)}
+                className="cursor-pointer"
+              >
+                <Check
+                  className={cn(
+                    'mr-2 h-4 w-4 flex-shrink-0',
+                    value === project.id ? 'opacity-100' : 'opacity-0'
+                  )}
+                />
+                <span className="font-medium">{project.name}</span>
+              </CommandItem>
+            ))}
             {groupedProjects.map((group) => (
               <CommandGroup key={group.type} heading={group.label}>
                 {group.projects.map((project) => (
