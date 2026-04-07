@@ -167,7 +167,8 @@ export function useLoanDetail(loanId: string) {
 
   const updateLoan = useMutation({
     mutationFn: async ({ id, ...payload }: Partial<Loan> & { id: string }) => {
-      const { data, error } = await loansTable().update(payload).eq('id', id).select().single();
+      const { project_name, created_at, updated_at, ...dbPayload } = payload as any;
+      const { data, error } = await loansTable().update(dbPayload).eq('id', id).select().single();
       if (error) throw error;
       return data as unknown as Loan;
     },
