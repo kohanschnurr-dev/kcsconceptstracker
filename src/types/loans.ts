@@ -135,12 +135,28 @@ export function calcMonthlyPayment(
   termMonths: number,
   amortMonths?: number | null,
   paymentFreq?: string,
+  interestCalcMethod?: string,
 ): number {
   if (paymentFreq === 'interest_only') return (principal * annualRate) / 100 / 12;
   if (paymentFreq === 'deferred') return 0;
   const amort = amortMonths ?? termMonths;
   if (amort === 0 || annualRate === 0) return principal / termMonths;
-  const r = annualRate / 100 / 12;
+
+  // Simple interest: flat principal + flat interest per month
+  if (interestCalcMethod === 'simple') {
+    return (principal / amort) + (principal * annualRate / 100 / 12);
+  }
+
+  // Compute monthly rate based on calc method
+  let r: number;
+  if (interestCalcMethod === 'actual_360') {
+    r = (annualRate / 100) * (30 / 360) ; // ~30 days per month / 360
+  } else if (interestCalcMethod === 'actual_365') {
+    r = (annualRate / 100) * (30.4167 / 365); // avg days per month / 365
+  } else {
+    r = annualRate / 100 / 12; // standard 30/360
+  }
+
   const n = amort;
   return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }
@@ -151,7 +167,7 @@ export function buildAmortizationSchedule(loan: Loan): AmortizationRow[] {
   const r = loan.interest_rate / 100 / 12;
   const amort = loan.amortization_period_months ?? loan.loan_term_months;
   const term = loan.loan_term_months;
-  const monthly = loan.monthly_payment ?? calcMonthlyPayment(loan.original_amount, loan.interest_rate, term, amort, loan.payment_frequency);
+  const monthly = loan.monthly_payment ?? calcMonthlyPayment(loan.original_amount, loan.interest_rate, term, amort, loan.payment_frequency, loan.interest_calc_method);
   const start = new Date(loan.first_payment_date ?? loan.start_date);
 
   let balance = loan.original_amount;
