@@ -42,7 +42,7 @@ export function AddTaskModal({ open, onOpenChange, projectId, projectName, onTas
   const [isDragging, setIsDragging] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
-  const [calendarDefaults, setCalendarDefaults] = useState<{ title: string; startDate?: Date; projectId: string } | null>(null);
+  const [calendarDefaults, setCalendarDefaults] = useState<{ title: string; startDate?: Date; projectId: string; linkedTaskId?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
