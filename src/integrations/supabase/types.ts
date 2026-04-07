@@ -424,6 +424,56 @@ export type Database = {
           },
         ]
       }
+      loan_draws: {
+        Row: {
+          created_at: string
+          date_funded: string | null
+          draw_amount: number
+          draw_number: number
+          draw_percentage: number | null
+          expected_date: string | null
+          id: string
+          loan_id: string
+          milestone_name: string | null
+          notes: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          date_funded?: string | null
+          draw_amount?: number
+          draw_number?: number
+          draw_percentage?: number | null
+          expected_date?: string | null
+          id?: string
+          loan_id: string
+          milestone_name?: string | null
+          notes?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          date_funded?: string | null
+          draw_amount?: number
+          draw_number?: number
+          draw_percentage?: number | null
+          expected_date?: string | null
+          id?: string
+          loan_id?: string
+          milestone_name?: string | null
+          notes?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_draws_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loan_payments: {
         Row: {
           amount: number
@@ -432,6 +482,7 @@ export type Database = {
           description: string | null
           expense_id: string | null
           id: string
+          loan_id: string | null
           notes: string | null
           payment_type: string
           project_id: string
@@ -447,6 +498,7 @@ export type Database = {
           description?: string | null
           expense_id?: string | null
           id?: string
+          loan_id?: string | null
           notes?: string | null
           payment_type?: string
           project_id: string
@@ -462,6 +514,7 @@ export type Database = {
           description?: string | null
           expense_id?: string | null
           id?: string
+          loan_id?: string | null
           notes?: string | null
           payment_type?: string
           project_id?: string
@@ -471,6 +524,13 @@ export type Database = {
           vendor_name?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "loan_payments_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "loan_payments_project_id_fkey"
             columns: ["project_id"]
@@ -521,6 +581,158 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      loans: {
+        Row: {
+          amortization_period_months: number | null
+          collateral_description: string | null
+          collateral_type: string | null
+          created_at: string
+          custom_draw_terms: string | null
+          draw_structure: string | null
+          extension_fee: number | null
+          extension_terms: string | null
+          first_payment_date: string | null
+          has_draws: boolean
+          has_personal_guarantee: boolean
+          has_prepayment_penalty: boolean
+          id: string
+          interest_calc_method: string
+          interest_rate: number
+          lender_contact: string | null
+          lender_name: string
+          loan_term_months: number
+          loan_type: string
+          loan_type_other: string | null
+          ltv_at_origination: number | null
+          maturity_date: string
+          monthly_payment: number | null
+          nickname: string | null
+          notes: string | null
+          original_amount: number
+          origination_fee_dollars: number | null
+          origination_fee_points: number | null
+          other_closing_costs: number | null
+          outstanding_balance: number
+          payment_frequency: string
+          payment_frequency_custom: string | null
+          prepayment_penalty_terms: string | null
+          project_id: string | null
+          rate_type: string
+          start_date: string
+          status: string
+          total_draw_amount: number | null
+          updated_at: string
+          user_id: string
+          variable_adjustment_frequency: string | null
+          variable_index: string | null
+          variable_margin: number | null
+          variable_rate_cap: number | null
+          variable_rate_floor: number | null
+        }
+        Insert: {
+          amortization_period_months?: number | null
+          collateral_description?: string | null
+          collateral_type?: string | null
+          created_at?: string
+          custom_draw_terms?: string | null
+          draw_structure?: string | null
+          extension_fee?: number | null
+          extension_terms?: string | null
+          first_payment_date?: string | null
+          has_draws?: boolean
+          has_personal_guarantee?: boolean
+          has_prepayment_penalty?: boolean
+          id?: string
+          interest_calc_method?: string
+          interest_rate?: number
+          lender_contact?: string | null
+          lender_name: string
+          loan_term_months?: number
+          loan_type?: string
+          loan_type_other?: string | null
+          ltv_at_origination?: number | null
+          maturity_date?: string
+          monthly_payment?: number | null
+          nickname?: string | null
+          notes?: string | null
+          original_amount?: number
+          origination_fee_dollars?: number | null
+          origination_fee_points?: number | null
+          other_closing_costs?: number | null
+          outstanding_balance?: number
+          payment_frequency?: string
+          payment_frequency_custom?: string | null
+          prepayment_penalty_terms?: string | null
+          project_id?: string | null
+          rate_type?: string
+          start_date?: string
+          status?: string
+          total_draw_amount?: number | null
+          updated_at?: string
+          user_id: string
+          variable_adjustment_frequency?: string | null
+          variable_index?: string | null
+          variable_margin?: number | null
+          variable_rate_cap?: number | null
+          variable_rate_floor?: number | null
+        }
+        Update: {
+          amortization_period_months?: number | null
+          collateral_description?: string | null
+          collateral_type?: string | null
+          created_at?: string
+          custom_draw_terms?: string | null
+          draw_structure?: string | null
+          extension_fee?: number | null
+          extension_terms?: string | null
+          first_payment_date?: string | null
+          has_draws?: boolean
+          has_personal_guarantee?: boolean
+          has_prepayment_penalty?: boolean
+          id?: string
+          interest_calc_method?: string
+          interest_rate?: number
+          lender_contact?: string | null
+          lender_name?: string
+          loan_term_months?: number
+          loan_type?: string
+          loan_type_other?: string | null
+          ltv_at_origination?: number | null
+          maturity_date?: string
+          monthly_payment?: number | null
+          nickname?: string | null
+          notes?: string | null
+          original_amount?: number
+          origination_fee_dollars?: number | null
+          origination_fee_points?: number | null
+          other_closing_costs?: number | null
+          outstanding_balance?: number
+          payment_frequency?: string
+          payment_frequency_custom?: string | null
+          prepayment_penalty_terms?: string | null
+          project_id?: string | null
+          rate_type?: string
+          start_date?: string
+          status?: string
+          total_draw_amount?: number | null
+          updated_at?: string
+          user_id?: string
+          variable_adjustment_frequency?: string | null
+          variable_index?: string | null
+          variable_margin?: number | null
+          variable_rate_cap?: number | null
+          variable_rate_floor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
