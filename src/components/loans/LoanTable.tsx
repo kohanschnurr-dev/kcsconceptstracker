@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
 import { LOAN_TYPE_LABELS } from '@/types/loans';
 import type { Loan, LoanStatus, LoanType } from '@/types/loans';
+import { Checkbox } from '@/components/ui/checkbox';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
 const fmt = (v: number | null | undefined) =>
@@ -20,9 +21,12 @@ type SortKey = keyof Loan;
 interface LoanTableProps {
   loans: Loan[];
   projectNames: string[];
+  compareMode?: boolean;
+  selectedIds?: string[];
+  onToggleSelect?: (id: string) => void;
 }
 
-export function LoanTable({ loans, projectNames }: LoanTableProps) {
+export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], onToggleSelect }: LoanTableProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('all');
@@ -123,6 +127,7 @@ export function LoanTable({ loans, projectNames }: LoanTableProps) {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent border-b border-border">
+              {compareMode && <TableHead className="w-10" />}
               <TableHead>Project <SortBtn col="project_name" /></TableHead>
               <TableHead>Lender <SortBtn col="lender_name" /></TableHead>
               <TableHead>Type</TableHead>
@@ -138,17 +143,28 @@ export function LoanTable({ loans, projectNames }: LoanTableProps) {
           <TableBody>
             {visible.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={compareMode ? 11 : 10} className="text-center py-12 text-muted-foreground">
                   No loans match your filters.
                 </TableCell>
               </TableRow>
             ) : (
-              visible.map(loan => (
+              visible.map(loan => {
+                const isSelected = selectedIds.includes(loan.id);
+                return (
                 <TableRow
                   key={loan.id}
-                  className="cursor-pointer hover:bg-muted/40 transition-colors"
-                  onClick={() => navigate(`/loans/${loan.id}`)}
+                  className={`cursor-pointer hover:bg-muted/40 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+                  onClick={() => compareMode ? onToggleSelect?.(loan.id) : navigate(`/loans/${loan.id}`)}
                 >
+                  {compareMode && (
+                    <TableCell className="w-10" onClick={e => e.stopPropagation()}>
+                      <Checkbox
+                        checked={isSelected}
+                        disabled={!isSelected && selectedIds.length >= 3}
+                        onCheckedChange={() => onToggleSelect?.(loan.id)}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium max-w-32 truncate">{loan.project_name ?? '—'}</TableCell>
                   <TableCell className="max-w-32 truncate">{loan.nickname ?? loan.lender_name}</TableCell>
                   <TableCell><LoanTypeBadge type={loan.loan_type} /></TableCell>
@@ -162,7 +178,8 @@ export function LoanTable({ loans, projectNames }: LoanTableProps) {
                     {loan.first_payment_date ? formatDisplayDate(loan.first_payment_date) : '—'}
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
