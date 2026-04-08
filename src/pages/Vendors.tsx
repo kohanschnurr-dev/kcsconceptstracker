@@ -636,7 +636,7 @@ export default function Vendors() {
               {/* Contact Info */}
               <div className="space-y-2">
                 {selectedVendor.phone && (
-                  <a href={`tel:${selectedVendor.phone}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
+                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Phone className="h-4 w-4" />
                     {formatPhone(selectedVendor.phone)}
                   </a>

@@ -216,14 +216,10 @@ export function ContactsView({ contacts, onDelete, onStatusChange }: ContactsVie
                     )}
                   </TableCell>
                   <TableCell>
-                    <a
-                      href={`tel:${contact.phone}`}
-                      onClick={e => e.stopPropagation()}
-                      className="flex items-center gap-1 text-sm hover:text-primary transition-colors"
-                    >
+                    <span className="flex items-center gap-1 text-sm">
                       <Phone className="h-3 w-3 text-muted-foreground" />
                       {contact.phone}
-                    </a>
+                    </span>
                   </TableCell>
                   <TableCell><ContactTypeBadge type={contact.contact_type} /></TableCell>
                   <TableCell><ContactStatusBadge status={contact.status} /></TableCell>
