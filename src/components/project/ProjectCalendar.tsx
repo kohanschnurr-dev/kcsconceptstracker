@@ -221,9 +221,10 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                 }}
               >
                 <button
-                  onClick={() => {
-                    if (hasMore) setExpandedDay(isExpanded ? null : dayKey);
-                  }}
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     if (hasMore) setExpandedDay(isExpanded ? null : dayKey);
+                   }}
                   className={cn(
                     'text-[10px] sm:text-xs font-medium mb-0.5 sm:mb-1 w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-colors',
                     isToday(day)
@@ -253,12 +254,12 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                           <p className="text-xs font-semibold">{format(day, 'EEEE, MMM d')}</p>
                           <p className="text-[10px] text-muted-foreground">{dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}</p>
                         </div>
-                        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
+                        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                           {dayTasks.map(task => (
                             <DealCard key={task.id} task={task} compact onClick={() => {
-                              setSelectedTask(task);
-                              setPanelOpen(true);
-                            }} />
+                               setSelectedTask(task);
+                               setPanelOpen(true);
+                             }} />
                           ))}
                         </div>
                       </PopoverContent>
@@ -267,21 +268,21 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                 </div>
 
                 {/* Desktop: existing colored DealCard layout */}
-                <div className="hidden sm:block space-y-0.5">
+                <div className="hidden sm:block space-y-0.5" onClick={(e) => e.stopPropagation()}>
                   {visibleTasks.map(task => (
                     <DealCard
                       key={task.id}
                       task={task}
                       compact
                       onClick={() => {
-                        setSelectedTask(task);
-                        setPanelOpen(true);
-                      }}
+                         setSelectedTask(task);
+                         setPanelOpen(true);
+                       }}
                     />
                   ))}
                   {hasMore && !isExpanded && (
                     <button
-                      onClick={() => setExpandedDay(dayKey)}
+                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpandedDay(dayKey); }}
                       className="text-[10px] text-muted-foreground text-center w-full hover:text-foreground transition-colors"
                     >
                       +{dayTasks.length - 3}
