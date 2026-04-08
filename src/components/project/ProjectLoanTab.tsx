@@ -141,12 +141,12 @@ function LinkedLoanCard({ loanId, onUnlink }: { loanId: string; onUnlink: () => 
                 <InfoRow label="Type" value={LOAN_TYPE_LABELS[loan.loan_type as keyof typeof LOAN_TYPE_LABELS] ?? loan.loan_type} />
                 <InfoRow label="Start Date" value={formatDisplayDate(loan.start_date)} />
                 <InfoRow label="Maturity Date" value={formatDisplayDate(loan.maturity_date)} />
+                <InfoRow label="Payment Freq." value={loan.payment_frequency.replace('_', ' ')} />
               </div>
               <div className="space-y-2">
                 <InfoRow label="Original Amount" value={fmt(loan.original_amount)} />
                 <InfoRow label="Interest Rate" value={`${loan.interest_rate.toFixed(2)}% ${loan.rate_type}`} />
                 <InfoRow label="Term" value={`${loan.loan_term_months} months`} />
-                <InfoRow label="Payment Freq." value={loan.payment_frequency.replace('_', ' ')} />
                 {loan.origination_fee_dollars && <InfoRow label="Origination Fee" value={fmt(loan.origination_fee_dollars)} />}
                 {loan.other_closing_costs && <InfoRow label="Other Closing Costs" value={fmt(loan.other_closing_costs)} />}
               </div>
