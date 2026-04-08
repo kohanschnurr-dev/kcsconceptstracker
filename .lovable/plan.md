@@ -1,70 +1,21 @@
 
 
-## Integrate Loans Page Data into Project Loan Tab
+## Add Origination Fee & Other Closing Costs to Loan Summary
 
 ### Problem
-The project Loan tab currently shows a standalone calculator that saves to `projects` columns (`hm_*`). The user wants it to display real loan data from the `loans` table, with a selector to link/unlink loans.
+The linked loan card in the Project Loan tab doesn't surface origination fees or other closing costs in the summary stats row — only in the Overview tab's detail rows. The user wants these costs visible at a glance.
 
-### Design
+### Changes
 
-The Loan tab will be restructured into three states:
+**File: `src/components/project/ProjectLoanTab.tsx`**
 
-1. **No loan linked** — Show a selector to pick from the user's existing loans (or a link to create one on the Loans page). Keep the calculator as a fallback estimator below.
+1. **Add an "Origination Fee" stat** to the `summaryStats` array (after "Interest Paid"), showing `loan.origination_fee_dollars`. Use the `Landmark` icon with a relevant color.
 
-2. **Loan linked** — Replace the calculator with an embedded loan detail view (reusing patterns from `LoanDetail.tsx`): summary stats, overview cards, amortization table, draw schedule, and payment history. Include a button to unlink and a link to view the full loan detail page.
+2. **Add an "Other Closing Costs" stat** if `loan.other_closing_costs` is non-zero, showing that value.
 
-3. **Multiple loans** — If multiple loans share this `project_id`, list them all.
+3. **Add a "Total Loan Cost" stat** that sums: original amount + total interest paid + origination fee + other closing costs — giving a clear picture of the all-in cost of the loan. This mirrors the "Total Cost of Loan" metric already shown in the `AmortizationTable` component.
 
-### Technical Changes
+4. **Also show `other_closing_costs`** in the Overview tab's right column (currently only origination fee is shown there on line 143).
 
-**File: `src/pages/ProjectDetail.tsx`**
-- Replace the `HardMoneyLoanCalculator` in the `loan` `TabsContent` with a new `ProjectLoanTab` component
-- Pass `projectId` as prop
-
-**New file: `src/components/project/ProjectLoanTab.tsx`**
-- Fetch all loans for this project using `useLoans` (filter by `project_id`)
-- Fetch user's unlinked loans for the selector dropdown
-- **Loan Selector**: Dropdown of user's loans + "Link to Project" button. Uses `updateLoan` mutation to set `project_id`.
-- **Unlink button**: Sets `project_id` to `null` on the loan
-- **Linked loan display** (per loan):
-  - Summary stat cards (Original Amount, Balance, Rate, Monthly Payment, Remaining Term, Interest Paid) — same layout as `LoanDetail.tsx`
-  - Tabs: Overview, Amortization, Draws, Payments — reusing `AmortizationTable`, `DrawScheduleTracker`, `PaymentHistoryTab` components directly
-  - "View Full Details" link to `/loans/{id}`
-  - "Edit" button opening `AddLoanModal`
-- Uses `useLoanDetail` hook for each linked loan to get draws/payments
-- **Keep the calculator collapsed** at the bottom as "Quick Estimate Calculator" accordion for users who haven't created a formal loan yet
-
-**File: `src/hooks/useLoans.ts`**
-- Add a query for fetching user's unlinked loans (where `project_id IS NULL`) for the selector
-
-### UI Flow
-```text
-┌─────────────────────────────────────────────┐
-│ Loan Tab                                     │
-│                                              │
-│ [If no loans linked]                         │
-│  ┌─ Link a Loan ─────────────────────────┐  │
-│  │ Select loan: [▼ Lender - $200K      ] │  │
-│  │              [Link to Project]         │  │
-│  │  or  Go to Loans page to create one   │  │
-│  └────────────────────────────────────────┘  │
-│  ┌─ Quick Estimate Calculator (accordion) ┐  │
-│                                              │
-│ [If loan linked]                             │
-│  ┌─ ABC Capital - Hard Money ──── [Unlink]┐  │
-│  │ Stats Row: Amount | Balance | Rate ... │  │
-│  │ Tabs: Overview | Amortization | Draws  │  │
-│  │       | Payments                       │  │
-│  │ [View Full Details →]                  │  │
-│  └────────────────────────────────────────┘  │
-└─────────────────────────────────────────────┘
-```
-
-### Existing Components Reused (no changes needed)
-- `AmortizationTable` — takes a `Loan` object
-- `DrawScheduleTracker` — takes draws array + callbacks
-- `PaymentHistoryTab` — takes payments array + callbacks
-- `AddLoanModal` — for editing
-- `LoanStatusBadge`, `LoanTypeBadge` — for badges
-- `useLoanDetail` hook — for fetching draws/payments
+5. Adjust the stats grid from `lg:grid-cols-6` to accommodate the extra items cleanly (use `lg:grid-cols-4` with wrapping, which is more readable).
 
