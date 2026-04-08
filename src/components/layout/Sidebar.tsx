@@ -13,7 +13,7 @@ import {
   Settings,
   Bell,
   Landmark,
-  ContactRound,
+  Phone,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -55,7 +55,7 @@ export function Sidebar() {
     { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
     { icon: Users, label: 'Contractors', path: '/vendors' },
     { icon: Briefcase, label: companyName, path: '/business-expenses' },
-    { icon: ContactRound, label: 'CRM', path: '/crm' },
+    { icon: Phone, label: 'CRM', path: '/crm' },
   ];
 
   return (
