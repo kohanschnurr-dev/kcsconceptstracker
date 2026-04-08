@@ -23,7 +23,7 @@ export function useContacts() {
         .eq('user_id', user!.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as CRMContact[];
+      return (data ?? []) as unknown as CRMContact[];
     },
   });
 
@@ -31,7 +31,7 @@ export function useContacts() {
     mutationFn: async (payload: Omit<CRMContact, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await t('crm_contacts').insert(payload).select().single();
       if (error) throw error;
-      return data as CRMContact;
+      return data as unknown as CRMContact;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm_contacts', user?.id] });
@@ -44,7 +44,7 @@ export function useContacts() {
     mutationFn: async ({ id, ...payload }: Partial<CRMContact> & { id: string }) => {
       const { data, error } = await t('crm_contacts').update(payload).eq('id', id).select().single();
       if (error) throw error;
-      return data as CRMContact;
+      return data as unknown as CRMContact;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm_contacts', user?.id] });
@@ -98,7 +98,7 @@ export function useContact(id: string) {
     queryFn: async () => {
       const { data, error } = await t('crm_contacts').select('*').eq('id', id).single();
       if (error) throw error;
-      return data as CRMContact;
+      return data as unknown as CRMContact;
     },
   });
 
@@ -248,7 +248,7 @@ export function useOffers(contactId: string) {
       const { data, error } = await t('crm_offers')
         .select('*').eq('contact_id', contactId).order('offer_date', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as CRMOffer[];
+      return (data ?? []) as unknown as CRMOffer[];
     },
   });
 
