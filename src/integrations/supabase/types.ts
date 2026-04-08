@@ -2628,14 +2628,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      accept_invitation_by_token: {
-        Args: { p_email: string; p_token: string; p_user_id: string }
-        Returns: Json
-      }
-      accept_pending_invitations: {
-        Args: { p_email: string; p_user_id: string }
-        Returns: undefined
-      }
+      accept_invitation_by_token:
+        | { Args: { p_token: string }; Returns: Json }
+        | {
+            Args: { p_email: string; p_token: string; p_user_id: string }
+            Returns: Json
+          }
+      accept_pending_invitations:
+        | { Args: never; Returns: undefined }
+        | { Args: { p_email: string; p_user_id: string }; Returns: undefined }
       add_budget_category: { Args: { new_value: string }; Returns: undefined }
       get_actor_display_name: { Args: { p_user_id: string }; Returns: string }
       get_team_owner_id: { Args: { p_user_id: string }; Returns: string }
