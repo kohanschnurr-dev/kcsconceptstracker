@@ -1,16 +1,17 @@
 
-## Change Rough-ins Color from Amber to Orange
 
-The "Rough-ins" group currently uses `amber` which is too close to the "Milestones" group's `yellow/amber`. Switching Rough-ins to `orange` provides clear visual separation.
+## Fix Weekly View Card Overflow
 
-### Change
+Task cards in the weekly calendar view are overflowing their day columns because the grid cells lack overflow containment and card text isn't constrained.
 
-**`src/lib/calendarCategories.ts`** — Update the `rough_ins` entry in `CATEGORY_GROUPS` (lines 36-43):
+### Changes
 
-- `color`: `'amber'` → `'orange'`
-- `bgClass`: `bg-amber-200 dark:bg-amber-500/20` → `bg-orange-200 dark:bg-orange-500/20`
-- `swatchClass`: `bg-amber-600` → `bg-orange-600`
-- `textClass`: `text-amber-700 dark:text-amber-400` → `text-orange-700 dark:text-orange-400`
-- `borderClass`: `border-amber-400 dark:border-amber-500/30` → `border-orange-400 dark:border-orange-500/30`
+**`src/components/calendar/WeeklyView.tsx`**
+- Add `overflow-hidden` to the `DroppableDay` container so content stays within its column bounds.
 
-One file, six class value swaps. No other files affected.
+**`src/components/calendar/DealCard.tsx`**
+- Add `min-w-0 overflow-hidden` to the outer button in the non-compact variant so flex children truncate properly.
+- Add `min-w-0` to the inner div wrapping title/project name so `truncate` works correctly within flex layouts.
+
+These three class additions ensure cards never visually bleed into neighboring day columns.
+
