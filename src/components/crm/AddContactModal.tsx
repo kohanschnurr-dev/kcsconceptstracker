@@ -150,8 +150,8 @@ export function AddContactModal({ open, onOpenChange, onSubmit, initialData }: P
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={() => {}}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{initialData?.id ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
         </DialogHeader>
@@ -528,6 +528,7 @@ export function AddContactModal({ open, onOpenChange, onSubmit, initialData }: P
               <ChevronLeft className="h-4 w-4 mr-1" /> Back
             </Button>
           )}
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <div className="flex-1" />
           {step < STEPS.length - 1 ? (
             <Button onClick={() => setStep(s => s + 1)}>
