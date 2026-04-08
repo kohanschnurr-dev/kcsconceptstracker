@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
-import { Landmark, Plus } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Landmark, Plus, GitCompareArrows } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { LoanStatsRow } from '@/components/loans/LoanStatsRow';
 import { LoanTable } from '@/components/loans/LoanTable';
 import { LoanCharts } from '@/components/loans/LoanCharts';
+import { LoanComparePanel } from '@/components/loans/LoanComparePanel';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoans } from '@/hooks/useLoans';
 import { calcMonthlyPayment } from '@/types/loans';
@@ -23,6 +24,14 @@ export default function Loans() {
   const [view, setView] = useState<ViewMode>('portfolio');
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [addOpen, setAddOpen] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+
+  const toggleCompare = useCallback((id: string) => {
+    setCompareIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 3 ? [...prev, id] : prev);
+  }, []);
+
+  const compareLoans = useMemo(() => compareIds.map(id => loans.find(l => l.id === id)).filter(Boolean) as typeof loans, [compareIds, loans]);
 
   const projectNames = useMemo(
     () => [...new Set(loans.map(l => l.project_name).filter(Boolean) as string[])].sort(),
@@ -81,6 +90,15 @@ export default function Loans() {
                 By Project
               </button>
             </div>
+            {loans.length >= 2 && (
+              <Button
+                variant={compareMode ? 'default' : 'outline'}
+                onClick={() => { setCompareMode(m => !m); setCompareIds([]); }}
+              >
+                <GitCompareArrows className="h-4 w-4 mr-1.5" />
+                {compareMode ? 'Exit Compare' : 'Compare'}
+              </Button>
+            )}
             <Button onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4 mr-1.5" /> Add Loan
             </Button>
@@ -122,8 +140,28 @@ export default function Loans() {
           </div>
         ) : (
           <>
+            {/* Compare panel */}
+            {compareMode && compareLoans.length >= 2 && (
+              <LoanComparePanel
+                loans={compareLoans}
+                onClose={() => { setCompareMode(false); setCompareIds([]); }}
+              />
+            )}
+
+            {compareMode && compareLoans.length < 2 && (
+              <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 text-center text-sm text-muted-foreground">
+                Select 2–3 loans from the table below to compare
+              </div>
+            )}
+
             {/* Loans table */}
-            <LoanTable loans={visibleLoans} projectNames={projectNames} />
+            <LoanTable
+              loans={visibleLoans}
+              projectNames={projectNames}
+              compareMode={compareMode}
+              selectedIds={compareIds}
+              onToggleSelect={toggleCompare}
+            />
 
             {/* Charts — portfolio view only */}
             {view === 'portfolio' && <LoanCharts loans={visibleLoans} />}
