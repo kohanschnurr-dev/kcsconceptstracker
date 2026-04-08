@@ -1,19 +1,20 @@
 
 
-## Fix "Could not find 'projects' column" Error on Loan Edit
+## Fix: Clicking an event should open detail panel, not "New Event" modal
 
 ### Problem
-The loan detail query fetches with `.select('*, projects(name)')`, which adds a `projects` object to the result. When the user edits and saves, that `projects` field (along with `project_name`) gets sent in the update payload. The database rejects it because `projects` is a join, not a column.
+The day cell `<div>` (line 218) has an `onClick` that always opens the "New Project Event" modal. When clicking on an existing event (`DealCard`), the click bubbles up to the day cell, triggering both the detail panel AND the new event modal.
 
-### Change
+### Fix
 
-**File: `src/hooks/useLoans.ts`** (line 170)
+**File: `src/components/project/ProjectCalendar.tsx`**
 
-Add `projects` to the destructured exclusion list:
+1. In the `DealCard` `onClick` handlers (lines 258-261 and 276-279), add `e.stopPropagation()` to prevent the click from bubbling up to the day cell.
 
-```typescript
-const { project_name, projects, created_at, updated_at, ...dbPayload } = payload as any;
-```
+2. Similarly, add `e.stopPropagation()` to the "expand" button (line 284) and the day number button (line 223) to prevent those from also opening the modal.
 
-One word added. No other files affected.
+This ensures:
+- Clicking empty space on a day → opens New Event modal (existing behavior)
+- Clicking an existing event → opens detail panel only (fixed)
+- Clicking "+N more" → expands list only (fixed)
 
