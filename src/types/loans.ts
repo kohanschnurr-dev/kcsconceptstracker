@@ -126,6 +126,7 @@ export interface AmortizationRow {
   interest: number;
   balance: number;
   is_balloon?: boolean;
+  accrued_interest?: number;
 }
 
 /** Standard amortization payment: P * r(1+r)^n / ((1+r)^n - 1) */
