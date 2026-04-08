@@ -55,7 +55,7 @@ export function Sidebar() {
     { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
     { icon: Users, label: 'Contractors', path: '/vendors' },
     { icon: Briefcase, label: companyName, path: '/business-expenses' },
-    { icon: ContactRound, label: 'CRM', path: '/crm' },
+    { icon: Phone, label: 'CRM', path: '/crm' },
   ];
 
   return (
