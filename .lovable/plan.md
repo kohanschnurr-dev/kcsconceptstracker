@@ -1,20 +1,70 @@
 
 
-## Fix: Clicking an event should open detail panel, not "New Event" modal
+## Integrate Loans Page Data into Project Loan Tab
 
 ### Problem
-The day cell `<div>` (line 218) has an `onClick` that always opens the "New Project Event" modal. When clicking on an existing event (`DealCard`), the click bubbles up to the day cell, triggering both the detail panel AND the new event modal.
+The project Loan tab currently shows a standalone calculator that saves to `projects` columns (`hm_*`). The user wants it to display real loan data from the `loans` table, with a selector to link/unlink loans.
 
-### Fix
+### Design
 
-**File: `src/components/project/ProjectCalendar.tsx`**
+The Loan tab will be restructured into three states:
 
-1. In the `DealCard` `onClick` handlers (lines 258-261 and 276-279), add `e.stopPropagation()` to prevent the click from bubbling up to the day cell.
+1. **No loan linked** — Show a selector to pick from the user's existing loans (or a link to create one on the Loans page). Keep the calculator as a fallback estimator below.
 
-2. Similarly, add `e.stopPropagation()` to the "expand" button (line 284) and the day number button (line 223) to prevent those from also opening the modal.
+2. **Loan linked** — Replace the calculator with an embedded loan detail view (reusing patterns from `LoanDetail.tsx`): summary stats, overview cards, amortization table, draw schedule, and payment history. Include a button to unlink and a link to view the full loan detail page.
 
-This ensures:
-- Clicking empty space on a day → opens New Event modal (existing behavior)
-- Clicking an existing event → opens detail panel only (fixed)
-- Clicking "+N more" → expands list only (fixed)
+3. **Multiple loans** — If multiple loans share this `project_id`, list them all.
+
+### Technical Changes
+
+**File: `src/pages/ProjectDetail.tsx`**
+- Replace the `HardMoneyLoanCalculator` in the `loan` `TabsContent` with a new `ProjectLoanTab` component
+- Pass `projectId` as prop
+
+**New file: `src/components/project/ProjectLoanTab.tsx`**
+- Fetch all loans for this project using `useLoans` (filter by `project_id`)
+- Fetch user's unlinked loans for the selector dropdown
+- **Loan Selector**: Dropdown of user's loans + "Link to Project" button. Uses `updateLoan` mutation to set `project_id`.
+- **Unlink button**: Sets `project_id` to `null` on the loan
+- **Linked loan display** (per loan):
+  - Summary stat cards (Original Amount, Balance, Rate, Monthly Payment, Remaining Term, Interest Paid) — same layout as `LoanDetail.tsx`
+  - Tabs: Overview, Amortization, Draws, Payments — reusing `AmortizationTable`, `DrawScheduleTracker`, `PaymentHistoryTab` components directly
+  - "View Full Details" link to `/loans/{id}`
+  - "Edit" button opening `AddLoanModal`
+- Uses `useLoanDetail` hook for each linked loan to get draws/payments
+- **Keep the calculator collapsed** at the bottom as "Quick Estimate Calculator" accordion for users who haven't created a formal loan yet
+
+**File: `src/hooks/useLoans.ts`**
+- Add a query for fetching user's unlinked loans (where `project_id IS NULL`) for the selector
+
+### UI Flow
+```text
+┌─────────────────────────────────────────────┐
+│ Loan Tab                                     │
+│                                              │
+│ [If no loans linked]                         │
+│  ┌─ Link a Loan ─────────────────────────┐  │
+│  │ Select loan: [▼ Lender - $200K      ] │  │
+│  │              [Link to Project]         │  │
+│  │  or  Go to Loans page to create one   │  │
+│  └────────────────────────────────────────┘  │
+│  ┌─ Quick Estimate Calculator (accordion) ┐  │
+│                                              │
+│ [If loan linked]                             │
+│  ┌─ ABC Capital - Hard Money ──── [Unlink]┐  │
+│  │ Stats Row: Amount | Balance | Rate ... │  │
+│  │ Tabs: Overview | Amortization | Draws  │  │
+│  │       | Payments                       │  │
+│  │ [View Full Details →]                  │  │
+│  └────────────────────────────────────────┘  │
+└─────────────────────────────────────────────┘
+```
+
+### Existing Components Reused (no changes needed)
+- `AmortizationTable` — takes a `Loan` object
+- `DrawScheduleTracker` — takes draws array + callbacks
+- `PaymentHistoryTab` — takes payments array + callbacks
+- `AddLoanModal` — for editing
+- `LoanStatusBadge`, `LoanTypeBadge` — for badges
+- `useLoanDetail` hook — for fetching draws/payments
 
