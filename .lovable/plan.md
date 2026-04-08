@@ -1,21 +1,25 @@
 
 
-## Prevent Accidental Modal Closure on Add Contact Form
+## Create CRM Database Tables
 
-### Problem
-The "Add New Contact" modal is a multi-step form (6 steps) that takes significant time to fill out. Currently, clicking the backdrop or pressing Escape closes it and loses all progress.
+The error "Could not find the table 'public.crm_contacts' in the schema cache" means the four CRM tables referenced by the code don't exist yet. They need to be created with proper RLS policies.
 
-### Changes
+### Database Migration
 
-**File: `src/components/crm/AddContactModal.tsx`**
+Create four tables matching the types defined in `src/types/crm.ts`:
 
-1. Add `onInteractOutside={(e) => e.preventDefault()}` and `onEscapeKeyDown={(e) => e.preventDefault()}` to `<DialogContent>` — this prevents backdrop clicks and Escape key from closing the modal.
+1. **`crm_contacts`** — all contact/lead fields (name, phone, email, property details, status, motivation, etc.) with `user_id` referencing `auth.users(id)`
+2. **`crm_activities`** — activity log per contact (type, description, outcome, duration, notes) with FK to `crm_contacts`
+3. **`crm_calendar_events`** — CRM-specific calendar events (follow-ups, appointments) with FK to `crm_contacts`
+4. **`crm_offers`** — offer tracking per contact (amount, method, response) with FK to `crm_contacts`
 
-2. Change `<Dialog open={open} onOpenChange={onOpenChange}>` to `<Dialog open={open} onOpenChange={() => {}}>` so the dialog state is only controlled by explicit Cancel/Save actions.
+### RLS Policies
 
-3. Add a "Cancel" button (already may exist) that calls `onOpenChange(false)` explicitly.
+Each table gets standard user-scoped RLS:
+- SELECT/INSERT/UPDATE/DELETE where `auth.uid() = user_id`
+- For child tables (`crm_activities`, `crm_calendar_events`, `crm_offers`), policies check `user_id` directly (each row stores `user_id`)
 
-4. Keep the existing form reset in the `useEffect` that fires when `open` changes — form only resets when reopened fresh.
+### No Code Changes Needed
 
-This matches the existing pattern used for the Add Loan modal.
+The hooks in `useCRM.ts` and types in `crm.ts` already match the schema — only the database tables are missing.
 
