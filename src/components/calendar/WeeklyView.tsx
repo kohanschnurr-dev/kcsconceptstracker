@@ -52,7 +52,7 @@ function DroppableDay({ day, children, onDoubleClick }: { day: Date; children: R
       ref={setNodeRef}
       onDoubleClick={onDoubleClick}
       className={cn(
-        'min-h-[400px] p-3 rounded-lg border transition-colors',
+        'min-h-[400px] p-3 rounded-lg border transition-colors overflow-hidden',
         'bg-card/50 border-border',
         isToday(day) && 'ring-2 ring-primary/50',
         isOver && 'ring-2 ring-primary/50 bg-primary/5'
