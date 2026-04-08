@@ -200,7 +200,6 @@ export function useTeam() {
           body: {
             email:       email.toLowerCase(),
             ownerName:   user?.email || 'A team owner',
-            appUrl:      window.location.origin,
             token,
             role,
             companyName: companyData?.company_name || team.name || 'GroundWorks',
@@ -253,7 +252,6 @@ export function useTeam() {
         body: {
           email,
           ownerName:   user?.email || 'A team owner',
-          appUrl:      window.location.origin,
           token,
           role,
           companyName: companyData?.company_name || team.name || 'GroundWorks',
