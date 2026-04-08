@@ -112,7 +112,7 @@ function LinkedLoanCard({ loanId, onUnlink }: { loanId: string; onUnlink: () => 
 
       <CardContent className="space-y-5">
         {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
           {summaryStats.map(s => (
             <div key={s.label} className="text-center p-3 rounded-lg border border-border bg-card/50">
               <div className={cn('rounded-lg p-1.5 w-fit mx-auto mb-1.5', s.bg)}>
