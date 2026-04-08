@@ -34,7 +34,7 @@ serve(async (req) => {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
 
-    const { email, ownerName, appUrl, token, role, companyName } = await req.json();
+    const { email, ownerName, token, role, companyName } = await req.json();
 
     if (!email) {
       return new Response(JSON.stringify({ error: "Email is required" }), {
@@ -50,7 +50,7 @@ serve(async (req) => {
       });
     }
 
-    const baseUrl = appUrl || "https://kcsconceptstracker.lovable.app";
+    const baseUrl = "https://kcsconceptstracker.lovable.app";
 
     // ── Secure token-based invite link ──────────────────────────────
     // The token is validated server-side; the link alone grants nothing

@@ -48,8 +48,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.removeItem(INVITE_TOKEN_STORAGE_KEY);
             supabase
               .rpc('accept_invitation_by_token', {
-                p_user_id: u.id,
-                p_email:   email,
                 p_token:   pendingToken,
               })
               .then(({ data, error }) => {
@@ -67,10 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Covers users who navigated to /auth directly (no token) and any
           // invitations sent before the token system was introduced.
           // Note: email is derived server-side from auth.jwt() — p_email kept for compat.
-          supabase.rpc('accept_pending_invitations', {
-            p_user_id: u.id,
-            p_email: email,
-          }).then(({ error }) => {
+          supabase.rpc('accept_pending_invitations').then(({ error }) => {
             if (error) console.error('Failed to accept pending invitations:', error);
           });
         }
