@@ -88,7 +88,7 @@ import { DocumentsGallery } from '@/components/project/DocumentsGallery';
 
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { CashFlowCalculator } from '@/components/project/CashFlowCalculator';
-import { HardMoneyLoanCalculator } from '@/components/project/HardMoneyLoanCalculator';
+import { ProjectLoanTab } from '@/components/project/ProjectLoanTab';
 
 import { ProjectCalendar } from '@/components/project/ProjectCalendar';
 import { ProjectTasks } from '@/components/project/ProjectTasks';
@@ -1171,23 +1171,15 @@ export default function ProjectDetail() {
           )}
 
           <TabsContent value="loan" className="space-y-6">
-              <HardMoneyLoanCalculator
+              <ProjectLoanTab
                 projectId={id!}
                 purchasePrice={project.purchase_price || 0}
                 totalBudget={totalBudget}
                 arv={project.arv || 0}
                 projectStartDate={project.start_date}
-                initialLoanAmount={(project as any).hm_loan_amount}
-                initialInterestRate={(project as any).hm_interest_rate ?? 12}
-                initialLoanTermMonths={(project as any).hm_loan_term_months ?? 6}
-                initialPoints={(project as any).hm_points ?? 3}
-                initialClosingCosts={(project as any).hm_closing_costs ?? 0}
-                initialInterestOnly={(project as any).hm_interest_only ?? true}
-                initialUseToDate={(project as any).hm_use_to_date ?? false}
-                initialLoanStartDate={(project as any).hm_loan_start_date}
+                project={project}
                 onSaved={() => fetchProjectData(false)}
               />
-              
             </TabsContent>
 
           <TabsContent value="team">
