@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, Edit2, Phone, Mail, MessageSquare, Calendar,
+  ArrowLeft, Edit2, Phone, Mail, Calendar,
   Plus, Trash2, Ban, Clock, DollarSign,
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -13,10 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
-} from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ContactStatusBadge, ContactTypeBadge, WarmthIndicator, PriorityDot } from '@/components/crm/CRMStatusBadge';
 import { LogActivityModal } from '@/components/crm/LogActivityModal';
@@ -90,7 +86,7 @@ export default function CRMContactDetail() {
   const [logOpen, setLogOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [offerOpen, setOfferOpen] = useState(false);
-  const [dncConfirm, setDncConfirm] = useState(false);
+  
   const [newOffer, setNewOffer] = useState({ offer_date: '', offer_amount: '', method: 'verbal', response: 'pending', counter_amount: '', notes: '' });
 
   const { contact, isLoading, updateContact } = useContact(id!);
@@ -104,10 +100,6 @@ export default function CRMContactDetail() {
   const fullName = `${contact.first_name} ${contact.last_name}`;
   const daysSince = daysBetween(contact.created_at, new Date().toISOString());
 
-  const handleMarkDNC = () => {
-    updateContact.mutate({ is_dnc: true, status: 'dnc' });
-    setDncConfirm(false);
-  };
 
   const handleSubmitOffer = () => {
     if (!newOffer.offer_date || !newOffer.offer_amount) return;
@@ -442,23 +434,6 @@ export default function CRMContactDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* DNC Confirmation */}
-      <AlertDialog open={dncConfirm} onOpenChange={setDncConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Mark as Do Not Contact?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove all scheduled follow-ups for {fullName} and prevent future follow-up scheduling. The contact will remain in the database. You can remove the DNC status later from the Edit screen.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleMarkDNC}>
-              Mark DNC
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </MainLayout>
   );
 }
