@@ -157,17 +157,9 @@ export default function CRMContactDetail() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <a href={`sms:${contact.phone}`}><MessageSquare className="h-3.5 w-3.5 mr-1.5" /> Text</a>
-            </Button>
             <Button variant="outline" size="sm" onClick={() => setLogOpen(true)}>
               <Clock className="h-3.5 w-3.5 mr-1.5" /> Log Activity
             </Button>
-            {!contact.is_dnc && (
-              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDncConfirm(true)}>
-                <Ban className="h-3.5 w-3.5 mr-1.5" /> Mark DNC
-              </Button>
-            )}
             <Button size="sm" onClick={() => setEditOpen(true)}>
               <Edit2 className="h-3.5 w-3.5 mr-1.5" /> Edit
             </Button>
