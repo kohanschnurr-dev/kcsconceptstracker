@@ -1,16 +1,16 @@
 
 
-## Remove Category Label Chip from DealCard
+## Auto-default Interest Calculation to Simple Interest
 
-The category badge ("Third Party", "Due Diligence", etc.) at the bottom of each card is redundant since the card's color and the legend already communicate the category. Removing it declutters the cards.
+When the user selects a loan type, automatically set the interest calculation method based on the type:
+- **Conventional** and **DSCR** → `standard` (30/360)
+- **All other types** (Hard Money, Private Money, Seller Financing, HELOC, Bridge, Construction, Portfolio, Other) → `simple`
 
-### Change
+Also update the initial default from `standard` to `simple` since Hard Money is the default loan type.
 
-**`src/components/calendar/DealCard.tsx`** — Lines 123-135 (the bottom row with the category chip):
+### Changes
 
-- Remove the category label `<span>` (lines 124-131) entirely.
-- Keep the subtask count (`0/0 tasks`) but move it to stand alone, aligned right.
-- Exception: keep the "Critical Path" label when `task.isCriticalPath && !task.isCompleted` — this is a status indicator, not a category.
-
-Result: the bottom of each non-compact card shows only the task count (right-aligned), unless it's a critical path item which still shows the "Critical Path" badge.
+**`src/components/loans/AddLoanModal.tsx`**
+1. Change the `empty()` default for `interest_calc_method` from `'standard'` to `'simple'` (since default loan type is `hard_money`).
+2. In the `loan_type` `onValueChange` handler, add logic: if the new type is `conventional` or `dscr`, set `interest_calc_method` to `'standard'`; otherwise set it to `'simple'`.
 
