@@ -121,14 +121,11 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
       </div>
       
       <div className="flex items-center justify-between">
-        <span className={cn(
-          'text-[10px] px-2 py-0.5 rounded-full border',
-          task.isCriticalPath 
-            ? 'bg-red-200 dark:bg-red-500/20 text-foreground dark:text-red-400 border-red-500' 
-            : `${categoryStyles.bgClass} ${categoryStyles.textClass} ${categoryStyles.borderClass}`
-        )}>
-          {task.isCriticalPath && !task.isCompleted ? 'Critical Path' : categoryLabel}
-        </span>
+        {task.isCriticalPath && !task.isCompleted ? (
+          <span className="text-[10px] px-2 py-0.5 rounded-full border bg-red-200 dark:bg-red-500/20 text-foreground dark:text-red-400 border-red-500">
+            Critical Path
+          </span>
+        ) : <span />}
         <span className="text-[10px] text-muted-foreground">
           {task.checklist.filter(c => c.completed).length}/{task.checklist.length} tasks
         </span>
