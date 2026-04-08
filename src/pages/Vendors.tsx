@@ -639,7 +639,7 @@ export default function Vendors() {
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Phone className="h-4 w-4" />
                     {formatPhone(selectedVendor.phone)}
-                  </a>
+                  </span>
                 )}
                 {selectedVendor.email && (
                   <a href={`mailto:${selectedVendor.email}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
