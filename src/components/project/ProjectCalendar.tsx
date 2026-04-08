@@ -254,10 +254,9 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                           <p className="text-xs font-semibold">{format(day, 'EEEE, MMM d')}</p>
                           <p className="text-[10px] text-muted-foreground">{dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}</p>
                         </div>
-                        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
+                        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                           {dayTasks.map(task => (
-                            <DealCard key={task.id} task={task} compact onClick={(e: React.MouseEvent) => {
-                               e.stopPropagation();
+                            <DealCard key={task.id} task={task} compact onClick={() => {
                                setSelectedTask(task);
                                setPanelOpen(true);
                              }} />
@@ -269,14 +268,13 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                 </div>
 
                 {/* Desktop: existing colored DealCard layout */}
-                <div className="hidden sm:block space-y-0.5">
+                <div className="hidden sm:block space-y-0.5" onClick={(e) => e.stopPropagation()}>
                   {visibleTasks.map(task => (
                     <DealCard
                       key={task.id}
                       task={task}
                       compact
-                      onClick={(e: React.MouseEvent) => {
-                         e.stopPropagation();
+                      onClick={() => {
                          setSelectedTask(task);
                          setPanelOpen(true);
                        }}
