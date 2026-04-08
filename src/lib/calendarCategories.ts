@@ -35,11 +35,11 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, { label: string; color: stri
   },
   rough_ins: {
     label: 'Rough-ins',
-    color: 'amber',
-    bgClass: 'bg-amber-200 dark:bg-amber-500/20',
-    swatchClass: 'bg-amber-600',
-    textClass: 'text-amber-700 dark:text-amber-400',
-    borderClass: 'border-amber-400 dark:border-amber-500/30',
+    color: 'orange',
+    bgClass: 'bg-orange-200 dark:bg-orange-500/20',
+    swatchClass: 'bg-orange-600',
+    textClass: 'text-orange-700 dark:text-orange-400',
+    borderClass: 'border-orange-400 dark:border-orange-500/30',
   },
   inspections: {
     label: 'Inspections',
