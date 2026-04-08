@@ -1,25 +1,47 @@
 
 
-## Create CRM Database Tables
+## Loan Compare & Contrast Mode
 
-The error "Could not find the table 'public.crm_contacts' in the schema cache" means the four CRM tables referenced by the code don't exist yet. They need to be created with proper RLS policies.
+### Approach
 
-### Database Migration
+Add a "Compare" mode to the Loans page where users can select 2-3 loans from their table via checkboxes, then view a side-by-side comparison panel. This is the most natural UX since the loans already exist in the table — no need for a separate page or manual data entry.
 
-Create four tables matching the types defined in `src/types/crm.ts`:
+### Changes
 
-1. **`crm_contacts`** — all contact/lead fields (name, phone, email, property details, status, motivation, etc.) with `user_id` referencing `auth.users(id)`
-2. **`crm_activities`** — activity log per contact (type, description, outcome, duration, notes) with FK to `crm_contacts`
-3. **`crm_calendar_events`** — CRM-specific calendar events (follow-ups, appointments) with FK to `crm_contacts`
-4. **`crm_offers`** — offer tracking per contact (amount, method, response) with FK to `crm_contacts`
+**1. New component: `src/components/loans/LoanComparePanel.tsx`**
 
-### RLS Policies
+A side-by-side comparison card that receives an array of Loan objects and displays:
+- **Header row**: Loan nickname/lender per column
+- **Key metrics rows** (side-by-side):
+  - Loan Amount / Balance
+  - Interest Rate / Rate Type
+  - Loan Term
+  - Monthly Payment
+  - Origination Fee (points + dollars)
+  - Other Closing Costs
+  - Total Cost of Loan (principal + total interest + origination + closing costs, computed via `buildAmortizationSchedule`)
+  - Total Interest Paid
+  - Effective APR (total cost annualized)
+- **Winner highlighting**: Green highlight on the better value in each row (lower rate, lower total cost, etc.)
+- **Summary verdict**: "Loan A saves $X over the life of the loan" at the bottom
+- Dismiss button to exit compare mode
 
-Each table gets standard user-scoped RLS:
-- SELECT/INSERT/UPDATE/DELETE where `auth.uid() = user_id`
-- For child tables (`crm_activities`, `crm_calendar_events`, `crm_offers`), policies check `user_id` directly (each row stores `user_id`)
+**2. Update `src/components/loans/LoanTable.tsx`**
 
-### No Code Changes Needed
+- Add a `compareMode` prop and checkbox column when active
+- Track selected loan IDs (max 3)
+- Expose selected IDs via callback
 
-The hooks in `useCRM.ts` and types in `crm.ts` already match the schema — only the database tables are missing.
+**3. Update `src/pages/Loans.tsx`**
+
+- Add a "Compare" toggle button in the header (next to "Add Loan")
+- When compare mode is on, show checkboxes in the loan table
+- When 2+ loans are selected, render `LoanComparePanel` above/below the table
+- Exit compare mode clears selections
+
+### Technical Details
+
+- Reuses `buildAmortizationSchedule` and `calcMonthlyPayment` from `src/types/loans.ts` for total interest/cost calculations
+- No database changes needed — purely client-side comparison of existing loan records
+- Comparison highlights use existing Tailwind classes (`text-success`, `text-destructive`, `bg-success/10`)
 
