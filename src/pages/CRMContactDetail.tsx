@@ -166,9 +166,6 @@ export default function CRMContactDetail() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" asChild>
-              <a href={`tel:${contact.phone}`}><Phone className="h-3.5 w-3.5 mr-1.5" /> Call</a>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
               <a href={`sms:${contact.phone}`}><MessageSquare className="h-3.5 w-3.5 mr-1.5" /> Text</a>
             </Button>
             <Button variant="outline" size="sm" onClick={() => setLogOpen(true)}>
@@ -188,7 +185,7 @@ export default function CRMContactDetail() {
         {/* Quick summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
-            { label: 'Phone', value: <a href={`tel:${contact.phone}`} className="text-primary hover:underline text-xs">{contact.phone}</a> },
+            { label: 'Phone', value: <span className="text-xs">{contact.phone}</span> },
             { label: 'Email', value: contact.email ? <a href={`mailto:${contact.email}`} className="text-primary hover:underline text-xs truncate">{contact.email}</a> : '—' },
             { label: 'Status', value: <ContactStatusBadge status={contact.status} /> },
             { label: 'Last Contact', value: contact.last_contacted_at ? new Date(contact.last_contacted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—' },
@@ -227,7 +224,7 @@ export default function CRMContactDetail() {
                 <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground font-medium">Contact Info</CardTitle></CardHeader>
                 <CardContent>
                   <InfoRow label="Full Name" value={fullName} />
-                  <InfoRow label="Phone" value={<a href={`tel:${contact.phone}`} className="text-primary hover:underline">{contact.phone}</a>} />
+                  <InfoRow label="Phone" value={contact.phone} />
                   {contact.phone_secondary && <InfoRow label="Alt Phone" value={contact.phone_secondary} />}
                   {contact.email && <InfoRow label="Email" value={<a href={`mailto:${contact.email}`} className="text-primary hover:underline">{contact.email}</a>} />}
                   <InfoRow label="Type" value={<ContactTypeBadge type={contact.contact_type} />} />

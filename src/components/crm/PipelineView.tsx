@@ -60,9 +60,7 @@ function PipelineCard({ contact, isDragging, onDragStart }: PipelineCardProps) {
         )}
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Phone className="h-3 w-3" />
-          <a href={`tel:${contact.phone}`} onClick={e => e.stopPropagation()} className="hover:text-primary">
-            {contact.phone}
-          </a>
+          <span>{contact.phone}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
           <span className="flex items-center gap-1 text-muted-foreground">
