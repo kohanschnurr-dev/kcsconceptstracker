@@ -150,7 +150,7 @@ export function AddContactModal({ open, onOpenChange, onSubmit, initialData }: P
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onOpenChange(false); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{initialData?.id ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
