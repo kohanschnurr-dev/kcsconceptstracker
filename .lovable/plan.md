@@ -1,24 +1,20 @@
 
 
-## Remove Phone Call Links — Make Numbers Static Text
-
-### Problem
-Clicking phone numbers triggers the browser's "Open Pick an app?" dialog. The user wants phone numbers displayed as plain text with no click-to-call behavior.
+## Remove "Text" and "Mark DNC" Buttons from CRM Contact Detail
 
 ### Changes
 
-**1. `src/components/crm/ContactsView.tsx`**
-- Replace the `<a href="tel:...">` link with a plain `<span>` for the phone number in the contacts table.
+**`src/pages/CRMContactDetail.tsx`**
 
-**2. `src/components/crm/PipelineView.tsx`**
-- Replace the `<a href="tel:...">` link with a plain `<span>` on the pipeline card phone display.
+1. **Remove the "Text" button** (~line 168-170): Delete the `<Button>` wrapping the `sms:` link.
 
-**3. `src/pages/CRMContactDetail.tsx`** (4 instances)
-- Remove the "Call" button that wraps `<a href="tel:...">`.
-- Replace the 3 phone `<a>` tags in the info grid and detail card with plain `<span>` elements.
+2. **Remove the "Mark DNC" button** (~line 174-178): Delete the conditional block rendering the DNC button.
 
-**4. `src/pages/Vendors.tsx`**
-- Replace the `<a href="tel:...">` link with a plain `<span>` for vendor phone numbers.
+3. **Remove the DNC confirmation dialog** (~lines 447-459 area): Delete the `AlertDialog` for DNC confirmation.
 
-All styling (icons, text size, colors) will be preserved — only the clickable `tel:` link behavior is removed.
+4. **Remove the `handleMarkDNC` function** (~lines 107-110) and `dncConfirm` state variable.
+
+5. **Clean up unused imports**: Remove `Ban`, `MessageSquare` if no longer referenced elsewhere in the file.
+
+No other files need changes — these buttons only appear on the contact detail page.
 
