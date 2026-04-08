@@ -47,7 +47,7 @@ const empty = (): Omit<Loan, 'id' | 'created_at' | 'updated_at' | 'project_name'
   amortization_period_months: 360,
   payment_frequency: 'monthly',
   payment_frequency_custom: null,
-  interest_calc_method: 'standard',
+  interest_calc_method: 'simple',
   start_date: format(new Date(), 'yyyy-MM-dd'),
   maturity_date: format(addMonths(new Date(), 12), 'yyyy-MM-dd'),
   first_payment_date: null,
@@ -234,7 +234,7 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
               </div>
               <div>
                 <Label>Loan Type <span className="text-destructive">*</span></Label>
-                <Select value={form.loan_type} onValueChange={v => set('loan_type', v)}>
+                <Select value={form.loan_type} onValueChange={v => { set('loan_type', v); set('interest_calc_method', (v === 'conventional' || v === 'dscr') ? 'standard' : 'simple'); }}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(LOAN_TYPE_LABELS).map(([v, l]) => (
