@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { X, Trophy, TrendingDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
 import { buildAmortizationSchedule, calcMonthlyPayment, LOAN_TYPE_LABELS } from '@/types/loans';
 import type { Loan } from '@/types/loans';
 
@@ -21,21 +22,24 @@ interface LoanMetrics {
   closingCosts: number;
   totalCost: number;
   effectiveRate: number;
+  paybackMonths: number;
 }
 
-function computeMetrics(loan: Loan): LoanMetrics {
+function computeMetrics(loan: Loan, paybackMonths: number): LoanMetrics {
   const monthly = loan.monthly_payment ?? calcMonthlyPayment(
     loan.original_amount, loan.interest_rate, loan.loan_term_months,
     loan.amortization_period_months, loan.payment_frequency, loan.interest_calc_method,
   );
   const schedule = buildAmortizationSchedule(loan);
-  const totalInterest = schedule.reduce((s, r) => s + r.interest, 0);
+  // Only sum interest for the payback period (capped at actual schedule length)
+  const cappedMonths = Math.min(paybackMonths, schedule.length);
+  const totalInterest = schedule.slice(0, cappedMonths).reduce((s, r) => s + r.interest, 0);
   const origPts = (loan.origination_fee_points ?? 0) / 100 * loan.original_amount;
   const origDollars = loan.origination_fee_dollars ?? 0;
   const originationCost = origPts + origDollars;
   const closingCosts = loan.other_closing_costs ?? 0;
   const totalCost = totalInterest + originationCost + closingCosts;
-  const termYears = loan.loan_term_months / 12;
+  const termYears = paybackMonths / 12;
   const effectiveRate = termYears > 0 ? (totalCost / loan.original_amount / termYears) * 100 : 0;
 
   return {
@@ -47,6 +51,7 @@ function computeMetrics(loan: Loan): LoanMetrics {
     closingCosts,
     totalCost,
     effectiveRate,
+    paybackMonths: cappedMonths,
   };
 }
 
@@ -76,7 +81,10 @@ const rows: RowDef[] = [
 ];
 
 export function LoanComparePanel({ loans, onClose }: ComparePanelProps) {
-  const metrics = useMemo(() => loans.map(computeMetrics), [loans]);
+  const maxTerm = useMemo(() => Math.max(...loans.map(l => l.loan_term_months)), [loans]);
+  const [paybackMonths, setPaybackMonths] = useState(maxTerm);
+
+  const metrics = useMemo(() => loans.map(l => computeMetrics(l, paybackMonths)), [loans, paybackMonths]);
 
   const lowestTotalIdx = useMemo(() => {
     let minIdx = 0;
@@ -105,6 +113,33 @@ export function LoanComparePanel({ loans, onClose }: ComparePanelProps) {
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Payback Duration Slider */}
+        <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-muted-foreground">Payback Duration</span>
+            <span className="text-sm font-bold tabular-nums">
+              {paybackMonths} month{paybackMonths !== 1 ? 's' : ''}
+              {paybackMonths < maxTerm && (
+                <span className="text-xs text-muted-foreground font-normal ml-1.5">
+                  (early payoff — {maxTerm - paybackMonths} mo early)
+                </span>
+              )}
+            </span>
+          </div>
+          <Slider
+            min={1}
+            max={maxTerm}
+            step={1}
+            value={[paybackMonths]}
+            onValueChange={([v]) => setPaybackMonths(v)}
+            className="w-full"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>1 mo</span>
+            <span>{maxTerm} mo (full term)</span>
+          </div>
+        </div>
+
         {/* Header */}
         <div className="grid gap-3" style={{ gridTemplateColumns: `160px repeat(${metrics.length}, 1fr)` }}>
           <div />
@@ -161,7 +196,7 @@ export function LoanComparePanel({ loans, onClose }: ComparePanelProps) {
           <div className="rounded-lg bg-success/10 border border-success/20 p-4 text-center">
             <p className="text-sm font-medium text-success">
               <strong>{metrics[lowestTotalIdx].label}</strong> saves you{' '}
-              <strong>{fmt(savings)}</strong> over the life of the loan
+              <strong>{fmt(savings)}</strong> over {paybackMonths} month{paybackMonths !== 1 ? 's' : ''}
             </p>
           </div>
         )}
