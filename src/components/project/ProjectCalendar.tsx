@@ -221,9 +221,10 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                 }}
               >
                 <button
-                  onClick={() => {
-                    if (hasMore) setExpandedDay(isExpanded ? null : dayKey);
-                  }}
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     if (hasMore) setExpandedDay(isExpanded ? null : dayKey);
+                   }}
                   className={cn(
                     'text-[10px] sm:text-xs font-medium mb-0.5 sm:mb-1 w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-colors',
                     isToday(day)
@@ -255,10 +256,11 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                         </div>
                         <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
                           {dayTasks.map(task => (
-                            <DealCard key={task.id} task={task} compact onClick={() => {
-                              setSelectedTask(task);
-                              setPanelOpen(true);
-                            }} />
+                            <DealCard key={task.id} task={task} compact onClick={(e: React.MouseEvent) => {
+                               e.stopPropagation();
+                               setSelectedTask(task);
+                               setPanelOpen(true);
+                             }} />
                           ))}
                         </div>
                       </PopoverContent>
@@ -273,10 +275,11 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                       key={task.id}
                       task={task}
                       compact
-                      onClick={() => {
-                        setSelectedTask(task);
-                        setPanelOpen(true);
-                      }}
+                      onClick={(e: React.MouseEvent) => {
+                         e.stopPropagation();
+                         setSelectedTask(task);
+                         setPanelOpen(true);
+                       }}
                     />
                   ))}
                   {hasMore && !isExpanded && (
