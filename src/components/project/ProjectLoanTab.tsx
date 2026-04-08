@@ -61,6 +61,10 @@ function LinkedLoanCard({ loanId, onUnlink }: { loanId: string; onUnlink: () => 
   const remainingTerm = Math.max(loan.loan_term_months - payments.length, 0);
   const totalInterestPaid = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
 
+  const originationFee = loan.origination_fee_dollars ?? 0;
+  const otherClosingCosts = loan.other_closing_costs ?? 0;
+  const totalLoanCost = loan.original_amount + totalInterestPaid + originationFee + otherClosingCosts;
+
   const summaryStats = [
     { label: 'Original Amount', value: fmt(loan.original_amount), icon: DollarSign, color: 'text-primary', bg: 'bg-primary/10' },
     { label: 'Balance', value: fmt(loan.outstanding_balance), icon: TrendingDown, color: 'text-warning', bg: 'bg-warning/10' },
@@ -68,6 +72,9 @@ function LinkedLoanCard({ loanId, onUnlink }: { loanId: string; onUnlink: () => 
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success', bg: 'bg-success/10' },
     { label: 'Remaining', value: `${remainingTerm} mo`, icon: Calendar, color: 'text-primary', bg: 'bg-primary/10' },
     { label: 'Interest Paid', value: fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive', bg: 'bg-destructive/10' },
+    { label: 'Origination Fee', value: fmt(originationFee), icon: Landmark, color: 'text-orange-400', bg: 'bg-orange-500/10' },
+    ...(otherClosingCosts > 0 ? [{ label: 'Other Closing Costs', value: fmt(otherClosingCosts), icon: DollarSign, color: 'text-muted-foreground', bg: 'bg-muted/30' }] : []),
+    { label: 'Total Loan Cost', value: fmt(totalLoanCost), icon: DollarSign, color: 'text-primary', bg: 'bg-primary/10' },
   ];
 
   const handleEdit = async (payload: Omit<Loan, 'id' | 'created_at' | 'updated_at' | 'project_name'>) => {
@@ -105,7 +112,7 @@ function LinkedLoanCard({ loanId, onUnlink }: { loanId: string; onUnlink: () => 
 
       <CardContent className="space-y-5">
         {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {summaryStats.map(s => (
             <div key={s.label} className="text-center p-3 rounded-lg border border-border bg-card/50">
               <div className={cn('rounded-lg p-1.5 w-fit mx-auto mb-1.5', s.bg)}>
@@ -141,6 +148,7 @@ function LinkedLoanCard({ loanId, onUnlink }: { loanId: string; onUnlink: () => 
                 <InfoRow label="Term" value={`${loan.loan_term_months} months`} />
                 <InfoRow label="Payment Freq." value={loan.payment_frequency.replace('_', ' ')} />
                 {loan.origination_fee_dollars && <InfoRow label="Origination Fee" value={fmt(loan.origination_fee_dollars)} />}
+                {loan.other_closing_costs && <InfoRow label="Other Closing Costs" value={fmt(loan.other_closing_costs)} />}
               </div>
             </div>
             {loan.notes && (
