@@ -281,7 +281,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
                   ))}
                   {hasMore && !isExpanded && (
                     <button
-                      onClick={() => setExpandedDay(dayKey)}
+                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpandedDay(dayKey); }}
                       className="text-[10px] text-muted-foreground text-center w-full hover:text-foreground transition-colors"
                     >
                       +{dayTasks.length - 3}
