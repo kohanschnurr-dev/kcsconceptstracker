@@ -28,6 +28,10 @@ const TOOLTIP_STYLE = {
   color: 'hsl(210, 20%, 95%)',
 };
 
+const TOOLTIP_TEXT_STYLE = {
+  color: 'hsl(210, 20%, 95%)',
+};
+
 interface LoanChartsProps {
   loans: Loan[];
 }
@@ -60,7 +64,6 @@ export function LoanCharts({ loans }: LoanChartsProps) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Pie — by type */}
       <Card className="glass-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Debt by Loan Type</CardTitle>
@@ -84,6 +87,8 @@ export function LoanCharts({ loans }: LoanChartsProps) {
               <Tooltip
                 formatter={(v: number) => [fmt(v), 'Balance']}
                 contentStyle={TOOLTIP_STYLE}
+                itemStyle={TOOLTIP_TEXT_STYLE}
+                labelStyle={TOOLTIP_TEXT_STYLE}
               />
               <Legend
                 formatter={(value) => (
@@ -95,7 +100,6 @@ export function LoanCharts({ loans }: LoanChartsProps) {
         </CardContent>
       </Card>
 
-      {/* Bar — by project */}
       <Card className="glass-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Outstanding Balance by Project</CardTitle>
@@ -120,6 +124,8 @@ export function LoanCharts({ loans }: LoanChartsProps) {
               <Tooltip
                 formatter={(v: number) => [fmt(v), 'Balance']}
                 contentStyle={TOOLTIP_STYLE}
+                itemStyle={TOOLTIP_TEXT_STYLE}
+                labelStyle={TOOLTIP_TEXT_STYLE}
                 cursor={{ fill: 'hsl(220, 15%, 20%)' }}
               />
               <Bar dataKey="balance" fill="hsl(32, 95%, 55%)" radius={[4, 4, 0, 0]} />
