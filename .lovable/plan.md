@@ -1,17 +1,16 @@
 
 
-## Fix Weekly View Card Overflow
+## Remove Category Label Chip from DealCard
 
-Task cards in the weekly calendar view are overflowing their day columns because the grid cells lack overflow containment and card text isn't constrained.
+The category badge ("Third Party", "Due Diligence", etc.) at the bottom of each card is redundant since the card's color and the legend already communicate the category. Removing it declutters the cards.
 
-### Changes
+### Change
 
-**`src/components/calendar/WeeklyView.tsx`**
-- Add `overflow-hidden` to the `DroppableDay` container so content stays within its column bounds.
+**`src/components/calendar/DealCard.tsx`** — Lines 123-135 (the bottom row with the category chip):
 
-**`src/components/calendar/DealCard.tsx`**
-- Add `min-w-0 overflow-hidden` to the outer button in the non-compact variant so flex children truncate properly.
-- Add `min-w-0` to the inner div wrapping title/project name so `truncate` works correctly within flex layouts.
+- Remove the category label `<span>` (lines 124-131) entirely.
+- Keep the subtask count (`0/0 tasks`) but move it to stand alone, aligned right.
+- Exception: keep the "Critical Path" label when `task.isCriticalPath && !task.isCompleted` — this is a status indicator, not a category.
 
-These three class additions ensure cards never visually bleed into neighboring day columns.
+Result: the bottom of each non-compact card shows only the task count (right-aligned), unless it's a critical path item which still shows the "Critical Path" badge.
 
