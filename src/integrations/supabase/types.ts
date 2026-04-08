@@ -235,6 +235,288 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_activities: {
+        Row: {
+          activity_date: string
+          activity_type: string
+          contact_id: string
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          notes: string | null
+          outcome: string | null
+          user_id: string
+        }
+        Insert: {
+          activity_date?: string
+          activity_type?: string
+          contact_id: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          user_id: string
+        }
+        Update: {
+          activity_date?: string
+          activity_type?: string
+          contact_id?: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_activities_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "crm_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_calendar_events: {
+        Row: {
+          contact_id: string
+          created_at: string
+          duration_minutes: number | null
+          event_date: string
+          event_type: string
+          id: string
+          notes: string | null
+          reminder: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          duration_minutes?: number | null
+          event_date: string
+          event_type?: string
+          id?: string
+          notes?: string | null
+          reminder?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          duration_minutes?: number | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          notes?: string | null
+          reminder?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_calendar_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "crm_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_contacts: {
+        Row: {
+          asking_price: number | null
+          bathrooms: number | null
+          bedrooms: number | null
+          contact_type: string
+          contact_type_other: string | null
+          created_at: string
+          email: string | null
+          estimated_arv: number | null
+          estimated_repair: number | null
+          first_name: string
+          has_liens: string | null
+          id: string
+          is_dnc: boolean
+          is_occupied: string | null
+          last_contacted_at: string | null
+          last_name: string
+          mortgage_balance: number | null
+          motivation_level: number | null
+          next_followup_at: string | null
+          notes: string | null
+          offer_amount: number | null
+          phone: string
+          phone_secondary: string | null
+          previous_wholesale_attempts: boolean
+          previous_wholesale_details: string | null
+          priority: string | null
+          property_address: string | null
+          property_city: string | null
+          property_notes: string | null
+          property_state: string | null
+          property_type: string | null
+          property_zip: string | null
+          reason_for_selling: string[] | null
+          selling_timeline: string | null
+          source: string
+          source_other: string | null
+          sqft: number | null
+          status: string
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+          year_built: number | null
+        }
+        Insert: {
+          asking_price?: number | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          contact_type?: string
+          contact_type_other?: string | null
+          created_at?: string
+          email?: string | null
+          estimated_arv?: number | null
+          estimated_repair?: number | null
+          first_name: string
+          has_liens?: string | null
+          id?: string
+          is_dnc?: boolean
+          is_occupied?: string | null
+          last_contacted_at?: string | null
+          last_name: string
+          mortgage_balance?: number | null
+          motivation_level?: number | null
+          next_followup_at?: string | null
+          notes?: string | null
+          offer_amount?: number | null
+          phone?: string
+          phone_secondary?: string | null
+          previous_wholesale_attempts?: boolean
+          previous_wholesale_details?: string | null
+          priority?: string | null
+          property_address?: string | null
+          property_city?: string | null
+          property_notes?: string | null
+          property_state?: string | null
+          property_type?: string | null
+          property_zip?: string | null
+          reason_for_selling?: string[] | null
+          selling_timeline?: string | null
+          source?: string
+          source_other?: string | null
+          sqft?: number | null
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+          year_built?: number | null
+        }
+        Update: {
+          asking_price?: number | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          contact_type?: string
+          contact_type_other?: string | null
+          created_at?: string
+          email?: string | null
+          estimated_arv?: number | null
+          estimated_repair?: number | null
+          first_name?: string
+          has_liens?: string | null
+          id?: string
+          is_dnc?: boolean
+          is_occupied?: string | null
+          last_contacted_at?: string | null
+          last_name?: string
+          mortgage_balance?: number | null
+          motivation_level?: number | null
+          next_followup_at?: string | null
+          notes?: string | null
+          offer_amount?: number | null
+          phone?: string
+          phone_secondary?: string | null
+          previous_wholesale_attempts?: boolean
+          previous_wholesale_details?: string | null
+          priority?: string | null
+          property_address?: string | null
+          property_city?: string | null
+          property_notes?: string | null
+          property_state?: string | null
+          property_type?: string | null
+          property_zip?: string | null
+          reason_for_selling?: string[] | null
+          selling_timeline?: string | null
+          source?: string
+          source_other?: string | null
+          sqft?: number | null
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+          year_built?: number | null
+        }
+        Relationships: []
+      }
+      crm_offers: {
+        Row: {
+          contact_id: string
+          counter_amount: number | null
+          created_at: string
+          id: string
+          method: string
+          notes: string | null
+          offer_amount: number
+          offer_date: string
+          response: string
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          counter_amount?: number | null
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          offer_amount?: number
+          offer_date?: string
+          response?: string
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          counter_amount?: number | null
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          offer_amount?: number
+          offer_date?: string
+          response?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_offers_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "crm_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_log_tasks: {
         Row: {
           created_at: string
