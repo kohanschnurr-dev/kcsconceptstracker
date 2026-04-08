@@ -120,12 +120,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
         </div>
       </div>
       
-      <div className="flex items-center justify-between">
-        {task.isCriticalPath && !task.isCompleted ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full border bg-red-200 dark:bg-red-500/20 text-foreground dark:text-red-400 border-red-500">
-            Critical Path
-          </span>
-        ) : <span />}
+      <div className="flex items-center justify-end">
         <span className="text-[10px] text-muted-foreground">
           {task.checklist.filter(c => c.completed).length}/{task.checklist.length} tasks
         </span>
