@@ -88,7 +88,7 @@ import { DocumentsGallery } from '@/components/project/DocumentsGallery';
 
 import { ProfitCalculator } from '@/components/project/ProfitCalculator';
 import { CashFlowCalculator } from '@/components/project/CashFlowCalculator';
-import { HardMoneyLoanCalculator } from '@/components/project/HardMoneyLoanCalculator';
+import { ProjectLoanTab } from '@/components/project/ProjectLoanTab';
 
 import { ProjectCalendar } from '@/components/project/ProjectCalendar';
 import { ProjectTasks } from '@/components/project/ProjectTasks';
