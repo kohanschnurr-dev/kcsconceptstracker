@@ -96,7 +96,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
     <button
       onClick={onClick}
       className={cn(
-        'w-full text-left p-3 rounded-lg border transition-all',
+        'w-full text-left p-3 rounded-lg border transition-all min-w-0 overflow-hidden',
         'hover:ring-2 hover:ring-primary/50 cursor-grab active:cursor-grabbing',
         task.isCriticalPath && !task.isCompleted
           ? 'bg-red-200 dark:bg-red-500/10 border-red-500'
@@ -113,7 +113,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
           )}>
             {task.isCompleted ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : task.isCriticalPath ? <AlertTriangle className="h-3 w-3" /> : getCategoryIcon(task.eventCategory || 'due_diligence')}
           </span>
-          <div>
+          <div className="min-w-0">
             <h4 className="text-sm font-medium text-foreground truncate">{task.title}</h4>
             <p className="text-xs text-muted-foreground truncate">{task.projectName}</p>
           </div>
