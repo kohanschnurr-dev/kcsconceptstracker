@@ -1703,6 +1703,7 @@ export default function ProjectBudget() {
         projectId={id!}
         existingCategories={categories}
         onImportComplete={refreshData}
+        onLoanExpenseCreated={setLoanAssignExpense}
       />
 
       <QuickExpenseModal

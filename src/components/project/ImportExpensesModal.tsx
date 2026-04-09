@@ -20,9 +20,10 @@ interface ImportExpensesModalProps {
   projectId: string;
   existingCategories: { id: string; category: string }[];
   onImportComplete: () => void;
+  onLoanExpenseCreated?: (info: { expenseId: string; amount: number; date: string; projectId: string; vendorName?: string; description?: string }) => void;
 }
 
-export function ImportExpensesModal({ open, onOpenChange, projectId, existingCategories, onImportComplete }: ImportExpensesModalProps) {
+export function ImportExpensesModal({ open, onOpenChange, projectId, existingCategories, onImportComplete, onLoanExpenseCreated }: ImportExpensesModalProps) {
   const [step, setStep] = useState<'upload' | 'preview'>('upload');
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [importing, setImporting] = useState(false);
@@ -158,11 +159,29 @@ export function ImportExpensesModal({ open, onOpenChange, projectId, existingCat
         cost_type: r.costType || 'construction',
       }));
 
-      const { error: insertError } = await supabase.from('expenses').insert(expenseRows);
+      const { data: insertedData, error: insertError } = await supabase.from('expenses').insert(expenseRows).select('id, amount, date, vendor_name, description, cost_type');
       if (insertError) throw insertError;
 
       toast.success(`${rows.length} expenses imported successfully`);
       onImportComplete();
+
+      // Trigger loan payment assignment for imported loan expenses
+      if (onLoanExpenseCreated && insertedData) {
+        const loanExpenses = insertedData.filter((e: any) => e.cost_type === 'loan');
+        if (loanExpenses.length > 0) {
+          // Process the first loan expense (user can handle others via cost type change)
+          const first = loanExpenses[0];
+          onLoanExpenseCreated({
+            expenseId: first.id,
+            amount: Number(first.amount),
+            date: first.date,
+            projectId,
+            vendorName: first.vendor_name || undefined,
+            description: first.description || undefined,
+          });
+        }
+      }
+
       handleClose(false);
     } catch (err: any) {
       console.error('Import error:', err);
