@@ -298,6 +298,7 @@ export default function LoanDetail() {
                   {totalExtensionFees > 0 && (
                     <InfoRow label="Extension Fees" value={fmt(totalExtensionFees)} />
                   )}
+                  <InfoRow label="Interest Accrued" value={fmt(totalScheduleInterest)} />
                   <InfoRow label="Total Cost of Loan" value={<span className="font-semibold text-warning">{fmt(totalCost)}</span>} />
                   {loan.has_prepayment_penalty && (
                     <InfoRow label="Prepay Penalty" value={<Badge variant="outline" className="text-xs bg-warning/20 text-warning border-warning/30">Yes</Badge>} />
