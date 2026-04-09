@@ -442,16 +442,26 @@ function ExpenseForm({
     try {
       const categoryId = await ensureCategoryId(selectedProject, selectedCategory);
       const receiptUrl = await uploadReceipt();
-      const { error } = await supabase.from('expenses').insert({
+      const { data: inserted, error } = await supabase.from('expenses').insert({
         project_id: selectedProject, category_id: categoryId, amount: calculateTotal(), vendor_name: vendor,
         description: description || null, payment_method: paymentMethod, status: 'actual',
         includes_tax: includeTax, tax_amount: includeTax ? calculateTax() : null, date, receipt_url: receiptUrl,
         expense_type: expenseType, cost_type: costType,
-      });
+      }).select('id').single();
       if (error) throw error;
       toast({ title: 'Expense logged', description: `$${calculateTotal().toFixed(2)} added successfully` });
       onClose();
       onExpenseCreated?.();
+      if (costType === 'loan' && inserted) {
+        onLoanExpenseCreated?.({
+          expenseId: inserted.id,
+          amount: calculateTotal(),
+          date,
+          projectId: selectedProject,
+          vendorName: vendor || undefined,
+          description: description || undefined,
+        });
+      }
     } catch (error: any) {
       console.error('Error creating expense:', error);
       toast({ title: 'Error', description: error.message || 'Failed to log expense.', variant: 'destructive' });
