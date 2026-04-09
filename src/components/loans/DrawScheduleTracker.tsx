@@ -429,7 +429,7 @@ export function DrawScheduleTracker({
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Summary cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="rounded-xl border border-border bg-card p-4 text-center">
                 <p className="text-xl font-bold text-warning">{fmtExact(interestResult.totalInterest)}</p>
                 <p className="text-sm text-muted-foreground mt-1">Total Accrued Interest</p>
@@ -441,10 +441,6 @@ export function DrawScheduleTracker({
               <div className="rounded-xl border border-border bg-card p-4 text-center">
                 <p className="text-xl font-bold text-primary">{fmt(interestResult.weightedAvgBalance)}</p>
                 <p className="text-sm text-muted-foreground mt-1">Weighted Avg Balance</p>
-              </div>
-              <div className="rounded-xl border border-border bg-card p-4 text-center">
-                <p className="text-xl font-bold text-foreground">{interestResult.periods.reduce((s, p) => s + p.days, 0)}</p>
-                <p className="text-sm text-muted-foreground mt-1">Total Days</p>
               </div>
             </div>
 
