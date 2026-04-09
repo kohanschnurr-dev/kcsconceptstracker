@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { DRAW_STATUS_CONFIG, buildDrawInterestSchedule } from '@/types/loans';
+import { DRAW_STATUS_CONFIG, buildDrawInterestSchedule, calcDrawFee } from '@/types/loans';
 import type { LoanDraw, DrawStatus, Loan, DrawInterestResult } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
@@ -75,7 +75,14 @@ export function DrawScheduleTracker({
 
   const startEdit = (draw: LoanDraw) => {
     setEditingId(draw.id);
-    setEditDraft({ milestone_name: draw.milestone_name, draw_amount: draw.draw_amount, expected_date: draw.expected_date });
+    setEditDraft({
+      milestone_name: draw.milestone_name,
+      draw_amount: draw.draw_amount,
+      expected_date: draw.expected_date,
+      fee_amount: draw.fee_amount,
+      fee_percentage: draw.fee_percentage,
+      interest_rate_override: draw.interest_rate_override,
+    });
   };
 
   const cancelEdit = () => {
@@ -195,6 +202,39 @@ export function DrawScheduleTracker({
                             </Popover>
                           </div>
                         </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Rate Override (%)</Label>
+                            <Input
+                              className="mt-1 h-9"
+                              type="number"
+                              step="0.01"
+                              value={editDraft.interest_rate_override ?? ''}
+                              onChange={e => setEditDraft(d => ({ ...d, interest_rate_override: e.target.value ? parseFloat(e.target.value) : null }))}
+                              placeholder="Loan default"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Fee ($)</Label>
+                            <Input
+                              className="mt-1 h-9"
+                              type="number"
+                              value={editDraft.fee_amount ?? ''}
+                              onChange={e => setEditDraft(d => ({ ...d, fee_amount: e.target.value ? parseFloat(e.target.value) : null }))}
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Fee (%)</Label>
+                            <Input
+                              className="mt-1 h-9"
+                              type="number"
+                              step="0.01"
+                              value={editDraft.fee_percentage ?? ''}
+                              onChange={e => setEditDraft(d => ({ ...d, fee_percentage: e.target.value ? parseFloat(e.target.value) : null }))}
+                              placeholder="0"
+                            />
+                          </div>
                         <div className="flex gap-2">
                           <Button size="sm" onClick={() => saveEdit(draw)} className="gap-1.5">
                             <Check className="h-3.5 w-3.5" /> Save
