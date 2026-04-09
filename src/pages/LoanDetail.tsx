@@ -113,9 +113,9 @@ export default function LoanDetail() {
   const loanAmountLabel = isTraditional ? 'Original Amount' : 'Loan Amount';
   const hasLoanBreakdown = !isTraditional && loan.has_draws && draws.length > 0;
 
-  // Compute effective outstanding balance by subtracting principal paid
-  const totalPrincipalPaid = payments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);
-  const effectiveBalance = loan.outstanding_balance - totalPrincipalPaid;
+  // Compute effective outstanding balance from amortization schedule
+  const lastElapsedRow = [...schedule].reverse().find(row => row.date <= todayStr);
+  const effectiveBalance = lastElapsedRow ? lastElapsedRow.balance : loan.outstanding_balance;
 
   const hasInterestBreakdown = !!drawInterest && drawInterest.periods.length > 0;
   const combinedInterest = hasInterestBreakdown ? totalInterestPaid + drawInterest.totalInterest : totalInterestPaid;
