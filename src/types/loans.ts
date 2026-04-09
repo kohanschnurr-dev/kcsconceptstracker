@@ -103,6 +103,9 @@ export interface LoanDraw {
   status: DrawStatus;
   date_funded: string | null;
   notes: string | null;
+  fee_amount: number | null;
+  fee_percentage: number | null;
+  interest_rate_override: number | null;
   created_at: string;
 }
 
@@ -138,11 +141,14 @@ export interface DrawInterestPeriod {
   days: number;
   balance: number;
   interest: number;
+  fees: number;
+  effectiveRate: number;
 }
 
 export interface DrawInterestResult {
   periods: DrawInterestPeriod[];
   totalInterest: number;
+  totalFees: number;
   weightedAvgBalance: number;
 }
 
@@ -150,6 +156,15 @@ export interface DrawInterestResult {
  * Build a draw-based interest schedule.
  * Interest only accrues on the cumulative funded amount between draw dates.
  */
+/** Calculate the effective fee for a draw */
+export function calcDrawFee(draw: LoanDraw): number {
+  const flat = draw.fee_amount ?? 0;
+  const pct = draw.fee_percentage ? (draw.draw_amount * draw.fee_percentage / 100) : 0;
+  // Use the larger of the two if both are set
+  if (flat > 0 && pct > 0) return Math.max(flat, pct);
+  return flat || pct;
+}
+
 export function buildDrawInterestSchedule(
   loan: Pick<Loan, 'interest_rate' | 'interest_calc_method' | 'maturity_date' | 'start_date'>,
   draws: LoanDraw[],
@@ -161,7 +176,6 @@ export function buildDrawInterestSchedule(
   if (funded.length === 0) return null;
 
   const dayBasis = loan.interest_calc_method === 'actual_365' ? 365 : 360;
-  const dailyRate = (loan.interest_rate / 100) / dayBasis;
   const maturity = new Date(loan.maturity_date);
 
   const periods: DrawInterestPeriod[] = [];
@@ -172,6 +186,10 @@ export function buildDrawInterestSchedule(
   for (let i = 0; i < funded.length; i++) {
     const draw = funded[i];
     runningBalance += draw.draw_amount;
+
+    // Use per-draw override if set, otherwise fall back to loan rate
+    const effectiveRate = draw.interest_rate_override ?? loan.interest_rate;
+    const dailyRate = (effectiveRate / 100) / dayBasis;
 
     const periodStart = new Date(draw.date_funded!);
     const periodEnd = i < funded.length - 1
@@ -184,6 +202,7 @@ export function buildDrawInterestSchedule(
     );
 
     const interest = runningBalance * dailyRate * days;
+    const fees = calcDrawFee(draw);
     totalDays += days;
     balanceDaysSum += runningBalance * days;
 
@@ -196,12 +215,15 @@ export function buildDrawInterestSchedule(
       days,
       balance: runningBalance,
       interest,
+      fees,
+      effectiveRate,
     });
   }
 
   return {
     periods,
     totalInterest: periods.reduce((s, p) => s + p.interest, 0),
+    totalFees: periods.reduce((s, p) => s + p.fees, 0),
     weightedAvgBalance: totalDays > 0 ? balanceDaysSum / totalDays : 0,
   };
 }
