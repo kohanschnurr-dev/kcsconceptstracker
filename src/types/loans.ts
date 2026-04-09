@@ -171,7 +171,7 @@ export function buildDrawInterestSchedule(
 ): DrawInterestResult | null {
   const funded = draws
     .filter(d => d.status === 'funded' && (d.date_funded || d.expected_date))
-    .sort((a, b) => (a.date_funded ?? a.expected_date ?? '').localeCompare(b.date_funded ?? b.expected_date ?? ''));
+    .sort((a, b) => a.draw_number - b.draw_number);
 
   if (funded.length === 0) return null;
 
