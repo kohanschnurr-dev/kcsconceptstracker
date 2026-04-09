@@ -213,53 +213,51 @@ export function DrawScheduleTracker({
                           <span className="text-base font-bold text-primary flex-shrink-0">{fmt(draw.draw_amount)}</span>
                         </div>
                         <div className="flex items-center gap-2.5 mt-2 flex-wrap">
-                          {draw.expected_date && (
-                            <span className="text-sm text-muted-foreground">
-                              Expected {formatDisplayDate(draw.expected_date)}
-                            </span>
-                          )}
-                          {!readOnly ? (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    'h-7 text-sm px-2.5 gap-1.5 font-normal',
-                                    !draw.date_funded && 'text-muted-foreground',
-                                  )}
-                                >
-                                  <CalendarIcon className="h-3.5 w-3.5" />
-                                  {draw.date_funded
-                                    ? `Funded ${formatDisplayDate(draw.date_funded)}`
-                                    : 'Set funded date'}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={draw.date_funded ? new Date(draw.date_funded + 'T00:00:00') : undefined}
-                                  onSelect={date => {
-                                    if (date) {
-                                      const yyyy = date.getFullYear();
-                                      const mm = String(date.getMonth() + 1).padStart(2, '0');
-                                      const dd = String(date.getDate()).padStart(2, '0');
-                                      handleDateFundedChange(draw, `${yyyy}-${mm}-${dd}`);
-                                    } else {
-                                      handleDateFundedChange(draw, '');
-                                    }
-                                  }}
-                                  initialFocus
-                                  className={cn('p-3 pointer-events-auto')}
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          ) : (
-                            draw.date_funded && (
-                              <span className="text-sm text-success">
-                                Funded {formatDisplayDate(draw.date_funded)}
+                          {(() => {
+                            const displayDate = draw.date_funded || draw.expected_date;
+                            if (!readOnly) {
+                              return (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      className={cn(
+                                        'h-7 text-sm px-2.5 gap-1.5 font-normal',
+                                        !displayDate && 'text-muted-foreground',
+                                      )}
+                                    >
+                                      <CalendarIcon className="h-3.5 w-3.5" />
+                                      {displayDate ? formatDisplayDate(displayDate) : 'Set date'}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                      mode="single"
+                                      selected={displayDate ? new Date(displayDate + 'T00:00:00') : undefined}
+                                      onSelect={date => {
+                                        if (date) {
+                                          const yyyy = date.getFullYear();
+                                          const mm = String(date.getMonth() + 1).padStart(2, '0');
+                                          const dd = String(date.getDate()).padStart(2, '0');
+                                          const dateStr = `${yyyy}-${mm}-${dd}`;
+                                          handleDateFundedChange(draw, dateStr);
+                                        } else {
+                                          handleDateFundedChange(draw, '');
+                                        }
+                                      }}
+                                      initialFocus
+                                      className={cn('p-3 pointer-events-auto')}
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                              );
+                            }
+                            return displayDate ? (
+                              <span className="text-sm text-muted-foreground">
+                                {formatDisplayDate(displayDate)}
                               </span>
-                            )
-                          )}
+                            ) : null;
+                          })()}
                           {readOnly ? (
                             <Badge variant="outline" className={cn('text-sm', DRAW_STATUS_CONFIG[draw.status].className)}>
                               {DRAW_STATUS_CONFIG[draw.status].label}
