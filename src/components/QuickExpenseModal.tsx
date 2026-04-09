@@ -50,6 +50,7 @@ interface QuickExpenseModalProps {
   onOpenChange: (open: boolean) => void;
   projects: Project[];
   onExpenseCreated?: () => void;
+  onLoanExpenseCreated?: (info: { expenseId: string; amount: number; date: string; projectId: string; vendorName?: string; description?: string }) => void;
 }
 
 interface ParsedLineItem {
