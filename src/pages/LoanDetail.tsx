@@ -218,6 +218,34 @@ export default function LoanDetail() {
               );
             }
 
+            if ((s as any).hasInterestBreakdown && drawInterest) {
+              return (
+                <Popover key={s.label}>
+                  <PopoverTrigger asChild>
+                    <Card className="glass-card cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all">
+                      {cardContent}
+                    </Card>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-3">
+                    <div className="space-y-2">
+                      {drawInterest.periods.map((period, i) => (
+                        <div key={i} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground truncate mr-2">
+                            {period.label}
+                          </span>
+                          <span className="font-medium whitespace-nowrap">{fmt(period.interest)}</span>
+                        </div>
+                      ))}
+                      <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
+                        <span>Total</span>
+                        <span>{fmt(drawInterest.totalInterest)}</span>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+
             return (
               <Card key={s.label} className="glass-card">
                 {cardContent}
