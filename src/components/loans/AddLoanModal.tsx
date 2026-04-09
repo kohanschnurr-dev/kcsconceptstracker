@@ -69,6 +69,7 @@ const empty = (): Omit<Loan, 'id' | 'created_at' | 'updated_at' | 'project_name'
   notes: null,
   status: 'active',
   monthly_payment: null,
+  months_held: null,
 });
 
 const emptyDraw = (n: number): Omit<LoanDraw, 'id' | 'created_at' | 'loan_id'> => ({
