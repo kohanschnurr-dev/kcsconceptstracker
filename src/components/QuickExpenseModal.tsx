@@ -1146,7 +1146,7 @@ function ModalContent({ projects, onExpenseCreated, onClose, onLoanExpenseCreate
   );
 }
 
-export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreated }: QuickExpenseModalProps) {
+export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreated, onLoanExpenseCreated }: QuickExpenseModalProps) {
   const isMobile = useIsMobile();
   const handleClose = () => onOpenChange(false);
 
@@ -1161,7 +1161,7 @@ export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreat
             </DrawerTitle>
           </DrawerHeader>
           <div className="overflow-y-auto flex-1">
-            <ModalContent projects={projects} onExpenseCreated={onExpenseCreated} onClose={handleClose} />
+            <ModalContent projects={projects} onExpenseCreated={onExpenseCreated} onClose={handleClose} onLoanExpenseCreated={onLoanExpenseCreated} />
           </div>
         </DrawerContent>
       </Drawer>
@@ -1177,7 +1177,7 @@ export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreat
             Add Expense
           </DialogTitle>
         </DialogHeader>
-        <ModalContent projects={projects} onExpenseCreated={onExpenseCreated} onClose={handleClose} />
+        <ModalContent projects={projects} onExpenseCreated={onExpenseCreated} onClose={handleClose} onLoanExpenseCreated={onLoanExpenseCreated} />
       </DialogContent>
     </Dialog>
   );
