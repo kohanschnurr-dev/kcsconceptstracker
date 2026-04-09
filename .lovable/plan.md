@@ -1,19 +1,18 @@
 
 
-## Fix: Add 'parsing' to pending_receipts status check constraint
+## Make "Awaiting Bank Transaction" Section Collapsible
 
 ### Problem
-The `pending_receipts` table has a CHECK constraint (`pending_receipts_status_check`) that restricts the `status` column to specific values. When background parsing tries to insert a row with `status = 'parsing'`, it violates this constraint.
+Users with many receipts (30+) see a long list of pending receipts that clutters the UI. They need the ability to collapse this section.
 
 ### Solution
-**Database migration**: Drop the existing check constraint and recreate it with `'parsing'` and `'failed'` added to the allowed values.
+Add a collapsible toggle to the "Awaiting Bank Transaction" header. Default to expanded. Use a `useState` boolean and a chevron icon to indicate state.
 
-```sql
-ALTER TABLE public.pending_receipts DROP CONSTRAINT pending_receipts_status_check;
-ALTER TABLE public.pending_receipts ADD CONSTRAINT pending_receipts_status_check 
-  CHECK (status IN ('pending', 'matched', 'approved', 'rejected', 'parsing', 'failed'));
-```
+### Changes
 
-### Files
-- One database migration only — no code changes needed.
+**`src/components/SmartSplitReceiptUpload.tsx`**
+- Add `awaitingCollapsed` state (default `false`)
+- Make the header row clickable with a `ChevronDown`/`ChevronRight` icon
+- Wrap the receipt list in a conditional render based on `awaitingCollapsed`
+- Show a count badge (e.g., "4 receipts") so users know how many are hidden when collapsed
 
