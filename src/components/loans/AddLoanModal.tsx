@@ -80,6 +80,9 @@ const emptyDraw = (n: number): Omit<LoanDraw, 'id' | 'created_at' | 'loan_id'> =
   status: 'pending',
   date_funded: null,
   notes: '',
+  fee_amount: null,
+  fee_percentage: null,
+  interest_rate_override: null,
 });
 
 export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Props) {
