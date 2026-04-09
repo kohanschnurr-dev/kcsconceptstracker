@@ -258,10 +258,10 @@ function periodInterest(balance: number, annualRate: number, paymentDate: Date, 
 }
 
 /** Build full amortization schedule */
-export function buildAmortizationSchedule(loan: Loan): AmortizationRow[] {
+export function buildAmortizationSchedule(loan: Loan, extensionMonths: number = 0): AmortizationRow[] {
   const rows: AmortizationRow[] = [];
   const amort = loan.amortization_period_months ?? loan.loan_term_months;
-  const term = loan.loan_term_months;
+  const term = loan.loan_term_months + extensionMonths;
   const monthly = loan.monthly_payment ?? calcMonthlyPayment(loan.original_amount, loan.interest_rate, term, amort, loan.payment_frequency, loan.interest_calc_method);
   const start = new Date(loan.first_payment_date ?? loan.start_date);
   const method = loan.interest_calc_method;
