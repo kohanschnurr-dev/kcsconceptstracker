@@ -1,23 +1,22 @@
 
 
-## Remove Outstanding Balance for Non-Traditional Loans
+## Reorder Stats and Auto-size Grid
 
-### Change
+### Changes in `src/pages/LoanDetail.tsx`
 
-**`src/pages/LoanDetail.tsx`** — Conditionally exclude the "Outstanding Balance" stat from the `summaryStats` array when the loan type is NOT `conventional` or `dscr`.
+**1. Reorder `summaryStats` array** — Move "Interest Accrued" to be the second item (right after Loan Amount):
 
-Filter the stat out for non-traditional loans since those use the "Loan Amount" (with draw breakdown) instead:
-
-```typescript
-const summaryStats = [
-  { label: loanAmountLabel, value: fmt(loanAmountValue), icon: DollarSign, color: 'text-primary bg-primary/10', hasBreakdown: hasLoanBreakdown },
-  // Only show Outstanding Balance for conventional/DSCR
-  ...(isTraditional ? [{ label: 'Outstanding Balance', value: fmt(loan.outstanding_balance), icon: TrendingDown, color: 'text-warning bg-warning/10' }] : []),
-  { label: 'Interest Rate', ... },
-  // ...rest unchanged
-];
+```
+[Loan Amount] [Interest Accrued] [Interest Rate] [Monthly Payment] [Remaining Term]
 ```
 
+For traditional loans (with Outstanding Balance), the order becomes:
+```
+[Original Amount] [Interest Accrued] [Outstanding Balance] [Interest Rate] [Monthly Payment] [Remaining Term]
+```
+
+**2. Auto-size grid** — Change the grid from fixed `lg:grid-cols-6` to dynamically use the number of stats. Non-traditional loans have 5 stats → `lg:grid-cols-5`, traditional have 6 → `lg:grid-cols-6`. This ensures cards take proportional space.
+
 ### Files Modified
-- `src/pages/LoanDetail.tsx` (line ~119)
+- `src/pages/LoanDetail.tsx` (~lines 117-124 for reorder, line 170 for grid)
 
