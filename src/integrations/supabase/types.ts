@@ -772,6 +772,50 @@ export type Database = {
           },
         ]
       }
+      loan_extensions: {
+        Row: {
+          created_at: string | null
+          extended_from: string
+          extended_to: string
+          extension_fee: number | null
+          extension_number: number
+          fee_percentage: number | null
+          id: string
+          loan_id: string
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          extended_from: string
+          extended_to: string
+          extension_fee?: number | null
+          extension_number?: number
+          fee_percentage?: number | null
+          id?: string
+          loan_id: string
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          extended_from?: string
+          extended_to?: string
+          extension_fee?: number | null
+          extension_number?: number
+          fee_percentage?: number | null
+          id?: string
+          loan_id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_extensions_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loan_payments: {
         Row: {
           amount: number
