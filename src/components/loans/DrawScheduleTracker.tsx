@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Plus, Trash2, TrendingUp, Calculator } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, Calculator, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { DRAW_STATUS_CONFIG, buildDrawInterestSchedule } from '@/types/loans';
@@ -123,17 +126,42 @@ export function DrawScheduleTracker({
                       Expected {formatDisplayDate(draw.expected_date)}
                     </span>
                   )}
-                  {/* Editable date funded */}
+                  {/* Editable date funded with calendar popover */}
                   {!readOnly ? (
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Funded:</span>
-                      <Input
-                        type="date"
-                        className="h-6 text-xs px-1.5 w-[120px] bg-transparent"
-                        value={draw.date_funded ?? ''}
-                        onChange={e => handleDateFundedChange(draw, e.target.value)}
-                      />
-                    </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'h-6 text-xs px-2 gap-1 font-normal',
+                            !draw.date_funded && 'text-muted-foreground',
+                          )}
+                        >
+                          <CalendarIcon className="h-3 w-3" />
+                          {draw.date_funded
+                            ? `Funded ${formatDisplayDate(draw.date_funded)}`
+                            : 'Set funded date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={draw.date_funded ? new Date(draw.date_funded + 'T00:00:00') : undefined}
+                          onSelect={date => {
+                            if (date) {
+                              const yyyy = date.getFullYear();
+                              const mm = String(date.getMonth() + 1).padStart(2, '0');
+                              const dd = String(date.getDate()).padStart(2, '0');
+                              handleDateFundedChange(draw, `${yyyy}-${mm}-${dd}`);
+                            } else {
+                              handleDateFundedChange(draw, '');
+                            }
+                          }}
+                          initialFocus
+                          className={cn('p-3 pointer-events-auto')}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   ) : (
                     draw.date_funded && (
                       <span className="text-xs text-success">
