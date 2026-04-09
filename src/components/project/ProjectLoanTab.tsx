@@ -71,7 +71,7 @@ function LinkedLoanCard({ loanId, onUnlink }: { loanId: string; onUnlink: () => 
 
   const summaryStats = [
     { label: 'Original Amount', value: fmt(loan.original_amount), icon: DollarSign, color: 'text-primary', bg: 'bg-primary/10' },
-    { label: 'Balance', value: fmt(loan.outstanding_balance), icon: TrendingDown, color: 'text-warning', bg: 'bg-warning/10' },
+    { label: 'Balance', value: fmt((() => { const last = [...schedule].reverse().find(r => r.date <= todayStr); return last ? last.balance : loan.outstanding_balance; })()), icon: TrendingDown, color: 'text-warning', bg: 'bg-warning/10' },
     { label: 'Rate', value: `${loan.interest_rate.toFixed(2)}%`, icon: Percent, color: 'text-blue-400', bg: 'bg-blue-500/10' },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success', bg: 'bg-success/10' },
     { label: 'Remaining', value: `${remainingTerm} mo`, icon: Calendar, color: 'text-primary', bg: 'bg-primary/10' },
