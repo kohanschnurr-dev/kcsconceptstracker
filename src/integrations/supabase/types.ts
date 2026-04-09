@@ -914,6 +914,7 @@ export type Database = {
           ltv_at_origination: number | null
           maturity_date: string
           monthly_payment: number | null
+          months_held: number | null
           nickname: string | null
           notes: string | null
           original_amount: number
@@ -961,6 +962,7 @@ export type Database = {
           ltv_at_origination?: number | null
           maturity_date?: string
           monthly_payment?: number | null
+          months_held?: number | null
           nickname?: string | null
           notes?: string | null
           original_amount?: number
@@ -1008,6 +1010,7 @@ export type Database = {
           ltv_at_origination?: number | null
           maturity_date?: string
           monthly_payment?: number | null
+          months_held?: number | null
           nickname?: string | null
           notes?: string | null
           original_amount?: number
