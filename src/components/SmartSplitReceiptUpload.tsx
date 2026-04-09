@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, AlertTriangle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download, Camera, Info, RefreshCw } from 'lucide-react';
+import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, ChevronRight, AlertCircle, AlertTriangle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download, Camera, Info, RefreshCw } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Switch } from '@/components/ui/switch';
