@@ -400,6 +400,7 @@ export function DrawScheduleTracker({
                   <Label className="text-xs text-muted-foreground">Fee (%)</Label>
                   <Input className="mt-1 h-9" type="number" step="0.01" value={newDraw.fee_percentage ?? ''} onChange={e => setNewDraw(d => ({ ...d, fee_percentage: e.target.value ? parseFloat(e.target.value) : null }))} placeholder="0" />
                 </div>
+              </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleSaveNew}>Save Draw</Button>
                 <Button size="sm" variant="outline" onClick={() => setAddingNew(false)}>Cancel</Button>
