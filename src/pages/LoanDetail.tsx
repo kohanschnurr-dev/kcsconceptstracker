@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, CheckCircle2, DollarSign, Percent,
-  CreditCard, Calendar, TrendingDown, Landmark,
+  CreditCard, Calendar, TrendingDown, Landmark, Info,
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -182,14 +182,27 @@ export default function LoanDetail() {
                   {loan.amortization_period_months && <InfoRow label="Amort. Period" value={`${loan.amortization_period_months} months`} />}
                   
                   <InfoRow label="Start Date" value={formatDisplayDate(loan.start_date)} />
-                  <InfoRow label="Maturity Date" value={
-                    <span>
-                      {formatDisplayDate(loan.maturity_date)}
-                      {extensions.length > 0 && (
-                        <span className="ml-1 text-xs text-primary font-medium">(+{extensions.length} ext)</span>
-                      )}
-                    </span>
-                  } />
+                  <InfoRow label="Maturity Date" value={(() => {
+                    const effectiveMaturity = extensions.length > 0
+                      ? extensions.reduce((latest: string, e: any) => e.extended_to > latest ? e.extended_to : latest, loan.maturity_date)
+                      : loan.maturity_date;
+                    return (
+                      <span className="flex items-center gap-1">
+                        {formatDisplayDate(effectiveMaturity)}
+                        {extensions.length > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Original: {formatDisplayDate(loan.maturity_date)}</p>
+                              <p className="text-xs">{extensions.length} extension{extensions.length > 1 ? 's' : ''} applied</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </span>
+                    );
+                  })()} />
                 </CardContent>
               </Card>
 
