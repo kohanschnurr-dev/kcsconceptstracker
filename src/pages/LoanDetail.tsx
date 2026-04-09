@@ -115,6 +115,7 @@ export default function LoanDetail() {
 
   const hasInterestBreakdown = !!drawInterest && drawInterest.periods.length > 0;
   const combinedInterest = hasInterestBreakdown ? totalInterestPaid + drawInterest.totalInterest : totalInterestPaid;
+  const totalCost = combinedInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
   const summaryStats = [
     { label: loanAmountLabel, value: fmt(loanAmountValue), icon: DollarSign, color: 'text-primary bg-primary/10', hasBreakdown: hasLoanBreakdown },
