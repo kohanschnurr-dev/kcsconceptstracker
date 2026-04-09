@@ -51,7 +51,7 @@ export function AmortizationTable({ loan, extensionMonths = 0 }: AmortizationTab
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className={cn("grid gap-3", isSimple ? "grid-cols-4" : "grid-cols-3")}>
+      {loan.loan_type !== 'dscr' && <div className={cn("grid gap-3", isSimple ? "grid-cols-4" : "grid-cols-3")}>
         <div className="rounded-lg bg-muted p-3 text-center">
           <p className="text-xs text-muted-foreground">Total Interest</p>
           <p className="text-base font-semibold text-destructive mt-0.5">{fmt(totalInterest)}</p>
@@ -70,7 +70,7 @@ export function AmortizationTable({ loan, extensionMonths = 0 }: AmortizationTab
           <p className="text-xs text-muted-foreground">Total Cost of Loan</p>
           <p className="text-base font-semibold text-warning mt-0.5">{fmt(totalCost)}</p>
         </div>
-      </div>
+      </div>}
 
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={exportCSV}>
