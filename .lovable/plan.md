@@ -1,35 +1,23 @@
 
 
-## Add Early Payoff Interest Simulator Slider
+## Include Extensions in Early Payoff Simulator
 
-### What
-Add a slider between the tab bar and the tab content that lets users simulate selling/paying off the loan early. As the user drags the slider (1 month to full remaining term), it dynamically calculates and displays the total interest accrued up to that point, plus total cost savings vs. holding to maturity.
+### Problem
+The Early Payoff Simulator currently uses `loan.loan_term_months` as the max slider value, ignoring any extensions. If a loan has extensions, the effective term is longer and the simulator should reflect that.
 
 ### Changes
 
-**`src/pages/LoanDetail.tsx`**
-- Add a `useState` for `earlyPayoffMonth` defaulting to `remainingTerm`
-- Between `</TabsList>` and the first `<TabsContent>`, insert a styled card/banner containing:
-  - A label: "Early Payoff Simulator"
-  - A `Slider` (from `@/components/ui/slider`) with min=1, max=`loan.loan_term_months`, step=1
-  - Display row showing: selected month count, calculated interest accrued at that month, and savings vs full term
-- Interest calculation logic:
-  - For simple/interest-only loans: `principal × (rate/100) / 12 × months`
-  - For amortizing loans: sum interest column from `buildAmortizationSchedule` up to the selected month
-  - For draw-based loans: proportionally scale `drawInterest.totalInterest` by `months / loan_term_months`
-- Import `Slider` component and `buildAmortizationSchedule` from existing code
+**`src/pages/LoanDetail.tsx`** — Simulator section (~lines 164-216)
 
-### UI Layout
-```text
-┌─────────────────────────────────────────────────┐
-│  Overview  │  Amortization  │  Payments         │  ← existing tabs
-├─────────────────────────────────────────────────┤
-│  Early Payoff Simulator                         │
-│  If sold at month [====●=========] 6 of 12      │
-│  Interest Accrued: $4,200  │  Savings: $4,200   │
-├─────────────────────────────────────────────────┤
-│  (tab content below)                            │
-```
+1. Calculate the effective term by adding extension months to the base term:
+   - Compute total extension months from the `extensions` array by summing the month difference between each extension's `extended_from` and `extended_to` dates
+   - `effectiveTerm = loan.loan_term_months + totalExtensionMonths`
 
-Minimal, single-file change to `LoanDetail.tsx`.
+2. Update the simulator to use `effectiveTerm` instead of `term`:
+   - Slider `max` becomes `effectiveTerm`
+   - "Month X of Y" label uses `effectiveTerm`
+   - Interest-at-full-term calculation uses `effectiveTerm`
+   - Default `earlyPayoffMonth` (when null) becomes `effectiveTerm`
+
+3. The interest calculation functions already scale linearly or use schedule slices, so they naturally handle months beyond the original term. For interest-only/simple loans, the formula `principal * rate / 12 * months` works for any month count. For amortizing, we cap at schedule length.
 
