@@ -293,7 +293,7 @@ export function calcDrawCurrentPayment(loan: Loan, draws: LoanDraw[]): number {
  *  - Rows where a draw funded are annotated with draw_events for display.
  */
 export function buildDrawWeightedSchedule(loan: Loan, draws: LoanDraw[]): AmortizationRow[] {
-  type DrawEvent = { date: Date; amount: number; label: string; isFunded: boolean };
+  type DrawEvent = { date: Date; amount: number; label: string; isFunded: boolean; rateOverride: number | null; draw: LoanDraw };
 
   const events: DrawEvent[] = [
     ...draws
@@ -303,6 +303,8 @@ export function buildDrawWeightedSchedule(loan: Loan, draws: LoanDraw[]): Amorti
         amount: d.draw_amount,
         label: d.milestone_name ?? `Draw #${d.draw_number} (${fmtUSD(d.draw_amount)})`,
         isFunded: true,
+        rateOverride: d.interest_rate_override,
+        draw: d,
       })),
     ...draws
       .filter(d => ['pending', 'requested', 'approved'].includes(d.status) && d.expected_date)
@@ -311,10 +313,11 @@ export function buildDrawWeightedSchedule(loan: Loan, draws: LoanDraw[]): Amorti
         amount: d.draw_amount,
         label: `${d.milestone_name ?? `Draw #${d.draw_number}`} – projected`,
         isFunded: false,
+        rateOverride: d.interest_rate_override,
+        draw: d,
       })),
   ].sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  const r = loan.interest_rate / 100 / 12;
   const term = loan.loan_term_months;
   const firstPayment = new Date((loan.first_payment_date ?? loan.start_date) + 'T12:00:00');
   const rows: AmortizationRow[] = [];
@@ -323,24 +326,29 @@ export function buildDrawWeightedSchedule(loan: Loan, draws: LoanDraw[]): Amorti
     const payDate = new Date(firstPayment);
     payDate.setMonth(firstPayment.getMonth() + i - 1);
 
-    // Period window: previous payment date → this payment date
     const periodStart = new Date(firstPayment);
     periodStart.setMonth(firstPayment.getMonth() + i - 2);
 
-    // Draws that funded/project within this billing period
     const periodEvents = events.filter(e => e.date > periodStart && e.date <= payDate);
+    const activeDraws = events.filter(e => e.date <= payDate);
 
-    // Cumulative drawn balance as of this payment date
-    const drawnBalance = events
-      .filter(e => e.date <= payDate)
-      .reduce((s, e) => s + e.amount, 0);
+    const drawnBalance = activeDraws.reduce((s, e) => s + e.amount, 0);
 
-    const interest = drawnBalance * r;
+    // Per-draw interest calculation
+    const interest = activeDraws.reduce((s, e) => {
+      const rate = (e.rateOverride ?? loan.interest_rate) / 100 / 12;
+      return s + e.amount * rate;
+    }, 0);
+
+    // Draw fees for draws funded this period
+    const periodFees = periodEvents
+      .filter(e => e.isFunded)
+      .reduce((s, e) => s + calcDrawFee(e.draw), 0);
+
     const isBalloon = i === term;
     const drawEventLabels = periodEvents.map(e => e.label);
 
     if (loan.payment_frequency === 'interest_only' || loan.payment_frequency === 'monthly') {
-      // Treat as interest-only during the draw period; balloon at end
       rows.push({
         payment_number: i,
         date: payDate.toISOString().split('T')[0],
@@ -350,10 +358,10 @@ export function buildDrawWeightedSchedule(loan: Loan, draws: LoanDraw[]): Amorti
         balance: drawnBalance,
         drawn_balance: drawnBalance,
         draw_events: drawEventLabels.length > 0 ? drawEventLabels : undefined,
+        draw_fees: periodFees > 0 ? periodFees : undefined,
         is_balloon: isBalloon,
       });
     } else {
-      // Amortizing: payment re-calculates each month against current drawn balance
       const payment =
         drawnBalance > 0
           ? calcMonthlyPayment(drawnBalance, loan.interest_rate, Math.max(term - i + 1, 1))
@@ -368,6 +376,7 @@ export function buildDrawWeightedSchedule(loan: Loan, draws: LoanDraw[]): Amorti
         balance: drawnBalance,
         drawn_balance: drawnBalance,
         draw_events: drawEventLabels.length > 0 ? drawEventLabels : undefined,
+        draw_fees: periodFees > 0 ? periodFees : undefined,
         is_balloon: isBalloon,
       });
     }
