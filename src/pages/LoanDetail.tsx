@@ -41,6 +41,7 @@ export default function LoanDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
+  const [earlyPayoffMonth, setEarlyPayoffMonth] = useState<number | null>(null);
 
   const { loan, draws, payments, extensions, isLoading, upsertDraw, deleteDraw, addPayment, deletePayment, addExtension, deleteExtension, updateLoan } = useLoanDetail(id!);
 
