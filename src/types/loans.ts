@@ -130,6 +130,8 @@ export interface AmortizationRow {
   balance: number;
   is_balloon?: boolean;
   accrued_interest?: number;
+  draw_funded?: string;
+  draw_fees?: number;
 }
 
 /* ── Draw-based interest accrual ─────────────────────────── */
@@ -277,6 +279,89 @@ function periodInterest(balance: number, annualRate: number, paymentDate: Date, 
   }
   // Standard 30/360
   return balance * rate / 12;
+}
+
+/** Build a draw-aware amortization schedule.
+ *  Balance grows as draws are funded; interest per month is the sum of
+ *  (draw_amount × draw_rate / 12) for all draws funded by that month.
+ *  Draw fees appear as additional cost in the month the draw is funded.
+ */
+export function buildDrawAmortizationSchedule(
+  loan: Loan,
+  draws: LoanDraw[],
+  extensionMonths: number = 0,
+): AmortizationRow[] {
+  const funded = draws
+    .filter(d => d.status === 'funded' && d.date_funded)
+    .sort((a, b) => a.date_funded!.localeCompare(b.date_funded!));
+
+  if (funded.length === 0) return buildAmortizationSchedule(loan, extensionMonths);
+
+  const term = loan.loan_term_months + extensionMonths;
+  const start = new Date(loan.first_payment_date ?? loan.start_date);
+  const rows: AmortizationRow[] = [];
+
+  for (let i = 1; i <= term; i++) {
+    const paymentDate = new Date(start);
+    paymentDate.setMonth(start.getMonth() + i - 1);
+    const paymentDateStr = paymentDate.toISOString().split('T')[0];
+
+    // Draws funded on or before this payment date
+    const activeFunded = funded.filter(d => d.date_funded! <= paymentDateStr);
+    const balance = activeFunded.reduce((s, d) => s + d.draw_amount, 0);
+
+    if (balance <= 0) {
+      rows.push({
+        payment_number: i,
+        date: paymentDateStr,
+        payment: 0,
+        principal: 0,
+        interest: 0,
+        balance: 0,
+      });
+      continue;
+    }
+
+    // Per-draw interest at each draw's own rate
+    const interest = activeFunded.reduce((s, d) => {
+      const rate = d.interest_rate_override ?? loan.interest_rate;
+      return s + (d.draw_amount * (rate / 100) / 12);
+    }, 0);
+
+    // Draw fees for draws funded in this specific month
+    const monthStart = new Date(paymentDate);
+    monthStart.setDate(1);
+    const monthEnd = new Date(paymentDate.getFullYear(), paymentDate.getMonth() + 1, 0);
+    const monthStartStr = monthStart.toISOString().split('T')[0];
+    const monthEndStr = monthEnd.toISOString().split('T')[0];
+    const drawFees = funded
+      .filter(d => d.date_funded! >= monthStartStr && d.date_funded! <= monthEndStr)
+      .reduce((s, d) => s + calcDrawFee(d), 0);
+
+    // New draws funded this month
+    const newDraws = funded.filter(d => d.date_funded! >= monthStartStr && d.date_funded! <= monthEndStr);
+    const drawFundedLabel = newDraws.length > 0
+      ? newDraws.map(d => `Draw #${d.draw_number}`).join(', ')
+      : undefined;
+
+    const isBalloon = i === term;
+    const payment = isBalloon ? balance + interest + drawFees : interest + drawFees;
+
+    rows.push({
+      payment_number: i,
+      date: paymentDateStr,
+      payment,
+      principal: isBalloon ? balance : 0,
+      interest,
+      balance: isBalloon ? 0 : balance,
+      is_balloon: isBalloon,
+      draw_funded: drawFundedLabel,
+      draw_fees: drawFees > 0 ? drawFees : undefined,
+    });
+
+    if (isBalloon) break;
+  }
+  return rows;
 }
 
 /** Build full amortization schedule */
