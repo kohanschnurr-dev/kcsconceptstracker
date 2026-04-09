@@ -87,10 +87,11 @@ export default function LoanDetail() {
     .reduce((sum, row) => sum + row.interest, 0);
   const totalExtensionFees = extensions.reduce((s: number, e: any) => s + (e.extension_fee ?? 0), 0);
   const totalScheduleInterest = schedule.reduce((sum, row) => sum + row.interest, 0);
-  const totalCost = totalScheduleInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees;
-
   // Draw-based interest for summary
   const drawInterest = loan.has_draws ? buildDrawInterestSchedule(loan, draws) : null;
+  const totalDrawFees = drawInterest?.totalFees ?? 0;
+  const effectiveInterest = drawInterest ? drawInterest.totalInterest : totalScheduleInterest;
+  const totalCost = effectiveInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
   const handleMarkPaidOff = () => {
     updateLoan.mutate({ id: loan.id, status: 'paid_off', outstanding_balance: 0 });
