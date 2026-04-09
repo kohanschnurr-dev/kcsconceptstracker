@@ -162,7 +162,14 @@ export default function LoanDetail() {
 
           {/* Early Payoff Simulator */}
           {loan.status === 'active' && loan.loan_term_months > 1 && (() => {
-            const term = loan.loan_term_months;
+            const baseTerm = loan.loan_term_months;
+            const extensionMonths = extensions.reduce((sum: number, ext: any) => {
+              const from = new Date(ext.extended_from);
+              const to = new Date(ext.extended_to);
+              const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+              return sum + Math.max(months, 0);
+            }, 0);
+            const term = baseTerm + extensionMonths;
             const selectedMonth = earlyPayoffMonth ?? term;
 
             // Calculate interest at any given month
@@ -190,7 +197,7 @@ export default function LoanDetail() {
                       Early Payoff Simulator
                     </h3>
                     <span className="text-xs text-muted-foreground">
-                      Month {selectedMonth} of {term}
+                      Month {selectedMonth} of {term}{extensionMonths > 0 ? ` (incl. ${extensionMonths} ext.)` : ''}
                     </span>
                   </div>
                   <Slider
