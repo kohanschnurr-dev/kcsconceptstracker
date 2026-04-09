@@ -1192,6 +1192,26 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
               )}
 
               {/* Pending Receipts */}
+              {/* Parsing receipts */}
+              {pendingReceipts.filter(r => r.status === 'parsing').length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Parsing with AI...
+                  </h4>
+                  {pendingReceipts.filter(r => r.status === 'parsing').map((receipt) => (
+                    <Card key={receipt.id} className="border-primary/30 bg-primary/5">
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+                          <span className="text-sm text-muted-foreground">Processing receipt...</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
               {pendingReceipts.filter(r => r.status === 'pending').length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
