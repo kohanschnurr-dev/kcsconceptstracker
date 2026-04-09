@@ -341,7 +341,17 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     fetchPendingReceipts();
   }, [fetchPendingReceipts]);
 
-  // Handle file upload
+  // Poll every 5s while any receipt is still parsing
+  useEffect(() => {
+    const hasParsing = pendingReceipts.some(r => r.status === 'parsing');
+    if (!hasParsing) return;
+    const interval = setInterval(() => {
+      fetchPendingReceipts();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [pendingReceipts, fetchPendingReceipts]);
+
+  // Handle file upload — fire-and-forget background parsing
   const handleFileUpload = async (file: File) => {
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
       toast({
@@ -353,7 +363,6 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     }
 
     setIsUploading(true);
-    setIsParsing(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -381,77 +390,56 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         reader.readAsDataURL(file);
       });
 
-      // Parse receipt with AI
-      const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-receipt-image', {
-        body: { image_base64: base64 },
-      });
-
-      if (parseError) throw parseError;
-      if (!parseResult.success) throw new Error(parseResult.error);
-
-      const receiptData = parseResult.data;
-
-      // Create pending receipt
+      // Create pending receipt row with 'parsing' status
       const { data: receipt, error: receiptError } = await supabase
         .from('pending_receipts')
         .insert({
           user_id: user.id,
-          vendor_name: receiptData.vendor_name,
-          total_amount: receiptData.total_amount,
-          tax_amount: receiptData.tax_amount,
-          subtotal: receiptData.subtotal,
-          purchase_date: receiptData.purchase_date,
+          vendor_name: 'Processing...',
+          total_amount: 0,
+          tax_amount: 0,
+          subtotal: 0,
+          purchase_date: new Date().toISOString().split('T')[0],
           receipt_image_url: publicUrl,
-          status: 'pending',
+          status: 'parsing',
         })
         .select()
         .single();
 
       if (receiptError) throw receiptError;
 
-      // Create line items (store discount info in notes if present)
-      if (receiptData.line_items && receiptData.line_items.length > 0) {
-        const lineItemsToInsert = receiptData.line_items.map((item: any) => {
-          const discountNote = (item.discount && item.discount > 0)
-            ? `Discount: -$${item.discount.toFixed(2)} (original: $${(item.original_price || item.total_price + item.discount).toFixed(2)})`
-            : undefined;
-          return {
-            receipt_id: receipt.id,
-            item_name: item.item_name,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.total_price,
-            suggested_category: item.suggested_category,
-            notes: discountNote || null,
-          };
-        });
+      // Refresh list immediately to show "Parsing..." entry
+      await fetchPendingReceipts();
 
-        await supabase.from('receipt_line_items').insert(lineItemsToInsert);
-      }
+      // Fire-and-forget: call edge function with receipt_id
+      supabase.functions.invoke('parse-receipt-image', {
+        body: { image_base64: base64, receipt_id: receipt.id },
+      }).then((res) => {
+        if (res.error || !res.data?.success) {
+          console.error('Background parse failed:', res.error || res.data?.error);
+        }
+        // Polling will pick up the result
+        fetchPendingReceipts();
+        onReceiptProcessed?.();
+      }).catch((err) => {
+        console.error('Background parse error:', err);
+        fetchPendingReceipts();
+      });
 
       toast({
         title: 'Receipt uploaded!',
-        description: `Parsed ${receiptData.line_items?.length || 0} items from ${receiptData.vendor_name}`,
+        description: 'AI is parsing your receipt in the background...',
       });
-
-      await fetchPendingReceipts();
-      onReceiptProcessed?.();
-
-      // Auto-match the newly uploaded receipt after a small delay
-      if (pendingQBExpenses.length > 0) {
-        setTimeout(() => runAutoMatching(), 500);
-      }
 
     } catch (error: any) {
       console.error('Error processing receipt:', error);
       toast({
-        title: 'Failed to process receipt',
+        title: 'Failed to upload receipt',
         description: error.message || 'Please try again',
         variant: 'destructive',
       });
     } finally {
       setIsUploading(false);
-      setIsParsing(false);
     }
   };
 
