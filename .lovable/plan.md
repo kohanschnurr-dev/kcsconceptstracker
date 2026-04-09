@@ -1,40 +1,30 @@
 
 
-## Dynamically Compute Outstanding Balance from Payments
+## Auto-Calculate Next Payment from Start Date + Payment Frequency
 
 ### Problem
-The "Outstanding Balance" displayed on the loan detail page reads directly from `loan.outstanding_balance` in the database, which is never updated when payments are logged. So even after recording a payment, the balance stays at the original amount.
-
-### Solution
-Compute the outstanding balance dynamically on the client side:
-
-```
-effective_balance = loan.outstanding_balance - sum(principal_portion of all payments)
-```
-
-This ensures the balance reflects logged payments without needing a database trigger.
+The "First Payment Date" field is manually entered and optional, causing the "Next Payment" column to show "—" when not filled. The first payment should be automatically derived from the start/origination date plus one payment frequency period.
 
 ### Changes
 
-**`src/pages/LoanDetail.tsx`**
-1. After payments are loaded, compute `totalPrincipalPaid = payments.reduce((s, p) => s + (p.principal_portion ?? 0), 0)`
-2. Compute `effectiveBalance = loan.outstanding_balance - totalPrincipalPaid`
-3. Replace all references to `loan.outstanding_balance` with `effectiveBalance` in:
-   - The "Outstanding Balance" summary stat card
-   - Any other display of balance on this page
+**`src/components/loans/AddLoanModal.tsx`**
+- Remove the "First Payment Date" input field (lines 400-403)
+- Auto-compute `first_payment_date` when submitting: add one period (based on `payment_frequency`) to `start_date`
+  - `monthly` / `interest_only` → +1 month
+  - `quarterly` → +3 months
+  - `annually` → +12 months
+  - `bi_weekly` → +14 days
 
 **`src/components/loans/LoanTable.tsx`**
-- The loans list page also shows balance. Since payments aren't loaded there, we have two options:
-  - Option A: Update `outstanding_balance` in the DB when a payment is added (more correct long-term)
-  - Option B: Keep the table showing the DB value for now, fix detail page first
+- Update the "Next Payment" column: if `first_payment_date` is null, compute it from `start_date` + frequency instead of showing "—"
+- Additionally, calculate the actual *next* payment by advancing from first payment date past today
 
-I recommend **both**: update the DB balance when logging a payment (in `useLoans.ts` `addPayment`) AND compute it dynamically on the detail page for immediate accuracy.
-
-**`src/hooks/useLoans.ts`**
-- In the `addPayment` mutation's `onSuccess`, also update the loan's `outstanding_balance` by subtracting the `principal_portion` from the current balance. This keeps the DB in sync for the loans list page.
+**`src/types/loans.ts`**
+- Add a small helper `calcFirstPaymentDate(startDate: string, frequency: string): string` that both the modal and table can use
 
 ### Summary
-- 3 files changed: `LoanDetail.tsx`, `useLoans.ts`, `LoanTable.tsx`
-- Detail page shows computed balance immediately
-- DB balance updates on payment add/delete for consistency across pages
+- 3 files changed
+- Remove the manual "First Payment Date" field
+- Auto-derive it from origination date + payment frequency
+- "Next Payment" column will always show a meaningful date
 
