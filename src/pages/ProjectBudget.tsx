@@ -1710,6 +1710,12 @@ export default function ProjectBudget() {
         onOpenChange={setExpenseModalOpen}
         projects={project ? [{ id: project.id, name: project.name, address: project.address, totalBudget: project.total_budget, startDate: project.start_date, status: project.status === 'on_hold' ? 'on-hold' : project.status as 'active' | 'complete', projectType: 'fix_flip', categories: [] }] : []}
         onExpenseCreated={refreshData}
+        onLoanExpenseCreated={setLoanAssignExpense}
+      />
+
+      <LoanPaymentAssignDialog
+        expense={loanAssignExpense}
+        onClose={() => setLoanAssignExpense(null)}
       />
 
       <Dialog open={exportModalOpen} onOpenChange={setExportModalOpen}>
