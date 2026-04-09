@@ -60,12 +60,16 @@ export function DrawScheduleTracker({
   const handleStatusChange = (draw: LoanDraw, status: DrawStatus) => {
     // Auto-set funded date to today when marking as funded without an existing date
     let dateFunded = draw.date_funded;
-    if (status === 'funded' && !draw.date_funded) {
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const dd = String(now.getDate()).padStart(2, '0');
-      dateFunded = `${yyyy}-${mm}-${dd}`;
+    if (status === 'funded' && !dateFunded) {
+      if (draw.expected_date) {
+        dateFunded = draw.expected_date;
+      } else {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        dateFunded = `${yyyy}-${mm}-${dd}`;
+      }
     }
     onUpsert({ ...draw, status, date_funded: dateFunded }, loanId);
   };
