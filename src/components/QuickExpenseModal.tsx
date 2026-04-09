@@ -50,6 +50,7 @@ interface QuickExpenseModalProps {
   onOpenChange: (open: boolean) => void;
   projects: Project[];
   onExpenseCreated?: () => void;
+  onLoanExpenseCreated?: (info: { expenseId: string; amount: number; date: string; projectId: string; vendorName?: string; description?: string }) => void;
 }
 
 interface ParsedLineItem {
@@ -64,11 +65,13 @@ interface ParsedLineItem {
 function ExpenseForm({ 
   projects, 
   onExpenseCreated, 
-  onClose 
+  onClose,
+  onLoanExpenseCreated,
 }: { 
   projects: Project[]; 
   onExpenseCreated?: () => void;
   onClose: () => void;
+  onLoanExpenseCreated?: QuickExpenseModalProps['onLoanExpenseCreated'];
 }) {
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -439,16 +442,26 @@ function ExpenseForm({
     try {
       const categoryId = await ensureCategoryId(selectedProject, selectedCategory);
       const receiptUrl = await uploadReceipt();
-      const { error } = await supabase.from('expenses').insert({
+      const { data: inserted, error } = await supabase.from('expenses').insert({
         project_id: selectedProject, category_id: categoryId, amount: calculateTotal(), vendor_name: vendor,
         description: description || null, payment_method: paymentMethod, status: 'actual',
         includes_tax: includeTax, tax_amount: includeTax ? calculateTax() : null, date, receipt_url: receiptUrl,
         expense_type: expenseType, cost_type: costType,
-      });
+      }).select('id').single();
       if (error) throw error;
       toast({ title: 'Expense logged', description: `$${calculateTotal().toFixed(2)} added successfully` });
       onClose();
       onExpenseCreated?.();
+      if (costType === 'loan' && inserted) {
+        onLoanExpenseCreated?.({
+          expenseId: inserted.id,
+          amount: calculateTotal(),
+          date,
+          projectId: selectedProject,
+          vendorName: vendor || undefined,
+          description: description || undefined,
+        });
+      }
     } catch (error: any) {
       console.error('Error creating expense:', error);
       toast({ title: 'Error', description: error.message || 'Failed to log expense.', variant: 'destructive' });
@@ -1108,7 +1121,7 @@ function ImportTab({
 }
 
 // ─── Modal Shell ───────────────────────────────────────────────────
-function ModalContent({ projects, onExpenseCreated, onClose }: { projects: Project[]; onExpenseCreated?: () => void; onClose: () => void }) {
+function ModalContent({ projects, onExpenseCreated, onClose, onLoanExpenseCreated }: { projects: Project[]; onExpenseCreated?: () => void; onClose: () => void; onLoanExpenseCreated?: QuickExpenseModalProps['onLoanExpenseCreated'] }) {
   return (
     <Tabs defaultValue="single" className="w-full">
       <div className="px-4 pt-2">
@@ -1124,7 +1137,7 @@ function ModalContent({ projects, onExpenseCreated, onClose }: { projects: Proje
         </TabsList>
       </div>
       <TabsContent value="single">
-        <ExpenseForm projects={projects} onExpenseCreated={onExpenseCreated} onClose={onClose} />
+        <ExpenseForm projects={projects} onExpenseCreated={onExpenseCreated} onClose={onClose} onLoanExpenseCreated={onLoanExpenseCreated} />
       </TabsContent>
       <TabsContent value="import">
         <ImportTab projects={projects} onExpenseCreated={onExpenseCreated} onClose={onClose} />
@@ -1133,7 +1146,7 @@ function ModalContent({ projects, onExpenseCreated, onClose }: { projects: Proje
   );
 }
 
-export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreated }: QuickExpenseModalProps) {
+export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreated, onLoanExpenseCreated }: QuickExpenseModalProps) {
   const isMobile = useIsMobile();
   const handleClose = () => onOpenChange(false);
 
@@ -1148,7 +1161,7 @@ export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreat
             </DrawerTitle>
           </DrawerHeader>
           <div className="overflow-y-auto flex-1">
-            <ModalContent projects={projects} onExpenseCreated={onExpenseCreated} onClose={handleClose} />
+            <ModalContent projects={projects} onExpenseCreated={onExpenseCreated} onClose={handleClose} onLoanExpenseCreated={onLoanExpenseCreated} />
           </div>
         </DrawerContent>
       </Drawer>
@@ -1164,7 +1177,7 @@ export function QuickExpenseModal({ open, onOpenChange, projects, onExpenseCreat
             Add Expense
           </DialogTitle>
         </DialogHeader>
-        <ModalContent projects={projects} onExpenseCreated={onExpenseCreated} onClose={handleClose} />
+        <ModalContent projects={projects} onExpenseCreated={onExpenseCreated} onClose={handleClose} onLoanExpenseCreated={onLoanExpenseCreated} />
       </DialogContent>
     </Dialog>
   );

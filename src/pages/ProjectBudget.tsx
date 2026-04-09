@@ -67,6 +67,7 @@ import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { PendingBudgetBanner } from '@/components/project/PendingBudgetBanner';
+import { LoanPaymentAssignDialog } from '@/components/project/LoanPaymentAssignDialog';
 import { Tooltip as STooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const CHART_COLORS = [
@@ -177,6 +178,10 @@ export default function ProjectBudget() {
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   
+  // Loan payment assignment
+  const [loanAssignExpense, setLoanAssignExpense] = useState<{
+    expenseId: string; amount: number; date: string; projectId: string; vendorName?: string; description?: string;
+  } | null>(null);
   // All Expenses collapsed state - show only 7 by default
   const [showAllExpenses, setShowAllExpenses] = useState(false);
   const VISIBLE_EXPENSE_COUNT = 7;
@@ -583,6 +588,18 @@ export default function ProjectBudget() {
     }
     setExpenses(prev => prev.map(e => e.id === expenseId ? { ...e, cost_type: costType } : e));
     toast.success('Type updated');
+
+    // If changed to 'loan', trigger loan payment assignment
+    if (costType === 'loan' && id) {
+      setLoanAssignExpense({
+        expenseId,
+        amount: Number(expense.amount),
+        date: expense.date,
+        projectId: id,
+        vendorName: expense.vendor_name || undefined,
+        description: expense.description || undefined,
+      });
+    }
   };
 
   const getCostTypeLabel = (type: string) => {
@@ -1693,6 +1710,12 @@ export default function ProjectBudget() {
         onOpenChange={setExpenseModalOpen}
         projects={project ? [{ id: project.id, name: project.name, address: project.address, totalBudget: project.total_budget, startDate: project.start_date, status: project.status === 'on_hold' ? 'on-hold' : project.status as 'active' | 'complete', projectType: 'fix_flip', categories: [] }] : []}
         onExpenseCreated={refreshData}
+        onLoanExpenseCreated={setLoanAssignExpense}
+      />
+
+      <LoanPaymentAssignDialog
+        expense={loanAssignExpense}
+        onClose={() => setLoanAssignExpense(null)}
       />
 
       <Dialog open={exportModalOpen} onOpenChange={setExportModalOpen}>
