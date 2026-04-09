@@ -167,6 +167,7 @@ export default function LoanDetail() {
                   <InfoRow label="Status" value={<LoanStatusBadge status={loan.status} />} />
                   {loan.project_name && <InfoRow label="Project" value={loan.project_name} />}
                   {loan.nickname && <InfoRow label="Nickname" value={loan.nickname} />}
+                  <InfoRow label="Payment Freq." value={loan.payment_frequency.replace('_', ' ')} />
                 </CardContent>
               </Card>
 
