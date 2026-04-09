@@ -64,7 +64,7 @@ export function LoanExtensions({ extensions, loanId, maturityDate, onAdd, onDele
   const totalFees = extensions.reduce((s, e) => s + (e.extension_fee ?? 0), 0);
 
   return (
-    <Card className="glass-card md:col-span-2">
+    <Card className="glass-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-muted-foreground">
