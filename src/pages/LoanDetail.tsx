@@ -329,7 +329,7 @@ export default function LoanDetail() {
                   {totalDrawFees > 0 && (
                     <InfoRow label="Draw Fees" value={fmt(totalDrawFees)} />
                   )}
-                  <InfoRow label="Interest Accrued" value={fmt(effectiveInterest)} />
+                  <InfoRow label="Interest Accrued" value={fmt(combinedInterest)} />
                   <InfoRow label="Total Cost of Loan" value={<span className="font-semibold text-warning">{fmt(totalCost)}</span>} />
                   {loan.has_prepayment_penalty && (
                     <InfoRow label="Prepay Penalty" value={<Badge variant="outline" className="text-xs bg-warning/20 text-warning border-warning/30">Yes</Badge>} />
