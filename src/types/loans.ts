@@ -191,9 +191,10 @@ export function buildDrawInterestSchedule(
     const effectiveRate = draw.interest_rate_override ?? loan.interest_rate;
     const dailyRate = (effectiveRate / 100) / dayBasis;
 
-    const periodStart = new Date(draw.date_funded!);
+    const drawDate = draw.date_funded ?? draw.expected_date!;
+    const periodStart = new Date(drawDate);
     const periodEnd = i < funded.length - 1
-      ? new Date(funded[i + 1].date_funded!)
+      ? new Date(funded[i + 1].date_funded ?? funded[i + 1].expected_date!)
       : maturity;
 
     const days = Math.max(
