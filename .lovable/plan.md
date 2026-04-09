@@ -1,22 +1,26 @@
 
 
-## Reorder Stats and Auto-size Grid
+## Break Down Interest Accrued by Original Balance + Draws
 
-### Changes in `src/pages/LoanDetail.tsx`
+### What Changes
 
-**1. Reorder `summaryStats` array** — Move "Interest Accrued" to be the second item (right after Loan Amount):
+**`src/pages/LoanDetail.tsx`** — Add a clickable breakdown popover to the "Interest Accrued" stat card (similar to the existing "Loan Amount" breakdown), showing how much interest comes from the original balance vs. each draw.
 
-```
-[Loan Amount] [Interest Accrued] [Interest Rate] [Monthly Payment] [Remaining Term]
-```
+### Logic
 
-For traditional loans (with Outstanding Balance), the order becomes:
-```
-[Original Amount] [Interest Accrued] [Outstanding Balance] [Interest Rate] [Monthly Payment] [Remaining Term]
-```
+For draw-based loans (`drawInterest` is available):
+- The `drawInterest.periods` array already tracks interest per period with running balances. Each period spans from one draw funding date to the next (or maturity).
+- To show per-draw contribution, we'll attribute interest from each period proportionally to the draws that are active during that period, or more simply, display the period-level breakdown directly (e.g., "Draw #1 → Draw #2: $X interest on $Y balance").
+- Show a total row at the bottom.
 
-**2. Auto-size grid** — Change the grid from fixed `lg:grid-cols-6` to dynamically use the number of stats. Non-traditional loans have 5 stats → `lg:grid-cols-5`, traditional have 6 → `lg:grid-cols-6`. This ensures cards take proportional space.
+For non-draw loans: No breakdown needed (single source of interest).
+
+### Implementation
+
+1. Add `hasInterestBreakdown` flag to the Interest Accrued stat entry (true when `drawInterest` exists and has periods).
+2. In the rendering loop, handle `hasInterestBreakdown` the same way as `hasBreakdown` — wrap in a `Popover` showing each period's interest contribution with labels like "Original Loan", "After Draw #1", etc., plus a total row.
+3. Add `ChevronDown` indicator to signal it's clickable.
 
 ### Files Modified
-- `src/pages/LoanDetail.tsx` (~lines 117-124 for reorder, line 170 for grid)
+- `src/pages/LoanDetail.tsx` (lines ~117-220)
 
