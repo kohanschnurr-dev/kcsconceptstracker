@@ -151,11 +151,11 @@ export default function LoanDetail() {
 
         {/* Tabs */}
         <Tabs defaultValue="overview">
-          <TabsList className="w-full justify-center">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="amortization">Amortization</TabsTrigger>
-            {loan.has_draws && <TabsTrigger value="draws">Draw Schedule</TabsTrigger>}
-            <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsList className="w-full">
+            <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
+            <TabsTrigger value="amortization" className="flex-1">Amortization</TabsTrigger>
+            {loan.has_draws && <TabsTrigger value="draws" className="flex-1">Draw Schedule</TabsTrigger>}
+            <TabsTrigger value="payments" className="flex-1">Payments</TabsTrigger>
           </TabsList>
 
           {/* Overview */}
