@@ -1,26 +1,32 @@
 
 
-## Break Down Interest Accrued by Original Balance + Draws
+## Combine Loan + Draw Interest in the Accrued Interest Card
 
-### What Changes
+### Problem
+Currently the "Interest Accrued" card shows **either** the amortization interest (original loan) **or** the draw interest — never both. For draw-based loans, the original loan balance also accrues interest via the amortization schedule, but that's hidden.
 
-**`src/pages/LoanDetail.tsx`** — Add a clickable breakdown popover to the "Interest Accrued" stat card (similar to the existing "Loan Amount" breakdown), showing how much interest comes from the original balance vs. each draw.
+### Solution
+Combine both sources into one total and show a unified breakdown popover.
 
-### Logic
+### Changes in `src/pages/LoanDetail.tsx`
 
-For draw-based loans (`drawInterest` is available):
-- The `drawInterest.periods` array already tracks interest per period with running balances. Each period spans from one draw funding date to the next (or maturity).
-- To show per-draw contribution, we'll attribute interest from each period proportionally to the draws that are active during that period, or more simply, display the period-level breakdown directly (e.g., "Draw #1 → Draw #2: $X interest on $Y balance").
-- Show a total row at the bottom.
+**1. Compute combined total:**
+```
+combinedInterest = totalInterestPaid (amort through today) + drawInterest.totalInterest
+```
 
-For non-draw loans: No breakdown needed (single source of interest).
+**2. Always show breakdown when draws exist** — the popover will have:
+- "Original Loan Interest" → `totalInterestPaid` (from amortization schedule through today)
+- Each draw period from `drawInterest.periods` (e.g., "Draw #1 → Draw #2", "Draw #2 → Maturity")
+- Separator + **Total** row
 
-### Implementation
+**3. Update the stat entry:**
+- Label: "Interest Accrued" (drop the "(Draws)" suffix)
+- Value: `fmt(combinedInterest)`
+- `hasInterestBreakdown`: true when `drawInterest` exists
 
-1. Add `hasInterestBreakdown` flag to the Interest Accrued stat entry (true when `drawInterest` exists and has periods).
-2. In the rendering loop, handle `hasInterestBreakdown` the same way as `hasBreakdown` — wrap in a `Popover` showing each period's interest contribution with labels like "Original Loan", "After Draw #1", etc., plus a total row.
-3. Add `ChevronDown` indicator to signal it's clickable.
+**4. Update the popover content** to render the "Original Loan Interest" line first, then each draw period, then total.
 
 ### Files Modified
-- `src/pages/LoanDetail.tsx` (lines ~117-220)
+- `src/pages/LoanDetail.tsx` (~lines 86-88, 117-121, 229-244)
 
