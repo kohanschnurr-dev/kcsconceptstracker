@@ -95,7 +95,6 @@ export default function LoanDetail() {
     ? draws.reduce((sum, d) => sum + calcDrawFee(d as any), 0)
     : 0;
   const effectiveInterest = drawInterest ? drawInterest.totalInterest : totalScheduleInterest;
-  const totalCost = effectiveInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
   const handleMarkPaidOff = () => {
     updateLoan.mutate({ id: loan.id, status: 'paid_off', outstanding_balance: 0 });
