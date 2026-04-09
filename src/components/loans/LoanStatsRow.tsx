@@ -14,7 +14,7 @@ interface LoanStatsRowProps {
 export function LoanStatsRow({ loans }: LoanStatsRowProps) {
   const active = useMemo(() => loans.filter(l => l.status === 'active'), [loans]);
 
-  const totalBalance = useMemo(() => active.reduce((s, l) => s + l.outstanding_balance, 0), [active]);
+  const totalBalance = useMemo(() => active.reduce((s, l) => s + l.outstanding_balance + (l.has_draws ? (l.total_draw_amount ?? 0) : 0), 0), [active]);
 
   const weightedRate = useMemo(() => {
     if (totalBalance === 0) return 0;
