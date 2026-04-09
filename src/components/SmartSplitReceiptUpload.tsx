@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, AlertCircle, AlertTriangle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download, Camera, Info, RefreshCw } from 'lucide-react';
+import { Upload, FileImage, Loader2, Receipt, Trash2, Check, X, Sparkles, ChevronDown, ChevronUp, ChevronRight, AlertCircle, AlertTriangle, Clipboard, Package, Wrench, Link2, Building, CalendarIcon, Home, Building2, Download, Camera, Info, RefreshCw } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Switch } from '@/components/ui/switch';
@@ -87,6 +87,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const [selectedMatch, setSelectedMatch] = useState<MatchedExpense | null>(null);
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [awaitingCollapsed, setAwaitingCollapsed] = useState(false);
   const uploadZoneRef = useRef<HTMLDivElement>(null);
   
   const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
@@ -1215,10 +1216,22 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
               {pendingReceipts.filter(r => r.status === 'pending').length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAwaitingCollapsed(!awaitingCollapsed)}
+                      className="flex items-center gap-2 text-sm font-medium hover:text-foreground/80 transition-colors"
+                    >
+                      {awaitingCollapsed ? (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
                       <AlertCircle className="h-4 w-4 text-warning" />
                       Awaiting Bank Transaction
-                    </h4>
+                      <Badge variant="secondary" className="text-xs ml-1">
+                        {pendingReceipts.filter(r => r.status === 'pending').length}
+                      </Badge>
+                    </button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -1234,7 +1247,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                       Find Matches
                     </Button>
                   </div>
-                  {pendingReceipts.filter(r => r.status === 'pending').map((receipt) => (
+                  {!awaitingCollapsed && pendingReceipts.filter(r => r.status === 'pending').map((receipt) => (
                     <Card key={receipt.id} className="border-warning/30 bg-warning/5">
                       <CardContent className="p-3">
                         <div className="flex items-start justify-between gap-2">
