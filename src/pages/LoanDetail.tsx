@@ -65,7 +65,15 @@ export default function LoanDetail() {
   }
 
   const monthly = loan.monthly_payment ?? calcMonthlyPayment(loan.original_amount, loan.interest_rate, loan.loan_term_months, loan.amortization_period_months, loan.payment_frequency);
-  const remainingTerm = Math.max(loan.loan_term_months - payments.length, 0);
+  const effectiveMaturity = extensions.length > 0
+    ? extensions.reduce((latest: string, e: any) => e.extended_to > latest ? e.extended_to : latest, loan.maturity_date)
+    : loan.maturity_date;
+  const matDate = new Date(effectiveMaturity + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diffMs = matDate.getTime() - today.getTime();
+  const diffDays = Math.max(Math.ceil(diffMs / 86400000), 0);
+  const diffMonths = Math.floor(diffDays / 30.44);
+  const remainingTermLabel = diffMonths >= 1 ? `${diffMonths} mo` : `${diffDays} days`;
   const totalInterestPaid = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
   const totalExtensionFees = extensions.reduce((s: number, e: any) => s + (e.extension_fee ?? 0), 0);
   const totalCost = loan.original_amount + (monthly * loan.loan_term_months - loan.original_amount) + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees;
@@ -89,7 +97,7 @@ export default function LoanDetail() {
     { label: 'Outstanding Balance', value: fmt(loan.outstanding_balance), icon: TrendingDown, color: 'text-warning bg-warning/10' },
     { label: 'Interest Rate', value: `${loan.interest_rate.toFixed(2)}%`, icon: Percent, color: 'text-blue-400 bg-blue-500/10' },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
-    { label: 'Remaining Term', value: `${remainingTerm} mo`, icon: Calendar, color: 'text-primary bg-primary/10' },
+    { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
     { label: drawInterest ? 'Accrued Interest (Draws)' : 'Interest Paid', value: drawInterest ? fmt(drawInterest.totalInterest) : fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive bg-destructive/10' },
   ];
 
