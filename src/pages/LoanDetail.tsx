@@ -242,7 +242,7 @@ export default function LoanDetail() {
                   {loan.project_name && <InfoRow label="Project" value={loan.project_name} />}
                   <InfoRow label="Payment Freq." value={loan.payment_frequency.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} />
                   {loan.ltv_at_origination && <InfoRow label="LTV at Origination" value={`${loan.ltv_at_origination}%`} />}
-                  {loan.collateral_type && <InfoRow label="Collateral" value={loan.collateral_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} />}
+                  
                 </CardContent>
               </Card>
 
