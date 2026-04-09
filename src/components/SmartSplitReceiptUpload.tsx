@@ -87,6 +87,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const [selectedMatch, setSelectedMatch] = useState<MatchedExpense | null>(null);
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [awaitingCollapsed, setAwaitingCollapsed] = useState(false);
   const uploadZoneRef = useRef<HTMLDivElement>(null);
   
   const [editableCategories, setEditableCategories] = useState<Record<number, string>>({});
