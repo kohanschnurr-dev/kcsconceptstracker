@@ -67,6 +67,7 @@ import { QuickExpenseModal } from '@/components/QuickExpenseModal';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { PendingBudgetBanner } from '@/components/project/PendingBudgetBanner';
+import { LoanPaymentAssignDialog } from '@/components/project/LoanPaymentAssignDialog';
 import { Tooltip as STooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const CHART_COLORS = [
