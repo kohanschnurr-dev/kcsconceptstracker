@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { DRAW_STATUS_CONFIG, buildDrawInterestSchedule } from '@/types/loans';
+import { DRAW_STATUS_CONFIG, buildDrawInterestSchedule, calcDrawFee } from '@/types/loans';
 import type { LoanDraw, DrawStatus, Loan, DrawInterestResult } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
@@ -75,7 +75,14 @@ export function DrawScheduleTracker({
 
   const startEdit = (draw: LoanDraw) => {
     setEditingId(draw.id);
-    setEditDraft({ milestone_name: draw.milestone_name, draw_amount: draw.draw_amount, expected_date: draw.expected_date });
+    setEditDraft({
+      milestone_name: draw.milestone_name,
+      draw_amount: draw.draw_amount,
+      expected_date: draw.expected_date,
+      fee_amount: draw.fee_amount,
+      fee_percentage: draw.fee_percentage,
+      interest_rate_override: draw.interest_rate_override,
+    });
   };
 
   const cancelEdit = () => {
@@ -195,6 +202,40 @@ export function DrawScheduleTracker({
                             </Popover>
                           </div>
                         </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Rate Override (%)</Label>
+                            <Input
+                              className="mt-1 h-9"
+                              type="number"
+                              step="0.01"
+                              value={editDraft.interest_rate_override ?? ''}
+                              onChange={e => setEditDraft(d => ({ ...d, interest_rate_override: e.target.value ? parseFloat(e.target.value) : null }))}
+                              placeholder="Loan default"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Fee ($)</Label>
+                            <Input
+                              className="mt-1 h-9"
+                              type="number"
+                              value={editDraft.fee_amount ?? ''}
+                              onChange={e => setEditDraft(d => ({ ...d, fee_amount: e.target.value ? parseFloat(e.target.value) : null }))}
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Fee (%)</Label>
+                            <Input
+                              className="mt-1 h-9"
+                              type="number"
+                              step="0.01"
+                              value={editDraft.fee_percentage ?? ''}
+                              onChange={e => setEditDraft(d => ({ ...d, fee_percentage: e.target.value ? parseFloat(e.target.value) : null }))}
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
                         <div className="flex gap-2">
                           <Button size="sm" onClick={() => saveEdit(draw)} className="gap-1.5">
                             <Check className="h-3.5 w-3.5" /> Save
@@ -276,6 +317,15 @@ export function DrawScheduleTracker({
                               </SelectContent>
                             </Select>
                           )}
+                          {draw.interest_rate_override != null && loan && draw.interest_rate_override !== loan.interest_rate && (
+                            <Badge variant="secondary" className="text-xs">@ {draw.interest_rate_override}%</Badge>
+                          )}
+                          {(() => {
+                            const fee = calcDrawFee(draw);
+                            if (fee <= 0) return null;
+                            const label = draw.fee_percentage ? `Fee: ${draw.fee_percentage}%` : `Fee: ${fmtExact(fee)}`;
+                            return <Badge variant="secondary" className="text-xs">{label}</Badge>;
+                          })()}
                         </div>
                       </>
                     )}
@@ -337,6 +387,20 @@ export function DrawScheduleTracker({
                   </Popover>
                 </div>
               </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Rate Override (%)</Label>
+                  <Input className="mt-1 h-9" type="number" step="0.01" value={newDraw.interest_rate_override ?? ''} onChange={e => setNewDraw(d => ({ ...d, interest_rate_override: e.target.value ? parseFloat(e.target.value) : null }))} placeholder="Loan default" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Fee ($)</Label>
+                  <Input className="mt-1 h-9" type="number" value={newDraw.fee_amount ?? ''} onChange={e => setNewDraw(d => ({ ...d, fee_amount: e.target.value ? parseFloat(e.target.value) : null }))} placeholder="0" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Fee (%)</Label>
+                  <Input className="mt-1 h-9" type="number" step="0.01" value={newDraw.fee_percentage ?? ''} onChange={e => setNewDraw(d => ({ ...d, fee_percentage: e.target.value ? parseFloat(e.target.value) : null }))} placeholder="0" />
+                </div>
+              </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleSaveNew}>Save Draw</Button>
                 <Button size="sm" variant="outline" onClick={() => setAddingNew(false)}>Cancel</Button>
@@ -360,10 +424,14 @@ export function DrawScheduleTracker({
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Summary cards */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="rounded-xl border border-border bg-card p-4 text-center">
                 <p className="text-xl font-bold text-warning">{fmtExact(interestResult.totalInterest)}</p>
                 <p className="text-sm text-muted-foreground mt-1">Total Accrued Interest</p>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 text-center">
+                <p className="text-xl font-bold text-destructive">{fmtExact(interestResult.totalFees)}</p>
+                <p className="text-sm text-muted-foreground mt-1">Total Draw Fees</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4 text-center">
                 <p className="text-xl font-bold text-primary">{fmt(interestResult.weightedAvgBalance)}</p>
@@ -383,7 +451,9 @@ export function DrawScheduleTracker({
                     <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Period</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Dates</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Days</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Rate</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Balance</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Fees</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Interest</th>
                   </tr>
                 </thead>
@@ -400,18 +470,19 @@ export function DrawScheduleTracker({
                         {formatDisplayDate(p.startDate)} – {formatDisplayDate(p.endDate)}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">{p.days}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{p.effectiveRate}%</td>
                       <td className="px-4 py-3 text-right font-medium tabular-nums">{fmt(p.balance)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-destructive">{p.fees > 0 ? fmtExact(p.fees) : '—'}</td>
                       <td className="px-4 py-3 text-right font-semibold text-warning tabular-nums">{fmtExact(p.interest)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/50">
-                    <td className="px-4 py-3 font-semibold" colSpan={2}>Total</td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                      {interestResult.periods.reduce((s, p) => s + p.days, 0)}
-                    </td>
+                    <td className="px-4 py-3 font-semibold" colSpan={3}>Total</td>
+                    <td className="px-4 py-3" />
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{fmt(interestResult.weightedAvgBalance)}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-destructive tabular-nums">{fmtExact(interestResult.totalFees)}</td>
                     <td className="px-4 py-3 text-right font-bold text-warning tabular-nums">{fmtExact(interestResult.totalInterest)}</td>
                   </tr>
                 </tfoot>
