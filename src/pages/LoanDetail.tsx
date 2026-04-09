@@ -169,7 +169,7 @@ export default function LoanDetail() {
         </div>
 
         {/* Summary stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-${gridCols} gap-3`}>
           {summaryStats.map(s => {
             const cardContent = (
               <CardContent className="p-4 text-center">
