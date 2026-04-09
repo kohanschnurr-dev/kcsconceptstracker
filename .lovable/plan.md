@@ -1,42 +1,51 @@
 
 
-## Draw-Based Interest Accrual Calculator
+## Add Loan Extensions Tracking
 
 ### Problem
-Currently, the amortization schedule assumes interest accrues on the full loan amount from day one. For draw-based loans (hard money, construction, etc.), interest should only accrue on the cumulative amount that has been funded at each draw point.
+The loan already stores `extension_fee` and `extension_terms` as simple fields, but there's no way to record actual extensions that have occurred — each with its own date, new maturity, fee charged, and notes. Users currently put this info in the notes field.
+
+### Approach
+Create a `loan_extensions` table to track each extension event, build a UI component to display/add them, and surface it in the Loan Detail page.
 
 ### Changes
 
-**1. `src/components/loans/DrawScheduleTracker.tsx`** — Enhanced draw rows & interest summary
-- Make `date_funded` editable inline (date input) so users can record when each draw was actually funded — this is critical for the calculation.
-- Add an **Interest Accrual Summary** card at the bottom of the draw schedule showing:
-  - Total accrued interest across all draw periods
-  - Weighted average balance
-  - Per-draw interest breakdown (each draw shows its funded date, amount, days outstanding, and interest accrued)
-- The summary recalculates live as draws/dates change.
+**1. Database migration — `loan_extensions` table**
+```sql
+CREATE TABLE public.loan_extensions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  loan_id uuid REFERENCES public.loans(id) ON DELETE CASCADE NOT NULL,
+  extension_number int NOT NULL DEFAULT 1,
+  extended_from date NOT NULL,
+  extended_to date NOT NULL,
+  extension_fee numeric DEFAULT 0,
+  fee_percentage numeric DEFAULT NULL,
+  notes text DEFAULT NULL,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.loan_extensions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own loan extensions"
+  ON public.loan_extensions FOR ALL TO authenticated
+  USING (loan_id IN (SELECT id FROM public.loans WHERE user_id = auth.uid()))
+  WITH CHECK (loan_id IN (SELECT id FROM public.loans WHERE user_id = auth.uid()));
+```
 
-**2. `src/types/loans.ts`** — New utility function `buildDrawInterestSchedule`
-- Accepts the loan (for rate + maturity) and the array of funded draws.
-- Sorts draws by `date_funded`, then for each period between draw funding dates (and from last draw to maturity), calculates:
-  - Running balance = sum of all draws funded up to that point
-  - Days in period
-  - Interest = balance × (annual rate / 365 or 360 depending on calc method) × days
-- Returns an array of period rows plus totals.
+**2. `src/hooks/useLoans.ts`** — Add extensions CRUD to `useLoanDetail`
+- Query `loan_extensions` by `loan_id`, ordered by `extension_number`.
+- Add `addExtension` and `deleteExtension` mutations.
 
-**3. `src/components/loans/DrawScheduleTracker.tsx`** — New "Draw Interest" sub-section
-- Below the draw list, render a clean table/card showing:
-  - Period (e.g., "Draw 1 → Draw 2"), dates, running balance, days, interest for that period
-  - Total row at bottom with cumulative interest
-- Only visible when there are funded draws with dates.
+**3. New `src/components/loans/LoanExtensions.tsx`**
+- Card-based UI showing a timeline of extensions with:
+  - Extension number, original maturity → new maturity, fee charged, notes
+  - "Add Extension" button that opens an inline form with calendar pickers for dates, fee input, and optional notes
+  - Delete option per extension
+- Clean glass-card styling matching the rest of the loan detail page.
 
-**4. `src/pages/LoanDetail.tsx`** — Update summary stats
-- For draw-based loans, show "Accrued Interest (Draws)" in the summary stat cards using the draw-based calculation instead of the flat calculation.
+**4. `src/pages/LoanDetail.tsx`**
+- Add an "Extensions" section to the Overview tab, below the existing cards (full-width, `md:col-span-2`).
+- Also add an extension count indicator in the Loan Terms card next to Maturity Date when extensions exist (e.g., "Feb 8, 2026 (+2 ext)").
 
 ### UI Details
-- Draw rows get an inline date picker for `date_funded` (appears when status is set to "funded" or can be entered manually).
-- Interest summary uses the same glass-card styling with a clear breakdown table.
-- Per-draw interest shown in a compact format: `Draw #1: $X,XXX (45 days @ $150,000)`.
-
-### No database changes needed
-The `loan_draws` table already has `date_funded` — we just need to make it easy to enter and use it for calculations.
-
+- Each extension row: card with left accent border, showing "Extension #1" header, date range, fee in bold, and notes in muted text.
+- Add form uses calendar popovers for date selection (matching the draw funded date pattern).
+- Empty state: subtle dashed border with "No extensions recorded" and an Add button.
