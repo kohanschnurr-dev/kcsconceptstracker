@@ -27,10 +27,11 @@ interface DrawScheduleTrackerProps {
   loanId: string;
   loan?: Pick<Loan, 'interest_rate' | 'interest_calc_method' | 'maturity_date' | 'start_date'>;
   readOnly?: boolean;
+  extensionMonths?: number;
 }
 
 export function DrawScheduleTracker({
-  draws, totalDrawAmount, onUpsert, onDelete, loanId, loan, readOnly = false,
+  draws, totalDrawAmount, onUpsert, onDelete, loanId, loan, readOnly = false, extensionMonths = 0,
 }: DrawScheduleTrackerProps) {
   const [addingNew, setAddingNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -53,7 +54,7 @@ export function DrawScheduleTracker({
   const pctFunded = totalDrawAmount ? (totalFunded / totalDrawAmount) * 100 : 0;
 
   const interestResult: DrawInterestResult | null = loan
-    ? buildDrawInterestSchedule(loan, draws)
+    ? buildDrawInterestSchedule(loan, draws, extensionMonths)
     : null;
 
   const handleStatusChange = (draw: LoanDraw, status: DrawStatus) => {
