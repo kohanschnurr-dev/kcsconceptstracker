@@ -179,42 +179,33 @@ export function buildDrawInterestSchedule(
   const maturity = new Date(loan.maturity_date);
 
   const periods: DrawInterestPeriod[] = [];
-  let runningBalance = 0;
-  let totalDays = 0;
+  let maxDays = 0;
   let balanceDaysSum = 0;
 
-  for (let i = 0; i < funded.length; i++) {
-    const draw = funded[i];
-    runningBalance += draw.draw_amount;
-
-    // Use per-draw override if set, otherwise fall back to loan rate
+  for (const draw of funded) {
     const effectiveRate = draw.interest_rate_override ?? loan.interest_rate;
     const dailyRate = (effectiveRate / 100) / dayBasis;
 
     const drawDate = draw.date_funded ?? draw.expected_date!;
     const periodStart = new Date(drawDate);
-    const periodEnd = i < funded.length - 1
-      ? new Date(funded[i + 1].date_funded ?? funded[i + 1].expected_date!)
-      : maturity;
 
     const days = Math.max(
-      Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)),
+      Math.round((maturity.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)),
       0,
     );
 
-    const interest = runningBalance * dailyRate * days;
+    const interest = draw.draw_amount * dailyRate * days;
     const fees = calcDrawFee(draw);
-    totalDays += days;
-    balanceDaysSum += runningBalance * days;
+    if (days > maxDays) maxDays = days;
+    balanceDaysSum += draw.draw_amount * days;
 
+    const nameSuffix = draw.milestone_name ? ` — ${draw.milestone_name}` : '';
     periods.push({
-      label: i < funded.length - 1
-        ? `Draw #${draw.draw_number} → Draw #${funded[i + 1].draw_number}`
-        : `Draw #${draw.draw_number} → Maturity`,
+      label: `Draw #${draw.draw_number}${nameSuffix}`,
       startDate: drawDate,
-      endDate: periodEnd.toISOString().split('T')[0],
+      endDate: maturity.toISOString().split('T')[0],
       days,
-      balance: runningBalance,
+      balance: draw.draw_amount,
       interest,
       fees,
       effectiveRate,
@@ -225,7 +216,7 @@ export function buildDrawInterestSchedule(
     periods,
     totalInterest: periods.reduce((s, p) => s + p.interest, 0),
     totalFees: periods.reduce((s, p) => s + p.fees, 0),
-    weightedAvgBalance: totalDays > 0 ? balanceDaysSum / totalDays : 0,
+    weightedAvgBalance: maxDays > 0 ? balanceDaysSum / maxDays : 0,
   };
 }
 
