@@ -114,9 +114,11 @@ export default function LoanDetail() {
   const loanAmountLabel = isTraditional ? 'Original Amount' : 'Loan Amount';
   const hasLoanBreakdown = !isTraditional && loan.has_draws && draws.length > 0;
 
+  const hasInterestBreakdown = !!drawInterest && drawInterest.periods.length > 0;
+
   const summaryStats = [
     { label: loanAmountLabel, value: fmt(loanAmountValue), icon: DollarSign, color: 'text-primary bg-primary/10', hasBreakdown: hasLoanBreakdown },
-    { label: drawInterest ? 'Accrued Interest (Draws)' : 'Interest Accrued', value: drawInterest ? fmt(drawInterest.totalInterest) : fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive bg-destructive/10' },
+    { label: drawInterest ? 'Accrued Interest (Draws)' : 'Interest Accrued', value: drawInterest ? fmt(drawInterest.totalInterest) : fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive bg-destructive/10', hasInterestBreakdown },
     ...(isTraditional ? [{ label: 'Outstanding Balance', value: fmt(loan.outstanding_balance), icon: TrendingDown, color: 'text-warning bg-warning/10' }] : []),
     { label: 'Interest Rate', value: `${loan.interest_rate.toFixed(2)}%`, icon: Percent, color: 'text-blue-400 bg-blue-500/10' },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
