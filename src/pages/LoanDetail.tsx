@@ -64,7 +64,8 @@ export default function LoanDetail() {
   const monthly = loan.monthly_payment ?? calcMonthlyPayment(loan.original_amount, loan.interest_rate, loan.loan_term_months, loan.amortization_period_months, loan.payment_frequency);
   const remainingTerm = Math.max(loan.loan_term_months - payments.length, 0);
   const totalInterestPaid = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
-  const totalCost = loan.original_amount + (monthly * loan.loan_term_months - loan.original_amount) + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0);
+  const totalExtensionFees = extensions.reduce((s: number, e: any) => s + (e.extension_fee ?? 0), 0);
+  const totalCost = loan.original_amount + (monthly * loan.loan_term_months - loan.original_amount) + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees;
 
   // Draw-based interest for summary
   const drawInterest = loan.has_draws ? buildDrawInterestSchedule(loan, draws) : null;
@@ -197,6 +198,9 @@ export default function LoanDetail() {
                 <CardContent>
                   <InfoRow label="Origination Fee" value={loan.origination_fee_points ? `${loan.origination_fee_points} pts (${fmt(loan.origination_fee_dollars)})` : fmt(loan.origination_fee_dollars)} />
                   <InfoRow label="Other Closing Costs" value={fmt(loan.other_closing_costs)} />
+                  {totalExtensionFees > 0 && (
+                    <InfoRow label="Extension Fees" value={fmt(totalExtensionFees)} />
+                  )}
                   <InfoRow label="Total Cost of Loan" value={<span className="font-semibold text-warning">{fmt(totalCost)}</span>} />
                   {loan.has_prepayment_penalty && (
                     <InfoRow label="Prepay Penalty" value={<Badge variant="outline" className="text-xs bg-warning/20 text-warning border-warning/30">Yes</Badge>} />
