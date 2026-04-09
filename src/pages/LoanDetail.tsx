@@ -18,7 +18,7 @@ import { AmortizationTable } from '@/components/loans/AmortizationTable';
 import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoanDetail } from '@/hooks/useLoans';
-import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, buildDrawAmortizationSchedule } from '@/types/loans';
 import { Slider } from '@/components/ui/slider';
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -106,7 +106,7 @@ export default function LoanDetail() {
 
   const summaryStats = [
     { label: 'Original Amount', value: fmt(loan.original_amount), icon: DollarSign, color: 'text-primary bg-primary/10' },
-    { label: 'Outstanding Balance', value: fmt(loan.outstanding_balance), icon: TrendingDown, color: 'text-warning bg-warning/10' },
+    { label: 'Outstanding Balance', value: fmt(loan.has_draws ? draws.filter(d => d.status === 'funded').reduce((s, d) => s + d.draw_amount, 0) : loan.outstanding_balance), icon: TrendingDown, color: 'text-warning bg-warning/10' },
     { label: 'Interest Rate', value: `${loan.interest_rate.toFixed(2)}%`, icon: Percent, color: 'text-blue-400 bg-blue-500/10' },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
     { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
@@ -333,11 +333,12 @@ export default function LoanDetail() {
           {/* Amortization */}
           <TabsContent value="amortization">
             <div className="mt-4">
-              <AmortizationTable loan={loan} extensionMonths={extensions.reduce((sum: number, ext: any) => {
-                const from = new Date(ext.extended_from);
-                const to = new Date(ext.extended_to);
-                return sum + Math.max((to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth()), 0);
-              }, 0)} />
+              <AmortizationTable
+                loan={loan}
+                extensionMonths={extensionMonths}
+                draws={draws}
+                hasDraws={loan.has_draws}
+              />
             </div>
           </TabsContent>
 
