@@ -23,7 +23,7 @@ interface ImportExpensesModalProps {
   onLoanExpenseCreated?: (info: { expenseId: string; amount: number; date: string; projectId: string; vendorName?: string; description?: string }) => void;
 }
 
-export function ImportExpensesModal({ open, onOpenChange, projectId, existingCategories, onImportComplete }: ImportExpensesModalProps) {
+export function ImportExpensesModal({ open, onOpenChange, projectId, existingCategories, onImportComplete, onLoanExpenseCreated }: ImportExpensesModalProps) {
   const [step, setStep] = useState<'upload' | 'preview'>('upload');
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [importing, setImporting] = useState(false);
