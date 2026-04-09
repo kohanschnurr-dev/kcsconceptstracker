@@ -1,32 +1,36 @@
 
 
-## Combine Loan + Draw Interest in the Accrued Interest Card
+## Fix Draw Interest Calculation: Per-Draw Independent Accrual
 
 ### Problem
-Currently the "Interest Accrued" card shows **either** the amortization interest (original loan) **or** the draw interest — never both. For draw-based loans, the original loan balance also accrues interest via the amortization schedule, but that's hidden.
+The current `buildDrawInterestSchedule` calculates interest on a **cumulative running balance between draw dates** (Draw #1 → Draw #2 period, Draw #2 → Draw #3 period, etc.). This is wrong — each draw is an independent debt that accrues interest **from its own funding date all the way to maturity**. The draws don't pay each other off; they all run in parallel.
 
-### Solution
-Combine both sources into one total and show a unified breakdown popover.
+### Correct Model
+Using the screenshot data as an example:
+- **Draw #1** ($50,000) accrues interest from Aug 8, 2025 → Feb 8, 2026 (maturity) = 184 days
+- **Draw #2** ($50,000) accrues interest from Jul 12, 2025 → Feb 8, 2026 = 211 days
+- **Draw #3** ($20,000) accrues interest from Sep 2, 2025 → Feb 8, 2026 = 159 days
 
-### Changes in `src/pages/LoanDetail.tsx`
+Each draw independently generates interest for its full life until maturity (or payoff).
 
-**1. Compute combined total:**
-```
-combinedInterest = totalInterestPaid (amort through today) + drawInterest.totalInterest
-```
+### Changes
 
-**2. Always show breakdown when draws exist** — the popover will have:
-- "Original Loan Interest" → `totalInterestPaid` (from amortization schedule through today)
-- Each draw period from `drawInterest.periods` (e.g., "Draw #1 → Draw #2", "Draw #2 → Maturity")
-- Separator + **Total** row
+**`src/types/loans.ts` — Rewrite `buildDrawInterestSchedule`:**
+- For each funded draw, calculate interest independently from its funding date to maturity
+- Period label: "Draw #N — [Name]" (e.g., "Draw #1 — Majors")
+- Each period shows: funding date → maturity, days, the draw's own amount (not cumulative), its interest
+- Fees remain per-draw
+- `weightedAvgBalance` recalculated as sum of (draw_amount × days) / max_days
+- `totalInterest` = sum of all individual draw interests
 
-**3. Update the stat entry:**
-- Label: "Interest Accrued" (drop the "(Draws)" suffix)
-- Value: `fmt(combinedInterest)`
-- `hasInterestBreakdown`: true when `drawInterest` exists
+**`src/components/loans/DrawScheduleTracker.tsx` — Update table labels:**
+- Period labels change from "Draw #1 → Draw #2" to "Draw #1 — [name]" since each is independent
+- No other structural changes needed; the table columns (Dates, Days, Rate, Balance, Fees, Interest) still apply
 
-**4. Update the popover content** to render the "Original Loan Interest" line first, then each draw period, then total.
+**`src/pages/LoanDetail.tsx` — Breakdown popover:**
+- Already reads `drawInterest.periods` — labels will update automatically from the engine change
 
 ### Files Modified
-- `src/pages/LoanDetail.tsx` (~lines 86-88, 117-121, 229-244)
+- `src/types/loans.ts` (~lines 168-229)
+- `src/components/loans/DrawScheduleTracker.tsx` (label display only, if needed)
 
