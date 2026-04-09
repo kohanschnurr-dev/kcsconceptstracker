@@ -154,10 +154,12 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
   const handleSubmit = async () => {
     setSaving(true);
     try {
+      const computedFirstPayment = form.first_payment_date || calcFirstPaymentDate(form.start_date, form.payment_frequency);
       const payload = {
         ...form,
         outstanding_balance: form.outstanding_balance > 0 ? form.outstanding_balance : form.original_amount,
         monthly_payment: liveMonthlyPayment,
+        first_payment_date: computedFirstPayment,
       };
       await onSubmit(payload, form.has_draws ? draws : []);
       onOpenChange(false);
@@ -396,10 +398,6 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
               <div>
                 <Label>Maturity Date</Label>
                 <Input className="mt-1" type="date" value={form.maturity_date} onChange={e => set('maturity_date', e.target.value)} />
-              </div>
-              <div>
-                <Label>First Payment Date <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Input className="mt-1" type="date" value={form.first_payment_date ?? ''} onChange={e => set('first_payment_date', e.target.value || null)} />
               </div>
             </div>
             {liveMonthlyPayment != null && (
