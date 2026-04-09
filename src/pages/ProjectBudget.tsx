@@ -178,6 +178,10 @@ export default function ProjectBudget() {
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   
+  // Loan payment assignment
+  const [loanAssignExpense, setLoanAssignExpense] = useState<{
+    expenseId: string; amount: number; date: string; projectId: string; vendorName?: string; description?: string;
+  } | null>(null);
   // All Expenses collapsed state - show only 7 by default
   const [showAllExpenses, setShowAllExpenses] = useState(false);
   const VISIBLE_EXPENSE_COUNT = 7;
