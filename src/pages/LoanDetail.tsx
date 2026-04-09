@@ -89,7 +89,7 @@ export default function LoanDetail() {
   const totalExtensionFees = extensions.reduce((s: number, e: any) => s + (e.extension_fee ?? 0), 0);
   const totalScheduleInterest = schedule.reduce((sum, row) => sum + row.interest, 0);
   // Draw-based interest for summary
-  const drawInterest = loan.has_draws ? buildDrawInterestSchedule(loan, draws) : null;
+  const drawInterest = loan.has_draws ? buildDrawInterestSchedule(loan, draws, extensionMonths) : null;
   // Compute draw fees directly from all draws (not just funded ones in the interest schedule)
   const totalDrawFees = loan.has_draws
     ? draws.reduce((sum, d) => sum + calcDrawFee(d as any), 0)

@@ -168,6 +168,7 @@ export function calcDrawFee(draw: LoanDraw): number {
 export function buildDrawInterestSchedule(
   loan: Pick<Loan, 'interest_rate' | 'interest_calc_method' | 'maturity_date' | 'start_date'>,
   draws: LoanDraw[],
+  extensionMonths: number = 0,
 ): DrawInterestResult | null {
   const funded = draws
     .filter(d => d.status === 'funded' && (d.date_funded || d.expected_date))
@@ -177,6 +178,9 @@ export function buildDrawInterestSchedule(
 
   const dayBasis = loan.interest_calc_method === 'actual_365' ? 365 : 360;
   const maturity = new Date(loan.maturity_date);
+  if (extensionMonths > 0) {
+    maturity.setMonth(maturity.getMonth() + extensionMonths);
+  }
 
   const periods: DrawInterestPeriod[] = [];
   let maxDays = 0;
