@@ -65,6 +65,9 @@ export default function LoanDetail() {
   const totalInterestPaid = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
   const totalCost = loan.original_amount + (monthly * loan.loan_term_months - loan.original_amount) + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0);
 
+  // Draw-based interest for summary
+  const drawInterest = loan.has_draws ? buildDrawInterestSchedule(loan, draws) : null;
+
   const handleMarkPaidOff = () => {
     updateLoan.mutate({ id: loan.id, status: 'paid_off', outstanding_balance: 0 });
   };
@@ -82,7 +85,7 @@ export default function LoanDetail() {
     { label: 'Interest Rate', value: `${loan.interest_rate.toFixed(2)}%`, icon: Percent, color: 'text-blue-400 bg-blue-500/10' },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
     { label: 'Remaining Term', value: `${remainingTerm} mo`, icon: Calendar, color: 'text-primary bg-primary/10' },
-    { label: 'Interest Paid', value: fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive bg-destructive/10' },
+    { label: drawInterest ? 'Accrued Interest (Draws)' : 'Interest Paid', value: drawInterest ? fmt(drawInterest.totalInterest) : fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive bg-destructive/10' },
   ];
 
   return (
@@ -228,6 +231,7 @@ export default function LoanDetail() {
                   draws={draws}
                   totalDrawAmount={loan.total_draw_amount}
                   loanId={loan.id}
+                  loan={loan}
                   onUpsert={(draw, loanId) => upsertDraw.mutate({ ...draw, loan_id: loanId } as any)}
                   onDelete={id => deleteDraw.mutate(id)}
                 />
