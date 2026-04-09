@@ -103,6 +103,9 @@ export interface LoanDraw {
   status: DrawStatus;
   date_funded: string | null;
   notes: string | null;
+  fee_amount: number | null;
+  fee_percentage: number | null;
+  interest_rate_override: number | null;
   created_at: string;
 }
 
@@ -125,9 +128,104 @@ export interface AmortizationRow {
   principal: number;
   interest: number;
   balance: number;
-  drawn_balance?: number;   // cumulative funded draw balance at this date (construction loans)
-  draw_events?: string[];   // draw names/labels that funded during this period
   is_balloon?: boolean;
+  accrued_interest?: number;
+}
+
+/* ── Draw-based interest accrual ─────────────────────────── */
+
+export interface DrawInterestPeriod {
+  label: string;
+  startDate: string;
+  endDate: string;
+  days: number;
+  balance: number;
+  interest: number;
+  fees: number;
+  effectiveRate: number;
+}
+
+export interface DrawInterestResult {
+  periods: DrawInterestPeriod[];
+  totalInterest: number;
+  totalFees: number;
+  weightedAvgBalance: number;
+}
+
+/**
+ * Build a draw-based interest schedule.
+ * Interest only accrues on the cumulative funded amount between draw dates.
+ */
+/** Calculate the effective fee for a draw */
+export function calcDrawFee(draw: LoanDraw): number {
+  const flat = draw.fee_amount ?? 0;
+  const pct = draw.fee_percentage ? (draw.draw_amount * draw.fee_percentage / 100) : 0;
+  // Use the larger of the two if both are set
+  if (flat > 0 && pct > 0) return Math.max(flat, pct);
+  return flat || pct;
+}
+
+export function buildDrawInterestSchedule(
+  loan: Pick<Loan, 'interest_rate' | 'interest_calc_method' | 'maturity_date' | 'start_date'>,
+  draws: LoanDraw[],
+): DrawInterestResult | null {
+  const funded = draws
+    .filter(d => d.status === 'funded' && d.date_funded)
+    .sort((a, b) => a.date_funded!.localeCompare(b.date_funded!));
+
+  if (funded.length === 0) return null;
+
+  const dayBasis = loan.interest_calc_method === 'actual_365' ? 365 : 360;
+  const maturity = new Date(loan.maturity_date);
+
+  const periods: DrawInterestPeriod[] = [];
+  let runningBalance = 0;
+  let totalDays = 0;
+  let balanceDaysSum = 0;
+
+  for (let i = 0; i < funded.length; i++) {
+    const draw = funded[i];
+    runningBalance += draw.draw_amount;
+
+    // Use per-draw override if set, otherwise fall back to loan rate
+    const effectiveRate = draw.interest_rate_override ?? loan.interest_rate;
+    const dailyRate = (effectiveRate / 100) / dayBasis;
+
+    const periodStart = new Date(draw.date_funded!);
+    const periodEnd = i < funded.length - 1
+      ? new Date(funded[i + 1].date_funded!)
+      : maturity;
+
+    const days = Math.max(
+      Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)),
+      0,
+    );
+
+    const interest = runningBalance * dailyRate * days;
+    const fees = calcDrawFee(draw);
+    totalDays += days;
+    balanceDaysSum += runningBalance * days;
+
+    periods.push({
+      label: i < funded.length - 1
+        ? `Draw #${draw.draw_number} → Draw #${funded[i + 1].draw_number}`
+        : `Draw #${draw.draw_number} → Maturity`,
+      startDate: draw.date_funded!,
+      endDate: periodEnd.toISOString().split('T')[0],
+      days,
+      balance: runningBalance,
+      interest,
+      fees,
+      effectiveRate,
+    });
+  }
+
+  return {
+    periods,
+    totalInterest: periods.reduce((s, p) => s + p.interest, 0),
+    totalFees: periods.reduce((s, p) => s + p.fees, 0),
+    weightedAvgBalance: totalDays > 0 ? balanceDaysSum / totalDays : 0,
+  };
 }
 
 /** Standard amortization payment: P * r(1+r)^n / ((1+r)^n - 1) */
@@ -137,150 +235,58 @@ export function calcMonthlyPayment(
   termMonths: number,
   amortMonths?: number | null,
   paymentFreq?: string,
+  interestCalcMethod?: string,
 ): number {
   if (paymentFreq === 'interest_only') return (principal * annualRate) / 100 / 12;
   if (paymentFreq === 'deferred') return 0;
   const amort = amortMonths ?? termMonths;
   if (amort === 0 || annualRate === 0) return principal / termMonths;
-  const r = annualRate / 100 / 12;
+
+  // Simple interest for investor loans: interest-only with balloon at maturity
+  if (interestCalcMethod === 'simple') {
+    return (principal * annualRate / 100 / 12);
+  }
+
+  // Compute monthly rate based on calc method
+  let r: number;
+  if (interestCalcMethod === 'actual_360') {
+    r = (annualRate / 100) * (30 / 360) ; // ~30 days per month / 360
+  } else if (interestCalcMethod === 'actual_365') {
+    r = (annualRate / 100) * (30.4167 / 365); // avg days per month / 365
+  } else {
+    r = annualRate / 100 / 12; // standard 30/360
+  }
+
   const n = amort;
   return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }
 
-/**
- * True accrued interest for a construction loan with draws.
- * Each funded draw accrues interest only from its funded date forward.
- *   Interest = draw_amount × annual_rate × (days_outstanding / 365)
- */
-export function calcDrawAccruedInterest(loan: Loan, draws: LoanDraw[]): number {
-  const today = new Date();
-  const annualRate = loan.interest_rate / 100;
-  return draws
-    .filter(d => d.status === 'funded' && d.date_funded)
-    .reduce((total, draw) => {
-      const fundedDate = new Date(draw.date_funded!);
-      const daysOutstanding = Math.max(0, (today.getTime() - fundedDate.getTime()) / 86400000);
-      return total + draw.draw_amount * annualRate * (daysOutstanding / 365);
-    }, 0);
+/** Return actual number of days in the month of the given date */
+function daysInMonth(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
 
-/**
- * Current live interest-only payment based on funded draw balance.
- * Used for the "Monthly Payment" stat card on construction loans.
- */
-export function calcDrawCurrentPayment(loan: Loan, draws: LoanDraw[]): number {
-  const drawnBalance = draws
-    .filter(d => d.status === 'funded')
-    .reduce((s, d) => s + d.draw_amount, 0);
-  return drawnBalance * (loan.interest_rate / 100 / 12);
-}
-
-/**
- * Draw-weighted amortization schedule for construction/rehab loans.
- *
- * Logic:
- *  - Funded draws contribute to the interest-bearing balance from their date_funded.
- *  - Unfunded draws with an expected_date are included as projections.
- *  - Each payment row shows interest only on the cumulative drawn balance for that period.
- *  - Interest-only loans pay interest each period + full balloon at maturity.
- *  - Rows where a draw funded are annotated with draw_events for display.
- */
-export function buildDrawWeightedSchedule(loan: Loan, draws: LoanDraw[]): AmortizationRow[] {
-  type DrawEvent = { date: Date; amount: number; label: string; isFunded: boolean };
-
-  const events: DrawEvent[] = [
-    ...draws
-      .filter(d => d.status === 'funded' && d.date_funded)
-      .map(d => ({
-        date: new Date(d.date_funded!),
-        amount: d.draw_amount,
-        label: d.milestone_name ?? `Draw #${d.draw_number} (${fmtUSD(d.draw_amount)})`,
-        isFunded: true,
-      })),
-    ...draws
-      .filter(d => ['pending', 'requested', 'approved'].includes(d.status) && d.expected_date)
-      .map(d => ({
-        date: new Date(d.expected_date!),
-        amount: d.draw_amount,
-        label: `${d.milestone_name ?? `Draw #${d.draw_number}`} – projected`,
-        isFunded: false,
-      })),
-  ].sort((a, b) => a.date.getTime() - b.date.getTime());
-
-  const r = loan.interest_rate / 100 / 12;
-  const term = loan.loan_term_months;
-  const firstPayment = new Date((loan.first_payment_date ?? loan.start_date) + 'T12:00:00');
-  const rows: AmortizationRow[] = [];
-
-  for (let i = 1; i <= term; i++) {
-    const payDate = new Date(firstPayment);
-    payDate.setMonth(firstPayment.getMonth() + i - 1);
-
-    // Period window: previous payment date → this payment date
-    const periodStart = new Date(firstPayment);
-    periodStart.setMonth(firstPayment.getMonth() + i - 2);
-
-    // Draws that funded/project within this billing period
-    const periodEvents = events.filter(e => e.date > periodStart && e.date <= payDate);
-
-    // Cumulative drawn balance as of this payment date
-    const drawnBalance = events
-      .filter(e => e.date <= payDate)
-      .reduce((s, e) => s + e.amount, 0);
-
-    const interest = drawnBalance * r;
-    const isBalloon = i === term;
-    const drawEventLabels = periodEvents.map(e => e.label);
-
-    if (loan.payment_frequency === 'interest_only' || loan.payment_frequency === 'monthly') {
-      // Treat as interest-only during the draw period; balloon at end
-      rows.push({
-        payment_number: i,
-        date: payDate.toISOString().split('T')[0],
-        payment: isBalloon ? drawnBalance + interest : interest,
-        principal: isBalloon ? drawnBalance : 0,
-        interest,
-        balance: drawnBalance,
-        drawn_balance: drawnBalance,
-        draw_events: drawEventLabels.length > 0 ? drawEventLabels : undefined,
-        is_balloon: isBalloon,
-      });
-    } else {
-      // Amortizing: payment re-calculates each month against current drawn balance
-      const payment =
-        drawnBalance > 0
-          ? calcMonthlyPayment(drawnBalance, loan.interest_rate, Math.max(term - i + 1, 1))
-          : 0;
-      const principal = isBalloon ? drawnBalance : Math.max(payment - interest, 0);
-      rows.push({
-        payment_number: i,
-        date: payDate.toISOString().split('T')[0],
-        payment: isBalloon ? drawnBalance + interest : payment,
-        principal,
-        interest,
-        balance: drawnBalance,
-        drawn_balance: drawnBalance,
-        draw_events: drawEventLabels.length > 0 ? drawEventLabels : undefined,
-        is_balloon: isBalloon,
-      });
-    }
+/** Compute period interest based on the interest calculation method */
+function periodInterest(balance: number, annualRate: number, paymentDate: Date, method?: string): number {
+  const rate = annualRate / 100;
+  if (method === 'actual_360') {
+    return balance * rate * daysInMonth(paymentDate) / 360;
   }
-
-  return rows;
-}
-
-function fmtUSD(v: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
+  if (method === 'actual_365') {
+    return balance * rate * daysInMonth(paymentDate) / 365;
+  }
+  // Standard 30/360
+  return balance * rate / 12;
 }
 
 /** Build full amortization schedule */
-export function buildAmortizationSchedule(loan: Loan): AmortizationRow[] {
+export function buildAmortizationSchedule(loan: Loan, extensionMonths: number = 0): AmortizationRow[] {
   const rows: AmortizationRow[] = [];
-  const r = loan.interest_rate / 100 / 12;
   const amort = loan.amortization_period_months ?? loan.loan_term_months;
-  const term = loan.loan_term_months;
-  const monthly = loan.monthly_payment ?? calcMonthlyPayment(loan.original_amount, loan.interest_rate, term, amort, loan.payment_frequency);
+  const term = loan.loan_term_months + extensionMonths;
+  const monthly = loan.monthly_payment ?? calcMonthlyPayment(loan.original_amount, loan.interest_rate, term, amort, loan.payment_frequency, loan.interest_calc_method);
   const start = new Date(loan.first_payment_date ?? loan.start_date);
+  const method = loan.interest_calc_method;
 
   let balance = loan.original_amount;
 
@@ -288,8 +294,10 @@ export function buildAmortizationSchedule(loan: Loan): AmortizationRow[] {
     const paymentDate = new Date(start);
     paymentDate.setMonth(start.getMonth() + i - 1);
 
-    if (loan.payment_frequency === 'interest_only') {
-      const interest = balance * r;
+    const interest = periodInterest(balance, loan.interest_rate, paymentDate, method);
+
+    if (loan.payment_frequency === 'interest_only' || method === 'simple') {
+      // Interest-only: no principal until final balloon payment
       const isBalloon = i === term;
       rows.push({
         payment_number: i,
@@ -302,7 +310,6 @@ export function buildAmortizationSchedule(loan: Loan): AmortizationRow[] {
       });
       if (isBalloon) balance = 0;
     } else {
-      const interest = balance * r;
       const principal = Math.min(monthly - interest, balance);
       balance = Math.max(balance - principal, 0);
       const isBalloon = i === term && balance > 0.01;
