@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { LoanStatusBadge, LoanTypeBadge } from '@/components/loans/LoanStatusBadge';
 import { DrawScheduleTracker } from '@/components/loans/DrawScheduleTracker';
+import { LoanExtensions } from '@/components/loans/LoanExtensions';
 import { AmortizationTable } from '@/components/loans/AmortizationTable';
 import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
@@ -39,7 +40,7 @@ export default function LoanDetail() {
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
 
-  const { loan, draws, payments, isLoading, upsertDraw, deleteDraw, addPayment, deletePayment, updateLoan } = useLoanDetail(id!);
+  const { loan, draws, payments, extensions, isLoading, upsertDraw, deleteDraw, addPayment, deletePayment, addExtension, deleteExtension, updateLoan } = useLoanDetail(id!);
 
   if (isLoading) {
     return (
@@ -180,7 +181,14 @@ export default function LoanDetail() {
                   {loan.amortization_period_months && <InfoRow label="Amort. Period" value={`${loan.amortization_period_months} months`} />}
                   
                   <InfoRow label="Start Date" value={formatDisplayDate(loan.start_date)} />
-                  <InfoRow label="Maturity Date" value={formatDisplayDate(loan.maturity_date)} />
+                  <InfoRow label="Maturity Date" value={
+                    <span>
+                      {formatDisplayDate(loan.maturity_date)}
+                      {extensions.length > 0 && (
+                        <span className="ml-1 text-xs text-primary font-medium">(+{extensions.length} ext)</span>
+                      )}
+                    </span>
+                  } />
                 </CardContent>
               </Card>
 
@@ -214,6 +222,14 @@ export default function LoanDetail() {
                   </CardContent>
                 </Card>
               )}
+
+              <LoanExtensions
+                extensions={extensions}
+                loanId={loan.id}
+                maturityDate={loan.maturity_date}
+                onAdd={(ext) => addExtension.mutate(ext)}
+                onDelete={(id) => deleteExtension.mutate(id)}
+              />
             </div>
           </TabsContent>
 
