@@ -93,7 +93,7 @@ export default function LoanDetail() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 max-w-5xl">
+      <div className="space-y-6 max-w-5xl mx-auto">
         {/* Back + header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-3">
