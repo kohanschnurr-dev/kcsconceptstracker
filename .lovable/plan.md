@@ -1,29 +1,40 @@
 
 
-## Add Extension Months to Amortization Schedule
+## Add Per-Draw Fees and Custom Interest Rate to Draw Schedule
 
 ### Problem
-When a loan has extensions, the amortization schedule only shows the original `loan_term_months`. The extra months from extensions are not reflected, so the balloon payment appears at the wrong month.
+The draw schedule currently uses the loan-level interest rate for all interest calculations. The user wants to:
+1. Set a custom interest rate per draw (override the loan rate)
+2. Assign fees to each draw — either a flat dollar amount or a percentage of the draw amount
 
-### Changes
+### Database Changes
 
-**1. `src/types/loans.ts`** — Update `buildAmortizationSchedule` to accept an optional `extensionMonths` parameter
+**Migration: Add columns to `loan_draws` table**
+- `fee_amount numeric` — flat fee in dollars (nullable)
+- `fee_percentage numeric` — fee as % of draw amount (nullable)
+- `interest_rate_override numeric` — per-draw interest rate override (nullable, falls back to loan rate)
 
-- Add a second optional parameter `extensionMonths?: number` (default 0)
-- Compute `effectiveTerm = term + extensionMonths`
-- Use `effectiveTerm` instead of `term` in the loop bound and balloon detection (`i === effectiveTerm`)
+### Code Changes
 
-**2. `src/components/loans/AmortizationTable.tsx`** — Pass extension months through
+**1. `src/types/loans.ts`**
+- Add `fee_amount`, `fee_percentage`, and `interest_rate_override` fields to `LoanDraw` interface
+- Update `buildDrawInterestSchedule` to use per-draw `interest_rate_override` when available (falling back to loan rate)
+- Add fee calculations to `DrawInterestPeriod` (include a `fees` field)
+- Add `totalFees` to `DrawInterestResult`
 
-- Add `extensionMonths?: number` to `AmortizationTableProps`
-- Pass it to `buildAmortizationSchedule(loan, extensionMonths)`
-- Update total cost calculation to use the effective term
+**2. `src/components/loans/DrawScheduleTracker.tsx`**
+- Add fee and interest rate fields to the **edit form** and **new draw form**: Interest Rate Override input, Fee $ input, Fee % input
+- Display fees inline on each draw card (e.g., "Fee: $500" or "Fee: 2.0%")
+- Add a "Fees" column to the interest accrual table
+- Show total fees in the summary cards
+- Compute effective fee: if both flat and % are set, use the larger; if only one, use that
 
-**3. `src/pages/LoanDetail.tsx`** — Calculate extension months and pass to `AmortizationTable`
+**3. `src/pages/LoanDetail.tsx`**
+- No changes needed — draws already pass through to the tracker component
 
-- Compute `extensionMonths` from the extensions array (difference in months between `extended_from` and `extended_to` for each extension, summed)
-- Pass `extensionMonths={extensionMonths}` to `<AmortizationTable>`
-
-### Result
-The amortization table will show the full schedule including extension months, with the balloon payment correctly appearing at the extended maturity date.
+### UI Behavior
+- Each draw card shows the fee (if any) below the amount
+- The interest accrual table gains a "Fees" column showing per-draw fees
+- A new summary card shows "Total Draw Fees"
+- Interest rate override appears as a small badge on the draw card (e.g., "@ 12%") when different from the loan rate
 
