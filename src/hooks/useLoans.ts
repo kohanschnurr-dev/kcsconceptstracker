@@ -10,6 +10,8 @@ const loansTable = () => supabase.from('loans' as any);
 const drawsTable = () => supabase.from('loan_draws' as any);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const paymentsTable = () => supabase.from('loan_payments' as any);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const extensionsTable = () => supabase.from('loan_extensions' as any);
 
 export function useLoans() {
   const { user } = useAuth();
@@ -165,6 +167,43 @@ export function useLoanDetail(loanId: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['loan_payments', loanId] }),
   });
 
+  // Extensions
+  const { data: extensions = [], isLoading: extensionsLoading } = useQuery<any[]>({
+    queryKey: ['loan_extensions', loanId],
+    enabled: !!loanId,
+    queryFn: async () => {
+      const { data, error } = await extensionsTable()
+        .select('*')
+        .eq('loan_id', loanId)
+        .order('extension_number', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const addExtension = useMutation({
+    mutationFn: async (ext: { loan_id: string; extension_number: number; extended_from: string; extended_to: string; extension_fee?: number; fee_percentage?: number; notes?: string }) => {
+      const { error } = await extensionsTable().insert(ext);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loan_extensions', loanId] });
+      toast({ title: 'Extension recorded' });
+    },
+    onError: (e: Error) => toast({ title: 'Error adding extension', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteExtension = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await extensionsTable().delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loan_extensions', loanId] });
+      toast({ title: 'Extension removed' });
+    },
+  });
+
   const updateLoan = useMutation({
     mutationFn: async ({ id, ...payload }: Partial<Loan> & { id: string }) => {
       const { project_name, projects, created_at, updated_at, ...dbPayload } = payload as any;
@@ -184,11 +223,14 @@ export function useLoanDetail(loanId: string) {
     loan,
     draws,
     payments,
-    isLoading: loanLoading || drawsLoading || paymentsLoading,
+    extensions,
+    isLoading: loanLoading || drawsLoading || paymentsLoading || extensionsLoading,
     upsertDraw,
     deleteDraw,
     addPayment,
     deletePayment,
+    addExtension,
+    deleteExtension,
     updateLoan,
   };
 }
