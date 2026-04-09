@@ -235,6 +235,7 @@ export function DrawScheduleTracker({
                               placeholder="0"
                             />
                           </div>
+                        </div>
                         <div className="flex gap-2">
                           <Button size="sm" onClick={() => saveEdit(draw)} className="gap-1.5">
                             <Check className="h-3.5 w-3.5" /> Save
