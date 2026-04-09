@@ -114,9 +114,11 @@ export default function LoanDetail() {
   const loanAmountLabel = isTraditional ? 'Original Amount' : 'Loan Amount';
   const hasLoanBreakdown = !isTraditional && loan.has_draws && draws.length > 0;
 
+  const hasInterestBreakdown = !!drawInterest && drawInterest.periods.length > 0;
+
   const summaryStats = [
     { label: loanAmountLabel, value: fmt(loanAmountValue), icon: DollarSign, color: 'text-primary bg-primary/10', hasBreakdown: hasLoanBreakdown },
-    { label: drawInterest ? 'Accrued Interest (Draws)' : 'Interest Accrued', value: drawInterest ? fmt(drawInterest.totalInterest) : fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive bg-destructive/10' },
+    { label: drawInterest ? 'Accrued Interest (Draws)' : 'Interest Accrued', value: drawInterest ? fmt(drawInterest.totalInterest) : fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive bg-destructive/10', hasInterestBreakdown },
     ...(isTraditional ? [{ label: 'Outstanding Balance', value: fmt(loan.outstanding_balance), icon: TrendingDown, color: 'text-warning bg-warning/10' }] : []),
     { label: 'Interest Rate', value: `${loan.interest_rate.toFixed(2)}%`, icon: Percent, color: 'text-blue-400 bg-blue-500/10' },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
@@ -179,7 +181,7 @@ export default function LoanDetail() {
                 <p className="text-lg font-semibold">{s.value}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 flex items-center justify-center gap-1">
                   {s.label}
-                  {(s as any).hasBreakdown && <ChevronDown className="h-3 w-3" />}
+                  {((s as any).hasBreakdown || (s as any).hasInterestBreakdown) && <ChevronDown className="h-3 w-3" />}
                 </p>
               </CardContent>
             );
@@ -209,6 +211,34 @@ export default function LoanDetail() {
                       <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
                         <span>Total</span>
                         <span>{fmt(loanAmountValue)}</span>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+
+            if ((s as any).hasInterestBreakdown && drawInterest) {
+              return (
+                <Popover key={s.label}>
+                  <PopoverTrigger asChild>
+                    <Card className="glass-card cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all">
+                      {cardContent}
+                    </Card>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-3">
+                    <div className="space-y-2">
+                      {drawInterest.periods.map((period, i) => (
+                        <div key={i} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground truncate mr-2">
+                            {period.label}
+                          </span>
+                          <span className="font-medium whitespace-nowrap">{fmt(period.interest)}</span>
+                        </div>
+                      ))}
+                      <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
+                        <span>Total</span>
+                        <span>{fmt(drawInterest.totalInterest)}</span>
                       </div>
                     </div>
                   </PopoverContent>
