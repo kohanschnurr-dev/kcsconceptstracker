@@ -227,8 +227,13 @@ export default function LoanDetail() {
                       {cardContent}
                     </Card>
                   </PopoverTrigger>
-                  <PopoverContent className="w-72 p-3">
+                  <PopoverContent className="w-80 p-3">
                     <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground truncate mr-2">Original Loan Interest</span>
+                        <span className="font-medium whitespace-nowrap">{fmt(totalInterestPaid)}</span>
+                      </div>
+                      <div className="border-t border-border my-1" />
                       {drawInterest.periods.map((period, i) => (
                         <div key={i} className="flex justify-between text-sm">
                           <span className="text-muted-foreground truncate mr-2">
@@ -239,7 +244,7 @@ export default function LoanDetail() {
                       ))}
                       <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
                         <span>Total</span>
-                        <span>{fmt(drawInterest.totalInterest)}</span>
+                        <span>{fmt(combinedInterest)}</span>
                       </div>
                     </div>
                   </PopoverContent>
