@@ -18,7 +18,8 @@ import { AmortizationTable } from '@/components/loans/AmortizationTable';
 import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoanDetail } from '@/hooks/useLoans';
-import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule } from '@/types/loans';
+import { Slider } from '@/components/ui/slider';
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
@@ -40,6 +41,7 @@ export default function LoanDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
+  const [earlyPayoffMonth, setEarlyPayoffMonth] = useState<number | null>(null);
 
   const { loan, draws, payments, extensions, isLoading, upsertDraw, deleteDraw, addPayment, deletePayment, addExtension, deleteExtension, updateLoan } = useLoanDetail(id!);
 
@@ -158,7 +160,61 @@ export default function LoanDetail() {
             <TabsTrigger value="payments" className="flex-1">Payments</TabsTrigger>
           </TabsList>
 
-          {/* Overview */}
+          {/* Early Payoff Simulator */}
+          {loan.status === 'active' && loan.loan_term_months > 1 && (() => {
+            const term = loan.loan_term_months;
+            const selectedMonth = earlyPayoffMonth ?? term;
+
+            // Calculate interest at any given month
+            const calcInterestAtMonth = (months: number): number => {
+              if (loan.has_draws && drawInterest) {
+                return drawInterest.totalInterest * (months / term);
+              }
+              if (loan.payment_frequency === 'interest_only' || loan.interest_calc_method === 'simple') {
+                return loan.original_amount * (loan.interest_rate / 100) / 12 * months;
+              }
+              const schedule = buildAmortizationSchedule(loan);
+              return schedule.slice(0, months).reduce((sum, row) => sum + row.interest, 0);
+            };
+
+            const interestAtSelected = calcInterestAtMonth(selectedMonth);
+            const interestAtFull = calcInterestAtMonth(term);
+            const savings = interestAtFull - interestAtSelected;
+
+            return (
+              <Card className="glass-card mt-4">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                      <TrendingDown className="h-4 w-4" />
+                      Early Payoff Simulator
+                    </h3>
+                    <span className="text-xs text-muted-foreground">
+                      Month {selectedMonth} of {term}
+                    </span>
+                  </div>
+                  <Slider
+                    min={1}
+                    max={term}
+                    step={1}
+                    value={[selectedMonth]}
+                    onValueChange={([v]) => setEarlyPayoffMonth(v)}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-2 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Interest Accrued</p>
+                      <p className="text-sm font-semibold text-warning">{fmt(interestAtSelected)}</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Savings vs Full Term</p>
+                      <p className="text-sm font-semibold text-success">{fmt(savings)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           <TabsContent value="overview">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
               <Card className="glass-card">
