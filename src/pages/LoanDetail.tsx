@@ -177,7 +177,7 @@ export default function LoanDetail() {
                   <InfoRow label="Interest Rate" value={`${loan.interest_rate.toFixed(2)}% ${loan.rate_type}`} />
                   <InfoRow label="Loan Term" value={`${loan.loan_term_months} months`} />
                   {loan.amortization_period_months && <InfoRow label="Amort. Period" value={`${loan.amortization_period_months} months`} />}
-                  <InfoRow label="Payment Freq." value={loan.payment_frequency.replace('_', ' ')} />
+                  
                   <InfoRow label="Start Date" value={formatDisplayDate(loan.start_date)} />
                   <InfoRow label="Maturity Date" value={formatDisplayDate(loan.maturity_date)} />
                 </CardContent>
