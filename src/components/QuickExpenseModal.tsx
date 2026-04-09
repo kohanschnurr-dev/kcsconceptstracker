@@ -1121,7 +1121,7 @@ function ImportTab({
 }
 
 // ─── Modal Shell ───────────────────────────────────────────────────
-function ModalContent({ projects, onExpenseCreated, onClose }: { projects: Project[]; onExpenseCreated?: () => void; onClose: () => void }) {
+function ModalContent({ projects, onExpenseCreated, onClose, onLoanExpenseCreated }: { projects: Project[]; onExpenseCreated?: () => void; onClose: () => void; onLoanExpenseCreated?: QuickExpenseModalProps['onLoanExpenseCreated'] }) {
   return (
     <Tabs defaultValue="single" className="w-full">
       <div className="px-4 pt-2">
@@ -1137,7 +1137,7 @@ function ModalContent({ projects, onExpenseCreated, onClose }: { projects: Proje
         </TabsList>
       </div>
       <TabsContent value="single">
-        <ExpenseForm projects={projects} onExpenseCreated={onExpenseCreated} onClose={onClose} />
+        <ExpenseForm projects={projects} onExpenseCreated={onExpenseCreated} onClose={onClose} onLoanExpenseCreated={onLoanExpenseCreated} />
       </TabsContent>
       <TabsContent value="import">
         <ImportTab projects={projects} onExpenseCreated={onExpenseCreated} onClose={onClose} />
