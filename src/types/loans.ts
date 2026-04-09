@@ -199,9 +199,9 @@ export function buildDrawInterestSchedule(
     if (days > maxDays) maxDays = days;
     balanceDaysSum += draw.draw_amount * days;
 
-    const namesuffix = draw.milestone_name ? ` — ${draw.milestone_name}` : '';
+    const nameSuffix = draw.milestone_name ? ` — ${draw.milestone_name}` : '';
     periods.push({
-      label: `Draw #${draw.draw_number}${nameStr}`,
+      label: `Draw #${draw.draw_number}${nameSuffix}`,
       startDate: drawDate,
       endDate: maturity.toISOString().split('T')[0],
       days,
