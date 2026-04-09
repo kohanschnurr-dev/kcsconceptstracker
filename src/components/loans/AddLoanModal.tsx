@@ -11,7 +11,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { calcMonthlyPayment, LOAN_TYPE_LABELS } from '@/types/loans';
+import { calcMonthlyPayment, calcFirstPaymentDate, LOAN_TYPE_LABELS } from '@/types/loans';
 import type { Loan, LoanDraw, DrawStructure } from '@/types/loans';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
