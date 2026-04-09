@@ -20,6 +20,7 @@ interface ImportExpensesModalProps {
   projectId: string;
   existingCategories: { id: string; category: string }[];
   onImportComplete: () => void;
+  onLoanExpenseCreated?: (info: { expenseId: string; amount: number; date: string; projectId: string; vendorName?: string; description?: string }) => void;
 }
 
 export function ImportExpensesModal({ open, onOpenChange, projectId, existingCategories, onImportComplete }: ImportExpensesModalProps) {
