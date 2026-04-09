@@ -26,14 +26,6 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
     [active],
   );
 
-  const totalDrawsRemaining = useMemo(
-    () =>
-      active
-        .filter(l => l.has_draws)
-        .reduce((s, l) => s + ((l.total_draw_amount ?? 0) - l.outstanding_balance), 0),
-    [active],
-  );
-
   const stats = [
     {
       title: 'Total Outstanding Balance',
@@ -59,18 +51,10 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
       color: 'text-warning',
       bg: 'bg-warning/10',
     },
-    {
-      title: 'Total Draws Remaining',
-      value: fmt(Math.max(totalDrawsRemaining, 0)),
-      subtitle: 'Available draw funds',
-      icon: Building2,
-      color: 'text-success',
-      bg: 'bg-success/10',
-    },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {stats.map(stat => (
         <Card key={stat.title} className="glass-card">
           <CardContent className="p-5">
