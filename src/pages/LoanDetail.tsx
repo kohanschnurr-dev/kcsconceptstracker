@@ -202,7 +202,7 @@ export default function LoanDetail() {
                   <InfoRow label="Collateral Type" value={loan.collateral_type?.replace('_', ' ') ?? '—'} />
                   {loan.collateral_description && <InfoRow label="Description" value={loan.collateral_description} />}
                   {loan.ltv_at_origination && <InfoRow label="LTV at Origination" value={`${loan.ltv_at_origination}%`} />}
-                  <InfoRow label="Personal Guarantee" value={loan.has_personal_guarantee ? <Badge variant="outline" className="text-xs bg-warning/20 text-warning border-warning/30">Yes</Badge> : '—'} />
+                  
                 </CardContent>
               </Card>
 
