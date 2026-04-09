@@ -65,11 +65,13 @@ interface ParsedLineItem {
 function ExpenseForm({ 
   projects, 
   onExpenseCreated, 
-  onClose 
+  onClose,
+  onLoanExpenseCreated,
 }: { 
   projects: Project[]; 
   onExpenseCreated?: () => void;
   onClose: () => void;
+  onLoanExpenseCreated?: QuickExpenseModalProps['onLoanExpenseCreated'];
 }) {
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
