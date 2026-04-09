@@ -211,7 +211,7 @@ export function buildDrawInterestSchedule(
       label: i < funded.length - 1
         ? `Draw #${draw.draw_number} → Draw #${funded[i + 1].draw_number}`
         : `Draw #${draw.draw_number} → Maturity`,
-      startDate: draw.date_funded!,
+      startDate: drawDate,
       endDate: periodEnd.toISOString().split('T')[0],
       days,
       balance: runningBalance,
