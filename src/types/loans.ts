@@ -224,6 +224,59 @@ export function buildDrawInterestSchedule(
   };
 }
 
+/** Compute the first payment date from start_date + one payment period */
+export function calcFirstPaymentDate(startDate: string, frequency: string): string {
+  const [y, m, d] = startDate.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  switch (frequency) {
+    case 'quarterly':
+      date.setMonth(date.getMonth() + 3);
+      break;
+    case 'annually':
+      date.setFullYear(date.getFullYear() + 1);
+      break;
+    case 'bi_weekly':
+      date.setDate(date.getDate() + 14);
+      break;
+    default: // monthly, interest_only, deferred, etc.
+      date.setMonth(date.getMonth() + 1);
+      break;
+  }
+  const fy = date.getFullYear();
+  const fm = String(date.getMonth() + 1).padStart(2, '0');
+  const fd = String(date.getDate()).padStart(2, '0');
+  return `${fy}-${fm}-${fd}`;
+}
+
+/** Compute the next upcoming payment date from a first payment date + frequency */
+export function calcNextPaymentDate(firstPayment: string, frequency: string): string {
+  const [y, m, d] = firstPayment.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  while (date < today) {
+    switch (frequency) {
+      case 'quarterly':
+        date.setMonth(date.getMonth() + 3);
+        break;
+      case 'annually':
+        date.setFullYear(date.getFullYear() + 1);
+        break;
+      case 'bi_weekly':
+        date.setDate(date.getDate() + 14);
+        break;
+      default:
+        date.setMonth(date.getMonth() + 1);
+        break;
+    }
+  }
+  const fy = date.getFullYear();
+  const fm = String(date.getMonth() + 1).padStart(2, '0');
+  const fd = String(date.getDate()).padStart(2, '0');
+  return `${fy}-${fm}-${fd}`;
+}
+
 /** Standard amortization payment: P * r(1+r)^n / ((1+r)^n - 1) */
 export function calcMonthlyPayment(
   principal: number,

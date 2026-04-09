@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
-import { LOAN_TYPE_LABELS } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcFirstPaymentDate, calcNextPaymentDate } from '@/types/loans';
 import type { Loan, LoanStatus, LoanType } from '@/types/loans';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -175,7 +175,11 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   <TableCell className="text-sm">{formatDisplayDate(loan.maturity_date)}</TableCell>
                   <TableCell><LoanStatusBadge status={loan.status} /></TableCell>
                   <TableCell className="text-sm">
-                    {loan.first_payment_date ? formatDisplayDate(loan.first_payment_date) : '—'}
+                    {(() => {
+                      const first = loan.first_payment_date || calcFirstPaymentDate(loan.start_date, loan.payment_frequency);
+                      const next = calcNextPaymentDate(first, loan.payment_frequency);
+                      return formatDisplayDate(next);
+                    })()}
                   </TableCell>
                 </TableRow>
                 );
