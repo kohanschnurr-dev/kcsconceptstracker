@@ -113,6 +113,10 @@ export default function LoanDetail() {
   const loanAmountLabel = isTraditional ? 'Original Amount' : 'Loan Amount';
   const hasLoanBreakdown = !isTraditional && loan.has_draws && draws.length > 0;
 
+  // Compute effective outstanding balance by subtracting principal paid
+  const totalPrincipalPaid = payments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);
+  const effectiveBalance = loan.outstanding_balance - totalPrincipalPaid;
+
   const hasInterestBreakdown = !!drawInterest && drawInterest.periods.length > 0;
   const combinedInterest = hasInterestBreakdown ? totalInterestPaid + drawInterest.totalInterest : totalInterestPaid;
   const totalCost = combinedInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
@@ -120,7 +124,7 @@ export default function LoanDetail() {
   const summaryStats = [
     { label: loanAmountLabel, value: fmt(loanAmountValue), icon: DollarSign, color: 'text-primary bg-primary/10', hasBreakdown: hasLoanBreakdown },
     { label: 'Interest Accrued', value: fmt(combinedInterest), icon: TrendingDown, color: 'text-destructive bg-destructive/10', hasInterestBreakdown },
-    ...(isTraditional ? [{ label: 'Outstanding Balance', value: fmt(loan.outstanding_balance), icon: TrendingDown, color: 'text-warning bg-warning/10' }] : []),
+    ...(isTraditional ? [{ label: 'Outstanding Balance', value: fmt(effectiveBalance), icon: TrendingDown, color: 'text-warning bg-warning/10' }] : []),
     { label: 'Interest Rate', value: `${loan.interest_rate.toFixed(2)}%`, icon: Percent, color: 'text-blue-400 bg-blue-500/10' },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
     { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
