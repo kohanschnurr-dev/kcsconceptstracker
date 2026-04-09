@@ -151,20 +151,49 @@ export function useLoanDetail(loanId: string) {
       const row = { ...rest, date: payment_date ?? rest.date };
       const { error } = await paymentsTable().insert(row);
       if (error) throw error;
+
+      // Update outstanding_balance in the loans table
+      const principalPaid = payment.principal_portion ?? 0;
+      if (principalPaid > 0 && payment.loan_id) {
+        const { data: currentLoan } = await loansTable().select('outstanding_balance').eq('id', payment.loan_id).single();
+        if (currentLoan) {
+          const newBalance = ((currentLoan as any).outstanding_balance ?? 0) - principalPaid;
+          await loansTable().update({ outstanding_balance: newBalance }).eq('id', payment.loan_id);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loan_payments', loanId] });
+      queryClient.invalidateQueries({ queryKey: ['loan', loanId] });
+      queryClient.invalidateQueries({ queryKey: ['loans'] });
       toast({ title: 'Payment logged' });
     },
     onError: (e: Error) => toast({ title: 'Error logging payment', description: e.message, variant: 'destructive' }),
   });
 
   const deletePayment = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await paymentsTable().delete().eq('id', id);
+    mutationFn: async (paymentId: string) => {
+      // Fetch the payment first to restore the balance
+      const { data: paymentData } = await paymentsTable().select('principal_portion, loan_id').eq('id', paymentId).single();
+      const { error } = await paymentsTable().delete().eq('id', paymentId);
       if (error) throw error;
+
+      // Restore outstanding_balance in the loans table
+      const principalPaid = (paymentData as any)?.principal_portion ?? 0;
+      const paymentLoanId = (paymentData as any)?.loan_id;
+      if (principalPaid > 0 && paymentLoanId) {
+        const { data: currentLoan } = await loansTable().select('outstanding_balance').eq('id', paymentLoanId).single();
+        if (currentLoan) {
+          const newBalance = ((currentLoan as any).outstanding_balance ?? 0) + principalPaid;
+          await loansTable().update({ outstanding_balance: newBalance }).eq('id', paymentLoanId);
+        }
+      }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['loan_payments', loanId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loan_payments', loanId] });
+      queryClient.invalidateQueries({ queryKey: ['loan', loanId] });
+      queryClient.invalidateQueries({ queryKey: ['loans'] });
+    },
   });
 
   // Extensions
