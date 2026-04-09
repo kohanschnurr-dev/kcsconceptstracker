@@ -319,6 +319,9 @@ export default function LoanDetail() {
                       </span>
                     );
                   })()} />
+                  {loan.has_prepayment_penalty && (
+                    <InfoRow label="Prepay Penalty" value={<Badge variant="outline" className="text-xs bg-warning/20 text-warning border-warning/30">Yes</Badge>} />
+                  )}
                 </CardContent>
               </Card>
 
@@ -335,9 +338,6 @@ export default function LoanDetail() {
                   )}
                   <InfoRow label="Interest Accrued" value={fmt(combinedInterest)} />
                   <InfoRow label="Total Cost of Loan" value={<span className="font-semibold text-warning">{fmt(totalCost)}</span>} />
-                  {loan.has_prepayment_penalty && (
-                    <InfoRow label="Prepay Penalty" value={<Badge variant="outline" className="text-xs bg-warning/20 text-warning border-warning/30">Yes</Badge>} />
-                  )}
                 </CardContent>
               </Card>
 
