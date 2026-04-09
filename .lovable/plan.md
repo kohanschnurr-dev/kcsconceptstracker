@@ -1,35 +1,53 @@
 
 
-## Add Draw Fees Line to Fees & Costs Breakdown
+## Add Draw-Aware Outstanding Balance & Interest Calculations
 
-### What's Already Working
-The draw system already supports per-draw interest rate overrides and draw fees (both flat $ and %) — the DB columns exist, the edit UI exists, and `buildDrawInterestSchedule` already uses them. The "Interest Accrual by Draw" table already shows per-period fees and rates.
-
-### What's Missing
-The **Fees & Costs** summary card on the Loan Detail page does not include a "Draw Fees" line, and draw fees are not factored into the "Total Cost of Loan" calculation.
+### Problem
+Currently, the amortization schedule and outstanding balance ignore draw timing and per-draw interest rates. Draws should build up the outstanding balance as they're funded, and interest should be calculated per-draw at each draw's own rate.
 
 ### Changes
 
-**`src/pages/LoanDetail.tsx`**
-1. Compute `totalDrawFees` from `drawInterest.totalFees` (already calculated by `buildDrawInterestSchedule`)
-2. Add a "Draw Fees" row in the Fees & Costs card (between Extension Fees and Interest Accrued), shown only when `totalDrawFees > 0`
-3. Add `totalDrawFees` to the `totalCost` formula
-4. For draw-based loans, use `drawInterest.totalInterest` instead of `totalScheduleInterest` for the "Interest Accrued" line, since draw-based interest is calculated differently (per-draw rates, cumulative balances)
+**1. `src/types/loans.ts` — New `buildDrawAmortizationSchedule` function**
+- Create a month-by-month amortization schedule for draw-based loans
+- Each month: identify which draws are funded by that date, sum their amounts for the running balance
+- Calculate interest on each draw's portion at its respective rate (or loan default)
+- Track draw fees in the month they occur
+- Return `AmortizationRow[]` with the same shape so the existing table renders it
 
-### Code Summary
-```typescript
-// Line ~93: extract draw fees
-const totalDrawFees = drawInterest?.totalFees ?? 0;
+**2. `src/pages/LoanDetail.tsx` — Outstanding Balance from draws**
+- For draw-based loans, compute outstanding balance as cumulative funded draw amounts (instead of `loan.outstanding_balance`)
+- Update the "Outstanding Balance" stat card to reflect this
+- Interest Accrued stat already uses `drawInterest` — no change needed
 
-// Line ~90: include draw fees in total cost; use draw interest when applicable
-const effectiveInterest = drawInterest ? drawInterest.totalInterest : totalScheduleInterest;
-const totalCost = effectiveInterest + (loan.origination_fee_dollars ?? 0) + 
-  (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
+**3. `src/components/loans/AmortizationTable.tsx` — Use draw-aware schedule**
+- Accept optional `draws` prop and `hasDraws` flag
+- When `hasDraws` is true, call `buildDrawAmortizationSchedule` instead of `buildAmortizationSchedule`
+- Add a "Draw Funded" indicator column showing when balance increases due to a new draw
+- Show per-period effective rate when it varies across draws
 
-// In Fees & Costs card, add row:
-{totalDrawFees > 0 && <InfoRow label="Draw Fees" value={fmt(totalDrawFees)} />}
+**4. `src/pages/LoanDetail.tsx` — Pass draws to AmortizationTable**
+- Pass `draws` array and `hasDraws` flag to `AmortizationTable`
 
-// Update Interest Accrued to use effectiveInterest
-<InfoRow label="Interest Accrued" value={fmt(effectiveInterest)} />
+### Technical Detail: Draw-Aware Monthly Schedule Logic
+
+```text
+Month 1: Draw #1 funded ($40k @ 5.76%)
+  → Balance = $40,000
+  → Interest = $40,000 × 5.76% / 12 = $192
+
+Month 2: Draw #2 funded ($50k @ 5.76%)  
+  → Balance = $90,000
+  → Interest = $40k × 5.76%/12 + $50k × 5.76%/12 = $432
+
+Month 3: Draw #3 funded ($20k @ 5.76%)
+  → Balance = $110,000
+  → Interest = weighted sum across all draws at their rates
 ```
+
+Each draw tracks its own rate. The monthly interest is the sum of `(draw_amount × draw_rate / 12)` for all funded draws as of that month. Draw fees appear as additional costs in the month the draw is funded.
+
+### Files Modified
+- `src/types/loans.ts` (add `buildDrawAmortizationSchedule`)
+- `src/pages/LoanDetail.tsx` (outstanding balance from draws, pass draws to amortization)
+- `src/components/loans/AmortizationTable.tsx` (render draw-aware schedule with draw indicators)
 
