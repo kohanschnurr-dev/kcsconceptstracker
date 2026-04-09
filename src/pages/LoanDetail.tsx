@@ -61,9 +61,10 @@ export default function LoanDetail() {
   }
 
   const monthly = loan.monthly_payment ?? calcMonthlyPayment(loan.original_amount, loan.interest_rate, loan.loan_term_months, loan.amortization_period_months, loan.payment_frequency);
-  const remainingTerm = Math.max(loan.loan_term_months - payments.length, 0);
+  const effectiveMonths = loan.months_held ?? loan.loan_term_months;
+  const remainingTerm = Math.max(effectiveMonths - payments.length, 0);
   const totalInterestPaid = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
-  const totalCost = loan.original_amount + (monthly * loan.loan_term_months - loan.original_amount) + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0);
+  const totalCost = loan.original_amount + (monthly * effectiveMonths - loan.original_amount) + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0);
 
   // Draw-based interest for summary
   const drawInterest = loan.has_draws ? buildDrawInterestSchedule(loan, draws) : null;
