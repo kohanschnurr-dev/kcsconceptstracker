@@ -86,7 +86,8 @@ export default function LoanDetail() {
     .filter(row => row.date <= todayStr)
     .reduce((sum, row) => sum + row.interest, 0);
   const totalExtensionFees = extensions.reduce((s: number, e: any) => s + (e.extension_fee ?? 0), 0);
-  const totalCost = loan.original_amount + (monthly * loan.loan_term_months - loan.original_amount) + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees;
+  const totalScheduleInterest = schedule.reduce((sum, row) => sum + row.interest, 0);
+  const totalCost = loan.original_amount + totalScheduleInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees;
 
   // Draw-based interest for summary
   const drawInterest = loan.has_draws ? buildDrawInterestSchedule(loan, draws) : null;
