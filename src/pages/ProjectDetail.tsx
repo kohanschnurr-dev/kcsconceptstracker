@@ -102,7 +102,7 @@ import { MonthlyExpenses } from '@/components/project/MonthlyExpenses';
 import { ProcurementTab } from '@/components/project/ProcurementTab';
 import { ProjectReport } from '@/components/project/ProjectReport';
 import { LeaseTab } from '@/components/project/LeaseTab';
-import { PhasesDrawsTab } from '@/components/project/PhasesDrawsTab';
+
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
 import { Input } from '@/components/ui/input';
@@ -168,7 +168,7 @@ const CORE_TABS = ['schedule', 'tasks', 'financials', 'documents', 'team', 'info
 
 const DEFAULT_DETAIL_TAB_ORDER_BY_TYPE: Record<string, string[]> = {
   fix_flip: [...CORE_TABS, 'loan'],
-  new_construction: [...CORE_TABS, 'loan', 'draws'],
+  new_construction: [...CORE_TABS, 'loan'],
   rental: [...CORE_TABS, 'loan', 'lease', 'cashflow'],
 };
 
@@ -187,7 +187,7 @@ const TAB_LABELS: Record<string, string> = {
   info: 'Info',
   procurement: 'Procurement',
   lease: 'Lease',
-  draws: 'Phases & Draws',
+  
 };
 
 function getTabLabel(tab: string): string {
@@ -1479,9 +1479,6 @@ export default function ProjectDetail() {
             <LeaseTab projectId={id!} />
           </TabsContent>
 
-          <TabsContent value="draws">
-            <PhasesDrawsTab projectId={id!} totalLoanAmount={(project as any).hm_loan_amount || 0} />
-          </TabsContent>
           </div>
         </Tabs>
       </div>
