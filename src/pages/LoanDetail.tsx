@@ -104,13 +104,35 @@ export default function LoanDetail() {
     setEditOpen(false);
   };
 
+  const fundedDraws = draws.filter(d => d.status === 'funded');
+  const drawnBalance = fundedDraws.reduce((s, d) => s + d.draw_amount, 0);
+  const currentInterestPmt = drawnBalance * (loan.interest_rate / 100 / 12);
+
   const summaryStats = [
     { label: 'Original Amount', value: fmt(loan.original_amount), icon: DollarSign, color: 'text-primary bg-primary/10' },
-    { label: 'Outstanding Balance', value: fmt(loan.has_draws ? draws.filter(d => d.status === 'funded').reduce((s, d) => s + d.draw_amount, 0) : loan.outstanding_balance), icon: TrendingDown, color: 'text-warning bg-warning/10' },
+    {
+      label: drawInterest ? 'Drawn to Date' : 'Outstanding Balance',
+      value: drawInterest ? fmt(drawnBalance) : fmt(loan.outstanding_balance),
+      icon: TrendingDown,
+      color: 'text-warning bg-warning/10',
+      tooltip: drawInterest ? `${fundedDraws.length} funded draw${fundedDraws.length !== 1 ? 's' : ''}` : undefined,
+    },
     { label: 'Interest Rate', value: `${loan.interest_rate.toFixed(2)}%`, icon: Percent, color: 'text-blue-400 bg-blue-500/10' },
-    { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
+    {
+      label: drawInterest ? 'Current Interest Pmt' : 'Monthly Payment',
+      value: drawInterest ? fmt(currentInterestPmt) : fmt(monthly),
+      icon: CreditCard,
+      color: 'text-success bg-success/10',
+      tooltip: drawInterest ? 'Drawn balance × rate ÷ 12' : undefined,
+    },
     { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
-    { label: drawInterest ? 'Accrued Interest (Draws)' : 'Interest Accrued', value: drawInterest ? fmt(drawInterest.totalInterest) : fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive bg-destructive/10' },
+    {
+      label: drawInterest ? 'Interest Accrued (Draws)' : 'Interest Accrued',
+      value: drawInterest ? fmt(drawInterest.totalInterest) : fmt(totalInterestPaid),
+      icon: TrendingDown,
+      color: 'text-destructive bg-destructive/10',
+      tooltip: drawInterest ? 'Interest accrued on funded draws only, at each draw\'s effective rate' : undefined,
+    },
   ];
 
   return (
@@ -159,13 +181,16 @@ export default function LoanDetail() {
         {/* Summary stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {summaryStats.map(s => (
-            <Card key={s.label} className="glass-card">
+            <Card key={s.label} className="glass-card" title={s.tooltip}>
               <CardContent className="p-4 text-center">
                 <div className={cn('rounded-lg p-2 w-fit mx-auto mb-2', s.color.split(' ')[1])}>
                   <s.icon className={cn('h-4 w-4', s.color.split(' ')[0])} />
                 </div>
                 <p className="text-lg font-semibold">{s.value}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+                {s.tooltip && (
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5 leading-tight">{s.tooltip}</p>
+                )}
               </CardContent>
             </Card>
           ))}

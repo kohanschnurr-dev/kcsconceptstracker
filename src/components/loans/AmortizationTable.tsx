@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
-import { Download } from 'lucide-react';
+import { Download, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { buildAmortizationSchedule, buildDrawAmortizationSchedule } from '@/types/loans';
+import { buildAmortizationSchedule, buildDrawAmortizationSchedule, buildDrawInterestSchedule } from '@/types/loans';
 import type { Loan, LoanDraw } from '@/types/loans';
 import { cn } from '@/lib/utils';
 
@@ -19,15 +19,21 @@ interface AmortizationTableProps {
 }
 
 export function AmortizationTable({ loan, extensionMonths = 0, draws, hasDraws }: AmortizationTableProps) {
+  const hasFundedDraws = (draws ?? []).some(d => d.status === 'funded' && d.date_funded);
+  const isDrawBased = !!(hasDraws && draws && draws.length > 0);
+
   const schedule = useMemo(() => {
-    if (hasDraws && draws && draws.length > 0) {
-      return buildDrawAmortizationSchedule(loan, draws, extensionMonths);
-    }
+    if (isDrawBased) return buildDrawAmortizationSchedule(loan, draws!, extensionMonths);
     return buildAmortizationSchedule(loan, extensionMonths);
-  }, [loan, extensionMonths, draws, hasDraws]);
+  }, [loan, extensionMonths, draws, isDrawBased]);
+
+  // Draw-period interest breakdown (only when funded draws exist)
+  const drawInterest = useMemo(
+    () => (hasFundedDraws && draws ? buildDrawInterestSchedule(loan, draws) : null),
+    [loan, draws, hasFundedDraws],
+  );
 
   const isSimple = loan.interest_calc_method === 'simple' || loan.payment_frequency === 'interest_only';
-  const isDrawBased = hasDraws && draws && draws.length > 0;
 
   const enrichedSchedule = useMemo(() => {
     let running = 0;
@@ -73,12 +79,70 @@ export function AmortizationTable({ loan, extensionMonths = 0, draws, hasDraws }
     URL.revokeObjectURL(url);
   };
 
-  const summaryColCount = 3 + (isSimple || isDrawBased ? 1 : 0) + (totalDrawFees > 0 ? 1 : 0);
+  // Static Tailwind classes — dynamic interpolation gets purged in production
+  const gridClass = totalDrawFees > 0
+    ? (isSimple || isDrawBased ? 'grid-cols-5' : 'grid-cols-4')
+    : (isSimple || isDrawBased ? 'grid-cols-4' : 'grid-cols-3');
 
   return (
     <div className="space-y-4">
+      {/* Draw-interest period breakdown */}
+      {drawInterest && drawInterest.periods.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
+            <Info className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+            <div>
+              <span className="font-medium text-primary">Draw-based interest mode</span>
+              <span className="text-muted-foreground ml-1">
+                — interest accrues only on the funded draw balance between each draw date.
+                Weighted avg balance: {fmt(drawInterest.weightedAvgBalance)}.
+              </span>
+            </div>
+          </div>
+          <div className="rounded-lg border border-border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Period</TableHead>
+                  <TableHead>Dates</TableHead>
+                  <TableHead className="text-right">Days</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
+                  <TableHead className="text-right">Rate</TableHead>
+                  <TableHead className="text-right">Interest</TableHead>
+                  {drawInterest.totalFees > 0 && <TableHead className="text-right">Draw Fees</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {drawInterest.periods.map((p, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="text-sm font-medium">{p.label}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{fmtDate(p.startDate)} → {fmtDate(p.endDate)}</TableCell>
+                    <TableCell className="text-right text-sm">{p.days}</TableCell>
+                    <TableCell className="text-right text-sm">{fmt(p.balance)}</TableCell>
+                    <TableCell className="text-right text-sm">{p.effectiveRate.toFixed(2)}%</TableCell>
+                    <TableCell className="text-right text-sm text-destructive">{fmt(p.interest)}</TableCell>
+                    {drawInterest.totalFees > 0 && (
+                      <TableCell className="text-right text-sm">
+                        {p.fees > 0 ? <span className="text-warning">{fmt(p.fees)}</span> : '—'}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+                <TableRow className="font-semibold bg-muted/30">
+                  <TableCell colSpan={5} className="text-sm">Total</TableCell>
+                  <TableCell className="text-right text-sm text-destructive">{fmt(drawInterest.totalInterest)}</TableCell>
+                  {drawInterest.totalFees > 0 && (
+                    <TableCell className="text-right text-sm text-warning">{fmt(drawInterest.totalFees)}</TableCell>
+                  )}
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+
       {/* Summary */}
-      <div className={cn("grid gap-3", `grid-cols-${Math.min(summaryColCount, 5)}`)}>
+      <div className={cn('grid gap-3', gridClass)}>
         <div className="rounded-lg bg-muted p-3 text-center">
           <p className="text-xs text-muted-foreground">Total Interest</p>
           <p className="text-base font-semibold text-destructive mt-0.5">{fmt(totalInterest)}</p>
