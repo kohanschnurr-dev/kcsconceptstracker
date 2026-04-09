@@ -1,23 +1,34 @@
 
 
-## Extend Draw Interest Dates to Include Extension Period
+## Fix: Preserve Draw Dates on Status Change
 
 ### Problem
-`buildDrawInterestSchedule` uses `loan.maturity_date` as the end date for all draw interest periods. When extensions exist, draws should accrue interest until the **effective maturity** (original maturity + extensions), but currently they stop at the original maturity date.
+When changing a draw's status to "funded", the `handleStatusChange` function auto-sets `date_funded` to today if `draw.date_funded` is null. But the user may have already set a date via the inline date picker (which saves to `date_funded`) or via the edit form (which saves to `expected_date`). This causes user-set dates to be overwritten with today's date.
 
-### Changes
+### Root Cause
+Line 63 in `DrawScheduleTracker.tsx`:
+```typescript
+if (status === 'funded' && !draw.date_funded) {
+  dateFunded = todayString; // overwrites even if expected_date was set
+}
+```
 
-**`src/types/loans.ts`** — Add `extensionMonths` parameter to `buildDrawInterestSchedule`:
-- Change signature to accept an optional `extensionMonths: number` parameter
-- Compute effective maturity by adding `extensionMonths` to `loan.maturity_date`
-- Use effective maturity for all draw period end dates and day calculations
+### Fix — `src/components/loans/DrawScheduleTracker.tsx`
 
-**`src/pages/LoanDetail.tsx`** — Pass `extensionMonths` to the call:
-- Line ~92: Change `buildDrawInterestSchedule(loan, draws)` to `buildDrawInterestSchedule(loan, draws, extensionMonths)`
+Update `handleStatusChange` to:
+1. If `draw.date_funded` exists, keep it
+2. If not, fall back to `draw.expected_date`
+3. Only auto-set today's date if **neither** date exists
 
-**`src/components/loans/DrawScheduleTracker.tsx`** — If it calls `buildDrawInterestSchedule`, pass extension months there too.
+```typescript
+const handleStatusChange = (draw: LoanDraw, status: DrawStatus) => {
+  let dateFunded = draw.date_funded;
+  if (status === 'funded' && !dateFunded) {
+    dateFunded = draw.expected_date || todayString();
+  }
+  onUpsert({ ...draw, status, date_funded: dateFunded }, loanId);
+};
+```
 
-### Files Modified
-- `src/types/loans.ts` (signature + maturity calculation, ~3 lines changed)
-- `src/pages/LoanDetail.tsx` (pass extensionMonths, 1 line)
+This is a 1-file, ~3-line change.
 
