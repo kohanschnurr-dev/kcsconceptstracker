@@ -168,7 +168,7 @@ export default function LoanDetail() {
                   <InfoRow label="Status" value={<LoanStatusBadge status={loan.status} />} />
                   {loan.project_name && <InfoRow label="Project" value={loan.project_name} />}
                   {loan.nickname && <InfoRow label="Nickname" value={loan.nickname} />}
-                  <InfoRow label="Payment Freq." value={loan.payment_frequency.replace('_', ' ')} />
+                  <InfoRow label="Payment Freq." value={loan.payment_frequency.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} />
                 </CardContent>
               </Card>
 
@@ -207,7 +207,7 @@ export default function LoanDetail() {
               <Card className="glass-card">
                 <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Collateral</CardTitle></CardHeader>
                 <CardContent>
-                  <InfoRow label="Collateral Type" value={loan.collateral_type?.replace('_', ' ') ?? '—'} />
+                  <InfoRow label="Collateral Type" value={loan.collateral_type?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) ?? '—'} />
                   {loan.collateral_description && <InfoRow label="Description" value={loan.collateral_description} />}
                   {loan.ltv_at_origination && <InfoRow label="LTV at Origination" value={`${loan.ltv_at_origination}%`} />}
                   
