@@ -305,7 +305,7 @@ export function DrawScheduleTracker({
                             </Badge>
                           ) : (
                             <Select value={draw.status} onValueChange={v => handleStatusChange(draw, v as DrawStatus)}>
-                              <SelectTrigger className="h-7 text-sm px-2.5 w-auto">
+                              <SelectTrigger className="h-auto py-0 text-sm px-1.5 w-auto border-none bg-transparent shadow-none">
                                 <Badge variant="outline" className={cn('text-sm cursor-pointer', DRAW_STATUS_CONFIG[draw.status].className)}>
                                   {DRAW_STATUS_CONFIG[draw.status].label}
                                 </Badge>
