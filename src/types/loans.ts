@@ -170,8 +170,8 @@ export function buildDrawInterestSchedule(
   draws: LoanDraw[],
 ): DrawInterestResult | null {
   const funded = draws
-    .filter(d => d.status === 'funded' && d.date_funded)
-    .sort((a, b) => a.date_funded!.localeCompare(b.date_funded!));
+    .filter(d => d.status === 'funded' && (d.date_funded || d.expected_date))
+    .sort((a, b) => (a.date_funded ?? a.expected_date ?? '').localeCompare(b.date_funded ?? b.expected_date ?? ''));
 
   if (funded.length === 0) return null;
 
@@ -191,9 +191,10 @@ export function buildDrawInterestSchedule(
     const effectiveRate = draw.interest_rate_override ?? loan.interest_rate;
     const dailyRate = (effectiveRate / 100) / dayBasis;
 
-    const periodStart = new Date(draw.date_funded!);
+    const drawDate = draw.date_funded ?? draw.expected_date!;
+    const periodStart = new Date(drawDate);
     const periodEnd = i < funded.length - 1
-      ? new Date(funded[i + 1].date_funded!)
+      ? new Date(funded[i + 1].date_funded ?? funded[i + 1].expected_date!)
       : maturity;
 
     const days = Math.max(
@@ -210,7 +211,7 @@ export function buildDrawInterestSchedule(
       label: i < funded.length - 1
         ? `Draw #${draw.draw_number} → Draw #${funded[i + 1].draw_number}`
         : `Draw #${draw.draw_number} → Maturity`,
-      startDate: draw.date_funded!,
+      startDate: drawDate,
       endDate: periodEnd.toISOString().split('T')[0],
       days,
       balance: runningBalance,
