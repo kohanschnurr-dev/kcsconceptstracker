@@ -18,7 +18,7 @@ import { AmortizationTable } from '@/components/loans/AmortizationTable';
 import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoanDetail } from '@/hooks/useLoans';
-import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee } from '@/types/loans';
 import { Slider } from '@/components/ui/slider';
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -89,7 +89,10 @@ export default function LoanDetail() {
   const totalScheduleInterest = schedule.reduce((sum, row) => sum + row.interest, 0);
   // Draw-based interest for summary
   const drawInterest = loan.has_draws ? buildDrawInterestSchedule(loan, draws) : null;
-  const totalDrawFees = drawInterest?.totalFees ?? 0;
+  // Compute draw fees directly from all draws (not just funded ones in the interest schedule)
+  const totalDrawFees = loan.has_draws
+    ? draws.reduce((sum, d) => sum + calcDrawFee(d as any), 0)
+    : 0;
   const effectiveInterest = drawInterest ? drawInterest.totalInterest : totalScheduleInterest;
   const totalCost = effectiveInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
