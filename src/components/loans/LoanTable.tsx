@@ -169,7 +169,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   <TableCell className="max-w-32 truncate">{loan.nickname ?? loan.lender_name}</TableCell>
                   <TableCell><LoanTypeBadge type={loan.loan_type} /></TableCell>
                   <TableCell className="text-right">{fmt(loan.original_amount)}</TableCell>
-                  <TableCell className="text-right font-medium">{fmt(loan.outstanding_balance + (loan.has_draws ? (loan.total_draw_amount ?? 0) : 0))}</TableCell>
+                  <TableCell className="text-right font-medium">{fmt((() => { const s = buildAmortizationSchedule(loan); const t = new Date().toISOString().split('T')[0]; const last = [...s].reverse().find(r => r.date <= t); return last ? last.balance + (loan.has_draws ? (loan.total_draw_amount ?? 0) : 0) : loan.outstanding_balance + (loan.has_draws ? (loan.total_draw_amount ?? 0) : 0); })())}</TableCell>
                   <TableCell className="text-right">{loan.interest_rate.toFixed(2)}%</TableCell>
                   <TableCell className="text-right">{fmt(loan.monthly_payment)}</TableCell>
                   <TableCell className="text-sm">{formatDisplayDate(loan.maturity_date)}</TableCell>
