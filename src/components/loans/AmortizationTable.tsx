@@ -7,7 +7,6 @@ import {
   buildAmortizationSchedule,
   buildDrawWeightedSchedule,
   calcDrawAccruedInterest,
-  calcDrawFee,
 } from '@/types/loans';
 import type { Loan, LoanDraw } from '@/types/loans';
 import { cn } from '@/lib/utils';
@@ -41,15 +40,13 @@ export function AmortizationTable({ loan, draws }: AmortizationTableProps) {
   // For draw-mode, project total interest is draw-accrued + projected remaining periods
   const accrued = useDrawMode ? calcDrawAccruedInterest(loan, draws!) : null;
 
-  const drawFees = useDrawMode
-    ? (draws ?? []).filter(d => d.status === 'funded').reduce((s, d) => s + calcDrawFee(d), 0)
-    : 0;
-
   const totalCost =
+    (useDrawMode
+      ? (draws ?? []).filter(d => d.status === 'funded').reduce((s, d) => s + d.draw_amount, 0)
+      : loan.original_amount) +
     totalInterest +
     (loan.origination_fee_dollars ?? 0) +
-    (loan.other_closing_costs ?? 0) +
-    drawFees;
+    (loan.other_closing_costs ?? 0);
 
   const exportCSV = () => {
     const headers = useDrawMode

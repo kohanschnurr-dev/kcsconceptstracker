@@ -16,7 +16,7 @@ import { AmortizationTable } from '@/components/loans/AmortizationTable';
 import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoanDetail, useLoans } from '@/hooks/useLoans';
-import { LOAN_TYPE_LABELS, calcMonthlyPayment, calcDrawAccruedInterest, calcDrawCurrentPayment, calcDrawFee } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcMonthlyPayment, calcDrawAccruedInterest, calcDrawCurrentPayment } from '@/types/loans';
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
@@ -78,15 +78,11 @@ export default function LoanDetail() {
     ? calcDrawAccruedInterest(loan, draws)
     : payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
 
-  // Total cost = interest + fees (excludes principal)
-  const drawFees = useDrawMode
-    ? draws.reduce((s, d) => s + calcDrawFee(d), 0)
-    : 0;
   const totalCost =
-    totalInterestPaid +
+    (useDrawMode ? drawnBalance : loan.original_amount) +
+    (monthly * loan.loan_term_months) +
     (loan.origination_fee_dollars ?? 0) +
-    (loan.other_closing_costs ?? 0) +
-    drawFees;
+    (loan.other_closing_costs ?? 0);
 
   const handleMarkPaidOff = () => {
     updateLoan.mutate({ id: loan.id, status: 'paid_off', outstanding_balance: 0 });
@@ -287,7 +283,6 @@ export default function LoanDetail() {
                   draws={draws}
                   totalDrawAmount={loan.total_draw_amount}
                   loanId={loan.id}
-                  loan={loan}
                   onUpsert={(draw, loanId) => upsertDraw.mutate({ ...draw, loan_id: loanId } as any)}
                   onDelete={id => deleteDraw.mutate(id)}
                 />
