@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Plus, Trash2, TrendingUp, Calculator } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, Calculator, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { DRAW_STATUS_CONFIG, buildDrawInterestSchedule } from '@/types/loans';
