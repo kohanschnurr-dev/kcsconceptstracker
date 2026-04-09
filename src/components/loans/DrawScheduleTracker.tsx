@@ -424,10 +424,14 @@ export function DrawScheduleTracker({
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Summary cards */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="rounded-xl border border-border bg-card p-4 text-center">
                 <p className="text-xl font-bold text-warning">{fmtExact(interestResult.totalInterest)}</p>
                 <p className="text-sm text-muted-foreground mt-1">Total Accrued Interest</p>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 text-center">
+                <p className="text-xl font-bold text-destructive">{fmtExact(interestResult.totalFees)}</p>
+                <p className="text-sm text-muted-foreground mt-1">Total Draw Fees</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4 text-center">
                 <p className="text-xl font-bold text-primary">{fmt(interestResult.weightedAvgBalance)}</p>
@@ -447,7 +451,9 @@ export function DrawScheduleTracker({
                     <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Period</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Dates</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Days</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Rate</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Balance</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Fees</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Interest</th>
                   </tr>
                 </thead>
@@ -464,18 +470,19 @@ export function DrawScheduleTracker({
                         {formatDisplayDate(p.startDate)} – {formatDisplayDate(p.endDate)}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">{p.days}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{p.effectiveRate}%</td>
                       <td className="px-4 py-3 text-right font-medium tabular-nums">{fmt(p.balance)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-destructive">{p.fees > 0 ? fmtExact(p.fees) : '—'}</td>
                       <td className="px-4 py-3 text-right font-semibold text-warning tabular-nums">{fmtExact(p.interest)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/50">
-                    <td className="px-4 py-3 font-semibold" colSpan={2}>Total</td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                      {interestResult.periods.reduce((s, p) => s + p.days, 0)}
-                    </td>
+                    <td className="px-4 py-3 font-semibold" colSpan={3}>Total</td>
+                    <td className="px-4 py-3" />
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{fmt(interestResult.weightedAvgBalance)}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-destructive tabular-nums">{fmtExact(interestResult.totalFees)}</td>
                     <td className="px-4 py-3 text-right font-bold text-warning tabular-nums">{fmtExact(interestResult.totalInterest)}</td>
                   </tr>
                 </tfoot>
