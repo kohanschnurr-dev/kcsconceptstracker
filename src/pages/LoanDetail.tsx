@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, CheckCircle2, DollarSign, Percent,
-  CreditCard, Calendar, TrendingDown, Landmark, Info,
+  CreditCard, Calendar, TrendingDown, Landmark, Info, ChevronDown,
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
