@@ -730,7 +730,10 @@ export type Database = {
           draw_number: number
           draw_percentage: number | null
           expected_date: string | null
+          fee_amount: number | null
+          fee_percentage: number | null
           id: string
+          interest_rate_override: number | null
           loan_id: string
           milestone_name: string | null
           notes: string | null
@@ -743,7 +746,10 @@ export type Database = {
           draw_number?: number
           draw_percentage?: number | null
           expected_date?: string | null
+          fee_amount?: number | null
+          fee_percentage?: number | null
           id?: string
+          interest_rate_override?: number | null
           loan_id: string
           milestone_name?: string | null
           notes?: string | null
@@ -756,7 +762,10 @@ export type Database = {
           draw_number?: number
           draw_percentage?: number | null
           expected_date?: string | null
+          fee_amount?: number | null
+          fee_percentage?: number | null
           id?: string
+          interest_rate_override?: number | null
           loan_id?: string
           milestone_name?: string | null
           notes?: string | null
