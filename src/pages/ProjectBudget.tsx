@@ -588,6 +588,18 @@ export default function ProjectBudget() {
     }
     setExpenses(prev => prev.map(e => e.id === expenseId ? { ...e, cost_type: costType } : e));
     toast.success('Type updated');
+
+    // If changed to 'loan', trigger loan payment assignment
+    if (costType === 'loan' && id) {
+      setLoanAssignExpense({
+        expenseId,
+        amount: Number(expense.amount),
+        date: expense.date,
+        projectId: id,
+        vendorName: expense.vendor_name || undefined,
+        description: expense.description || undefined,
+      });
+    }
   };
 
   const getCostTypeLabel = (type: string) => {
