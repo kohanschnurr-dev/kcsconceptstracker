@@ -439,6 +439,7 @@ export default function LoanDetail() {
                   totalDrawAmount={loan.total_draw_amount}
                   loanId={loan.id}
                   loan={loan}
+                  extensionMonths={extensionMonths}
                   onUpsert={(draw, loanId) => upsertDraw.mutate({ ...draw, loan_id: loanId } as any)}
                   onDelete={id => deleteDraw.mutate(id)}
                 />
