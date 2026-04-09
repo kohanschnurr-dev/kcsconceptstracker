@@ -284,7 +284,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       const { data: receipts, error } = await supabase
         .from('pending_receipts')
         .select('*')
-        .in('status', ['pending', 'matched'])
+        .in('status', ['pending', 'matched', 'parsing'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
