@@ -317,6 +317,15 @@ export function DrawScheduleTracker({
                               </SelectContent>
                             </Select>
                           )}
+                          {draw.interest_rate_override != null && loan && draw.interest_rate_override !== loan.interest_rate && (
+                            <Badge variant="secondary" className="text-xs">@ {draw.interest_rate_override}%</Badge>
+                          )}
+                          {(() => {
+                            const fee = calcDrawFee(draw);
+                            if (fee <= 0) return null;
+                            const label = draw.fee_percentage ? `Fee: ${draw.fee_percentage}%` : `Fee: ${fmtExact(fee)}`;
+                            return <Badge variant="secondary" className="text-xs">{label}</Badge>;
+                          })()}
                         </div>
                       </>
                     )}
@@ -378,6 +387,19 @@ export function DrawScheduleTracker({
                   </Popover>
                 </div>
               </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Rate Override (%)</Label>
+                  <Input className="mt-1 h-9" type="number" step="0.01" value={newDraw.interest_rate_override ?? ''} onChange={e => setNewDraw(d => ({ ...d, interest_rate_override: e.target.value ? parseFloat(e.target.value) : null }))} placeholder="Loan default" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Fee ($)</Label>
+                  <Input className="mt-1 h-9" type="number" value={newDraw.fee_amount ?? ''} onChange={e => setNewDraw(d => ({ ...d, fee_amount: e.target.value ? parseFloat(e.target.value) : null }))} placeholder="0" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Fee (%)</Label>
+                  <Input className="mt-1 h-9" type="number" step="0.01" value={newDraw.fee_percentage ?? ''} onChange={e => setNewDraw(d => ({ ...d, fee_percentage: e.target.value ? parseFloat(e.target.value) : null }))} placeholder="0" />
+                </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleSaveNew}>Save Draw</Button>
                 <Button size="sm" variant="outline" onClick={() => setAddingNew(false)}>Cancel</Button>
