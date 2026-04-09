@@ -18,7 +18,8 @@ import { AmortizationTable } from '@/components/loans/AmortizationTable';
 import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoanDetail } from '@/hooks/useLoans';
-import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule } from '@/types/loans';
+import { Slider } from '@/components/ui/slider';
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
