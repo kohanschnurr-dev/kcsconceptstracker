@@ -1204,7 +1204,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                       <CardContent className="p-3">
                         <div className="flex items-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
-                          <span className="text-sm text-muted-foreground">Processing receipt...</span>
+                          <span className="text-sm text-muted-foreground">Parsing</span>
                         </div>
                       </CardContent>
                     </Card>
