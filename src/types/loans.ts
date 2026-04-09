@@ -129,6 +129,83 @@ export interface AmortizationRow {
   accrued_interest?: number;
 }
 
+/* ── Draw-based interest accrual ─────────────────────────── */
+
+export interface DrawInterestPeriod {
+  label: string;
+  startDate: string;
+  endDate: string;
+  days: number;
+  balance: number;
+  interest: number;
+}
+
+export interface DrawInterestResult {
+  periods: DrawInterestPeriod[];
+  totalInterest: number;
+  weightedAvgBalance: number;
+}
+
+/**
+ * Build a draw-based interest schedule.
+ * Interest only accrues on the cumulative funded amount between draw dates.
+ */
+export function buildDrawInterestSchedule(
+  loan: Pick<Loan, 'interest_rate' | 'interest_calc_method' | 'maturity_date' | 'start_date'>,
+  draws: LoanDraw[],
+): DrawInterestResult | null {
+  const funded = draws
+    .filter(d => d.status === 'funded' && d.date_funded)
+    .sort((a, b) => a.date_funded!.localeCompare(b.date_funded!));
+
+  if (funded.length === 0) return null;
+
+  const dayBasis = loan.interest_calc_method === 'actual_365' ? 365 : 360;
+  const dailyRate = (loan.interest_rate / 100) / dayBasis;
+  const maturity = new Date(loan.maturity_date);
+
+  const periods: DrawInterestPeriod[] = [];
+  let runningBalance = 0;
+  let totalDays = 0;
+  let balanceDaysSum = 0;
+
+  for (let i = 0; i < funded.length; i++) {
+    const draw = funded[i];
+    runningBalance += draw.draw_amount;
+
+    const periodStart = new Date(draw.date_funded!);
+    const periodEnd = i < funded.length - 1
+      ? new Date(funded[i + 1].date_funded!)
+      : maturity;
+
+    const days = Math.max(
+      Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)),
+      0,
+    );
+
+    const interest = runningBalance * dailyRate * days;
+    totalDays += days;
+    balanceDaysSum += runningBalance * days;
+
+    periods.push({
+      label: i < funded.length - 1
+        ? `Draw #${draw.draw_number} → Draw #${funded[i + 1].draw_number}`
+        : `Draw #${draw.draw_number} → Maturity`,
+      startDate: draw.date_funded!,
+      endDate: periodEnd.toISOString().split('T')[0],
+      days,
+      balance: runningBalance,
+      interest,
+    });
+  }
+
+  return {
+    periods,
+    totalInterest: periods.reduce((s, p) => s + p.interest, 0),
+    weightedAvgBalance: totalDays > 0 ? balanceDaysSum / totalDays : 0,
+  };
+}
+
 /** Standard amortization payment: P * r(1+r)^n / ((1+r)^n - 1) */
 export function calcMonthlyPayment(
   principal: number,
