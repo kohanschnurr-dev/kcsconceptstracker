@@ -1,1 +1,0 @@
-ALTER TABLE public.loans ADD COLUMN months_held integer DEFAULT NULL;

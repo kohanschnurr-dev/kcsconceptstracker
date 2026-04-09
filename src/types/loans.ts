@@ -86,7 +86,6 @@ export interface Loan {
   notes: string | null;
   status: LoanStatus;
   monthly_payment: number | null;
-  months_held: number | null;
   created_at: string;
   updated_at: string;
   // joined
