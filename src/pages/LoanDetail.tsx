@@ -116,7 +116,7 @@ export default function LoanDetail() {
 
   const summaryStats = [
     { label: loanAmountLabel, value: fmt(loanAmountValue), icon: DollarSign, color: 'text-primary bg-primary/10', hasBreakdown: hasLoanBreakdown },
-    { label: 'Outstanding Balance', value: fmt(loan.outstanding_balance), icon: TrendingDown, color: 'text-warning bg-warning/10' },
+    ...(isTraditional ? [{ label: 'Outstanding Balance', value: fmt(loan.outstanding_balance), icon: TrendingDown, color: 'text-warning bg-warning/10' }] : []),
     { label: 'Interest Rate', value: `${loan.interest_rate.toFixed(2)}%`, icon: Percent, color: 'text-blue-400 bg-blue-500/10' },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
     { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
