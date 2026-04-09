@@ -18,7 +18,7 @@ import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { HardMoneyLoanCalculator } from '@/components/project/HardMoneyLoanCalculator';
 import { useLoans, useLoanDetail } from '@/hooks/useLoans';
-import { LOAN_TYPE_LABELS, calcMonthlyPayment } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildAmortizationSchedule } from '@/types/loans';
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
@@ -59,7 +59,11 @@ function LinkedLoanCard({ loanId, onUnlink }: { loanId: string; onUnlink: () => 
     loan.amortization_period_months, loan.payment_frequency,
   );
   const remainingTerm = Math.max(loan.loan_term_months - payments.length, 0);
-  const totalInterestPaid = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
+  const schedule = buildAmortizationSchedule(loan);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const totalInterestPaid = schedule
+    .filter(row => row.date <= todayStr)
+    .reduce((sum, row) => sum + row.interest, 0);
 
   const originationFee = loan.origination_fee_dollars ?? 0;
   const otherClosingCosts = loan.other_closing_costs ?? 0;
@@ -71,7 +75,7 @@ function LinkedLoanCard({ loanId, onUnlink }: { loanId: string; onUnlink: () => 
     { label: 'Rate', value: `${loan.interest_rate.toFixed(2)}%`, icon: Percent, color: 'text-blue-400', bg: 'bg-blue-500/10' },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success', bg: 'bg-success/10' },
     { label: 'Remaining', value: `${remainingTerm} mo`, icon: Calendar, color: 'text-primary', bg: 'bg-primary/10' },
-    { label: 'Interest Paid', value: fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive', bg: 'bg-destructive/10' },
+    { label: 'Interest Accrued', value: fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive', bg: 'bg-destructive/10' },
     { label: 'Origination Fee', value: fmt(originationFee), icon: Landmark, color: 'text-orange-400', bg: 'bg-orange-500/10' },
     ...(otherClosingCosts > 0 ? [{ label: 'Other Closing Costs', value: fmt(otherClosingCosts), icon: DollarSign, color: 'text-muted-foreground', bg: 'bg-muted/30' }] : []),
     { label: 'Total Loan Cost', value: fmt(totalLoanCost), icon: DollarSign, color: 'text-primary', bg: 'bg-primary/10' },
