@@ -270,18 +270,6 @@ export function ProjectLoanTab({
         </CardContent>
       </Card>
 
-      {/* Linked loans */}
-      {linkedLoans.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground text-sm">
-          No loans linked to this project yet. Select one above or{' '}
-          <Link to="/loans" className="text-primary hover:underline">create a new loan</Link>.
-        </div>
-      )}
-
-      {linkedLoans.map(l => (
-        <LinkedLoanCard key={l.id} loanId={l.id} onUnlink={() => handleUnlink(l.id)} />
-      ))}
-
       {/* Collapsed quick estimate calculator */}
       <Accordion type="single" collapsible>
         <AccordionItem value="calc" className="border rounded-lg">
@@ -308,6 +296,18 @@ export function ProjectLoanTab({
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+
+      {/* Linked loans */}
+      {linkedLoans.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground text-sm">
+          No loans linked to this project yet. Select one from the top or{' '}
+          <Link to="/loans" className="text-primary hover:underline">create a new loan</Link>.
+        </div>
+      )}
+
+      {linkedLoans.map(l => (
+        <LinkedLoanCard key={l.id} loanId={l.id} onUnlink={() => handleUnlink(l.id)} />
+      ))}
     </div>
   );
 }
