@@ -240,13 +240,6 @@ export default function LoanDetail() {
                 </Card>
               )}
 
-              <LoanExtensions
-                extensions={extensions}
-                loanId={loan.id}
-                maturityDate={loan.maturity_date}
-                onAdd={(ext) => addExtension.mutate(ext)}
-                onDelete={(id) => deleteExtension.mutate(id)}
-              />
             </div>
           </TabsContent>
 
