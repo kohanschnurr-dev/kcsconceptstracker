@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { LoanStatusBadge, LoanTypeBadge } from '@/components/loans/LoanStatusBadge';
 import { DrawScheduleTracker } from '@/components/loans/DrawScheduleTracker';
@@ -107,8 +108,14 @@ export default function LoanDetail() {
     setEditOpen(false);
   };
 
+  const isTraditional = loan.loan_type === 'conventional' || loan.loan_type === 'dscr';
+  const totalDrawAmountSum = draws.reduce((s, d) => s + (d.draw_amount ?? 0), 0);
+  const loanAmountValue = isTraditional || !loan.has_draws ? loan.original_amount : loan.original_amount + totalDrawAmountSum;
+  const loanAmountLabel = isTraditional ? 'Original Amount' : 'Loan Amount';
+  const hasLoanBreakdown = !isTraditional && loan.has_draws && draws.length > 0;
+
   const summaryStats = [
-    { label: 'Original Amount', value: fmt(loan.original_amount), icon: DollarSign, color: 'text-primary bg-primary/10' },
+    { label: loanAmountLabel, value: fmt(loanAmountValue), icon: DollarSign, color: 'text-primary bg-primary/10', hasBreakdown: hasLoanBreakdown },
     { label: 'Outstanding Balance', value: fmt(loan.outstanding_balance), icon: TrendingDown, color: 'text-warning bg-warning/10' },
     { label: 'Interest Rate', value: `${loan.interest_rate.toFixed(2)}%`, icon: Percent, color: 'text-blue-400 bg-blue-500/10' },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
@@ -161,17 +168,58 @@ export default function LoanDetail() {
 
         {/* Summary stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {summaryStats.map(s => (
-            <Card key={s.label} className="glass-card">
+          {summaryStats.map(s => {
+            const cardContent = (
               <CardContent className="p-4 text-center">
                 <div className={cn('rounded-lg p-2 w-fit mx-auto mb-2', s.color.split(' ')[1])}>
                   <s.icon className={cn('h-4 w-4', s.color.split(' ')[0])} />
                 </div>
                 <p className="text-lg font-semibold">{s.value}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 flex items-center justify-center gap-1">
+                  {s.label}
+                  {(s as any).hasBreakdown && <ChevronDown className="h-3 w-3" />}
+                </p>
               </CardContent>
-            </Card>
-          ))}
+            );
+
+            if ((s as any).hasBreakdown) {
+              return (
+                <Popover key={s.label}>
+                  <PopoverTrigger asChild>
+                    <Card className="glass-card cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all">
+                      {cardContent}
+                    </Card>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-3">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Original Loan</span>
+                        <span className="font-medium">{fmt(loan.original_amount)}</span>
+                      </div>
+                      {draws.map(d => (
+                        <div key={d.id} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Draw #{d.draw_number}{d.milestone_name ? ` — ${d.milestone_name}` : ''}
+                          </span>
+                          <span className="font-medium">{fmt(d.draw_amount)}</span>
+                        </div>
+                      ))}
+                      <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
+                        <span>Total</span>
+                        <span>{fmt(loanAmountValue)}</span>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+
+            return (
+              <Card key={s.label} className="glass-card">
+                {cardContent}
+              </Card>
+            );
+          })}
         </div>
 
         {/* Tabs */}
