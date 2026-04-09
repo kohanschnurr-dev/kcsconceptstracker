@@ -177,6 +177,20 @@ export default function LoanDetail() {
                   <InfoRow label="Original Amount" value={fmt(loan.original_amount)} />
                   <InfoRow label="Interest Rate" value={`${loan.interest_rate.toFixed(2)}% ${loan.rate_type}`} />
                   <InfoRow label="Loan Term" value={`${loan.loan_term_months} months`} />
+                  <InfoRow label="Months Held" value={
+                    <input
+                      type="number"
+                      min={1}
+                      max={loan.loan_term_months}
+                      placeholder={String(loan.loan_term_months)}
+                      value={loan.months_held ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value ? parseInt(e.target.value) : null;
+                        updateLoan.mutate({ id: loan.id, months_held: val } as any);
+                      }}
+                      className="w-20 text-right text-sm bg-transparent border-b border-border focus:border-primary focus:outline-none py-0.5"
+                    />
+                  } />
                   {loan.amortization_period_months && <InfoRow label="Amort. Period" value={`${loan.amortization_period_months} months`} />}
                   
                   <InfoRow label="Start Date" value={formatDisplayDate(loan.start_date)} />
