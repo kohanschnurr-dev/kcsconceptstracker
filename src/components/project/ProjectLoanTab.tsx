@@ -77,7 +77,7 @@ function LinkedLoanCard({ loanId, onUnlink }: { loanId: string; onUnlink: () => 
     { label: 'Remaining', value: `${remainingTerm} mo`, icon: Calendar, color: 'text-primary', bg: 'bg-primary/10' },
     { label: 'Interest Accrued', value: fmt(totalInterestPaid), icon: TrendingDown, color: 'text-destructive', bg: 'bg-destructive/10' },
     { label: 'Origination Fee', value: fmt(originationFee), icon: Landmark, color: 'text-orange-400', bg: 'bg-orange-500/10' },
-    ...(otherClosingCosts > 0 ? [{ label: 'Other Closing Costs', value: fmt(otherClosingCosts), icon: DollarSign, color: 'text-muted-foreground', bg: 'bg-muted/30' }] : []),
+    { label: 'Other Closing Costs', value: fmt(otherClosingCosts), icon: DollarSign, color: 'text-muted-foreground', bg: 'bg-muted/30' },
     { label: 'Total Loan Cost', value: fmt(totalLoanCost), icon: DollarSign, color: 'text-primary', bg: 'bg-primary/10' },
   ];
 
