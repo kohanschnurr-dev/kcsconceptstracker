@@ -169,8 +169,9 @@ export default function LoanDetail() {
                   <InfoRow label="Type" value={<LoanTypeBadge type={loan.loan_type} />} />
                   <InfoRow label="Status" value={<LoanStatusBadge status={loan.status} />} />
                   {loan.project_name && <InfoRow label="Project" value={loan.project_name} />}
-                  {loan.nickname && <InfoRow label="Nickname" value={loan.nickname} />}
                   <InfoRow label="Payment Freq." value={loan.payment_frequency.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} />
+                  {loan.ltv_at_origination && <InfoRow label="LTV at Origination" value={`${loan.ltv_at_origination}%`} />}
+                  {loan.collateral_type && <InfoRow label="Collateral" value={loan.collateral_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} />}
                 </CardContent>
               </Card>
 
@@ -222,15 +223,13 @@ export default function LoanDetail() {
                 </CardContent>
               </Card>
 
-              <Card className="glass-card">
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Collateral</CardTitle></CardHeader>
-                <CardContent>
-                  <InfoRow label="Collateral Type" value={loan.collateral_type?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) ?? '—'} />
-                  {loan.collateral_description && <InfoRow label="Description" value={loan.collateral_description} />}
-                  {loan.ltv_at_origination && <InfoRow label="LTV at Origination" value={`${loan.ltv_at_origination}%`} />}
-                  
-                </CardContent>
-              </Card>
+              <LoanExtensions
+                extensions={extensions}
+                loanId={loan.id}
+                maturityDate={loan.maturity_date}
+                onAdd={(ext) => addExtension.mutate(ext)}
+                onDelete={(id) => deleteExtension.mutate(id)}
+              />
 
               {loan.notes && (
                 <Card className="glass-card md:col-span-2">
@@ -241,13 +240,6 @@ export default function LoanDetail() {
                 </Card>
               )}
 
-              <LoanExtensions
-                extensions={extensions}
-                loanId={loan.id}
-                maturityDate={loan.maturity_date}
-                onAdd={(ext) => addExtension.mutate(ext)}
-                onDelete={(id) => deleteExtension.mutate(id)}
-              />
             </div>
           </TabsContent>
 
