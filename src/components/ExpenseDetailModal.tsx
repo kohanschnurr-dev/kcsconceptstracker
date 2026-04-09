@@ -202,7 +202,7 @@ export function ExpenseDetailModal({
   const handleSendBackToQueue = async () => {
     setIsResetting(true);
     try {
-      if (isQbLinked && !isQuickBooks) {
+      if (isQbLinked) {
         // This is a regular expense linked to a QB record via qb_expense_id
         // 1. Delete the regular expense
         const { error: deleteError } = await supabase
