@@ -565,6 +565,35 @@ export function useQuickBooks() {
       const expense = pendingExpenses.find(e => e.id === expenseId);
       const { data: { user } } = await supabase.auth.getUser();
 
+      // Check for matching pending receipt
+      let matchedReceiptUrl: string | null = null;
+      if (expense && user) {
+        const { data: pendingReceipts } = await supabase
+          .from('pending_receipts')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('status', ['pending', 'approved']);
+
+        if (pendingReceipts && pendingReceipts.length > 0) {
+          const expenseDate = new Date(expense.date);
+          const match = pendingReceipts.find(r => {
+            const amountDiff = Math.abs(r.total_amount - expense.amount);
+            const receiptDate = new Date(r.purchase_date);
+            const daysDiff = Math.abs(expenseDate.getTime() - receiptDate.getTime()) / (1000 * 60 * 60 * 24);
+            const vendorMatch = expense.vendor_name && r.vendor_name &&
+              r.vendor_name.toLowerCase().includes(expense.vendor_name.toLowerCase().substring(0, 6));
+            return amountDiff <= 0.50 && daysDiff <= 3 && vendorMatch;
+          });
+          if (match) {
+            matchedReceiptUrl = match.receipt_image_url;
+            await supabase
+              .from('pending_receipts')
+              .update({ status: 'matched', matched_at: new Date().toISOString() })
+              .eq('id', match.id);
+          }
+        }
+      }
+
       // Insert into expenses table (mirrors demo-mode behavior)
       if (expense && user) {
         // Check for duplicate before inserting
@@ -594,6 +623,7 @@ export function useQuickBooks() {
           notes: notes || null,
           qb_expense_id: expenseId,
           cost_type: costType,
+          receipt_url: matchedReceiptUrl,
         } as any);
 
         if (insertError) {
