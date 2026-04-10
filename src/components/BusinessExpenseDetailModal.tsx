@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, FileText, Paperclip, Download, Trash2, Save, Briefcase } from 'lucide-react';
+import { X, Upload, FileText, Paperclip, Download, Trash2, Save, Briefcase, RotateCcw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,16 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { getBusinessExpenseCategories } from '@/types';
 import { formatDisplayDateLong } from '@/lib/dateUtils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface BusinessExpenseDetailModalProps {
   open: boolean;
@@ -34,6 +44,7 @@ interface BusinessExpenseDetailModalProps {
     project_id?: string | null;
   } | null;
   onExpenseUpdated: () => void;
+  onDelete?: () => void;
   projects?: { id: string; name: string }[];
 }
 
@@ -42,6 +53,7 @@ export function BusinessExpenseDetailModal({
   onOpenChange,
   expense,
   onExpenseUpdated,
+  onDelete,
   projects = [],
 }: BusinessExpenseDetailModalProps) {
   const [notes, setNotes] = useState('');
@@ -50,6 +62,9 @@ export function BusinessExpenseDetailModal({
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -235,6 +250,66 @@ export function BusinessExpenseDetailModal({
     }
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('business_expenses')
+        .delete()
+        .eq('id', expense.id);
+      if (error) throw error;
+
+      toast({ title: 'Expense deleted' });
+      onDelete?.();
+      onExpenseUpdated();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleSendBackToQueue = async () => {
+    setIsResetting(true);
+    try {
+      // Find matching QB expense by vendor + amount + date
+      const { data: qbMatch } = await supabase
+        .from('quickbooks_expenses')
+        .select('id')
+        .eq('is_imported', true)
+        .eq('amount', expense.amount)
+        .eq('date', expense.date)
+        .ilike('vendor_name', expense.vendor_name || '')
+        .limit(1);
+
+      // Delete the business expense
+      const { error: deleteError } = await supabase
+        .from('business_expenses')
+        .delete()
+        .eq('id', expense.id);
+      if (deleteError) throw deleteError;
+
+      // Reset the QB record if found
+      if (qbMatch && qbMatch.length > 0) {
+        await supabase
+          .from('quickbooks_expenses')
+          .update({ is_imported: false })
+          .eq('id', qbMatch[0].id);
+      }
+
+      toast({ title: 'Sent back to queue', description: 'Expense returned to the import queue' });
+      onDelete?.();
+      onExpenseUpdated();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -368,13 +443,28 @@ export function BusinessExpenseDetailModal({
             <Button 
               type="button" 
               variant="outline" 
-              className="flex-1" 
-              onClick={() => onOpenChange(false)}
+              size="sm"
+              className="gap-1 text-muted-foreground hover:text-warning hover:border-warning/50"
+              onClick={handleSendBackToQueue}
+              disabled={isResetting}
             >
-              Cancel
+              <RotateCcw className="h-3.5 w-3.5" />
+              {isResetting ? 'Sending...' : 'Queue'}
             </Button>
             <Button 
-              className="flex-1 gap-2" 
+              type="button" 
+              variant="outline" 
+              size="sm"
+              className="gap-1 text-muted-foreground hover:text-destructive hover:border-destructive/50"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={isDeleting}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </Button>
+            <div className="flex-1" />
+            <Button 
+              className="gap-2" 
               onClick={handleSave}
               disabled={isSaving || isUploading}
             >
@@ -384,6 +474,23 @@ export function BusinessExpenseDetailModal({
           </div>
         </div>
       </DialogContent>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this expense?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this {formatCurrency(expense.amount)} expense from {expense.vendor_name || 'Unknown'}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
