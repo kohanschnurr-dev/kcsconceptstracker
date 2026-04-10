@@ -310,6 +310,7 @@ export function BusinessExpenseDetailModal({
     }
   };
 
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
