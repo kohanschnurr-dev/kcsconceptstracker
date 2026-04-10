@@ -663,8 +663,10 @@ export function useQuickBooks() {
       await fetchPendingExpenses();
       
       toast({
-        title: 'Categorized',
-        description: 'Expense categorized and imported successfully',
+        title: matchedReceiptUrl ? 'Imported with receipt' : 'Categorized',
+        description: matchedReceiptUrl 
+          ? 'Expense imported with auto-matched receipt'
+          : 'Expense categorized and imported successfully',
       });
       
       return true;
