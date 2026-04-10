@@ -134,8 +134,10 @@ export function BusinessQuickBooksIntegration({ onExpenseImported, projects = []
         .eq('id', expenseId);
 
       toast({
-        title: 'Expense imported',
-        description: `Added ${expense.vendor_name || 'expense'} to business expenses`,
+        title: matchedReceiptUrl ? 'Expense imported with receipt' : 'Expense imported',
+        description: matchedReceiptUrl 
+          ? `Added ${expense.vendor_name || 'expense'} with auto-matched receipt`
+          : `Added ${expense.vendor_name || 'expense'} to business expenses`,
       });
 
       // Clear the selected category for this expense
