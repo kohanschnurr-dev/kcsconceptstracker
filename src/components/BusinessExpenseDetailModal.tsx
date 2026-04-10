@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, FileText, Paperclip, Download, Trash2, Save, Briefcase } from 'lucide-react';
+import { X, Upload, FileText, Paperclip, Download, Trash2, Save, Briefcase, RotateCcw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,16 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { getBusinessExpenseCategories } from '@/types';
 import { formatDisplayDateLong } from '@/lib/dateUtils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface BusinessExpenseDetailModalProps {
   open: boolean;
@@ -34,6 +44,7 @@ interface BusinessExpenseDetailModalProps {
     project_id?: string | null;
   } | null;
   onExpenseUpdated: () => void;
+  onDelete?: () => void;
   projects?: { id: string; name: string }[];
 }
 
@@ -42,6 +53,7 @@ export function BusinessExpenseDetailModal({
   onOpenChange,
   expense,
   onExpenseUpdated,
+  onDelete,
   projects = [],
 }: BusinessExpenseDetailModalProps) {
   const [notes, setNotes] = useState('');
@@ -50,6 +62,9 @@ export function BusinessExpenseDetailModal({
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
