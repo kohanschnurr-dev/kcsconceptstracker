@@ -1023,6 +1023,7 @@ export default function BusinessExpenses() {
         onOpenChange={setDetailModalOpen}
         expense={selectedExpense}
         onExpenseUpdated={fetchData}
+        onDelete={fetchData}
         projects={projects}
       />
 
