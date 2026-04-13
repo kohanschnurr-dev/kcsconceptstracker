@@ -383,7 +383,7 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
 
               toast({
                 title: newCompleted ? 'Event completed' : 'Event reopened',
-                description: task.linkedTaskId
+                description: (task.linkedTaskId || task.projectId)
                   ? `Linked task also marked ${newCompleted ? 'complete' : 'pending'}`
                   : undefined,
               });
