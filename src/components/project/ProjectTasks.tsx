@@ -132,21 +132,27 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [calendarDefaults, setCalendarDefaults] = useState<{ title: string; date?: Date }>({ title: '' });
   const [calendarProjects, setCalendarProjects] = useState<{ id: string; name: string; address: string }[]>([]);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
-    fetchTasks();
-  }, [projectId]);
+    fetchTasks(showCompleted);
+  }, [projectId, showCompleted]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (completed: boolean) => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('tasks')
         .select('id, title, description, status, priority_level, due_date, photo_urls')
-        .eq('project_id', projectId)
-        .in('status', ['pending', 'in_progress'])
-        .order('priority_level', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .eq('project_id', projectId);
+
+      if (completed) {
+        query = query.eq('status', 'completed').order('updated_at', { ascending: false });
+      } else {
+        query = query.in('status', ['pending', 'in_progress']).order('priority_level', { ascending: false }).order('created_at', { ascending: false });
+      }
+
+      const { data, error } = await query.limit(50);
 
       if (error) throw error;
 
@@ -440,10 +446,32 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
     <>
       <Card className="glass-card">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <ListTodo className="h-5 w-5" />
-            Pipeline Tasks ({tasks.length})
-          </CardTitle>
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ListTodo className="h-5 w-5" />
+              {showCompleted ? 'Completed Tasks' : 'Active Pipeline Tasks'} ({tasks.length})
+            </CardTitle>
+            <div className="flex items-center rounded-lg border border-border overflow-hidden">
+              <button
+                onClick={() => setShowCompleted(false)}
+                className={cn(
+                  "px-3 py-1 text-xs font-medium transition-colors",
+                  !showCompleted ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => setShowCompleted(true)}
+                className={cn(
+                  "px-3 py-1 text-xs font-medium transition-colors",
+                  showCompleted ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Completed
+              </button>
+            </div>
+          </div>
           <Button size="sm" variant="outline" onClick={() => setIsAddModalOpen(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Add Task
@@ -458,7 +486,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
             </div>
           ) : tasks.length === 0 ? (
             <p className="text-center text-muted-foreground py-6">
-              No tasks linked to this project yet. Click 'Add Task' to create one!
+              {showCompleted ? "No completed tasks yet." : "No tasks linked to this project yet. Click 'Add Task' to create one!"}
             </p>
           ) : (
             <div className="space-y-2">
