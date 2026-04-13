@@ -33,6 +33,7 @@ interface ProfitCalculatorProps {
 export function ProfitCalculator({ 
   projectId,
   projectType = 'fix_flip',
+  projectStatus,
   totalBudget, 
   totalSpent,
   initialPurchasePrice = 0,
@@ -112,7 +113,10 @@ export function ProfitCalculator({
   const currentTotalCosts = currentInvestment + closingCosts + holdingCosts;
   const currentProfit = arv - currentTotalCosts;
 
-  const roi = currentInvestment > 0 ? (currentProfit / currentInvestment) * 100 : 0;
+  const useCurrentROI = projectStatus === 'complete' || totalSpent > totalBudget;
+  const roiProfit = useCurrentROI ? currentProfit : estimatedProfit;
+  const roiInvestment = useCurrentROI ? currentInvestment : estimatedInvestment;
+  const roi = roiInvestment > 0 ? (roiProfit / roiInvestment) * 100 : 0;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
