@@ -352,6 +352,25 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                   .from('tasks')
                   .update({ status: newCompleted ? 'completed' : 'pending' })
                   .eq('id', task.linkedTaskId);
+              } else if (task.projectId) {
+                // Try to find a matching task by title in the same project
+                const { data: matchingTasks } = await supabase
+                  .from('tasks')
+                  .select('id')
+                  .eq('project_id', task.projectId)
+                  .ilike('title', task.title)
+                  .limit(1);
+                if (matchingTasks && matchingTasks.length > 0) {
+                  await supabase
+                    .from('tasks')
+                    .update({ status: newCompleted ? 'completed' : 'pending' })
+                    .eq('id', matchingTasks[0].id);
+                  // Link them for future syncs
+                  await supabase
+                    .from('calendar_events')
+                    .update({ linked_task_id: matchingTasks[0].id })
+                    .eq('id', task.id);
+                }
               }
 
               const updatedTask: CalendarTask = {
