@@ -1,24 +1,27 @@
 
 
-## Rename to "Active Pipeline Tasks" + Add Completed Tasks Filter
+## Fix ROI Logic — Use Budget-Based ROI Until Spending Exceeds Budget or Project Completed
 
-### Changes — `src/components/project/ProjectTasks.tsx`
+### Problem
+ROI currently uses `currentProfit / currentInvestment` where `currentInvestment = purchasePrice + totalSpent`. Early in a project when spending is low, this produces an artificially inflated ROI (e.g. 510%) because most of the budget hasn't been spent yet.
 
-1. **Rename header** from "Pipeline Tasks" to "Active Pipeline Tasks"
+### Logic Change
+ROI should default to **budget-based** calculation and only switch to **current/spent-based** when:
+1. `totalSpent > totalBudget` (over budget), OR
+2. Project status is `'complete'`
 
-2. **Add a toggle/filter** next to the title — a small button or tab toggle ("Active" / "Completed") that switches between viewing active tasks and completed tasks
+### Changes
 
-3. **Update `fetchTasks`** to accept a filter parameter:
-   - Active mode (default): query `.in('status', ['pending', 'in_progress'])` — current behavior
-   - Completed mode: query `.eq('status', 'completed')`, ordered by `updated_at` desc
+**`src/components/project/ProfitCalculator.tsx`**
+- Add `projectStatus?: string` prop
+- Change ROI calculation logic:
+  - If `projectStatus === 'complete'` OR `totalSpent > totalBudget`: use current (spent-based) ROI → `currentProfit / currentInvestment`
+  - Otherwise: use estimated (budget-based) ROI → `estimatedProfit / estimatedInvestment`
+- Update the ROI card subtitle from "on current" to "on budget" or "on current" depending on which mode is active
+- Update the ROI breakdown panel to show the matching profit/investment values
 
-4. **Add state**: `showCompleted` boolean, default `false`
-   - When toggled, re-fetch with the appropriate filter
-   - Update header to show "Active Pipeline Tasks (N)" or "Completed Tasks (N)" based on mode
+**`src/pages/ProjectDetail.tsx`**
+- Pass `projectStatus={project.status}` to the `ProfitCalculator` component
 
-5. **In completed view**: checkboxes are checked, clicking unchecks (moves back to pending). The empty state message changes to "No completed tasks yet."
-
-### UI
-- A small segmented toggle or outline buttons ("Active" | "Completed") placed in the card header next to the Add Task button
-- Single file change, display-only logic
+Two files, ~10 lines changed.
 
