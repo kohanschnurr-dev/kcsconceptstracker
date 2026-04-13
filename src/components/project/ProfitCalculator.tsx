@@ -14,6 +14,7 @@ type CostMode = 'pct' | 'flat' | 'actual';
 interface ProfitCalculatorProps {
   projectId: string;
   projectType?: ProjectType;
+  projectStatus?: string;
   totalBudget: number;
   totalSpent: number;
   initialPurchasePrice?: number;
