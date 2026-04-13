@@ -14,6 +14,7 @@ type CostMode = 'pct' | 'flat' | 'actual';
 interface ProfitCalculatorProps {
   projectId: string;
   projectType?: ProjectType;
+  projectStatus?: string;
   totalBudget: number;
   totalSpent: number;
   initialPurchasePrice?: number;
@@ -32,6 +33,7 @@ interface ProfitCalculatorProps {
 export function ProfitCalculator({ 
   projectId,
   projectType = 'fix_flip',
+  projectStatus,
   totalBudget, 
   totalSpent,
   initialPurchasePrice = 0,
@@ -111,7 +113,10 @@ export function ProfitCalculator({
   const currentTotalCosts = currentInvestment + closingCosts + holdingCosts;
   const currentProfit = arv - currentTotalCosts;
 
-  const roi = currentInvestment > 0 ? (currentProfit / currentInvestment) * 100 : 0;
+  const useCurrentROI = projectStatus === 'complete' || totalSpent > totalBudget;
+  const roiProfit = useCurrentROI ? currentProfit : estimatedProfit;
+  const roiInvestment = useCurrentROI ? currentInvestment : estimatedInvestment;
+  const roi = roiInvestment > 0 ? (roiProfit / roiInvestment) * 100 : 0;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -272,7 +277,7 @@ export function ProfitCalculator({
               {roi.toFixed(1)}%
             </p>
             <div className="flex items-center justify-center gap-1 mt-1">
-              <p className="text-xs text-muted-foreground">on current</p>
+              <p className="text-xs text-muted-foreground">{useCurrentROI ? 'on current' : 'on budget'}</p>
               {expandedBreakdown === 'roi' ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
             </div>
           </div>
@@ -320,14 +325,14 @@ export function ProfitCalculator({
         {expandedBreakdown === 'roi' && (
           <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm font-mono animate-in fade-in-0 slide-in-from-top-2 duration-200">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Current Profit</span>
-              <span className={cn("font-semibold", currentProfit >= 0 ? "text-success" : "text-destructive")}>
-                {formatCurrency(currentProfit)}
+              <span className="text-muted-foreground">{useCurrentROI ? 'Current' : 'Estimated'} Profit</span>
+              <span className={cn("font-semibold", roiProfit >= 0 ? "text-success" : "text-destructive")}>
+                {formatCurrency(roiProfit)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">÷ Total Investment</span>
-              <span className="font-semibold">{formatCurrency(currentInvestment)}</span>
+              <span className="font-semibold">{formatCurrency(roiInvestment)}</span>
             </div>
             <div className="pl-4 space-y-1 text-xs text-muted-foreground">
               <div className="flex justify-between">
@@ -335,8 +340,8 @@ export function ProfitCalculator({
                 <span>{formatCurrency(purchasePrice)}</span>
               </div>
               <div className="flex justify-between">
-                <span>+ Rehab Spent</span>
-                <span>{formatCurrency(totalSpent)}</span>
+                <span>+ {useCurrentROI ? 'Rehab Spent' : 'Rehab Budget'}</span>
+                <span>{formatCurrency(useCurrentROI ? totalSpent : totalBudget)}</span>
               </div>
             </div>
             <div className="border-t pt-2 flex justify-between font-bold">
