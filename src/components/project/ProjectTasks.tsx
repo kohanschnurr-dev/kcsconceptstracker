@@ -205,7 +205,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
 
       toast({ title: 'Task updated!' });
       setSelectedTask(null);
-      fetchTasks();
+      fetchTasks(showCompleted);
     } catch (error) {
       console.error('Error updating task:', error);
       toast({ title: 'Error', description: 'Failed to update task', variant: 'destructive' });
@@ -539,7 +539,7 @@ export function ProjectTasks({ projectId, projectName }: ProjectTasksProps) {
           onOpenChange={setIsAddModalOpen}
           projectId={projectId}
           projectName={projectName}
-          onTaskCreated={fetchTasks}
+          onTaskCreated={() => fetchTasks(showCompleted)}
         />
       </Card>
 
