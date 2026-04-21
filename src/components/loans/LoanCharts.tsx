@@ -11,10 +11,10 @@ const fmt = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
 const COLORS = [
-  'hsl(32, 95%, 55%)',
+  'hsl(270, 60%, 55%)',
   'hsl(142, 76%, 36%)',
   'hsl(200, 80%, 50%)',
-  'hsl(270, 60%, 55%)',
+  'hsl(32, 95%, 55%)',
   'hsl(0, 72%, 51%)',
   'hsl(45, 93%, 47%)',
   'hsl(180, 70%, 45%)',
