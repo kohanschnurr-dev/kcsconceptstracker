@@ -22,14 +22,14 @@ const COLORS = [
 ];
 
 const TOOLTIP_STYLE = {
-  backgroundColor: 'hsl(220, 18%, 13%)',
-  border: '1px solid hsl(220, 15%, 22%)',
+  backgroundColor: 'hsl(var(--popover))',
+  border: '1px solid hsl(var(--border))',
   borderRadius: '8px',
-  color: 'hsl(210, 20%, 95%)',
+  color: 'hsl(var(--popover-foreground))',
 };
 
 const TOOLTIP_TEXT_STYLE = {
-  color: 'hsl(210, 20%, 95%)',
+  color: 'hsl(var(--popover-foreground))',
 };
 
 interface LoanChartsProps {
