@@ -54,8 +54,8 @@ export function Sidebar() {
     { icon: Calculator, label: 'Budget Calculator', path: '/calculator' },
     { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
     { icon: Users, label: 'Contractors', path: '/vendors' },
-    { icon: Briefcase, label: companyName, path: '/business-expenses' },
     { icon: Phone, label: 'CRM', path: '/crm' },
+    { icon: Briefcase, label: companyName, path: '/business-expenses' },
   ];
 
   return (
