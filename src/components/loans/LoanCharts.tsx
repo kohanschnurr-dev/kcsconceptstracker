@@ -105,18 +105,22 @@ export function LoanCharts({ loans }: LoanChartsProps) {
           <CardTitle className="text-base">Outstanding Balance by Project</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={byProject} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 22%)" vertical={false} />
+          <ResponsiveContainer width="100%" height={290}>
+            <BarChart data={byProject} margin={{ top: 4, right: 8, bottom: 50, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 11, fill: 'hsl(210, 15%, 65%)' }}
+                tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }}
                 axisLine={false}
                 tickLine={false}
+                interval={0}
+                angle={-25}
+                textAnchor="end"
+                height={60}
               />
               <YAxis
                 tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-                tick={{ fontSize: 11, fill: 'hsl(210, 15%, 65%)' }}
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                 axisLine={false}
                 tickLine={false}
                 width={52}
@@ -126,7 +130,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 contentStyle={TOOLTIP_STYLE}
                 itemStyle={TOOLTIP_TEXT_STYLE}
                 labelStyle={TOOLTIP_TEXT_STYLE}
-                cursor={{ fill: 'hsl(220, 15%, 20%)' }}
+                cursor={{ fill: 'hsl(var(--muted))' }}
               />
               <Bar dataKey="balance" fill="hsl(32, 95%, 55%)" radius={[4, 4, 0, 0]} />
             </BarChart>
