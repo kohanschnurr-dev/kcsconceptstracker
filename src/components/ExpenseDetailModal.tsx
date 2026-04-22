@@ -81,7 +81,10 @@ export function ExpenseDetailModal({
   const isQuickBooks = expense.source === 'quickbooks';
   const isQbLinked = !!expense.qb_expense_id;
   const canSendBackToQueue = isQuickBooks || isQbLinked;
-  const tableName = isQuickBooks ? 'quickbooks_expenses' : 'expenses';
+  // The expense row may be either a record in `quickbooks_expenses` (has qb_id, no qb_expense_id)
+  // or a record in `expenses` linked to QB (has qb_expense_id). Updates must target the source table.
+  const isFromQbTable = !!expense.qb_id && !expense.qb_expense_id;
+  const tableName = isFromQbTable ? 'quickbooks_expenses' : 'expenses';
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
