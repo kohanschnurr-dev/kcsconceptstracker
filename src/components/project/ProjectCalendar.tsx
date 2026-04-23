@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, startOfDay, isWithinInterval } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, startOfDay, isWithinInterval, differenceInDays, addDays } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { NewEventModal } from '@/components/calendar/NewEventModal';
 import { DealCard } from '@/components/calendar/DealCard';
 import { TaskDetailPanel } from '@/components/calendar/TaskDetailPanel';
@@ -22,7 +24,64 @@ interface ProjectCalendarProps {
   projectAddress: string;
 }
 
+function DraggableCard({ task, onClick }: { task: CalendarTask; onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+    data: { task },
+  });
+
+  const style = transform ? {
+    transform: `translate(${transform.x}px, ${transform.y}px)`,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 'auto' as const,
+  } : undefined;
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      <DealCard task={task} compact onClick={onClick} />
+    </div>
+  );
+}
+
+function DroppableDay({
+  day,
+  isCurrentMonth,
+  isExpanded,
+  onClick,
+  children,
+}: {
+  day: Date;
+  isCurrentMonth: boolean;
+  isExpanded: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: day.toISOString(),
+    data: { date: day },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      onClick={onClick}
+      className={cn(
+        'min-h-[60px] sm:min-h-[100px] p-0.5 sm:p-2 rounded border transition-colors cursor-pointer',
+        isCurrentMonth
+          ? 'bg-card/50 border-border'
+          : 'bg-background/50 border-border/50',
+        isToday(day) && 'ring-1 ring-primary/50',
+        isExpanded && 'ring-1 ring-primary/50',
+        isOver && 'ring-2 ring-primary/50 bg-primary/5'
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function ProjectCalendar({ projectId, projectName, projectAddress }: ProjectCalendarProps) {
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [tasks, setTasks] = useState<CalendarTask[]>([]);
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
@@ -30,8 +89,15 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateDate, setQuickCreateDate] = useState<Date | undefined>();
+  const [activeTask, setActiveTask] = useState<CalendarTask | null>(null);
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   const fetchEvents = async () => {
     const { data: eventsData, error } = await supabase
@@ -114,6 +180,49 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
     setSelectedTask(null);
   };
 
+  const handleDragStart = (event: any) => {
+    const task = tasks.find(t => t.id === event.active.id);
+    if (task) setActiveTask(task);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const task = tasks.find(t => t.id === active.id);
+    if (!task) return;
+
+    const targetDate = new Date(over.id as string);
+    const taskStartDay = startOfDay(task.startDate);
+    if (targetDate.getTime() === taskStartDay.getTime()) return;
+
+    const duration = differenceInDays(task.endDate, task.startDate);
+    const newEndDate = addDays(targetDate, duration);
+
+    const { error } = await supabase
+      .from('calendar_events')
+      .update({
+        start_date: targetDate.toISOString().split('T')[0],
+        end_date: newEndDate.toISOString().split('T')[0],
+      })
+      .eq('id', task.id);
+
+    if (error) {
+      console.error('Error moving event:', error);
+      toast({ title: 'Error', description: 'Failed to move event', variant: 'destructive' });
+      return;
+    }
+
+    setTasks(prev =>
+      prev.map(t =>
+        t.id === task.id ? { ...t, startDate: targetDate, endDate: newEndDate } : t
+      )
+    );
+
+    toast({ title: 'Event Updated', description: `Moved "${task.title}" to new dates.` });
+  };
+
   const goToPrevMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   const goToNextMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
 
@@ -180,119 +289,123 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
       </CardHeader>
 
       <CardContent>
-        {/* Week day headers */}
-        <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
-          {weekDaysFull.map((day, i) => (
-            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
-              <span className="hidden sm:inline">{day}</span>
-              <span className="sm:hidden">{weekDaysShort[i]}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Calendar grid with swipe support */}
-        <div
-          className="grid grid-cols-7 gap-0.5 sm:gap-1"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          {days.map(day => {
-            const dayTasks = getTasksForDay(day);
-            const isCurrentMonth = isSameMonth(day, currentDate);
-            const dayKey = day.toISOString();
-            const isExpanded = expandedDay === dayKey;
-            const visibleTasks = isExpanded ? dayTasks : dayTasks.slice(0, 3);
-            const hasMore = dayTasks.length > 3;
-
-            return (
-              <div
-                key={dayKey}
-                className={cn(
-                  'min-h-[60px] sm:min-h-[100px] p-0.5 sm:p-2 rounded border transition-colors cursor-pointer',
-                  isCurrentMonth
-                    ? 'bg-card/50 border-border'
-                    : 'bg-background/50 border-border/50',
-                  isToday(day) && 'ring-1 ring-primary/50',
-                  isExpanded && 'ring-1 ring-primary/50'
-                )}
-                onClick={() => {
-                  setQuickCreateDate(day);
-                  setTimeout(() => setQuickCreateOpen(true), 0);
-                }}
-              >
-                <button
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     if (hasMore) setExpandedDay(isExpanded ? null : dayKey);
-                   }}
-                  className={cn(
-                    'text-[10px] sm:text-xs font-medium mb-0.5 sm:mb-1 w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-colors',
-                    isToday(day)
-                      ? 'text-primary'
-                      : isCurrentMonth
-                        ? 'text-foreground'
-                        : 'text-muted-foreground/60',
-                    hasMore && 'hover:bg-secondary cursor-pointer',
-                    isExpanded && 'bg-primary/20 text-primary'
-                  )}
-                  title={hasMore ? (isExpanded ? 'Click to collapse' : `Click to see all ${dayTasks.length} events`) : undefined}
-                >
-                  {format(day, 'd')}
-                </button>
-
-                {/* Mobile: "X tasks" badge → popover */}
-                <div className="sm:hidden">
-                  {dayTasks.length > 0 && (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="text-[9px] font-medium text-primary/80 hover:text-primary w-full text-center leading-tight mt-0.5 rounded hover:bg-primary/10 px-0.5 py-0.5 transition-colors">
-                          {dayTasks.length} task{dayTasks.length !== 1 ? 's' : ''}
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-72 p-0 overflow-hidden z-50" align="center">
-                        <div className="px-3 py-2 border-b border-border bg-muted/30">
-                          <p className="text-xs font-semibold">{format(day, 'EEEE, MMM d')}</p>
-                          <p className="text-[10px] text-muted-foreground">{dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}</p>
-                        </div>
-                        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                          {dayTasks.map(task => (
-                            <DealCard key={task.id} task={task} compact onClick={() => {
-                               setSelectedTask(task);
-                               setPanelOpen(true);
-                             }} />
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  )}
-                </div>
-
-                {/* Desktop: existing colored DealCard layout */}
-                <div className="hidden sm:block space-y-0.5" onClick={(e) => e.stopPropagation()}>
-                  {visibleTasks.map(task => (
-                    <DealCard
-                      key={task.id}
-                      task={task}
-                      compact
-                      onClick={() => {
-                         setSelectedTask(task);
-                         setPanelOpen(true);
-                       }}
-                    />
-                  ))}
-                  {hasMore && !isExpanded && (
-                    <button
-                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpandedDay(dayKey); }}
-                      className="text-[10px] text-muted-foreground text-center w-full hover:text-foreground transition-colors"
-                    >
-                      +{dayTasks.length - 3}
-                    </button>
-                  )}
-                </div>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          {/* Week day headers */}
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
+            {weekDaysFull.map((day, i) => (
+              <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
+                <span className="hidden sm:inline">{day}</span>
+                <span className="sm:hidden">{weekDaysShort[i]}</span>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+
+          {/* Calendar grid with swipe support */}
+          <div
+            className="grid grid-cols-7 gap-0.5 sm:gap-1"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            {days.map(day => {
+              const dayTasks = getTasksForDay(day);
+              const isCurrentMonth = isSameMonth(day, currentDate);
+              const dayKey = day.toISOString();
+              const isExpanded = expandedDay === dayKey;
+              const visibleTasks = isExpanded ? dayTasks : dayTasks.slice(0, 3);
+              const hasMore = dayTasks.length > 3;
+
+              return (
+                <DroppableDay
+                  key={dayKey}
+                  day={day}
+                  isCurrentMonth={isCurrentMonth}
+                  isExpanded={isExpanded}
+                  onClick={() => {
+                    setQuickCreateDate(day);
+                    setTimeout(() => setQuickCreateOpen(true), 0);
+                  }}
+                >
+                  <button
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       if (hasMore) setExpandedDay(isExpanded ? null : dayKey);
+                     }}
+                    className={cn(
+                      'text-[10px] sm:text-xs font-medium mb-0.5 sm:mb-1 w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-colors',
+                      isToday(day)
+                        ? 'text-primary'
+                        : isCurrentMonth
+                          ? 'text-foreground'
+                          : 'text-muted-foreground/60',
+                      hasMore && 'hover:bg-secondary cursor-pointer',
+                      isExpanded && 'bg-primary/20 text-primary'
+                    )}
+                    title={hasMore ? (isExpanded ? 'Click to collapse' : `Click to see all ${dayTasks.length} events`) : undefined}
+                  >
+                    {format(day, 'd')}
+                  </button>
+
+                  {/* Mobile: "X tasks" badge → popover */}
+                  <div className="sm:hidden">
+                    {dayTasks.length > 0 && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="text-[9px] font-medium text-primary/80 hover:text-primary w-full text-center leading-tight mt-0.5 rounded hover:bg-primary/10 px-0.5 py-0.5 transition-colors">
+                            {dayTasks.length} task{dayTasks.length !== 1 ? 's' : ''}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 p-0 overflow-hidden z-50" align="center">
+                          <div className="px-3 py-2 border-b border-border bg-muted/30">
+                            <p className="text-xs font-semibold">{format(day, 'EEEE, MMM d')}</p>
+                            <p className="text-[10px] text-muted-foreground">{dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}</p>
+                          </div>
+                          <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                            {dayTasks.map(task => (
+                              <DealCard key={task.id} task={task} compact onClick={() => {
+                                 setSelectedTask(task);
+                                 setPanelOpen(true);
+                               }} />
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  </div>
+
+                  {/* Desktop: existing colored DealCard layout (now draggable) */}
+                  <div className="hidden sm:block space-y-0.5" onClick={(e) => e.stopPropagation()}>
+                    {visibleTasks.map(task => (
+                      <DraggableCard
+                        key={task.id}
+                        task={task}
+                        onClick={() => {
+                          setSelectedTask(task);
+                          setPanelOpen(true);
+                        }}
+                      />
+                    ))}
+                    {hasMore && !isExpanded && (
+                      <button
+                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpandedDay(dayKey); }}
+                        className="text-[10px] text-muted-foreground text-center w-full hover:text-foreground transition-colors"
+                      >
+                        +{dayTasks.length - 3}
+                      </button>
+                    )}
+                  </div>
+                </DroppableDay>
+              );
+            })}
+          </div>
+
+          <DragOverlay>
+            {activeTask ? (
+              <div className="opacity-90 scale-105">
+                <DealCard task={activeTask} compact />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
 
         <div className="pt-3 mt-2 border-t border-border">
           <CalendarLegend />
