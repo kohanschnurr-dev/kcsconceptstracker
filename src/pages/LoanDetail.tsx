@@ -108,8 +108,9 @@ export default function LoanDetail() {
   };
 
   const isTraditional = loan.loan_type === 'conventional' || loan.loan_type === 'dscr';
-  const totalDrawAmountSum = draws.reduce((s, d) => s + (d.draw_amount ?? 0), 0);
-  const loanAmountValue = isTraditional || !loan.has_draws ? loan.original_amount : loan.original_amount + totalDrawAmountSum;
+  // Only count draws that have actually been funded — not pending/planned ones.
+  const fundedDrawSum = draws.filter(d => d.status === 'funded').reduce((s, d) => s + (d.draw_amount ?? 0), 0);
+  const loanAmountValue = isTraditional || !loan.has_draws ? loan.original_amount : loan.original_amount + fundedDrawSum;
   const loanAmountLabel = isTraditional ? 'Original Amount' : 'Loan Amount';
   const hasLoanBreakdown = !isTraditional && loan.has_draws && draws.length > 0;
 
