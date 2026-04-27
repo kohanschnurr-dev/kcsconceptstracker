@@ -33,23 +33,48 @@ export function useLoans() {
       // instead of relying on a manually-entered total_draw_amount).
       const loanIds = loanRows.map(l => l.id);
       const fundedMap: Record<string, number> = {};
+      // Aggregate principal paid per loan so the list view always reflects
+      // payments — even legacy ones that never wrote outstanding_balance.
+      const principalPaidMap: Record<string, number> = {};
       if (loanIds.length > 0) {
-        const { data: drawRows } = await drawsTable()
-          .select('loan_id, draw_amount, status')
-          .in('loan_id', loanIds);
+        const [{ data: drawRows }, { data: payRows }] = await Promise.all([
+          drawsTable().select('loan_id, draw_amount, status').in('loan_id', loanIds),
+          paymentsTable()
+            .select('loan_id, amount, principal_portion, interest_portion, late_fee')
+            .in('loan_id', loanIds),
+        ]);
         ((drawRows ?? []) as any[]).forEach(d => {
           if (d.status === 'funded') {
             fundedMap[d.loan_id] = (fundedMap[d.loan_id] ?? 0) + Number(d.draw_amount ?? 0);
           }
         });
+        ((payRows ?? []) as any[]).forEach(p => {
+          const principal =
+            p.principal_portion != null
+              ? Number(p.principal_portion)
+              : Math.max(
+                  0,
+                  Number(p.amount ?? 0) - Number(p.interest_portion ?? 0) - Number(p.late_fee ?? 0),
+                );
+          principalPaidMap[p.loan_id] = (principalPaidMap[p.loan_id] ?? 0) + principal;
+        });
       }
 
-      return loanRows.map(l => ({
-        ...l,
-        project_name: l.projects?.name ?? null,
-        projects: undefined,
-        funded_draws_total: fundedMap[l.id] ?? 0,
-      })) as Loan[];
+      return loanRows.map(l => {
+        const storedBalance = Number(l.outstanding_balance ?? 0);
+        const principalPaid = principalPaidMap[l.id] ?? 0;
+        // Effective balance: lesser of stored value and (original - principal paid).
+        // This corrects legacy rows where outstanding_balance wasn't decremented.
+        const computed = Math.max(0, Number(l.original_amount ?? 0) - principalPaid);
+        const effectiveBalance = Math.min(storedBalance, computed);
+        return {
+          ...l,
+          project_name: l.projects?.name ?? null,
+          projects: undefined,
+          outstanding_balance: effectiveBalance,
+          funded_draws_total: fundedMap[l.id] ?? 0,
+        };
+      }) as Loan[];
     },
   });
 
