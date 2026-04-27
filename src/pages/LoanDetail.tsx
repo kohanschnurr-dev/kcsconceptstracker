@@ -390,18 +390,22 @@ export default function LoanDetail() {
                         </div>
                       )}
 
-                      <div className="border-t border-border pt-2 flex justify-between text-sm">
-                        <span className="text-muted-foreground">Remaining Principal</span>
-                        <span className="font-medium">{fmt(effectiveBalance)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">+ Interest Accrued</span>
-                        <span className="font-medium">{fmt(combinedInterest)}</span>
-                      </div>
                       <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
-                        <span>Balance</span>
-                        <span>{fmt(effectiveBalance + combinedInterest)}</span>
+                        <span>{isTraditional ? 'Outstanding Balance' : 'Remaining Principal'}</span>
+                        <span>{fmt(effectiveBalance)}</span>
                       </div>
+                      {!isTraditional && (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">+ Interest Accrued</span>
+                            <span className="font-medium">{fmt(combinedInterest)}</span>
+                          </div>
+                          <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
+                            <span>Balance</span>
+                            <span>{fmt(effectiveBalance + combinedInterest)}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </PopoverContent>
                 </Popover>
