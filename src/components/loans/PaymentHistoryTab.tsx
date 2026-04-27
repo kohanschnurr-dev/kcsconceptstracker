@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import type { Loan, LoanPayment } from '@/types/loans';
-import { ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, effectiveOutstandingBalance } from '@/types/loans';
+import type { Loan, LoanPayment, LoanDraw } from '@/types/loans';
+import { ACCRUES_INTEREST_TYPES, currentAccruedInterest, effectiveOutstandingBalance } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
 const fmt = (v: number | null | undefined) =>
@@ -17,6 +17,8 @@ interface PaymentHistoryTabProps {
   payments: LoanPayment[];
   loanId: string;
   loan?: Loan | null;
+  draws?: LoanDraw[];
+  extensions?: { extended_to: string }[];
   onAdd: (p: Omit<LoanPayment, 'id' | 'created_at'>) => void;
   onDelete: (id: string) => void;
 }
