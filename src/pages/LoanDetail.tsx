@@ -16,6 +16,7 @@ import { LoanStatusBadge, LoanTypeBadge } from '@/components/loans/LoanStatusBad
 import { DrawScheduleTracker } from '@/components/loans/DrawScheduleTracker';
 import { LoanExtensions } from '@/components/loans/LoanExtensions';
 import { AmortizationTable } from '@/components/loans/AmortizationTable';
+import { InterestScheduleTable } from '@/components/loans/InterestScheduleTable';
 import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoanDetail, useLoans } from '@/hooks/useLoans';
