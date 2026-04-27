@@ -144,6 +144,9 @@ export default function LoanDetail() {
     : liveAccruedInterest;
   const totalCost = combinedInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
+  const principalPaid = payments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);
+  const hasBalanceBreakdown = payments.length > 0;
+
   const summaryStats = [
     {
       label: loanAmountLabel,
@@ -155,7 +158,7 @@ export default function LoanDetail() {
     },
     { label: 'Interest Accrued', value: fmt(combinedInterest), icon: TrendingDown, color: 'text-destructive bg-destructive/10', hasInterestBreakdown },
     ...(isTraditional ? [{ label: 'Outstanding Balance', value: fmt(effectiveBalance), icon: TrendingDown, color: 'text-warning bg-warning/10' }] : []),
-    { label: 'Balance', value: fmt(effectiveBalance + combinedInterest), icon: Landmark, color: 'text-blue-400 bg-blue-500/10' },
+    { label: 'Balance', value: fmt(effectiveBalance + combinedInterest), icon: Landmark, color: 'text-blue-400 bg-blue-500/10', hasBalanceBreakdown },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
     { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
   ];
@@ -224,7 +227,7 @@ export default function LoanDetail() {
                 <p className="text-lg font-semibold">{s.value}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 flex items-center justify-center gap-1">
                   {s.label}
-                  {((s as any).hasBreakdown || (s as any).hasInterestBreakdown) && <ChevronDown className="h-3 w-3" />}
+                  {((s as any).hasBreakdown || (s as any).hasInterestBreakdown || (s as any).hasBalanceBreakdown) && <ChevronDown className="h-3 w-3" />}
                 </p>
                 {(s as any).subtitle && (
                   <p className="text-[11px] text-warning mt-0.5 font-medium">{(s as any).subtitle}</p>
@@ -290,6 +293,42 @@ export default function LoanDetail() {
                       <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
                         <span>Total</span>
                         <span>{fmt(combinedInterest)}</span>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+
+            if ((s as any).hasBalanceBreakdown) {
+              return (
+                <Popover key={s.label}>
+                  <PopoverTrigger asChild>
+                    <Card className="glass-card cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all">
+                      {cardContent}
+                    </Card>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-3">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{loanAmountLabel}</span>
+                        <span className="font-medium">{fmt(loanAmountValue)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Principal Paid</span>
+                        <span className="font-medium text-success">−{fmt(principalPaid)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Remaining Principal</span>
+                        <span className="font-medium">{fmt(effectiveBalance)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Interest Accrued</span>
+                        <span className="font-medium">+{fmt(combinedInterest)}</span>
+                      </div>
+                      <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
+                        <span>Balance</span>
+                        <span>{fmt(effectiveBalance + combinedInterest)}</span>
                       </div>
                     </div>
                   </PopoverContent>
