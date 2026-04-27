@@ -1,16 +1,16 @@
-## Fix
+## Add Delete Loan Button
 
-Remove the **Portfolio / By Project** toggle from `src/pages/Loans.tsx` and collapse the page to a single always-on Portfolio view.
+Add a confirm-then-delete action on the **Loan Detail** page so users can remove a loan they created by mistake.
 
-Specifically:
-- Delete the toggle button group (lines ~74–92).
-- Delete the `view` / `ViewMode` state.
-- Delete the conditional **Project selector** dropdown that only appeared in "By Project" mode (lines ~108–122). The loans table already shows the project column and the Charts already group by project, so the standalone filter is redundant.
-- Always render `<LoanCharts loans={visibleLoans} />` (drop the `view === 'portfolio'` gate).
-- Remove now-unused imports (`Select*` if nothing else uses them, `selectedProject` state, `projectNames` if only used here — keep it if `LoanTable` still needs it).
+### Placement
+Right side of the header, immediately to the **left of the Edit button** (matches the screenshot's action area). Use a `ghost` variant button with a `Trash2` icon and red text so it doesn't compete with the gold Edit CTA, but is still discoverable.
 
-Header right-side action row becomes just **Compare** + **Add Loan**, matching the screenshot you sent.
+### Behavior
+- Clicking opens an `AlertDialog` (shadcn) confirming: "Delete this loan? This permanently removes the loan and its draws, payments, and extensions. This cannot be undone."
+- On confirm: call `deleteLoan.mutateAsync(loan.id)` (already exists in `useLoans`), then `navigate('/loans')`.
+- Button is disabled while the mutation is pending.
 
-## Files Changed
+### Files Changed
+- **`src/pages/LoanDetail.tsx`** — import `useLoans`, `Trash2`, and `AlertDialog*`; add the Delete button + confirm dialog next to Edit; wire to `deleteLoan` and redirect on success.
 
-- `src/pages/Loans.tsx` — remove toggle, project selector, and `view` state; always show Charts.
+No DB or schema changes — `deleteLoan` mutation and RLS DELETE policy already exist.
