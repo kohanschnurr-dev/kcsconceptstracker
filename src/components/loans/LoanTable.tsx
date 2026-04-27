@@ -53,6 +53,17 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       return (data ?? []) as LoanPayment[];
     },
   });
+  const { data: draws = [] } = useQuery<LoanDraw[]>({
+    queryKey: ['loan_draws_for_table', loanIds],
+    enabled: loanIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from('loan_draws' as any) as any)
+        .select('id, loan_id, draw_amount, draw_number, status, date_funded, expected_date, interest_rate_override, fee_amount, fee_percentage, milestone_name')
+        .in('loan_id', loanIds);
+      if (error) throw error;
+      return (data ?? []) as LoanDraw[];
+    },
+  });
   const paymentsByLoan = useMemo(() => {
     const m: Record<string, LoanPayment[]> = {};
     for (const p of payments) {
@@ -62,6 +73,15 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     }
     return m;
   }, [payments]);
+  const drawsByLoan = useMemo(() => {
+    const m: Record<string, LoanDraw[]> = {};
+    for (const d of draws) {
+      const key = (d as any).loan_id;
+      if (!key) continue;
+      (m[key] = m[key] ?? []).push(d);
+    }
+    return m;
+  }, [draws]);
 
   const filtered = useMemo(() => {
     let list = [...loans];
