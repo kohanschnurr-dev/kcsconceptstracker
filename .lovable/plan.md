@@ -1,19 +1,25 @@
-## Recompute amortization start when loan start date changes
+## Simplify Balance breakdown to match Loan Amount popover
 
 ### Problem
-When the user edits a loan's **Start Date**, the amortization schedule keeps showing the original dates. Two root causes:
+The current Balance popover mixes a subtraction row (`Principal Paid −$X`) with an intermediate subtotal (`Remaining Principal`) and then adds interest. It reads as two formulas glued together and feels like the math doesn't add up at a glance, even though the final number is correct.
 
-1. **Stale `first_payment_date`**: On loan creation, `first_payment_date` is computed from `start_date` and saved. When the user edits `start_date` later, `AddLoanModal.handleSubmit` keeps the previously-saved `first_payment_date` (line 157: `form.first_payment_date || calcFirstPaymentDate(...)`), so the schedule keeps using the old anchor.
-2. **UTC parsing bug**: `buildAmortizationSchedule` does `new Date(loan.first_payment_date ?? loan.start_date)` — a bare YYYY-MM-DD string is parsed as UTC, producing off-by-one days in US time zones (violates the project's date parsing standard).
+The Loan Amount popover (reference) is purely additive: each row is a positive component, and they sum to the Total that matches the card value.
 
-### Changes
+### Fix
+Restructure the Balance popover to be a clean two-row sum that mirrors the Loan Amount style:
 
-**`src/components/loans/AddLoanModal.tsx`** (handleSubmit, ~line 157)
-- Detect whether `start_date` changed vs. the loaded loan. If it changed (or no `first_payment_date` exists), recompute `first_payment_date` from the new `start_date` + `payment_frequency` instead of preserving the stale value.
-- Also recompute when `payment_frequency` changes.
+```
+Remaining Principal       $308,557
+Interest Accrued          $20,768
+─────────────────────────────────
+Balance                   $329,325
+```
 
-**`src/types/loans.ts`** (`buildAmortizationSchedule`, ~line 445)
-- Parse the start anchor with the safe `YYYY-MM-DD` + `T00:00:00` pattern (matching the existing pattern used elsewhere in this file and the project's date parsing standard) so dates don't drift by one day.
+- Drop the `Loan Amount` and `Principal Paid −$X` rows.
+- Keep only the two true components of the current Balance: remaining principal + accrued interest.
+- Use the same visual treatment as the Loan Amount popover (muted labels, semibold total row with top border).
 
-### Result
-Editing the loan start date refreshes both `first_payment_date` and every row of the amortization table to the correct calendar dates.
+### File
+**`src/pages/LoanDetail.tsx`** — replace the Balance `PopoverContent` body (the block currently rendering Loan Amount / Principal Paid / Remaining Principal / Interest Accrued / Balance) with the simplified two-row sum.
+
+No logic or value changes — just clearer presentation.

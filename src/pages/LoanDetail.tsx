@@ -302,23 +302,15 @@ export default function LoanDetail() {
                       {cardContent}
                     </Card>
                   </PopoverTrigger>
-                  <PopoverContent className="w-72 p-3">
+                  <PopoverContent className="w-64 p-3">
                     <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{loanAmountLabel}</span>
-                        <span className="font-medium">{fmt(loanAmountValue)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Principal Paid</span>
-                        <span className="font-medium text-success">−{fmt(principalPaid)}</span>
-                      </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Remaining Principal</span>
                         <span className="font-medium">{fmt(effectiveBalance)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Interest Accrued</span>
-                        <span className="font-medium">+{fmt(combinedInterest)}</span>
+                        <span className="font-medium">{fmt(combinedInterest)}</span>
                       </div>
                       <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
                         <span>Balance</span>
