@@ -148,7 +148,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     active.forEach(l => {
       const key = l.project_name ?? 'No Project';
       if (!map[key]) map[key] = { __total: 0 } as any;
-      const lp = paymentsByLoan[l.id] ?? [];
+      const lp = getEffectivePayments(l, paymentsByLoan[l.id] ?? []);
       // Payment-aware principal so the bar shrinks after a payment.
       const bal = effectiveOutstandingBalance(l, lp);
       map[key][l.loan_type] = (map[key][l.loan_type] ?? 0) + bal;
@@ -156,7 +156,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       typesSet.add(l.loan_type);
 
       // Per-type accrued interest stacked directly on top of its own principal.
-      const accrued = currentAccruedInterest(l, lp, drawsByLoan[l.id] ?? []);
+      const accrued = currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], drawsByLoan[l.id] ?? []);
       if (accrued > 0) {
         const ik = interestKey(l.loan_type);
         map[key][ik] = (map[key][ik] ?? 0) + accrued;
