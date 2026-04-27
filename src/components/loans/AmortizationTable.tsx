@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Download } from 'lucide-react';
+import { Download, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -92,20 +92,47 @@ export function AmortizationTable({ loan, extensionMonths = 0 }: AmortizationTab
             </TableRow>
           </TableHeader>
           <TableBody>
-            {enrichedSchedule.map(row => (
-              <TableRow key={row.payment_number} className={cn(row.is_balloon && 'bg-destructive/10')}>
-                <TableCell className="text-muted-foreground text-xs">{row.payment_number}</TableCell>
-                <TableCell className="text-sm">{fmtDate(row.date)}</TableCell>
-                <TableCell className="text-right text-sm">
-                  {fmt(row.payment)}
-                  {row.is_balloon && <Badge variant="outline" className="ml-2 text-xs bg-destructive/20 text-destructive border-destructive/30">Balloon</Badge>}
-                </TableCell>
-                <TableCell className="text-right text-sm">{fmt(row.principal)}</TableCell>
-                <TableCell className="text-right text-sm text-muted-foreground">{fmt(row.interest)}</TableCell>
-                {isSimple && <TableCell className="text-right text-sm font-medium text-warning">{fmt(row.accrued_interest!)}</TableCell>}
-                <TableCell className="text-right text-sm font-medium">{fmt(row.balance)}</TableCell>
-              </TableRow>
-            ))}
+            {(() => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const pastRows = enrichedSchedule.filter(r => new Date(r.date + 'T12:00:00') <= today);
+              const nextRow = enrichedSchedule.find(r => new Date(r.date + 'T12:00:00') > today);
+              const nextNum = nextRow?.payment_number;
+              return enrichedSchedule.map(row => {
+                const rowDate = new Date(row.date + 'T12:00:00');
+                const isPaid = rowDate <= today;
+                const isNext = row.payment_number === nextNum;
+                return (
+                  <TableRow
+                    key={row.payment_number}
+                    className={cn(
+                      row.is_balloon && 'bg-destructive/10',
+                      isPaid && 'bg-success/10 hover:bg-success/15',
+                      isNext && 'bg-primary/10 hover:bg-primary/15 border-l-2 border-l-primary'
+                    )}
+                  >
+                    <TableCell className="text-muted-foreground text-xs">
+                      <div className="flex items-center gap-1">
+                        {isPaid && <Check className="h-3 w-3 text-success" />}
+                        {row.payment_number}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {fmtDate(row.date)}
+                      {isNext && <Badge variant="outline" className="ml-2 text-xs bg-primary/20 text-primary border-primary/30">Next</Badge>}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {fmt(row.payment)}
+                      {row.is_balloon && <Badge variant="outline" className="ml-2 text-xs bg-destructive/20 text-destructive border-destructive/30">Balloon</Badge>}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">{fmt(row.principal)}</TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">{fmt(row.interest)}</TableCell>
+                    {isSimple && <TableCell className="text-right text-sm font-medium text-warning">{fmt(row.accrued_interest!)}</TableCell>}
+                    <TableCell className="text-right text-sm font-medium">{fmt(row.balance)}</TableCell>
+                  </TableRow>
+                );
+              });
+            })()}
           </TableBody>
         </Table>
       </div>
