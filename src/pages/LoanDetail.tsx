@@ -24,7 +24,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, totalAccruedInterest } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee, ACCRUES_INTEREST_TYPES, currentAccruedInterest } from '@/types/loans';
 
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -100,17 +100,10 @@ export default function LoanDetail() {
     : 0;
   const effectiveInterest = drawInterest ? drawInterest.totalInterest : totalScheduleInterest;
 
-  // Payment-aware interest accrual: stepwise interest on the *remaining* balance
-  // after each principal payment, less any interest already paid. This keeps the
-  // "Interest Accrued" stat honest after a paydown.
+  // Single source of truth — chronological ledger.
   const accruesUnpaidInterest = ACCRUES_INTEREST_TYPES.includes(loan.loan_type as any);
   const interestPaid = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
-  const liveAccruedInterest = accruesUnpaidInterest
-    ? accruedInterestThroughToday(loan, payments)
-    : Math.max(
-        0,
-        schedule.filter(r => r.date <= todayStr).reduce((sum, r) => sum + r.interest, 0) - interestPaid,
-      );
+  const liveAccruedInterest = currentAccruedInterest(loan, payments, draws, extensions);
 
   const handleMarkPaidOff = () => {
     updateLoan.mutate({ id: loan.id, status: 'paid_off', outstanding_balance: 0 });
@@ -138,7 +131,7 @@ export default function LoanDetail() {
   const effectiveBalance = Math.max(0, (loanAmountValue ?? 0) - principalPaidForBalance);
 
   const hasInterestBreakdown = !!drawInterest && drawInterest.periods.length > 0;
-  const combinedInterest = totalAccruedInterest(loan, payments, draws, extensionMonths);
+  const combinedInterest = liveAccruedInterest;
   const totalCost = combinedInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
   const principalPaid = payments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);
@@ -523,6 +516,8 @@ export default function LoanDetail() {
                 payments={payments}
                 loanId={loan.id}
                 loan={loan}
+                draws={draws}
+                extensions={extensions}
                 onAdd={p => addPayment.mutate(p)}
                 onDelete={id => deletePayment.mutate(id)}
               />

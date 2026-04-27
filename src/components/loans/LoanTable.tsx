@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
-import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, totalAccruedInterest, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule } from '@/types/loans';
+import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, currentAccruedInterest, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule } from '@/types/loans';
 import { cn } from '@/lib/utils';
 import type { Loan, LoanStatus, LoanType, LoanPayment, LoanDraw } from '@/types/loans';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -242,7 +242,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   <TableCell><LoanTypeBadge type={loan.loan_type} /></TableCell>
                   <TableCell className="text-right">{fmt(loan.original_amount)}</TableCell>
                   <TableCell className="text-right font-medium">{fmt(loanBalanceWithDraws(loan))}</TableCell>
-                  <TableCell className="text-right">{fmt(totalAccruedInterest(loan, paymentsByLoan[loan.id] ?? [], drawsByLoan[loan.id] ?? []))}</TableCell>
+                  <TableCell className="text-right">{fmt(currentAccruedInterest(loan, paymentsByLoan[loan.id] ?? [], drawsByLoan[loan.id] ?? []))}</TableCell>
                   <TableCell className="text-right">{fmt(loan.monthly_payment)}</TableCell>
                   <TableCell className="text-sm">{formatDisplayDate(loan.maturity_date)}</TableCell>
                   <TableCell><LoanStatusBadge status={loan.status} /></TableCell>

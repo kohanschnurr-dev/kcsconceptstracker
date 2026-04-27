@@ -221,39 +221,40 @@ export function accruedInterestThroughToday(
 }
 
 /**
- * Unified "Interest Accrued" figure that mirrors what the Loan Detail page
- * shows in its summary card. Combines:
- *   - payment-aware accrual on the original principal (or scheduled interest
- *     through today for amortizing loans), minus interest already paid
- *   - draw-based interest on funded draws when the loan has draws
+ * Single source of truth for "Interest Accrued (Unpaid)".
  *
- * Pass any draws/extensions you have; missing arrays default to empty.
+ * Runs the chronological ledger (`buildInterestSchedule`) and returns the
+ * `currentUnpaidInterest` row at today. The ledger:
+ *   - honors the loan's `interest_calc_method` (360 vs 365)
+ *   - applies each draw on its actual funded date (not from origination)
+ *   - subtracts the interest portion of every payment
+ *   - evaluates the running balance at "today"
+ *
+ * All UI surfaces that show "Interest Accrued" (table column, summary tile,
+ * capital-stack chart, Interest Schedule tab) MUST call this so the numbers
+ * agree to the cent.
+ */
+export function currentAccruedInterest(
+  loan: Loan,
+  payments: LoanPayment[] = [],
+  draws: LoanDraw[] = [],
+  extensions: { extended_to: string }[] = [],
+): number {
+  return buildInterestSchedule({ loan, payments, draws, extensions }).currentUnpaidInterest;
+}
+
+/**
+ * @deprecated Use {@link currentAccruedInterest}. Kept temporarily because it
+ * combined original-principal accrual + projected draw interest, which
+ * over-counted for draw-based loans and used a hard-coded 365 day basis.
  */
 export function totalAccruedInterest(
   loan: Loan,
   payments: LoanPayment[] = [],
   draws: LoanDraw[] = [],
-  extensionMonths: number = 0,
+  extensions: { extended_to: string }[] = [],
 ): number {
-  const todayStr = new Date().toISOString().split('T')[0];
-  const interestPaid = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
-
-  let base: number;
-  if (ACCRUES_INTEREST_TYPES.includes(loan.loan_type as LoanType)) {
-    base = accruedInterestThroughToday(loan, payments);
-  } else {
-    const schedule = buildAmortizationSchedule(loan, extensionMonths);
-    const scheduledThroughToday = schedule
-      .filter(r => r.date <= todayStr)
-      .reduce((sum, r) => sum + r.interest, 0);
-    base = Math.max(0, scheduledThroughToday - interestPaid);
-  }
-
-  const drawInterest = loan.has_draws ? buildDrawInterestSchedule(loan, draws, extensionMonths) : null;
-  if (drawInterest && drawInterest.periods.length > 0) {
-    return Math.max(0, base + drawInterest.totalInterest - interestPaid);
-  }
-  return base;
+  return currentAccruedInterest(loan, payments, draws, extensions);
 }
 
 /**

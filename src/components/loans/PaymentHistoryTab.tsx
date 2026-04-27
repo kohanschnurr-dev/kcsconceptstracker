@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import type { Loan, LoanPayment } from '@/types/loans';
-import { ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, effectiveOutstandingBalance } from '@/types/loans';
+import type { Loan, LoanPayment, LoanDraw } from '@/types/loans';
+import { ACCRUES_INTEREST_TYPES, currentAccruedInterest, effectiveOutstandingBalance } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
 const fmt = (v: number | null | undefined) =>
@@ -17,6 +17,8 @@ interface PaymentHistoryTabProps {
   payments: LoanPayment[];
   loanId: string;
   loan?: Loan | null;
+  draws?: LoanDraw[];
+  extensions?: { extended_to: string }[];
   onAdd: (p: Omit<LoanPayment, 'id' | 'created_at'>) => void;
   onDelete: (id: string) => void;
 }
@@ -31,7 +33,7 @@ const emptyPayment = (loanId: string): Omit<LoanPayment, 'id' | 'created_at'> =>
   notes: null,
 });
 
-export function PaymentHistoryTab({ payments, loanId, loan, onAdd, onDelete }: PaymentHistoryTabProps) {
+export function PaymentHistoryTab({ payments, loanId, loan, draws = [], extensions = [], onAdd, onDelete }: PaymentHistoryTabProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(() => emptyPayment(loanId));
   // Track which fields the user has manually overridden so we don't fight them.
@@ -45,10 +47,12 @@ export function PaymentHistoryTab({ payments, loanId, loan, onAdd, onDelete }: P
   const totalInterest = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
 
   // Live snapshot of what the loan owes right now — used to suggest the split.
+  // Reads the same chronological ledger that powers the Interest Schedule tab,
+  // the loan table, and the summary tile, so all four numbers agree.
   const unpaidInterest = useMemo(() => {
     if (!loan) return 0;
-    return Math.round(accruedInterestThroughToday(loan, payments) * 100) / 100;
-  }, [loan, payments]);
+    return Math.round(currentAccruedInterest(loan, payments, draws, extensions) * 100) / 100;
+  }, [loan, payments, draws, extensions]);
   const remainingPrincipal = useMemo(() => {
     if (!loan) return 0;
     return Math.round(effectiveOutstandingBalance(loan, payments) * 100) / 100;
