@@ -58,7 +58,7 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
     return m;
   }, [payments]);
 
-  const balanceFor = (l: Loan) => effectiveOutstandingBalance(l, paymentsByLoan[l.id] ?? []);
+  const balanceFor = (l: Loan) => effectiveOutstandingBalance(l, getEffectivePayments(l, paymentsByLoan[l.id] ?? []));
 
   const totalBalance = useMemo(
     () => active.reduce((s, l) => s + balanceFor(l), 0),
