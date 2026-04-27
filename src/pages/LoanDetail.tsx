@@ -305,7 +305,7 @@ export default function LoanDetail() {
                       {cardContent}
                     </Card>
                   </PopoverTrigger>
-                  <PopoverContent align="end" sideOffset={8} collisionPadding={16} className="w-80 p-3">
+                  <PopoverContent className="w-80 p-3">
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{loanAmountLabel}</span>

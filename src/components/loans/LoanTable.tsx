@@ -1,17 +1,19 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowUpDown, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
-import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule } from '@/types/loans';
+import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule } from '@/types/loans';
 import { cn } from '@/lib/utils';
-import type { Loan, LoanStatus, LoanType } from '@/types/loans';
+import type { Loan, LoanStatus, LoanType, LoanPayment } from '@/types/loans';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { loanBalanceWithDraws } from './LoanStatsRow';
+import { supabase } from '@/integrations/supabase/client';
 
 const fmt = (v: number | null | undefined) =>
   v == null
@@ -38,6 +40,28 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(0);
   const PER_PAGE = 15;
+
+  const loanIds = useMemo(() => loans.map(l => l.id).sort(), [loans]);
+  const { data: payments = [] } = useQuery<LoanPayment[]>({
+    queryKey: ['loan_payments_for_table', loanIds],
+    enabled: loanIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from('loan_payments' as any) as any)
+        .select('loan_id, payment_date, amount, principal_portion, interest_portion, late_fee')
+        .in('loan_id', loanIds);
+      if (error) throw error;
+      return (data ?? []) as LoanPayment[];
+    },
+  });
+  const paymentsByLoan = useMemo(() => {
+    const m: Record<string, LoanPayment[]> = {};
+    for (const p of payments) {
+      const key = (p as any).loan_id;
+      if (!key) continue;
+      (m[key] = m[key] ?? []).push(p);
+    }
+    return m;
+  }, [payments]);
 
   const filtered = useMemo(() => {
     let list = [...loans];
@@ -161,7 +185,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
               <TableHead>Type <SortBtn col="loan_type" /></TableHead>
               <TableHead className="text-right">Original <SortBtn col="original_amount" /></TableHead>
               <TableHead className="text-right">Balance <SortBtn col="outstanding_balance" /></TableHead>
-              <TableHead className="text-right">Rate <SortBtn col="interest_rate" /></TableHead>
+              <TableHead className="text-right">Interest Accrued</TableHead>
               <TableHead className="text-right">Monthly Pmt</TableHead>
               <TableHead>Maturity <SortBtn col="maturity_date" /></TableHead>
               <TableHead>Status</TableHead>
@@ -198,7 +222,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   <TableCell><LoanTypeBadge type={loan.loan_type} /></TableCell>
                   <TableCell className="text-right">{fmt(loan.original_amount)}</TableCell>
                   <TableCell className="text-right font-medium">{fmt(loanBalanceWithDraws(loan))}</TableCell>
-                  <TableCell className="text-right">{loan.interest_rate.toFixed(2)}%</TableCell>
+                  <TableCell className="text-right">{ACCRUES_INTEREST_TYPES.includes(loan.loan_type) ? fmt(accruedInterestThroughToday(loan, paymentsByLoan[loan.id] ?? [])) : '—'}</TableCell>
                   <TableCell className="text-right">{fmt(loan.monthly_payment)}</TableCell>
                   <TableCell className="text-sm">{formatDisplayDate(loan.maturity_date)}</TableCell>
                   <TableCell><LoanStatusBadge status={loan.status} /></TableCell>

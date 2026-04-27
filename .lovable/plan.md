@@ -1,29 +1,40 @@
-## Problem
+## Goal
 
-When the Balance stat card is clicked on the Loan Detail page, the popover (320px wide) opens centered on the card. Because the stat card is narrower than the popover, it spills sideways and visually cuts into the adjacent "Interest Accrued" / "Live th..." card on the left, making everything underneath look chopped off.
+Replace the **Rate** column in the loans table with **Interest Accrued**, showing each loan's unpaid interest accrued through today.
 
-## Fix
+## Changes
 
-In `src/pages/LoanDetail.tsx`, update the `<PopoverContent>` for the Balance card so it anchors cleanly under the trigger and doesn't crash into neighboring cards.
+**`src/components/loans/LoanTable.tsx`**
 
-Changes:
-- Set `align="end"` so the popover hugs the right edge of the Balance card (the rightmost stat) instead of spilling left over the other cards.
-- Add `collisionPadding={16}` so it auto-flips/shifts before touching the viewport edge.
-- Bump `sideOffset` to `8` for a touch more breathing room from the trigger card.
-
-Result: the payment ledger popover sits cleanly beside/below its card with no visual overlap on adjacent stats.
+1. Add a `useQuery` to fetch all `loan_payments` for the loans currently shown (keyed on sorted loan IDs), mirroring the pattern already used in `LoanCharts.tsx`.
+2. Build a `paymentsByLoan` lookup map.
+3. Compute accrued interest per loan with the existing `accruedInterestThroughToday(loan, payments)` helper from `@/types/loans`. For loan types not in `ACCRUES_INTEREST_TYPES` (e.g. amortizing loans), display `—` since they don't accrue unpaid interest.
+4. Replace the header `<TableHead className="text-right">Rate <SortBtn col="interest_rate" /></TableHead>` with `<TableHead className="text-right">Interest Accrued</TableHead>` (no sort — value is computed, not a column).
+5. Replace the cell `{loan.interest_rate.toFixed(2)}%` with the formatted accrued amount.
 
 ## Technical detail
 
 ```tsx
-<PopoverContent
-  align="end"
-  sideOffset={8}
-  collisionPadding={16}
-  className="w-80 p-3"
->
-  ...
-</PopoverContent>
+const { data: payments = [] } = useQuery<LoanPayment[]>({
+  queryKey: ['loan_payments_for_table', loans.map(l => l.id).sort()],
+  enabled: loans.length > 0,
+  queryFn: async () => {
+    const { data, error } = await (supabase.from('loan_payments' as any) as any)
+      .select('loan_id, payment_date, amount, principal_portion, interest_portion, late_fee')
+      .in('loan_id', loans.map(l => l.id));
+    if (error) throw error;
+    return (data ?? []) as LoanPayment[];
+  },
+});
+
+const paymentsByLoan = useMemo(() => { /* group by loan_id */ }, [payments]);
+
+// In the row:
+<TableCell className="text-right">
+  {ACCRUES_INTEREST_TYPES.includes(loan.loan_type)
+    ? fmt(accruedInterestThroughToday(loan, paymentsByLoan[loan.id] ?? []))
+    : '—'}
+</TableCell>
 ```
 
-No layout, sizing, or content changes — purely positioning.
+No other columns or behavior change.

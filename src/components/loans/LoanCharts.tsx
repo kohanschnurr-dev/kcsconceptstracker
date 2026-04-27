@@ -124,14 +124,14 @@ export function LoanCharts({ loans }: LoanChartsProps) {
           <CardTitle className="text-base">Debt by Loan Type</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={380}>
+          <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               <Pie
                 data={byType}
                 cx="50%"
                 cy="50%"
-                innerRadius={80}
-                outerRadius={140}
+                innerRadius={50}
+                outerRadius={85}
                 paddingAngle={3}
                 dataKey="value"
               >
@@ -161,8 +161,8 @@ export function LoanCharts({ loans }: LoanChartsProps) {
           <span className="text-xs text-muted-foreground">Debt + accrued interest, stacked by loan type</span>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={460}>
-            <BarChart data={byProject} margin={{ top: 24, right: 8, bottom: 24, left: 0 }}>
+          <ResponsiveContainer width="100%" height={380}>
+            <BarChart data={byProject} margin={{ top: 24, right: 8, bottom: 78, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="name"
@@ -170,8 +170,9 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 axisLine={false}
                 tickLine={false}
                 interval={0}
-                textAnchor="middle"
-                height={40}
+                angle={-35}
+                textAnchor="end"
+                height={80}
               />
               <YAxis
                 tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
