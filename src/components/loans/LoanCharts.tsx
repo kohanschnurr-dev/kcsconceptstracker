@@ -42,12 +42,13 @@ export function LoanCharts({ loans }: LoanChartsProps) {
   const active = useMemo(() => loans.filter(l => l.status === 'active'), [loans]);
 
   const byType = useMemo(() => {
-    const map: Record<string, number> = {};
+    const map: Record<string, { value: number; type: LoanType }> = {};
     active.forEach(l => {
       const key = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
-      map[key] = (map[key] ?? 0) + loanBalanceWithDraws(l);
+      if (!map[key]) map[key] = { value: 0, type: l.loan_type };
+      map[key].value += loanBalanceWithDraws(l);
     });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    return Object.entries(map).map(([name, { value, type }]) => ({ name, value, type }));
   }, [active]);
 
   const byProject = useMemo(() => {
