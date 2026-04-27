@@ -121,12 +121,10 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       map[key].__total += bal;
       typesSet.add(l.loan_type);
 
-      // Only short-term / interest-only loan types accrue unpaid interest;
-      // amortizing loans pay interest monthly so there's nothing to "accrue".
-      if (ACCRUES_INTEREST_TYPES.includes(l.loan_type)) {
-        const accrued = accruedInterestThroughToday(l, lp);
-        if (accrued > 0) map[key].__interest += accrued;
-      }
+      // Total accrued interest mirrors the loan-detail summary card so the
+      // capital-stack bar lines up with the per-loan figures.
+      const accrued = totalAccruedInterest(l, lp, drawsByLoan[l.id] ?? []);
+      if (accrued > 0) map[key].__interest += accrued;
     });
     const rows = Object.entries(map)
       .map(([name, vals]) => ({ name, ...vals }))
