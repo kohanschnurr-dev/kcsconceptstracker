@@ -52,13 +52,20 @@ export function LoanCharts({ loans }: LoanChartsProps) {
   }, [active]);
 
   const byProject = useMemo(() => {
-    const map: Record<string, number> = {};
+    const map: Record<string, { balance: number; types: Record<string, number> }> = {};
     active.forEach(l => {
       const key = l.project_name ?? 'No Project';
-      map[key] = (map[key] ?? 0) + loanBalanceWithDraws(l);
+      if (!map[key]) map[key] = { balance: 0, types: {} };
+      const bal = loanBalanceWithDraws(l);
+      map[key].balance += bal;
+      map[key].types[l.loan_type] = (map[key].types[l.loan_type] ?? 0) + bal;
     });
     return Object.entries(map)
-      .map(([name, balance]) => ({ name: name.length > 18 ? name.slice(0, 16) + '…' : name, balance }))
+      .map(([name, { balance, types }]) => {
+        const dominantType = Object.entries(types).sort((a, b) => b[1] - a[1])[0]?.[0] as LoanType;
+        const color = LOAN_TYPE_COLORS[dominantType]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
+        return { name, balance, color };
+      })
       .sort((a, b) => b.balance - a.balance)
       .slice(0, 8);
   }, [active]);
@@ -66,8 +73,8 @@ export function LoanCharts({ loans }: LoanChartsProps) {
   if (active.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card className="glass-card">
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <Card className="glass-card lg:col-span-2">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Debt by Loan Type</CardTitle>
         </CardHeader>
@@ -78,8 +85,8 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 data={byType}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={100}
+                innerRadius={50}
+                outerRadius={85}
                 paddingAngle={3}
                 dataKey="value"
               >
@@ -95,7 +102,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
               />
               <Legend
                 formatter={(value) => (
-                  <span className="text-foreground" style={{ fontSize: 13, fontWeight: 600 }}>{value}</span>
+                  <span className="text-foreground" style={{ fontSize: 12, fontWeight: 600 }}>{value}</span>
                 )}
               />
             </PieChart>
@@ -103,13 +110,13 @@ export function LoanCharts({ loans }: LoanChartsProps) {
         </CardContent>
       </Card>
 
-      <Card className="glass-card">
+      <Card className="glass-card lg:col-span-3">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Outstanding Balance by Project</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={290}>
-            <BarChart data={byProject} margin={{ top: 4, right: 8, bottom: 50, left: 0 }}>
+            <BarChart data={byProject} margin={{ top: 4, right: 8, bottom: 70, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="name"
@@ -117,9 +124,9 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 axisLine={false}
                 tickLine={false}
                 interval={0}
-                angle={-25}
+                angle={-35}
                 textAnchor="end"
-                height={60}
+                height={80}
               />
               <YAxis
                 tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
@@ -135,7 +142,11 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 labelStyle={TOOLTIP_TEXT_STYLE}
                 cursor={{ fill: 'hsl(var(--muted))' }}
               />
-              <Bar dataKey="balance" fill="hsl(32, 95%, 55%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="balance" radius={[4, 4, 0, 0]}>
+                {byProject.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
