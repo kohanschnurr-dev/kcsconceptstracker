@@ -51,17 +51,29 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     return Object.entries(map).map(([name, { value, type }]) => ({ name, value, type }));
   }, [active]);
 
-  // Stack each project's balance by loan type — true "capital stack" view.
+  // Distinct color reserved for accrued interest — not used by any LoanType.
+  const INTEREST_COLOR = 'hsl(48, 100%, 70%)';
+
+  // Stack each project's balance by loan type + accrued interest — true "capital stack" view.
   const { byProject, presentTypes } = useMemo(() => {
-    const map: Record<string, Record<string, number> & { __total: number }> = {};
+    const map: Record<string, Record<string, number> & { __total: number; __interest: number }> = {};
     const typesSet = new Set<LoanType>();
+    const today = Date.now();
     active.forEach(l => {
       const key = l.project_name ?? 'No Project';
-      if (!map[key]) map[key] = { __total: 0 } as any;
+      if (!map[key]) map[key] = { __total: 0, __interest: 0 } as any;
       const bal = loanBalanceWithDraws(l);
       map[key][l.loan_type] = (map[key][l.loan_type] ?? 0) + bal;
       map[key].__total += bal;
       typesSet.add(l.loan_type);
+
+      // Simple-interest accrual from start_date → today on current balance.
+      if (l.start_date) {
+        const start = new Date(l.start_date).getTime();
+        const days = Math.max(0, (today - start) / (1000 * 60 * 60 * 24));
+        const accrued = bal * (l.interest_rate / 100) * (days / 365);
+        if (accrued > 0) map[key].__interest += accrued;
+      }
     });
     const rows = Object.entries(map)
       .map(([name, vals]) => ({ name, ...vals }))
