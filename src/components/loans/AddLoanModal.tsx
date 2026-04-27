@@ -424,7 +424,7 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
               </div>
               <div>
                 <Label>Origination Fee ($)</Label>
-                <Input className="mt-1" type="number" placeholder="Auto-calculated" value={form.origination_fee_dollars ?? ''} onChange={e => set('origination_fee_dollars', parseFloat(e.target.value) || null)} />
+                <Input className="mt-1" type="number" placeholder="0" value={form.origination_fee_dollars ?? ''} onChange={e => { const v = e.target.value; set('origination_fee_dollars', v === '' ? null : parseFloat(v)); }} />
               </div>
               <div>
                 <Label>Other Closing Costs</Label>
