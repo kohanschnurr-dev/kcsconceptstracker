@@ -89,20 +89,53 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     return m;
   }, [draws]);
 
-  const byType = useMemo(() => {
-    const map: Record<string, { value: number; type: LoanType }> = {};
+  // Lighten an `hsl(h, s%, l%)` string by `delta` lightness points (clamped <=92).
+  // Used to derive the secondary "interest" color from each loan type's base color.
+  const lightenHsl = (hsl: string, delta: number): string => {
+    const m = hsl.match(/hsl\(\s*([\d.]+)[ ,]+([\d.]+)%[ ,]+([\d.]+)%\s*\)/i);
+    if (!m) return hsl;
+    const h = parseFloat(m[1]);
+    const s = parseFloat(m[2]);
+    const l = Math.min(92, parseFloat(m[3]) + delta);
+    return `hsl(${h}, ${s}%, ${l}%)`;
+  };
+
+  type TypeAgg = { type: LoanType; label: string; principal: number; interest: number; color: string };
+  type PieRow = { key: string; label: string; kind: 'principal' | 'interest'; value: number; color: string; agg: TypeAgg };
+
+  const { pieRows, legendPayload } = useMemo(() => {
+    const aggByType: Record<string, TypeAgg> = {};
     active.forEach(l => {
-      const key = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
-      if (!map[key]) map[key] = { value: 0, type: l.loan_type };
-      // Use payment-aware balance so the donut shrinks after paydowns.
+      const label = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
       const lp = paymentsByLoan[l.id] ?? [];
-      const principal = lp.length
-        ? effectiveOutstandingBalance(l, lp)
-        : loanBalanceWithDraws(l);
-      map[key].value += principal;
+      const ld = drawsByLoan[l.id] ?? [];
+      const principal = lp.length ? effectiveOutstandingBalance(l, lp) : loanBalanceWithDraws(l);
+      const interest = currentAccruedInterest(l, lp, ld);
+      const color = LOAN_TYPE_COLORS[l.loan_type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
+      const agg = aggByType[label] ??= { type: l.loan_type, label, principal: 0, interest: 0, color };
+      agg.principal += principal;
+      agg.interest += Math.max(0, interest);
     });
-    return Object.entries(map).map(([name, { value, type }]) => ({ name, value, type }));
-  }, [active, paymentsByLoan]);
+
+    const rows: PieRow[] = [];
+    Object.values(aggByType).forEach(a => {
+      if (a.principal > 0) {
+        rows.push({ key: `${a.label}|principal`, label: a.label, kind: 'principal', value: a.principal, color: a.color, agg: a });
+      }
+      if (a.interest > 0) {
+        rows.push({ key: `${a.label}|interest`, label: a.label, kind: 'interest', value: a.interest, color: lightenHsl(a.color, 22), agg: a });
+      }
+    });
+
+    const legend = Object.values(aggByType).map(a => ({
+      value: a.label,
+      type: 'square' as const,
+      id: a.label,
+      color: a.color,
+    }));
+
+    return { pieRows: rows, legendPayload: legend };
+  }, [active, paymentsByLoan, drawsByLoan]);
 
   // Distinct color reserved for accrued interest — not used by any LoanType.
   const INTEREST_COLOR = 'hsl(48, 100%, 70%)';
