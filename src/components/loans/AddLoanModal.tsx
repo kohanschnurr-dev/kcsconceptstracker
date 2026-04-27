@@ -160,7 +160,12 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      const computedFirstPayment = form.first_payment_date || calcFirstPaymentDate(form.start_date, form.payment_frequency);
+      const startChanged = initialStartRef.current !== null && initialStartRef.current !== form.start_date;
+      const freqChanged = initialFreqRef.current !== null && initialFreqRef.current !== form.payment_frequency;
+      const shouldRecompute = startChanged || freqChanged || !form.first_payment_date;
+      const computedFirstPayment = shouldRecompute
+        ? calcFirstPaymentDate(form.start_date, form.payment_frequency)
+        : form.first_payment_date;
       const payload = {
         ...form,
         outstanding_balance: form.outstanding_balance > 0 ? form.outstanding_balance : form.original_amount,
