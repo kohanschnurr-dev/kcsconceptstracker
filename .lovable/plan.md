@@ -1,71 +1,42 @@
-## Goal
+## Why the three numbers disagree
 
-Make the **Interest Accrued** column in the Loans table show the **same total interest** the loan's detail page shows in its summary card — not just the simple-interest figure on the original amount.
+There are **three different math engines** computing "interest accrued" for the same loan:
 
-## Current behavior (the bug)
+| Surface | Function | Issue |
+|---|---|---|
+| Loan table column | `totalAccruedInterest` → `accruedInterestThroughToday` + `buildDrawInterestSchedule` | Hard-codes 365-day basis (ignores `interest_calc_method`). For `has_draws` loans it adds the **entire projected interest from each draw to maturity** on top of original-principal accrual → overcounts. |
+| Loan detail summary tile | Same `totalAccruedInterest` | Same overcount; also drifts from the table only because the two `useQuery` instances aren't synced. |
+| Interest Schedule tab | `buildInterestSchedule` | A proper chronological ledger — applies the correct day basis, walks each draw/payment in real order, evaluates at today. **This is the rigorous calculation.** |
 
-`LoanTable.tsx` always calls `accruedInterestThroughToday(loan, payments)`, which:
-- Starts from `loan.original_amount` only
-- Ignores funded **draws** (so construction / draw-based hard-money loans understate accrued interest)
-- Returns `—` for amortizing types (DSCR / conventional / HELOC / portfolio / seller financing) instead of their scheduled accrued interest
+The ledger is the only one that handles the math correctly. Everything else should read from it.
 
-`LoanDetail.tsx` already computes a richer figure (`combinedInterest`) that:
-- Uses payment-aware accrual for short-term/interest-only loans
-- Adds draw-based interest from `buildDrawInterestSchedule` when `loan.has_draws`
-- Falls back to amortization-schedule interest through today for amortizing loans
-- Subtracts interest already paid
+## Fix — single source of truth
 
-The table should mirror that.
+### 1. Add `currentAccruedInterest(loan, payments, draws, extensions?)` in `src/types/loans.ts`
 
-## Fix
+Thin wrapper that runs `buildInterestSchedule` and returns `result.currentUnpaidInterest`. Same inputs `totalAccruedInterest` accepts so the swap is mechanical.
 
-### 1. Add a shared helper `totalAccruedInterest(loan, payments, draws, extensions?)` in `src/types/loans.ts`
+### 2. Replace `totalAccruedInterest` call sites with `currentAccruedInterest`
 
-It will encapsulate the same logic currently inlined in `LoanDetail.tsx` (lines 91–143) so both places stay in sync:
+- `src/components/loans/LoanTable.tsx` — already fetches payments + draws; swap the cell to call `currentAccruedInterest`. Number now exactly matches the ledger.
+- `src/pages/LoanDetail.tsx` — replace the `combinedInterest` line. The summary tile, the cost-of-capital math (`totalCost = combinedInterest + ...`), and the "Balance" tile (`effectiveBalance + combinedInterest`) all consume one value from the ledger.
+- `src/components/loans/LoanCharts.tsx` — swap the per-loan accrued amount used in the capital-stack bar.
 
-```text
-extensionMonths = sum of extensions (or 0 if not provided)
-schedule        = buildAmortizationSchedule(loan, extensionMonths)
-drawInterest    = loan.has_draws ? buildDrawInterestSchedule(loan, draws, extensionMonths) : null
-interestPaid    = sum(payment.interest_portion)
+### 3. Remove the now-stale helpers
 
-if loan.loan_type ∈ ACCRUES_INTEREST_TYPES:
-    base = accruedInterestThroughToday(loan, payments)
-else:
-    base = max(0, sum(schedule rows where row.date <= today).interest − interestPaid)
+Mark `totalAccruedInterest` and the public surface of `accruedInterestThroughToday` as **deprecated** but keep the exports temporarily so any third call site (CSV export, comparison mode) doesn't break — I'll grep for stragglers and migrate or leave them with a `@deprecated` JSDoc warning. `buildDrawInterestSchedule` stays only for the breakdown UI on the detail page that displays per-draw fees, but its `totalInterest` will no longer be summed into the headline figure.
 
-if drawInterest:
-    return max(0, base + drawInterest.totalInterest − interestPaid)
-return base
-```
+### 4. Verify all three surfaces show the **same** value
 
-Refactor `LoanDetail.tsx` to call this helper so the two views are guaranteed to match.
-
-### 2. Update `LoanTable.tsx`
-
-- Extend the existing `loan_payments` query to also fetch the `interest_portion` (already selected) and pull `loan_draws` for the visible loan IDs (lightweight: `id, loan_id, draw_amount, draw_number, status, date_funded, expected_date, interest_rate_override, fee_amount, fee_percentage, milestone_name`).
-- Build a `drawsByLoan` map mirroring `paymentsByLoan`.
-- Replace the cell:
-  ```text
-  ACCRUES_INTEREST_TYPES.includes(...) ? accruedInterestThroughToday(...) : '—'
-  ```
-  with:
-  ```text
-  totalAccruedInterest(loan, paymentsByLoan[loan.id] ?? [], drawsByLoan[loan.id] ?? [])
-  ```
-  (no more `—` for amortizing loans — they'll show the scheduled interest accrued through today, matching the detail page)
-
-### 3. (Optional, same call site) `LoanCharts.tsx`
-
-`LoanCharts.tsx` line 106–107 uses the same simple `accruedInterestThroughToday`. Switching it to `totalAccruedInterest` is a one-line change and keeps the dashboard donut/bar consistent. I'll include this swap so all three surfaces (table, charts, detail) report identical numbers.
+After the swap: table column == top tile == "Interest Accrued (Unpaid)" on the Interest Schedule tab, all reading `result.currentUnpaidInterest`.
 
 ## Files touched
 
-- `src/types/loans.ts` — add `totalAccruedInterest` helper
-- `src/pages/LoanDetail.tsx` — use the helper for `combinedInterest`
-- `src/components/loans/LoanTable.tsx` — fetch draws, swap to helper, drop the `—` branch
-- `src/components/loans/LoanCharts.tsx` — swap to helper
+- `src/types/loans.ts` — add `currentAccruedInterest`, deprecate the old helpers
+- `src/components/loans/LoanTable.tsx` — swap helper
+- `src/pages/LoanDetail.tsx` — swap helper for `combinedInterest`
+- `src/components/loans/LoanCharts.tsx` — swap helper
 
 ## Result
 
-The "Interest Accrued" value in the loans table for any loan will equal the "Interest Accrued" tile shown when you open that loan — including draw-based accrual for construction loans.
+One number, one source: the chronological ledger. The table, the detail tile, and the Interest Schedule tab all show the same dollar value to the cent.
