@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { effectiveOutstandingBalance } from '@/types/loans';
+import { getEffectivePayments } from '@/lib/loanPayments';
 import type { Loan, LoanPayment } from '@/types/loans';
 import { supabase } from '@/integrations/supabase/client';
 
