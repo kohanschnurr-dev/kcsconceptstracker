@@ -454,6 +454,33 @@ export default function LoanDetail() {
           await handleEdit(payload);
         }}
       />
+
+      {/* Delete confirmation */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this loan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the loan and its draws, payments, and extensions. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoan.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteLoan.isPending}
+              onClick={async (e) => {
+                e.preventDefault();
+                await deleteLoan.mutateAsync(loan.id);
+                setDeleteOpen(false);
+                navigate('/loans');
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLoan.isPending ? 'Deleting…' : 'Delete loan'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
