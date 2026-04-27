@@ -149,7 +149,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       if (!map[key]) map[key] = { __total: 0 } as any;
       const lp = paymentsByLoan[l.id] ?? [];
       // Payment-aware principal so the bar shrinks after a payment.
-      const bal = lp.length ? effectiveOutstandingBalance(l, lp) : loanBalanceWithDraws(l);
+      const bal = effectiveOutstandingBalance(l, lp);
       map[key][l.loan_type] = (map[key][l.loan_type] ?? 0) + bal;
       map[key].__total += bal;
       typesSet.add(l.loan_type);
