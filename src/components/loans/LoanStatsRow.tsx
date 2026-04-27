@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { DollarSign, Percent, CreditCard, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -6,20 +7,20 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-import type { Loan } from '@/types/loans';
+import { effectiveOutstandingBalance } from '@/types/loans';
+import type { Loan, LoanPayment } from '@/types/loans';
+import { supabase } from '@/integrations/supabase/client';
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
 /**
- * Returns the loan balance including any actually-disbursed draws.
- * Only counts `funded_draws_total` (sum of draw rows with status='funded').
- * The planned `total_draw_amount` is NOT included — it represents future
- * available credit, not money already drawn.
+ * @deprecated Use {@link effectiveOutstandingBalance} from '@/types/loans'
+ * — it now returns the same value AND honors principal payments. Kept as a
+ * thin shim so older imports keep compiling.
  */
-export function loanBalanceWithDraws(l: Loan): number {
-  if (!l.has_draws) return l.outstanding_balance;
-  return l.outstanding_balance + (l.funded_draws_total ?? 0);
+export function loanBalanceWithDraws(l: Loan, payments: LoanPayment[] = []): number {
+  return effectiveOutstandingBalance(l, payments);
 }
 
 interface LoanStatsRowProps {
@@ -32,15 +33,43 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
   const [drill, setDrill] = useState<DrillKey>(null);
   const active = useMemo(() => loans.filter(l => l.status === 'active'), [loans]);
 
+  // Fetch payments for active loans so totals match the table & charts
+  // (which both subtract principal payments from the balance).
+  const activeIds = useMemo(() => active.map(l => l.id).sort(), [active]);
+  const { data: payments = [] } = useQuery<LoanPayment[]>({
+    queryKey: ['loan_payments_for_stats', activeIds],
+    enabled: activeIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from('loan_payments' as any) as any)
+        .select('loan_id, date, amount, principal_portion, interest_portion, late_fee')
+        .in('loan_id', activeIds);
+      if (error) throw error;
+      return (data ?? []) as LoanPayment[];
+    },
+  });
+  const paymentsByLoan = useMemo(() => {
+    const m: Record<string, LoanPayment[]> = {};
+    for (const p of payments) {
+      const key = (p as any).loan_id;
+      if (!key) continue;
+      (m[key] = m[key] ?? []).push(p);
+    }
+    return m;
+  }, [payments]);
+
+  const balanceFor = (l: Loan) => effectiveOutstandingBalance(l, paymentsByLoan[l.id] ?? []);
+
   const totalBalance = useMemo(
-    () => active.reduce((s, l) => s + loanBalanceWithDraws(l), 0),
-    [active],
+    () => active.reduce((s, l) => s + balanceFor(l), 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [active, paymentsByLoan],
   );
 
   const weightedRate = useMemo(() => {
     if (totalBalance === 0) return 0;
-    return active.reduce((s, l) => s + l.interest_rate * loanBalanceWithDraws(l), 0) / totalBalance;
-  }, [active, totalBalance]);
+    return active.reduce((s, l) => s + l.interest_rate * balanceFor(l), 0) / totalBalance;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, totalBalance, paymentsByLoan]);
 
   const totalMonthlyDebt = useMemo(
     () => active.reduce((s, l) => s + (l.monthly_payment ?? 0), 0),
@@ -144,7 +173,7 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
                 <p className="text-sm text-muted-foreground py-6 text-center">No active loans.</p>
               )}
               {active.map(loan => {
-                const balance = loanBalanceWithDraws(loan);
+                const balance = balanceFor(loan);
                 const drawn = loan.has_draws
                   ? Math.max(loan.total_draw_amount ?? 0, loan.funded_draws_total ?? 0)
                   : 0;

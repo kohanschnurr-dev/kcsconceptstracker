@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, currentAccruedInterest, effectiveOutstandingBalance } from '@/types/loans';
 import type { LoanType, LoanPayment, LoanDraw } from '@/types/loans';
 import type { Loan } from '@/types/loans';
-import { loanBalanceWithDraws } from './LoanStatsRow';
+
 import { supabase } from '@/integrations/supabase/client';
 
 const fmt = (v: number) =>
@@ -109,7 +109,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       const label = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
       const lp = paymentsByLoan[l.id] ?? [];
       const ld = drawsByLoan[l.id] ?? [];
-      const principal = lp.length ? effectiveOutstandingBalance(l, lp) : loanBalanceWithDraws(l);
+      const principal = effectiveOutstandingBalance(l, lp);
       const interest = currentAccruedInterest(l, lp, ld);
       const color = LOAN_TYPE_COLORS[l.loan_type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
       const agg = aggByType[label] ??= { type: l.loan_type, label, principal: 0, interest: 0, color };
@@ -149,7 +149,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       if (!map[key]) map[key] = { __total: 0 } as any;
       const lp = paymentsByLoan[l.id] ?? [];
       // Payment-aware principal so the bar shrinks after a payment.
-      const bal = lp.length ? effectiveOutstandingBalance(l, lp) : loanBalanceWithDraws(l);
+      const bal = effectiveOutstandingBalance(l, lp);
       map[key][l.loan_type] = (map[key][l.loan_type] ?? 0) + bal;
       map[key].__total += bal;
       typesSet.add(l.loan_type);
