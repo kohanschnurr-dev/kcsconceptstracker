@@ -258,20 +258,38 @@ export function totalAccruedInterest(
 }
 
 /**
- * Effective outstanding balance derived from payments. Falls back to the
- * stored outstanding_balance when no payments exist.
+ * Single source of truth for a loan's current outstanding principal balance.
+ * Used by the loan table, top stat cards, donut chart, and capital stack so
+ * every surface agrees.
+ *
+ * Formula:
+ *   fundedDraws = has_draws ? funded_draws_total : 0
+ *   if no payments → (outstanding_balance ?? original_amount) + fundedDraws
+ *   else           → max(0, original_amount + fundedDraws − principalPaid)
+ *
+ * Why both branches? When a loan has no payments yet, `outstanding_balance`
+ * is reliably equal to `original_amount`, but it does NOT include funded
+ * draws — so we add them. Once payments exist, we recompute from
+ * `original_amount` so principal paydowns are honored, and we still add
+ * funded draws because the payment flow doesn't bake them into
+ * `outstanding_balance`.
  */
 export function effectiveOutstandingBalance(
-  loan: Pick<Loan, 'original_amount' | 'outstanding_balance'>,
+  loan: Pick<Loan, 'original_amount' | 'outstanding_balance' | 'has_draws' | 'funded_draws_total'>,
   payments: Pick<LoanPayment, 'amount' | 'principal_portion' | 'interest_portion' | 'late_fee'>[],
 ): number {
-  if (!payments.length) return loan.outstanding_balance ?? loan.original_amount ?? 0;
+  const fundedDraws = loan.has_draws ? (loan.funded_draws_total ?? 0) : 0;
+  if (!payments.length) {
+    const base = loan.outstanding_balance ?? loan.original_amount ?? 0;
+    return base + fundedDraws;
+  }
   const principalPaid = payments.reduce((s, p) => {
     if (p.principal_portion != null) return s + p.principal_portion;
     return s + Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
   }, 0);
-  return Math.max(0, (loan.original_amount ?? 0) - principalPaid);
+  return Math.max(0, (loan.original_amount ?? 0) + fundedDraws - principalPaid);
 }
+
 
 /* ── Draw-based interest accrual ─────────────────────────── */
 
