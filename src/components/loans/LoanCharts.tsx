@@ -1,13 +1,15 @@
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS } from '@/types/loans';
-import type { LoanType } from '@/types/loans';
+import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, effectiveOutstandingBalance } from '@/types/loans';
+import type { LoanType, LoanPayment } from '@/types/loans';
 import type { Loan } from '@/types/loans';
 import { loanBalanceWithDraws } from './LoanStatsRow';
+import { supabase } from '@/integrations/supabase/client';
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
