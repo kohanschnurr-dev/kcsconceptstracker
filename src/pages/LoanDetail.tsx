@@ -100,17 +100,10 @@ export default function LoanDetail() {
     : 0;
   const effectiveInterest = drawInterest ? drawInterest.totalInterest : totalScheduleInterest;
 
-  // Payment-aware interest accrual: stepwise interest on the *remaining* balance
-  // after each principal payment, less any interest already paid. This keeps the
-  // "Interest Accrued" stat honest after a paydown.
+  // Single source of truth — chronological ledger.
   const accruesUnpaidInterest = ACCRUES_INTEREST_TYPES.includes(loan.loan_type as any);
   const interestPaid = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
-  const liveAccruedInterest = accruesUnpaidInterest
-    ? accruedInterestThroughToday(loan, payments)
-    : Math.max(
-        0,
-        schedule.filter(r => r.date <= todayStr).reduce((sum, r) => sum + r.interest, 0) - interestPaid,
-      );
+  const liveAccruedInterest = currentAccruedInterest(loan, payments, draws, extensions);
 
   const handleMarkPaidOff = () => {
     updateLoan.mutate({ id: loan.id, status: 'paid_off', outstanding_balance: 0 });
