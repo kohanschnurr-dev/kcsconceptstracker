@@ -94,14 +94,20 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
 
   const prevOpen = useRef(false);
+  const initialStartRef = useRef<string | null>(null);
+  const initialFreqRef = useRef<string | null>(null);
   useEffect(() => {
     if (open && !prevOpen.current) {
       setStep(0);
       if (initialData) {
         setForm(f => ({ ...f, ...initialData, user_id: user?.id ?? '' }));
+        initialStartRef.current = (initialData as any).start_date ?? null;
+        initialFreqRef.current = (initialData as any).payment_frequency ?? null;
       } else {
         setForm({ ...empty(), user_id: user?.id ?? '' });
         setDraws([emptyDraw(1)]);
+        initialStartRef.current = null;
+        initialFreqRef.current = null;
       }
     }
     prevOpen.current = open;
