@@ -12,14 +12,14 @@ const fmt = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
 /**
- * Returns the loan balance including any disbursed draws.
- * Uses the larger of `total_draw_amount` (manually entered) or `funded_draws_total`
- * (computed from actual `loan_draws` rows with status='funded').
+ * Returns the loan balance including any actually-disbursed draws.
+ * Only counts `funded_draws_total` (sum of draw rows with status='funded').
+ * The planned `total_draw_amount` is NOT included — it represents future
+ * available credit, not money already drawn.
  */
 export function loanBalanceWithDraws(l: Loan): number {
   if (!l.has_draws) return l.outstanding_balance;
-  const drawn = Math.max(l.total_draw_amount ?? 0, l.funded_draws_total ?? 0);
-  return l.outstanding_balance + drawn;
+  return l.outstanding_balance + (l.funded_draws_total ?? 0);
 }
 
 interface LoanStatsRowProps {
