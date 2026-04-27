@@ -166,7 +166,26 @@ export function useLoanDetail(loanId: string) {
   const addPayment = useMutation({
     mutationFn: async (payment: Omit<LoanPayment, 'id' | 'created_at'>) => {
       const { payment_date, ...rest } = payment as any;
-      const row = { ...rest, date: payment_date ?? rest.date };
+
+      // Look up the loan to inherit project_id (loan_payments shares the table
+      // used by project expenses, which has additional NOT NULL columns).
+      let projectId: string | null = null;
+      if (payment.loan_id) {
+        const { data: loanRow } = await loansTable()
+          .select('project_id')
+          .eq('id', payment.loan_id)
+          .single();
+        projectId = (loanRow as any)?.project_id ?? null;
+      }
+
+      const row = {
+        ...rest,
+        date: payment_date ?? rest.date,
+        user_id: user?.id,
+        project_id: projectId,
+        payment_type: 'loan',
+        source: 'manual',
+      };
       const { error } = await paymentsTable().insert(row);
       if (error) throw error;
 
