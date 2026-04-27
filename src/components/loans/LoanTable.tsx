@@ -8,6 +8,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
 import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, currentAccruedInterest, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule, effectiveOutstandingBalance } from '@/types/loans';
+import { getEffectivePayments } from '@/lib/loanPayments';
 import { cn } from '@/lib/utils';
 import type { Loan, LoanStatus, LoanType, LoanPayment, LoanDraw } from '@/types/loans';
 import { Checkbox } from '@/components/ui/checkbox';
