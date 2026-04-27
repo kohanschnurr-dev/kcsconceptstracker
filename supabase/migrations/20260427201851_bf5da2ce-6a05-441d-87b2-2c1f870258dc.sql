@@ -1,0 +1,1 @@
+ALTER TABLE public.loan_payments ALTER COLUMN project_id DROP NOT NULL;

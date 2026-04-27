@@ -1,41 +1,74 @@
-## Goal
+## Root Cause
 
-Make the Capital Stack chart breathe (less squished at the top) and add an **Accrued Interest** layer to each project's stack in a distinct color that isn't reused by any debt type.
+Logging a loan payment fails with:
+> `new row violates row-level security policy for table "loan_payments"`
 
-## Changes — `src/components/loans/LoanCharts.tsx`
+The `loan_payments` INSERT policy requires `auth.uid() = user_id`, but the `addPayment` mutation in `src/hooks/useLoans.ts` only inserts `{ loan_id, date, amount, principal_portion, interest_portion, late_fee, notes }` — **`user_id` is missing**, so RLS rejects it.
 
-### 1. Taller chart + better vertical padding
+There are two additional latent bugs that would surface immediately after the RLS fix:
+1. `loan_payments.payment_type` is `NOT NULL` — not provided by the mutation.
+2. `loan_payments.source` is `NOT NULL` — not provided.
+3. `loan_payments.project_id` is `NOT NULL` in the schema, but `loans.project_id` is **nullable**. A loan with no project (like the screenshot's "No Project" row) cannot record a payment at all.
 
-- Increase `ResponsiveContainer` height from `290` → `380`.
-- Increase top margin from `4` → `24` so the tallest bar isn't kissing the card edge.
-- Bump bottom margin slightly (`70` → `78`) so rotated labels never clip.
-- Add a small `Legend` underneath so users can see which color = which loan type (and the new Interest segment).
+## Fix
 
-### 2. New "Interest" stack segment with a unique color
+### 1. `src/hooks/useLoans.ts` — `addPayment` mutation
 
-- Reserve a dedicated color not used by any `LoanType` in `LOAN_TYPE_COLORS`:
-  - `INTEREST_COLOR = 'hsl(48, 100%, 70%)'` — a soft amber/yellow-gold. (Distinct from gold-orange `seller_financing` 45° at 47% L; this one is brighter and pushed to 48° / 70% L.) If too close in QA, fall back to `'hsl(60, 90%, 75%)'` pale yellow.
-- Compute per-loan **accrued interest to date** using simple interest:
-  ```
-  accrued = balance × rate% × max(0, daysSince(start_date)) / 365
-  ```
-  where `balance = loanBalanceWithDraws(loan)` and `rate% = interest_rate / 100`.
-  - Skip if `start_date` is in the future.
-  - Aggregate per project into a new `__interest` key on each row.
-- Add an extra `<Bar dataKey="__interest" stackId="capital" name="Interest Accrued" fill={INTEREST_COLOR} />` rendered **last** so it sits on top of the stack with the rounded `[4,4,0,0]` radius. The previous "last debt segment" loses its top radius (set to `0`).
-- Tooltip already routes through `LOAN_TYPE_LABELS[name] ?? name`, so passing `name="Interest Accrued"` will display correctly. Total at bottom (debt + interest) is naturally shown via stack tooltip.
+Update the insert payload to include the columns RLS / NOT NULL constraints require. Look up the loan's `project_id` first so payments can carry it:
 
-### 3. Header tweak
+```ts
+const addPayment = useMutation({
+  mutationFn: async (payment: Omit<LoanPayment, 'id' | 'created_at'>) => {
+    const { payment_date, ...rest } = payment as any;
 
-- Subtitle: `"Stacked by loan type"` → `"Debt + accrued interest, stacked by loan type"`.
+    // Look up the loan to inherit project_id (loan_payments shares the table
+    // used by project expenses, which has additional NOT NULL columns).
+    let projectId: string | null = null;
+    if (payment.loan_id) {
+      const { data: loanRow } = await loansTable()
+        .select('project_id')
+        .eq('id', payment.loan_id)
+        .single();
+      projectId = (loanRow as any)?.project_id ?? null;
+    }
 
-## Technical Details
+    const row = {
+      ...rest,
+      date: payment_date ?? rest.date,
+      user_id: user?.id,        // satisfies RLS
+      project_id: projectId,    // inherit from loan
+      payment_type: 'loan',     // NOT NULL
+      source: 'manual',         // NOT NULL
+    };
 
-- Pure component-level change; no DB / type changes.
-- Accrued interest is a derived display value; not persisted.
-- Sorting of projects (`__total` desc) stays the same — based on debt only, so the chart ordering doesn't shuffle from interest.
-- No changes to the Pie chart on the left (it stays "Debt by Loan Type" only).
+    const { error } = await paymentsTable().insert(row);
+    if (error) throw error;
+    // …existing balance-update logic stays the same
+  },
+  // …onSuccess / onError unchanged
+});
+```
+
+### 2. Migration — make `loan_payments.project_id` nullable
+
+The `loan_payments` table is shared between project expenses and loan-only payments. A loan can legitimately have no project (the user has at least one such loan in the screenshot data: "Treehouse/Wales" and the earlier "No Project" bar). The column must be nullable to support project-less loans.
+
+```sql
+ALTER TABLE public.loan_payments
+  ALTER COLUMN project_id DROP NOT NULL;
+```
+
+No data needs backfilling; existing rows already have valid project_ids.
+
+### Why not change RLS instead
+
+The RLS policy is correct (`auth.uid() = user_id`). The bug is the client omitting `user_id`. Loosening RLS would be a regression.
 
 ## Files Modified
 
-- `src/components/loans/LoanCharts.tsx`
+- `src/hooks/useLoans.ts` — fix the `addPayment` insert payload.
+- New migration — make `loan_payments.project_id` nullable.
+
+## Out of Scope
+
+- The other `loan_payments` consumer (`src/components/project/LoanPayments.tsx`) already supplies `user_id`, `project_id`, `payment_type`, `source` correctly — no change needed there.

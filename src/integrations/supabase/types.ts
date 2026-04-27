@@ -839,7 +839,7 @@ export type Database = {
           notes: string | null
           payment_type: string
           principal_portion: number | null
-          project_id: string
+          project_id: string | null
           source: string
           updated_at: string
           user_id: string
@@ -858,7 +858,7 @@ export type Database = {
           notes?: string | null
           payment_type?: string
           principal_portion?: number | null
-          project_id: string
+          project_id?: string | null
           source?: string
           updated_at?: string
           user_id: string
@@ -877,7 +877,7 @@ export type Database = {
           notes?: string | null
           payment_type?: string
           principal_portion?: number | null
-          project_id?: string
+          project_id?: string | null
           source?: string
           updated_at?: string
           user_id?: string
