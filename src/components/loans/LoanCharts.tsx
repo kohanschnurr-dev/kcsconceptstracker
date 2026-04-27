@@ -123,7 +123,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
 
       // Total accrued interest mirrors the loan-detail summary card so the
       // capital-stack bar lines up with the per-loan figures.
-      const accrued = totalAccruedInterest(l, lp, drawsByLoan[l.id] ?? []);
+      const accrued = currentAccruedInterest(l, lp, drawsByLoan[l.id] ?? []);
       if (accrued > 0) map[key].__interest += accrued;
     });
     const rows = Object.entries(map)
