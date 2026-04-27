@@ -173,7 +173,7 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
                 <p className="text-sm text-muted-foreground py-6 text-center">No active loans.</p>
               )}
               {active.map(loan => {
-                const balance = loanBalanceWithDraws(loan);
+                const balance = balanceFor(loan);
                 const drawn = loan.has_draws
                   ? Math.max(loan.total_draw_amount ?? 0, loan.funded_draws_total ?? 0)
                   : 0;
