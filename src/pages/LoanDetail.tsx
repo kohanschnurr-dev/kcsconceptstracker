@@ -335,7 +335,7 @@ export default function LoanDetail() {
         <Tabs defaultValue="overview">
           <TabsList className="w-full justify-center">
             <TabsTrigger value="overview" className="w-1/4">Overview</TabsTrigger>
-            <TabsTrigger value="amortization" className="w-1/4">Amortization</TabsTrigger>
+            <TabsTrigger value="amortization" className="w-1/4">{isTraditional ? 'Amortization' : 'Interest Schedule'}</TabsTrigger>
             {loan.has_draws && <TabsTrigger value="draws" className="w-1/4">Draw Schedule</TabsTrigger>}
             <TabsTrigger value="payments" className="w-1/4">Payments</TabsTrigger>
           </TabsList>
