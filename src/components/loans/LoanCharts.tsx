@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, totalAccruedInterest, effectiveOutstandingBalance } from '@/types/loans';
-import type { LoanType, LoanPayment } from '@/types/loans';
+import type { LoanType, LoanPayment, LoanDraw } from '@/types/loans';
 import type { Loan } from '@/types/loans';
 import { loanBalanceWithDraws } from './LoanStatsRow';
 import { supabase } from '@/integrations/supabase/client';
