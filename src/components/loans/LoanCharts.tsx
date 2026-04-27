@@ -202,6 +202,10 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 dataKey="value"
                 stroke="hsl(var(--card))"
                 strokeWidth={2}
+                isAnimationActive={false}
+                rootTabIndex={-1}
+                tabIndex={-1}
+                style={{ outline: 'none' }}
               >
                 {pieRows.map((row) => (
                   <Cell key={row.key} fill={row.color} />
