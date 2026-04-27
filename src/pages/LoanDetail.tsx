@@ -428,18 +428,27 @@ export default function LoanDetail() {
             </div>
           </TabsContent>
 
-          {/* Amortization */}
+          {/* Amortization / Interest Schedule */}
           <TabsContent value="amortization">
             <div className="mt-4">
-              <AmortizationTable
-                loan={loan}
-                finalDate={effectiveMaturity}
-                extensionMonths={extensions.reduce((sum: number, ext: any) => {
-                  const from = new Date(ext.extended_from);
-                  const to = new Date(ext.extended_to);
-                  return sum + Math.max((to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth()), 0);
-                }, 0)}
-              />
+              {isTraditional ? (
+                <AmortizationTable
+                  loan={loan}
+                  finalDate={effectiveMaturity}
+                  extensionMonths={extensions.reduce((sum: number, ext: any) => {
+                    const from = new Date(ext.extended_from);
+                    const to = new Date(ext.extended_to);
+                    return sum + Math.max((to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth()), 0);
+                  }, 0)}
+                />
+              ) : (
+                <InterestScheduleTable
+                  loan={loan}
+                  draws={draws}
+                  payments={payments}
+                  extensions={extensions}
+                />
+              )}
             </div>
           </TabsContent>
 
