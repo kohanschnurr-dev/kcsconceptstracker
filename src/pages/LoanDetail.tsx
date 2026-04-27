@@ -123,8 +123,13 @@ export default function LoanDetail() {
   const loanAmountLabel = isTraditional ? 'Original Amount' : 'Loan Amount';
   const hasLoanBreakdown = !isTraditional && loan.has_draws && draws.length > 0;
 
+  // Effective payments: amortizing loans (DSCR/Conventional) auto-derive a
+  // virtual payment row for every elapsed scheduled month. Manual entries
+  // override the auto row for that month.
+  const effectivePayments = getEffectivePayments(loan, payments, extensionMonths);
+
   // Remaining principal = total disbursed (original + funded draws) minus principal paid.
-  const principalPaidForBalance = payments.reduce((s, p) => {
+  const principalPaidForBalance = effectivePayments.reduce((s, p) => {
     if (p.principal_portion != null) return s + p.principal_portion;
     return s + Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
   }, 0);
@@ -137,11 +142,13 @@ export default function LoanDetail() {
   const combinedInterest = liveAccruedInterest;
   const totalCost = combinedInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
-  const principalPaid = payments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);
-  const hasBalanceBreakdown = payments.length > 0;
+  const principalPaid = effectivePayments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);
+  const hasBalanceBreakdown = effectivePayments.length > 0;
 
-  // Next Payment Due (amortizing loans): first_payment_date + N months where N = payments logged.
-  // If that date is in the past, advance month-by-month until >= today.
+  // Next Payment Due (amortizing loans): the first scheduled date strictly
+  // after today. Because effectivePayments already includes every elapsed
+  // month, this is just first_payment_date + effectivePayments.length months,
+  // then advanced forward if it's still in the past.
   const computeNextPaymentDue = (): { date: Date; daysUntil: number } | null => {
     if (!isTraditional) return null;
     const baseStr = loan.first_payment_date ?? loan.start_date;
@@ -150,7 +157,7 @@ export default function LoanDetail() {
     if (isNaN(base.getTime())) return null;
     const next = new Date(base);
     if (!loan.first_payment_date) next.setMonth(next.getMonth() + 1);
-    next.setMonth(next.getMonth() + payments.length);
+    next.setMonth(next.getMonth() + effectivePayments.length);
     const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
     while (next.getTime() < todayMid.getTime()) {
       next.setMonth(next.getMonth() + 1);
