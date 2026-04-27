@@ -68,7 +68,11 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       typesSet.add(l.loan_type);
 
       // Simple-interest accrual from start_date → today on current balance.
-      if (l.start_date) {
+      // Only short-term / interest-only loan types accrue unpaid interest;
+      // amortizing loans (DSCR, conventional, HELOC, portfolio, seller financing)
+      // pay interest monthly so there's nothing to "accrue" on the stack.
+      const ACCRUES_INTEREST: LoanType[] = ['hard_money', 'private_money', 'bridge', 'construction'];
+      if (l.start_date && ACCRUES_INTEREST.includes(l.loan_type)) {
         const start = new Date(l.start_date).getTime();
         const days = Math.max(0, (today - start) / (1000 * 60 * 60 * 24));
         const accrued = bal * (l.interest_rate / 100) * (days / 365);
