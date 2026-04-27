@@ -135,8 +135,6 @@ export default function LoanDetail() {
   const effectiveBalance = payments.length > 0
     ? paymentDerivedBalance
     : (lastElapsedRow ? lastElapsedRow.balance : loan.outstanding_balance);
-  const remainingPrincipal = effectiveBalance;
-  const showRemaining = payments.length > 0 && remainingPrincipal !== loanAmountValue;
 
   const hasInterestBreakdown = !!drawInterest && drawInterest.periods.length > 0;
   const combinedInterest = hasInterestBreakdown
@@ -154,7 +152,6 @@ export default function LoanDetail() {
       icon: DollarSign,
       color: 'text-primary bg-primary/10',
       hasBreakdown: hasLoanBreakdown,
-      subtitle: showRemaining ? `Remaining: ${fmt(remainingPrincipal)}` : undefined,
     },
     { label: 'Interest Accrued', value: fmt(combinedInterest), icon: TrendingDown, color: 'text-destructive bg-destructive/10', hasInterestBreakdown },
     ...(isTraditional ? [{ label: 'Outstanding Balance', value: fmt(effectiveBalance), icon: TrendingDown, color: 'text-warning bg-warning/10' }] : []),
@@ -229,9 +226,6 @@ export default function LoanDetail() {
                   {s.label}
                   {((s as any).hasBreakdown || (s as any).hasInterestBreakdown || (s as any).hasBalanceBreakdown) && <ChevronDown className="h-3 w-3" />}
                 </p>
-                {(s as any).subtitle && (
-                  <p className="text-[11px] text-warning mt-0.5 font-medium">{(s as any).subtitle}</p>
-                )}
               </CardContent>
             );
 
