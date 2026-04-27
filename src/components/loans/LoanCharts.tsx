@@ -109,7 +109,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       const label = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
       const lp = paymentsByLoan[l.id] ?? [];
       const ld = drawsByLoan[l.id] ?? [];
-      const principal = lp.length ? effectiveOutstandingBalance(l, lp) : loanBalanceWithDraws(l);
+      const principal = effectiveOutstandingBalance(l, lp);
       const interest = currentAccruedInterest(l, lp, ld);
       const color = LOAN_TYPE_COLORS[l.loan_type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
       const agg = aggByType[label] ??= { type: l.loan_type, label, principal: 0, interest: 0, color };
