@@ -124,14 +124,14 @@ export function LoanCharts({ loans }: LoanChartsProps) {
           <CardTitle className="text-base">Debt by Loan Type</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={420}>
             <PieChart>
               <Pie
                 data={byType}
                 cx="50%"
                 cy="50%"
-                innerRadius={50}
-                outerRadius={85}
+                innerRadius={90}
+                outerRadius={155}
                 paddingAngle={3}
                 dataKey="value"
               >
@@ -161,7 +161,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
           <span className="text-xs text-muted-foreground">Debt + accrued interest, stacked by loan type</span>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={380}>
+          <ResponsiveContainer width="100%" height={520}>
             <BarChart data={byProject} margin={{ top: 24, right: 8, bottom: 78, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
