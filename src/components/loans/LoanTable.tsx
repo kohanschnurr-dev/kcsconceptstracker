@@ -1,17 +1,19 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowUpDown, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
-import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule } from '@/types/loans';
+import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule } from '@/types/loans';
 import { cn } from '@/lib/utils';
-import type { Loan, LoanStatus, LoanType } from '@/types/loans';
+import type { Loan, LoanStatus, LoanType, LoanPayment } from '@/types/loans';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { loanBalanceWithDraws } from './LoanStatsRow';
+import { supabase } from '@/integrations/supabase/client';
 
 const fmt = (v: number | null | undefined) =>
   v == null
