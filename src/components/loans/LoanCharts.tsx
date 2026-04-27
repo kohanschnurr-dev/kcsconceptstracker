@@ -44,7 +44,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     const map: Record<string, number> = {};
     active.forEach(l => {
       const key = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
-      map[key] = (map[key] ?? 0) + l.outstanding_balance;
+      map[key] = (map[key] ?? 0) + loanBalanceWithDraws(l);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [active]);
@@ -53,7 +53,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     const map: Record<string, number> = {};
     active.forEach(l => {
       const key = l.project_name ?? 'No Project';
-      map[key] = (map[key] ?? 0) + l.outstanding_balance;
+      map[key] = (map[key] ?? 0) + loanBalanceWithDraws(l);
     });
     return Object.entries(map)
       .map(([name, balance]) => ({ name: name.length > 18 ? name.slice(0, 16) + '…' : name, balance }))
