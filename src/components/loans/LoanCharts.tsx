@@ -5,8 +5,8 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, effectiveOutstandingBalance } from '@/types/loans';
-import type { LoanType, LoanPayment } from '@/types/loans';
+import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, totalAccruedInterest, effectiveOutstandingBalance } from '@/types/loans';
+import type { LoanType, LoanPayment, LoanDraw } from '@/types/loans';
 import type { Loan } from '@/types/loans';
 import { loanBalanceWithDraws } from './LoanStatsRow';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,6 +58,17 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       return (data ?? []) as LoanPayment[];
     },
   });
+  const { data: draws = [] } = useQuery<LoanDraw[]>({
+    queryKey: ['loan_draws_for_charts', activeIds],
+    enabled: activeIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from('loan_draws' as any) as any)
+        .select('id, loan_id, draw_amount, draw_number, status, date_funded, expected_date, interest_rate_override, fee_amount, fee_percentage, milestone_name')
+        .in('loan_id', activeIds);
+      if (error) throw error;
+      return (data ?? []) as LoanDraw[];
+    },
+  });
 
   const paymentsByLoan = useMemo(() => {
     const m: Record<string, LoanPayment[]> = {};
@@ -68,6 +79,15 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     }
     return m;
   }, [payments]);
+  const drawsByLoan = useMemo(() => {
+    const m: Record<string, LoanDraw[]> = {};
+    for (const d of draws) {
+      const key = (d as any).loan_id;
+      if (!key) continue;
+      (m[key] = m[key] ?? []).push(d);
+    }
+    return m;
+  }, [draws]);
 
   const byType = useMemo(() => {
     const map: Record<string, { value: number; type: LoanType }> = {};
@@ -101,19 +121,17 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       map[key].__total += bal;
       typesSet.add(l.loan_type);
 
-      // Only short-term / interest-only loan types accrue unpaid interest;
-      // amortizing loans pay interest monthly so there's nothing to "accrue".
-      if (ACCRUES_INTEREST_TYPES.includes(l.loan_type)) {
-        const accrued = accruedInterestThroughToday(l, lp);
-        if (accrued > 0) map[key].__interest += accrued;
-      }
+      // Total accrued interest mirrors the loan-detail summary card so the
+      // capital-stack bar lines up with the per-loan figures.
+      const accrued = totalAccruedInterest(l, lp, drawsByLoan[l.id] ?? []);
+      if (accrued > 0) map[key].__interest += accrued;
     });
     const rows = Object.entries(map)
       .map(([name, vals]) => ({ name, ...vals }))
       .sort((a, b) => (b as any).__total - (a as any).__total)
       .slice(0, 8);
     return { byProject: rows, presentTypes: Array.from(typesSet) };
-  }, [active, paymentsByLoan]);
+  }, [active, paymentsByLoan, drawsByLoan]);
 
   if (active.length === 0) return null;
 

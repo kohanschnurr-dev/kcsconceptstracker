@@ -24,7 +24,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, totalAccruedInterest } from '@/types/loans';
 
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -138,9 +138,7 @@ export default function LoanDetail() {
   const effectiveBalance = Math.max(0, (loanAmountValue ?? 0) - principalPaidForBalance);
 
   const hasInterestBreakdown = !!drawInterest && drawInterest.periods.length > 0;
-  const combinedInterest = hasInterestBreakdown
-    ? Math.max(0, liveAccruedInterest + drawInterest.totalInterest - interestPaid)
-    : liveAccruedInterest;
+  const combinedInterest = totalAccruedInterest(loan, payments, draws, extensionMonths);
   const totalCost = combinedInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
   const principalPaid = payments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);

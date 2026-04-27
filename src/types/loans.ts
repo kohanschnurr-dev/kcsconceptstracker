@@ -221,6 +221,42 @@ export function accruedInterestThroughToday(
 }
 
 /**
+ * Unified "Interest Accrued" figure that mirrors what the Loan Detail page
+ * shows in its summary card. Combines:
+ *   - payment-aware accrual on the original principal (or scheduled interest
+ *     through today for amortizing loans), minus interest already paid
+ *   - draw-based interest on funded draws when the loan has draws
+ *
+ * Pass any draws/extensions you have; missing arrays default to empty.
+ */
+export function totalAccruedInterest(
+  loan: Loan,
+  payments: LoanPayment[] = [],
+  draws: LoanDraw[] = [],
+  extensionMonths: number = 0,
+): number {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const interestPaid = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
+
+  let base: number;
+  if (ACCRUES_INTEREST_TYPES.includes(loan.loan_type as LoanType)) {
+    base = accruedInterestThroughToday(loan, payments);
+  } else {
+    const schedule = buildAmortizationSchedule(loan, extensionMonths);
+    const scheduledThroughToday = schedule
+      .filter(r => r.date <= todayStr)
+      .reduce((sum, r) => sum + r.interest, 0);
+    base = Math.max(0, scheduledThroughToday - interestPaid);
+  }
+
+  const drawInterest = loan.has_draws ? buildDrawInterestSchedule(loan, draws, extensionMonths) : null;
+  if (drawInterest && drawInterest.periods.length > 0) {
+    return Math.max(0, base + drawInterest.totalInterest - interestPaid);
+  }
+  return base;
+}
+
+/**
  * Effective outstanding balance derived from payments. Falls back to the
  * stored outstanding_balance when no payments exist.
  */

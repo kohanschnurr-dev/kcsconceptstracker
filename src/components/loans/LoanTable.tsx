@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
-import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule } from '@/types/loans';
+import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, totalAccruedInterest, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule } from '@/types/loans';
 import { cn } from '@/lib/utils';
-import type { Loan, LoanStatus, LoanType, LoanPayment } from '@/types/loans';
+import type { Loan, LoanStatus, LoanType, LoanPayment, LoanDraw } from '@/types/loans';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { loanBalanceWithDraws } from './LoanStatsRow';
@@ -53,6 +53,17 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       return (data ?? []) as LoanPayment[];
     },
   });
+  const { data: draws = [] } = useQuery<LoanDraw[]>({
+    queryKey: ['loan_draws_for_table', loanIds],
+    enabled: loanIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from('loan_draws' as any) as any)
+        .select('id, loan_id, draw_amount, draw_number, status, date_funded, expected_date, interest_rate_override, fee_amount, fee_percentage, milestone_name')
+        .in('loan_id', loanIds);
+      if (error) throw error;
+      return (data ?? []) as LoanDraw[];
+    },
+  });
   const paymentsByLoan = useMemo(() => {
     const m: Record<string, LoanPayment[]> = {};
     for (const p of payments) {
@@ -62,6 +73,15 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     }
     return m;
   }, [payments]);
+  const drawsByLoan = useMemo(() => {
+    const m: Record<string, LoanDraw[]> = {};
+    for (const d of draws) {
+      const key = (d as any).loan_id;
+      if (!key) continue;
+      (m[key] = m[key] ?? []).push(d);
+    }
+    return m;
+  }, [draws]);
 
   const filtered = useMemo(() => {
     let list = [...loans];
@@ -222,7 +242,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   <TableCell><LoanTypeBadge type={loan.loan_type} /></TableCell>
                   <TableCell className="text-right">{fmt(loan.original_amount)}</TableCell>
                   <TableCell className="text-right font-medium">{fmt(loanBalanceWithDraws(loan))}</TableCell>
-                  <TableCell className="text-right">{ACCRUES_INTEREST_TYPES.includes(loan.loan_type) ? fmt(accruedInterestThroughToday(loan, paymentsByLoan[loan.id] ?? [])) : '—'}</TableCell>
+                  <TableCell className="text-right">{fmt(totalAccruedInterest(loan, paymentsByLoan[loan.id] ?? [], drawsByLoan[loan.id] ?? []))}</TableCell>
                   <TableCell className="text-right">{fmt(loan.monthly_payment)}</TableCell>
                   <TableCell className="text-sm">{formatDisplayDate(loan.maturity_date)}</TableCell>
                   <TableCell><LoanStatusBadge status={loan.status} /></TableCell>
