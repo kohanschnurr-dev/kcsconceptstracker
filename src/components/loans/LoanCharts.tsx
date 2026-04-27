@@ -125,11 +125,11 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       <Card className="glass-card lg:col-span-3">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-base">Capital Stack by Project</CardTitle>
-          <span className="text-xs text-muted-foreground">Stacked by loan type</span>
+          <span className="text-xs text-muted-foreground">Debt + accrued interest, stacked by loan type</span>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={290}>
-            <BarChart data={byProject} margin={{ top: 4, right: 8, bottom: 70, left: 0 }}>
+          <ResponsiveContainer width="100%" height={380}>
+            <BarChart data={byProject} margin={{ top: 24, right: 8, bottom: 78, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="name"
@@ -155,19 +155,31 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 labelStyle={TOOLTIP_TEXT_STYLE}
                 cursor={{ fill: 'hsl(var(--muted))' }}
               />
-              {presentTypes.map((t, i) => {
-                const isLast = i === presentTypes.length - 1;
-                return (
-                  <Bar
-                    key={t}
-                    dataKey={t}
-                    stackId="capital"
-                    fill={LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl}
-                    radius={isLast ? [4, 4, 0, 0] : 0}
-                    name={t}
-                  />
-                );
-              })}
+              <Legend
+                wrapperStyle={{ paddingTop: 8 }}
+                formatter={(value) => (
+                  <span className="text-foreground" style={{ fontSize: 11, fontWeight: 600 }}>
+                    {LOAN_TYPE_LABELS[value as LoanType] ?? value}
+                  </span>
+                )}
+              />
+              {presentTypes.map((t) => (
+                <Bar
+                  key={t}
+                  dataKey={t}
+                  stackId="capital"
+                  fill={LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl}
+                  radius={0}
+                  name={t}
+                />
+              ))}
+              <Bar
+                dataKey="__interest"
+                stackId="capital"
+                fill={INTEREST_COLOR}
+                radius={[4, 4, 0, 0]}
+                name="Interest Accrued"
+              />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
