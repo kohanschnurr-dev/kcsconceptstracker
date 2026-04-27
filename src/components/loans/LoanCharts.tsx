@@ -6,6 +6,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LOAN_TYPE_LABELS } from '@/types/loans';
 import type { Loan } from '@/types/loans';
+import { loanBalanceWithDraws } from './LoanStatsRow';
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
