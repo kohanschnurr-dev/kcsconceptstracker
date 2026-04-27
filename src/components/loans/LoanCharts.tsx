@@ -83,8 +83,8 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 paddingAngle={3}
                 dataKey="value"
               >
-                {byType.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                {byType.map((entry, i) => (
+                  <Cell key={i} fill={LOAN_TYPE_COLORS[entry.type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl} />
                 ))}
               </Pie>
               <Tooltip
