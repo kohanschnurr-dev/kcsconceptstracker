@@ -442,7 +442,8 @@ export function buildAmortizationSchedule(
   const amort = loan.amortization_period_months ?? loan.loan_term_months;
   const term = loan.loan_term_months + extensionMonths;
   const monthly = loan.monthly_payment ?? calcMonthlyPayment(loan.original_amount, loan.interest_rate, term, amort, loan.payment_frequency, loan.interest_calc_method);
-  const start = new Date(loan.first_payment_date ?? loan.start_date);
+  const startStr = loan.first_payment_date ?? loan.start_date;
+  const start = new Date(startStr + 'T00:00:00');
   const method = loan.interest_calc_method;
 
   let balance = loan.original_amount;

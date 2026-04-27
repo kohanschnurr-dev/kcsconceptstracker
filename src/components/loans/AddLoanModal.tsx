@@ -94,14 +94,20 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
 
   const prevOpen = useRef(false);
+  const initialStartRef = useRef<string | null>(null);
+  const initialFreqRef = useRef<string | null>(null);
   useEffect(() => {
     if (open && !prevOpen.current) {
       setStep(0);
       if (initialData) {
         setForm(f => ({ ...f, ...initialData, user_id: user?.id ?? '' }));
+        initialStartRef.current = (initialData as any).start_date ?? null;
+        initialFreqRef.current = (initialData as any).payment_frequency ?? null;
       } else {
         setForm({ ...empty(), user_id: user?.id ?? '' });
         setDraws([emptyDraw(1)]);
+        initialStartRef.current = null;
+        initialFreqRef.current = null;
       }
     }
     prevOpen.current = open;
@@ -154,7 +160,12 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      const computedFirstPayment = form.first_payment_date || calcFirstPaymentDate(form.start_date, form.payment_frequency);
+      const startChanged = initialStartRef.current !== null && initialStartRef.current !== form.start_date;
+      const freqChanged = initialFreqRef.current !== null && initialFreqRef.current !== form.payment_frequency;
+      const shouldRecompute = startChanged || freqChanged || !form.first_payment_date;
+      const computedFirstPayment = shouldRecompute
+        ? calcFirstPaymentDate(form.start_date, form.payment_frequency)
+        : form.first_payment_date;
       const payload = {
         ...form,
         outstanding_balance: form.outstanding_balance > 0 ? form.outstanding_balance : form.original_amount,
