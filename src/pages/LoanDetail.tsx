@@ -300,6 +300,42 @@ export default function LoanDetail() {
               );
             }
 
+            if ((s as any).hasBalanceBreakdown) {
+              return (
+                <Popover key={s.label}>
+                  <PopoverTrigger asChild>
+                    <Card className="glass-card cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all">
+                      {cardContent}
+                    </Card>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-3">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{loanAmountLabel}</span>
+                        <span className="font-medium">{fmt(loanAmountValue)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Principal Paid</span>
+                        <span className="font-medium text-success">−{fmt(principalPaid)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Remaining Principal</span>
+                        <span className="font-medium">{fmt(effectiveBalance)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Interest Accrued</span>
+                        <span className="font-medium">+{fmt(combinedInterest)}</span>
+                      </div>
+                      <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
+                        <span>Balance</span>
+                        <span>{fmt(effectiveBalance + combinedInterest)}</span>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+
             return (
               <Card key={s.label} className="glass-card">
                 {cardContent}
