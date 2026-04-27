@@ -190,7 +190,6 @@ export default function LoanDetail() {
           icon: TrendingDown,
           color: 'text-warning bg-warning/10',
           hasBalanceBreakdown,
-          emptyHint: payments.length === 0 ? 'No payments logged yet' : undefined,
         },
         { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
         { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
