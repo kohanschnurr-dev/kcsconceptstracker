@@ -144,6 +144,9 @@ export default function LoanDetail() {
     : liveAccruedInterest;
   const totalCost = combinedInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
+  const principalPaid = payments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);
+  const hasBalanceBreakdown = payments.length > 0;
+
   const summaryStats = [
     {
       label: loanAmountLabel,
