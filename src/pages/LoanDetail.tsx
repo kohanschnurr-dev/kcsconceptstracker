@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, CheckCircle2, DollarSign, Percent,
-  CreditCard, Calendar, TrendingDown, Landmark, Info, ChevronDown, Trash2,
+  CreditCard, Calendar, CalendarClock, TrendingDown, Landmark, Info, ChevronDown, Trash2,
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -140,20 +140,66 @@ export default function LoanDetail() {
   const principalPaid = payments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);
   const hasBalanceBreakdown = payments.length > 0;
 
-  const summaryStats = [
-    {
-      label: loanAmountLabel,
-      value: fmt(loanAmountValue),
-      icon: DollarSign,
-      color: 'text-primary bg-primary/10',
-      hasBreakdown: hasLoanBreakdown,
-    },
-    { label: 'Interest Accrued', value: fmt(combinedInterest), icon: TrendingDown, color: 'text-destructive bg-destructive/10', hasInterestBreakdown },
-    ...(isTraditional ? [{ label: 'Outstanding Balance', value: fmt(effectiveBalance), icon: TrendingDown, color: 'text-warning bg-warning/10' }] : []),
-    { label: 'Balance', value: fmt(effectiveBalance + combinedInterest), icon: Landmark, color: 'text-blue-400 bg-blue-500/10', hasBalanceBreakdown },
-    { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
-    { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
-  ];
+  // Next Payment Due (amortizing loans): first_payment_date + N months where N = payments logged.
+  // If that date is in the past, advance month-by-month until >= today.
+  const computeNextPaymentDue = (): { date: Date; daysUntil: number } | null => {
+    if (!isTraditional) return null;
+    const baseStr = loan.first_payment_date ?? loan.start_date;
+    if (!baseStr) return null;
+    const base = new Date(baseStr + 'T00:00:00');
+    if (isNaN(base.getTime())) return null;
+    const next = new Date(base);
+    if (!loan.first_payment_date) next.setMonth(next.getMonth() + 1);
+    next.setMonth(next.getMonth() + payments.length);
+    const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+    while (next.getTime() < todayMid.getTime()) {
+      next.setMonth(next.getMonth() + 1);
+    }
+    const daysUntil = Math.ceil((next.getTime() - todayMid.getTime()) / 86400000);
+    return { date: next, daysUntil };
+  };
+  const nextPaymentDue = computeNextPaymentDue();
+  const nextPaymentLabel = nextPaymentDue
+    ? nextPaymentDue.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '—';
+  const nextPaymentColor = nextPaymentDue && nextPaymentDue.daysUntil <= 7
+    ? 'text-warning bg-warning/10'
+    : 'text-primary bg-primary/10';
+
+  const summaryStats = isTraditional
+    ? [
+        {
+          label: loanAmountLabel,
+          value: fmt(loanAmountValue),
+          icon: DollarSign,
+          color: 'text-primary bg-primary/10',
+          hasBreakdown: hasLoanBreakdown,
+        },
+        { label: 'Next Payment Due', value: nextPaymentLabel, icon: CalendarClock, color: nextPaymentColor },
+        {
+          label: 'Outstanding Balance',
+          value: fmt(effectiveBalance),
+          icon: TrendingDown,
+          color: 'text-warning bg-warning/10',
+          hasBalanceBreakdown,
+          emptyHint: payments.length === 0 ? 'No payments logged yet' : undefined,
+        },
+        { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
+        { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
+      ]
+    : [
+        {
+          label: loanAmountLabel,
+          value: fmt(loanAmountValue),
+          icon: DollarSign,
+          color: 'text-primary bg-primary/10',
+          hasBreakdown: hasLoanBreakdown,
+        },
+        { label: 'Interest Accrued', value: fmt(combinedInterest), icon: TrendingDown, color: 'text-destructive bg-destructive/10', hasInterestBreakdown },
+        { label: 'Balance', value: fmt(effectiveBalance + combinedInterest), icon: Landmark, color: 'text-blue-400 bg-blue-500/10', hasBalanceBreakdown },
+        { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
+        { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
+      ];
 
   const gridCols = summaryStats.length;
 
@@ -221,6 +267,9 @@ export default function LoanDetail() {
                   {s.label}
                   {((s as any).hasBreakdown || (s as any).hasInterestBreakdown || (s as any).hasBalanceBreakdown) && <ChevronDown className="h-3 w-3" />}
                 </p>
+                {(s as any).emptyHint && (
+                  <p className="text-[10px] text-muted-foreground/70 italic mt-1">{(s as any).emptyHint}</p>
+                )}
               </CardContent>
             );
 
@@ -341,18 +390,22 @@ export default function LoanDetail() {
                         </div>
                       )}
 
-                      <div className="border-t border-border pt-2 flex justify-between text-sm">
-                        <span className="text-muted-foreground">Remaining Principal</span>
-                        <span className="font-medium">{fmt(effectiveBalance)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">+ Interest Accrued</span>
-                        <span className="font-medium">{fmt(combinedInterest)}</span>
-                      </div>
                       <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
-                        <span>Balance</span>
-                        <span>{fmt(effectiveBalance + combinedInterest)}</span>
+                        <span>{isTraditional ? 'Outstanding Balance' : 'Remaining Principal'}</span>
+                        <span>{fmt(effectiveBalance)}</span>
                       </div>
+                      {!isTraditional && (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">+ Interest Accrued</span>
+                            <span className="font-medium">{fmt(combinedInterest)}</span>
+                          </div>
+                          <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
+                            <span>Balance</span>
+                            <span>{fmt(effectiveBalance + combinedInterest)}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </PopoverContent>
                 </Popover>
