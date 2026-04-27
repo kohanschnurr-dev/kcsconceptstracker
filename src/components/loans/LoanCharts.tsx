@@ -131,7 +131,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       .sort((a, b) => (b as any).__total - (a as any).__total)
       .slice(0, 8);
     return { byProject: rows, presentTypes: Array.from(typesSet) };
-  }, [active, paymentsByLoan]);
+  }, [active, paymentsByLoan, drawsByLoan]);
 
   if (active.length === 0) return null;
 
