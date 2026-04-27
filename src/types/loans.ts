@@ -494,3 +494,225 @@ export function buildAmortizationSchedule(
   }
   return rows;
 }
+
+/* ── Event-based interest schedule ──────────────────────── */
+
+export type InterestLedgerKind = 'start' | 'draw' | 'payment' | 'today' | 'pending_draw' | 'maturity';
+
+export interface InterestLedgerRow {
+  date: string;                 // YYYY-MM-DD
+  kind: InterestLedgerKind;
+  label: string;
+  sublabel?: string;
+  drawAmount?: number;          // funds added to principal
+  principalPaid?: number;       // principal portion of payment
+  interestPaid?: number;        // interest portion of payment
+  lateFee?: number;
+  daysSincePrior: number;
+  interestAccrued: number;      // simple interest on prior balance for daysSincePrior
+  balance: number;              // outstanding principal AFTER this event
+  unpaidInterest: number;       // cumulative accrued − cumulative paid
+  isFuture: boolean;
+}
+
+export interface InterestLedgerResult {
+  rows: InterestLedgerRow[];
+  totalDisbursed: number;
+  totalPrincipalPaid: number;
+  totalInterestPaid: number;
+  totalInterestAccrued: number;
+  currentBalance: number;       // principal as of today
+  currentUnpaidInterest: number;
+  projectedPayoff: number;      // balance + unpaid interest at maturity
+}
+
+interface BuildInterestScheduleArgs {
+  loan: Pick<Loan, 'original_amount' | 'interest_rate' | 'interest_calc_method' | 'start_date' | 'maturity_date'>;
+  draws: LoanDraw[];
+  payments: LoanPayment[];
+  extensions?: { extended_to: string }[];
+  asOf?: Date;
+}
+
+export function buildInterestSchedule({
+  loan,
+  draws,
+  payments,
+  extensions = [],
+  asOf = new Date(),
+}: BuildInterestScheduleArgs): InterestLedgerResult {
+  const dayBasis = loan.interest_calc_method === 'actual_365' ? 365 : 360;
+  const dailyRate = (loan.interest_rate / 100) / dayBasis;
+  const MS_DAY = 1000 * 60 * 60 * 24;
+
+  const todayStr = (() => {
+    const y = asOf.getFullYear();
+    const m = String(asOf.getMonth() + 1).padStart(2, '0');
+    const d = String(asOf.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  })();
+
+  const effectiveMaturity = extensions.length
+    ? extensions.reduce((latest, e) => (e.extended_to > latest ? e.extended_to : latest), loan.maturity_date)
+    : loan.maturity_date;
+
+  type RawEvent = {
+    date: string;
+    kind: InterestLedgerKind;
+    label: string;
+    sublabel?: string;
+    drawAmount?: number;
+    principalPaid?: number;
+    interestPaid?: number;
+    lateFee?: number;
+    sortKey: string;            // for stable ordering on same day
+  };
+
+  const events: RawEvent[] = [];
+
+  // Loan start
+  events.push({
+    date: loan.start_date,
+    kind: 'start',
+    label: 'Loan Originated',
+    sublabel: 'Initial disbursement',
+    drawAmount: loan.original_amount,
+    sortKey: '0',
+  });
+
+  // Funded draws (past) and pending draws (future)
+  for (const d of draws) {
+    const isFunded = d.status === 'funded' && !!d.date_funded;
+    const date = isFunded ? d.date_funded! : d.expected_date;
+    if (!date) continue;
+    const milestone = d.milestone_name ? ` — ${d.milestone_name}` : '';
+    events.push({
+      date,
+      kind: isFunded ? 'draw' : 'pending_draw',
+      label: `Draw #${d.draw_number}${milestone}`,
+      sublabel: isFunded ? 'Funded' : `${d.status.replace(/_/g, ' ')}`,
+      drawAmount: d.draw_amount,
+      sortKey: `1-${d.draw_number}`,
+    });
+  }
+
+  // Payments
+  const sortedPayments = [...payments].sort((a, b) => {
+    if (a.payment_date !== b.payment_date) return a.payment_date.localeCompare(b.payment_date);
+    return (a.created_at ?? '').localeCompare(b.created_at ?? '');
+  });
+  for (const p of sortedPayments) {
+    const interest = p.interest_portion ?? 0;
+    const lateFee = p.late_fee ?? 0;
+    const principal = p.principal_portion != null
+      ? p.principal_portion
+      : Math.max(0, (p.amount ?? 0) - interest - lateFee);
+    events.push({
+      date: p.payment_date,
+      kind: 'payment',
+      label: 'Payment',
+      sublabel: `Total ${formatUsd(p.amount ?? 0)}`,
+      principalPaid: principal,
+      interestPaid: interest,
+      lateFee: lateFee || undefined,
+      sortKey: `2-${p.created_at ?? ''}`,
+    });
+  }
+
+  // Sort by date then sortKey
+  events.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return a.sortKey.localeCompare(b.sortKey);
+  });
+
+  // Inject "Today" before any future events
+  const todayInjectIdx = events.findIndex(e => e.date > todayStr);
+  const todayEvent: RawEvent = {
+    date: todayStr,
+    kind: 'today',
+    label: 'Today',
+    sublabel: 'Live position',
+    sortKey: '9',
+  };
+  if (todayInjectIdx === -1) events.push(todayEvent);
+  else events.splice(todayInjectIdx, 0, todayEvent);
+
+  // Inject Maturity at the end (only if after today/last event)
+  const lastDate = events[events.length - 1].date;
+  if (effectiveMaturity > lastDate || effectiveMaturity > todayStr) {
+    events.push({
+      date: effectiveMaturity,
+      kind: 'maturity',
+      label: 'Maturity',
+      sublabel: 'Balloon payoff',
+      sortKey: 'z',
+    });
+  }
+
+  // Walk and compute
+  const rows: InterestLedgerRow[] = [];
+  let balance = 0;
+  let cumulativeInterestAccrued = 0;
+  let cumulativeInterestPaid = 0;
+  let totalDisbursed = 0;
+  let totalPrincipalPaid = 0;
+  let priorDate: string | null = null;
+
+  for (const e of events) {
+    const days = priorDate
+      ? Math.max(0, Math.round((parseLocal(e.date).getTime() - parseLocal(priorDate).getTime()) / MS_DAY))
+      : 0;
+    const interestAccrued = balance * dailyRate * days;
+    cumulativeInterestAccrued += interestAccrued;
+
+    if (e.drawAmount && (e.kind === 'start' || e.kind === 'draw' || e.kind === 'pending_draw')) {
+      balance += e.drawAmount;
+      totalDisbursed += e.drawAmount;
+    }
+    if (e.kind === 'payment') {
+      balance = Math.max(0, balance - (e.principalPaid ?? 0));
+      cumulativeInterestPaid += e.interestPaid ?? 0;
+      totalPrincipalPaid += e.principalPaid ?? 0;
+    }
+
+    rows.push({
+      date: e.date,
+      kind: e.kind,
+      label: e.label,
+      sublabel: e.sublabel,
+      drawAmount: e.drawAmount,
+      principalPaid: e.principalPaid,
+      interestPaid: e.interestPaid,
+      lateFee: e.lateFee,
+      daysSincePrior: days,
+      interestAccrued,
+      balance,
+      unpaidInterest: Math.max(0, cumulativeInterestAccrued - cumulativeInterestPaid),
+      isFuture: e.date > todayStr,
+    });
+    priorDate = e.date;
+  }
+
+  const todayRow = rows.find(r => r.kind === 'today');
+  const maturityRow = rows.find(r => r.kind === 'maturity');
+
+  return {
+    rows,
+    totalDisbursed,
+    totalPrincipalPaid,
+    totalInterestPaid: cumulativeInterestPaid,
+    totalInterestAccrued: cumulativeInterestAccrued,
+    currentBalance: todayRow ? todayRow.balance : balance,
+    currentUnpaidInterest: todayRow ? todayRow.unpaidInterest : 0,
+    projectedPayoff: maturityRow ? maturityRow.balance + maturityRow.unpaidInterest : balance,
+  };
+}
+
+function parseLocal(d: string): Date {
+  const [y, m, day] = d.split('-').map(Number);
+  return new Date(y, m - 1, day);
+}
+
+function formatUsd(v: number): string {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
+}

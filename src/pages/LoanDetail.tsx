@@ -16,6 +16,7 @@ import { LoanStatusBadge, LoanTypeBadge } from '@/components/loans/LoanStatusBad
 import { DrawScheduleTracker } from '@/components/loans/DrawScheduleTracker';
 import { LoanExtensions } from '@/components/loans/LoanExtensions';
 import { AmortizationTable } from '@/components/loans/AmortizationTable';
+import { InterestScheduleTable } from '@/components/loans/InterestScheduleTable';
 import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoanDetail, useLoans } from '@/hooks/useLoans';
@@ -334,7 +335,7 @@ export default function LoanDetail() {
         <Tabs defaultValue="overview">
           <TabsList className="w-full justify-center">
             <TabsTrigger value="overview" className="w-1/4">Overview</TabsTrigger>
-            <TabsTrigger value="amortization" className="w-1/4">Amortization</TabsTrigger>
+            <TabsTrigger value="amortization" className="w-1/4">{isTraditional ? 'Amortization' : 'Interest Schedule'}</TabsTrigger>
             {loan.has_draws && <TabsTrigger value="draws" className="w-1/4">Draw Schedule</TabsTrigger>}
             <TabsTrigger value="payments" className="w-1/4">Payments</TabsTrigger>
           </TabsList>
@@ -427,18 +428,27 @@ export default function LoanDetail() {
             </div>
           </TabsContent>
 
-          {/* Amortization */}
+          {/* Amortization / Interest Schedule */}
           <TabsContent value="amortization">
             <div className="mt-4">
-              <AmortizationTable
-                loan={loan}
-                finalDate={effectiveMaturity}
-                extensionMonths={extensions.reduce((sum: number, ext: any) => {
-                  const from = new Date(ext.extended_from);
-                  const to = new Date(ext.extended_to);
-                  return sum + Math.max((to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth()), 0);
-                }, 0)}
-              />
+              {isTraditional ? (
+                <AmortizationTable
+                  loan={loan}
+                  finalDate={effectiveMaturity}
+                  extensionMonths={extensions.reduce((sum: number, ext: any) => {
+                    const from = new Date(ext.extended_from);
+                    const to = new Date(ext.extended_to);
+                    return sum + Math.max((to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth()), 0);
+                  }, 0)}
+                />
+              ) : (
+                <InterestScheduleTable
+                  loan={loan}
+                  draws={draws}
+                  payments={payments}
+                  extensions={extensions}
+                />
+              )}
             </div>
           </TabsContent>
 
