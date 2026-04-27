@@ -227,7 +227,7 @@ export default function LoanDetail() {
                 <p className="text-lg font-semibold">{s.value}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 flex items-center justify-center gap-1">
                   {s.label}
-                  {((s as any).hasBreakdown || (s as any).hasInterestBreakdown) && <ChevronDown className="h-3 w-3" />}
+                  {((s as any).hasBreakdown || (s as any).hasInterestBreakdown || (s as any).hasBalanceBreakdown) && <ChevronDown className="h-3 w-3" />}
                 </p>
                 {(s as any).subtitle && (
                   <p className="text-[11px] text-warning mt-0.5 font-medium">{(s as any).subtitle}</p>
