@@ -212,6 +212,9 @@ export default function LoanDetail() {
                   {s.label}
                   {((s as any).hasBreakdown || (s as any).hasInterestBreakdown) && <ChevronDown className="h-3 w-3" />}
                 </p>
+                {(s as any).subtitle && (
+                  <p className="text-[11px] text-warning mt-0.5 font-medium">{(s as any).subtitle}</p>
+                )}
               </CardContent>
             );
 
