@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { DollarSign, Percent, CreditCard, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -6,20 +7,20 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-import type { Loan } from '@/types/loans';
+import { effectiveOutstandingBalance } from '@/types/loans';
+import type { Loan, LoanPayment } from '@/types/loans';
+import { supabase } from '@/integrations/supabase/client';
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
 /**
- * Returns the loan balance including any actually-disbursed draws.
- * Only counts `funded_draws_total` (sum of draw rows with status='funded').
- * The planned `total_draw_amount` is NOT included — it represents future
- * available credit, not money already drawn.
+ * @deprecated Use {@link effectiveOutstandingBalance} from '@/types/loans'
+ * — it now returns the same value AND honors principal payments. Kept as a
+ * thin shim so older imports keep compiling.
  */
-export function loanBalanceWithDraws(l: Loan): number {
-  if (!l.has_draws) return l.outstanding_balance;
-  return l.outstanding_balance + (l.funded_draws_total ?? 0);
+export function loanBalanceWithDraws(l: Loan, payments: LoanPayment[] = []): number {
+  return effectiveOutstandingBalance(l, payments);
 }
 
 interface LoanStatsRowProps {
