@@ -23,7 +23,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, effectiveOutstandingBalance } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday } from '@/types/loans';
 
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -129,12 +129,12 @@ export default function LoanDetail() {
   const loanAmountLabel = isTraditional ? 'Original Amount' : 'Loan Amount';
   const hasLoanBreakdown = !isTraditional && loan.has_draws && draws.length > 0;
 
-  // Effective outstanding balance: payments first, then schedule, then stored value.
-  const paymentDerivedBalance = effectiveOutstandingBalance(loan, payments);
-  const lastElapsedRow = [...schedule].reverse().find(row => row.date <= todayStr);
-  const effectiveBalance = payments.length > 0
-    ? paymentDerivedBalance
-    : (lastElapsedRow ? lastElapsedRow.balance : loan.outstanding_balance);
+  // Remaining principal = total disbursed (original + funded draws) minus principal paid.
+  const principalPaidForBalance = payments.reduce((s, p) => {
+    if (p.principal_portion != null) return s + p.principal_portion;
+    return s + Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
+  }, 0);
+  const effectiveBalance = Math.max(0, (loanAmountValue ?? 0) - principalPaidForBalance);
 
   const hasInterestBreakdown = !!drawInterest && drawInterest.periods.length > 0;
   const combinedInterest = hasInterestBreakdown
