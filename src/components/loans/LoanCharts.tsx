@@ -137,16 +137,16 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     return { pieRows: rows, legendPayload: legend };
   }, [active, paymentsByLoan, drawsByLoan]);
 
-  // Distinct color reserved for accrued interest — not used by any LoanType.
-  const INTEREST_COLOR = 'hsl(48, 100%, 70%)';
-
-  // Stack each project's balance by loan type + accrued interest — true "capital stack" view.
+  // Stack each project's balance by loan type + per-type accrued interest.
+  // Each loan type gets two stacked segments: principal (base color) and
+  // interest (lightened same hue), mirroring the donut chart pairing.
+  const interestKey = (t: LoanType) => `${t}__interest` as const;
   const { byProject, presentTypes } = useMemo(() => {
-    const map: Record<string, Record<string, number> & { __total: number; __interest: number }> = {};
+    const map: Record<string, Record<string, number> & { __total: number }> = {};
     const typesSet = new Set<LoanType>();
     active.forEach(l => {
       const key = l.project_name ?? 'No Project';
-      if (!map[key]) map[key] = { __total: 0, __interest: 0 } as any;
+      if (!map[key]) map[key] = { __total: 0 } as any;
       const lp = paymentsByLoan[l.id] ?? [];
       // Payment-aware principal so the bar shrinks after a payment.
       const bal = lp.length ? effectiveOutstandingBalance(l, lp) : loanBalanceWithDraws(l);
@@ -154,10 +154,12 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       map[key].__total += bal;
       typesSet.add(l.loan_type);
 
-      // Total accrued interest mirrors the loan-detail summary card so the
-      // capital-stack bar lines up with the per-loan figures.
+      // Per-type accrued interest stacked directly on top of its own principal.
       const accrued = currentAccruedInterest(l, lp, drawsByLoan[l.id] ?? []);
-      if (accrued > 0) map[key].__interest += accrued;
+      if (accrued > 0) {
+        const ik = interestKey(l.loan_type);
+        map[key][ik] = (map[key][ik] ?? 0) + accrued;
+      }
     });
     const rows = Object.entries(map)
       .map(([name, vals]) => ({ name, ...vals }))
@@ -165,6 +167,19 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       .slice(0, 8);
     return { byProject: rows, presentTypes: Array.from(typesSet) };
   }, [active, paymentsByLoan, drawsByLoan]);
+
+  // Custom legend: one entry per loan type (base color), with a single
+  // muted "Lighter shade = accrued interest" hint shown in the header.
+  const stackLegendPayload = useMemo(
+    () =>
+      presentTypes.map(t => ({
+        value: t,
+        type: 'square' as const,
+        id: t,
+        color: LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl,
+      })),
+    [presentTypes],
+  );
 
   if (active.length === 0) return null;
 
