@@ -19,7 +19,7 @@ import { AmortizationTable } from '@/components/loans/AmortizationTable';
 import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoanDetail } from '@/hooks/useLoans';
-import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, effectiveOutstandingBalance } from '@/types/loans';
 
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
