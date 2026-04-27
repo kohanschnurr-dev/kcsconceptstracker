@@ -137,16 +137,16 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     return { pieRows: rows, legendPayload: legend };
   }, [active, paymentsByLoan, drawsByLoan]);
 
-  // Distinct color reserved for accrued interest — not used by any LoanType.
-  const INTEREST_COLOR = 'hsl(48, 100%, 70%)';
-
-  // Stack each project's balance by loan type + accrued interest — true "capital stack" view.
+  // Stack each project's balance by loan type + per-type accrued interest.
+  // Each loan type gets two stacked segments: principal (base color) and
+  // interest (lightened same hue), mirroring the donut chart pairing.
+  const interestKey = (t: LoanType) => `${t}__interest` as const;
   const { byProject, presentTypes } = useMemo(() => {
-    const map: Record<string, Record<string, number> & { __total: number; __interest: number }> = {};
+    const map: Record<string, Record<string, number> & { __total: number }> = {};
     const typesSet = new Set<LoanType>();
     active.forEach(l => {
       const key = l.project_name ?? 'No Project';
-      if (!map[key]) map[key] = { __total: 0, __interest: 0 } as any;
+      if (!map[key]) map[key] = { __total: 0 } as any;
       const lp = paymentsByLoan[l.id] ?? [];
       // Payment-aware principal so the bar shrinks after a payment.
       const bal = lp.length ? effectiveOutstandingBalance(l, lp) : loanBalanceWithDraws(l);
@@ -154,10 +154,12 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       map[key].__total += bal;
       typesSet.add(l.loan_type);
 
-      // Total accrued interest mirrors the loan-detail summary card so the
-      // capital-stack bar lines up with the per-loan figures.
+      // Per-type accrued interest stacked directly on top of its own principal.
       const accrued = currentAccruedInterest(l, lp, drawsByLoan[l.id] ?? []);
-      if (accrued > 0) map[key].__interest += accrued;
+      if (accrued > 0) {
+        const ik = interestKey(l.loan_type);
+        map[key][ik] = (map[key][ik] ?? 0) + accrued;
+      }
     });
     const rows = Object.entries(map)
       .map(([name, vals]) => ({ name, ...vals }))
@@ -165,6 +167,19 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       .slice(0, 8);
     return { byProject: rows, presentTypes: Array.from(typesSet) };
   }, [active, paymentsByLoan, drawsByLoan]);
+
+  // Custom legend: one entry per loan type (base color), with a single
+  // muted "Lighter shade = accrued interest" hint shown in the header.
+  const stackLegendPayload = useMemo(
+    () =>
+      presentTypes.map(t => ({
+        value: t,
+        type: 'square' as const,
+        id: t,
+        color: LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl,
+      })),
+    [presentTypes],
+  );
 
   if (active.length === 0) return null;
 
@@ -270,7 +285,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       <Card className="glass-card lg:col-span-3">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-base">Capital Stack by Project</CardTitle>
-          <span className="text-xs text-muted-foreground">Debt + accrued interest, stacked by loan type</span>
+          <span className="text-xs text-muted-foreground">Lighter shade = accrued interest</span>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={520}>
@@ -294,13 +309,21 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 width={52}
               />
               <Tooltip
-                formatter={(v: number, name: string) => [fmt(v), LOAN_TYPE_LABELS[name as LoanType] ?? name]}
+                formatter={(v: number, name: string) => {
+                  // Interest series are named "<type>__interest"; principal series are just the type key.
+                  if (typeof name === 'string' && name.endsWith('__interest')) {
+                    const t = name.replace('__interest', '') as LoanType;
+                    return [fmt(v), `${LOAN_TYPE_LABELS[t] ?? t} — Interest`];
+                  }
+                  return [fmt(v), LOAN_TYPE_LABELS[name as LoanType] ?? name];
+                }}
                 contentStyle={TOOLTIP_STYLE}
                 itemStyle={TOOLTIP_TEXT_STYLE}
                 labelStyle={TOOLTIP_TEXT_STYLE}
                 cursor={{ fill: 'hsl(var(--muted))' }}
               />
               <Legend
+                payload={stackLegendPayload}
                 wrapperStyle={{ paddingTop: 8 }}
                 formatter={(value) => (
                   <span className="text-foreground" style={{ fontSize: 11, fontWeight: 600 }}>
@@ -308,23 +331,28 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                   </span>
                 )}
               />
-              {presentTypes.map((t) => (
-                <Bar
-                  key={t}
-                  dataKey={t}
-                  stackId="capital"
-                  fill={LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl}
-                  radius={0}
-                  name={t}
-                />
-              ))}
-              <Bar
-                dataKey="__interest"
-                stackId="capital"
-                fill={INTEREST_COLOR}
-                radius={[4, 4, 0, 0]}
-                name="Interest Accrued"
-              />
+              {presentTypes.flatMap((t, idx) => {
+                const base = LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
+                const isLast = idx === presentTypes.length - 1;
+                return [
+                  <Bar
+                    key={`${t}-principal`}
+                    dataKey={t}
+                    stackId="capital"
+                    fill={base}
+                    radius={0}
+                    name={t}
+                  />,
+                  <Bar
+                    key={`${t}-interest`}
+                    dataKey={`${t}__interest`}
+                    stackId="capital"
+                    fill={lightenHsl(base, 22)}
+                    radius={isLast ? [4, 4, 0, 0] : 0}
+                    name={`${t}__interest`}
+                  />,
+                ];
+              })}
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
