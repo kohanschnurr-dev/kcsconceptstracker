@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback } from 'react';
 import { Landmark, Plus, GitCompareArrows } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { LoanStatsRow } from '@/components/loans/LoanStatsRow';
 import { LoanTable } from '@/components/loans/LoanTable';
 import { LoanCharts } from '@/components/loans/LoanCharts';
@@ -15,14 +14,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-type ViewMode = 'portfolio' | 'project';
-
 export default function Loans() {
   const { loans, isLoading, createLoan } = useLoans();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [view, setView] = useState<ViewMode>('portfolio');
-  const [selectedProject, setSelectedProject] = useState<string>('all');
   const [addOpen, setAddOpen] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
@@ -38,12 +33,7 @@ export default function Loans() {
     [loans],
   );
 
-  const visibleLoans = useMemo(() => {
-    if (view === 'project' && selectedProject !== 'all') {
-      return loans.filter(l => l.project_name === selectedProject);
-    }
-    return loans;
-  }, [loans, view, selectedProject]);
+  const visibleLoans = loans;
 
   const handleAddLoan = async (
     payload: Omit<Loan, 'id' | 'created_at' | 'updated_at' | 'project_name'>,
@@ -71,25 +61,6 @@ export default function Loans() {
             <p className="text-sm text-muted-foreground mt-0.5">Track debt across your entire portfolio</p>
           </div>
           <div className="flex items-center gap-2">
-            {/* View toggle */}
-            <div className="flex rounded-lg border border-border p-0.5 bg-muted">
-              <button
-                onClick={() => setView('portfolio')}
-                className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                  view === 'portfolio' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Portfolio
-              </button>
-              <button
-                onClick={() => setView('project')}
-                className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                  view === 'project' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                By Project
-              </button>
-            </div>
             {loans.length >= 2 && (
               <Button
                 variant={compareMode ? 'default' : 'outline'}
@@ -104,22 +75,6 @@ export default function Loans() {
             </Button>
           </div>
         </div>
-
-        {/* Project selector for project view */}
-        {view === 'project' && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">Project:</span>
-            <Select value={selectedProject} onValueChange={setSelectedProject}>
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Select a project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                {projectNames.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
 
         {/* Stats */}
         <LoanStatsRow loans={visibleLoans} />
@@ -163,8 +118,8 @@ export default function Loans() {
               onToggleSelect={toggleCompare}
             />
 
-            {/* Charts — portfolio view only */}
-            {view === 'portfolio' && <LoanCharts loans={visibleLoans} />}
+            {/* Charts */}
+            <LoanCharts loans={visibleLoans} />
           </>
         )}
       </div>
