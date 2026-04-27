@@ -289,7 +289,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={520}>
-            <BarChart data={byProject} margin={{ top: 24, right: 8, bottom: 78, left: 0 }}>
+            <BarChart data={byProject} margin={{ top: 24, right: 8, bottom: 48, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="name"
@@ -297,9 +297,8 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 axisLine={false}
                 tickLine={false}
                 interval={0}
-                angle={-35}
-                textAnchor="end"
-                height={80}
+                textAnchor="middle"
+                height={50}
               />
               <YAxis
                 tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
