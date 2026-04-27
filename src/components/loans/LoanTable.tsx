@@ -13,7 +13,6 @@ import type { Loan, LoanStatus, LoanType, LoanPayment, LoanDraw } from '@/types/
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
-import { supabase } from '@/integrations/supabase/client';
 
 const fmt = (v: number | null | undefined) =>
   v == null
