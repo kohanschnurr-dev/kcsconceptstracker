@@ -422,6 +422,7 @@ export default function LoanDetail() {
               <PaymentHistoryTab
                 payments={payments}
                 loanId={loan.id}
+                loan={loan}
                 onAdd={p => addPayment.mutate(p)}
                 onDelete={id => deletePayment.mutate(id)}
               />
