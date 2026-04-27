@@ -47,10 +47,10 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     enabled: loanIds.length > 0,
     queryFn: async () => {
       const { data, error } = await (supabase.from('loan_payments' as any) as any)
-        .select('loan_id, payment_date, amount, principal_portion, interest_portion, late_fee')
+        .select('loan_id, date, amount, principal_portion, interest_portion, late_fee')
         .in('loan_id', loanIds);
       if (error) throw error;
-      return (data ?? []) as LoanPayment[];
+      return (data ?? []).map((p: any) => ({ ...p, payment_date: p.date })) as LoanPayment[];
     },
   });
   const { data: draws = [] } = useQuery<LoanDraw[]>({
