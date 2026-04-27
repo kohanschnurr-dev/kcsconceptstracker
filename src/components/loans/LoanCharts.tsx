@@ -51,17 +51,29 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     return Object.entries(map).map(([name, { value, type }]) => ({ name, value, type }));
   }, [active]);
 
-  // Stack each project's balance by loan type — true "capital stack" view.
+  // Distinct color reserved for accrued interest — not used by any LoanType.
+  const INTEREST_COLOR = 'hsl(48, 100%, 70%)';
+
+  // Stack each project's balance by loan type + accrued interest — true "capital stack" view.
   const { byProject, presentTypes } = useMemo(() => {
-    const map: Record<string, Record<string, number> & { __total: number }> = {};
+    const map: Record<string, Record<string, number> & { __total: number; __interest: number }> = {};
     const typesSet = new Set<LoanType>();
+    const today = Date.now();
     active.forEach(l => {
       const key = l.project_name ?? 'No Project';
-      if (!map[key]) map[key] = { __total: 0 } as any;
+      if (!map[key]) map[key] = { __total: 0, __interest: 0 } as any;
       const bal = loanBalanceWithDraws(l);
       map[key][l.loan_type] = (map[key][l.loan_type] ?? 0) + bal;
       map[key].__total += bal;
       typesSet.add(l.loan_type);
+
+      // Simple-interest accrual from start_date → today on current balance.
+      if (l.start_date) {
+        const start = new Date(l.start_date).getTime();
+        const days = Math.max(0, (today - start) / (1000 * 60 * 60 * 24));
+        const accrued = bal * (l.interest_rate / 100) * (days / 365);
+        if (accrued > 0) map[key].__interest += accrued;
+      }
     });
     const rows = Object.entries(map)
       .map(([name, vals]) => ({ name, ...vals }))
@@ -113,11 +125,11 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       <Card className="glass-card lg:col-span-3">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-base">Capital Stack by Project</CardTitle>
-          <span className="text-xs text-muted-foreground">Stacked by loan type</span>
+          <span className="text-xs text-muted-foreground">Debt + accrued interest, stacked by loan type</span>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={290}>
-            <BarChart data={byProject} margin={{ top: 4, right: 8, bottom: 70, left: 0 }}>
+          <ResponsiveContainer width="100%" height={380}>
+            <BarChart data={byProject} margin={{ top: 24, right: 8, bottom: 78, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="name"
@@ -143,19 +155,31 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 labelStyle={TOOLTIP_TEXT_STYLE}
                 cursor={{ fill: 'hsl(var(--muted))' }}
               />
-              {presentTypes.map((t, i) => {
-                const isLast = i === presentTypes.length - 1;
-                return (
-                  <Bar
-                    key={t}
-                    dataKey={t}
-                    stackId="capital"
-                    fill={LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl}
-                    radius={isLast ? [4, 4, 0, 0] : 0}
-                    name={t}
-                  />
-                );
-              })}
+              <Legend
+                wrapperStyle={{ paddingTop: 8 }}
+                formatter={(value) => (
+                  <span className="text-foreground" style={{ fontSize: 11, fontWeight: 600 }}>
+                    {LOAN_TYPE_LABELS[value as LoanType] ?? value}
+                  </span>
+                )}
+              />
+              {presentTypes.map((t) => (
+                <Bar
+                  key={t}
+                  dataKey={t}
+                  stackId="capital"
+                  fill={LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl}
+                  radius={0}
+                  name={t}
+                />
+              ))}
+              <Bar
+                dataKey="__interest"
+                stackId="capital"
+                fill={INTEREST_COLOR}
+                radius={[4, 4, 0, 0]}
+                name="Interest Accrued"
+              />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

@@ -1,38 +1,41 @@
-# Capital Stack Bar Chart
+## Goal
 
-## Problem
-The "Outstanding Balance by Project" bar chart paints each project as a single solid color (the dominant loan type). For 2808 Old North — which has both a Boomerang **Hard Money** loan ($321k incl. funded draws) and a Morgan Stanley **Private Money** loan ($50k) — the user can't see the split.
+Make the Capital Stack chart breathe (less squished at the top) and add an **Accrued Interest** layer to each project's stack in a distinct color that isn't reused by any debt type.
 
-## Solution: Stacked Bar Chart
-Convert the bar chart into a true capital-stack visualization: each project bar is segmented into colored chunks per loan type, using the same colors as the pie chart.
+## Changes — `src/components/loans/LoanCharts.tsx`
 
-```text
-$450k │   ███          
-      │   ███          
-$300k │   ███   ▓▓▓    
-      │   ███   ▓▓▓    ███       <-- Hard Money (green)
-$150k │   ███   ▓▓▓    ███   ███
-      │   ███   ▓▓▓    ███   ███   ▓▓▓ <-- Private Money (purple)
-$0    └────────────────────────────────
-       718Ch 2808ON NoProj Wales 534St
-```
+### 1. Taller chart + better vertical padding
 
-## Changes (single file: `src/components/loans/LoanCharts.tsx`)
+- Increase `ResponsiveContainer` height from `290` → `380`.
+- Increase top margin from `4` → `24` so the tallest bar isn't kissing the card edge.
+- Bump bottom margin slightly (`70` → `78`) so rotated labels never clip.
+- Add a small `Legend` underneath so users can see which color = which loan type (and the new Interest segment).
 
-1. **Reshape `byProject` data** — instead of `{name, balance, color}`, produce one row per project with one numeric field per loan type present, e.g.:
-   ```ts
-   { name: '2808 Old North Rd', hard_money: 321310, private_money: 50000, __total: 371310 }
-   ```
-   Also collect `presentTypes: LoanType[]` (the distinct loan types across all active loans).
-   Sort by `__total` desc, slice top 8.
+### 2. New "Interest" stack segment with a unique color
 
-2. **Render one `<Bar>` per loan type** with `stackId="capital"` and `fill={LOAN_TYPE_COLORS[type].hsl}`. Apply rounded `radius={[4,4,0,0]}` only to the topmost segment.
+- Reserve a dedicated color not used by any `LoanType` in `LOAN_TYPE_COLORS`:
+  - `INTEREST_COLOR = 'hsl(48, 100%, 70%)'` — a soft amber/yellow-gold. (Distinct from gold-orange `seller_financing` 45° at 47% L; this one is brighter and pushed to 48° / 70% L.) If too close in QA, fall back to `'hsl(60, 90%, 75%)'` pale yellow.
+- Compute per-loan **accrued interest to date** using simple interest:
+  ```
+  accrued = balance × rate% × max(0, daysSince(start_date)) / 365
+  ```
+  where `balance = loanBalanceWithDraws(loan)` and `rate% = interest_rate / 100`.
+  - Skip if `start_date` is in the future.
+  - Aggregate per project into a new `__interest` key on each row.
+- Add an extra `<Bar dataKey="__interest" stackId="capital" name="Interest Accrued" fill={INTEREST_COLOR} />` rendered **last** so it sits on top of the stack with the rounded `[4,4,0,0]` radius. The previous "last debt segment" loses its top radius (set to `0`).
+- Tooltip already routes through `LOAN_TYPE_LABELS[name] ?? name`, so passing `name="Interest Accrued"` will display correctly. Total at bottom (debt + interest) is naturally shown via stack tooltip.
 
-3. **Tooltip** — format each segment with the loan-type label and dollar amount (so hovering 2808 shows both segments separately).
+### 3. Header tweak
 
-4. **Card title** — rename "Outstanding Balance by Project" to "Capital Stack by Project" with a small "Stacked by loan type" hint in the header.
+- Subtitle: `"Stacked by loan type"` → `"Debt + accrued interest, stacked by loan type"`.
 
-5. **Keep**: 2/3 grid split, full address labels, -35° angle, pie chart unchanged.
+## Technical Details
 
-## Out of scope
-No data/migration changes.
+- Pure component-level change; no DB / type changes.
+- Accrued interest is a derived display value; not persisted.
+- Sorting of projects (`__total` desc) stays the same — based on debt only, so the chart ordering doesn't shuffle from interest.
+- No changes to the Pie chart on the left (it stays "Debt by Loan Type" only).
+
+## Files Modified
+
+- `src/components/loans/LoanCharts.tsx`
