@@ -569,7 +569,8 @@ export default function LoanDetail() {
           <TabsContent value="payments">
             <div className="mt-4">
               <PaymentHistoryTab
-                payments={payments}
+                payments={effectivePayments}
+                manualPayments={payments}
                 loanId={loan.id}
                 loan={loan}
                 draws={draws}
