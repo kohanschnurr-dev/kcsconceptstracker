@@ -1,42 +1,88 @@
-## Why the three numbers disagree
+## Goal
 
-There are **three different math engines** computing "interest accrued" for the same loan:
+Extend the **Debt by Loan Type** donut on the Loans dashboard so it visualizes accrued interest alongside principal, with a polished hover experience that breaks down each loan type's principal vs interest.
 
-| Surface | Function | Issue |
-|---|---|---|
-| Loan table column | `totalAccruedInterest` → `accruedInterestThroughToday` + `buildDrawInterestSchedule` | Hard-codes 365-day basis (ignores `interest_calc_method`). For `has_draws` loans it adds the **entire projected interest from each draw to maturity** on top of original-principal accrual → overcounts. |
-| Loan detail summary tile | Same `totalAccruedInterest` | Same overcount; also drifts from the table only because the two `useQuery` instances aren't synced. |
-| Interest Schedule tab | `buildInterestSchedule` | A proper chronological ledger — applies the correct day basis, walks each draw/payment in real order, evaluates at today. **This is the rigorous calculation.** |
+## Visualization model
 
-The ledger is the only one that handles the math correctly. Everything else should read from it.
+- For each loan type present (e.g., Private Money, Hard Money, DSCR), produce **two slices**:
+  - `{Type} — Principal` — current outstanding principal (existing value), full-saturation type color.
+  - `{Type} — Interest` — current unpaid accrued interest for that type, same hue but lighter (reduced opacity / lighter HSL lightness) so it reads as a paired sibling.
+- Slices are ordered so each type's principal and interest sit adjacent in the ring (Private Money principal → Private Money interest → Hard Money principal → Hard Money interest → …). This keeps the donut readable as "stacked pairs" rather than scattered colors.
+- Interest slices with $0 are omitted (no zero-width wedges).
 
-## Fix — single source of truth
+## Tooltip
 
-### 1. Add `currentAccruedInterest(loan, payments, draws, extensions?)` in `src/types/loans.ts`
+Custom Recharts tooltip (replaces the default formatter) that, for any hovered slice, shows the loan type as a header and three rows:
 
-Thin wrapper that runs `buildInterestSchedule` and returns `result.currentUnpaidInterest`. Same inputs `totalAccruedInterest` accepts so the swap is mechanical.
+```
+Private Money
+  Principal      $124,500
+  Interest         $6,360
+  ─────────────────────────
+  Total          $130,860
+```
 
-### 2. Replace `totalAccruedInterest` call sites with `currentAccruedInterest`
+- The same content shows whether the user hovers the principal slice or the interest slice — both belong to the same type.
+- Styled with existing `TOOLTIP_STYLE` / `TOOLTIP_TEXT_STYLE` (popover bg, 1px border, sharp 2px corners per aesthetic standards).
+- Uses `fmt()` (whole-dollar USD) for consistency with the rest of the chart.
 
-- `src/components/loans/LoanTable.tsx` — already fetches payments + draws; swap the cell to call `currentAccruedInterest`. Number now exactly matches the ledger.
-- `src/pages/LoanDetail.tsx` — replace the `combinedInterest` line. The summary tile, the cost-of-capital math (`totalCost = combinedInterest + ...`), and the "Balance" tile (`effectiveBalance + combinedInterest`) all consume one value from the ledger.
-- `src/components/loans/LoanCharts.tsx` — swap the per-loan accrued amount used in the capital-stack bar.
+## Legend
 
-### 3. Remove the now-stale helpers
+- Legend lists **only the loan types** (one entry per type), not the doubled slices, to avoid clutter. Each entry uses the type's full color swatch.
+- Implemented by passing a custom `payload` prop to `<Legend>` derived from the unique types present.
 
-Mark `totalAccruedInterest` and the public surface of `accruedInterestThroughToday` as **deprecated** but keep the exports temporarily so any third call site (CSV export, comparison mode) doesn't break — I'll grep for stragglers and migrate or leave them with a `@deprecated` JSDoc warning. `buildDrawInterestSchedule` stays only for the breakdown UI on the detail page that displays per-draw fees, but its `totalInterest` will no longer be summed into the headline figure.
+## Center of donut
 
-### 4. Verify all three surfaces show the **same** value
+Per user direction: **no center text**. Existing empty center is preserved.
 
-After the swap: table column == top tile == "Interest Accrued (Unpaid)" on the Interest Schedule tab, all reading `result.currentUnpaidInterest`.
+## Data computation
 
-## Files touched
+In `src/components/loans/LoanCharts.tsx`, replace the current `byType` memo with a richer structure:
 
-- `src/types/loans.ts` — add `currentAccruedInterest`, deprecate the old helpers
-- `src/components/loans/LoanTable.tsx` — swap helper
-- `src/pages/LoanDetail.tsx` — swap helper for `combinedInterest`
-- `src/components/loans/LoanCharts.tsx` — swap helper
+```ts
+// Per-type aggregates
+type TypeAgg = { type: LoanType; label: string; principal: number; interest: number };
+const aggByType: Record<string, TypeAgg> = {};
 
-## Result
+active.forEach(l => {
+  const lp = paymentsByLoan[l.id] ?? [];
+  const ld = drawsByLoan[l.id] ?? [];
+  const principal = lp.length ? effectiveOutstandingBalance(l, lp) : loanBalanceWithDraws(l);
+  const interest  = currentAccruedInterest(l, lp, ld);          // ledger-based, single source of truth
+  const label = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
+  const agg = aggByType[label] ??= { type: l.loan_type, label, principal: 0, interest: 0 };
+  agg.principal += principal;
+  agg.interest  += interest;
+});
 
-One number, one source: the chronological ledger. The table, the detail tile, and the Interest Schedule tab all show the same dollar value to the cent.
+// Flatten into pie rows, principal first then interest, per type, skipping zero interest.
+const pieRows = Object.values(aggByType).flatMap(a => {
+  const base = LOAN_TYPE_COLORS[a.type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
+  const rows = [{ key: `${a.label}|principal`, label: a.label, kind: 'principal', value: a.principal, color: base, agg: a }];
+  if (a.interest > 0) {
+    rows.push({ key: `${a.label}|interest`, label: a.label, kind: 'interest', value: a.interest, color: lightenHsl(base, 18), agg: a });
+  }
+  return rows;
+});
+```
+
+`lightenHsl(hsl, delta)` is a small local helper that parses `hsl(h, s, l%)` and returns a new string with `l + delta` clamped to ≤90 — keeps the interest wedge clearly the same family but visibly secondary. No new dependencies.
+
+## Files changed
+
+- **`src/components/loans/LoanCharts.tsx`** — only file touched.
+  - New `byType` shape (per-type aggregate of principal + interest).
+  - Flatten to `pieRows` with paired slices.
+  - Add `lightenHsl` helper.
+  - Custom `<Tooltip content={...}>` component rendering the principal/interest/total breakdown.
+  - Custom `payload` for `<Legend>` showing one entry per type.
+  - Re-key the `<Pie>` to `dataKey="value"` over `pieRows` and re-color each `<Cell>` from `row.color`.
+
+No changes to data fetching, types, or any other component. Calculation continues to use the unified `currentAccruedInterest` ledger so the donut, table column, and detail tile remain in lockstep.
+
+## QA
+
+- Hover each slice (principal and interest of the same type) → tooltip shows identical breakdown.
+- Loan with $0 accrued interest (e.g., a brand-new loan) contributes only a principal wedge, no zero-width sliver.
+- Legend remains clean (one entry per type), and dark-theme contrast is preserved.
+- Numbers cross-check: sum of all principal slices = previous donut total; per-type interest matches the figure on each loan's detail tile.

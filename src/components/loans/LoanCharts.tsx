@@ -89,20 +89,53 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     return m;
   }, [draws]);
 
-  const byType = useMemo(() => {
-    const map: Record<string, { value: number; type: LoanType }> = {};
+  // Lighten an `hsl(h, s%, l%)` string by `delta` lightness points (clamped <=92).
+  // Used to derive the secondary "interest" color from each loan type's base color.
+  const lightenHsl = (hsl: string, delta: number): string => {
+    const m = hsl.match(/hsl\(\s*([\d.]+)[ ,]+([\d.]+)%[ ,]+([\d.]+)%\s*\)/i);
+    if (!m) return hsl;
+    const h = parseFloat(m[1]);
+    const s = parseFloat(m[2]);
+    const l = Math.min(92, parseFloat(m[3]) + delta);
+    return `hsl(${h}, ${s}%, ${l}%)`;
+  };
+
+  type TypeAgg = { type: LoanType; label: string; principal: number; interest: number; color: string };
+  type PieRow = { key: string; label: string; kind: 'principal' | 'interest'; value: number; color: string; agg: TypeAgg };
+
+  const { pieRows, legendPayload } = useMemo(() => {
+    const aggByType: Record<string, TypeAgg> = {};
     active.forEach(l => {
-      const key = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
-      if (!map[key]) map[key] = { value: 0, type: l.loan_type };
-      // Use payment-aware balance so the donut shrinks after paydowns.
+      const label = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
       const lp = paymentsByLoan[l.id] ?? [];
-      const principal = lp.length
-        ? effectiveOutstandingBalance(l, lp)
-        : loanBalanceWithDraws(l);
-      map[key].value += principal;
+      const ld = drawsByLoan[l.id] ?? [];
+      const principal = lp.length ? effectiveOutstandingBalance(l, lp) : loanBalanceWithDraws(l);
+      const interest = currentAccruedInterest(l, lp, ld);
+      const color = LOAN_TYPE_COLORS[l.loan_type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
+      const agg = aggByType[label] ??= { type: l.loan_type, label, principal: 0, interest: 0, color };
+      agg.principal += principal;
+      agg.interest += Math.max(0, interest);
     });
-    return Object.entries(map).map(([name, { value, type }]) => ({ name, value, type }));
-  }, [active, paymentsByLoan]);
+
+    const rows: PieRow[] = [];
+    Object.values(aggByType).forEach(a => {
+      if (a.principal > 0) {
+        rows.push({ key: `${a.label}|principal`, label: a.label, kind: 'principal', value: a.principal, color: a.color, agg: a });
+      }
+      if (a.interest > 0) {
+        rows.push({ key: `${a.label}|interest`, label: a.label, kind: 'interest', value: a.interest, color: lightenHsl(a.color, 22), agg: a });
+      }
+    });
+
+    const legend = Object.values(aggByType).map(a => ({
+      value: a.label,
+      type: 'square' as const,
+      id: a.label,
+      color: a.color,
+    }));
+
+    return { pieRows: rows, legendPayload: legend };
+  }, [active, paymentsByLoan, drawsByLoan]);
 
   // Distinct color reserved for accrued interest — not used by any LoanType.
   const INTEREST_COLOR = 'hsl(48, 100%, 70%)';
@@ -145,25 +178,86 @@ export function LoanCharts({ loans }: LoanChartsProps) {
           <ResponsiveContainer width="100%" height={420}>
             <PieChart>
               <Pie
-                data={byType}
+                data={pieRows}
                 cx="50%"
                 cy="50%"
                 innerRadius={90}
                 outerRadius={155}
-                paddingAngle={3}
+                paddingAngle={2}
                 dataKey="value"
+                stroke="hsl(var(--card))"
+                strokeWidth={2}
               >
-                {byType.map((entry, i) => (
-                  <Cell key={i} fill={LOAN_TYPE_COLORS[entry.type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl} />
+                {pieRows.map((row) => (
+                  <Cell key={row.key} fill={row.color} />
                 ))}
               </Pie>
               <Tooltip
-                formatter={(v: number) => [fmt(v), 'Balance']}
-                contentStyle={TOOLTIP_STYLE}
-                itemStyle={TOOLTIP_TEXT_STYLE}
-                labelStyle={TOOLTIP_TEXT_STYLE}
+                cursor={{ fill: 'transparent' }}
+                content={({ active: hovered, payload }) => {
+                  if (!hovered || !payload || payload.length === 0) return null;
+                  const row = payload[0].payload as PieRow;
+                  if (!row?.agg) return null;
+                  const { agg } = row;
+                  const total = agg.principal + agg.interest;
+                  return (
+                    <div
+                      style={{
+                        ...TOOLTIP_STYLE,
+                        padding: '10px 12px',
+                        minWidth: 200,
+                        boxShadow: '0 8px 24px hsl(0 0% 0% / 0.35)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          letterSpacing: 0.3,
+                          textTransform: 'uppercase',
+                          color: 'hsl(var(--popover-foreground))',
+                          marginBottom: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            width: 10,
+                            height: 10,
+                            background: agg.color,
+                          }}
+                        />
+                        {agg.label}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 4, columnGap: 16, fontSize: 12, color: 'hsl(var(--popover-foreground))' }}>
+                        <span style={{ opacity: 0.75 }}>Principal</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(agg.principal)}</span>
+                        <span style={{ opacity: 0.75 }}>Interest Accrued</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(agg.interest)}</span>
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 8,
+                          paddingTop: 8,
+                          borderTop: '1px solid hsl(var(--border))',
+                          display: 'grid',
+                          gridTemplateColumns: '1fr auto',
+                          fontSize: 12,
+                          color: 'hsl(var(--popover-foreground))',
+                        }}
+                      >
+                        <span style={{ fontWeight: 700 }}>Total Owed</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{fmt(total)}</span>
+                      </div>
+                    </div>
+                  );
+                }}
               />
               <Legend
+                payload={legendPayload}
                 formatter={(value) => (
                   <span className="text-foreground" style={{ fontSize: 12, fontWeight: 600 }}>{value}</span>
                 )}
