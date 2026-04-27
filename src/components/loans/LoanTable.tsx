@@ -10,6 +10,7 @@ import { LOAN_TYPE_LABELS, calcFirstPaymentDate, calcNextPaymentDate, buildAmort
 import type { Loan, LoanStatus, LoanType } from '@/types/loans';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDisplayDate } from '@/lib/dateUtils';
+import { loanBalanceWithDraws } from './LoanStatsRow';
 
 const fmt = (v: number | null | undefined) =>
   v == null
