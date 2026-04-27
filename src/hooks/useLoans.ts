@@ -228,18 +228,35 @@ export function useLoanDetail(loanId: string) {
   const deletePayment = useMutation({
     mutationFn: async (paymentId: string) => {
       // Fetch the payment first to restore the balance
-      const { data: paymentData } = await paymentsTable().select('principal_portion, loan_id').eq('id', paymentId).single();
+      const { data: paymentData } = await paymentsTable()
+        .select('principal_portion, interest_portion, amount, late_fee, loan_id')
+        .eq('id', paymentId)
+        .single();
       const { error } = await paymentsTable().delete().eq('id', paymentId);
       if (error) throw error;
 
-      // Restore outstanding_balance in the loans table
-      const principalPaid = (paymentData as any)?.principal_portion ?? 0;
-      const paymentLoanId = (paymentData as any)?.loan_id;
-      if (principalPaid > 0 && paymentLoanId) {
-        const { data: currentLoan } = await loansTable().select('outstanding_balance').eq('id', paymentLoanId).single();
+      // Restore outstanding_balance using the same fallback as addPayment so
+      // legacy/unsplit payments are handled symmetrically. If the loan was
+      // auto-marked paid_off and we're undoing principal, flip it back to active.
+      const p = (paymentData as any) ?? {};
+      const restored =
+        p.principal_portion != null
+          ? p.principal_portion
+          : Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
+      const paymentLoanId = p.loan_id;
+      if (restored > 0 && paymentLoanId) {
+        const { data: currentLoan } = await loansTable()
+          .select('outstanding_balance, status, original_amount')
+          .eq('id', paymentLoanId)
+          .single();
         if (currentLoan) {
-          const newBalance = ((currentLoan as any).outstanding_balance ?? 0) + principalPaid;
-          await loansTable().update({ outstanding_balance: newBalance }).eq('id', paymentLoanId);
+          const cap = (currentLoan as any).original_amount ?? Infinity;
+          const newBalance = Math.min(cap, ((currentLoan as any).outstanding_balance ?? 0) + restored);
+          const update: Record<string, any> = { outstanding_balance: newBalance };
+          if (newBalance > 0 && (currentLoan as any).status === 'paid_off') {
+            update.status = 'active';
+          }
+          await loansTable().update(update).eq('id', paymentLoanId);
         }
       }
     },
