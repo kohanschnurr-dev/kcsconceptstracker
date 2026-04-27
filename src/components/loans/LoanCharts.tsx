@@ -51,23 +51,23 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     return Object.entries(map).map(([name, { value, type }]) => ({ name, value, type }));
   }, [active]);
 
-  const byProject = useMemo(() => {
-    const map: Record<string, { balance: number; types: Record<string, number> }> = {};
+  // Stack each project's balance by loan type — true "capital stack" view.
+  const { byProject, presentTypes } = useMemo(() => {
+    const map: Record<string, Record<string, number> & { __total: number }> = {};
+    const typesSet = new Set<LoanType>();
     active.forEach(l => {
       const key = l.project_name ?? 'No Project';
-      if (!map[key]) map[key] = { balance: 0, types: {} };
+      if (!map[key]) map[key] = { __total: 0 } as any;
       const bal = loanBalanceWithDraws(l);
-      map[key].balance += bal;
-      map[key].types[l.loan_type] = (map[key].types[l.loan_type] ?? 0) + bal;
+      map[key][l.loan_type] = (map[key][l.loan_type] ?? 0) + bal;
+      map[key].__total += bal;
+      typesSet.add(l.loan_type);
     });
-    return Object.entries(map)
-      .map(([name, { balance, types }]) => {
-        const dominantType = Object.entries(types).sort((a, b) => b[1] - a[1])[0]?.[0] as LoanType;
-        const color = LOAN_TYPE_COLORS[dominantType]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
-        return { name, balance, color };
-      })
-      .sort((a, b) => b.balance - a.balance)
+    const rows = Object.entries(map)
+      .map(([name, vals]) => ({ name, ...vals }))
+      .sort((a, b) => (b as any).__total - (a as any).__total)
       .slice(0, 8);
+    return { byProject: rows, presentTypes: Array.from(typesSet) };
   }, [active]);
 
   if (active.length === 0) return null;
@@ -111,8 +111,9 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       </Card>
 
       <Card className="glass-card lg:col-span-3">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Outstanding Balance by Project</CardTitle>
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Capital Stack by Project</CardTitle>
+          <span className="text-xs text-muted-foreground">Stacked by loan type</span>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={290}>
@@ -136,17 +137,25 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 width={52}
               />
               <Tooltip
-                formatter={(v: number) => [fmt(v), 'Balance']}
+                formatter={(v: number, name: string) => [fmt(v), LOAN_TYPE_LABELS[name as LoanType] ?? name]}
                 contentStyle={TOOLTIP_STYLE}
                 itemStyle={TOOLTIP_TEXT_STYLE}
                 labelStyle={TOOLTIP_TEXT_STYLE}
                 cursor={{ fill: 'hsl(var(--muted))' }}
               />
-              <Bar dataKey="balance" radius={[4, 4, 0, 0]}>
-                {byProject.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Bar>
+              {presentTypes.map((t, i) => {
+                const isLast = i === presentTypes.length - 1;
+                return (
+                  <Bar
+                    key={t}
+                    dataKey={t}
+                    stackId="capital"
+                    fill={LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl}
+                    radius={isLast ? [4, 4, 0, 0] : 0}
+                    name={t}
+                  />
+                );
+              })}
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
