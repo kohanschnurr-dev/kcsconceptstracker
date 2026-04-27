@@ -104,15 +104,6 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             <SelectItem value="default">Default</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={typeFilter} onValueChange={v => { setTypeFilter(v as any); setPage(0); }}>
-          <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {uniqueTypes.map(t => (
-              <SelectItem key={t} value={t}>{LOAN_TYPE_LABELS[t] ?? t}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         {projectNames.length > 0 && (
           <Select value={projectFilter} onValueChange={v => { setProjectFilter(v); setPage(0); }}>
             <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
@@ -167,7 +158,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
               {compareMode && <TableHead className="w-10" />}
               <TableHead>Project <SortBtn col="project_name" /></TableHead>
               <TableHead>Loan Name <SortBtn col="lender_name" /></TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead>Type <SortBtn col="loan_type" /></TableHead>
               <TableHead className="text-right">Original <SortBtn col="original_amount" /></TableHead>
               <TableHead className="text-right">Balance <SortBtn col="outstanding_balance" /></TableHead>
               <TableHead className="text-right">Rate <SortBtn col="interest_rate" /></TableHead>
