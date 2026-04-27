@@ -259,7 +259,7 @@ export default function LoanDetail() {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground truncate mr-2">Original Loan Interest</span>
-                        <span className="font-medium whitespace-nowrap">{fmt(totalInterestPaid)}</span>
+                        <span className="font-medium whitespace-nowrap">{fmt(liveAccruedInterest)}</span>
                       </div>
                       <div className="border-t border-border my-1" />
                       {drawInterest.periods.map((period, i) => (
