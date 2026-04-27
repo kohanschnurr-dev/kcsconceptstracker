@@ -41,6 +41,28 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
   const [page, setPage] = useState(0);
   const PER_PAGE = 15;
 
+  const loanIds = useMemo(() => loans.map(l => l.id).sort(), [loans]);
+  const { data: payments = [] } = useQuery<LoanPayment[]>({
+    queryKey: ['loan_payments_for_table', loanIds],
+    enabled: loanIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from('loan_payments' as any) as any)
+        .select('loan_id, payment_date, amount, principal_portion, interest_portion, late_fee')
+        .in('loan_id', loanIds);
+      if (error) throw error;
+      return (data ?? []) as LoanPayment[];
+    },
+  });
+  const paymentsByLoan = useMemo(() => {
+    const m: Record<string, LoanPayment[]> = {};
+    for (const p of payments) {
+      const key = (p as any).loan_id;
+      if (!key) continue;
+      (m[key] = m[key] ?? []).push(p);
+    }
+    return m;
+  }, [payments]);
+
   const filtered = useMemo(() => {
     let list = [...loans];
     if (search.trim()) {
