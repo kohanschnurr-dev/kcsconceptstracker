@@ -161,7 +161,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
           <span className="text-xs text-muted-foreground">Debt + accrued interest, stacked by loan type</span>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={380}>
+          <ResponsiveContainer width="100%" height={520}>
             <BarChart data={byProject} margin={{ top: 24, right: 8, bottom: 78, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
