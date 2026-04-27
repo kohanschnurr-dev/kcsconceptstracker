@@ -306,6 +306,74 @@ export function calcDrawFee(draw: LoanDraw): number {
   return flat || pct;
 }
 
+export interface InterestAttributionItem {
+  label: string;
+  interest: number;
+}
+
+/**
+ * Breaks the total accrued-to-date interest into per-draw contributions using
+ * a proportional balance approach: at each ledger period, each component
+ * (original loan + each funded draw) earns interest proportional to its share
+ * of the running balance. Payments reduce all component balances proportionally.
+ *
+ * Returns null when there are no funded draws (no meaningful breakdown).
+ */
+export function buildInterestAttributionBreakdown(
+  loan: Loan,
+  payments: LoanPayment[],
+  draws: LoanDraw[],
+  extensions: { extended_to: string }[] = [],
+): InterestAttributionItem[] | null {
+  const fundedDraws = draws
+    .filter(d => d.status === 'funded' && d.date_funded)
+    .sort((a, b) => a.draw_number - b.draw_number);
+
+  if (fundedDraws.length === 0) return null;
+
+  const schedule = buildInterestSchedule({ loan, payments, draws, extensions });
+
+  const labels = [
+    'Original Loan',
+    ...fundedDraws.map(d => `Draw #${d.draw_number}${d.milestone_name ? ` — ${d.milestone_name}` : ''}`),
+  ];
+  const balances = new Array<number>(labels.length).fill(0);
+  const interests = new Array<number>(labels.length).fill(0);
+
+  for (const row of schedule.rows) {
+    if (row.isFuture) break;
+
+    if (row.kind === 'start') {
+      balances[0] = loan.original_amount;
+      continue;
+    }
+
+    // Attribute this period's interest proportionally to each component's balance.
+    const totalBal = balances.reduce((s, b) => s + b, 0);
+    if (totalBal > 0 && row.interestAccrued > 0) {
+      for (let i = 0; i < labels.length; i++) {
+        interests[i] += (balances[i] / totalBal) * row.interestAccrued;
+      }
+    }
+
+    if (row.kind === 'draw') {
+      // Credit the draw amount to its component.
+      const idx = labels.indexOf(row.label);
+      if (idx >= 0) balances[idx] += row.drawAmount ?? 0;
+    } else if (row.kind === 'payment' && (row.principalPaid ?? 0) > 0) {
+      // Prorate principal reduction across all components.
+      const totalBal2 = balances.reduce((s, b) => s + b, 0);
+      if (totalBal2 > 0) {
+        for (let i = 0; i < labels.length; i++) {
+          balances[i] = Math.max(0, balances[i] - (balances[i] / totalBal2) * (row.principalPaid ?? 0));
+        }
+      }
+    }
+  }
+
+  return labels.map((label, i) => ({ label, interest: interests[i] }));
+}
+
 export function buildDrawInterestSchedule(
   loan: Pick<Loan, 'interest_rate' | 'interest_calc_method' | 'maturity_date' | 'start_date'>,
   draws: LoanDraw[],

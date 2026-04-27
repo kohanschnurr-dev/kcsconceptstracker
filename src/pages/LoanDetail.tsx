@@ -24,7 +24,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee, ACCRUES_INTEREST_TYPES, currentAccruedInterest } from '@/types/loans';
+import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee, ACCRUES_INTEREST_TYPES, currentAccruedInterest, buildInterestAttributionBreakdown } from '@/types/loans';
 
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -130,7 +130,10 @@ export default function LoanDetail() {
   }, 0);
   const effectiveBalance = Math.max(0, (loanAmountValue ?? 0) - principalPaidForBalance);
 
-  const hasInterestBreakdown = !!drawInterest && drawInterest.periods.length > 0;
+  const interestAttribution = loan.has_draws
+    ? buildInterestAttributionBreakdown(loan, payments, draws, extensions)
+    : null;
+  const hasInterestBreakdown = !!interestAttribution && interestAttribution.length > 1;
   const combinedInterest = liveAccruedInterest;
   const totalCost = combinedInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
@@ -253,7 +256,7 @@ export default function LoanDetail() {
               );
             }
 
-            if ((s as any).hasInterestBreakdown && drawInterest) {
+            if ((s as any).hasInterestBreakdown && interestAttribution) {
               return (
                 <Popover key={s.label}>
                   <PopoverTrigger asChild>
@@ -263,17 +266,10 @@ export default function LoanDetail() {
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-3">
                     <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground truncate mr-2">Original Loan Interest</span>
-                        <span className="font-medium whitespace-nowrap">{fmt(liveAccruedInterest)}</span>
-                      </div>
-                      <div className="border-t border-border my-1" />
-                      {drawInterest.periods.map((period, i) => (
+                      {interestAttribution.map((item, i) => (
                         <div key={i} className="flex justify-between text-sm">
-                          <span className="text-muted-foreground truncate mr-2">
-                            {period.label}
-                          </span>
-                          <span className="font-medium whitespace-nowrap">{fmt(period.interest)}</span>
+                          <span className="text-muted-foreground truncate mr-2">{item.label}</span>
+                          <span className="font-medium whitespace-nowrap">{fmt(item.interest)}</span>
                         </div>
                       ))}
                       <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
