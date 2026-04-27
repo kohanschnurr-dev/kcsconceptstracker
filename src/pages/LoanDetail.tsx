@@ -83,9 +83,6 @@ export default function LoanDetail() {
   }, 0);
   const schedule = buildAmortizationSchedule(loan, extensionMonths);
   const todayStr = new Date().toISOString().split('T')[0];
-  const totalInterestPaid = schedule
-    .filter(row => row.date <= todayStr)
-    .reduce((sum, row) => sum + row.interest, 0);
   const totalExtensionFees = extensions.reduce((s: number, e: any) => s + (e.extension_fee ?? 0), 0);
   const totalScheduleInterest = schedule.reduce((sum, row) => sum + row.interest, 0);
   // Draw-based interest for summary
@@ -95,6 +92,18 @@ export default function LoanDetail() {
     ? draws.reduce((sum, d) => sum + calcDrawFee(d as any), 0)
     : 0;
   const effectiveInterest = drawInterest ? drawInterest.totalInterest : totalScheduleInterest;
+
+  // Payment-aware interest accrual: stepwise interest on the *remaining* balance
+  // after each principal payment, less any interest already paid. This keeps the
+  // "Interest Accrued" stat honest after a paydown.
+  const accruesUnpaidInterest = ACCRUES_INTEREST_TYPES.includes(loan.loan_type as any);
+  const interestPaid = payments.reduce((s, p) => s + (p.interest_portion ?? 0), 0);
+  const liveAccruedInterest = accruesUnpaidInterest
+    ? accruedInterestThroughToday(loan, payments)
+    : Math.max(
+        0,
+        schedule.filter(r => r.date <= todayStr).reduce((sum, r) => sum + r.interest, 0) - interestPaid,
+      );
 
   const handleMarkPaidOff = () => {
     updateLoan.mutate({ id: loan.id, status: 'paid_off', outstanding_balance: 0 });
@@ -114,19 +123,33 @@ export default function LoanDetail() {
   const loanAmountLabel = isTraditional ? 'Original Amount' : 'Loan Amount';
   const hasLoanBreakdown = !isTraditional && loan.has_draws && draws.length > 0;
 
-  // Compute effective outstanding balance from amortization schedule
+  // Effective outstanding balance: payments first, then schedule, then stored value.
+  const paymentDerivedBalance = effectiveOutstandingBalance(loan, payments);
   const lastElapsedRow = [...schedule].reverse().find(row => row.date <= todayStr);
-  const effectiveBalance = lastElapsedRow ? lastElapsedRow.balance : loan.outstanding_balance;
+  const effectiveBalance = payments.length > 0
+    ? paymentDerivedBalance
+    : (lastElapsedRow ? lastElapsedRow.balance : loan.outstanding_balance);
+  const remainingPrincipal = effectiveBalance;
+  const showRemaining = payments.length > 0 && remainingPrincipal !== loanAmountValue;
 
   const hasInterestBreakdown = !!drawInterest && drawInterest.periods.length > 0;
-  const combinedInterest = hasInterestBreakdown ? totalInterestPaid + drawInterest.totalInterest : totalInterestPaid;
+  const combinedInterest = hasInterestBreakdown
+    ? Math.max(0, liveAccruedInterest + drawInterest.totalInterest - interestPaid)
+    : liveAccruedInterest;
   const totalCost = combinedInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
   const summaryStats = [
-    { label: loanAmountLabel, value: fmt(loanAmountValue), icon: DollarSign, color: 'text-primary bg-primary/10', hasBreakdown: hasLoanBreakdown },
+    {
+      label: loanAmountLabel,
+      value: fmt(loanAmountValue),
+      icon: DollarSign,
+      color: 'text-primary bg-primary/10',
+      hasBreakdown: hasLoanBreakdown,
+      subtitle: showRemaining ? `Remaining: ${fmt(remainingPrincipal)}` : undefined,
+    },
     { label: 'Interest Accrued', value: fmt(combinedInterest), icon: TrendingDown, color: 'text-destructive bg-destructive/10', hasInterestBreakdown },
     ...(isTraditional ? [{ label: 'Outstanding Balance', value: fmt(effectiveBalance), icon: TrendingDown, color: 'text-warning bg-warning/10' }] : []),
-    { label: 'Balance', value: fmt(loanAmountValue + combinedInterest), icon: Landmark, color: 'text-blue-400 bg-blue-500/10' },
+    { label: 'Balance', value: fmt(effectiveBalance + combinedInterest), icon: Landmark, color: 'text-blue-400 bg-blue-500/10' },
     { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
     { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
   ];
