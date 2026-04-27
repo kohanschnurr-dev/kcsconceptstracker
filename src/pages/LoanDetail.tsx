@@ -339,7 +339,7 @@ export default function LoanDetail() {
             }
 
             if ((s as any).hasBalanceBreakdown) {
-              const sortedPmts = [...payments].sort((a, b) => a.payment_date.localeCompare(b.payment_date));
+              const sortedPmts = [...effectivePayments].sort((a, b) => a.payment_date.localeCompare(b.payment_date));
               let runningPrincipal = loanAmountValue ?? 0;
               return (
                 <Popover key={s.label}>
