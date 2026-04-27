@@ -189,13 +189,30 @@ export function useLoanDetail(loanId: string) {
       const { error } = await paymentsTable().insert(row);
       if (error) throw error;
 
-      // Update outstanding_balance in the loans table
-      const principalPaid = payment.principal_portion ?? 0;
+      // Update outstanding_balance in the loans table.
+      // Fallback: if the user didn't split the payment, treat the whole amount
+      // (less interest portion & late fee) as principal so the balance always
+      // moves. Clamp at 0 and auto-flip status to paid_off when fully repaid.
+      const lateFee = (payment as any).late_fee ?? 0;
+      const interestPortion = payment.interest_portion ?? 0;
+      const principalPaid =
+        payment.principal_portion != null
+          ? payment.principal_portion
+          : Math.max(0, (payment.amount ?? 0) - interestPortion - lateFee);
+
       if (principalPaid > 0 && payment.loan_id) {
-        const { data: currentLoan } = await loansTable().select('outstanding_balance').eq('id', payment.loan_id).single();
+        const { data: currentLoan } = await loansTable()
+          .select('outstanding_balance, status')
+          .eq('id', payment.loan_id)
+          .single();
         if (currentLoan) {
-          const newBalance = ((currentLoan as any).outstanding_balance ?? 0) - principalPaid;
-          await loansTable().update({ outstanding_balance: newBalance }).eq('id', payment.loan_id);
+          const prev = (currentLoan as any).outstanding_balance ?? 0;
+          const newBalance = Math.max(0, prev - principalPaid);
+          const update: Record<string, any> = { outstanding_balance: newBalance };
+          if (newBalance === 0 && (currentLoan as any).status !== 'paid_off') {
+            update.status = 'paid_off';
+          }
+          await loansTable().update(update).eq('id', payment.loan_id);
         }
       }
     },
