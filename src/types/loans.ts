@@ -27,6 +27,21 @@ export const LOAN_TYPE_LABELS: Record<LoanType, string> = {
   other: 'Other',
 };
 
+// Stable color per loan type — used in both the donut chart and the type badge
+// so the column color matches the chart legend at a glance.
+export const LOAN_TYPE_COLORS: Record<LoanType, { hsl: string; badge: string }> = {
+  private_money:    { hsl: 'hsl(270, 60%, 55%)', badge: 'bg-[hsl(270,60%,55%)]/15 text-[hsl(270,60%,65%)] border-[hsl(270,60%,55%)]/40' },
+  hard_money:       { hsl: 'hsl(142, 76%, 36%)', badge: 'bg-[hsl(142,76%,36%)]/15 text-[hsl(142,70%,45%)] border-[hsl(142,76%,36%)]/40' },
+  dscr:             { hsl: 'hsl(200, 80%, 50%)', badge: 'bg-[hsl(200,80%,50%)]/15 text-[hsl(200,80%,60%)] border-[hsl(200,80%,50%)]/40' },
+  construction:     { hsl: 'hsl(32, 95%, 55%)',  badge: 'bg-[hsl(32,95%,55%)]/15 text-[hsl(32,95%,60%)] border-[hsl(32,95%,55%)]/40' },
+  conventional:     { hsl: 'hsl(0, 72%, 51%)',   badge: 'bg-[hsl(0,72%,51%)]/15 text-[hsl(0,72%,60%)] border-[hsl(0,72%,51%)]/40' },
+  seller_financing: { hsl: 'hsl(45, 93%, 47%)',  badge: 'bg-[hsl(45,93%,47%)]/15 text-[hsl(45,93%,55%)] border-[hsl(45,93%,47%)]/40' },
+  heloc:            { hsl: 'hsl(180, 70%, 45%)', badge: 'bg-[hsl(180,70%,45%)]/15 text-[hsl(180,70%,55%)] border-[hsl(180,70%,45%)]/40' },
+  bridge:           { hsl: 'hsl(320, 70%, 50%)', badge: 'bg-[hsl(320,70%,50%)]/15 text-[hsl(320,70%,60%)] border-[hsl(320,70%,50%)]/40' },
+  portfolio:        { hsl: 'hsl(220, 70%, 55%)', badge: 'bg-[hsl(220,70%,55%)]/15 text-[hsl(220,70%,65%)] border-[hsl(220,70%,55%)]/40' },
+  other:            { hsl: 'hsl(240, 5%, 55%)',  badge: 'bg-muted text-muted-foreground border-border' },
+};
+
 export const LOAN_STATUS_CONFIG: Record<LoanStatus, { label: string; className: string }> = {
   active: { label: 'Active', className: 'bg-success/20 text-success border-success/30' },
   paid_off: { label: 'Paid Off', className: 'bg-muted text-muted-foreground border-border' },
