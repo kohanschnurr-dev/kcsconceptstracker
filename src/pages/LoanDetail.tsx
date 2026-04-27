@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, CheckCircle2, DollarSign, Percent,
-  CreditCard, Calendar, TrendingDown, Landmark, Info, ChevronDown,
+  CreditCard, Calendar, TrendingDown, Landmark, Info, ChevronDown, Trash2,
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,11 @@ import { LoanExtensions } from '@/components/loans/LoanExtensions';
 import { AmortizationTable } from '@/components/loans/AmortizationTable';
 import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
-import { useLoanDetail } from '@/hooks/useLoans';
+import { useLoanDetail, useLoans } from '@/hooks/useLoans';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, effectiveOutstandingBalance } from '@/types/loans';
 
 import type { Loan, LoanDraw } from '@/types/loans';
@@ -42,6 +46,8 @@ export default function LoanDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const { deleteLoan } = useLoans();
   
 
   const { loan, draws, payments, extensions, isLoading, upsertDraw, deleteDraw, addPayment, deletePayment, addExtension, deleteExtension, updateLoan } = useLoanDetail(id!);
@@ -193,6 +199,14 @@ export default function LoanDetail() {
                 <CheckCircle2 className="h-4 w-4 mr-1.5" /> Mark Paid Off
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteOpen(true)}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" /> Delete
+            </Button>
             <Button size="sm" onClick={() => setEditOpen(true)}>
               <Edit2 className="h-4 w-4 mr-1.5" /> Edit
             </Button>
@@ -440,6 +454,33 @@ export default function LoanDetail() {
           await handleEdit(payload);
         }}
       />
+
+      {/* Delete confirmation */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this loan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the loan and its draws, payments, and extensions. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoan.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteLoan.isPending}
+              onClick={async (e) => {
+                e.preventDefault();
+                await deleteLoan.mutateAsync(loan.id);
+                setDeleteOpen(false);
+                navigate('/loans');
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLoan.isPending ? 'Deleting…' : 'Delete loan'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
