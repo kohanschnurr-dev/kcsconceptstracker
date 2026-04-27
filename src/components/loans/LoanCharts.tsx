@@ -189,7 +189,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Debt by Loan Type</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="[&_*:focus]:outline-none [&_svg]:outline-none [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none">
           <ResponsiveContainer width="100%" height={420}>
             <PieChart>
               <Pie
@@ -202,6 +202,10 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 dataKey="value"
                 stroke="hsl(var(--card))"
                 strokeWidth={2}
+                isAnimationActive={false}
+                rootTabIndex={-1}
+                tabIndex={-1}
+                style={{ outline: 'none' }}
               >
                 {pieRows.map((row) => (
                   <Cell key={row.key} fill={row.color} />
