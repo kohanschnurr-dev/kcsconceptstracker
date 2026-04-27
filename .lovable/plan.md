@@ -1,17 +1,29 @@
-## Add sort to "Type" column and remove duplicate Type dropdown
+## Problem
 
-Two small cleanups in **`src/components/loans/LoanTable.tsx`** to mirror the "Loan Name" sort affordance and de-clutter the filter row.
+When the Balance stat card is clicked on the Loan Detail page, the popover (320px wide) opens centered on the card. Because the stat card is narrower than the popover, it spills sideways and visually cuts into the adjacent "Interest Accrued" / "Live th..." card on the left, making everything underneath look chopped off.
 
-### Changes
+## Fix
 
-1. **Add sort indicator to the Type header.** Replace `<TableHead>Type</TableHead>` (line 170) with `<TableHead>Type <SortBtn col="loan_type" /></TableHead>`. The existing `SortBtn` and sort logic already handle string columns via `localeCompare`, so no plumbing changes needed.
+In `src/pages/LoanDetail.tsx`, update the `<PopoverContent>` for the Balance card so it anchors cleanly under the trigger and doesn't crash into neighboring cards.
 
-2. **Remove the Type `<Select>` dropdown** (lines 107-115). The chip-style "Quick type filters" row directly below it (`All Types | Private Money | Hard Money | DSCR…`) already controls the same `typeFilter` state and is more visual / one-tap. Keeping both is redundant clutter.
+Changes:
+- Set `align="end"` so the popover hugs the right edge of the Balance card (the rightmost stat) instead of spilling left over the other cards.
+- Add `collisionPadding={16}` so it auto-flips/shifts before touching the viewport edge.
+- Bump `sideOffset` to `8` for a touch more breathing room from the trigger card.
 
-### Result
+Result: the payment ledger popover sits cleanly beside/below its card with no visual overlap on adjacent stats.
 
-- Filter row shrinks to: Search • Status • Project (when applicable).
-- Type filtering happens entirely through the chip row.
-- Type column header gets the same up/down sort arrow that Loan Name has, so users can sort loans by type alphabetically.
+## Technical detail
 
-No data, type, or routing changes. No other files affected.
+```tsx
+<PopoverContent
+  align="end"
+  sideOffset={8}
+  collisionPadding={16}
+  className="w-80 p-3"
+>
+  ...
+</PopoverContent>
+```
+
+No layout, sizing, or content changes — purely positioning.
