@@ -178,25 +178,86 @@ export function LoanCharts({ loans }: LoanChartsProps) {
           <ResponsiveContainer width="100%" height={420}>
             <PieChart>
               <Pie
-                data={byType}
+                data={pieRows}
                 cx="50%"
                 cy="50%"
                 innerRadius={90}
                 outerRadius={155}
-                paddingAngle={3}
+                paddingAngle={2}
                 dataKey="value"
+                stroke="hsl(var(--card))"
+                strokeWidth={2}
               >
-                {byType.map((entry, i) => (
-                  <Cell key={i} fill={LOAN_TYPE_COLORS[entry.type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl} />
+                {pieRows.map((row) => (
+                  <Cell key={row.key} fill={row.color} />
                 ))}
               </Pie>
               <Tooltip
-                formatter={(v: number) => [fmt(v), 'Balance']}
-                contentStyle={TOOLTIP_STYLE}
-                itemStyle={TOOLTIP_TEXT_STYLE}
-                labelStyle={TOOLTIP_TEXT_STYLE}
+                cursor={{ fill: 'transparent' }}
+                content={({ active: hovered, payload }) => {
+                  if (!hovered || !payload || payload.length === 0) return null;
+                  const row = payload[0].payload as PieRow;
+                  if (!row?.agg) return null;
+                  const { agg } = row;
+                  const total = agg.principal + agg.interest;
+                  return (
+                    <div
+                      style={{
+                        ...TOOLTIP_STYLE,
+                        padding: '10px 12px',
+                        minWidth: 200,
+                        boxShadow: '0 8px 24px hsl(0 0% 0% / 0.35)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          letterSpacing: 0.3,
+                          textTransform: 'uppercase',
+                          color: 'hsl(var(--popover-foreground))',
+                          marginBottom: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            width: 10,
+                            height: 10,
+                            background: agg.color,
+                          }}
+                        />
+                        {agg.label}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 4, columnGap: 16, fontSize: 12, color: 'hsl(var(--popover-foreground))' }}>
+                        <span style={{ opacity: 0.75 }}>Principal</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(agg.principal)}</span>
+                        <span style={{ opacity: 0.75 }}>Interest Accrued</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(agg.interest)}</span>
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 8,
+                          paddingTop: 8,
+                          borderTop: '1px solid hsl(var(--border))',
+                          display: 'grid',
+                          gridTemplateColumns: '1fr auto',
+                          fontSize: 12,
+                          color: 'hsl(var(--popover-foreground))',
+                        }}
+                      >
+                        <span style={{ fontWeight: 700 }}>Total Owed</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{fmt(total)}</span>
+                      </div>
+                    </div>
+                  );
+                }}
               />
               <Legend
+                payload={legendPayload}
                 formatter={(value) => (
                   <span className="text-foreground" style={{ fontSize: 12, fontWeight: 600 }}>{value}</span>
                 )}
