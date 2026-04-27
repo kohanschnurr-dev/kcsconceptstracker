@@ -27,10 +27,28 @@ export function useLoans() {
         .eq('user_id', user!.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []).map((l: any) => ({
+      const loanRows = (data ?? []) as any[];
+
+      // Fetch funded draws aggregated per loan (so balance reflects actual disbursed funds
+      // instead of relying on a manually-entered total_draw_amount).
+      const loanIds = loanRows.map(l => l.id);
+      const fundedMap: Record<string, number> = {};
+      if (loanIds.length > 0) {
+        const { data: drawRows } = await drawsTable()
+          .select('loan_id, draw_amount, status')
+          .in('loan_id', loanIds);
+        ((drawRows ?? []) as any[]).forEach(d => {
+          if (d.status === 'funded') {
+            fundedMap[d.loan_id] = (fundedMap[d.loan_id] ?? 0) + Number(d.draw_amount ?? 0);
+          }
+        });
+      }
+
+      return loanRows.map(l => ({
         ...l,
         project_name: l.projects?.name ?? null,
         projects: undefined,
+        funded_draws_total: fundedMap[l.id] ?? 0,
       })) as Loan[];
     },
   });
