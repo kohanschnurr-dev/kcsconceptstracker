@@ -433,7 +433,11 @@ function periodInterest(balance: number, annualRate: number, paymentDate: Date, 
 }
 
 /** Build full amortization schedule */
-export function buildAmortizationSchedule(loan: Loan, extensionMonths: number = 0): AmortizationRow[] {
+export function buildAmortizationSchedule(
+  loan: Loan,
+  extensionMonths: number = 0,
+  finalDateOverride?: string,
+): AmortizationRow[] {
   const rows: AmortizationRow[] = [];
   const amort = loan.amortization_period_months ?? loan.loan_term_months;
   const term = loan.loan_term_months + extensionMonths;
@@ -444,14 +448,20 @@ export function buildAmortizationSchedule(loan: Loan, extensionMonths: number = 
   let balance = loan.original_amount;
 
   for (let i = 1; i <= term; i++) {
-    const paymentDate = new Date(start);
+    let paymentDate = new Date(start);
     paymentDate.setMonth(start.getMonth() + i - 1);
+
+    // Pin the final/balloon row to the explicit maturity date when provided,
+    // so extensions to a non-month-boundary date (e.g. May 7) display correctly.
+    const isFinal = i === term;
+    if (isFinal && finalDateOverride) {
+      paymentDate = new Date(finalDateOverride + 'T00:00:00');
+    }
 
     const interest = periodInterest(balance, loan.interest_rate, paymentDate, method);
 
     if (loan.payment_frequency === 'interest_only' || method === 'simple') {
-      // Interest-only: no principal until final balloon payment
-      const isBalloon = i === term;
+      const isBalloon = isFinal;
       rows.push({
         payment_number: i,
         date: paymentDate.toISOString().split('T')[0],
@@ -465,7 +475,7 @@ export function buildAmortizationSchedule(loan: Loan, extensionMonths: number = 
     } else {
       const principal = Math.min(monthly - interest, balance);
       balance = Math.max(balance - principal, 0);
-      const isBalloon = i === term && balance > 0.01;
+      const isBalloon = isFinal && balance > 0.01;
       const actualPayment = isBalloon ? monthly + balance : monthly;
       const actualPrincipal = isBalloon ? principal + balance : principal;
       rows.push({

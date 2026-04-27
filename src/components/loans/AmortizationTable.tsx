@@ -14,10 +14,11 @@ const fmtDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('en-
 interface AmortizationTableProps {
   loan: Loan;
   extensionMonths?: number;
+  finalDate?: string;
 }
 
-export function AmortizationTable({ loan, extensionMonths = 0 }: AmortizationTableProps) {
-  const schedule = useMemo(() => buildAmortizationSchedule(loan, extensionMonths), [loan, extensionMonths]);
+export function AmortizationTable({ loan, extensionMonths = 0, finalDate }: AmortizationTableProps) {
+  const schedule = useMemo(() => buildAmortizationSchedule(loan, extensionMonths, finalDate), [loan, extensionMonths, finalDate]);
   const isSimple = loan.interest_calc_method === 'simple' || loan.payment_frequency === 'interest_only';
 
   const enrichedSchedule = useMemo(() => {
