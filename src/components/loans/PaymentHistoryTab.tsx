@@ -1,20 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Info } from 'lucide-react';
+import { Plus, Trash2, Info, Sparkles, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Loan, LoanPayment, LoanDraw } from '@/types/loans';
 import { ACCRUES_INTEREST_TYPES, currentAccruedInterest, effectiveOutstandingBalance } from '@/types/loans';
+import { isAutoPayment } from '@/lib/loanPayments';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
 const fmt = (v: number | null | undefined) =>
   v == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v);
 
 interface PaymentHistoryTabProps {
+  /** Effective payments (manual + auto-derived for amortizing loans) */
   payments: LoanPayment[];
+  /** Just the real, manually-logged payments (used for split suggestions) */
+  manualPayments?: LoanPayment[];
   loanId: string;
   loan?: Loan | null;
   draws?: LoanDraw[];
@@ -33,7 +39,7 @@ const emptyPayment = (loanId: string): Omit<LoanPayment, 'id' | 'created_at'> =>
   notes: null,
 });
 
-export function PaymentHistoryTab({ payments, loanId, loan, draws = [], extensions = [], onAdd, onDelete }: PaymentHistoryTabProps) {
+export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draws = [], extensions = [], onAdd, onDelete }: PaymentHistoryTabProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(() => emptyPayment(loanId));
   // Track which fields the user has manually overridden so we don't fight them.
