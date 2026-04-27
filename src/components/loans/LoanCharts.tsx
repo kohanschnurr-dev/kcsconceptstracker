@@ -6,6 +6,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LOAN_TYPE_LABELS } from '@/types/loans';
 import type { Loan } from '@/types/loans';
+import { loanBalanceWithDraws } from './LoanStatsRow';
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
@@ -43,7 +44,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     const map: Record<string, number> = {};
     active.forEach(l => {
       const key = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
-      map[key] = (map[key] ?? 0) + l.outstanding_balance;
+      map[key] = (map[key] ?? 0) + loanBalanceWithDraws(l);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [active]);
@@ -52,7 +53,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     const map: Record<string, number> = {};
     active.forEach(l => {
       const key = l.project_name ?? 'No Project';
-      map[key] = (map[key] ?? 0) + l.outstanding_balance;
+      map[key] = (map[key] ?? 0) + loanBalanceWithDraws(l);
     });
     return Object.entries(map)
       .map(([name, balance]) => ({ name: name.length > 18 ? name.slice(0, 16) + '…' : name, balance }))

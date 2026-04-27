@@ -77,6 +77,7 @@ export interface Loan {
   extension_terms: string | null;
   has_draws: boolean;
   total_draw_amount: number | null;
+  funded_draws_total?: number;
   draw_structure: DrawStructure | null;
   custom_draw_terms: string | null;
   collateral_type: string | null;
