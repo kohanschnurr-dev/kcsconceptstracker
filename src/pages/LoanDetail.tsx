@@ -296,6 +296,8 @@ export default function LoanDetail() {
             }
 
             if ((s as any).hasBalanceBreakdown) {
+              const sortedPmts = [...payments].sort((a, b) => a.payment_date.localeCompare(b.payment_date));
+              let runningPrincipal = loanAmountValue ?? 0;
               return (
                 <Popover key={s.label}>
                   <PopoverTrigger asChild>
@@ -303,14 +305,61 @@ export default function LoanDetail() {
                       {cardContent}
                     </Card>
                   </PopoverTrigger>
-                  <PopoverContent className="w-64 p-3">
+                  <PopoverContent className="w-80 p-3">
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{loanAmountLabel}</span>
+                        <span className="font-medium">{fmt(loanAmountValue ?? 0)}</span>
+                      </div>
+
+                      {sortedPmts.length > 0 && (
+                        <div className="border-t border-border pt-2 space-y-2 max-h-48 overflow-y-auto">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Payments Applied</div>
+                          {sortedPmts.map((p) => {
+                            const interest = p.interest_portion ?? 0;
+                            const lateFee = p.late_fee ?? 0;
+                            const principal = p.principal_portion != null
+                              ? p.principal_portion
+                              : Math.max(0, (p.amount ?? 0) - interest - lateFee);
+                            runningPrincipal = Math.max(0, runningPrincipal - principal);
+                            return (
+                              <div key={p.id} className="text-xs space-y-0.5">
+                                <div className="flex justify-between text-muted-foreground">
+                                  <span>{formatDisplayDate(p.payment_date)}</span>
+                                  <span>{fmt(p.amount ?? 0)}</span>
+                                </div>
+                                <div className="flex justify-between pl-2 text-[11px]">
+                                  <span className="text-muted-foreground">- Principal</span>
+                                  <span className="text-success">-{fmt(principal).replace('-', '')}</span>
+                                </div>
+                                {interest > 0 && (
+                                  <div className="flex justify-between pl-2 text-[11px]">
+                                    <span className="text-muted-foreground">- Interest</span>
+                                    <span className="text-success">-{fmt(interest).replace('-', '')}</span>
+                                  </div>
+                                )}
+                                {lateFee > 0 && (
+                                  <div className="flex justify-between pl-2 text-[11px]">
+                                    <span className="text-muted-foreground">- Late fee</span>
+                                    <span className="text-warning">-{fmt(lateFee).replace('-', '')}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between pl-2 text-[11px] italic">
+                                  <span className="text-muted-foreground">Principal after</span>
+                                  <span>{fmt(runningPrincipal)}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <div className="border-t border-border pt-2 flex justify-between text-sm">
                         <span className="text-muted-foreground">Remaining Principal</span>
                         <span className="font-medium">{fmt(effectiveBalance)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Interest Accrued</span>
+                        <span className="text-muted-foreground">+ Interest Accrued</span>
                         <span className="font-medium">{fmt(combinedInterest)}</span>
                       </div>
                       <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold">
