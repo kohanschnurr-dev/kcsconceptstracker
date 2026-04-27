@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { effectiveOutstandingBalance } from '@/types/loans';
+import { getEffectivePayments } from '@/lib/loanPayments';
 import type { Loan, LoanPayment } from '@/types/loans';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -57,7 +58,7 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
     return m;
   }, [payments]);
 
-  const balanceFor = (l: Loan) => effectiveOutstandingBalance(l, paymentsByLoan[l.id] ?? []);
+  const balanceFor = (l: Loan) => effectiveOutstandingBalance(l, getEffectivePayments(l, paymentsByLoan[l.id] ?? []));
 
   const totalBalance = useMemo(
     () => active.reduce((s, l) => s + balanceFor(l), 0),

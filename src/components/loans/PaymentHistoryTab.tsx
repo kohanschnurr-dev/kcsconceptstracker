@@ -1,20 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Info } from 'lucide-react';
+import { Plus, Trash2, Info, Sparkles, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Loan, LoanPayment, LoanDraw } from '@/types/loans';
 import { ACCRUES_INTEREST_TYPES, currentAccruedInterest, effectiveOutstandingBalance } from '@/types/loans';
+import { isAutoPayment } from '@/lib/loanPayments';
 import { formatDisplayDate } from '@/lib/dateUtils';
 
 const fmt = (v: number | null | undefined) =>
   v == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v);
 
 interface PaymentHistoryTabProps {
+  /** Effective payments (manual + auto-derived for amortizing loans) */
   payments: LoanPayment[];
+  /** Just the real, manually-logged payments (used for split suggestions) */
+  manualPayments?: LoanPayment[];
   loanId: string;
   loan?: Loan | null;
   draws?: LoanDraw[];
@@ -33,7 +39,7 @@ const emptyPayment = (loanId: string): Omit<LoanPayment, 'id' | 'created_at'> =>
   notes: null,
 });
 
-export function PaymentHistoryTab({ payments, loanId, loan, draws = [], extensions = [], onAdd, onDelete }: PaymentHistoryTabProps) {
+export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draws = [], extensions = [], onAdd, onDelete }: PaymentHistoryTabProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(() => emptyPayment(loanId));
   // Track which fields the user has manually overridden so we don't fight them.
@@ -102,15 +108,48 @@ export function PaymentHistoryTab({ payments, loanId, loan, draws = [], extensio
 
   const set = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
+  const handleOverride = (p: LoanPayment) => {
+    setForm({
+      loan_id: loanId,
+      payment_date: p.payment_date,
+      amount: p.amount ?? 0,
+      principal_portion: p.principal_portion ?? null,
+      interest_portion: p.interest_portion ?? null,
+      late_fee: p.late_fee ?? null,
+      notes: p.notes ?? null,
+    });
+    // Pre-filled values are intentional — mark as touched so the dialog
+    // doesn't recompute the split on open.
+    setTouched({ principal: true, interest: true });
+    setOpen(true);
+  };
+
+  const hasAutoRows = payments.some(isAutoPayment);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-4 text-sm flex-wrap">
+        <div className="flex gap-4 text-sm flex-wrap items-center">
           <span className="text-muted-foreground">Total Paid: <span className="font-semibold text-foreground">{fmt(totalPaid)}</span></span>
           <span className="text-muted-foreground">Principal: <span className="font-semibold text-foreground">{fmt(totalPrincipal)}</span></span>
           <span className="text-muted-foreground">Interest: <span className="font-semibold text-foreground">{fmt(totalInterest)}</span></span>
           {loan && payments.length > 0 && (
             <span className="text-muted-foreground">Remaining: <span className="font-semibold text-warning">{fmt(remainingPrincipal)}</span></span>
+          )}
+          {hasAutoRows && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-[10px] gap-1 cursor-help">
+                  <Sparkles className="h-3 w-3" /> Auto-tracking
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="text-xs">
+                  Monthly payments are auto-derived from the amortization schedule.
+                  Use Override to record an actual payment that differs (extra principal, late fee, etc.).
+                </p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
         <Button size="sm" onClick={() => setOpen(true)}>
@@ -120,7 +159,8 @@ export function PaymentHistoryTab({ payments, loanId, loan, draws = [], extensio
 
       {payments.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p className="text-sm">No payments logged yet.</p>
+          <p className="text-sm">No payments yet.</p>
+          <p className="text-xs mt-1">Auto-tracking will begin on the first scheduled payment date.</p>
         </div>
       ) : (
         <div className="rounded-lg border border-border overflow-x-auto">
@@ -141,18 +181,38 @@ export function PaymentHistoryTab({ payments, loanId, loan, draws = [], extensio
                 const principalDisplay = p.principal_portion != null
                   ? p.principal_portion
                   : Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
+                const isAuto = isAutoPayment(p);
                 return (
-                  <TableRow key={p.id}>
-                    <TableCell className="text-sm">{formatDisplayDate(p.payment_date)}</TableCell>
+                  <TableRow key={p.id} className={isAuto ? 'opacity-80' : undefined}>
+                    <TableCell className="text-sm">
+                      <div className="flex items-center gap-2">
+                        <span>{formatDisplayDate(p.payment_date)}</span>
+                        {isAuto && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 gap-1 font-normal">
+                            <Sparkles className="h-2.5 w-2.5" /> Auto
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right font-medium">{fmt(p.amount)}</TableCell>
                     <TableCell className="text-right text-sm">{fmt(principalDisplay)}</TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">{fmt(p.interest_portion)}</TableCell>
                     <TableCell className="text-right text-sm text-destructive">{fmt(p.late_fee)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-32 truncate">{p.notes ?? '—'}</TableCell>
                     <TableCell>
-                      <button onClick={() => onDelete(p.id)} className="text-muted-foreground hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {isAuto ? (
+                        <button
+                          onClick={() => handleOverride(p)}
+                          className="text-muted-foreground hover:text-primary"
+                          title="Override this auto-payment with actual values"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <button onClick={() => onDelete(p.id)} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

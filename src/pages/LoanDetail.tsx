@@ -25,6 +25,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { LOAN_TYPE_LABELS, calcMonthlyPayment, buildDrawInterestSchedule, buildAmortizationSchedule, calcDrawFee, ACCRUES_INTEREST_TYPES, currentAccruedInterest, buildInterestAttributionBreakdown } from '@/types/loans';
+import { getEffectivePayments, isAutoPayment } from '@/lib/loanPayments';
 
 import type { Loan, LoanDraw } from '@/types/loans';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -123,8 +124,13 @@ export default function LoanDetail() {
   const loanAmountLabel = isTraditional ? 'Original Amount' : 'Loan Amount';
   const hasLoanBreakdown = !isTraditional && loan.has_draws && draws.length > 0;
 
+  // Effective payments: amortizing loans (DSCR/Conventional) auto-derive a
+  // virtual payment row for every elapsed scheduled month. Manual entries
+  // override the auto row for that month.
+  const effectivePayments = getEffectivePayments(loan, payments, extensionMonths);
+
   // Remaining principal = total disbursed (original + funded draws) minus principal paid.
-  const principalPaidForBalance = payments.reduce((s, p) => {
+  const principalPaidForBalance = effectivePayments.reduce((s, p) => {
     if (p.principal_portion != null) return s + p.principal_portion;
     return s + Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
   }, 0);
@@ -137,11 +143,13 @@ export default function LoanDetail() {
   const combinedInterest = liveAccruedInterest;
   const totalCost = combinedInterest + (loan.origination_fee_dollars ?? 0) + (loan.other_closing_costs ?? 0) + totalExtensionFees + totalDrawFees;
 
-  const principalPaid = payments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);
-  const hasBalanceBreakdown = payments.length > 0;
+  const principalPaid = effectivePayments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);
+  const hasBalanceBreakdown = effectivePayments.length > 0;
 
-  // Next Payment Due (amortizing loans): first_payment_date + N months where N = payments logged.
-  // If that date is in the past, advance month-by-month until >= today.
+  // Next Payment Due (amortizing loans): the first scheduled date strictly
+  // after today. Because effectivePayments already includes every elapsed
+  // month, this is just first_payment_date + effectivePayments.length months,
+  // then advanced forward if it's still in the past.
   const computeNextPaymentDue = (): { date: Date; daysUntil: number } | null => {
     if (!isTraditional) return null;
     const baseStr = loan.first_payment_date ?? loan.start_date;
@@ -150,7 +158,7 @@ export default function LoanDetail() {
     if (isNaN(base.getTime())) return null;
     const next = new Date(base);
     if (!loan.first_payment_date) next.setMonth(next.getMonth() + 1);
-    next.setMonth(next.getMonth() + payments.length);
+    next.setMonth(next.getMonth() + effectivePayments.length);
     const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
     while (next.getTime() < todayMid.getTime()) {
       next.setMonth(next.getMonth() + 1);
@@ -182,7 +190,6 @@ export default function LoanDetail() {
           icon: TrendingDown,
           color: 'text-warning bg-warning/10',
           hasBalanceBreakdown,
-          emptyHint: payments.length === 0 ? 'No payments logged yet' : undefined,
         },
         { label: 'Monthly Payment', value: fmt(monthly), icon: CreditCard, color: 'text-success bg-success/10' },
         { label: 'Remaining Term', value: remainingTermLabel, icon: Calendar, color: 'text-primary bg-primary/10' },
@@ -332,7 +339,7 @@ export default function LoanDetail() {
             }
 
             if ((s as any).hasBalanceBreakdown) {
-              const sortedPmts = [...payments].sort((a, b) => a.payment_date.localeCompare(b.payment_date));
+              const sortedPmts = [...effectivePayments].sort((a, b) => a.payment_date.localeCompare(b.payment_date));
               let runningPrincipal = loanAmountValue ?? 0;
               return (
                 <Popover key={s.label}>
@@ -562,7 +569,8 @@ export default function LoanDetail() {
           <TabsContent value="payments">
             <div className="mt-4">
               <PaymentHistoryTab
-                payments={payments}
+                payments={effectivePayments}
+                manualPayments={payments}
                 loanId={loan.id}
                 loan={loan}
                 draws={draws}

@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, currentAccruedInterest, effectiveOutstandingBalance } from '@/types/loans';
+import { getEffectivePayments } from '@/lib/loanPayments';
 import type { LoanType, LoanPayment, LoanDraw } from '@/types/loans';
 import type { Loan } from '@/types/loans';
 
@@ -107,10 +108,10 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     const aggByType: Record<string, TypeAgg> = {};
     active.forEach(l => {
       const label = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
-      const lp = paymentsByLoan[l.id] ?? [];
+      const lp = getEffectivePayments(l, paymentsByLoan[l.id] ?? []);
       const ld = drawsByLoan[l.id] ?? [];
       const principal = effectiveOutstandingBalance(l, lp);
-      const interest = currentAccruedInterest(l, lp, ld);
+      const interest = currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], ld);
       const color = LOAN_TYPE_COLORS[l.loan_type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
       const agg = aggByType[label] ??= { type: l.loan_type, label, principal: 0, interest: 0, color };
       agg.principal += principal;
@@ -147,7 +148,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     active.forEach(l => {
       const key = l.project_name ?? 'No Project';
       if (!map[key]) map[key] = { __total: 0 } as any;
-      const lp = paymentsByLoan[l.id] ?? [];
+      const lp = getEffectivePayments(l, paymentsByLoan[l.id] ?? []);
       // Payment-aware principal so the bar shrinks after a payment.
       const bal = effectiveOutstandingBalance(l, lp);
       map[key][l.loan_type] = (map[key][l.loan_type] ?? 0) + bal;
@@ -155,7 +156,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       typesSet.add(l.loan_type);
 
       // Per-type accrued interest stacked directly on top of its own principal.
-      const accrued = currentAccruedInterest(l, lp, drawsByLoan[l.id] ?? []);
+      const accrued = currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], drawsByLoan[l.id] ?? []);
       if (accrued > 0) {
         const ik = interestKey(l.loan_type);
         map[key][ik] = (map[key][ik] ?? 0) + accrued;
