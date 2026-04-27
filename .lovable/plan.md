@@ -1,16 +1,22 @@
-## Add Delete Loan Button
+## Fix: Balloon payment date should match the extended maturity date
 
-Add a confirm-then-delete action on the **Loan Detail** page so users can remove a loan they created by mistake.
+### Problem
+On a loan extended to **May 7**, the amortization table still shows the final balloon row dated **Apr 8** (the original month-day). `buildAmortizationSchedule` walks `start_date + N months`, so any extension that doesn't land on the original day-of-month is rendered incorrectly.
 
-### Placement
-Right side of the header, immediately to the **left of the Edit button** (matches the screenshot's action area). Use a `ghost` variant button with a `Trash2` icon and red text so it doesn't compete with the gold Edit CTA, but is still discoverable.
-
-### Behavior
-- Clicking opens an `AlertDialog` (shadcn) confirming: "Delete this loan? This permanently removes the loan and its draws, payments, and extensions. This cannot be undone."
-- On confirm: call `deleteLoan.mutateAsync(loan.id)` (already exists in `useLoans`), then `navigate('/loans')`.
-- Button is disabled while the mutation is pending.
+### Fix
+Pin the **final/balloon row** to the actual effective maturity date (extension `extended_to`, falling back to `loan.maturity_date`).
 
 ### Files Changed
-- **`src/pages/LoanDetail.tsx`** — import `useLoans`, `Trash2`, and `AlertDialog*`; add the Delete button + confirm dialog next to Edit; wire to `deleteLoan` and redirect on success.
 
-No DB or schema changes — `deleteLoan` mutation and RLS DELETE policy already exist.
+**`src/types/loans.ts`** — extend `buildAmortizationSchedule` signature:
+```ts
+buildAmortizationSchedule(loan, extensionMonths = 0, finalDateOverride?: string)
+```
+When `finalDateOverride` is provided AND the row is the last one (`i === term`), use that ISO date for the row's `date` (parsed as `new Date(dateStr + 'T00:00:00')` to avoid UTC off-by-one). All non-final rows continue to use the existing month-walk logic.
+
+**`src/components/loans/AmortizationTable.tsx`** — accept and forward an optional `finalDate?: string` prop into `buildAmortizationSchedule`.
+
+**`src/pages/LoanDetail.tsx`** — pass `finalDate={effectiveMaturity}` (already computed at line 75–77 as the latest `extended_to` or `loan.maturity_date`) into `<AmortizationTable />`. Both AmortizationTable invocations on the page get this.
+
+### Result
+The final row dated Apr 8 → **May 7**, matching the extension and the "Maturity Date" displayed in Loan Terms.
