@@ -1,25 +1,38 @@
-## Simplify Balance breakdown to match Loan Amount popover
+## Fix Balance for draw loans (include funded draws as principal)
 
 ### Problem
-The current Balance popover mixes a subtraction row (`Principal Paid −$X`) with an intermediate subtotal (`Remaining Principal`) and then adds interest. It reads as two formulas glued together and feels like the math doesn't add up at a glance, even though the final number is correct.
+On the loan in the screenshot:
+- Original amount: **$50,000**
+- Funded draws: **$60,000** ($40k Cosmetics + $20k Monthly Costs)
+- Loan Amount card (correctly): **$110,000** (original + funded draws)
+- Balance card: **$55,445** ← wrong
 
-The Loan Amount popover (reference) is purely additive: each row is a positive component, and they sum to the Total that matches the card value.
+The Balance ignores funded draws entirely. It uses `loan.outstanding_balance` from the database, which only stores the original $50k. So Balance = $50,000 + $5,445 interest = $55,445, when it should be **$110,000 + $5,445 = $115,445** (no payments made yet, so full disbursed principal is still owed).
+
+### Root cause
+`src/pages/LoanDetail.tsx` (~line 135):
+```ts
+const effectiveBalance = payments.length > 0
+  ? paymentDerivedBalance              // uses original_amount, ignores draws
+  : (lastElapsedRow ? lastElapsedRow.balance : loan.outstanding_balance);
+```
+
+Two issues for draw loans:
+1. `effectiveOutstandingBalance(loan, payments)` in `src/types/loans.ts` computes from `loan.original_amount − principalPaid` and never adds funded draws.
+2. The fallback `loan.outstanding_balance` is the stored value which also excludes draws.
 
 ### Fix
-Restructure the Balance popover to be a clean two-row sum that mirrors the Loan Amount style:
+**`src/pages/LoanDetail.tsx`** (~line 132-137)
+Anchor the remaining-principal calculation to `loanAmountValue` (the same number shown on the Loan Amount card, which already correctly includes funded draws for non-traditional draw loans):
 
+```ts
+const principalPaid = payments.reduce((s, p) => s + (p.principal_portion ?? 0), 0);
+const effectiveBalance = Math.max(0, loanAmountValue - principalPaid);
 ```
-Remaining Principal       $308,557
-Interest Accrued          $20,768
-─────────────────────────────────
-Balance                   $329,325
-```
 
-- Drop the `Loan Amount` and `Principal Paid −$X` rows.
-- Keep only the two true components of the current Balance: remaining principal + accrued interest.
-- Use the same visual treatment as the Loan Amount popover (muted labels, semibold total row with top border).
+This single source of truth ensures the Balance always equals what the user sees on the Loan Amount card minus what they've paid down. Drop the now-unused schedule fallback for this stat (the amortization tab already shows scheduled paydown separately).
 
-### File
-**`src/pages/LoanDetail.tsx`** — replace the Balance `PopoverContent` body (the block currently rendering Loan Amount / Principal Paid / Remaining Principal / Interest Accrued / Balance) with the simplified two-row sum.
-
-No logic or value changes — just clearer presentation.
+### Result
+- Screenshot loan with no payments: Balance = $110,000 + $5,445 = **$115,445** ✓
+- Loans with payments: Balance correctly subtracts principal portions from the full disbursed amount.
+- Traditional (non-draw) loans: behavior unchanged because `loanAmountValue === loan.original_amount`.
