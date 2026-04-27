@@ -4,7 +4,8 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LOAN_TYPE_LABELS } from '@/types/loans';
+import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS } from '@/types/loans';
+import type { LoanType } from '@/types/loans';
 import type { Loan } from '@/types/loans';
 import { loanBalanceWithDraws } from './LoanStatsRow';
 
