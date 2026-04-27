@@ -285,7 +285,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       <Card className="glass-card lg:col-span-3">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-base">Capital Stack by Project</CardTitle>
-          <span className="text-xs text-muted-foreground">Debt + accrued interest, stacked by loan type</span>
+          <span className="text-xs text-muted-foreground">Lighter shade = accrued interest</span>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={520}>
@@ -309,13 +309,21 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                 width={52}
               />
               <Tooltip
-                formatter={(v: number, name: string) => [fmt(v), LOAN_TYPE_LABELS[name as LoanType] ?? name]}
+                formatter={(v: number, name: string) => {
+                  // Interest series are named "<type>__interest"; principal series are just the type key.
+                  if (typeof name === 'string' && name.endsWith('__interest')) {
+                    const t = name.replace('__interest', '') as LoanType;
+                    return [fmt(v), `${LOAN_TYPE_LABELS[t] ?? t} — Interest`];
+                  }
+                  return [fmt(v), LOAN_TYPE_LABELS[name as LoanType] ?? name];
+                }}
                 contentStyle={TOOLTIP_STYLE}
                 itemStyle={TOOLTIP_TEXT_STYLE}
                 labelStyle={TOOLTIP_TEXT_STYLE}
                 cursor={{ fill: 'hsl(var(--muted))' }}
               />
               <Legend
+                payload={stackLegendPayload}
                 wrapperStyle={{ paddingTop: 8 }}
                 formatter={(value) => (
                   <span className="text-foreground" style={{ fontSize: 11, fontWeight: 600 }}>
@@ -323,23 +331,28 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                   </span>
                 )}
               />
-              {presentTypes.map((t) => (
-                <Bar
-                  key={t}
-                  dataKey={t}
-                  stackId="capital"
-                  fill={LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl}
-                  radius={0}
-                  name={t}
-                />
-              ))}
-              <Bar
-                dataKey="__interest"
-                stackId="capital"
-                fill={INTEREST_COLOR}
-                radius={[4, 4, 0, 0]}
-                name="Interest Accrued"
-              />
+              {presentTypes.flatMap((t, idx) => {
+                const base = LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
+                const isLast = idx === presentTypes.length - 1;
+                return [
+                  <Bar
+                    key={`${t}-principal`}
+                    dataKey={t}
+                    stackId="capital"
+                    fill={base}
+                    radius={0}
+                    name={t}
+                  />,
+                  <Bar
+                    key={`${t}-interest`}
+                    dataKey={`${t}__interest`}
+                    stackId="capital"
+                    fill={lightenHsl(base, 22)}
+                    radius={isLast ? [4, 4, 0, 0] : 0}
+                    name={`${t}__interest`}
+                  />,
+                ];
+              })}
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
