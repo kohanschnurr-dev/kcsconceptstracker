@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
-import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, currentAccruedInterest, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule } from '@/types/loans';
+import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, currentAccruedInterest, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule, effectiveOutstandingBalance } from '@/types/loans';
 import { cn } from '@/lib/utils';
 import type { Loan, LoanStatus, LoanType, LoanPayment, LoanDraw } from '@/types/loans';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDisplayDate } from '@/lib/dateUtils';
-import { loanBalanceWithDraws } from './LoanStatsRow';
+import { supabase } from '@/integrations/supabase/client';
 import { supabase } from '@/integrations/supabase/client';
 
 const fmt = (v: number | null | undefined) =>
