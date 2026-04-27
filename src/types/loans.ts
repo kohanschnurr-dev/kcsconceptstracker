@@ -148,6 +148,94 @@ export interface AmortizationRow {
   accrued_interest?: number;
 }
 
+/**
+ * Loan types whose interest accrues against the outstanding balance until paid
+ * (short-term / interest-only). Amortizing loans (DSCR, conventional, HELOC,
+ * portfolio, seller financing) pay interest on a fixed monthly schedule, so
+ * "unpaid accrued interest" doesn't apply the same way.
+ */
+export const ACCRUES_INTEREST_TYPES: LoanType[] = [
+  'hard_money',
+  'private_money',
+  'bridge',
+  'construction',
+];
+
+/**
+ * Compute simple interest accrued from start_date through today, stepping the
+ * balance down by each payment's principal_portion (or, when missing, by the
+ * full payment amount minus late fees). Subtracts interest already paid so the
+ * returned figure represents what's *owed* right now.
+ *
+ * Use for short-term/interest-only loans. For amortizing loans the caller can
+ * still call this to get an "unpaid interest" value but it'll typically be ~0.
+ */
+export function accruedInterestThroughToday(
+  loan: Pick<Loan, 'start_date' | 'interest_rate' | 'original_amount' | 'outstanding_balance'>,
+  payments: Pick<LoanPayment, 'payment_date' | 'amount' | 'principal_portion' | 'interest_portion' | 'late_fee'>[],
+  asOf: Date = new Date(),
+): number {
+  if (!loan.start_date) return 0;
+  const rate = (loan.interest_rate ?? 0) / 100;
+  if (rate <= 0) return 0;
+
+  const startMs = new Date(loan.start_date + 'T00:00:00').getTime();
+  const todayMs = new Date(asOf.toISOString().split('T')[0] + 'T00:00:00').getTime();
+  if (todayMs <= startMs) return 0;
+
+  // Sort payments chronologically; ignore any future-dated ones.
+  const sorted = [...payments]
+    .filter(p => p.payment_date && new Date(p.payment_date).getTime() <= todayMs)
+    .sort((a, b) => a.payment_date.localeCompare(b.payment_date));
+
+  let balance = loan.original_amount ?? 0;
+  let cursor = startMs;
+  let interest = 0;
+  let interestPaid = 0;
+
+  const MS_DAY = 1000 * 60 * 60 * 24;
+
+  for (const p of sorted) {
+    const pMs = new Date(p.payment_date + 'T00:00:00').getTime();
+    const days = Math.max(0, (pMs - cursor) / MS_DAY);
+    interest += balance * rate * (days / 365);
+
+    const lateFee = p.late_fee ?? 0;
+    // Prefer the explicit principal split; otherwise treat the whole payment
+    // (less late fees & explicit interest portion) as principal so balance
+    // always moves.
+    const principalPortion =
+      p.principal_portion != null
+        ? p.principal_portion
+        : Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - lateFee);
+    interestPaid += p.interest_portion ?? 0;
+    balance = Math.max(0, balance - principalPortion);
+    cursor = pMs;
+  }
+
+  // Tail segment: last payment (or start) → today
+  const tailDays = Math.max(0, (todayMs - cursor) / MS_DAY);
+  interest += balance * rate * (tailDays / 365);
+
+  return Math.max(0, interest - interestPaid);
+}
+
+/**
+ * Effective outstanding balance derived from payments. Falls back to the
+ * stored outstanding_balance when no payments exist.
+ */
+export function effectiveOutstandingBalance(
+  loan: Pick<Loan, 'original_amount' | 'outstanding_balance'>,
+  payments: Pick<LoanPayment, 'amount' | 'principal_portion' | 'interest_portion' | 'late_fee'>[],
+): number {
+  if (!payments.length) return loan.outstanding_balance ?? loan.original_amount ?? 0;
+  const principalPaid = payments.reduce((s, p) => {
+    if (p.principal_portion != null) return s + p.principal_portion;
+    return s + Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
+  }, 0);
+  return Math.max(0, (loan.original_amount ?? 0) - principalPaid);
+}
+
 /* ── Draw-based interest accrual ─────────────────────────── */
 
 export interface DrawInterestPeriod {

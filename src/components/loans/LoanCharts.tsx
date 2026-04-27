@@ -1,13 +1,15 @@
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS } from '@/types/loans';
-import type { LoanType } from '@/types/loans';
+import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, ACCRUES_INTEREST_TYPES, accruedInterestThroughToday, effectiveOutstandingBalance } from '@/types/loans';
+import type { LoanType, LoanPayment } from '@/types/loans';
 import type { Loan } from '@/types/loans';
 import { loanBalanceWithDraws } from './LoanStatsRow';
+import { supabase } from '@/integrations/supabase/client';
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
@@ -41,15 +43,46 @@ interface LoanChartsProps {
 export function LoanCharts({ loans }: LoanChartsProps) {
   const active = useMemo(() => loans.filter(l => l.status === 'active'), [loans]);
 
+  // Fetch payments for active loans so the capital stack reflects paydowns
+  // immediately (both shrinking the principal segment and recalculating
+  // accrued interest on the *remaining* balance).
+  const activeIds = useMemo(() => active.map(l => l.id).sort(), [active]);
+  const { data: payments = [] } = useQuery<LoanPayment[]>({
+    queryKey: ['loan_payments_for_charts', activeIds],
+    enabled: activeIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from('loan_payments' as any) as any)
+        .select('loan_id, payment_date, amount, principal_portion, interest_portion, late_fee')
+        .in('loan_id', activeIds);
+      if (error) throw error;
+      return (data ?? []) as LoanPayment[];
+    },
+  });
+
+  const paymentsByLoan = useMemo(() => {
+    const m: Record<string, LoanPayment[]> = {};
+    for (const p of payments) {
+      const key = (p as any).loan_id;
+      if (!key) continue;
+      (m[key] = m[key] ?? []).push(p);
+    }
+    return m;
+  }, [payments]);
+
   const byType = useMemo(() => {
     const map: Record<string, { value: number; type: LoanType }> = {};
     active.forEach(l => {
       const key = LOAN_TYPE_LABELS[l.loan_type] ?? l.loan_type;
       if (!map[key]) map[key] = { value: 0, type: l.loan_type };
-      map[key].value += loanBalanceWithDraws(l);
+      // Use payment-aware balance so the donut shrinks after paydowns.
+      const lp = paymentsByLoan[l.id] ?? [];
+      const principal = lp.length
+        ? effectiveOutstandingBalance(l, lp)
+        : loanBalanceWithDraws(l);
+      map[key].value += principal;
     });
     return Object.entries(map).map(([name, { value, type }]) => ({ name, value, type }));
-  }, [active]);
+  }, [active, paymentsByLoan]);
 
   // Distinct color reserved for accrued interest — not used by any LoanType.
   const INTEREST_COLOR = 'hsl(48, 100%, 70%)';
@@ -58,24 +91,20 @@ export function LoanCharts({ loans }: LoanChartsProps) {
   const { byProject, presentTypes } = useMemo(() => {
     const map: Record<string, Record<string, number> & { __total: number; __interest: number }> = {};
     const typesSet = new Set<LoanType>();
-    const today = Date.now();
     active.forEach(l => {
       const key = l.project_name ?? 'No Project';
       if (!map[key]) map[key] = { __total: 0, __interest: 0 } as any;
-      const bal = loanBalanceWithDraws(l);
+      const lp = paymentsByLoan[l.id] ?? [];
+      // Payment-aware principal so the bar shrinks after a payment.
+      const bal = lp.length ? effectiveOutstandingBalance(l, lp) : loanBalanceWithDraws(l);
       map[key][l.loan_type] = (map[key][l.loan_type] ?? 0) + bal;
       map[key].__total += bal;
       typesSet.add(l.loan_type);
 
-      // Simple-interest accrual from start_date → today on current balance.
       // Only short-term / interest-only loan types accrue unpaid interest;
-      // amortizing loans (DSCR, conventional, HELOC, portfolio, seller financing)
-      // pay interest monthly so there's nothing to "accrue" on the stack.
-      const ACCRUES_INTEREST: LoanType[] = ['hard_money', 'private_money', 'bridge', 'construction'];
-      if (l.start_date && ACCRUES_INTEREST.includes(l.loan_type)) {
-        const start = new Date(l.start_date).getTime();
-        const days = Math.max(0, (today - start) / (1000 * 60 * 60 * 24));
-        const accrued = bal * (l.interest_rate / 100) * (days / 365);
+      // amortizing loans pay interest monthly so there's nothing to "accrue".
+      if (ACCRUES_INTEREST_TYPES.includes(l.loan_type)) {
+        const accrued = accruedInterestThroughToday(l, lp);
         if (accrued > 0) map[key].__interest += accrued;
       }
     });
@@ -84,7 +113,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       .sort((a, b) => (b as any).__total - (a as any).__total)
       .slice(0, 8);
     return { byProject: rows, presentTypes: Array.from(typesSet) };
-  }, [active]);
+  }, [active, paymentsByLoan]);
 
   if (active.length === 0) return null;
 
