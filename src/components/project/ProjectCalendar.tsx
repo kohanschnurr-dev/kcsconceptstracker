@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, startOfDay, isWithinInterval, differenceInDays, addDays } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, BarChart3, LayoutGrid } from 'lucide-react';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { NewEventModal } from '@/components/calendar/NewEventModal';
 import { DealCard } from '@/components/calendar/DealCard';
 import { TaskDetailPanel } from '@/components/calendar/TaskDetailPanel';
 import { CalendarLegend } from '@/components/calendar/CalendarLegend';
+import { GanttView } from '@/components/calendar/GanttView';
 import type { CalendarTask } from '@/pages/Calendar';
 import { getCategoryGroup } from '@/lib/calendarCategories';
 
@@ -83,6 +84,7 @@ function DroppableDay({
 export function ProjectCalendar({ projectId, projectName, projectAddress }: ProjectCalendarProps) {
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<'calendar' | 'gantt'>('calendar');
   const [tasks, setTasks] = useState<CalendarTask[]>([]);
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -185,6 +187,29 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
     if (task) setActiveTask(task);
   };
 
+  const persistTaskMove = async (taskId: string, newStart: Date, newEnd: Date) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const { error } = await supabase
+      .from('calendar_events')
+      .update({
+        start_date: newStart.toISOString().split('T')[0],
+        end_date: newEnd.toISOString().split('T')[0],
+      })
+      .eq('id', taskId);
+
+    if (error) {
+      console.error('Error moving event:', error);
+      toast({ title: 'Error', description: 'Failed to move event', variant: 'destructive' });
+      return;
+    }
+
+    setTasks(prev =>
+      prev.map(t => t.id === taskId ? { ...t, startDate: newStart, endDate: newEnd } : t)
+    );
+    toast({ title: 'Event Updated', description: `Moved "${task.title}" to new dates.` });
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveTask(null);
     const { active, over } = event;
@@ -199,28 +224,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
 
     const duration = differenceInDays(task.endDate, task.startDate);
     const newEndDate = addDays(targetDate, duration);
-
-    const { error } = await supabase
-      .from('calendar_events')
-      .update({
-        start_date: targetDate.toISOString().split('T')[0],
-        end_date: newEndDate.toISOString().split('T')[0],
-      })
-      .eq('id', task.id);
-
-    if (error) {
-      console.error('Error moving event:', error);
-      toast({ title: 'Error', description: 'Failed to move event', variant: 'destructive' });
-      return;
-    }
-
-    setTasks(prev =>
-      prev.map(t =>
-        t.id === task.id ? { ...t, startDate: targetDate, endDate: newEndDate } : t
-      )
-    );
-
-    toast({ title: 'Event Updated', description: `Moved "${task.title}" to new dates.` });
+    await persistTaskMove(task.id, targetDate, newEndDate);
   };
 
   const goToPrevMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
@@ -246,10 +250,40 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
     <Card className="bg-background border-border">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          {/* Left: title + info */}
-          <div className="flex items-center gap-2 text-foreground font-semibold text-base sm:text-lg shrink-0">
-            <CalendarIcon className="h-5 w-5 text-primary shrink-0" />
-            <span className="hidden sm:inline">Project Schedule</span>
+          {/* Left: title + view toggle */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2 text-foreground font-semibold text-base sm:text-lg">
+              <CalendarIcon className="h-5 w-5 text-primary shrink-0" />
+              <span className="hidden sm:inline">Project Schedule</span>
+            </div>
+            <div className="flex items-center border border-border rounded-sm overflow-hidden">
+              <button
+                onClick={() => setView('calendar')}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors',
+                  view === 'calendar'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary/40 text-muted-foreground hover:text-foreground'
+                )}
+                title="Calendar view"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Calendar</span>
+              </button>
+              <button
+                onClick={() => setView('gantt')}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium border-l border-border transition-colors',
+                  view === 'gantt'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary/40 text-muted-foreground hover:text-foreground'
+                )}
+                title="Gantt view"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Gantt</span>
+              </button>
+            </div>
           </div>
 
           {/* Center: month navigation */}
@@ -289,6 +323,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
       </CardHeader>
 
       <CardContent>
+        {view === 'calendar' && (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           {/* Week day headers */}
           <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
@@ -406,6 +441,22 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
             ) : null}
           </DragOverlay>
         </DndContext>
+        )}
+
+        {view === 'gantt' && (
+          <div className="overflow-x-auto">
+            <GanttView
+              currentDate={currentDate}
+              tasks={tasks}
+              onTaskClick={(task) => { setSelectedTask(task); setPanelOpen(true); }}
+              onTaskMove={(taskId, newStart, newEnd) => persistTaskMove(taskId, newStart, newEnd)}
+              onAddEvent={() => {
+                setQuickCreateDate(undefined);
+                setQuickCreateOpen(true);
+              }}
+            />
+          </div>
+        )}
 
         <div className="pt-3 mt-2 border-t border-border">
           <CalendarLegend />
