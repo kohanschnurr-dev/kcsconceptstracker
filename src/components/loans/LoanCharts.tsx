@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, currentAccruedInterest, effectiveOutstandingBalance } from '@/types/loans';
-import { getEffectivePayments } from '@/lib/loanPayments';
+import { getEffectivePayments, isAmortizingLoan } from '@/lib/loanPayments';
 import type { LoanType, LoanPayment, LoanDraw } from '@/types/loans';
 import type { Loan } from '@/types/loans';
 
@@ -111,7 +111,11 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       const lp = getEffectivePayments(l, paymentsByLoan[l.id] ?? []);
       const ld = drawsByLoan[l.id] ?? [];
       const principal = effectiveOutstandingBalance(l, lp);
-      const interest = currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], ld);
+      // Amortizing loans (DSCR, conventional) pay interest each month as part
+      // of the scheduled payment — there is no accruing interest balance.
+      const interest = isAmortizingLoan(l)
+        ? 0
+        : currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], ld);
       const color = LOAN_TYPE_COLORS[l.loan_type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
       const agg = aggByType[label] ??= { type: l.loan_type, label, principal: 0, interest: 0, color };
       agg.principal += principal;
@@ -156,7 +160,10 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       typesSet.add(l.loan_type);
 
       // Per-type accrued interest stacked directly on top of its own principal.
-      const accrued = currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], drawsByLoan[l.id] ?? []);
+      // Skip for amortizing loans — interest is paid monthly, not accrued.
+      const accrued = isAmortizingLoan(l)
+        ? 0
+        : currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], drawsByLoan[l.id] ?? []);
       if (accrued > 0) {
         const ik = interestKey(l.loan_type);
         map[key][ik] = (map[key][ik] ?? 0) + accrued;
@@ -255,8 +262,12 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 4, columnGap: 16, fontSize: 12, color: 'hsl(var(--popover-foreground))' }}>
                         <span style={{ opacity: 0.75 }}>Principal</span>
                         <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(agg.principal)}</span>
-                        <span style={{ opacity: 0.75 }}>Interest Accrued</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(agg.interest)}</span>
+                        {agg.interest > 0 && (
+                          <>
+                            <span style={{ opacity: 0.75 }}>Interest Accrued</span>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(agg.interest)}</span>
+                          </>
+                        )}
                       </div>
                       <div
                         style={{
