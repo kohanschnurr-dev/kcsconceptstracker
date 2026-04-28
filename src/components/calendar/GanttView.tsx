@@ -274,7 +274,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
       <div className="flex items-center gap-3 bg-secondary/50 rounded-lg p-2 flex-wrap">
         <ZoomIn className="h-4 w-4 text-muted-foreground shrink-0" />
         <div className="flex items-center gap-1.5 shrink-0">
-          {[7, 14, 21].map(d => (
+          {[7, 14, 21, 30, 60, 90].map(d => (
             <Button
               key={d}
               variant="outline"
@@ -285,7 +285,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
           ))}
         </div>
         <div className="flex items-center gap-2 flex-1 min-w-[120px] max-w-[200px]">
-          <Slider value={[zoomDays]} onValueChange={([v]) => setZoomDays(v)} min={7} max={21} step={1} className="flex-1" />
+          <Slider value={[zoomDays]} onValueChange={([v]) => setZoomDays(v)} min={7} max={180} step={1} className="flex-1" />
         </div>
         <span className="text-xs text-muted-foreground shrink-0">{zoomDays} days</span>
       </div>
