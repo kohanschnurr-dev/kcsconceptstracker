@@ -207,7 +207,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   <TableCell><LoanTypeBadge type={loan.loan_type} /></TableCell>
                   <TableCell className="text-right">{fmt(loan.original_amount)}</TableCell>
                   <TableCell className="text-right font-medium">{fmt(effectiveOutstandingBalance(loan, getEffectivePayments(loan, paymentsByLoan[loan.id] ?? [])))}</TableCell>
-                  <TableCell className="text-right">{loan.loan_type === 'dscr' ? '—' : fmt(currentAccruedInterest(loan, paymentsByLoan[loan.id] ?? [], drawsByLoan[loan.id] ?? []))}</TableCell>
+                  <TableCell className="text-right">{loan.loan_type === 'dscr' ? '' : fmt(currentAccruedInterest(loan, paymentsByLoan[loan.id] ?? [], drawsByLoan[loan.id] ?? []))}</TableCell>
                   <TableCell className="text-right">{fmt(loan.monthly_payment)}</TableCell>
                   <TableCell className="text-sm">{formatDisplayDate(loan.maturity_date)}</TableCell>
                   <TableCell><LoanStatusBadge status={loan.status} /></TableCell>
