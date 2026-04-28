@@ -363,7 +363,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       {/* View toggles + filters */}
       <div className="flex flex-wrap items-center gap-2">
         {/* View mode toggle (leads the row) */}
-        <div className="group/vt relative flex rounded-md border border-border overflow-hidden">
+        <div className="group/vt relative flex rounded-md border border-border [&>button:first-child]:rounded-l-[5px] [&>button:last-child]:rounded-r-[5px]">
           <button
             className={cn(
               'relative px-2.5 py-1.5 text-sm flex items-center gap-1.5 transition-colors',
@@ -391,7 +391,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 }
               }}
               className={cn(
-                'absolute -top-1 -right-1 h-3 w-3 cursor-pointer transition-opacity',
+                'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
                 defaultView.viewMode === 'table'
                   ? 'opacity-100 fill-primary text-primary'
                   : 'opacity-0 group-hover/vt:opacity-60 hover:!opacity-100 text-muted-foreground',
@@ -425,7 +425,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 }
               }}
               className={cn(
-                'absolute -top-1 -right-1 h-3 w-3 cursor-pointer transition-opacity',
+                'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
                 defaultView.viewMode === 'cards'
                   ? 'opacity-100 fill-primary text-primary'
                   : 'opacity-0 group-hover/vt:opacity-60 hover:!opacity-100 text-muted-foreground',
@@ -440,11 +440,12 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             <Button
               variant={groupByProject ? 'default' : 'outline'}
               size="sm"
-              className="h-9 gap-1.5"
+              className="h-9 w-9 p-0"
               onClick={() => setGroupByProject(g => !g)}
+              title={groupByProject ? 'Ungroup' : 'Group by project'}
+              aria-label={groupByProject ? 'Ungroup' : 'Group by project'}
             >
-              <Layers className="h-3.5 w-3.5" />
-              Group
+              <Layers className="h-4 w-4" />
             </Button>
             <Star
               role="button"
@@ -462,7 +463,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 }
               }}
               className={cn(
-                'absolute -top-1 -right-1 h-3 w-3 cursor-pointer transition-opacity',
+                'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
                 defaultView.groupByProject === groupByProject
                   ? 'opacity-100 fill-primary text-primary'
                   : 'opacity-0 group-hover/gp:opacity-60 hover:!opacity-100 text-muted-foreground',
