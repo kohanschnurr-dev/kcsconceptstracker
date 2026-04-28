@@ -107,7 +107,8 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
   const [recurrenceFrequency, setRecurrenceFrequency] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const [recurrenceUntilType, setRecurrenceUntilType] = useState<'indefinite' | 'date'>('indefinite');
   const [recurrenceUntilDate, setRecurrenceUntilDate] = useState<Date | undefined>();
-  const [owner, setOwner] = useState('');
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+  const [recurringPopoverOpen, setRecurringPopoverOpen] = useState(false);
   const [dependencies, setDependencies] = useState<{ taskId: string; type: 'FS' | 'SS' | 'FF' | 'SF' }[]>([]);
   const [depTaskId, setDepTaskId] = useState('');
   const [depType, setDepType] = useState<'FS' | 'SS' | 'FF' | 'SF'>('FS');
