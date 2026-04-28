@@ -30,11 +30,20 @@ interface LoanTableProps {
   onToggleSelect?: (id: string) => void;
 }
 
+type ProjectType = 'fix_flip' | 'rental' | 'new_construction';
+
+const PROJECT_TYPE_PILLS: { value: ProjectType | 'all'; label: string }[] = [
+  { value: 'all', label: 'All Projects' },
+  { value: 'fix_flip', label: 'Fix & Flips' },
+  { value: 'rental', label: 'Rentals' },
+  { value: 'new_construction', label: 'New Construction' },
+];
+
 export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], onToggleSelect }: LoanTableProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('all');
-  const [typeFilter, setTypeFilter] = useState<LoanType | 'all'>('all');
+  const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType | 'all'>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
@@ -83,6 +92,27 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     return m;
   }, [draws]);
 
+  // Map project_name -> project_type so we can filter the table by Fix & Flip / Rental / New Construction.
+  const { data: projectTypesRows = [] } = useQuery<{ name: string; project_type: string | null }[]>({
+    queryKey: ['project_types_for_loan_table', projectNames],
+    enabled: projectNames.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('name, project_type')
+        .in('name', projectNames);
+      if (error) throw error;
+      return (data ?? []) as any;
+    },
+  });
+  const projectTypeByName = useMemo(() => {
+    const m = new Map<string, ProjectType>();
+    for (const r of projectTypesRows) {
+      if (r.name && r.project_type) m.set(r.name, r.project_type as ProjectType);
+    }
+    return m;
+  }, [projectTypesRows]);
+
   const filtered = useMemo(() => {
     let list = [...loans];
     if (search.trim()) {
@@ -95,7 +125,12 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       );
     }
     if (statusFilter !== 'all') list = list.filter(l => l.status === statusFilter);
-    if (typeFilter !== 'all') list = list.filter(l => l.loan_type === typeFilter);
+    if (projectTypeFilter !== 'all') {
+      list = list.filter(l => {
+        const pn = l.project_name;
+        return !!pn && projectTypeByName.get(pn) === projectTypeFilter;
+      });
+    }
     if (projectFilter !== 'all') list = list.filter(l => l.project_name === projectFilter);
     list.sort((a, b) => {
       const av = a[sortKey] as any;
@@ -106,7 +141,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       return sortAsc ? cmp : -cmp;
     });
     return list;
-  }, [loans, search, statusFilter, typeFilter, projectFilter, sortKey, sortAsc]);
+  }, [loans, search, statusFilter, projectTypeFilter, projectTypeByName, projectFilter, sortKey, sortAsc]);
 
   const pages = Math.ceil(filtered.length / PER_PAGE);
   const visible = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
@@ -123,7 +158,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     </button>
   );
 
-  const uniqueTypes = useMemo(() => [...new Set(loans.map(l => l.loan_type))], [loans]);
+  
 
   return (
     <div className="space-y-3">
@@ -159,35 +194,24 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         )}
       </div>
 
-      {/* Quick type filters */}
-      {uniqueTypes.length > 1 && (
+      {/* Quick project-type filters */}
+      {projectNames.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => { setTypeFilter('all'); setPage(0); }}
-            className={cn(
-              'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
-              typeFilter === 'all'
-                ? 'bg-primary/15 text-primary border-primary/40'
-                : 'bg-card text-muted-foreground border-border hover:text-foreground',
-            )}
-          >
-            All Types
-          </button>
-          {uniqueTypes.map(t => {
-            const active = typeFilter === t;
-            const c = LOAN_TYPE_COLORS[t] ?? LOAN_TYPE_COLORS.other;
+          {PROJECT_TYPE_PILLS.map(pill => {
+            const active = projectTypeFilter === pill.value;
             return (
               <button
-                key={t}
+                key={pill.value}
                 type="button"
-                onClick={() => { setTypeFilter(active ? 'all' : t); setPage(0); }}
+                onClick={() => { setProjectTypeFilter(pill.value); setPage(0); }}
                 className={cn(
                   'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
-                  active ? c.badge : 'bg-card text-muted-foreground border-border hover:text-foreground',
+                  active
+                    ? 'bg-primary/15 text-primary border-primary/40'
+                    : 'bg-card text-muted-foreground border-border hover:text-foreground',
                 )}
               >
-                {LOAN_TYPE_LABELS[t] ?? t}
+                {pill.label}
               </button>
             );
           })}
