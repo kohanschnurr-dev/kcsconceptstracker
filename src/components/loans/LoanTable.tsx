@@ -339,14 +339,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             className="bg-muted/20 hover:bg-muted/20 border-t border-dashed border-border/60"
           >
             {compareMode && <TableCell />}
-            <TableCell colSpan={3} className="text-right text-xs text-muted-foreground italic py-2 pr-4">
+            <TableCell colSpan={3} className="text-center text-xs text-muted-foreground italic py-2">
               Subtotal — {projectName}
             </TableCell>
-            <TableCell className="text-right py-2">
+            <TableCell className="text-center py-2">
               <div className="text-xs font-semibold">{fmt(sub.balance)}</div>
               <div className="text-xs text-muted-foreground">of {fmt(sub.original)}</div>
             </TableCell>
-            <TableCell className="text-right text-xs font-semibold py-2">{fmt(sub.monthly)}</TableCell>
+            <TableCell className="text-center text-xs font-semibold py-2">{fmt(sub.monthly)}</TableCell>
             <TableCell colSpan={3} />
           </TableRow>,
         );
