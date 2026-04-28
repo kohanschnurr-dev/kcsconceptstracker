@@ -19,7 +19,7 @@ const fmt = (v: number | null | undefined) =>
     ? '—'
     : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
-type SortKey = keyof Loan;
+type SortKey = keyof Loan | 'balance_calc' | 'interest_accrued' | 'next_payment';
 
 interface LoanTableProps {
   loans: Loan[];
