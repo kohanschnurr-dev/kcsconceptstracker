@@ -30,11 +30,20 @@ interface LoanTableProps {
   onToggleSelect?: (id: string) => void;
 }
 
+type ProjectType = 'fix_flip' | 'rental' | 'new_construction';
+
+const PROJECT_TYPE_PILLS: { value: ProjectType | 'all'; label: string }[] = [
+  { value: 'all', label: 'All Projects' },
+  { value: 'fix_flip', label: 'Fix & Flips' },
+  { value: 'rental', label: 'Rentals' },
+  { value: 'new_construction', label: 'New Construction' },
+];
+
 export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], onToggleSelect }: LoanTableProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('all');
-  const [typeFilter, setTypeFilter] = useState<LoanType | 'all'>('all');
+  const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType | 'all'>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);

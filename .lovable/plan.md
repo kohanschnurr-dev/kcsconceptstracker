@@ -1,22 +1,26 @@
-## Fix DSCR/Conventional treatment in "Debt by Loan Type" donut and Capital Stack
+## Replace loan-type filter pills with project-type filter pills
 
-### The problem
-1. The donut tooltip shows **"Interest Accrued"** for DSCR loans — but DSCR/conventional loans pay interest each month as part of the amortized payment. There is no accruing interest balance to show. It's misleading.
-2. Because we still compute `currentAccruedInterest` for amortizing loans, an extra **lighter-blue "interest" slice** is added to the donut alongside the DSCR principal. That extra wedge is what's "shrinking" the principal slice visually. With auto-payments active, the DSCR principal segment should occupy that space on its own (and shrink naturally as months pass).
-3. Same issue exists in the **Capital Stack by Project** bar chart — DSCR/conventional bars get a lighter "interest" segment stacked on top that shouldn't be there.
+### What changes
+On the Loans page (`src/components/loans/LoanTable.tsx`), the row of pills currently reads **All Types · Private Money · Hard Money · DSCR** (filter by *loan* type). Replace it with **All Projects · Fix & Flips · Rentals · New Construction** (filter by *project* type).
 
-### What the fix does
-In `src/components/loans/LoanCharts.tsx`:
+The existing dropdown filters (Status, All Projects by name) stay exactly as they are.
 
-- Treat amortizing loans (DSCR, conventional) as **principal-only** for both charts. Use the existing `isAmortizingLoan(loan)` helper from `src/lib/loanPayments.ts`.
-- Donut chart:
-  - Skip `currentAccruedInterest` entirely for amortizing loans (interest stays 0 for that loan's contribution).
-  - If a loan-type aggregate ends up with `interest === 0`, omit the second pie slice and the "Interest Accrued" row from the tooltip (show only Principal + Total Owed).
-  - Result: the DSCR slice is one solid blue wedge sized to the **current outstanding balance** (already computed via `effectiveOutstandingBalance` + virtual payments), which naturally shrinks each month a payment posts.
-- Capital Stack bar chart: same logic — don't emit the `__interest` stack contribution for amortizing loans. The lighter-shade legend hint stays (still relevant for hard money / private money / bridge bars).
+### How
+1. Fetch project_type for every project referenced by the loans on this page. Use the existing pattern from `useProjectOptions` — single Supabase query: `select('name, project_type').in('name', projectNames)`. Keyed on the sorted project-name list.
+2. Build a `projectTypeByName: Map<string, 'fix_flip'|'rental'|'new_construction'>`.
+3. Replace `typeFilter` (loan_type) with `projectTypeFilter: 'all' | ProjectType`.
+4. Filter rule: `if (projectTypeFilter !== 'all') list = list.filter(l => projectTypeByName.get(l.project_name) === projectTypeFilter)`.
+5. Render the pills as a fixed set of four (always visible if loans cover ≥1 project type):
+   - All Projects
+   - Fix & Flips
+   - Rentals
+   - New Construction
+   Selected pill uses primary tint (same `bg-primary/15 text-primary border-primary/40` style as the current "All Types" active state) for a single, consistent look — no per-type color swatches (those mapped to loan colors which no longer apply).
+6. Loans whose `project_name` doesn't match a known project (e.g., null / standalone loans) are excluded by every non-"All" filter, which matches user expectation.
 
 ### Out of scope
-No changes to `LoanStatsRow`, `PaymentHistoryTab`, or `LoanDetail` — they were already cleaned up in the previous DSCR pass. This is purely a portfolio-charts fix.
+- The loan-type dimension remains visible via the existing **Type** column header and the loan-type colors in charts/tooltips. We're only swapping the filter pills.
+- No schema changes.
 
 ### Files touched
-- `src/components/loans/LoanCharts.tsx`
+- `src/components/loans/LoanTable.tsx`
