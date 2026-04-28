@@ -18,6 +18,7 @@ import { CalendarLegend } from '@/components/calendar/CalendarLegend';
 import { GanttView } from '@/components/calendar/GanttView';
 import type { CalendarTask } from '@/pages/Calendar';
 import { getCategoryGroup } from '@/lib/calendarCategories';
+import { syncLinkedTaskDate } from '@/lib/syncLinkedTask';
 
 interface ProjectCalendarProps {
   projectId: string;
@@ -203,6 +204,8 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
       toast({ title: 'Error', description: 'Failed to move event', variant: 'destructive' });
       return;
     }
+
+    await syncLinkedTaskDate(taskId, newStart);
 
     setTasks(prev =>
       prev.map(t => t.id === taskId ? { ...t, startDate: newStart, endDate: newEnd } : t)

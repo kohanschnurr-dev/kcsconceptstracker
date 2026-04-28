@@ -58,6 +58,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { syncLinkedTaskDate } from '@/lib/syncLinkedTask';
 import type { CalendarTask } from '@/pages/Calendar';
 import { 
   getCalendarCategories, 
@@ -208,6 +209,10 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
       .eq('id', task.id);
 
     setSaving(false);
+
+    if (!error && editedStartDate) {
+      await syncLinkedTaskDate(task.id, editedStartDate);
+    }
 
     if (error) {
       console.error('Error updating event:', error);
