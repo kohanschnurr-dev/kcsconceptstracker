@@ -246,22 +246,30 @@ export default function LoanDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {loan.status === 'active' && (
-              <Button variant="outline" size="sm" onClick={handleMarkPaidOff}>
-                <CheckCircle2 className="h-4 w-4 mr-1.5" /> Mark Paid Off
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setDeleteOpen(true)}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4 mr-1.5" /> Delete
-            </Button>
-            <Button size="sm" onClick={() => setEditOpen(true)}>
-              <Edit2 className="h-4 w-4 mr-1.5" /> Edit
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 w-9 p-0" aria-label="Loan actions">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                  <Edit2 className="h-4 w-4 mr-2" /> Edit
+                </DropdownMenuItem>
+                {loan.status === 'active' && (
+                  <DropdownMenuItem onClick={handleMarkPaidOff}>
+                    <CheckCircle2 className="h-4 w-4 mr-2" /> Mark Paid Off
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setDeleteOpen(true)}
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
