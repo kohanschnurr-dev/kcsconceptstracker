@@ -112,7 +112,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     return () => obs.disconnect();
   }, []);
 
-  const viewStart = startOfWeek(currentDate);
+  const lookbackDays = Math.max(7, Math.floor(zoomDays * 0.25));
+  const viewStart = startOfWeek(addDays(currentDate, -lookbackDays));
   // Timeline pixel width = total inner width minus the frozen column
   const timelineWidth = Math.max(containerWidth - FROZEN_W, 200);
   const COL_MIN = zoomDays <= 7 ? 70 : zoomDays <= 14 ? 76 : 64;

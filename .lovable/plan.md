@@ -1,24 +1,29 @@
 ## Goal
 
-Collapse the duplicate stacked Start/End calendars in the Date popover into a single range-picker calendar. The popover currently renders two full calendars when "Multi-day event" is checked, which is excessive — one calendar in `range` mode covers both start and end.
+The Gantt's visible window starts at `startOfWeek(currentDate)` and extends `zoomDays` forward, so today is always at the far left and any event before today is off-screen with no way to scroll back. Shift the window so today sits ~1/4 from the left edge, leaving room to see past events while still keeping today prominent and visible.
 
 ## Change
 
-**File: `src/components/calendar/NewEventModal.tsx`** (lines ~473–502)
+**File: `src/components/calendar/GanttView.tsx`** (line 115)
 
-Replace the two-calendar block with a single calendar:
+Replace:
+```ts
+const viewStart = startOfWeek(currentDate);
+```
+with:
+```ts
+const lookbackDays = Math.max(7, Math.floor(zoomDays * 0.25));
+const viewStart = startOfWeek(addDays(currentDate, -lookbackDays));
+```
 
-- When `isMultiDay` is checked → render one `<Calendar mode="range" />` whose `selected` is `{ from: startDate, to: endDate }`. On select, write `from` to `startDate` (via `handleStartDateChange`) and `to` to `endDate` (falling back to `from` if `to` is undefined).
-- When `isMultiDay` is unchecked → keep the existing single-mode calendar (unchanged).
+This places ~25% of the visible window before today (minimum one week), and ~75% after — so users see recent past events alongside upcoming ones. The existing `<` `>` arrows in `CalendarHeader` continue to page further in either direction.
 
-Remove the "Start" / "End" labels and divider since they're no longer needed — the range highlight communicates both ends.
+## Why
 
-## Why this is safe
-
-- `startDate` / `endDate` state, `handleStartDateChange`, and downstream save logic all stay the same.
-- The trigger button label already shows `MMM d – MMM d` for multi-day, so users still see both endpoints.
-- Single-day flow is untouched.
+- "Starts at the current date" preserved in spirit — today remains visible and the red "today" line is on screen.
+- Past events (e.g., Apr 26-27 diamonds in the user's screenshot when today is Apr 28) become reachable without paging.
+- Scales with zoom: a 90-day window shows ~22 days back / ~68 forward, a 14-day window shows ~7 back / ~7 forward.
 
 ## Out of scope
 
-No styling/layout changes elsewhere, no schema changes.
+No changes to navigation arrows, default zoom, or task data.
