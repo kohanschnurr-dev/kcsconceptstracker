@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpDown, Search, LayoutGrid, List, FolderOpen, Layers } from 'lucide-react';
+import { ArrowUpDown, Search, LayoutGrid, List, FolderOpen, Layers, Star } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
