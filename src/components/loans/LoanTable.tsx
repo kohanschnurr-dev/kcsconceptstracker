@@ -593,9 +593,9 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   <TableHead className="text-center">Type <SortBtn col="loan_type" /></TableHead>
                   <TableHead className="text-center">Balance <SortBtn col="balance_calc" /></TableHead>
                   <TableHead className="text-center">Monthly Pmt <SortBtn col="monthly_payment" /></TableHead>
+                  <TableHead className="text-center">Next Payment <SortBtn col="next_payment" /></TableHead>
                   <TableHead className="text-center">Maturity <SortBtn col="maturity_date" /></TableHead>
                   <TableHead className="text-center">Status <SortBtn col="status" /></TableHead>
-                  <TableHead className="text-center">Next Payment <SortBtn col="next_payment" /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
