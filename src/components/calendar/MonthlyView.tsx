@@ -189,7 +189,10 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
                 {/* Mobile: compact badge → popover */}
                 <div className="sm:hidden">
                   {dayTasks.length > 0 && (
-                    <Popover>
+                    <Popover
+                      open={openPopoverDay === `m-${day.toISOString()}`}
+                      onOpenChange={(o) => setOpenPopoverDay(o ? `m-${day.toISOString()}` : null)}
+                    >
                       <PopoverTrigger asChild>
                         <button className="text-[9px] font-medium text-primary/80 hover:text-primary w-full text-center rounded hover:bg-primary/10 px-0.5 py-0.5 leading-tight">
                           {dayTasks.length}
@@ -206,7 +209,7 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
                         </div>
                         <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
                           {dayTasks.map(task => (
-                            <DealCard key={task.id} task={task} compact onClick={() => onTaskClick(task)} />
+                            <DraggableCard key={task.id} task={task} onTaskClick={() => onTaskClick(task)} />
                           ))}
                         </div>
                       </PopoverContent>
