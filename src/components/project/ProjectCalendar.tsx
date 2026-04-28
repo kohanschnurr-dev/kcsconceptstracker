@@ -250,10 +250,40 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
     <Card className="bg-background border-border">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          {/* Left: title + info */}
-          <div className="flex items-center gap-2 text-foreground font-semibold text-base sm:text-lg shrink-0">
-            <CalendarIcon className="h-5 w-5 text-primary shrink-0" />
-            <span className="hidden sm:inline">Project Schedule</span>
+          {/* Left: title + view toggle */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2 text-foreground font-semibold text-base sm:text-lg">
+              <CalendarIcon className="h-5 w-5 text-primary shrink-0" />
+              <span className="hidden sm:inline">Project Schedule</span>
+            </div>
+            <div className="flex items-center border border-border rounded-sm overflow-hidden">
+              <button
+                onClick={() => setView('calendar')}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors',
+                  view === 'calendar'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary/40 text-muted-foreground hover:text-foreground'
+                )}
+                title="Calendar view"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Calendar</span>
+              </button>
+              <button
+                onClick={() => setView('gantt')}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium border-l border-border transition-colors',
+                  view === 'gantt'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary/40 text-muted-foreground hover:text-foreground'
+                )}
+                title="Gantt view"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Gantt</span>
+              </button>
+            </div>
           </div>
 
           {/* Center: month navigation */}
