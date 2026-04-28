@@ -184,12 +184,12 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
               <TableHead>Loan Name <SortBtn col="lender_name" /></TableHead>
               <TableHead>Type <SortBtn col="loan_type" /></TableHead>
               <TableHead className="text-right">Original <SortBtn col="original_amount" /></TableHead>
-              <TableHead className="text-right">Balance <SortBtn col="outstanding_balance" /></TableHead>
-              <TableHead className="text-right">Interest Accrued</TableHead>
-              <TableHead className="text-right">Monthly Pmt</TableHead>
+              <TableHead className="text-right">Balance <SortBtn col="balance_calc" /></TableHead>
+              <TableHead className="text-right">Interest Accrued <SortBtn col="interest_accrued" /></TableHead>
+              <TableHead className="text-right">Monthly Pmt <SortBtn col="monthly_payment" /></TableHead>
               <TableHead>Maturity <SortBtn col="maturity_date" /></TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Next Payment</TableHead>
+              <TableHead>Status <SortBtn col="status" /></TableHead>
+              <TableHead>Next Payment <SortBtn col="next_payment" /></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
