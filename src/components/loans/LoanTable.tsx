@@ -158,7 +158,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     </button>
   );
 
-  const uniqueTypes = useMemo(() => [...new Set(loans.map(l => l.loan_type))], [loans]);
+  
 
   return (
     <div className="space-y-3">
