@@ -96,6 +96,17 @@ export default function Calendar() {
     fetchData();
   }, []);
 
+  // Re-sort projects whenever the user's saved tab order changes (e.g. profile loads after fetch)
+  useEffect(() => {
+    const resort = (list: Project[]) => [...list].sort((a, b) => {
+      const aIdx = projectTypeOrder.indexOf(a.projectType as string);
+      const bIdx = projectTypeOrder.indexOf(b.projectType as string);
+      return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+    });
+    setProjects(prev => resort(prev));
+    setAllProjects(prev => resort(prev));
+  }, [projectTypeOrder]);
+
   const fetchData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
