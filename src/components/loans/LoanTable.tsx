@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpDown, Search, LayoutGrid, List, FolderOpen, Layers, Star } from 'lucide-react';
+import { ArrowUpDown, Search, LayoutGrid, List, FolderOpen, Layers, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -75,7 +75,16 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
   const [viewMode, setViewMode] = useState<ViewMode>(initialDefault.viewMode);
   const [groupByProject, setGroupByProject] = useState(initialDefault.groupByProject);
   const [defaultView, setDefaultView] = useState<DefaultView>(initialDefault);
+  const [expandedBalances, setExpandedBalances] = useState<Set<string>>(new Set());
   const PER_PAGE = 15;
+
+  const toggleBalanceExpand = (id: string) => {
+    setExpandedBalances(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const saveDefaultView = (next: DefaultView, label: string) => {
     setDefaultView(next);
@@ -244,22 +253,44 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             />
           </TableCell>
         )}
-        <TableCell className="font-medium max-w-32 truncate">{loan.project_name ?? '—'}</TableCell>
-        <TableCell className="max-w-32 truncate">{loan.nickname ?? loan.lender_name}</TableCell>
-        <TableCell><LoanTypeBadge type={loan.loan_type} /></TableCell>
-        <TableCell className="text-right">
-          <div className="font-medium">{fmt(balance)}</div>
-          <div className="text-xs text-muted-foreground mt-0.5 leading-tight">
-            of {fmt(loan.original_amount)}
-            {interest != null && interest > 0 && (
-              <span className="ml-1.5 text-warning">· ↑{fmt(interest)} accrued</span>
-            )}
-          </div>
+        <TableCell className="font-medium max-w-32 truncate text-center">{loan.project_name ?? '—'}</TableCell>
+        <TableCell className="max-w-32 truncate text-center">{loan.nickname ?? loan.lender_name}</TableCell>
+        <TableCell className="text-center"><div className="flex justify-center"><LoanTypeBadge type={loan.loan_type} /></div></TableCell>
+        <TableCell className="text-center">
+          {(() => {
+            const isExpanded = expandedBalances.has(loan.id);
+            const hasDetails = loan.original_amount != null || (interest != null && interest > 0);
+            return (
+              <div className="flex flex-col items-center">
+                <div className="inline-flex items-center gap-1.5">
+                  <span className="font-medium">{fmt(balance)}</span>
+                  {hasDetails && (
+                    <button
+                      type="button"
+                      aria-label={isExpanded ? 'Hide details' : 'Show details'}
+                      onClick={(e) => { e.stopPropagation(); toggleBalanceExpand(loan.id); }}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
+                  )}
+                </div>
+                {isExpanded && hasDetails && (
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-tight">
+                    of {fmt(loan.original_amount)}
+                    {interest != null && interest > 0 && (
+                      <span className="ml-1.5 text-warning">· ↑{fmt(interest)} accrued</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </TableCell>
-        <TableCell className="text-right">{fmt(loan.monthly_payment)}</TableCell>
-        <TableCell className="text-sm">{formatDisplayDate(loan.maturity_date)}</TableCell>
-        <TableCell><LoanStatusBadge status={loan.status} /></TableCell>
-        <TableCell className="text-sm">{formatDisplayDate(next)}</TableCell>
+        <TableCell className="text-center">{fmt(loan.monthly_payment)}</TableCell>
+        <TableCell className="text-sm text-center">{formatDisplayDate(loan.maturity_date)}</TableCell>
+        <TableCell className="text-center"><div className="flex justify-center"><LoanStatusBadge status={loan.status} /></div></TableCell>
+        <TableCell className="text-sm text-center">{formatDisplayDate(next)}</TableCell>
       </TableRow>
     );
   };
@@ -308,14 +339,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             className="bg-muted/20 hover:bg-muted/20 border-t border-dashed border-border/60"
           >
             {compareMode && <TableCell />}
-            <TableCell colSpan={3} className="text-right text-xs text-muted-foreground italic py-2 pr-4">
+            <TableCell colSpan={3} className="text-center text-xs text-muted-foreground italic py-2">
               Subtotal — {projectName}
             </TableCell>
-            <TableCell className="text-right py-2">
+            <TableCell className="text-center py-2">
               <div className="text-xs font-semibold">{fmt(sub.balance)}</div>
               <div className="text-xs text-muted-foreground">of {fmt(sub.original)}</div>
             </TableCell>
-            <TableCell className="text-right text-xs font-semibold py-2">{fmt(sub.monthly)}</TableCell>
+            <TableCell className="text-center text-xs font-semibold py-2">{fmt(sub.monthly)}</TableCell>
             <TableCell colSpan={3} />
           </TableRow>,
         );
@@ -550,14 +581,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-b border-border">
                   {compareMode && <TableHead className="w-10" />}
-                  <TableHead>Project <SortBtn col="project_name" /></TableHead>
-                  <TableHead>Loan Purpose <SortBtn col="lender_name" /></TableHead>
-                  <TableHead>Type <SortBtn col="loan_type" /></TableHead>
-                  <TableHead className="text-right">Balance / Original <SortBtn col="balance_calc" /></TableHead>
-                  <TableHead className="text-right">Monthly Pmt <SortBtn col="monthly_payment" /></TableHead>
-                  <TableHead>Maturity <SortBtn col="maturity_date" /></TableHead>
-                  <TableHead>Status <SortBtn col="status" /></TableHead>
-                  <TableHead>Next Payment <SortBtn col="next_payment" /></TableHead>
+                  <TableHead className="text-center">Project <SortBtn col="project_name" /></TableHead>
+                  <TableHead className="text-center">Loan Purpose <SortBtn col="lender_name" /></TableHead>
+                  <TableHead className="text-center">Type <SortBtn col="loan_type" /></TableHead>
+                  <TableHead className="text-center">Balance <SortBtn col="balance_calc" /></TableHead>
+                  <TableHead className="text-center">Monthly Pmt <SortBtn col="monthly_payment" /></TableHead>
+                  <TableHead className="text-center">Maturity <SortBtn col="maturity_date" /></TableHead>
+                  <TableHead className="text-center">Status <SortBtn col="status" /></TableHead>
+                  <TableHead className="text-center">Next Payment <SortBtn col="next_payment" /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -567,14 +598,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 {enrichedFiltered.length > 0 && (
                   <TableRow className="bg-muted/30 border-t-2 border-border hover:bg-muted/30">
                     {compareMode && <TableCell />}
-                    <TableCell colSpan={3} className="py-3 font-bold text-sm">
+                    <TableCell colSpan={3} className="py-3 font-bold text-sm text-center">
                       Total ({enrichedFiltered.length} {enrichedFiltered.length === 1 ? 'loan' : 'loans'})
                     </TableCell>
-                    <TableCell className="text-right py-3">
+                    <TableCell className="text-center py-3">
                       <div className="font-bold text-sm">{fmt(totals.balance)}</div>
                       <div className="text-xs text-muted-foreground">of {fmt(totals.original)}</div>
                     </TableCell>
-                    <TableCell className="text-right font-bold text-sm py-3">{fmt(totals.monthly)}</TableCell>
+                    <TableCell className="text-center font-bold text-sm py-3">{fmt(totals.monthly)}</TableCell>
                     <TableCell colSpan={3} />
                   </TableRow>
                 )}
