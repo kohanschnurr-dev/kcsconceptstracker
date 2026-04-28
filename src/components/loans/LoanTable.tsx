@@ -141,7 +141,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       return sortAsc ? cmp : -cmp;
     });
     return list;
-  }, [loans, search, statusFilter, typeFilter, projectFilter, sortKey, sortAsc]);
+  }, [loans, search, statusFilter, projectTypeFilter, projectTypeByName, projectFilter, sortKey, sortAsc]);
 
   const pages = Math.ceil(filtered.length / PER_PAGE);
   const visible = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
