@@ -1,39 +1,23 @@
-## Goal
+I’ll fix the loan view switcher so the three buttons behave as three independent views:
 
-Reorder loan table columns to match the requested sequence:
+1. Make the three view buttons mutually exclusive
+   - Table / By Line will set flat table mode.
+   - Cards will set card mode.
+   - By Group will set grouped table mode.
+   - Clicking Table after By Group will always return to the normal ungrouped line table.
 
-**Project · Loan Purpose · Type · Balance · Monthly Pmt · Next Payment · Maturity · Status**
+2. Remove selected/highlighted styling from the view buttons
+   - No view button will show the gold/primary selected background.
+   - Buttons will only use neutral styling with hover feedback.
+   - This removes the appearance of two selected buttons at once.
 
-Currently the order is `Project · Loan Purpose · Type · Balance · Monthly Pmt · Maturity · Status · Next Payment` — so Next Payment needs to move from last to 6th position, and Status moves to last.
+3. Rework the default-star behavior to match the three solo views
+   - Default view will be stored as a single value: table, cards, or group.
+   - Only one default star can exist at a time.
+   - The star will only be permanently visible on the one saved default view; other stars appear only when hovering that specific button.
 
-## Changes — `src/components/loans/LoanTable.tsx`
-
-### 1. Header row (lines ~596–598)
-
-```tsx
-<TableHead className="text-center">Next Payment <SortBtn col="next_payment" /></TableHead>
-<TableHead className="text-center">Maturity <SortBtn col="maturity_date" /></TableHead>
-<TableHead className="text-center">Status <SortBtn col="status" /></TableHead>
-```
-
-### 2. Body row in `renderLoanRow` (lines ~291–293)
-
-```tsx
-<TableCell className="text-sm text-center">{formatDisplayDate(next)}</TableCell>
-<TableCell className="text-sm text-center">{formatDisplayDate(loan.maturity_date)}</TableCell>
-<TableCell className="text-center">
-  <div className="flex justify-center"><LoanStatusBadge status={loan.status} /></div>
-</TableCell>
-```
-
-### 3. Subtotal/grand-total rows
-
-These use `colSpan` fillers. Total cell count is unchanged (8), so the existing `colSpan={3}` trailing filler still aligns — no edit needed.
-
-## Out of Scope
-
-- Card view, sort logic, filter dropdowns — unchanged.
-
-## Files Touched
-
-- `src/components/loans/LoanTable.tsx`
+Technical details:
+- Update `src/components/loans/LoanTable.tsx`.
+- Replace the current combined `{ viewMode, groupByProject }` default model with a single logical view mode for the toggle: `table | cards | group`.
+- Keep the existing table/card rendering logic, but derive `viewMode` and `groupByProject` from the single selected view when needed.
+- Preserve backwards compatibility with the existing `loans:defaultView` localStorage value so users with old saved defaults still load correctly.
