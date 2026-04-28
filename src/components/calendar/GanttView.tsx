@@ -242,12 +242,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
       return d && d.status !== 'complete' && new Date(t.startDate) <= new Date(d.endDate);
     });
 
-  const toggleProject = (name: string) =>
-    setCollapsedProjects(prev => {
-      const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
-      return next;
-    });
+  const toggleProject = (name: string) => toggleCollapsed(name);
 
   const handleTimelineDrop = (e: React.DragEvent) => {
     e.preventDefault();
