@@ -159,25 +159,30 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     [viewStart, zoomDays],
   );
 
-  // Y-centre of each task row (for SVG dep arrows)
+  // Y-centre of each task row (for SVG dep arrows). All instances within a merged
+  // row share the same Y, since they render on the same line.
   const rowYMap = useMemo(() => {
     const m: Record<string, number> = {};
     let y = 0;
-    Object.entries(groupedTasks).forEach(([name, ptasks]) => {
+    Object.entries(mergedTasksByProject).forEach(([name, rows]) => {
       y += ROW_H;
       if (!collapsedProjects.has(name)) {
-        ptasks.forEach(t => { m[t.id] = y + ROW_H / 2; y += ROW_H; });
+        rows.forEach(row => {
+          const center = y + ROW_H / 2;
+          row.instances.forEach(t => { m[t.id] = center; });
+          y += ROW_H;
+        });
       }
     });
     return m;
-  }, [groupedTasks, collapsedProjects]);
+  }, [mergedTasksByProject, collapsedProjects]);
 
   const totalBodyH = useMemo(() =>
-    Object.entries(groupedTasks).reduce(
-      (h, [name, ptasks]) => h + ROW_H + (collapsedProjects.has(name) ? 0 : ptasks.length * ROW_H),
+    Object.entries(mergedTasksByProject).reduce(
+      (h, [name, rows]) => h + ROW_H + (collapsedProjects.has(name) ? 0 : rows.length * ROW_H),
       0,
     ),
-  [groupedTasks, collapsedProjects]);
+  [mergedTasksByProject, collapsedProjects]);
 
   // Pre-compute dependency arrow segments
   const depArrows = useMemo(() => {
