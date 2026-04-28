@@ -187,6 +187,29 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
     if (task) setActiveTask(task);
   };
 
+  const persistTaskMove = async (taskId: string, newStart: Date, newEnd: Date) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const { error } = await supabase
+      .from('calendar_events')
+      .update({
+        start_date: newStart.toISOString().split('T')[0],
+        end_date: newEnd.toISOString().split('T')[0],
+      })
+      .eq('id', taskId);
+
+    if (error) {
+      console.error('Error moving event:', error);
+      toast({ title: 'Error', description: 'Failed to move event', variant: 'destructive' });
+      return;
+    }
+
+    setTasks(prev =>
+      prev.map(t => t.id === taskId ? { ...t, startDate: newStart, endDate: newEnd } : t)
+    );
+    toast({ title: 'Event Updated', description: `Moved "${task.title}" to new dates.` });
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveTask(null);
     const { active, over } = event;
@@ -201,28 +224,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
 
     const duration = differenceInDays(task.endDate, task.startDate);
     const newEndDate = addDays(targetDate, duration);
-
-    const { error } = await supabase
-      .from('calendar_events')
-      .update({
-        start_date: targetDate.toISOString().split('T')[0],
-        end_date: newEndDate.toISOString().split('T')[0],
-      })
-      .eq('id', task.id);
-
-    if (error) {
-      console.error('Error moving event:', error);
-      toast({ title: 'Error', description: 'Failed to move event', variant: 'destructive' });
-      return;
-    }
-
-    setTasks(prev =>
-      prev.map(t =>
-        t.id === task.id ? { ...t, startDate: targetDate, endDate: newEndDate } : t
-      )
-    );
-
-    toast({ title: 'Event Updated', description: `Moved "${task.title}" to new dates.` });
+    await persistTaskMove(task.id, targetDate, newEndDate);
   };
 
   const goToPrevMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
