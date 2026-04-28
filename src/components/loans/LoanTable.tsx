@@ -598,14 +598,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 {enrichedFiltered.length > 0 && (
                   <TableRow className="bg-muted/30 border-t-2 border-border hover:bg-muted/30">
                     {compareMode && <TableCell />}
-                    <TableCell colSpan={3} className="py-3 font-bold text-sm">
+                    <TableCell colSpan={3} className="py-3 font-bold text-sm text-center">
                       Total ({enrichedFiltered.length} {enrichedFiltered.length === 1 ? 'loan' : 'loans'})
                     </TableCell>
-                    <TableCell className="text-right py-3">
+                    <TableCell className="text-center py-3">
                       <div className="font-bold text-sm">{fmt(totals.balance)}</div>
                       <div className="text-xs text-muted-foreground">of {fmt(totals.original)}</div>
                     </TableCell>
-                    <TableCell className="text-right font-bold text-sm py-3">{fmt(totals.monthly)}</TableCell>
+                    <TableCell className="text-center font-bold text-sm py-3">{fmt(totals.monthly)}</TableCell>
                     <TableCell colSpan={3} />
                   </TableRow>
                 )}
