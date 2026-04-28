@@ -367,7 +367,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
           {/* Table */}
           <button
             className={cn(
-              'relative h-9 w-9 flex items-center justify-center transition-colors',
+              'group/btn relative h-9 w-9 flex items-center justify-center transition-colors',
               viewMode === 'table'
                 ? 'bg-primary/15 text-primary'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -396,14 +396,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
                 defaultView.viewMode === 'table'
                   ? 'opacity-100 fill-primary text-primary'
-                  : 'opacity-0 group-hover/vt:opacity-60 hover:!opacity-100 text-muted-foreground',
+                  : 'opacity-0 group-hover/btn:opacity-60 hover:!opacity-100 text-muted-foreground',
               )}
             />
           </button>
           {/* Cards */}
           <button
             className={cn(
-              'relative h-9 w-9 flex items-center justify-center border-l border-border transition-colors',
+              'group/btn relative h-9 w-9 flex items-center justify-center border-l border-border transition-colors',
               viewMode === 'cards'
                 ? 'bg-primary/15 text-primary'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -432,14 +432,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
                 defaultView.viewMode === 'cards'
                   ? 'opacity-100 fill-primary text-primary'
-                  : 'opacity-0 group-hover/vt:opacity-60 hover:!opacity-100 text-muted-foreground',
+                  : 'opacity-0 group-hover/btn:opacity-60 hover:!opacity-100 text-muted-foreground',
               )}
             />
           </button>
           {/* Group (auto-switches to table view when enabled) */}
           <button
             className={cn(
-              'relative h-9 w-9 flex items-center justify-center border-l border-border transition-colors',
+              'group/btn relative h-9 w-9 flex items-center justify-center border-l border-border transition-colors',
               groupByProject && viewMode === 'table'
                 ? 'bg-primary/15 text-primary'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -472,7 +472,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
                 defaultView.groupByProject === groupByProject
                   ? 'opacity-100 fill-primary text-primary'
-                  : 'opacity-0 group-hover/vt:opacity-60 hover:!opacity-100 text-muted-foreground',
+                  : 'opacity-0 group-hover/btn:opacity-60 hover:!opacity-100 text-muted-foreground',
               )}
             />
           </button>
