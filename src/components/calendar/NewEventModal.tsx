@@ -431,109 +431,199 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
             )}
           </div>
 
-          {/* Dates */}
-          <div className="space-y-3">
-            {/* Multi-day toggle */}
-            <div className="flex items-center justify-between">
-              <Label className="text-muted-foreground">Date *</Label>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="multiDay"
-                  checked={isMultiDay}
-                  onCheckedChange={(checked) => {
-                    setIsMultiDay(checked === true);
-                    if (!checked && startDate) {
-                      setEndDate(startDate);
-                    }
-                  }}
-                  className="border-muted-foreground data-[state=checked]:bg-muted-foreground"
-                />
-                <label
-                  htmlFor="multiDay"
-                  className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
-                >
-                  <CalendarRange className="h-3 w-3" />
-                  Multi-day event
-                </label>
-              </div>
-            </div>
-
-            {isMultiDay ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground text-xs">Start Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          'w-full justify-start text-left font-normal bg-card border-border',
-                          !startDate && 'text-muted-foreground'
-                        )}
-                      >
-                        {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick a date'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-card border-border">
-                      <Calendar
-                        mode="single"
-                        selected={startDate}
-                        onSelect={handleStartDateChange}
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground text-xs">End Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          'w-full justify-start text-left font-normal bg-card border-border',
-                          !endDate && 'text-muted-foreground'
-                        )}
-                      >
-                        {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick a date'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-card border-border">
-                      <Calendar
-                        mode="single"
-                        selected={endDate}
-                        onSelect={setEndDate}
-                        disabled={(date) => startDate ? date < startDate : false}
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            ) : (
-              <Popover>
+          {/* Compact 3-pill row: Date · Recurring · Critical */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">Schedule *</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {/* Date pill */}
+              <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal bg-card border-border',
-                      !startDate && 'text-muted-foreground'
-                    )}
+                  <button
+                    type="button"
+                    className="border border-border bg-card hover:bg-secondary px-3 py-2.5 text-left transition-colors min-w-0"
                   >
-                    {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick a date'}
-                  </Button>
+                    <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <CalendarIcon className="h-3 w-3" /> Date
+                    </div>
+                    <div className="text-sm text-foreground mt-0.5 truncate font-medium">
+                      {startDate
+                        ? isMultiDay && endDate
+                          ? `${format(startDate, 'MMM d')} – ${format(endDate, 'MMM d')}`
+                          : format(startDate, 'MMM d, yyyy')
+                        : 'Pick date'}
+                    </div>
+                  </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-card border-border">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={handleStartDateChange}
-                    className="pointer-events-auto"
-                  />
+                <PopoverContent className="w-auto p-3 bg-card border-border space-y-3" align="start">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="multiDay"
+                      checked={isMultiDay}
+                      onCheckedChange={(checked) => {
+                        setIsMultiDay(checked === true);
+                        if (!checked && startDate) setEndDate(startDate);
+                      }}
+                      className="border-muted-foreground data-[state=checked]:bg-muted-foreground"
+                    />
+                    <label htmlFor="multiDay" className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+                      <CalendarRange className="h-3 w-3" />
+                      Multi-day event
+                    </label>
+                  </div>
+                  {isMultiDay ? (
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-muted-foreground text-xs mb-1 block">Start</Label>
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={handleStartDateChange}
+                          className="pointer-events-auto"
+                        />
+                      </div>
+                      <div className="border-t border-border pt-3">
+                        <Label className="text-muted-foreground text-xs mb-1 block">End</Label>
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={setEndDate}
+                          disabled={(date) => (startDate ? date < startDate : false)}
+                          className="pointer-events-auto"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={handleStartDateChange}
+                      className="pointer-events-auto"
+                    />
+                  )}
                 </PopoverContent>
               </Popover>
-            )}
+
+              {/* Recurring pill */}
+              <Popover open={recurringPopoverOpen} onOpenChange={setRecurringPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      'border px-3 py-2.5 text-left transition-colors min-w-0',
+                      isRecurring
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border bg-card hover:bg-secondary'
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <Repeat className={cn('h-3 w-3', isRecurring && 'text-primary')} /> Recurring
+                    </div>
+                    <div className={cn('text-sm mt-0.5 truncate font-medium capitalize', isRecurring ? 'text-primary' : 'text-foreground')}>
+                      {isRecurring ? recurrenceFrequency : 'Off'}
+                    </div>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-3 bg-card border-border space-y-3" align="start">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="recurringSwitch" className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-2">
+                      <Repeat className="h-4 w-4 text-muted-foreground" />
+                      Recurring event
+                    </label>
+                    <Switch id="recurringSwitch" checked={isRecurring} onCheckedChange={setIsRecurring} />
+                  </div>
+                  {isRecurring && (
+                    <div className="space-y-3 pt-2 border-t border-border">
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground text-xs">Frequency</Label>
+                        <select
+                          value={recurrenceFrequency}
+                          onChange={(e) => setRecurrenceFrequency(e.target.value as any)}
+                          className="w-full rounded-md border border-border bg-card text-foreground px-3 py-2 text-sm"
+                        >
+                          <option value="monthly">Monthly</option>
+                          <option value="quarterly">Quarterly</option>
+                          <option value="yearly">Yearly</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground text-xs">Until when?</Label>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={recurrenceUntilType === 'indefinite' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setRecurrenceUntilType('indefinite')}
+                            className="flex-1"
+                          >
+                            Indefinitely
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={recurrenceUntilType === 'date' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setRecurrenceUntilType('date')}
+                            className="flex-1"
+                          >
+                            Until date
+                          </Button>
+                        </div>
+                        {recurrenceUntilType === 'date' && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  'w-full justify-start text-left font-normal bg-card border-border',
+                                  !recurrenceUntilDate && 'text-muted-foreground'
+                                )}
+                              >
+                                {recurrenceUntilDate ? format(recurrenceUntilDate, 'MMM d, yyyy') : 'Pick end date'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 bg-card border-border">
+                              <Calendar
+                                mode="single"
+                                selected={recurrenceUntilDate}
+                                onSelect={setRecurrenceUntilDate}
+                                disabled={(date) => (startDate ? date < startDate : false)}
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {recurrenceUntilType === 'indefinite'
+                            ? `Up to ${recurrenceFrequency === 'monthly' ? '24' : recurrenceFrequency === 'quarterly' ? '8' : '5'} events (${recurrenceFrequency === 'yearly' ? '5' : '2'} years)`
+                            : recurrenceUntilDate
+                              ? `From ${startDate ? format(startDate, 'MMM d, yyyy') : '...'} to ${format(recurrenceUntilDate, 'MMM d, yyyy')}`
+                              : 'Select an end date'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+
+              {/* Critical Path pill */}
+              <button
+                type="button"
+                onClick={() => setIsCriticalPath((v) => !v)}
+                className={cn(
+                  'border px-3 py-2.5 text-left transition-colors min-w-0',
+                  isCriticalPath
+                    ? 'border-amber-500 bg-amber-500/5'
+                    : 'border-border bg-card hover:bg-secondary'
+                )}
+                title="Highlight this event in red on the calendar"
+              >
+                <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <AlertTriangle className={cn('h-3 w-3', isCriticalPath && 'text-amber-500')} /> Critical
+                </div>
+                <div className={cn('text-sm mt-0.5 truncate font-medium', isCriticalPath ? 'text-amber-500' : 'text-foreground')}>
+                  {isCriticalPath ? 'On' : 'Off'}
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* 30-day scope warning */}
@@ -545,17 +635,6 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
               </span>
             </div>
           )}
-
-          {/* Owner */}
-          <div className="space-y-2">
-            <Label className="text-muted-foreground">Owner *</Label>
-            <Input
-              value={owner}
-              onChange={(e) => setOwner(e.target.value)}
-              placeholder="e.g., John Smith, ABC Plumbing Co."
-              className="bg-card border-border text-foreground"
-            />
-          </div>
 
           {/* Dependencies */}
           {(sameProjectTasks.length > 0 || dependencies.length > 0) && (
