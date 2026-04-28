@@ -402,17 +402,19 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
             )}
 
             {/* ── Project groups ── */}
-            {Object.entries(mergedTasksByProject).map(([projectName, rows]) => {
+            {orderedProjectEntries.map(([projectName, rows], projectIdx) => {
               const collapsed = collapsedProjects.has(projectName);
               const projectTasks = groupedTasks[projectName] ?? [];
               const sp = summaryPos(projectTasks);
               const projectId = projectTasks[0]?.projectId;
+              const isFirst = projectIdx === 0;
+              const isLast = projectIdx === orderedProjectEntries.length - 1;
 
               return (
-                <div key={projectName}>
+                <div key={projectName} className="group/project">
                   {/* Project summary row */}
                   <div className="flex items-center border-b border-border bg-secondary/25" style={{ height: ROW_H }}>
-                    {/* Frozen: name + collapse + add button */}
+                    {/* Frozen: name + collapse + reorder + add button */}
                     <div
                       className="shrink-0 sticky left-0 z-10 bg-secondary/50 border-r border-border flex items-center gap-1 px-2"
                       style={{ width: FROZEN_W, height: ROW_H }}
@@ -426,6 +428,24 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                         />
                         <span className="truncate">{projectName}</span>
                       </button>
+                      <div className="flex items-center opacity-0 group-hover/project:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveProject(projectName, 'up', orderedProjectNames); }}
+                          disabled={isFirst}
+                          title="Move up"
+                          className="shrink-0 text-muted-foreground hover:text-primary rounded transition-colors p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveProject(projectName, 'down', orderedProjectNames); }}
+                          disabled={isLast}
+                          title="Move down"
+                          className="shrink-0 text-muted-foreground hover:text-primary rounded transition-colors p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </button>
+                      </div>
                       {onAddEvent && projectId && (
                         <button
                           onClick={() => onAddEvent(projectId)}
