@@ -1,21 +1,34 @@
 ## Goal
 
-The Gantt currently caps the visible window at 21 days, so users can't see events further out (or far behind) without paging week-by-week with the `<` `>` arrows. Extend the zoom range so users can scroll back and forward to the furthest events, while keeping the default landing view at today.
+Order projects in the Gantt chart according to the user's saved project-type tab order from the Projects page (e.g., New Construction → Fix & Flips → Rentals if that's how they arranged it), instead of the current hardcoded `new_construction → fix_flip → rental` ordering.
+
+## Source of truth
+
+`useProfile()` exposes `profile.project_tab_order: string[] | null`, which the Projects page already reads/writes when the user reorders their tabs. We reuse the same value here.
 
 ## Changes
 
-**File: `src/components/calendar/GanttView.tsx`**
+**File: `src/pages/Calendar.tsx`**
 
-1. **Expand zoom presets** from `[7, 14, 21]` → `[7, 14, 21, 30, 60, 90]`. These pill buttons stay in the toolbar and let users jump to common ranges.
-2. **Raise slider max** from 21 → 180 (six months). Min stays 7. Step stays 1.
-3. **Default `zoomDays`** stays at its current value (14d) so initial render is unchanged.
-4. **No change to `currentDate` defaulting** — Gantt continues to open at today via the page-level state. Existing `<` `>` arrows in `CalendarHeader` already step by week and have no clamp, so extending zoom is the only change needed.
+1. Import `useProfile` from `@/hooks/useProfile`.
+2. Add a constant `DEFAULT_PROJECT_TYPE_ORDER = ['fix_flip', 'new_construction', 'rental']` (matches `Projects.tsx`).
+3. Inside the `Calendar` component, call `const { profile } = useProfile();`.
+4. Compute the effective order:
+   ```ts
+   const projectTypeOrder = useMemo(() => {
+     const saved = (profile?.project_tab_order as string[] | null) ?? [];
+     const merged = [...saved];
+     for (const t of DEFAULT_PROJECT_TYPE_ORDER) if (!merged.includes(t)) merged.push(t);
+     return merged;
+   }, [profile?.project_tab_order]);
+   ```
+5. Replace the hardcoded `order = { new_construction: 0, fix_flip: 1, rental: 2 }` block in `fetchData` with a sort that uses `projectTypeOrder.indexOf(projectType)` (unknown types fall to the end).
+6. Move the project-type sort out of `fetchData` and into a `useMemo` so it re-runs when `profile.project_tab_order` changes after fetch. Source list: the raw mapped projects stored in state; resorted whenever `projectTypeOrder` updates.
 
-## Why this satisfies the request
+## Why this works
 
-- "Starting at the current date" → preserved (default `currentDate = new Date()`, default zoom = 14d).
-- "Scroll further back and forward" → users can now zoom out to 30/60/90/180-day windows (or fine-tune via the slider) to see distant past or future events on one screen, and the existing prev/next arrows still page through time.
+The Projects page persists user reordering to `profiles.project_tab_order`. By reading the same field in Calendar, the Gantt section ordering automatically tracks the user's preferred order across the app, with a stable fallback when the field is empty.
 
 ## Out of scope
 
-No backend changes, no changes to the bar/diamond rendering, no changes to drag-drop logic (already clamps within `zoomDays`).
+No DB migration, no changes to `GanttView.tsx`, no changes to project-name ordering within a type (current `created_at desc` preserved).

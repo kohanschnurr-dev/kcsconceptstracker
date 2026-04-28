@@ -13,6 +13,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCategoryGroup } from '@/lib/calendarCategories';
 import { syncLinkedTaskDate } from '@/lib/syncLinkedTask';
+import { useProfile } from '@/hooks/useProfile';
+
+const DEFAULT_PROJECT_TYPE_ORDER = ['fix_flip', 'new_construction', 'rental'];
 
 export type CalendarView = 'monthly' | 'weekly' | 'gantt';
 
