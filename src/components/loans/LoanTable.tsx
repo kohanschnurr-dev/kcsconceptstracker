@@ -75,7 +75,16 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
   const [viewMode, setViewMode] = useState<ViewMode>(initialDefault.viewMode);
   const [groupByProject, setGroupByProject] = useState(initialDefault.groupByProject);
   const [defaultView, setDefaultView] = useState<DefaultView>(initialDefault);
+  const [expandedBalances, setExpandedBalances] = useState<Set<string>>(new Set());
   const PER_PAGE = 15;
+
+  const toggleBalanceExpand = (id: string) => {
+    setExpandedBalances(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const saveDefaultView = (next: DefaultView, label: string) => {
     setDefaultView(next);
