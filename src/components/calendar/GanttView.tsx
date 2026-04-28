@@ -181,7 +181,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
   const rowYMap = useMemo(() => {
     const m: Record<string, number> = {};
     let y = 0;
-    Object.entries(mergedTasksByProject).forEach(([name, rows]) => {
+    orderedProjectEntries.forEach(([name, rows]) => {
       y += ROW_H;
       if (!collapsedProjects.has(name)) {
         rows.forEach(row => {
@@ -192,14 +192,14 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
       }
     });
     return m;
-  }, [mergedTasksByProject, collapsedProjects]);
+  }, [orderedProjectEntries, collapsedProjects]);
 
   const totalBodyH = useMemo(() =>
-    Object.entries(mergedTasksByProject).reduce(
+    orderedProjectEntries.reduce(
       (h, [name, rows]) => h + ROW_H + (collapsedProjects.has(name) ? 0 : rows.length * ROW_H),
       0,
     ),
-  [mergedTasksByProject, collapsedProjects]);
+  [orderedProjectEntries, collapsedProjects]);
 
   // Pre-compute dependency arrow segments
   const depArrows = useMemo(() => {
