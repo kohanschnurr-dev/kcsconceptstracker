@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpDown, Search, LayoutGrid, List, FolderOpen, Layers } from 'lucide-react';
+import { ArrowUpDown, Search, LayoutGrid, List, FolderOpen, Layers, Star } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -43,17 +44,48 @@ interface EnrichedLoan {
   interest: number | null;
 }
 
+const DEFAULT_VIEW_KEY = 'loans:defaultView';
+type DefaultView = { viewMode: ViewMode; groupByProject: boolean };
+
+function readDefaultView(): DefaultView {
+  if (typeof window === 'undefined') return { viewMode: 'table', groupByProject: false };
+  try {
+    const raw = window.localStorage.getItem(DEFAULT_VIEW_KEY);
+    if (!raw) return { viewMode: 'table', groupByProject: false };
+    const parsed = JSON.parse(raw);
+    return {
+      viewMode: parsed.viewMode === 'cards' ? 'cards' : 'table',
+      groupByProject: !!parsed.groupByProject,
+    };
+  } catch {
+    return { viewMode: 'table', groupByProject: false };
+  }
+}
+
 export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], onToggleSelect }: LoanTableProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const initialDefault = useMemo(readDefaultView, []);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [groupByProject, setGroupByProject] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>(initialDefault.viewMode);
+  const [groupByProject, setGroupByProject] = useState(initialDefault.groupByProject);
+  const [defaultView, setDefaultView] = useState<DefaultView>(initialDefault);
   const PER_PAGE = 15;
+
+  const saveDefaultView = (next: DefaultView, label: string) => {
+    setDefaultView(next);
+    try {
+      window.localStorage.setItem(DEFAULT_VIEW_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+    toast({ title: 'Default view saved', description: `${label} will load by default.` });
+  };
 
   const loanIds = useMemo(() => loans.map(l => l.id).sort(), [loans]);
 
@@ -297,8 +329,118 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
 
   return (
     <div className="space-y-3">
-      {/* Filters + view toggles */}
-      <div className="flex flex-wrap gap-2">
+      {/* View toggles + filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* View mode toggle (leads the row) */}
+        <div className="group/vt relative flex rounded-md border border-border overflow-hidden">
+          <button
+            className={cn(
+              'relative px-2.5 py-1.5 text-sm flex items-center gap-1.5 transition-colors',
+              viewMode === 'table'
+                ? 'bg-primary/15 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+            )}
+            onClick={() => setViewMode('table')}
+            title="Table view"
+          >
+            <List className="h-4 w-4" />
+            <Star
+              role="button"
+              tabIndex={0}
+              aria-label={defaultView.viewMode === 'table' ? 'Default view: Table' : 'Set Table as default view'}
+              onClick={(e) => {
+                e.stopPropagation();
+                saveDefaultView({ ...defaultView, viewMode: 'table' }, 'Table view');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  saveDefaultView({ ...defaultView, viewMode: 'table' }, 'Table view');
+                }
+              }}
+              className={cn(
+                'absolute -top-1 -right-1 h-3 w-3 cursor-pointer transition-opacity',
+                defaultView.viewMode === 'table'
+                  ? 'opacity-100 fill-primary text-primary'
+                  : 'opacity-0 group-hover/vt:opacity-60 hover:!opacity-100 text-muted-foreground',
+              )}
+            />
+          </button>
+          <button
+            className={cn(
+              'relative px-2.5 py-1.5 text-sm flex items-center gap-1.5 border-l border-border transition-colors',
+              viewMode === 'cards'
+                ? 'bg-primary/15 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+            )}
+            onClick={() => setViewMode('cards')}
+            title="Card view"
+          >
+            <LayoutGrid className="h-4 w-4" />
+            <Star
+              role="button"
+              tabIndex={0}
+              aria-label={defaultView.viewMode === 'cards' ? 'Default view: Cards' : 'Set Cards as default view'}
+              onClick={(e) => {
+                e.stopPropagation();
+                saveDefaultView({ ...defaultView, viewMode: 'cards' }, 'Card view');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  saveDefaultView({ ...defaultView, viewMode: 'cards' }, 'Card view');
+                }
+              }}
+              className={cn(
+                'absolute -top-1 -right-1 h-3 w-3 cursor-pointer transition-opacity',
+                defaultView.viewMode === 'cards'
+                  ? 'opacity-100 fill-primary text-primary'
+                  : 'opacity-0 group-hover/vt:opacity-60 hover:!opacity-100 text-muted-foreground',
+              )}
+            />
+          </button>
+        </div>
+
+        {/* Group by project toggle (table mode only) */}
+        {viewMode === 'table' && (
+          <div className="group/gp relative">
+            <Button
+              variant={groupByProject ? 'default' : 'outline'}
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={() => setGroupByProject(g => !g)}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Group
+            </Button>
+            <Star
+              role="button"
+              tabIndex={0}
+              aria-label={defaultView.groupByProject ? 'Default: Grouped on' : 'Set current Group state as default'}
+              onClick={(e) => {
+                e.stopPropagation();
+                saveDefaultView({ ...defaultView, groupByProject }, groupByProject ? 'Group on' : 'Group off');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  saveDefaultView({ ...defaultView, groupByProject }, groupByProject ? 'Group on' : 'Group off');
+                }
+              }}
+              className={cn(
+                'absolute -top-1 -right-1 h-3 w-3 cursor-pointer transition-opacity',
+                defaultView.groupByProject === groupByProject
+                  ? 'opacity-100 fill-primary text-primary'
+                  : 'opacity-0 group-hover/gp:opacity-60 hover:!opacity-100 text-muted-foreground',
+              )}
+            />
+          </div>
+        )}
+
+        {/* Search */}
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -308,6 +450,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             className="pl-8 h-9"
           />
         </div>
+
         <Select value={statusFilter} onValueChange={v => { setStatusFilter(v as any); setPage(0); }}>
           <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -327,49 +470,6 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             </SelectContent>
           </Select>
         )}
-
-        <div className="ml-auto flex items-center gap-1.5">
-          {/* Group by project toggle (table mode only) */}
-          {viewMode === 'table' && (
-            <Button
-              variant={groupByProject ? 'default' : 'outline'}
-              size="sm"
-              className="h-9 gap-1.5"
-              onClick={() => setGroupByProject(g => !g)}
-            >
-              <Layers className="h-3.5 w-3.5" />
-              Group
-            </Button>
-          )}
-
-          {/* View mode toggle */}
-          <div className="flex rounded-md border border-border overflow-hidden">
-            <button
-              className={cn(
-                'px-2.5 py-1.5 text-sm flex items-center gap-1.5 transition-colors',
-                viewMode === 'table'
-                  ? 'bg-primary/15 text-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-              )}
-              onClick={() => setViewMode('table')}
-              title="Table view"
-            >
-              <List className="h-4 w-4" />
-            </button>
-            <button
-              className={cn(
-                'px-2.5 py-1.5 text-sm flex items-center gap-1.5 border-l border-border transition-colors',
-                viewMode === 'cards'
-                  ? 'bg-primary/15 text-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-              )}
-              onClick={() => setViewMode('cards')}
-              title="Card view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Card view */}
