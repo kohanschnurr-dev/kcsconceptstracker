@@ -621,6 +621,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                       );
                     })}
                   </div>
+                  )}
                 </div>
               );
             })}
