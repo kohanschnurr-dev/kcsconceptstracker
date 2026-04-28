@@ -32,15 +32,17 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  CATEGORY_GROUPS, 
+import {
+  CATEGORY_GROUPS,
   getCalendarCategories,
   getCategoryStyles,
   getCategoryLabel,
+  getCategoryGroup,
   CATEGORY_CHECKLIST_PRESETS,
   type CategoryGroup,
   type CalendarCategory,
 } from '@/lib/calendarCategories';
+import type { CalendarTask } from '@/pages/Calendar';
 
 interface Project {
   id: string;
@@ -57,9 +59,10 @@ interface NewEventModalProps {
   defaultStartDate?: Date;
   defaultTitle?: string;
   linkedTaskId?: string;
+  allTasks?: CalendarTask[];
 }
 
-export function NewEventModal({ projects, onEventCreated, defaultProjectId, externalOpen, onExternalOpenChange, defaultStartDate, defaultTitle, linkedTaskId }: NewEventModalProps) {
+export function NewEventModal({ projects, onEventCreated, defaultProjectId, externalOpen, onExternalOpenChange, defaultStartDate, defaultTitle, linkedTaskId, allTasks = [] }: NewEventModalProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = externalOpen !== undefined;
   const open = isControlled ? externalOpen : internalOpen;
@@ -104,6 +107,10 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
   const [recurrenceFrequency, setRecurrenceFrequency] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const [recurrenceUntilType, setRecurrenceUntilType] = useState<'indefinite' | 'date'>('indefinite');
   const [recurrenceUntilDate, setRecurrenceUntilDate] = useState<Date | undefined>();
+  const [owner, setOwner] = useState('');
+  const [dependencies, setDependencies] = useState<{ taskId: string; type: 'FS' | 'SS' | 'FF' | 'SF' }[]>([]);
+  const [depTaskId, setDepTaskId] = useState('');
+  const [depType, setDepType] = useState<'FS' | 'SS' | 'FF' | 'SF'>('FS');
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) {
@@ -124,6 +131,11 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
     }, {} as Record<CategoryGroup, CalendarCategory[]>);
   }, [filteredCategories]);
 
+  const sameProjectTasks = useMemo(() => {
+    if (!projectId || !allTasks.length) return [];
+    return allTasks.filter(t => t.projectId === projectId && !dependencies.find(d => d.taskId === t.id));
+  }, [allTasks, projectId, dependencies]);
+
   const resetForm = () => {
     setTitle('');
     setProjectId(defaultProjectId || '');
@@ -139,6 +151,9 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
     setRecurrenceFrequency('monthly');
     setRecurrenceUntilType('indefinite');
     setRecurrenceUntilDate(undefined);
+    setOwner('');
+    setDependencies([]);
+    setDepTaskId('');
   };
 
   const handleStartDateChange = (date: Date | undefined) => {
@@ -153,7 +168,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!projectId || !title || !category || !startDate || !endDate) {
+    if (!projectId || !title || !category || !startDate || !endDate || !owner.trim()) {
       toast({
         title: 'Missing fields',
         description: 'Please fill in all required fields',
@@ -185,6 +200,8 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
       notes: notes || null,
       checklist: checklist.length > 0 ? checklist : null,
       linked_task_id: linkedTaskId || null,
+      owner: owner.trim() || null,
+      dependencies: dependencies.length > 0 ? dependencies : null,
     };
 
     let eventsToInsert: any[] = [];
@@ -370,6 +387,11 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
                 {CATEGORY_GROUPS[Object.entries(CATEGORY_GROUPS).find(([_, v]) => v === selectedCategoryStyles)?.[0] as CategoryGroup]?.label || 'Category'}
               </p>
             )}
+            {category && getCategoryGroup(category) === 'milestones' && (
+              <p className="text-xs text-amber-500/70">
+                Milestones use noun-first naming: e.g., "Listing Date", "Project Close"
+              </p>
+            )}
           </div>
 
           {/* Event Title */}
@@ -379,7 +401,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Foundation Inspection"
+                placeholder="e.g., Install Drywall"
                 className="bg-card border-border text-foreground flex-1"
               />
               <Button
@@ -394,8 +416,8 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
                 disabled={!category}
                 className={cn(
                   "border-border shrink-0",
-                  category 
-                    ? "text-primary hover:text-primary/90 hover:bg-primary/10 hover:border-primary/30" 
+                  category
+                    ? "text-primary hover:text-primary/90 hover:bg-primary/10 hover:border-primary/30"
                     : "text-muted-foreground"
                 )}
                 title={category ? `Fill with "${getCategoryLabel(category)}"` : "Select a category first"}
@@ -403,6 +425,11 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
                 <Zap className="h-4 w-4" />
               </Button>
             </div>
+            {getCategoryGroup(category || '') !== 'milestones' && (
+              <p className="text-xs text-muted-foreground/70">
+                Tasks should be action-first: Verb + Noun (e.g., "Install Drywall", "Pour Foundation")
+              </p>
+            )}
           </div>
 
           {/* Dates */}
@@ -509,6 +536,95 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
               </Popover>
             )}
           </div>
+
+          {/* 30-day scope warning */}
+          {isMultiDay && startDate && endDate && differenceInCalendarDays(endDate, startDate) > 30 && (
+            <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                This task spans {differenceInCalendarDays(endDate, startDate)} days. Consider breaking it into smaller sub-tasks.
+              </span>
+            </div>
+          )}
+
+          {/* Owner */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">Owner *</Label>
+            <Input
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              placeholder="e.g., John Smith, ABC Plumbing Co."
+              className="bg-card border-border text-foreground"
+            />
+          </div>
+
+          {/* Dependencies */}
+          {(sameProjectTasks.length > 0 || dependencies.length > 0) && (
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Dependencies</Label>
+              {dependencies.length > 0 && (
+                <div className="space-y-1">
+                  {dependencies.map((dep) => {
+                    const depTask = allTasks.find(t => t.id === dep.taskId);
+                    return (
+                      <div key={dep.taskId} className="flex items-center gap-2 px-2 py-1.5 rounded bg-card/50 group">
+                        <span className="flex-1 text-sm text-foreground truncate">{depTask?.title || dep.taskId}</span>
+                        <span className="text-xs text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded font-mono">{dep.type}</span>
+                        <button
+                          type="button"
+                          onClick={() => setDependencies(prev => prev.filter(d => d.taskId !== dep.taskId))}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {sameProjectTasks.length > 0 && (
+                <div className="flex gap-2">
+                  <select
+                    value={depTaskId}
+                    onChange={(e) => setDepTaskId(e.target.value)}
+                    className="flex-1 min-w-0 rounded-md border border-border bg-card text-foreground px-2 py-1.5 text-sm"
+                  >
+                    <option value="">Add predecessor...</option>
+                    {sameProjectTasks.map(t => (
+                      <option key={t.id} value={t.id}>{t.title}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={depType}
+                    onChange={(e) => setDepType(e.target.value as 'FS' | 'SS' | 'FF' | 'SF')}
+                    className="rounded-md border border-border bg-card text-foreground px-2 py-1.5 text-sm"
+                  >
+                    <option value="FS">FS</option>
+                    <option value="SS">SS</option>
+                    <option value="FF">FF</option>
+                    <option value="SF">SF</option>
+                  </select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={!depTaskId}
+                    onClick={() => {
+                      if (!depTaskId) return;
+                      setDependencies(prev => [...prev, { taskId: depTaskId, type: depType }]);
+                      setDepTaskId('');
+                    }}
+                    className="h-9 w-9 shrink-0 border-border text-muted-foreground hover:text-primary hover:border-primary"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                FS = Finish→Start · SS = Start→Start · FF = Finish→Finish · SF = Start→Finish
+              </p>
+            </div>
+          )}
 
           {/* Recurring Event */}
           <div className="space-y-3 p-3 rounded-lg bg-card/50 border border-border">

@@ -36,6 +36,8 @@ export interface CalendarTask {
   isCompleted?: boolean;
   completedAt?: string | null;
   linkedTaskId?: string | null;
+  owner?: string | null;
+  dependencies?: { taskId: string; type: 'FS' | 'SS' | 'FF' | 'SF' }[];
 }
 
 interface Project {
@@ -56,6 +58,7 @@ export default function Calendar() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateDate, setQuickCreateDate] = useState<Date | undefined>();
+  const [quickCreateProjectId, setQuickCreateProjectId] = useState<string | undefined>();
   const { toast } = useToast();
 
   const selectedProjectId = searchParams.get('project');
@@ -170,6 +173,10 @@ export default function Calendar() {
           isCompleted: event.is_completed || false,
           completedAt: event.completed_at,
           linkedTaskId: event.linked_task_id,
+          owner: event.owner || null,
+          dependencies: Array.isArray(event.dependencies)
+            ? event.dependencies.map((d: any) => ({ taskId: d.taskId || d.task_id, type: d.type }))
+            : [],
         };
       });
 
@@ -298,6 +305,10 @@ export default function Calendar() {
               tasks={filteredTasks}
               onTaskClick={handleTaskClick}
               onTaskMove={handleTaskMove}
+              onAddEvent={(projectId) => {
+                setQuickCreateProjectId(projectId);
+                setQuickCreateOpen(true);
+              }}
             />
           )}
         </div>
@@ -334,10 +345,14 @@ export default function Calendar() {
       <NewEventModal
         projects={projects}
         onEventCreated={fetchData}
-        defaultProjectId={selectedProjectId || undefined}
+        defaultProjectId={quickCreateProjectId || selectedProjectId || undefined}
         externalOpen={quickCreateOpen}
-        onExternalOpenChange={setQuickCreateOpen}
+        onExternalOpenChange={(open) => {
+          setQuickCreateOpen(open);
+          if (!open) setQuickCreateProjectId(undefined);
+        }}
         defaultStartDate={quickCreateDate}
+        allTasks={tasks}
       />
     </MainLayout>
   );
