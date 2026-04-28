@@ -323,6 +323,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
       </CardHeader>
 
       <CardContent>
+        {view === 'calendar' && (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           {/* Week day headers */}
           <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
