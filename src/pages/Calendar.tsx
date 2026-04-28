@@ -12,6 +12,7 @@ import { NewEventModal } from '@/components/calendar/NewEventModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCategoryGroup } from '@/lib/calendarCategories';
+import { syncLinkedTaskDate } from '@/lib/syncLinkedTask';
 
 export type CalendarView = 'monthly' | 'weekly' | 'gantt';
 
@@ -241,6 +242,8 @@ export default function Calendar() {
       toast({ title: 'Error', description: 'Failed to move event', variant: 'destructive' });
       return;
     }
+
+    await syncLinkedTaskDate(taskId, newStartDate);
 
     setTasks(prev =>
       prev.map(t =>

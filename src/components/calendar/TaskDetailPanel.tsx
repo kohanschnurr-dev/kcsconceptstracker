@@ -58,6 +58,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { syncLinkedTaskDate } from '@/lib/syncLinkedTask';
 import type { CalendarTask } from '@/pages/Calendar';
 import { 
   getCalendarCategories, 
