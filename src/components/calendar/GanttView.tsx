@@ -390,8 +390,9 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
             )}
 
             {/* ── Project groups ── */}
-            {Object.entries(groupedTasks).map(([projectName, projectTasks]) => {
+            {Object.entries(mergedTasksByProject).map(([projectName, rows]) => {
               const collapsed = collapsedProjects.has(projectName);
+              const projectTasks = groupedTasks[projectName] ?? [];
               const sp = summaryPos(projectTasks);
               const projectId = projectTasks[0]?.projectId;
 
@@ -446,38 +447,33 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                   {/* Task rows — collapsible with smooth max-height animation */}
                   <div
                     className="overflow-hidden transition-[max-height] duration-200 ease-out"
-                    style={{ maxHeight: collapsed ? 0 : projectTasks.length * (ROW_H + 1) + 4 }}
+                    style={{ maxHeight: collapsed ? 0 : rows.length * (ROW_H + 1) + 4 }}
                   >
-                    {projectTasks.map(task => {
-                      const pos = getPos(task);
-                      const ms = isMilestone(task);
-                      const barPx = pos ? (pos.widthPct / 100) * timelineWidth : 0;
-                      const showLabel = !ms && barPx > 52;
-                      const depWarn = hasDependencyWarning(task);
-                      const done = task.isCompleted || task.status === 'complete';
-                      const durDays = differenceInDays(new Date(task.endDate), new Date(task.startDate));
+                    {rows.map(row => {
+                      const rep = row.representative;
+                      const rowDepWarn = row.instances.some(t => hasDependencyWarning(t));
 
                       return (
                         <div
-                          key={task.id}
+                          key={row.key}
                           className="flex items-center border-b border-border/30 group"
                           style={{ height: ROW_H }}
                         >
-                          {/* Frozen: icon + title */}
+                          {/* Frozen: icon + title (one entry per merged row) */}
                           <div
                             className="shrink-0 sticky left-0 z-10 bg-background/95 border-r border-border/40 flex items-center gap-1.5 px-3"
                             style={{ width: FROZEN_W, height: ROW_H }}
                           >
                             <span className="shrink-0 text-muted-foreground/50">
-                              {categoryIcon(task.eventCategory || 'due_diligence', 11)}
+                              {categoryIcon(rep.eventCategory || 'due_diligence', 11)}
                             </span>
                             <button
-                              onClick={() => onTaskClick(task)}
+                              onClick={() => onTaskClick(rep)}
                               className="flex-1 min-w-0 text-left text-xs text-muted-foreground hover:text-foreground transition-colors truncate"
                             >
-                              {task.title}
+                              {rep.title}
                             </button>
-                            {depWarn && (
+                            {rowDepWarn && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
@@ -489,98 +485,105 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                             )}
                           </div>
 
-                          {/* Timeline: bar or milestone diamond */}
+                          {/* Timeline: one bar/diamond per instance, all on the same line */}
                           <div
                             className="flex-1 relative"
                             style={{ height: ROW_H }}
                             onDragOver={e => e.preventDefault()}
                             onDrop={handleTimelineDrop}
                           >
-                            {pos && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  {ms ? (
-                                    // Diamond shape for milestone/zero-duration tasks
-                                    <div
-                                      onClick={() => onTaskClick(task)}
-                                      className={cn(
-                                        'absolute cursor-pointer hover:scale-125 transition-transform shadow-sm z-10',
-                                        barBg(task),
-                                        task.isCriticalPath && 'ring-1 ring-rose-400',
-                                        done && 'opacity-50',
-                                      )}
-                                      style={{
-                                        width: 14,
-                                        height: 14,
-                                        left: `calc(${pos.leftPct + pos.widthPct / 2}% - 7px)`,
-                                        top: 'calc(50% - 7px)',
-                                        transform: 'rotate(45deg)',
-                                      }}
-                                    />
-                                  ) : (
-                                    // Regular task bar
-                                    <div
-                                      draggable
-                                      onDragStart={e => { setDraggedTask(task.id); e.dataTransfer.effectAllowed = 'move'; }}
-                                      onDragEnd={() => setDraggedTask(null)}
-                                      onClick={() => onTaskClick(task)}
-                                      className={cn(
-                                        'absolute rounded shadow-sm cursor-grab active:cursor-grabbing z-10',
-                                        'hover:brightness-110 hover:ring-2 hover:ring-white/25 transition-all',
-                                        barBg(task),
-                                        task.isCriticalPath && 'ring-1 ring-rose-400 ring-inset',
-                                        done && 'opacity-55',
-                                        draggedTask === task.id && 'opacity-40 cursor-grabbing',
-                                      )}
-                                      style={{
-                                        left: `${pos.leftPct}%`,
-                                        width: `max(${pos.widthPct}%, 4px)`,
-                                        top: '50%',
-                                        height: 22,
-                                        transform: 'translateY(-50%)',
-                                      }}
-                                    >
-                                      <div className="flex items-center h-full gap-1 px-1.5 overflow-hidden">
-                                        <span className="shrink-0">
-                                          {categoryIcon(task.eventCategory || 'due_diligence', 10, 'text-white')}
-                                        </span>
-                                        {showLabel && (
-                                          <span className="text-[10px] text-white font-medium truncate leading-none">
-                                            {task.title}
-                                          </span>
+                            {row.instances.map(task => {
+                              const pos = getPos(task);
+                              if (!pos) return null;
+                              const ms = isMilestone(task);
+                              const barPx = (pos.widthPct / 100) * timelineWidth;
+                              const showLabel = !ms && barPx > 52 && row.instances.length === 1;
+                              const done = task.isCompleted || task.status === 'complete';
+                              const durDays = differenceInDays(new Date(task.endDate), new Date(task.startDate));
+
+                              return (
+                                <Tooltip key={task.id}>
+                                  <TooltipTrigger asChild>
+                                    {ms ? (
+                                      <div
+                                        onClick={() => onTaskClick(task)}
+                                        className={cn(
+                                          'absolute cursor-pointer hover:scale-125 transition-transform shadow-sm z-10',
+                                          barBg(task),
+                                          task.isCriticalPath && 'ring-1 ring-rose-400',
+                                          done && 'opacity-50',
                                         )}
+                                        style={{
+                                          width: 14,
+                                          height: 14,
+                                          left: `calc(${pos.leftPct + pos.widthPct / 2}% - 7px)`,
+                                          top: 'calc(50% - 7px)',
+                                          transform: 'rotate(45deg)',
+                                        }}
+                                      />
+                                    ) : (
+                                      <div
+                                        draggable
+                                        onDragStart={e => { setDraggedTask(task.id); e.dataTransfer.effectAllowed = 'move'; }}
+                                        onDragEnd={() => setDraggedTask(null)}
+                                        onClick={() => onTaskClick(task)}
+                                        className={cn(
+                                          'absolute rounded shadow-sm cursor-grab active:cursor-grabbing z-10',
+                                          'hover:brightness-110 hover:ring-2 hover:ring-white/25 transition-all',
+                                          barBg(task),
+                                          task.isCriticalPath && 'ring-1 ring-rose-400 ring-inset',
+                                          done && 'opacity-55',
+                                          draggedTask === task.id && 'opacity-40 cursor-grabbing',
+                                        )}
+                                        style={{
+                                          left: `${pos.leftPct}%`,
+                                          width: `max(${pos.widthPct}%, 4px)`,
+                                          top: '50%',
+                                          height: 22,
+                                          transform: 'translateY(-50%)',
+                                        }}
+                                      >
+                                        <div className="flex items-center h-full gap-1 px-1.5 overflow-hidden">
+                                          <span className="shrink-0">
+                                            {categoryIcon(task.eventCategory || 'due_diligence', 10, 'text-white')}
+                                          </span>
+                                          {showLabel && (
+                                            <span className="text-[10px] text-white font-medium truncate leading-none">
+                                              {task.title}
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
-                                </TooltipTrigger>
-                                {/* Rich tooltip */}
-                                <TooltipContent side="top" className="bg-card border-border max-w-[220px]">
-                                  <div className="text-xs space-y-1 py-0.5">
-                                    <p className="font-semibold text-foreground leading-tight">{task.title}</p>
-                                    <p className="text-muted-foreground">
-                                      {format(new Date(task.startDate), 'MMM d')} → {format(new Date(task.endDate), 'MMM d, yyyy')}
-                                    </p>
-                                    <p className="text-muted-foreground">{durDays + 1} {durDays === 0 ? 'day' : 'days'}</p>
-                                    <p className="text-muted-foreground">{getCategoryLabel(task.eventCategory || 'due_diligence')}</p>
-                                    {task.owner && (
-                                      <p className="flex items-center gap-1 text-muted-foreground">
-                                        <User className="h-3 w-3 shrink-0" />
-                                        {task.owner}
-                                      </p>
                                     )}
-                                    {(task.dependencies?.length ?? 0) > 0 && (
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="bg-card border-border max-w-[220px]">
+                                    <div className="text-xs space-y-1 py-0.5">
+                                      <p className="font-semibold text-foreground leading-tight">{task.title}</p>
                                       <p className="text-muted-foreground">
-                                        {task.dependencies!.length} dep{task.dependencies!.length > 1 ? 's' : ''}:{' '}
-                                        {task.dependencies!.map(d => d.type).join(', ')}
+                                        {format(new Date(task.startDate), 'MMM d')} → {format(new Date(task.endDate), 'MMM d, yyyy')}
                                       </p>
-                                    )}
-                                    {task.isCriticalPath && (
-                                      <p className="text-rose-400 font-medium">⚡ Critical Path</p>
-                                    )}
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
+                                      <p className="text-muted-foreground">{durDays + 1} {durDays === 0 ? 'day' : 'days'}</p>
+                                      <p className="text-muted-foreground">{getCategoryLabel(task.eventCategory || 'due_diligence')}</p>
+                                      {task.owner && (
+                                        <p className="flex items-center gap-1 text-muted-foreground">
+                                          <User className="h-3 w-3 shrink-0" />
+                                          {task.owner}
+                                        </p>
+                                      )}
+                                      {(task.dependencies?.length ?? 0) > 0 && (
+                                        <p className="text-muted-foreground">
+                                          {task.dependencies!.length} dep{task.dependencies!.length > 1 ? 's' : ''}:{' '}
+                                          {task.dependencies!.map(d => d.type).join(', ')}
+                                        </p>
+                                      )}
+                                      {task.isCriticalPath && (
+                                        <p className="text-rose-400 font-medium">Critical Path</p>
+                                      )}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            })}
                           </div>
                         </div>
                       );
