@@ -6,7 +6,7 @@ import {
   AlertTriangle, Wrench, Zap, Snowflake, Hammer, Paintbrush, Layers,
   Grid3x3, Square, DoorOpen, PaintBucket, Home, Landmark, TreePine,
   Warehouse, Sparkles, CalendarDays, DollarSign, Package, CheckCircle,
-  ClipboardList, FileText, ZoomIn, ChevronDown, Plus, User,
+  ClipboardList, FileText, ZoomIn, ChevronDown, Plus, User, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -14,6 +14,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import type { CalendarTask } from '@/pages/Calendar';
 import { getCategoryGroup, CATEGORY_GROUPS, getCategoryLabel } from '@/lib/calendarCategories';
+import { useGanttPreferences } from '@/hooks/useGanttPreferences';
 
 // ─── pure helpers (outside component for stable references) ───────────────────
 
@@ -97,7 +98,7 @@ interface GanttViewProps {
 
 export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEvent }: GanttViewProps) {
   const [zoomDays, setZoomDays] = useState(14);
-  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(new Set());
+  const { collapsedProjects, toggleCollapsed, projectOrder, moveProject } = useGanttPreferences();
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(900);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -153,6 +154,22 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     return out;
   }, [groupedTasks]);
 
+  /**
+   * Effective project order: user-saved order first (filtered to existing projects),
+   * then any new projects not yet ordered, alphabetically.
+   */
+  const orderedProjectNames = useMemo(() => {
+    const names = Object.keys(mergedTasksByProject);
+    const inSaved = projectOrder.filter(n => names.includes(n));
+    const remaining = names.filter(n => !inSaved.includes(n)).sort((a, b) => a.localeCompare(b));
+    return [...inSaved, ...remaining];
+  }, [mergedTasksByProject, projectOrder]);
+
+  const orderedProjectEntries = useMemo(
+    () => orderedProjectNames.map(name => [name, mergedTasksByProject[name]] as const),
+    [orderedProjectNames, mergedTasksByProject],
+  );
+
   // Memoised position resolver keyed to current view
   const getPos = useCallback(
     (task: CalendarTask) => getTaskPos(task, viewStart, zoomDays),
@@ -164,7 +181,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
   const rowYMap = useMemo(() => {
     const m: Record<string, number> = {};
     let y = 0;
-    Object.entries(mergedTasksByProject).forEach(([name, rows]) => {
+    orderedProjectEntries.forEach(([name, rows]) => {
       y += ROW_H;
       if (!collapsedProjects.has(name)) {
         rows.forEach(row => {
@@ -175,14 +192,14 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
       }
     });
     return m;
-  }, [mergedTasksByProject, collapsedProjects]);
+  }, [orderedProjectEntries, collapsedProjects]);
 
   const totalBodyH = useMemo(() =>
-    Object.entries(mergedTasksByProject).reduce(
+    orderedProjectEntries.reduce(
       (h, [name, rows]) => h + ROW_H + (collapsedProjects.has(name) ? 0 : rows.length * ROW_H),
       0,
     ),
-  [mergedTasksByProject, collapsedProjects]);
+  [orderedProjectEntries, collapsedProjects]);
 
   // Pre-compute dependency arrow segments
   const depArrows = useMemo(() => {
@@ -225,12 +242,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
       return d && d.status !== 'complete' && new Date(t.startDate) <= new Date(d.endDate);
     });
 
-  const toggleProject = (name: string) =>
-    setCollapsedProjects(prev => {
-      const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
-      return next;
-    });
+  const toggleProject = (name: string) => toggleCollapsed(name);
 
   const handleTimelineDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -390,17 +402,19 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
             )}
 
             {/* ── Project groups ── */}
-            {Object.entries(mergedTasksByProject).map(([projectName, rows]) => {
+            {orderedProjectEntries.map(([projectName, rows], projectIdx) => {
               const collapsed = collapsedProjects.has(projectName);
               const projectTasks = groupedTasks[projectName] ?? [];
               const sp = summaryPos(projectTasks);
               const projectId = projectTasks[0]?.projectId;
+              const isFirst = projectIdx === 0;
+              const isLast = projectIdx === orderedProjectEntries.length - 1;
 
               return (
-                <div key={projectName}>
+                <div key={projectName} className="group/project">
                   {/* Project summary row */}
                   <div className="flex items-center border-b border-border bg-secondary/25" style={{ height: ROW_H }}>
-                    {/* Frozen: name + collapse + add button */}
+                    {/* Frozen: name + collapse + reorder + add button */}
                     <div
                       className="shrink-0 sticky left-0 z-10 bg-secondary/50 border-r border-border flex items-center gap-1 px-2"
                       style={{ width: FROZEN_W, height: ROW_H }}
@@ -414,6 +428,24 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                         />
                         <span className="truncate">{projectName}</span>
                       </button>
+                      <div className="flex items-center opacity-0 group-hover/project:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveProject(projectName, 'up', orderedProjectNames); }}
+                          disabled={isFirst}
+                          title="Move up"
+                          className="shrink-0 text-muted-foreground hover:text-primary rounded transition-colors p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveProject(projectName, 'down', orderedProjectNames); }}
+                          disabled={isLast}
+                          title="Move down"
+                          className="shrink-0 text-muted-foreground hover:text-primary rounded transition-colors p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </button>
+                      </div>
                       {onAddEvent && projectId && (
                         <button
                           onClick={() => onAddEvent(projectId)}

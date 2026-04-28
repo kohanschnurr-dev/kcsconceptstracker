@@ -722,6 +722,27 @@ export type Database = {
           },
         ]
       }
+      gantt_preferences: {
+        Row: {
+          collapsed_projects: Json
+          project_order: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          collapsed_projects?: Json
+          project_order?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          collapsed_projects?: Json
+          project_order?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       loan_draws: {
         Row: {
           created_at: string
