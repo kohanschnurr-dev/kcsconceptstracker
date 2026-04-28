@@ -253,22 +253,44 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             />
           </TableCell>
         )}
-        <TableCell className="font-medium max-w-32 truncate">{loan.project_name ?? '—'}</TableCell>
-        <TableCell className="max-w-32 truncate">{loan.nickname ?? loan.lender_name}</TableCell>
-        <TableCell><LoanTypeBadge type={loan.loan_type} /></TableCell>
-        <TableCell className="text-right">
-          <div className="font-medium">{fmt(balance)}</div>
-          <div className="text-xs text-muted-foreground mt-0.5 leading-tight">
-            of {fmt(loan.original_amount)}
-            {interest != null && interest > 0 && (
-              <span className="ml-1.5 text-warning">· ↑{fmt(interest)} accrued</span>
-            )}
-          </div>
+        <TableCell className="font-medium max-w-32 truncate text-center">{loan.project_name ?? '—'}</TableCell>
+        <TableCell className="max-w-32 truncate text-center">{loan.nickname ?? loan.lender_name}</TableCell>
+        <TableCell className="text-center"><div className="flex justify-center"><LoanTypeBadge type={loan.loan_type} /></div></TableCell>
+        <TableCell className="text-center">
+          {(() => {
+            const isExpanded = expandedBalances.has(loan.id);
+            const hasDetails = loan.original_amount != null || (interest != null && interest > 0);
+            return (
+              <div className="flex flex-col items-center">
+                <div className="inline-flex items-center gap-1.5">
+                  <span className="font-medium">{fmt(balance)}</span>
+                  {hasDetails && (
+                    <button
+                      type="button"
+                      aria-label={isExpanded ? 'Hide details' : 'Show details'}
+                      onClick={(e) => { e.stopPropagation(); toggleBalanceExpand(loan.id); }}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
+                  )}
+                </div>
+                {isExpanded && hasDetails && (
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-tight">
+                    of {fmt(loan.original_amount)}
+                    {interest != null && interest > 0 && (
+                      <span className="ml-1.5 text-warning">· ↑{fmt(interest)} accrued</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </TableCell>
-        <TableCell className="text-right">{fmt(loan.monthly_payment)}</TableCell>
-        <TableCell className="text-sm">{formatDisplayDate(loan.maturity_date)}</TableCell>
-        <TableCell><LoanStatusBadge status={loan.status} /></TableCell>
-        <TableCell className="text-sm">{formatDisplayDate(next)}</TableCell>
+        <TableCell className="text-center">{fmt(loan.monthly_payment)}</TableCell>
+        <TableCell className="text-sm text-center">{formatDisplayDate(loan.maturity_date)}</TableCell>
+        <TableCell className="text-center"><div className="flex justify-center"><LoanStatusBadge status={loan.status} /></div></TableCell>
+        <TableCell className="text-sm text-center">{formatDisplayDate(next)}</TableCell>
       </TableRow>
     );
   };
