@@ -1,50 +1,49 @@
 ## Goal
 
-When a calendar event is linked to a task (`calendar_events.linked_task_id`), moving/rescheduling the event should automatically update the linked task's `due_date` (and `scheduled_date` if scheduled) to match the event's new start date. The task in the Daily Logs / Checklist will stay in sync.
+In the **Month** and **Week** calendar views (the non-Gantt views), surface two visual elements that today only exist in the Gantt view but are advertised in the legend:
+
+1. **Diamond milestone marker** — events whose category group is `milestones` (or that are zero-duration) should render as a small rotated-square (diamond) chip instead of a flat pill, matching the Gantt style.
+2. **Project span bar** — for any project that has events on the visible day, render a thin chevron-style bar at the top of each day cell showing the project's overall start→end span (the same "summary chevron" the Gantt uses).
+
+This makes the legend's "Milestone" and "Project span" entries actually meaningful in Month/Week views.
 
 ## Current State
 
-- `calendar_events.linked_task_id` already references `tasks.id`.
-- Tasks are created with this link from `AddTaskModal` → `NewEventModal`.
-- The link is currently one-way (used only to navigate / mark-complete sync). Date changes on the event do **not** propagate to the task.
+- `src/components/calendar/MonthlyView.tsx` and `WeeklyView.tsx` render every event with `<DealCard compact />` — a flat pill. Milestones look identical to multi-day work.
+- `src/components/calendar/GanttView.tsx` has the canonical milestone + project-span styles (lines ~530-555 and ~459-475 respectively).
+- `isMilestone(t)` logic from Gantt: zero-day duration OR `getCategoryGroup(eventCategory) === 'milestones'`.
 
 ## Changes
 
-### 1. New helper: `src/lib/syncLinkedTask.ts`
+### 1. Milestone diamond in `DealCard`
 
-Single shared utility used by every event-date writer.
+Extend `DealCard.tsx`:
+- Add an `isMilestone` helper (same logic as Gantt).
+- When `compact && isMilestone(task)`, render a centered diamond chip (14×14 rotated 45°, category color background, optional ring for critical path) with the title to the right on a single line. Falls back to current pill style otherwise.
+- Keep `onClick` and drag handles intact so reschedule still works.
 
-```ts
-// syncLinkedTaskDate(eventId, newStartDate)
-// 1. Look up calendar_events.linked_task_id for eventId
-// 2. If present, update tasks.due_date = newStartDate (yyyy-mm-dd)
-//    Also update scheduled_date when the row has is_scheduled = true
-// 3. Silently no-op if no link / not found
-```
+### 2. Project span chevron in Month/Week day cells
 
-Keeps logic in one place so future writers stay consistent.
+In both `MonthlyView.tsx` and `WeeklyView.tsx`:
+- Group `dayTasks` by `projectId` for the cell.
+- For each project present, compute the project's overall date range (across the full `tasks` prop, not just this day).
+- If that range covers more than one day **and** today's day is within it, render a 4px-tall chevron strip above the event list, color-tinted by the project's first event's category group, with a subtle label tooltip on hover (`Project: {projectName} • {start} → {end}`).
+- Skip rendering if the project has only single-day events (no real "span" to show).
 
-### 2. Wire helper into all event-move paths
+Optional polish: only show the chevron once per project per week row to avoid visual repetition — start with the simpler per-day version and we can iterate.
 
-Call `syncLinkedTaskDate(eventId, newStart)` immediately after each successful `calendar_events` update:
+### 3. Legend already covers it
 
-- `src/pages/Calendar.tsx` → `handleTaskMove` (drag on global calendar / Gantt)
-- `src/components/project/ProjectCalendar.tsx` → `persistTaskMove` (drag + Gantt inside project)
-- `src/components/calendar/TaskDetailPanel.tsx` → save handler at line ~197 (manual date edit in side panel)
-
-### 3. Reverse direction (out of scope, optional)
-
-Not changing task → event sync in this pass. The user asked specifically about event date moves driving the task date. We can revisit if they want bidirectional later.
-
-## Technical Notes
-
-- All updates go through Supabase with existing RLS — no schema or migration needed since `linked_task_id` already exists.
-- Use `parseDateString` / `format(d, 'yyyy-MM-dd')` to avoid the known UTC off-by-one issue (per project memory).
-- After the DB update, refresh local React state in the Daily Logs/Checklist views via their existing query invalidations — no extra wiring needed because they refetch on focus / mount, but we'll also broadcast a lightweight refetch where convenient.
+`CalendarLegend.tsx` already lists Milestone (diamond) and Project span — no change needed there.
 
 ## Files Touched
 
-- `src/lib/syncLinkedTask.ts` (new)
-- `src/pages/Calendar.tsx`
-- `src/components/project/ProjectCalendar.tsx`
-- `src/components/calendar/TaskDetailPanel.tsx`
+- `src/components/calendar/DealCard.tsx` — add milestone diamond render branch
+- `src/components/calendar/MonthlyView.tsx` — add per-day project-span chevron strip
+- `src/components/calendar/WeeklyView.tsx` — same chevron strip
+
+## Notes
+
+- Reuses `getCategoryGroup` from `@/lib/calendarCategories` so colors stay aligned with the legend.
+- No DB or schema work needed.
+- Drag-to-reschedule keeps working because we only change visual presentation; the draggable wrapper stays around the chip.
