@@ -210,6 +210,10 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
 
     setSaving(false);
 
+    if (!error && editedStartDate) {
+      await syncLinkedTaskDate(task.id, editedStartDate);
+    }
+
     if (error) {
       console.error('Error updating event:', error);
       toast({
