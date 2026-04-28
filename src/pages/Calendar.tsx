@@ -64,6 +64,14 @@ export default function Calendar() {
   const [quickCreateDate, setQuickCreateDate] = useState<Date | undefined>();
   const [quickCreateProjectId, setQuickCreateProjectId] = useState<string | undefined>();
   const { toast } = useToast();
+  const { profile } = useProfile();
+
+  const projectTypeOrder = useMemo(() => {
+    const saved = (profile?.project_tab_order as string[] | null) ?? [];
+    const merged = [...saved];
+    for (const t of DEFAULT_PROJECT_TYPE_ORDER) if (!merged.includes(t)) merged.push(t);
+    return merged;
+  }, [profile?.project_tab_order]);
 
   const selectedProjectId = searchParams.get('project');
 
