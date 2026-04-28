@@ -98,7 +98,7 @@ interface GanttViewProps {
 
 export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEvent }: GanttViewProps) {
   const [zoomDays, setZoomDays] = useState(14);
-  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(new Set());
+  const { collapsedProjects, toggleCollapsed, projectOrder, moveProject } = useGanttPreferences();
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(900);
   const innerRef = useRef<HTMLDivElement>(null);
