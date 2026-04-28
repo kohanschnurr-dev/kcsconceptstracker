@@ -363,7 +363,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       {/* View toggles + filters */}
       <div className="flex flex-wrap items-center gap-2">
         {/* View mode toggle (leads the row) */}
-        <div className="group/vt relative flex rounded-md border border-border overflow-hidden">
+        <div className="group/vt relative flex rounded-md border border-border [&>button:first-child]:rounded-l-[5px] [&>button:last-child]:rounded-r-[5px]">
           <button
             className={cn(
               'relative px-2.5 py-1.5 text-sm flex items-center gap-1.5 transition-colors',
