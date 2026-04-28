@@ -362,17 +362,19 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     <div className="space-y-3">
       {/* View toggles + filters */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* View mode toggle (leads the row) */}
+        {/* Unified view toggle: Table / Cards / Group */}
         <div className="group/vt relative flex rounded-md border border-border [&>button:first-child]:rounded-l-[5px] [&>button:last-child]:rounded-r-[5px]">
+          {/* Table */}
           <button
             className={cn(
-              'relative px-2.5 py-1.5 text-sm flex items-center gap-1.5 transition-colors',
+              'relative h-9 w-9 flex items-center justify-center transition-colors',
               viewMode === 'table'
                 ? 'bg-primary/15 text-primary'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
             )}
             onClick={() => setViewMode('table')}
             title="Table view"
+            aria-label="Table view"
           >
             <List className="h-4 w-4" />
             <Star
@@ -398,15 +400,17 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
               )}
             />
           </button>
+          {/* Cards */}
           <button
             className={cn(
-              'relative px-2.5 py-1.5 text-sm flex items-center gap-1.5 border-l border-border transition-colors',
+              'relative h-9 w-9 flex items-center justify-center border-l border-border transition-colors',
               viewMode === 'cards'
                 ? 'bg-primary/15 text-primary'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
             )}
             onClick={() => setViewMode('cards')}
             title="Card view"
+            aria-label="Card view"
           >
             <LayoutGrid className="h-4 w-4" />
             <Star
@@ -432,21 +436,23 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
               )}
             />
           </button>
-        </div>
-
-        {/* Group by project toggle (table mode only) */}
-        {viewMode === 'table' && (
-          <div className="group/gp relative">
-            <Button
-              variant={groupByProject ? 'default' : 'outline'}
-              size="sm"
-              className="h-9 w-9 p-0"
-              onClick={() => setGroupByProject(g => !g)}
-              title={groupByProject ? 'Ungroup' : 'Group by project'}
-              aria-label={groupByProject ? 'Ungroup' : 'Group by project'}
-            >
-              <Layers className="h-4 w-4" />
-            </Button>
+          {/* Group (auto-switches to table view when enabled) */}
+          <button
+            className={cn(
+              'relative h-9 w-9 flex items-center justify-center border-l border-border transition-colors',
+              groupByProject && viewMode === 'table'
+                ? 'bg-primary/15 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+            )}
+            onClick={() => {
+              const next = !groupByProject;
+              setGroupByProject(next);
+              if (next && viewMode !== 'table') setViewMode('table');
+            }}
+            title={groupByProject ? 'Ungroup' : 'Group by project'}
+            aria-label={groupByProject ? 'Ungroup' : 'Group by project'}
+          >
+            <Layers className="h-4 w-4" />
             <Star
               role="button"
               tabIndex={0}
@@ -466,11 +472,11 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
                 defaultView.groupByProject === groupByProject
                   ? 'opacity-100 fill-primary text-primary'
-                  : 'opacity-0 group-hover/gp:opacity-60 hover:!opacity-100 text-muted-foreground',
+                  : 'opacity-0 group-hover/vt:opacity-60 hover:!opacity-100 text-muted-foreground',
               )}
             />
-          </div>
-        )}
+          </button>
+        </div>
 
         {/* Search */}
         <div className="relative flex-1 min-w-48">

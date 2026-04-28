@@ -1,45 +1,59 @@
 ## Goal
 
-Two fixes to the Loans page toolbar (`src/components/loans/LoanTable.tsx`):
+Unify the three toolbar toggles (Table / Cards / Group) into a **single segmented control** so they always appear together — the Group button no longer disappears when switching to Cards view, and all three buttons share the same square 36×36 icon footprint.
 
-1. **Group button → icon-only** — drop the "Group" text so it matches the Table/Cards icon toggles.
-2. **Stars no longer clipped** — currently the favorite stars get chopped off in the corner because the toggle container uses `overflow-hidden`.
+## Current Problem
 
-## Changes — `src/components/loans/LoanTable.tsx`
+- The Group button is wrapped in `{viewMode === 'table' && ...}`, so it vanishes the moment the user switches to Cards.
+- It also lives in its own separate bordered button outside the Table/Cards segment, so the row reads as "two icons + a floating button" rather than one unified control.
 
-### Fix 1: Stop clipping the stars
+## Changes — `src/components/loans/LoanTable.tsx` (lines ~365–473)
 
-The wrapper `<div className="group/vt relative flex rounded-md border border-border overflow-hidden">` clips the stars positioned at `-top-1 -right-1`.
+Merge the Group button into the existing `group/vt` segmented container so all three buttons share one border, one rounded shell, and consistent dividers.
 
-- Remove `overflow-hidden` from that wrapper.
-- Round each inner button individually so the visual pill shape is preserved:
-  - First button: add `rounded-l-[5px]`
-  - Second button: add `rounded-r-[5px]`
-- Bump star offset to `-top-1.5 -right-1.5` and add `z-10` so they sit cleanly above the border, exactly like the Group button's star.
-
-### Fix 2: Group button becomes icon-only
-
-Replace the labeled Group button with a square icon button matching the Table/Cards size:
-
-```tsx
-<Button
-  variant={groupByProject ? 'default' : 'outline'}
-  size="sm"
-  className="h-9 w-9 p-0"
-  onClick={() => setGroupByProject(g => !g)}
-  title={groupByProject ? 'Ungroup' : 'Group by project'}
-  aria-label={groupByProject ? 'Ungroup' : 'Group by project'}
->
-  <Layers className="h-4 w-4" />
-</Button>
+```text
+┌──────┬──────┬──────┐
+│ List │ Grid │Layers│   ← single rounded border, divider lines between
+└──────┴──────┴──────┘
 ```
 
-Keep its existing favorite star (already positioned correctly), just bump it to `-top-1.5 -right-1.5 z-10` for consistency.
+### Specifics
 
-## Result
+1. **Always render Group** — remove the `{viewMode === 'table' && ...}` wrapper.
+2. **Move Group inside the `group/vt` flex container** as the third `<button>`, with `border-l border-border` matching the Cards button.
+3. **Standardize all three buttons to `h-9 w-9 flex items-center justify-center`** so widths are identical (no more `px-2.5 py-1.5` variance).
+4. **Group button auto-switches view**: when the user clicks Group while in Cards view, set `viewMode` to `'table'` at the same time as enabling grouping (grouping only makes sense in table view). When in table view, it just toggles grouping on/off.
+5. **Active state for Group**: highlighted with `bg-primary/15 text-primary` only when both `groupByProject === true` AND `viewMode === 'table'` (so it doesn't look "active" when it has no effect).
+6. **Star uses the same group-hover token** (`group-hover/vt`) as the other two so the favorite stars all reveal in unison on hover. Keep `-top-1.5 -right-1.5 z-10`.
+7. Drop the now-unused outer `<div className="group/gp relative">` wrapper.
 
-A clean row of three square icon buttons (Table / Cards / Group), each with a favorite star that sits proudly in the top-right corner without being clipped, followed by the search bar and filters.
+### Resulting JSX shape
+
+```tsx
+<div className="group/vt relative flex rounded-md border border-border
+                [&>button:first-child]:rounded-l-[5px]
+                [&>button:last-child]:rounded-r-[5px]">
+  <button /* Table */ className="relative h-9 w-9 flex items-center justify-center ..."> 
+    <List /> <Star ... />
+  </button>
+  <button /* Cards */ className="relative h-9 w-9 flex items-center justify-center border-l border-border ...">
+    <LayoutGrid /> <Star ... />
+  </button>
+  <button /* Group */ className="relative h-9 w-9 flex items-center justify-center border-l border-border ..."
+    onClick={() => {
+      const next = !groupByProject;
+      setGroupByProject(next);
+      if (next && viewMode !== 'table') setViewMode('table');
+    }}>
+    <Layers /> <Star ... />
+  </button>
+</div>
+```
 
 ## Out of Scope
 
-Search input, filter dropdowns, persistence logic, table body — all unchanged.
+Search input, filter dropdowns, table body, persistence logic — all unchanged.
+
+## Files Touched
+
+- `src/components/loans/LoanTable.tsx`
