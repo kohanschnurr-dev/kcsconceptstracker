@@ -1,18 +1,25 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpDown, Search } from 'lucide-react';
+import { ArrowUpDown, Search, LayoutGrid, List, FolderOpen, Layers } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
-import { currentAccruedInterest, calcFirstPaymentDate, calcNextPaymentDate, effectiveOutstandingBalance } from '@/types/loans';
+import {
+  currentAccruedInterest,
+  calcFirstPaymentDate,
+  calcNextPaymentDate,
+  effectiveOutstandingBalance,
+  LOAN_TYPE_COLORS,
+} from '@/types/loans';
 import { getEffectivePayments } from '@/lib/loanPayments';
 import type { Loan, LoanStatus, LoanPayment, LoanDraw } from '@/types/loans';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 const fmt = (v: number | null | undefined) =>
   v == null
@@ -20,6 +27,7 @@ const fmt = (v: number | null | undefined) =>
     : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
 type SortKey = keyof Loan | 'balance_calc' | 'interest_accrued' | 'next_payment';
+type ViewMode = 'table' | 'cards';
 
 interface LoanTableProps {
   loans: Loan[];
@@ -27,6 +35,12 @@ interface LoanTableProps {
   compareMode?: boolean;
   selectedIds?: string[];
   onToggleSelect?: (id: string) => void;
+}
+
+interface EnrichedLoan {
+  loan: Loan;
+  balance: number;
+  interest: number | null;
 }
 
 export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], onToggleSelect }: LoanTableProps) {
@@ -37,9 +51,12 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(0);
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [groupByProject, setGroupByProject] = useState(false);
   const PER_PAGE = 15;
 
   const loanIds = useMemo(() => loans.map(l => l.id).sort(), [loans]);
+
   const { data: payments = [] } = useQuery<LoanPayment[]>({
     queryKey: ['loan_payments_for_table', loanIds],
     enabled: loanIds.length > 0,
@@ -51,6 +68,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       return (data ?? []).map((p: any) => ({ ...p, payment_date: p.date })) as LoanPayment[];
     },
   });
+
   const { data: draws = [] } = useQuery<LoanDraw[]>({
     queryKey: ['loan_draws_for_table', loanIds],
     enabled: loanIds.length > 0,
@@ -62,6 +80,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       return (data ?? []) as LoanDraw[];
     },
   });
+
   const paymentsByLoan = useMemo(() => {
     const m: Record<string, LoanPayment[]> = {};
     for (const p of payments) {
@@ -71,6 +90,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     }
     return m;
   }, [payments]);
+
   const drawsByLoan = useMemo(() => {
     const m: Record<string, LoanDraw[]> = {};
     for (const d of draws) {
@@ -81,7 +101,6 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     return m;
   }, [draws]);
 
-  // Map project_name -> project_type so we can filter the table by Fix & Flip / Rental / New Construction.
   const filtered = useMemo(() => {
     let list = [...loans];
     if (search.trim()) {
@@ -95,10 +114,10 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     }
     if (statusFilter !== 'all') list = list.filter(l => l.status === statusFilter);
     if (projectFilter !== 'all') list = list.filter(l => l.project_name === projectFilter);
+
     const getSortVal = (l: Loan): any => {
-      if (sortKey === 'balance_calc') {
+      if (sortKey === 'balance_calc')
         return effectiveOutstandingBalance(l, getEffectivePayments(l, paymentsByLoan[l.id] ?? []));
-      }
       if (sortKey === 'interest_accrued') {
         if (l.loan_type === 'dscr') return null;
         return currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], drawsByLoan[l.id] ?? []);
@@ -110,6 +129,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       }
       return (l as any)[sortKey];
     };
+
     list.sort((a, b) => {
       const av = getSortVal(a);
       const bv = getSortVal(b);
@@ -121,8 +141,41 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     return list;
   }, [loans, search, statusFilter, projectFilter, sortKey, sortAsc, paymentsByLoan, drawsByLoan]);
 
+  // Enrich every filtered loan with computed balance and interest
+  const enrichedFiltered = useMemo<EnrichedLoan[]>(() => {
+    return filtered.map(loan => {
+      const lps = paymentsByLoan[loan.id] ?? [];
+      const lds = drawsByLoan[loan.id] ?? [];
+      const balance = effectiveOutstandingBalance(loan, getEffectivePayments(loan, lps));
+      const interest = loan.loan_type === 'dscr' ? null : currentAccruedInterest(loan, lps, lds);
+      return { loan, balance, interest };
+    });
+  }, [filtered, paymentsByLoan, drawsByLoan]);
+
+  // Grand totals across all filtered loans
+  const totals = useMemo(() => ({
+    original: enrichedFiltered.reduce((s, { loan }) => s + (loan.original_amount ?? 0), 0),
+    balance: enrichedFiltered.reduce((s, { balance }) => s + balance, 0),
+    monthly: enrichedFiltered.reduce((s, { loan }) => s + (loan.monthly_payment ?? 0), 0),
+  }), [enrichedFiltered]);
+
+  // Stable ordered map of project → loans (preserves sort order within each group)
+  const projectGroups = useMemo(() => {
+    const groups = new Map<string, EnrichedLoan[]>();
+    for (const item of enrichedFiltered) {
+      const key = item.loan.project_name ?? 'No Project';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(item);
+    }
+    return groups;
+  }, [enrichedFiltered]);
+
   const pages = Math.ceil(filtered.length / PER_PAGE);
-  const visible = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+  // Pagination only applies to flat table mode
+  const visibleEnriched =
+    viewMode === 'table' && !groupByProject
+      ? enrichedFiltered.slice(page * PER_PAGE, (page + 1) * PER_PAGE)
+      : enrichedFiltered;
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(a => !a);
@@ -136,11 +189,115 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     </button>
   );
 
-  
+  // 9 cols when compare checkbox is present, 8 otherwise
+  const colCount = compareMode ? 9 : 8;
+
+  const renderLoanRow = ({ loan, balance, interest }: EnrichedLoan) => {
+    const isSelected = selectedIds.includes(loan.id);
+    const first = loan.first_payment_date || calcFirstPaymentDate(loan.start_date, loan.payment_frequency);
+    const next = calcNextPaymentDate(first, loan.payment_frequency);
+
+    return (
+      <TableRow
+        key={loan.id}
+        className={cn('cursor-pointer hover:bg-muted/40 transition-colors', isSelected && 'bg-primary/5')}
+        onClick={() => (compareMode ? onToggleSelect?.(loan.id) : navigate(`/loans/${loan.id}`))}
+      >
+        {compareMode && (
+          <TableCell className="w-10" onClick={e => e.stopPropagation()}>
+            <Checkbox
+              checked={isSelected}
+              disabled={!isSelected && selectedIds.length >= 3}
+              onCheckedChange={() => onToggleSelect?.(loan.id)}
+            />
+          </TableCell>
+        )}
+        <TableCell className="font-medium max-w-32 truncate">{loan.project_name ?? '—'}</TableCell>
+        <TableCell className="max-w-32 truncate">{loan.nickname ?? loan.lender_name}</TableCell>
+        <TableCell><LoanTypeBadge type={loan.loan_type} /></TableCell>
+        <TableCell className="text-right">
+          <div className="font-medium">{fmt(balance)}</div>
+          <div className="text-xs text-muted-foreground mt-0.5 leading-tight">
+            of {fmt(loan.original_amount)}
+            {interest != null && interest > 0 && (
+              <span className="ml-1.5 text-warning">· ↑{fmt(interest)} accrued</span>
+            )}
+          </div>
+        </TableCell>
+        <TableCell className="text-right">{fmt(loan.monthly_payment)}</TableCell>
+        <TableCell className="text-sm">{formatDisplayDate(loan.maturity_date)}</TableCell>
+        <TableCell><LoanStatusBadge status={loan.status} /></TableCell>
+        <TableCell className="text-sm">{formatDisplayDate(next)}</TableCell>
+      </TableRow>
+    );
+  };
+
+  const renderTableBody = () => {
+    if (enrichedFiltered.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={colCount} className="text-center py-12 text-muted-foreground">
+            No loans match your filters.
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    if (groupByProject) {
+      const rows: React.ReactNode[] = [];
+
+      projectGroups.forEach((items, projectName) => {
+        const sub = {
+          original: items.reduce((s, { loan }) => s + (loan.original_amount ?? 0), 0),
+          balance: items.reduce((s, { balance }) => s + balance, 0),
+          monthly: items.reduce((s, { loan }) => s + (loan.monthly_payment ?? 0), 0),
+        };
+
+        rows.push(
+          <TableRow key={`grp-${projectName}`} className="bg-muted/40 hover:bg-muted/40 border-t border-border">
+            <TableCell colSpan={colCount} className="py-2 px-4">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="font-semibold text-sm">{projectName}</span>
+                <span className="text-xs text-muted-foreground">
+                  ({items.length} {items.length === 1 ? 'loan' : 'loans'})
+                </span>
+              </div>
+            </TableCell>
+          </TableRow>,
+        );
+
+        items.forEach(item => rows.push(renderLoanRow(item)));
+
+        // Per-project subtotal row
+        rows.push(
+          <TableRow
+            key={`sub-${projectName}`}
+            className="bg-muted/20 hover:bg-muted/20 border-t border-dashed border-border/60"
+          >
+            {compareMode && <TableCell />}
+            <TableCell colSpan={3} className="text-right text-xs text-muted-foreground italic py-2 pr-4">
+              Subtotal — {projectName}
+            </TableCell>
+            <TableCell className="text-right py-2">
+              <div className="text-xs font-semibold">{fmt(sub.balance)}</div>
+              <div className="text-xs text-muted-foreground">of {fmt(sub.original)}</div>
+            </TableCell>
+            <TableCell className="text-right text-xs font-semibold py-2">{fmt(sub.monthly)}</TableCell>
+            <TableCell colSpan={3} />
+          </TableRow>,
+        );
+      });
+
+      return <>{rows}</>;
+    }
+
+    return visibleEnriched.map(item => renderLoanRow(item));
+  };
 
   return (
     <div className="space-y-3">
-      {/* Filters */}
+      {/* Filters + view toggles */}
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -170,93 +327,177 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             </SelectContent>
           </Select>
         )}
-      </div>
 
-      {/* Quick project-type filters removed — now lives at the page level */}
-
-      {/* Table */}
-      <div className="rounded-lg border border-border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-b border-border">
-              {compareMode && <TableHead className="w-10" />}
-              <TableHead>Project <SortBtn col="project_name" /></TableHead>
-              <TableHead>Loan Purpose <SortBtn col="lender_name" /></TableHead>
-              <TableHead>Type <SortBtn col="loan_type" /></TableHead>
-              <TableHead className="text-right">Original <SortBtn col="original_amount" /></TableHead>
-              <TableHead className="text-right">Balance <SortBtn col="balance_calc" /></TableHead>
-              <TableHead className="text-right">Interest Accrued <SortBtn col="interest_accrued" /></TableHead>
-              <TableHead className="text-right">Monthly Pmt <SortBtn col="monthly_payment" /></TableHead>
-              <TableHead>Maturity <SortBtn col="maturity_date" /></TableHead>
-              <TableHead>Status <SortBtn col="status" /></TableHead>
-              <TableHead>Next Payment <SortBtn col="next_payment" /></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visible.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={compareMode ? 11 : 10} className="text-center py-12 text-muted-foreground">
-                  No loans match your filters.
-                </TableCell>
-              </TableRow>
-            ) : (
-              visible.map(loan => {
-                const isSelected = selectedIds.includes(loan.id);
-                return (
-                <TableRow
-                  key={loan.id}
-                  className={`cursor-pointer hover:bg-muted/40 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
-                  onClick={() => compareMode ? onToggleSelect?.(loan.id) : navigate(`/loans/${loan.id}`)}
-                >
-                  {compareMode && (
-                    <TableCell className="w-10" onClick={e => e.stopPropagation()}>
-                      <Checkbox
-                        checked={isSelected}
-                        disabled={!isSelected && selectedIds.length >= 3}
-                        onCheckedChange={() => onToggleSelect?.(loan.id)}
-                      />
-                    </TableCell>
-                  )}
-                  <TableCell className="font-medium max-w-32 truncate">{loan.project_name ?? '—'}</TableCell>
-                  <TableCell className="max-w-32 truncate">{loan.nickname ?? loan.lender_name}</TableCell>
-                  <TableCell><LoanTypeBadge type={loan.loan_type} /></TableCell>
-                  <TableCell className="text-right">{fmt(loan.original_amount)}</TableCell>
-                  <TableCell className="text-right font-medium">{fmt(effectiveOutstandingBalance(loan, getEffectivePayments(loan, paymentsByLoan[loan.id] ?? [])))}</TableCell>
-                  <TableCell className="text-right">{loan.loan_type === 'dscr' ? '' : fmt(currentAccruedInterest(loan, paymentsByLoan[loan.id] ?? [], drawsByLoan[loan.id] ?? []))}</TableCell>
-                  <TableCell className="text-right">{fmt(loan.monthly_payment)}</TableCell>
-                  <TableCell className="text-sm">{formatDisplayDate(loan.maturity_date)}</TableCell>
-                  <TableCell><LoanStatusBadge status={loan.status} /></TableCell>
-                  <TableCell className="text-sm">
-                    {(() => {
-                      const first = loan.first_payment_date || calcFirstPaymentDate(loan.start_date, loan.payment_frequency);
-                      const next = calcNextPaymentDate(first, loan.payment_frequency);
-                      return formatDisplayDate(next);
-                    })()}
-                  </TableCell>
-                </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination */}
-      {pages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>{filtered.length} loans</span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
-              Previous
+        <div className="ml-auto flex items-center gap-1.5">
+          {/* Group by project toggle (table mode only) */}
+          {viewMode === 'table' && (
+            <Button
+              variant={groupByProject ? 'default' : 'outline'}
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={() => setGroupByProject(g => !g)}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Group
             </Button>
-            <span className="flex items-center px-2">
-              {page + 1} / {pages}
-            </span>
-            <Button variant="outline" size="sm" disabled={page >= pages - 1} onClick={() => setPage(p => p + 1)}>
-              Next
-            </Button>
+          )}
+
+          {/* View mode toggle */}
+          <div className="flex rounded-md border border-border overflow-hidden">
+            <button
+              className={cn(
+                'px-2.5 py-1.5 text-sm flex items-center gap-1.5 transition-colors',
+                viewMode === 'table'
+                  ? 'bg-primary/15 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              )}
+              onClick={() => setViewMode('table')}
+              title="Table view"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              className={cn(
+                'px-2.5 py-1.5 text-sm flex items-center gap-1.5 border-l border-border transition-colors',
+                viewMode === 'cards'
+                  ? 'bg-primary/15 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              )}
+              onClick={() => setViewMode('cards')}
+              title="Card view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
           </div>
         </div>
+      </div>
+
+      {/* Card view */}
+      {viewMode === 'cards' && (
+        enrichedFiltered.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">No loans match your filters.</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {enrichedFiltered.map(({ loan, balance, interest }) => {
+              const typeColor = LOAN_TYPE_COLORS[loan.loan_type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
+              const first = loan.first_payment_date || calcFirstPaymentDate(loan.start_date, loan.payment_frequency);
+              const next = calcNextPaymentDate(first, loan.payment_frequency);
+
+              return (
+                <div
+                  key={loan.id}
+                  className="rounded-lg bg-card cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
+                  style={{
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: 'hsl(var(--border))',
+                    borderLeftColor: typeColor,
+                    borderLeftWidth: '4px',
+                  }}
+                  onClick={() => navigate(`/loans/${loan.id}`)}
+                >
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs text-muted-foreground truncate">{loan.project_name ?? 'No Project'}</div>
+                        <div className="font-semibold text-sm mt-0.5 leading-tight truncate">
+                          {loan.nickname ?? loan.lender_name}
+                        </div>
+                      </div>
+                      <LoanStatusBadge status={loan.status} />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <LoanTypeBadge type={loan.loan_type} />
+                      <span className="text-xs text-muted-foreground">{loan.interest_rate}%</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 pt-2 border-t border-border/50">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Balance</div>
+                        <div className="font-semibold text-sm">{fmt(balance)}</div>
+                        <div className="text-xs text-muted-foreground">of {fmt(loan.original_amount)}</div>
+                        {interest != null && interest > 0 && (
+                          <div className="text-xs text-warning mt-0.5">↑ {fmt(interest)} accrued</div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Monthly Pmt</div>
+                        <div className="font-semibold text-sm">{fmt(loan.monthly_payment)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Maturity</div>
+                        <div className="text-sm">{formatDisplayDate(loan.maturity_date)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Next Payment</div>
+                        <div className="text-sm">{formatDisplayDate(next)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      )}
+
+      {/* Table view */}
+      {viewMode === 'table' && (
+        <>
+          <div className="rounded-lg border border-border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-b border-border">
+                  {compareMode && <TableHead className="w-10" />}
+                  <TableHead>Project <SortBtn col="project_name" /></TableHead>
+                  <TableHead>Loan Purpose <SortBtn col="lender_name" /></TableHead>
+                  <TableHead>Type <SortBtn col="loan_type" /></TableHead>
+                  <TableHead className="text-right">Balance / Original <SortBtn col="balance_calc" /></TableHead>
+                  <TableHead className="text-right">Monthly Pmt <SortBtn col="monthly_payment" /></TableHead>
+                  <TableHead>Maturity <SortBtn col="maturity_date" /></TableHead>
+                  <TableHead>Status <SortBtn col="status" /></TableHead>
+                  <TableHead>Next Payment <SortBtn col="next_payment" /></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {renderTableBody()}
+
+                {/* Grand totals row */}
+                {enrichedFiltered.length > 0 && (
+                  <TableRow className="bg-muted/30 border-t-2 border-border hover:bg-muted/30">
+                    {compareMode && <TableCell />}
+                    <TableCell colSpan={3} className="py-3 font-bold text-sm">
+                      Total ({enrichedFiltered.length} {enrichedFiltered.length === 1 ? 'loan' : 'loans'})
+                    </TableCell>
+                    <TableCell className="text-right py-3">
+                      <div className="font-bold text-sm">{fmt(totals.balance)}</div>
+                      <div className="text-xs text-muted-foreground">of {fmt(totals.original)}</div>
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-sm py-3">{fmt(totals.monthly)}</TableCell>
+                    <TableCell colSpan={3} />
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination (flat mode only) */}
+          {!groupByProject && pages > 1 && (
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>{filtered.length} loans</span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                  Previous
+                </Button>
+                <span className="flex items-center px-2">{page + 1} / {pages}</span>
+                <Button variant="outline" size="sm" disabled={page >= pages - 1} onClick={() => setPage(p => p + 1)}>
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
