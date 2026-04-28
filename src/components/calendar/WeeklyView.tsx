@@ -86,6 +86,45 @@ export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove, onDayD
     });
   };
 
+  const projectSpans = useMemo(() => {
+    const map = new Map<string, { name: string; start: Date; end: Date }>();
+    tasks.forEach(t => {
+      if (!t.projectId) return;
+      const existing = map.get(t.projectId);
+      const s = startOfDay(t.startDate);
+      const e = startOfDay(t.endDate);
+      if (!existing) {
+        map.set(t.projectId, { name: t.projectName, start: s, end: e });
+      } else {
+        if (s < existing.start) existing.start = s;
+        if (e > existing.end) existing.end = e;
+      }
+    });
+    return map;
+  }, [tasks]);
+
+  const getProjectSpansForDay = (date: Date) => {
+    const dayStart = startOfDay(date);
+    const seen = new Set<string>();
+    getTasksForDay(date).forEach(t => t.projectId && seen.add(t.projectId));
+    const out: { projectId: string; name: string; start: Date; end: Date; isStart: boolean; isEnd: boolean }[] = [];
+    seen.forEach(pid => {
+      const span = projectSpans.get(pid);
+      if (!span) return;
+      if (span.start.getTime() === span.end.getTime()) return;
+      if (dayStart < span.start || dayStart > span.end) return;
+      out.push({
+        projectId: pid,
+        name: span.name,
+        start: span.start,
+        end: span.end,
+        isStart: dayStart.getTime() === span.start.getTime(),
+        isEnd: dayStart.getTime() === span.end.getTime(),
+      });
+    });
+    return out;
+  };
+
   const handleDragStart = (event: any) => {
     const task = tasks.find(t => t.id === event.active.id);
     if (task) setActiveTask(task);
@@ -114,7 +153,8 @@ export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove, onDayD
         <div className="grid grid-cols-7 gap-3">
           {days.map(day => {
             const dayTasks = getTasksForDay(day);
-            
+            const spans = getProjectSpansForDay(day);
+
             return (
               <DroppableDay key={day.toISOString()} day={day} onDoubleClick={() => onDayDoubleClick?.(day)}>
                 <div className="text-center mb-3 pb-2 border-b border-border">
@@ -128,7 +168,29 @@ export function WeeklyView({ currentDate, tasks, onTaskClick, onTaskMove, onDayD
                     {format(day, 'd')}
                   </p>
                 </div>
-                
+
+                {spans.length > 0 && (
+                  <div className="flex flex-col gap-[2px] mb-2">
+                    {spans.map(s => (
+                      <div
+                        key={s.projectId}
+                        title={`${s.name} • ${format(s.start, 'MMM d')} → ${format(s.end, 'MMM d')}`}
+                        className="bg-muted-foreground/30 hover:bg-muted-foreground/50 transition-colors"
+                        style={{
+                          height: 4,
+                          marginLeft: s.isStart ? 0 : -12,
+                          marginRight: s.isEnd ? 0 : -12,
+                          borderTopLeftRadius: s.isStart ? 2 : 0,
+                          borderBottomLeftRadius: s.isStart ? 2 : 0,
+                          clipPath: s.isEnd
+                            ? 'polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)'
+                            : undefined,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   {dayTasks.map(task => (
                     <DraggableCard
