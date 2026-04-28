@@ -367,7 +367,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
           {/* Table */}
           <button
             className={cn(
-              'relative h-9 w-9 flex items-center justify-center transition-colors',
+              'group/btn relative h-9 w-9 flex items-center justify-center transition-colors',
               viewMode === 'table'
                 ? 'bg-primary/15 text-primary'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
