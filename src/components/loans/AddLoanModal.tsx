@@ -243,8 +243,30 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
                 </Select>
               </div>
               <div>
-                <Label>Loan Nickname <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Input className="mt-1" placeholder="e.g. Rehab Loan – Old North" value={form.nickname ?? ''} onChange={e => set('nickname', e.target.value)} />
+                <Label>Loan Purpose <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Select
+                  value={purposeMode || '__none__'}
+                  onValueChange={v => {
+                    if (v === '__none__') { setPurposeMode(''); set('nickname', ''); }
+                    else if (v === '__other__') { setPurposeMode('__other__'); set('nickname', ''); }
+                    else { setPurposeMode(v); set('nickname', v); }
+                  }}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select purpose" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {LOAN_PURPOSE_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    <SelectItem value="__other__">Other…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {purposeMode === '__other__' && (
+                  <Input
+                    className="mt-2"
+                    placeholder="Describe purpose (e.g. Treehouse/Wales)"
+                    value={form.nickname ?? ''}
+                    onChange={e => set('nickname', e.target.value)}
+                  />
+                )}
               </div>
               <div>
                 <Label>Lender Name <span className="text-destructive">*</span></Label>
