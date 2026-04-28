@@ -113,6 +113,7 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
   };
 
   const handleDragStart = (event: any) => {
+    setOpenPopoverDay(null);
     const task = tasks.find(t => t.id === event.active.id);
     if (task) setActiveTask(task);
   };
