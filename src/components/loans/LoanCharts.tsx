@@ -111,7 +111,11 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       const lp = getEffectivePayments(l, paymentsByLoan[l.id] ?? []);
       const ld = drawsByLoan[l.id] ?? [];
       const principal = effectiveOutstandingBalance(l, lp);
-      const interest = currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], ld);
+      // Amortizing loans (DSCR, conventional) pay interest each month as part
+      // of the scheduled payment — there is no accruing interest balance.
+      const interest = isAmortizingLoan(l)
+        ? 0
+        : currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], ld);
       const color = LOAN_TYPE_COLORS[l.loan_type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
       const agg = aggByType[label] ??= { type: l.loan_type, label, principal: 0, interest: 0, color };
       agg.principal += principal;
