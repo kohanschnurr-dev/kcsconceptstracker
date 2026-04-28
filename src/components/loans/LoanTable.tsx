@@ -125,7 +125,12 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       );
     }
     if (statusFilter !== 'all') list = list.filter(l => l.status === statusFilter);
-    if (typeFilter !== 'all') list = list.filter(l => l.loan_type === typeFilter);
+    if (projectTypeFilter !== 'all') {
+      list = list.filter(l => {
+        const pn = l.project_name;
+        return !!pn && projectTypeByName.get(pn) === projectTypeFilter;
+      });
+    }
     if (projectFilter !== 'all') list = list.filter(l => l.project_name === projectFilter);
     list.sort((a, b) => {
       const av = a[sortKey] as any;
