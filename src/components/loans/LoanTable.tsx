@@ -403,7 +403,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
           {/* Cards */}
           <button
             className={cn(
-              'relative h-9 w-9 flex items-center justify-center border-l border-border transition-colors',
+              'group/btn relative h-9 w-9 flex items-center justify-center border-l border-border transition-colors',
               viewMode === 'cards'
                 ? 'bg-primary/15 text-primary'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
