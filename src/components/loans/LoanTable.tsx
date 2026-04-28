@@ -288,9 +288,9 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
           })()}
         </TableCell>
         <TableCell className="text-center">{fmt(loan.monthly_payment)}</TableCell>
+        <TableCell className="text-sm text-center">{formatDisplayDate(next)}</TableCell>
         <TableCell className="text-sm text-center">{formatDisplayDate(loan.maturity_date)}</TableCell>
         <TableCell className="text-center"><div className="flex justify-center"><LoanStatusBadge status={loan.status} /></div></TableCell>
-        <TableCell className="text-sm text-center">{formatDisplayDate(next)}</TableCell>
       </TableRow>
     );
   };
