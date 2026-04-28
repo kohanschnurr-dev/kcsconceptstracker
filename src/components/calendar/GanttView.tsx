@@ -477,11 +477,10 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                     </div>
                   </div>
 
-                  {/* Task rows — collapsible with smooth max-height animation */}
-                  <div
-                    className="overflow-hidden transition-[max-height] duration-200 ease-out"
-                    style={{ maxHeight: collapsed ? 0 : rows.length * (ROW_H + 1) + 4 }}
-                  >
+                  {/* Task rows — instantly hidden when collapsed (no animation on mount) */}
+                  {!collapsed && (
+                  <div className="overflow-hidden">
+
                     {rows.map(row => {
                       const rep = row.representative;
                       const rowDepWarn = row.instances.some(t => hasDependencyWarning(t));
