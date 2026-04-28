@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { format, addMonths, addYears, differenceInCalendarDays } from 'date-fns';
-import { Plus, AlertTriangle, Zap, CalendarRange, Check, ChevronsUpDown, Repeat, Circle, X } from 'lucide-react';
+import { Plus, AlertTriangle, Zap, CalendarRange, Check, ChevronsUpDown, Repeat, Circle, X, Calendar as CalendarIcon } from 'lucide-react';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import {
   Dialog,
