@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, startOfDay, isWithinInterval, differenceInDays, addDays } from 'date-fns';
 import { parseDateString } from '@/lib/dateUtils';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, BarChart3, LayoutGrid } from 'lucide-react';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { NewEventModal } from '@/components/calendar/NewEventModal';
 import { DealCard } from '@/components/calendar/DealCard';
 import { TaskDetailPanel } from '@/components/calendar/TaskDetailPanel';
 import { CalendarLegend } from '@/components/calendar/CalendarLegend';
+import { GanttView } from '@/components/calendar/GanttView';
 import type { CalendarTask } from '@/pages/Calendar';
 import { getCategoryGroup } from '@/lib/calendarCategories';
 
