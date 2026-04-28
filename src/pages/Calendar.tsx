@@ -13,6 +13,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCategoryGroup } from '@/lib/calendarCategories';
 import { syncLinkedTaskDate } from '@/lib/syncLinkedTask';
+import { useProfile } from '@/hooks/useProfile';
+
+const DEFAULT_PROJECT_TYPE_ORDER = ['fix_flip', 'new_construction', 'rental'];
 
 export type CalendarView = 'monthly' | 'weekly' | 'gantt';
 
@@ -61,6 +64,14 @@ export default function Calendar() {
   const [quickCreateDate, setQuickCreateDate] = useState<Date | undefined>();
   const [quickCreateProjectId, setQuickCreateProjectId] = useState<string | undefined>();
   const { toast } = useToast();
+  const { profile } = useProfile();
+
+  const projectTypeOrder = useMemo(() => {
+    const saved = (profile?.project_tab_order as string[] | null) ?? [];
+    const merged = [...saved];
+    for (const t of DEFAULT_PROJECT_TYPE_ORDER) if (!merged.includes(t)) merged.push(t);
+    return merged;
+  }, [profile?.project_tab_order]);
 
   const selectedProjectId = searchParams.get('project');
 
@@ -85,6 +96,17 @@ export default function Calendar() {
     fetchData();
   }, []);
 
+  // Re-sort projects whenever the user's saved tab order changes (e.g. profile loads after fetch)
+  useEffect(() => {
+    const resort = (list: Project[]) => [...list].sort((a, b) => {
+      const aIdx = projectTypeOrder.indexOf(a.projectType as string);
+      const bIdx = projectTypeOrder.indexOf(b.projectType as string);
+      return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+    });
+    setProjects(prev => resort(prev));
+    setAllProjects(prev => resort(prev));
+  }, [projectTypeOrder]);
+
   const fetchData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -98,14 +120,13 @@ export default function Calendar() {
         .order('created_at', { ascending: false });
 
       if (projectsData) {
-        const sortedProjects = projectsData
-          .map(p => ({ ...p, projectType: p.project_type as 'fix_flip' | 'rental' | 'new_construction' }))
-          .sort((a, b) => {
-            const order = { new_construction: 0, fix_flip: 1, rental: 2 };
-            const aOrder = order[a.projectType as keyof typeof order] ?? 3;
-            const bOrder = order[b.projectType as keyof typeof order] ?? 3;
-            return aOrder - bOrder;
-          });
+        const mapped = projectsData
+          .map(p => ({ ...p, projectType: p.project_type as 'fix_flip' | 'rental' | 'new_construction' }));
+        const sortedProjects = [...mapped].sort((a, b) => {
+          const aIdx = projectTypeOrder.indexOf(a.projectType as string);
+          const bIdx = projectTypeOrder.indexOf(b.projectType as string);
+          return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+        });
         setProjects(sortedProjects);
         setAllProjects(sortedProjects);
       }
