@@ -570,38 +570,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
         </div>
       </div>
 
-      {/* Legend — always visible */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 pt-2 border-t border-border text-xs text-muted-foreground">
-        {Object.entries(CATEGORY_GROUPS).map(([key, group]) => (
-          <div key={key} className="flex items-center gap-1.5">
-            <div className={cn('w-3 h-2.5 rounded-sm shrink-0', GROUP_BG[key])} />
-            <span>{group.label}</span>
-          </div>
-        ))}
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 bg-amber-500 rotate-45 shrink-0" />
-          <span>Milestone</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div
-            className="w-5 h-2.5 shrink-0"
-            style={{ background: 'hsl(var(--foreground)/0.22)', clipPath: 'polygon(0 0,calc(100% - 5px) 0,100% 50%,calc(100% - 5px) 100%,0 100%)', borderRadius: 2 }}
-          />
-          <span>Project span</span>
-        </div>
-        {/* Dependency arrow types */}
-        <div className="flex items-center gap-3 ml-auto">
-          {Object.entries(DEP_COLORS).map(([type, color]) => (
-            <div key={type} className="flex items-center gap-1">
-              <svg width="20" height="10">
-                <line x1="0" y1="5" x2="14" y2="5" stroke={color} strokeWidth="1.5" strokeDasharray={type === 'FS' ? undefined : '3 2'} />
-                <polygon points="11,2 20,5 11,8" fill={color} />
-              </svg>
-              <span className="text-[10px]">{type}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Legend rendered once at the page level via <CalendarLegend /> in Calendar.tsx */}
     </div>
   );
 }
