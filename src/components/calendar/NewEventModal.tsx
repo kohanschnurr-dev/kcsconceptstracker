@@ -471,27 +471,16 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
                     </label>
                   </div>
                   {isMultiDay ? (
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-muted-foreground text-xs mb-1 block">Start</Label>
-                        <Calendar
-                          mode="single"
-                          selected={startDate}
-                          onSelect={handleStartDateChange}
-                          className="pointer-events-auto"
-                        />
-                      </div>
-                      <div className="border-t border-border pt-3">
-                        <Label className="text-muted-foreground text-xs mb-1 block">End</Label>
-                        <Calendar
-                          mode="single"
-                          selected={endDate}
-                          onSelect={setEndDate}
-                          disabled={(date) => (startDate ? date < startDate : false)}
-                          className="pointer-events-auto"
-                        />
-                      </div>
-                    </div>
+                    <Calendar
+                      mode="range"
+                      selected={{ from: startDate, to: endDate }}
+                      onSelect={(range: any) => {
+                        if (range?.from) handleStartDateChange(range.from);
+                        setEndDate(range?.to ?? range?.from);
+                      }}
+                      numberOfMonths={1}
+                      className="pointer-events-auto"
+                    />
                   ) : (
                     <Calendar
                       mode="single"
