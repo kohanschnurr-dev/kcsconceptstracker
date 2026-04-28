@@ -441,6 +441,22 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
             ) : null}
           </DragOverlay>
         </DndContext>
+        )}
+
+        {view === 'gantt' && (
+          <div className="overflow-x-auto">
+            <GanttView
+              currentDate={currentDate}
+              tasks={tasks}
+              onTaskClick={(task) => { setSelectedTask(task); setPanelOpen(true); }}
+              onTaskMove={(taskId, newStart, newEnd) => persistTaskMove(taskId, newStart, newEnd)}
+              onAddEvent={() => {
+                setQuickCreateDate(undefined);
+                setQuickCreateOpen(true);
+              }}
+            />
+          </div>
+        )}
 
         <div className="pt-3 mt-2 border-t border-border">
           <CalendarLegend />
