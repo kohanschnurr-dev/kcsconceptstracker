@@ -92,6 +92,12 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
   const [form, setForm] = useState(empty);
   const [draws, setDraws] = useState<Omit<LoanDraw, 'id' | 'created_at' | 'loan_id'>[]>([emptyDraw(1)]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  // "Loan Purpose" picker: either one of LOAN_PURPOSE_OPTIONS or "__other__" with custom text in nickname.
+  const [purposeMode, setPurposeMode] = useState<string>(() => {
+    const initial = (initialData?.nickname ?? '').trim();
+    if (!initial) return '';
+    return (LOAN_PURPOSE_OPTIONS as readonly string[]).includes(initial) ? initial : '__other__';
+  });
 
   const prevOpen = useRef(false);
   const initialStartRef = useRef<string | null>(null);
