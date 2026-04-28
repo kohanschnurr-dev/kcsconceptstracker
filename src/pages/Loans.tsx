@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Landmark, Plus, GitCompareArrows } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { LoanStatsRow } from '@/components/loans/LoanStatsRow';
@@ -8,19 +9,27 @@ import { LoanCharts } from '@/components/loans/LoanCharts';
 import { LoanComparePanel } from '@/components/loans/LoanComparePanel';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoans } from '@/hooks/useLoans';
-import { calcMonthlyPayment } from '@/types/loans';
 import type { Loan, LoanDraw } from '@/types/loans';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
+type ProjectType = 'fix_flip' | 'rental' | 'new_construction';
+
+const PROJECT_TYPE_PILLS: { value: ProjectType | 'all'; label: string }[] = [
+  { value: 'all', label: 'All Projects' },
+  { value: 'fix_flip', label: 'Fix & Flips' },
+  { value: 'rental', label: 'Rentals' },
+  { value: 'new_construction', label: 'New Construction' },
+];
 
 export default function Loans() {
   const { loans, isLoading, createLoan } = useLoans();
-  const { user } = useAuth();
   const { toast } = useToast();
   const [addOpen, setAddOpen] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType | 'all'>('all');
 
   const toggleCompare = useCallback((id: string) => {
     setCompareIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 3 ? [...prev, id] : prev);
@@ -33,7 +42,35 @@ export default function Loans() {
     [loans],
   );
 
-  const visibleLoans = loans;
+  // Look up project_type for each project name referenced by loans, so we can
+  // filter the entire page (stats, charts, table) by Fix & Flip / Rental / New Construction.
+  const { data: projectTypesRows = [] } = useQuery<{ name: string; project_type: string | null }[]>({
+    queryKey: ['project_types_for_loans_page', projectNames],
+    enabled: projectNames.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('name, project_type')
+        .in('name', projectNames);
+      if (error) throw error;
+      return (data ?? []) as any;
+    },
+  });
+  const projectTypeByName = useMemo(() => {
+    const m = new Map<string, ProjectType>();
+    for (const r of projectTypesRows) {
+      if (r.name && r.project_type) m.set(r.name, r.project_type as ProjectType);
+    }
+    return m;
+  }, [projectTypesRows]);
+
+  const visibleLoans = useMemo(() => {
+    if (projectTypeFilter === 'all') return loans;
+    return loans.filter(l => {
+      const pn = l.project_name;
+      return !!pn && projectTypeByName.get(pn) === projectTypeFilter;
+    });
+  }, [loans, projectTypeFilter, projectTypeByName]);
 
   const handleAddLoan = async (
     payload: Omit<Loan, 'id' | 'created_at' | 'updated_at' | 'project_name'>,
@@ -75,6 +112,30 @@ export default function Loans() {
             </Button>
           </div>
         </div>
+
+        {/* Page-wide project-type filter — drives stats, table, and charts */}
+        {loans.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {PROJECT_TYPE_PILLS.map(pill => {
+              const active = projectTypeFilter === pill.value;
+              return (
+                <button
+                  key={pill.value}
+                  type="button"
+                  onClick={() => setProjectTypeFilter(pill.value)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors',
+                    active
+                      ? 'bg-primary/15 text-primary border-primary/40'
+                      : 'bg-card text-muted-foreground border-border hover:text-foreground',
+                  )}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Stats */}
         <LoanStatsRow loans={visibleLoans} />
