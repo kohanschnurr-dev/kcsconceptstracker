@@ -1,32 +1,40 @@
-# Make Events Draggable from "+more" Popover
+## Rename "Loan Name" → "Loan Purpose" + preset picker with custom override
 
-## Problem
-On the Monthly calendar, when a day has more than 3 events, the extra events live behind the "+N more" popover. Inside that popover they currently render as plain `DealCard` components — not wrapped in `DraggableCard` — so they can't be dragged onto another day. Even when wrapped, the Radix Popover would close on pointer-down outside, killing the drag mid-gesture.
+The screenshot shows the **Loan Name** column rendering free-form values like "Treehouse/Wales", "Construction Costs", "Purchase & Constr…", "Land Costs", "DSCR". We'll reframe this as the loan's *purpose* (corporate term) and replace the free-text nickname with a curated dropdown plus an "Other" escape hatch.
 
-## Fix (single file: `src/components/calendar/MonthlyView.tsx`)
+### Terminology
+Use **"Loan Purpose"** across the UI (column header, modal label, detail page). The underlying DB column `loans.nickname` stays the same — no migration needed; it just stores the chosen preset label or the user's custom text.
 
-### 1. Wrap popover events in `DraggableCard`
-Replace `DealCard` with `DraggableCard` inside both popovers (mobile compact badge popover, line 207, and desktop "+more" popover, line 242). Same for the mobile popover so overflow-events on touch are also draggable.
+### Preset options (pulled from the existing data + standard CRE finance terms)
+- Acquisition / Purchase
+- Construction
+- Purchase & Construction
+- Renovation / Rehab
+- Land Acquisition
+- Refinance
+- Cash-Out Refinance
+- Bridge
+- DSCR / Long-Term Hold
+- Working Capital
+- Other… (reveals a text input)
 
-```tsx
-{dayTasks.map(task => (
-  <DraggableCard key={task.id} task={task} onTaskClick={() => onTaskClick(task)} />
-))}
-```
+### Files to change
 
-### 2. Close the popover when a drag begins
-Lift the popover's open state into local state and close it on `onDragStart`. This prevents Radix from auto-dismissing mid-drag (which cancels dnd-kit) and cleans the UI so the user sees the day grid while dragging.
+**`src/components/loans/AddLoanModal.tsx`** (step 0, ~line 240)
+Replace the `<Input>` for nickname with a `<Select>` populated from the preset list above. When the user picks **"Other…"**, render an inline `<Input>` below the select and bind it to `form.nickname`. When a preset is picked, write that label directly to `form.nickname`. Update the `<Label>` to **"Loan Purpose"**. Determine initial mode by checking whether the existing value matches a preset.
 
-- Track `openPopoverDay: string | null` at the `MonthlyView` component level.
-- Each `+more` Popover becomes controlled: `open={openPopoverDay === day.toISOString()} onOpenChange={(o) => setOpenPopoverDay(o ? day.toISOString() : null)}`.
-- In the `DndContext` `onDragStart` handler, call `setOpenPopoverDay(null)` so the popover dismisses cleanly the moment the gesture starts.
+**`src/components/loans/LoanTable.tsx`** (line 184)
+Change column header `Loan Name` → `Loan Purpose`. Cell rendering on line 221 stays the same (`loan.nickname ?? loan.lender_name`). Search placeholder on line 96 ("Search lender, project…") gets "purpose" added.
 
-### 3. Compact `DraggableCard` styling already matches
-`DraggableCard` already uses `<DealCard ... compact />`, so the popover layout stays visually identical — just becomes interactive.
+**`src/pages/LoanDetail.tsx`** (line 225 area)
+Where the title currently falls back through nickname/lender, no logic change is required — but if there's a labeled "Nickname" field on the page, rename it to "Loan Purpose". (I'll verify and adjust on implementation.)
 
-## Out of scope
-- No changes to `DealCard`, `DroppableDay`, or drag-end logic — the existing `onTaskMove` flow already handles repositioning.
-- Weekly/Gantt views are unaffected.
+**Shared constant**
+Add `LOAN_PURPOSE_OPTIONS` to `src/types/loans.ts` so both the modal and any future edit surface share one source of truth.
 
-## Result
-Events from a day's overflow popover can now be dragged onto any day cell, identical to the first three visible events. The popover auto-closes when a drag starts so the drop target is fully visible.
+### Backward compatibility
+Existing loans with arbitrary nickname strings (e.g. "Treehouse/Wales") will simply land in **Other…** mode when edited — their text loads into the inline input automatically. No data backfill needed.
+
+### Out of scope
+- No DB migration (column name `nickname` stays).
+- No inline-edit affordance on the detail page in this pass — only the create/edit modal gets the new picker. Let me know if you also want the detail header to be click-to-edit and I'll add that.
