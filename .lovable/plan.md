@@ -1,41 +1,50 @@
 ## Goal
 
-On the Loans page filter row, move the three view controls — **Group**, **Table view**, **Card view** — to sit **in front of** the search bar (left side), and let the user mark their preferred starting view so the page opens that way every time.
+Make the Loans table feel cleaner: every column header and cell is **center-aligned**, and the **Balance / Original** cell shows just the headline balance number — with an inline expand chevron to reveal the "of $X" original and the "↑ accrued" interest.
 
-## Layout change (left → right)
+## Changes — `src/components/loans/LoanTable.tsx`
 
-```text
-[ Table | Cards ]  [ Group ★ ]   [ Search ............. ]   [ Status ▾ ]   [ Project ▾ ]
-```
+### 1. Center-align all columns
 
-- The view-mode segmented control (Table / Cards icons) and the Group pill move to the **left edge** of the toolbar.
-- The search input becomes the flexible middle element (still `flex-1`).
-- Status and Project filter dropdowns stay on the right.
-- `ml-auto` is removed from the toggle cluster since they’re now leading the row.
+Update headers and cells so text/labels sit centered, matching the user's request.
 
-## Favorite / default view
+- `TableHead` for Project, Loan Purpose, Type, Balance/Original, Monthly Pmt, Maturity, Status, Next Payment → add `text-center`.
+- Sort buttons (`SortBtn`) stay inline next to the centered label (wrap header content in a `inline-flex items-center justify-center gap-1` span).
+- `TableCell`s in `renderLoanRow` → switch from `text-right` / default-left to `text-center` for all data columns. Badges (`LoanTypeBadge`, `LoanStatusBadge`) get wrapped in a `flex justify-center` container so the pills sit centered in their column.
+- Project / Loan Purpose cells: keep `truncate` but center via `text-center` and remove `font-medium` left bias only on text alignment (font weight stays).
+- Subtotal + Grand Total rows: realign so the Balance and Monthly Pmt columns are also `text-center` to stay consistent. The "Total (N loans)" label switches to `text-center` as well (still spans 3 columns).
 
-Each of the three controls gets a small star affordance so the user can pin their preferred starting state:
+### 2. Expandable Balance / Original cell
 
-- Long-press / right-click on a view toggle, OR a tiny star icon that appears on hover at the top-right corner of the active toggle — clicking the star sets that toggle as the default.
-- Stored in `localStorage` under `loans:defaultView` with shape `{ viewMode: 'table' | 'cards', groupByProject: boolean }`.
-- On page load, `useState` initializers read from localStorage; if missing, defaults stay `table` + `groupByProject: false`.
-- The currently-favorited control shows a filled star; others show nothing until hover.
-- A subtle toast confirms: "Default view saved" when set.
+Currently the cell stacks three lines (balance, "of $X", accrued). New behavior:
 
-To keep the UI clean at 1812px and on mobile, the star sits as a 12px overlay in the top-right of the button, only visible on `hover` of the toggle group or when already favorited.
+- **Default**: show only the balance amount (e.g. `$187,000`) plus a small chevron button (`ChevronDown` from lucide-react) to the right of the number.
+- **Expanded** (per-row, local state): reveals the existing secondary line — `of $245,000 · ↑$6,385 accrued` — directly underneath. Chevron flips to `ChevronUp`.
+- Clicking the chevron toggles expansion and **does not navigate** to the loan detail (uses `e.stopPropagation()`).
+- If a loan has no original-amount detail and no accrued interest, the chevron is hidden (nothing to expand).
 
-## Files to change
+Implementation:
+- Add `const [expandedBalances, setExpandedBalances] = useState<Set<string>>(new Set())` at the component level.
+- Helper `toggleBalanceExpand(id)` adds/removes the id from the set.
+- In `renderLoanRow`, replace the Balance cell with a centered flex layout:
+  ```
+  [ $187,000  ⌄ ]
+       of $245,000 · ↑$6,385 accrued   ← only when expanded
+  ```
+- Card view (unchanged) — already shows full breakdown by default; users asked specifically about the table columns.
 
-- `src/components/loans/LoanTable.tsx`
-  - Reorder JSX in the toolbar (lines ~301–373): toggle cluster first, then search, then filters.
-  - Add `localStorage` read in initial state for `viewMode` and `groupByProject`.
-  - Add a `setAsDefault()` helper + small star button on each toggle.
-  - Keep the existing "Group only visible in table mode" rule — when default is `cards`, the saved `groupByProject` is still remembered but only applied when the user switches back to table.
+### 3. Subtotal & Total rows
 
-No other files need edits. No backend changes — preference is purely client-side per browser, matching the lightweight feel of a view toggle.
+To keep the totals readable with center alignment:
+- Subtotal row: balance column shows headline total centered, with the "of $X" line directly under it (always visible — totals are summary rows, not per-loan).
+- Grand Total row: same treatment, centered.
 
-## Out of scope
+## Out of Scope
 
-- Syncing the default view across devices (would need a `user_preferences` table).
-- Changing the actual table or card rendering.
+- Card view layout (already shows balance breakdown clearly).
+- Sorting logic, filters, persistence, and the star/default-view system stay exactly as-is.
+- No DB or type changes.
+
+## Files Touched
+
+- `src/components/loans/LoanTable.tsx` (only)
