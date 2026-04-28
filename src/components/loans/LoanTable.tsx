@@ -379,120 +379,48 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     <div className="space-y-3">
       {/* View toggles + filters */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Unified view toggle: Table / Cards / Group */}
-        <div className="group/vt relative flex rounded-md border border-border [&>button:first-child]:rounded-l-[5px] [&>button:last-child]:rounded-r-[5px]">
-          {/* Table */}
-          <button
-            className={cn(
-              'group/btn relative h-9 w-9 flex items-center justify-center transition-colors',
-              viewMode === 'table'
-                ? 'bg-primary/15 text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-            )}
-            onClick={() => setViewMode('table')}
-            title="Table view"
-            aria-label="Table view"
-          >
-            <List className="h-4 w-4" />
-            <Star
-              role="button"
-              tabIndex={0}
-              aria-label={defaultView.viewMode === 'table' ? 'Default view: Table' : 'Set Table as default view'}
-              onClick={(e) => {
-                e.stopPropagation();
-                saveDefaultView({ ...defaultView, viewMode: 'table' }, 'Table view');
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  saveDefaultView({ ...defaultView, viewMode: 'table' }, 'Table view');
-                }
-              }}
+        {/* Independent view toggles: Table / Cards / Group (no selected highlight) */}
+        <div className="flex rounded-md border border-border [&>button:first-child]:rounded-l-[5px] [&>button:last-child]:rounded-r-[5px]">
+          {([
+            { key: 'table' as const, Icon: List, label: 'Table view' },
+            { key: 'cards' as const, Icon: LayoutGrid, label: 'Card view' },
+            { key: 'group' as const, Icon: Layers, label: 'Group by project' },
+          ]).map(({ key, Icon, label }, idx) => (
+            <button
+              key={key}
               className={cn(
-                'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
-                defaultView.viewMode === 'table'
-                  ? 'opacity-100 fill-primary text-primary'
-                  : 'opacity-0 group-hover/btn:opacity-60 hover:!opacity-100 text-muted-foreground',
+                'group/btn relative h-9 w-9 flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                idx > 0 && 'border-l border-border',
               )}
-            />
-          </button>
-          {/* Cards */}
-          <button
-            className={cn(
-              'group/btn relative h-9 w-9 flex items-center justify-center border-l border-border transition-colors',
-              viewMode === 'cards'
-                ? 'bg-primary/15 text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-            )}
-            onClick={() => setViewMode('cards')}
-            title="Card view"
-            aria-label="Card view"
-          >
-            <LayoutGrid className="h-4 w-4" />
-            <Star
-              role="button"
-              tabIndex={0}
-              aria-label={defaultView.viewMode === 'cards' ? 'Default view: Cards' : 'Set Cards as default view'}
-              onClick={(e) => {
-                e.stopPropagation();
-                saveDefaultView({ ...defaultView, viewMode: 'cards' }, 'Card view');
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
+              onClick={() => setView(key)}
+              title={label}
+              aria-label={label}
+            >
+              <Icon className="h-4 w-4" />
+              <Star
+                role="button"
+                tabIndex={0}
+                aria-label={defaultView === key ? `Default view: ${label}` : `Set ${label} as default`}
+                onClick={(e) => {
                   e.stopPropagation();
-                  saveDefaultView({ ...defaultView, viewMode: 'cards' }, 'Card view');
-                }
-              }}
-              className={cn(
-                'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
-                defaultView.viewMode === 'cards'
-                  ? 'opacity-100 fill-primary text-primary'
-                  : 'opacity-0 group-hover/btn:opacity-60 hover:!opacity-100 text-muted-foreground',
-              )}
-            />
-          </button>
-          {/* Group (auto-switches to table view when enabled) */}
-          <button
-            className={cn(
-              'group/btn relative h-9 w-9 flex items-center justify-center border-l border-border transition-colors',
-              groupByProject && viewMode === 'table'
-                ? 'bg-primary/15 text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-            )}
-            onClick={() => {
-              const next = !groupByProject;
-              setGroupByProject(next);
-              if (next && viewMode !== 'table') setViewMode('table');
-            }}
-            title={groupByProject ? 'Ungroup' : 'Group by project'}
-            aria-label={groupByProject ? 'Ungroup' : 'Group by project'}
-          >
-            <Layers className="h-4 w-4" />
-            <Star
-              role="button"
-              tabIndex={0}
-              aria-label={defaultView.groupByProject ? 'Default: Grouped on' : 'Set current Group state as default'}
-              onClick={(e) => {
-                e.stopPropagation();
-                saveDefaultView({ ...defaultView, groupByProject }, groupByProject ? 'Group on' : 'Group off');
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  saveDefaultView({ ...defaultView, groupByProject }, groupByProject ? 'Group on' : 'Group off');
-                }
-              }}
-              className={cn(
-                'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
-                defaultView.groupByProject === groupByProject
-                  ? 'opacity-100 fill-primary text-primary'
-                  : 'opacity-0 group-hover/btn:opacity-60 hover:!opacity-100 text-muted-foreground',
-              )}
-            />
-          </button>
+                  saveDefaultView(key, label);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    saveDefaultView(key, label);
+                  }
+                }}
+                className={cn(
+                  'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
+                  defaultView === key
+                    ? 'opacity-100 fill-primary text-primary'
+                    : 'opacity-0 group-hover/btn:opacity-60 hover:!opacity-100 text-muted-foreground',
+                )}
+              />
+            </button>
+          ))}
         </div>
 
         {/* Search */}
