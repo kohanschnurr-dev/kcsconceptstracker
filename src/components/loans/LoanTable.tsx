@@ -19,7 +19,7 @@ const fmt = (v: number | null | undefined) =>
     ? '—'
     : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
-type SortKey = keyof Loan;
+type SortKey = keyof Loan | 'balance_calc' | 'interest_accrued' | 'next_payment';
 
 interface LoanTableProps {
   loans: Loan[];
@@ -95,16 +95,31 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     }
     if (statusFilter !== 'all') list = list.filter(l => l.status === statusFilter);
     if (projectFilter !== 'all') list = list.filter(l => l.project_name === projectFilter);
+    const getSortVal = (l: Loan): any => {
+      if (sortKey === 'balance_calc') {
+        return effectiveOutstandingBalance(l, getEffectivePayments(l, paymentsByLoan[l.id] ?? []));
+      }
+      if (sortKey === 'interest_accrued') {
+        if (l.loan_type === 'dscr') return null;
+        return currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], drawsByLoan[l.id] ?? []);
+      }
+      if (sortKey === 'next_payment') {
+        const first = l.first_payment_date || calcFirstPaymentDate(l.start_date, l.payment_frequency);
+        const next = calcNextPaymentDate(first, l.payment_frequency);
+        return next ? new Date(next).getTime() : null;
+      }
+      return (l as any)[sortKey];
+    };
     list.sort((a, b) => {
-      const av = a[sortKey] as any;
-      const bv = b[sortKey] as any;
+      const av = getSortVal(a);
+      const bv = getSortVal(b);
       if (av == null) return 1;
       if (bv == null) return -1;
       const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
       return sortAsc ? cmp : -cmp;
     });
     return list;
-  }, [loans, search, statusFilter, projectFilter, sortKey, sortAsc]);
+  }, [loans, search, statusFilter, projectFilter, sortKey, sortAsc, paymentsByLoan, drawsByLoan]);
 
   const pages = Math.ceil(filtered.length / PER_PAGE);
   const visible = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
@@ -169,12 +184,12 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
               <TableHead>Loan Name <SortBtn col="lender_name" /></TableHead>
               <TableHead>Type <SortBtn col="loan_type" /></TableHead>
               <TableHead className="text-right">Original <SortBtn col="original_amount" /></TableHead>
-              <TableHead className="text-right">Balance <SortBtn col="outstanding_balance" /></TableHead>
-              <TableHead className="text-right">Interest Accrued</TableHead>
-              <TableHead className="text-right">Monthly Pmt</TableHead>
+              <TableHead className="text-right">Balance <SortBtn col="balance_calc" /></TableHead>
+              <TableHead className="text-right">Interest Accrued <SortBtn col="interest_accrued" /></TableHead>
+              <TableHead className="text-right">Monthly Pmt <SortBtn col="monthly_payment" /></TableHead>
               <TableHead>Maturity <SortBtn col="maturity_date" /></TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Next Payment</TableHead>
+              <TableHead>Status <SortBtn col="status" /></TableHead>
+              <TableHead>Next Payment <SortBtn col="next_payment" /></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
