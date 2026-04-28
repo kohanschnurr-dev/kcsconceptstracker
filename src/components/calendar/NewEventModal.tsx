@@ -200,7 +200,6 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
       notes: notes || null,
       checklist: checklist.length > 0 ? checklist : null,
       linked_task_id: linkedTaskId || null,
-      owner: owner.trim() || null,
       dependencies: dependencies.length > 0 ? dependencies : null,
     };
 
