@@ -160,7 +160,10 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       typesSet.add(l.loan_type);
 
       // Per-type accrued interest stacked directly on top of its own principal.
-      const accrued = currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], drawsByLoan[l.id] ?? []);
+      // Skip for amortizing loans — interest is paid monthly, not accrued.
+      const accrued = isAmortizingLoan(l)
+        ? 0
+        : currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], drawsByLoan[l.id] ?? []);
       if (accrued > 0) {
         const ik = interestKey(l.loan_type);
         map[key][ik] = (map[key][ik] ?? 0) + accrued;
