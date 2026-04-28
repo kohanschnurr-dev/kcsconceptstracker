@@ -227,7 +227,10 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
                     />
                   ))}
                   {dayTasks.length > 3 && (
-                    <Popover>
+                    <Popover
+                      open={openPopoverDay === `d-${day.toISOString()}`}
+                      onOpenChange={(o) => setOpenPopoverDay(o ? `d-${day.toISOString()}` : null)}
+                    >
                       <PopoverTrigger asChild>
                         <button className="text-[10px] text-primary cursor-pointer hover:underline w-full text-center">
                           +{dayTasks.length - 3} more
@@ -244,7 +247,7 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
                         </div>
                         <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
                           {dayTasks.map(task => (
-                            <DealCard key={task.id} task={task} compact onClick={() => onTaskClick(task)} />
+                            <DraggableCard key={task.id} task={task} onTaskClick={() => onTaskClick(task)} />
                           ))}
                         </div>
                       </PopoverContent>
