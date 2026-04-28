@@ -103,24 +103,6 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentDate]);
 
-  // Per-project span ranges across all loaded tasks (used to show project span chevrons)
-  const projectSpans = useMemo(() => {
-    const map = new Map<string, { name: string; start: Date; end: Date }>();
-    tasks.forEach(t => {
-      if (!t.projectId) return;
-      const existing = map.get(t.projectId);
-      const s = startOfDay(t.startDate);
-      const e = startOfDay(t.endDate);
-      if (!existing) {
-        map.set(t.projectId, { name: t.projectName, start: s, end: e });
-      } else {
-        if (s < existing.start) existing.start = s;
-        if (e > existing.end) existing.end = e;
-      }
-    });
-    return map;
-  }, [tasks]);
-
   const getTasksForDay = (date: Date) => {
     const dayStart = startOfDay(date);
     return tasks.filter(task => {
@@ -129,30 +111,6 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
       return isWithinInterval(dayStart, { start: taskStart, end: taskEnd });
     });
   };
-
-  const getProjectSpansForDay = (date: Date) => {
-    const dayStart = startOfDay(date);
-    const seen = new Set<string>();
-    const dayTasks = getTasksForDay(date);
-    dayTasks.forEach(t => t.projectId && seen.add(t.projectId));
-    const out: { projectId: string; name: string; start: Date; end: Date; isStart: boolean; isEnd: boolean }[] = [];
-    seen.forEach(pid => {
-      const span = projectSpans.get(pid);
-      if (!span) return;
-      if (span.start.getTime() === span.end.getTime()) return; // single-day, no span to show
-      if (dayStart < span.start || dayStart > span.end) return;
-      out.push({
-        projectId: pid,
-        name: span.name,
-        start: span.start,
-        end: span.end,
-        isStart: dayStart.getTime() === span.start.getTime(),
-        isEnd: dayStart.getTime() === span.end.getTime(),
-      });
-    });
-    return out;
-  };
-
 
   const handleDragStart = (event: any) => {
     setOpenPopoverDay(null);
@@ -213,46 +171,21 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
           {days.map(day => {
             const dayTasks = getTasksForDay(day);
             const isCurrentMonth = isSameMonth(day, currentDate);
-            const spans = getProjectSpansForDay(day);
-
+            
             return (
               <DroppableDay key={day.toISOString()} day={day} isCurrentMonth={isCurrentMonth} onDoubleClick={() => onDayDoubleClick?.(day)}>
                 <div className={cn(
                   'font-medium mb-0.5',
                   'text-[10px] sm:text-sm',
-                  isToday(day)
-                    ? 'text-primary'
-                    : isCurrentMonth
-                      ? 'text-foreground'
+                  isToday(day) 
+                    ? 'text-primary' 
+                    : isCurrentMonth 
+                      ? 'text-foreground' 
                       : 'text-muted-foreground/60'
                 )}>
                   {format(day, 'd')}
                 </div>
-
-                {/* Project span chevrons (one per project active on this day) */}
-                {spans.length > 0 && (
-                  <div className="hidden sm:flex flex-col gap-[2px] mb-1">
-                    {spans.map(s => (
-                      <div
-                        key={s.projectId}
-                        title={`${s.name} • ${format(s.start, 'MMM d')} → ${format(s.end, 'MMM d')}`}
-                        className="bg-muted-foreground/30 hover:bg-muted-foreground/50 transition-colors"
-                        style={{
-                          height: 4,
-                          marginLeft: s.isStart ? 0 : -4,
-                          marginRight: s.isEnd ? 0 : -4,
-                          borderTopLeftRadius: s.isStart ? 2 : 0,
-                          borderBottomLeftRadius: s.isStart ? 2 : 0,
-                          clipPath: s.isEnd
-                            ? 'polygon(0 0, calc(100% - 5px) 0, 100% 50%, calc(100% - 5px) 100%, 0 100%)'
-                            : undefined,
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-
-
+                
                 {/* Mobile: compact badge → popover */}
                 <div className="sm:hidden">
                   {dayTasks.length > 0 && (
