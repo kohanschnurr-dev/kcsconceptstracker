@@ -44,17 +44,48 @@ interface EnrichedLoan {
   interest: number | null;
 }
 
+const DEFAULT_VIEW_KEY = 'loans:defaultView';
+type DefaultView = { viewMode: ViewMode; groupByProject: boolean };
+
+function readDefaultView(): DefaultView {
+  if (typeof window === 'undefined') return { viewMode: 'table', groupByProject: false };
+  try {
+    const raw = window.localStorage.getItem(DEFAULT_VIEW_KEY);
+    if (!raw) return { viewMode: 'table', groupByProject: false };
+    const parsed = JSON.parse(raw);
+    return {
+      viewMode: parsed.viewMode === 'cards' ? 'cards' : 'table',
+      groupByProject: !!parsed.groupByProject,
+    };
+  } catch {
+    return { viewMode: 'table', groupByProject: false };
+  }
+}
+
 export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], onToggleSelect }: LoanTableProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const initialDefault = useMemo(readDefaultView, []);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [groupByProject, setGroupByProject] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>(initialDefault.viewMode);
+  const [groupByProject, setGroupByProject] = useState(initialDefault.groupByProject);
+  const [defaultView, setDefaultView] = useState<DefaultView>(initialDefault);
   const PER_PAGE = 15;
+
+  const saveDefaultView = (next: DefaultView, label: string) => {
+    setDefaultView(next);
+    try {
+      window.localStorage.setItem(DEFAULT_VIEW_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+    toast({ title: 'Default view saved', description: `${label} will load by default.` });
+  };
 
   const loanIds = useMemo(() => loans.map(l => l.id).sort(), [loans]);
 
