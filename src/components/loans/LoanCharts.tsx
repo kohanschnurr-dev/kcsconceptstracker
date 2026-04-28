@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, currentAccruedInterest, effectiveOutstandingBalance } from '@/types/loans';
-import { getEffectivePayments } from '@/lib/loanPayments';
+import { getEffectivePayments, isAmortizingLoan } from '@/lib/loanPayments';
 import type { LoanType, LoanPayment, LoanDraw } from '@/types/loans';
 import type { Loan } from '@/types/loans';
 
