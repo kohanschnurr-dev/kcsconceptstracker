@@ -194,35 +194,24 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         )}
       </div>
 
-      {/* Quick type filters */}
-      {uniqueTypes.length > 1 && (
+      {/* Quick project-type filters */}
+      {projectNames.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => { setTypeFilter('all'); setPage(0); }}
-            className={cn(
-              'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
-              typeFilter === 'all'
-                ? 'bg-primary/15 text-primary border-primary/40'
-                : 'bg-card text-muted-foreground border-border hover:text-foreground',
-            )}
-          >
-            All Types
-          </button>
-          {uniqueTypes.map(t => {
-            const active = typeFilter === t;
-            const c = LOAN_TYPE_COLORS[t] ?? LOAN_TYPE_COLORS.other;
+          {PROJECT_TYPE_PILLS.map(pill => {
+            const active = projectTypeFilter === pill.value;
             return (
               <button
-                key={t}
+                key={pill.value}
                 type="button"
-                onClick={() => { setTypeFilter(active ? 'all' : t); setPage(0); }}
+                onClick={() => { setProjectTypeFilter(pill.value); setPage(0); }}
                 className={cn(
                   'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
-                  active ? c.badge : 'bg-card text-muted-foreground border-border hover:text-foreground',
+                  active
+                    ? 'bg-primary/15 text-primary border-primary/40'
+                    : 'bg-card text-muted-foreground border-border hover:text-foreground',
                 )}
               >
-                {LOAN_TYPE_LABELS[t] ?? t}
+                {pill.label}
               </button>
             );
           })}
