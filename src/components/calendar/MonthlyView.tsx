@@ -103,6 +103,24 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentDate]);
 
+  // Per-project span ranges across all loaded tasks (used to show project span chevrons)
+  const projectSpans = useMemo(() => {
+    const map = new Map<string, { name: string; start: Date; end: Date }>();
+    tasks.forEach(t => {
+      if (!t.projectId) return;
+      const existing = map.get(t.projectId);
+      const s = startOfDay(t.startDate);
+      const e = startOfDay(t.endDate);
+      if (!existing) {
+        map.set(t.projectId, { name: t.projectName, start: s, end: e });
+      } else {
+        if (s < existing.start) existing.start = s;
+        if (e > existing.end) existing.end = e;
+      }
+    });
+    return map;
+  }, [tasks]);
+
   const getTasksForDay = (date: Date) => {
     const dayStart = startOfDay(date);
     return tasks.filter(task => {
@@ -111,6 +129,30 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
       return isWithinInterval(dayStart, { start: taskStart, end: taskEnd });
     });
   };
+
+  const getProjectSpansForDay = (date: Date) => {
+    const dayStart = startOfDay(date);
+    const seen = new Set<string>();
+    const dayTasks = getTasksForDay(date);
+    dayTasks.forEach(t => t.projectId && seen.add(t.projectId));
+    const out: { projectId: string; name: string; start: Date; end: Date; isStart: boolean; isEnd: boolean }[] = [];
+    seen.forEach(pid => {
+      const span = projectSpans.get(pid);
+      if (!span) return;
+      if (span.start.getTime() === span.end.getTime()) return; // single-day, no span to show
+      if (dayStart < span.start || dayStart > span.end) return;
+      out.push({
+        projectId: pid,
+        name: span.name,
+        start: span.start,
+        end: span.end,
+        isStart: dayStart.getTime() === span.start.getTime(),
+        isEnd: dayStart.getTime() === span.end.getTime(),
+      });
+    });
+    return out;
+  };
+
 
   const handleDragStart = (event: any) => {
     setOpenPopoverDay(null);
