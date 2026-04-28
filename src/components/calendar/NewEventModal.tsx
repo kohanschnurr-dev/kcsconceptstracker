@@ -168,7 +168,7 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!projectId || !title || !category || !startDate || !endDate || !owner.trim()) {
+    if (!projectId || !title || !category || !startDate || !endDate) {
       toast({
         title: 'Missing fields',
         description: 'Please fill in all required fields',
