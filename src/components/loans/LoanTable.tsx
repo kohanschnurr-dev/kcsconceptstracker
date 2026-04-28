@@ -432,7 +432,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 'absolute -top-1.5 -right-1.5 h-3 w-3 cursor-pointer transition-opacity z-10',
                 defaultView.viewMode === 'cards'
                   ? 'opacity-100 fill-primary text-primary'
-                  : 'opacity-0 group-hover/vt:opacity-60 hover:!opacity-100 text-muted-foreground',
+                  : 'opacity-0 group-hover/btn:opacity-60 hover:!opacity-100 text-muted-foreground',
               )}
             />
           </button>
