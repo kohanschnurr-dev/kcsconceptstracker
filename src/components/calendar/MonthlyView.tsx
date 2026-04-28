@@ -213,21 +213,46 @@ export function MonthlyView({ currentDate, tasks, onTaskClick, onTaskMove, onDat
           {days.map(day => {
             const dayTasks = getTasksForDay(day);
             const isCurrentMonth = isSameMonth(day, currentDate);
-            
+            const spans = getProjectSpansForDay(day);
+
             return (
               <DroppableDay key={day.toISOString()} day={day} isCurrentMonth={isCurrentMonth} onDoubleClick={() => onDayDoubleClick?.(day)}>
                 <div className={cn(
                   'font-medium mb-0.5',
                   'text-[10px] sm:text-sm',
-                  isToday(day) 
-                    ? 'text-primary' 
-                    : isCurrentMonth 
-                      ? 'text-foreground' 
+                  isToday(day)
+                    ? 'text-primary'
+                    : isCurrentMonth
+                      ? 'text-foreground'
                       : 'text-muted-foreground/60'
                 )}>
                   {format(day, 'd')}
                 </div>
-                
+
+                {/* Project span chevrons (one per project active on this day) */}
+                {spans.length > 0 && (
+                  <div className="hidden sm:flex flex-col gap-[2px] mb-1">
+                    {spans.map(s => (
+                      <div
+                        key={s.projectId}
+                        title={`${s.name} • ${format(s.start, 'MMM d')} → ${format(s.end, 'MMM d')}`}
+                        className="bg-muted-foreground/30 hover:bg-muted-foreground/50 transition-colors"
+                        style={{
+                          height: 4,
+                          marginLeft: s.isStart ? 0 : -4,
+                          marginRight: s.isEnd ? 0 : -4,
+                          borderTopLeftRadius: s.isStart ? 2 : 0,
+                          borderBottomLeftRadius: s.isStart ? 2 : 0,
+                          clipPath: s.isEnd
+                            ? 'polygon(0 0, calc(100% - 5px) 0, 100% 50%, calc(100% - 5px) 100%, 0 100%)'
+                            : undefined,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+
                 {/* Mobile: compact badge → popover */}
                 <div className="sm:hidden">
                   {dayTasks.length > 0 && (
