@@ -129,6 +129,30 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     return g;
   }, [tasks]);
 
+  /**
+   * Per project, merge tasks that share the same title (case-insensitive, trimmed)
+   * into a single row containing multiple instances. Repeating tasks like
+   * "Collect Rent" become one row with multiple bars on the same line.
+   */
+  type MergedRow = { key: string; representative: CalendarTask; instances: CalendarTask[] };
+  const mergedTasksByProject = useMemo(() => {
+    const out: Record<string, MergedRow[]> = {};
+    Object.entries(groupedTasks).forEach(([projectName, ptasks]) => {
+      const buckets = new Map<string, MergedRow>();
+      ptasks.forEach(t => {
+        const k = (t.title || '').trim().toLowerCase() || `__id_${t.id}`;
+        const existing = buckets.get(k);
+        if (existing) existing.instances.push(t);
+        else buckets.set(k, { key: k, representative: t, instances: [t] });
+      });
+      out[projectName] = Array.from(buckets.values()).map(r => ({
+        ...r,
+        instances: [...r.instances].sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate)),
+      }));
+    });
+    return out;
+  }, [groupedTasks]);
+
   // Memoised position resolver keyed to current view
   const getPos = useCallback(
     (task: CalendarTask) => getTaskPos(task, viewStart, zoomDays),

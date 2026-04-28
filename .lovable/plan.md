@@ -1,29 +1,52 @@
-# Fix duplicate calendar legend
+# Collapse repeating tasks into single Gantt rows
 
 ## Problem
-Two legends render on `/calendar` when Gantt view is active:
-1. **Inline legend inside `GanttView.tsx`** (lines 573–604) — has truncated labels ("Structural/Exterior" overlaps the next swatch, "Rough-ins" runs into "Inspections") because it uses tight `gap-x-5` with no `whitespace-nowrap` and no overflow handling.
-2. **Shared `CalendarLegend` component** rendered from `Calendar.tsx` line 318 — already handles wrapping/nowrap correctly and is shown for all views.
+In Gantt view, every event is rendered on its own row. A property with 12 monthly "Collect Rent" tasks produces 12 stacked rows that all look identical, making the timeline noisy and unreadable.
 
-Result: the user sees a cramped, unreadable strip directly on top of a clean, readable one.
+## Decisions (confirmed)
+- **Group by:** same project + same title (case-insensitive, trimmed). All other categories/recurrence settings ignored.
+- **Row label:** title only — no count badge.
+- **Click behavior:** each bar on the row remains an independent clickable/draggable event (no expand toggle, no series panel).
 
-## Plan
+## Changes — `src/components/calendar/GanttView.tsx`
 
-### 1. `src/components/calendar/GanttView.tsx`
-Remove the entire inline legend block (lines 573–604), including the category swatches, Milestone diamond, Project span chevron, and the dependency-arrow legend on the right.
+### 1. New memo `mergedTasksByProject`
+After the existing `groupedTasks` memo, build a per-project list of "rows", where each row is `{ key, representative: CalendarTask, instances: CalendarTask[] }`. Tasks with the same normalized title within a project collapse into one row. Instances inside a row are sorted by `startDate`.
 
-The dependency arrow legend (FS/SS/FF/SF) is rarely needed visually — arrows in the chart are self-explanatory in context. Removing it keeps the bottom area clean. (If you'd rather keep just the dependency-arrow swatches, say the word and I'll preserve only that piece.)
+### 2. Update `rowYMap`
+Walk `mergedTasksByProject` instead of `groupedTasks`. Every instance in a row maps to the same Y center (the row's center), so dependency arrows still resolve correctly even when the predecessor and successor land on the same merged row or on different merged rows.
 
-### 2. `src/components/calendar/CalendarLegend.tsx`
-Add the two markers that previously only existed in the Gantt legend so they remain available in the shared legend:
-- **Milestone** — small amber diamond (`w-3 h-3 bg-amber-500 rotate-45`)
-- **Project span** — chevron strip using the existing inline `clipPath` style
+### 3. Update `totalBodyH`
+Compute height from merged row counts: `ROW_H + (collapsed ? 0 : rows.length * ROW_H)` per project.
 
-Both items get `whitespace-nowrap` (already present on existing items) and `shrink-0` so labels never get clipped or overlapped on narrow widths. They appear after the existing categories and before "Critical Path".
+### 4. Refactor the row render loop (lines ~422–558)
+Replace `projectTasks.map(task => …)` with `rows.map(row => …)`:
 
-### 3. No other files need changes
-`Calendar.tsx` already renders `<CalendarLegend />` once for all views, so removing the Gantt-internal copy leaves exactly one legend visible at all times.
+- **Frozen left cell** — render once per row, using `row.representative`:
+  - Icon from `categoryIcon(representative.eventCategory)`
+  - Title text = `representative.title`
+  - Click on the title still calls `onTaskClick(representative)` (opens the first instance; consistent with "click each bar individually" — clicking the row label is just a convenience entry to one event, the bars are the source of truth).
+  - Dependency-warning icon shows if **any** instance in the row has a warning.
+
+- **Timeline cell** — loop over `row.instances` and render one bar/diamond per instance using the existing bar/diamond JSX. Each bar:
+  - Uses its own `getPos(instance)` for left/width
+  - Uses its own color via `barBg(instance)` (instances of the same title will normally have the same category, so colors will match)
+  - Keeps its own `onClick={() => onTaskClick(instance)}`, drag handlers, tooltip with that instance's dates, completed/critical-path styling
+  - Keyed by `instance.id`
+
+- The shared row container keeps `height: ROW_H` so all bars stack on the same line.
+
+### 5. Collapse animation
+Update the collapsible wrapper's `maxHeight` to `rows.length * (ROW_H + 1) + 4`.
+
+### 6. `summaryPos` stays as-is
+The project summary chevron at the top of each project group is computed from the full task list (`projectTasks`), unchanged — it still shows the project span correctly.
+
+## Edge cases handled
+- **Empty / missing title** — falls back to `t.id` as the bucket key so untitled tasks don't all merge into one row.
+- **Overlapping bars on the same row** — rare for true recurring tasks (rent on the 1st of each month doesn't overlap), and the existing `z-10` + hover ring on bars makes individually-clicking them workable. No special spacing needed.
+- **Dependency arrows targeting a merged-instance** — the arrow now points at the row's shared Y line; the X coordinate still uses the specific predecessor/successor instance's position, so the arrow lands on the correct bar.
+- **Drag-to-move** — each bar still drags its own instance only; the row is not draggable as a whole.
 
 ## Result
-- One legend on the page, regardless of view (Monthly / Weekly / Gantt).
-- All labels fully readable, with consistent spacing and the same swatch styling already used on the rest of the calendar page.
+"Collect Rent" appearing 12 times in N Hall St becomes one row labeled "Collect Rent" with 12 small bars distributed across the timeline — exactly like a calendar swimlane. Each bar is still individually clickable, draggable, and shows its own date in the tooltip.
