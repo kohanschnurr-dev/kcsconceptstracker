@@ -152,7 +152,6 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
     setRecurrenceFrequency('monthly');
     setRecurrenceUntilType('indefinite');
     setRecurrenceUntilDate(undefined);
-    setOwner('');
     setDependencies([]);
     setDepTaskId('');
   };
