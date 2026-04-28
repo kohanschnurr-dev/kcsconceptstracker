@@ -571,15 +571,6 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
       </div>
 
       {/* Legend rendered once at the page level via <CalendarLegend /> in Calendar.tsx */}
-      {false && (
-        <div className="hidden">
-          {Object.entries(DEP_COLORS).map(([type, color]) => (
-            <div key={type}>
-              <span>{type}: {color}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
