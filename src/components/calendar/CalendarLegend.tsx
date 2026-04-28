@@ -12,7 +12,7 @@ export function CalendarLegend() {
       ))}
       <div className="flex items-center gap-1.5 shrink-0">
         <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-amber-500 rotate-45 shrink-0" />
-        <span className="text-foreground whitespace-nowrap">Milestone</span>
+        <span className="text-foreground whitespace-nowrap">Key Event</span>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         <span
