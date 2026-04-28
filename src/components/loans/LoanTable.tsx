@@ -92,6 +92,27 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     return m;
   }, [draws]);
 
+  // Map project_name -> project_type so we can filter the table by Fix & Flip / Rental / New Construction.
+  const { data: projectTypesRows = [] } = useQuery<{ name: string; project_type: string | null }[]>({
+    queryKey: ['project_types_for_loan_table', projectNames],
+    enabled: projectNames.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('name, project_type')
+        .in('name', projectNames);
+      if (error) throw error;
+      return (data ?? []) as any;
+    },
+  });
+  const projectTypeByName = useMemo(() => {
+    const m = new Map<string, ProjectType>();
+    for (const r of projectTypesRows) {
+      if (r.name && r.project_type) m.set(r.name, r.project_type as ProjectType);
+    }
+    return m;
+  }, [projectTypesRows]);
+
   const filtered = useMemo(() => {
     let list = [...loans];
     if (search.trim()) {
