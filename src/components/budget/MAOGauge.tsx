@@ -221,10 +221,20 @@ export function MAOGauge({
               </div>
             ) : (
               <div>
-                <p className="text-base sm:text-lg font-bold font-mono text-primary group-hover:underline group-hover:decoration-primary/40 transition-all">
-                  {formatCurrency(currentBudget)}
-                </p>
-                {budgetMode === 'psf' && sqft > 0 && (
+                {currentBudget > 0 ? (
+                  <p className="text-base sm:text-lg font-bold font-mono text-primary group-hover:underline group-hover:decoration-primary/40 transition-all">
+                    {formatCurrency(currentBudget)}
+                  </p>
+                ) : onBudgetTargetChange ? (
+                  <p className="text-base sm:text-lg font-bold font-mono text-muted-foreground group-hover:text-primary group-hover:underline transition-all">
+                    Enter value →
+                  </p>
+                ) : (
+                  <p className="text-base sm:text-lg font-bold font-mono text-muted-foreground">
+                    {formatCurrency(0)}
+                  </p>
+                )}
+                {budgetMode === 'psf' && sqft > 0 && currentBudget > 0 && (
                   <p className="text-[10px] text-muted-foreground font-mono">${Math.round(psfRate)}/sqft</p>
                 )}
               </div>
