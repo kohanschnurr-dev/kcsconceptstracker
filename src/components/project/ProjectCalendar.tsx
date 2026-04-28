@@ -84,6 +84,7 @@ function DroppableDay({
 export function ProjectCalendar({ projectId, projectName, projectAddress }: ProjectCalendarProps) {
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<'calendar' | 'gantt'>('calendar');
   const [tasks, setTasks] = useState<CalendarTask[]>([]);
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
