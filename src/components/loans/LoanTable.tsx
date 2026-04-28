@@ -7,10 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
-import { LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, currentAccruedInterest, calcFirstPaymentDate, calcNextPaymentDate, buildAmortizationSchedule, effectiveOutstandingBalance } from '@/types/loans';
+import { currentAccruedInterest, calcFirstPaymentDate, calcNextPaymentDate, effectiveOutstandingBalance } from '@/types/loans';
 import { getEffectivePayments } from '@/lib/loanPayments';
-import { cn } from '@/lib/utils';
-import type { Loan, LoanStatus, LoanType, LoanPayment, LoanDraw } from '@/types/loans';
+import type { Loan, LoanStatus, LoanPayment, LoanDraw } from '@/types/loans';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,20 +29,10 @@ interface LoanTableProps {
   onToggleSelect?: (id: string) => void;
 }
 
-type ProjectType = 'fix_flip' | 'rental' | 'new_construction';
-
-const PROJECT_TYPE_PILLS: { value: ProjectType | 'all'; label: string }[] = [
-  { value: 'all', label: 'All Projects' },
-  { value: 'fix_flip', label: 'Fix & Flips' },
-  { value: 'rental', label: 'Rentals' },
-  { value: 'new_construction', label: 'New Construction' },
-];
-
 export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], onToggleSelect }: LoanTableProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('all');
-  const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType | 'all'>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
@@ -93,26 +82,6 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
   }, [draws]);
 
   // Map project_name -> project_type so we can filter the table by Fix & Flip / Rental / New Construction.
-  const { data: projectTypesRows = [] } = useQuery<{ name: string; project_type: string | null }[]>({
-    queryKey: ['project_types_for_loan_table', projectNames],
-    enabled: projectNames.length > 0,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('name, project_type')
-        .in('name', projectNames);
-      if (error) throw error;
-      return (data ?? []) as any;
-    },
-  });
-  const projectTypeByName = useMemo(() => {
-    const m = new Map<string, ProjectType>();
-    for (const r of projectTypesRows) {
-      if (r.name && r.project_type) m.set(r.name, r.project_type as ProjectType);
-    }
-    return m;
-  }, [projectTypesRows]);
-
   const filtered = useMemo(() => {
     let list = [...loans];
     if (search.trim()) {
@@ -125,12 +94,6 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       );
     }
     if (statusFilter !== 'all') list = list.filter(l => l.status === statusFilter);
-    if (projectTypeFilter !== 'all') {
-      list = list.filter(l => {
-        const pn = l.project_name;
-        return !!pn && projectTypeByName.get(pn) === projectTypeFilter;
-      });
-    }
     if (projectFilter !== 'all') list = list.filter(l => l.project_name === projectFilter);
     list.sort((a, b) => {
       const av = a[sortKey] as any;
@@ -141,7 +104,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       return sortAsc ? cmp : -cmp;
     });
     return list;
-  }, [loans, search, statusFilter, projectTypeFilter, projectTypeByName, projectFilter, sortKey, sortAsc]);
+  }, [loans, search, statusFilter, projectFilter, sortKey, sortAsc]);
 
   const pages = Math.ceil(filtered.length / PER_PAGE);
   const visible = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
@@ -194,29 +157,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         )}
       </div>
 
-      {/* Quick project-type filters */}
-      {projectNames.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {PROJECT_TYPE_PILLS.map(pill => {
-            const active = projectTypeFilter === pill.value;
-            return (
-              <button
-                key={pill.value}
-                type="button"
-                onClick={() => { setProjectTypeFilter(pill.value); setPage(0); }}
-                className={cn(
-                  'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
-                  active
-                    ? 'bg-primary/15 text-primary border-primary/40'
-                    : 'bg-card text-muted-foreground border-border hover:text-foreground',
-                )}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* Quick project-type filters removed — now lives at the page level */}
 
       {/* Table */}
       <div className="rounded-lg border border-border overflow-x-auto">
