@@ -11,7 +11,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { calcMonthlyPayment, calcFirstPaymentDate, LOAN_TYPE_LABELS } from '@/types/loans';
+import { calcMonthlyPayment, calcFirstPaymentDate, LOAN_TYPE_LABELS, LOAN_PURPOSE_OPTIONS } from '@/types/loans';
 import type { Loan, LoanDraw, DrawStructure } from '@/types/loans';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -92,6 +92,12 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
   const [form, setForm] = useState(empty);
   const [draws, setDraws] = useState<Omit<LoanDraw, 'id' | 'created_at' | 'loan_id'>[]>([emptyDraw(1)]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  // "Loan Purpose" picker: either one of LOAN_PURPOSE_OPTIONS or "__other__" with custom text in nickname.
+  const [purposeMode, setPurposeMode] = useState<string>(() => {
+    const initial = (initialData?.nickname ?? '').trim();
+    if (!initial) return '';
+    return (LOAN_PURPOSE_OPTIONS as readonly string[]).includes(initial) ? initial : '__other__';
+  });
 
   const prevOpen = useRef(false);
   const initialStartRef = useRef<string | null>(null);
@@ -237,8 +243,30 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
                 </Select>
               </div>
               <div>
-                <Label>Loan Nickname <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Input className="mt-1" placeholder="e.g. Rehab Loan – Old North" value={form.nickname ?? ''} onChange={e => set('nickname', e.target.value)} />
+                <Label>Loan Purpose <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Select
+                  value={purposeMode || '__none__'}
+                  onValueChange={v => {
+                    if (v === '__none__') { setPurposeMode(''); set('nickname', ''); }
+                    else if (v === '__other__') { setPurposeMode('__other__'); set('nickname', ''); }
+                    else { setPurposeMode(v); set('nickname', v); }
+                  }}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select purpose" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {LOAN_PURPOSE_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    <SelectItem value="__other__">Other…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {purposeMode === '__other__' && (
+                  <Input
+                    className="mt-2"
+                    placeholder="Describe purpose (e.g. Treehouse/Wales)"
+                    value={form.nickname ?? ''}
+                    onChange={e => set('nickname', e.target.value)}
+                  />
+                )}
               </div>
               <div>
                 <Label>Lender Name <span className="text-destructive">*</span></Label>

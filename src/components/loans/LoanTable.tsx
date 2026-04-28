@@ -145,7 +145,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search lender, project…"
+            placeholder="Search lender, project, purpose…"
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0); }}
             className="pl-8 h-9"
@@ -181,7 +181,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             <TableRow className="hover:bg-transparent border-b border-border">
               {compareMode && <TableHead className="w-10" />}
               <TableHead>Project <SortBtn col="project_name" /></TableHead>
-              <TableHead>Loan Name <SortBtn col="lender_name" /></TableHead>
+              <TableHead>Loan Purpose <SortBtn col="lender_name" /></TableHead>
               <TableHead>Type <SortBtn col="loan_type" /></TableHead>
               <TableHead className="text-right">Original <SortBtn col="original_amount" /></TableHead>
               <TableHead className="text-right">Balance <SortBtn col="balance_calc" /></TableHead>

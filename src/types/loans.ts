@@ -27,6 +27,22 @@ export const LOAN_TYPE_LABELS: Record<LoanType, string> = {
   other: 'Other',
 };
 
+// Curated list of common loan purposes (corporate finance vernacular).
+// Stored as plain strings in `loans.nickname` so we can also accept custom values via "Other…".
+export const LOAN_PURPOSE_OPTIONS = [
+  'Acquisition / Purchase',
+  'Construction',
+  'Purchase & Construction',
+  'Renovation / Rehab',
+  'Land Acquisition',
+  'Refinance',
+  'Cash-Out Refinance',
+  'Bridge',
+  'DSCR / Long-Term Hold',
+  'Working Capital',
+] as const;
+export type LoanPurpose = typeof LOAN_PURPOSE_OPTIONS[number];
+
 // Stable color per loan type — used in both the donut chart and the type badge
 // so the column color matches the chart legend at a glance.
 export const LOAN_TYPE_COLORS: Record<LoanType, { hsl: string; badge: string }> = {
