@@ -29,6 +29,7 @@ const fmt = (v: number | null | undefined) =>
 
 type SortKey = keyof Loan | 'balance_calc' | 'interest_accrued' | 'next_payment';
 type ViewMode = 'table' | 'cards';
+type ToggleView = 'table' | 'cards' | 'group';
 
 interface LoanTableProps {
   loans: Loan[];
