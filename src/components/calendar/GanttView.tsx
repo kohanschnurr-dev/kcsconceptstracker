@@ -6,7 +6,7 @@ import {
   AlertTriangle, Wrench, Zap, Snowflake, Hammer, Paintbrush, Layers,
   Grid3x3, Square, DoorOpen, PaintBucket, Home, Landmark, TreePine,
   Warehouse, Sparkles, CalendarDays, DollarSign, Package, CheckCircle,
-  ClipboardList, FileText, ZoomIn, ChevronDown, Plus, User,
+  ClipboardList, FileText, ZoomIn, ChevronDown, Plus, User, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -14,6 +14,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import type { CalendarTask } from '@/pages/Calendar';
 import { getCategoryGroup, CATEGORY_GROUPS, getCategoryLabel } from '@/lib/calendarCategories';
+import { useGanttPreferences } from '@/hooks/useGanttPreferences';
 
 // ─── pure helpers (outside component for stable references) ───────────────────
 
