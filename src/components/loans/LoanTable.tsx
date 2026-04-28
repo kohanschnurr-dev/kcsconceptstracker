@@ -46,38 +46,54 @@ interface EnrichedLoan {
 }
 
 const DEFAULT_VIEW_KEY = 'loans:defaultView';
-type DefaultView = { viewMode: ViewMode; groupByProject: boolean };
 
-function readDefaultView(): DefaultView {
-  if (typeof window === 'undefined') return { viewMode: 'table', groupByProject: false };
+function readDefaultView(): ToggleView {
+  if (typeof window === 'undefined') return 'table';
   try {
     const raw = window.localStorage.getItem(DEFAULT_VIEW_KEY);
-    if (!raw) return { viewMode: 'table', groupByProject: false };
+    if (!raw) return 'table';
+    // Backwards compat: previously stored { viewMode, groupByProject }
     const parsed = JSON.parse(raw);
-    return {
-      viewMode: parsed.viewMode === 'cards' ? 'cards' : 'table',
-      groupByProject: !!parsed.groupByProject,
-    };
+    if (typeof parsed === 'string') {
+      return parsed === 'cards' || parsed === 'group' ? parsed : 'table';
+    }
+    if (parsed?.groupByProject) return 'group';
+    if (parsed?.viewMode === 'cards') return 'cards';
+    return 'table';
   } catch {
-    return { viewMode: 'table', groupByProject: false };
+    return 'table';
   }
 }
+
+const toggleToState = (v: ToggleView): { viewMode: ViewMode; groupByProject: boolean } => ({
+  viewMode: v === 'cards' ? 'cards' : 'table',
+  groupByProject: v === 'group',
+});
 
 export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], onToggleSelect }: LoanTableProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const initialDefault = useMemo(readDefaultView, []);
+  const initialState = useMemo(() => toggleToState(initialDefault), [initialDefault]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>(initialDefault.viewMode);
-  const [groupByProject, setGroupByProject] = useState(initialDefault.groupByProject);
-  const [defaultView, setDefaultView] = useState<DefaultView>(initialDefault);
+  const [viewMode, setViewMode] = useState<ViewMode>(initialState.viewMode);
+  const [groupByProject, setGroupByProject] = useState(initialState.groupByProject);
+  const [defaultView, setDefaultView] = useState<ToggleView>(initialDefault);
   const [expandedBalances, setExpandedBalances] = useState<Set<string>>(new Set());
   const PER_PAGE = 15;
+
+  const currentView: ToggleView = groupByProject ? 'group' : viewMode === 'cards' ? 'cards' : 'table';
+
+  const setView = (v: ToggleView) => {
+    const s = toggleToState(v);
+    setViewMode(s.viewMode);
+    setGroupByProject(s.groupByProject);
+  };
 
   const toggleBalanceExpand = (id: string) => {
     setExpandedBalances(prev => {
@@ -87,10 +103,10 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     });
   };
 
-  const saveDefaultView = (next: DefaultView, label: string) => {
-    setDefaultView(next);
+  const saveDefaultView = (v: ToggleView, label: string) => {
+    setDefaultView(v);
     try {
-      window.localStorage.setItem(DEFAULT_VIEW_KEY, JSON.stringify(next));
+      window.localStorage.setItem(DEFAULT_VIEW_KEY, JSON.stringify(v));
     } catch {
       /* ignore */
     }
