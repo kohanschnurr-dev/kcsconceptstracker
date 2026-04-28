@@ -96,6 +96,10 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   const [deleting, setDeleting] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [togglingComplete, setTogglingComplete] = useState(false);
+  const [editedOwner, setEditedOwner] = useState('');
+  const [editedDependencies, setEditedDependencies] = useState<{ taskId: string; type: 'FS' | 'SS' | 'FF' | 'SF' }[]>([]);
+  const [depTaskId, setDepTaskId] = useState('');
+  const [depType, setDepType] = useState<'FS' | 'SS' | 'FF' | 'SF'>('FS');
   
   const groupedCategories = getGroupedCategories();
 
@@ -107,8 +111,11 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
       setEditedEndDate(new Date(task.endDate));
       setEditedNotes(task.notes || '');
       setEditedChecklist([...task.checklist]);
+      setEditedOwner(task.owner || '');
+      setEditedDependencies(task.dependencies ? [...task.dependencies] : []);
       setHasChanges(false);
       setIsEditingTitle(false);
+      setDepTaskId('');
     }
   }, [task]);
 
@@ -195,6 +202,8 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
         end_date: format(editedEndDate, 'yyyy-MM-dd'),
         notes: editedNotes || null,
         checklist: editedChecklist,
+        owner: editedOwner.trim() || null,
+        dependencies: editedDependencies.length > 0 ? editedDependencies : null,
       })
       .eq('id', task.id);
 
@@ -218,6 +227,8 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
         notes: editedNotes,
         checklist: editedChecklist,
         status: getStatusFromCategory(editedCategory),
+        owner: editedOwner.trim() || null,
+        dependencies: editedDependencies,
       };
       onTaskUpdate(updatedTask);
       setHasChanges(false);
@@ -303,14 +314,13 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
   };
 
   const getDependencies = () => {
-    if (!task.dependsOn) return [];
-    return task.dependsOn
-      .map(id => allTasks.find(t => t.id === id))
+    return editedDependencies
+      .map(dep => allTasks.find(t => t.id === dep.taskId))
       .filter(Boolean) as CalendarTask[];
   };
 
   const getDependents = () => {
-    return allTasks.filter(t => t.dependsOn?.includes(task.id));
+    return allTasks.filter(t => t.dependencies?.some(d => d.taskId === task.id));
   };
 
   const categoryStyles = getCategoryStyles(editedCategory);
@@ -521,6 +531,86 @@ export function TaskDetailPanel({ task, open, onOpenChange, onTaskUpdate, onTask
                 </PopoverContent>
               </Popover>
             </div>
+          </div>
+
+          {/* Owner */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">Owner</label>
+            <Input
+              value={editedOwner}
+              onChange={(e) => { setEditedOwner(e.target.value); markAsChanged(); }}
+              placeholder="e.g., John Smith, ABC Plumbing Co."
+              className="bg-card border-border text-foreground"
+            />
+          </div>
+
+          {/* Dependencies */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">Dependencies</label>
+            {editedDependencies.length > 0 && (
+              <div className="space-y-1">
+                {editedDependencies.map((dep) => {
+                  const depTask = allTasks.find(t => t.id === dep.taskId);
+                  return (
+                    <div key={dep.taskId} className="flex items-center gap-2 px-2 py-1.5 rounded bg-card/50 group">
+                      <span className="flex-1 text-sm text-foreground truncate">{depTask?.title || dep.taskId}</span>
+                      <span className="text-xs text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded font-mono">{dep.type}</span>
+                      <button
+                        onClick={() => { setEditedDependencies(prev => prev.filter(d => d.taskId !== dep.taskId)); markAsChanged(); }}
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-opacity"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {(() => {
+              const available = allTasks.filter(t => t.projectId === task.projectId && t.id !== task.id && !editedDependencies.find(d => d.taskId === t.id));
+              if (available.length === 0) return null;
+              return (
+                <div className="flex gap-2">
+                  <select
+                    value={depTaskId}
+                    onChange={(e) => setDepTaskId(e.target.value)}
+                    className="flex-1 min-w-0 rounded-md border border-border bg-card text-foreground px-2 py-1.5 text-sm"
+                  >
+                    <option value="">Add predecessor...</option>
+                    {available.map(t => (
+                      <option key={t.id} value={t.id}>{t.title}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={depType}
+                    onChange={(e) => setDepType(e.target.value as 'FS' | 'SS' | 'FF' | 'SF')}
+                    className="rounded-md border border-border bg-card text-foreground px-2 py-1.5 text-sm"
+                  >
+                    <option value="FS">FS</option>
+                    <option value="SS">SS</option>
+                    <option value="FF">FF</option>
+                    <option value="SF">SF</option>
+                  </select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={!depTaskId}
+                    onClick={() => {
+                      if (!depTaskId) return;
+                      setEditedDependencies(prev => [...prev, { taskId: depTaskId, type: depType }]);
+                      setDepTaskId('');
+                      markAsChanged();
+                    }}
+                    className="h-9 w-9 shrink-0 border-border text-muted-foreground hover:text-primary hover:border-primary"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })()}
+            <p className="text-xs text-muted-foreground">
+              FS = Finish→Start · SS = Start→Start · FF = Finish→Finish · SF = Start→Finish
+            </p>
           </div>
 
           {/* Order of Operations Warning */}

@@ -1,338 +1,605 @@
-import { useMemo, useState, useRef, type ReactNode } from 'react';
-import { 
-  startOfWeek, 
-  addDays,
-  differenceInDays,
-  format,
-  isToday,
+import { useMemo, useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
+import {
+  startOfWeek, addDays, differenceInDays, format, isToday,
 } from 'date-fns';
-import { 
-  AlertTriangle, Wrench, Zap, Snowflake, Hammer, Paintbrush, Layers, 
-  Grid3x3, Square, DoorOpen, PaintBucket, Home, Landmark, TreePine, 
-  Warehouse, Sparkles, CalendarDays, DollarSign, Package, CheckCircle, 
-  ClipboardList, FileText, ZoomIn
+import {
+  AlertTriangle, Wrench, Zap, Snowflake, Hammer, Paintbrush, Layers,
+  Grid3x3, Square, DoorOpen, PaintBucket, Home, Landmark, TreePine,
+  Warehouse, Sparkles, CalendarDays, DollarSign, Package, CheckCircle,
+  ClipboardList, FileText, ZoomIn, ChevronDown, Plus, User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import type { CalendarTask } from '@/pages/Calendar';
-import { getCategoryGroup, CATEGORY_GROUPS } from '@/lib/calendarCategories';
+import { getCategoryGroup, CATEGORY_GROUPS, getCategoryLabel } from '@/lib/calendarCategories';
+
+// ─── pure helpers (outside component for stable references) ───────────────────
+
+function getTaskPos(task: CalendarTask, viewStart: Date, zoom: number) {
+  const s = new Date(task.startDate);
+  const e = new Date(task.endDate);
+  const viewEnd = addDays(viewStart, zoom - 1);
+  if (e < viewStart || s > viewEnd) return null;
+  const off = Math.max(0, differenceInDays(s, viewStart));
+  const dur = differenceInDays(e, s) + 1;
+  const adjOff = s < viewStart ? 0 : off;
+  const adjDur = Math.min(zoom - adjOff, dur);
+  return { leftPct: (adjOff / zoom) * 100, widthPct: (adjDur / zoom) * 100 };
+}
+
+const GROUP_BG: Record<string, string> = {
+  acquisition_admin: 'bg-blue-500',
+  structural_exterior: 'bg-red-500',
+  rough_ins: 'bg-orange-500',
+  inspections: 'bg-purple-500',
+  interior_finishes: 'bg-emerald-500',
+  milestones: 'bg-amber-500',
+};
+
+const DEP_COLORS: Record<string, string> = {
+  FS: '#9ca3af',
+  SS: '#34d399',
+  FF: '#60a5fa',
+  SF: '#fbbf24',
+};
+
+const FROZEN_W = 192; // px — w-48
+const ROW_H = 36;     // px — uniform row height
+
+function categoryIcon(cat: string, size = 11, cls = ''): ReactNode {
+  const p = { size, className: cls, strokeWidth: 2 };
+  switch (cat) {
+    case 'plumbing_rough': return <Wrench {...p} />;
+    case 'electrical_rough': return <Zap {...p} />;
+    case 'hvac_rough': return <Snowflake {...p} />;
+    case 'framing': case 'demo': return <Hammer {...p} />;
+    case 'painting': case 'exterior_paint': return <Paintbrush {...p} />;
+    case 'flooring': return <Layers {...p} />;
+    case 'tile': case 'countertops': return <Grid3x3 {...p} />;
+    case 'cabinetry': return <Square {...p} />;
+    case 'windows': return <DoorOpen {...p} />;
+    case 'drywall': return <PaintBucket {...p} />;
+    case 'roofing': case 'siding': case 'open_house': return <Home {...p} />;
+    case 'foundation_piers': return <Landmark {...p} />;
+    case 'grading': return <TreePine {...p} />;
+    case 'garage': return <Warehouse {...p} />;
+    case 'stage_clean': return <Sparkles {...p} />;
+    case 'listing_date': case 'sale_closing': case 'closing': return <CalendarDays {...p} />;
+    case 'purchase': case 'refinancing': return <DollarSign {...p} />;
+    case 'order': case 'item_arrived': return <Package {...p} />;
+    case 'city_rough_in': case 'third_party': case 'foundation_pre_pour': case 'final_green_tag': return <CheckCircle {...p} />;
+    case 'permitting': return <ClipboardList {...p} />;
+    default: {
+      switch (getCategoryGroup(cat)) {
+        case 'acquisition_admin': return <FileText {...p} />;
+        case 'structural_exterior': return <Home {...p} />;
+        case 'rough_ins': return <Wrench {...p} />;
+        case 'inspections': return <CheckCircle {...p} />;
+        case 'interior_finishes': return <Paintbrush {...p} />;
+        case 'milestones': return <CalendarDays {...p} />;
+        default: return <FileText {...p} />;
+      }
+    }
+  }
+}
+
+// ─── component ────────────────────────────────────────────────────────────────
 
 interface GanttViewProps {
   currentDate: Date;
   tasks: CalendarTask[];
   onTaskClick: (task: CalendarTask) => void;
-  onTaskMove: (taskId: string, newStartDate: Date, newEndDate: Date) => void;
+  onTaskMove: (taskId: string, newStart: Date, newEnd: Date) => void;
+  onAddEvent?: (projectId: string) => void;
 }
 
-const getCategoryIcon = (category: string, size = 12, className = ''): ReactNode => {
-  const props = { size, className, strokeWidth: 2 };
-  switch (category) {
-    case 'plumbing_rough': return <Wrench {...props} />;
-    case 'electrical_rough': return <Zap {...props} />;
-    case 'hvac_rough': return <Snowflake {...props} />;
-    case 'framing': case 'demo': return <Hammer {...props} />;
-    case 'painting': case 'exterior_paint': return <Paintbrush {...props} />;
-    case 'flooring': return <Layers {...props} />;
-    case 'tile': case 'countertops': return <Grid3x3 {...props} />;
-    case 'cabinetry': return <Square {...props} />;
-    case 'windows': return <DoorOpen {...props} />;
-    case 'drywall': return <PaintBucket {...props} />;
-    case 'roofing': case 'siding': case 'open_house': return <Home {...props} />;
-    case 'foundation_piers': return <Landmark {...props} />;
-    case 'grading': return <TreePine {...props} />;
-    case 'garage': return <Warehouse {...props} />;
-    case 'stage_clean': return <Sparkles {...props} />;
-    case 'listing_date': case 'sale_closing': case 'closing': return <CalendarDays {...props} />;
-    case 'purchase': case 'refinancing': return <DollarSign {...props} />;
-    case 'order': case 'item_arrived': return <Package {...props} />;
-    case 'city_rough_in': case 'third_party': case 'foundation_pre_pour': case 'final_green_tag': return <CheckCircle {...props} />;
-    case 'permitting': return <ClipboardList {...props} />;
-    case 'due_diligence': case 'underwriting': return <FileText {...props} />;
-    default: {
-      const group = getCategoryGroup(category);
-      switch (group) {
-        case 'acquisition_admin': return <FileText {...props} />;
-        case 'structural_exterior': return <Home {...props} />;
-        case 'rough_ins': return <Wrench {...props} />;
-        case 'inspections': return <CheckCircle {...props} />;
-        case 'interior_finishes': return <Paintbrush {...props} />;
-        case 'milestones': return <CalendarDays {...props} />;
-        default: return <Wrench {...props} />;
-      }
-    }
-  }
-};
-
-export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove }: GanttViewProps) {
+export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEvent }: GanttViewProps) {
+  const [zoomDays, setZoomDays] = useState(14);
+  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(new Set());
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
-  const [zoomDays, setZoomDays] = useState(7);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(900);
+  const innerRef = useRef<HTMLDivElement>(null);
 
-  const startDate = startOfWeek(currentDate);
-  const days = useMemo(() => {
-    return Array.from({ length: zoomDays }, (_, i) => addDays(startDate, i));
-  }, [startDate, zoomDays]);
+  // Track the rendered width of the inner chart div for SVG arrow coordinates
+  useEffect(() => {
+    const el = innerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(([entry]) => setContainerWidth(entry.contentRect.width));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
-  const todayIndex = days.findIndex(day => isToday(day));
-  const isZoomed = zoomDays < 21;
-  const colMinWidth = isZoomed ? 80 : undefined;
+  const viewStart = startOfWeek(currentDate);
+  // Timeline pixel width = total inner width minus the frozen column
+  const timelineWidth = Math.max(containerWidth - FROZEN_W, 200);
+  const COL_MIN = zoomDays <= 7 ? 70 : zoomDays <= 14 ? 76 : 64;
+  const CHART_MIN = FROZEN_W + COL_MIN * zoomDays;
 
-  const groupColorMap: Record<string, string> = {
-    acquisition_admin: 'bg-blue-500',
-    structural_exterior: 'bg-red-500',
-    rough_ins: 'bg-orange-500',
-    inspections: 'bg-purple-500',
-    interior_finishes: 'bg-emerald-500',
-    milestones: 'bg-amber-500',
-  };
+  const days = useMemo(
+    () => Array.from({ length: zoomDays }, (_, i) => addDays(viewStart, i)),
+    [viewStart, zoomDays],
+  );
+  const todayIdx = days.findIndex(isToday);
 
-  const getBarColor = (task: CalendarTask) => {
-    const group = getCategoryGroup(task.eventCategory || 'due_diligence');
-    const color = groupColorMap[group] || 'bg-slate-500';
-    return task.status === 'complete' ? `${color} opacity-60` : color;
-  };
+  const groupedTasks = useMemo(() => {
+    const g: Record<string, CalendarTask[]> = {};
+    tasks.forEach(t => { (g[t.projectName] ??= []).push(t); });
+    return g;
+  }, [tasks]);
 
-  const getTaskPosition = (task: CalendarTask) => {
-    const taskStart = new Date(task.startDate);
-    const taskEnd = new Date(task.endDate);
-    const endDate = addDays(startDate, zoomDays - 1);
-    if (taskEnd < startDate || taskStart > endDate) return null;
-    const startOffset = Math.max(0, differenceInDays(taskStart, startDate));
-    const duration = differenceInDays(taskEnd, taskStart) + 1;
-    const adjustedStart = taskStart < startDate ? 0 : startOffset;
-    const adjustedDuration = Math.min(zoomDays - adjustedStart, duration);
-    return {
-      left: `${(adjustedStart / zoomDays) * 100}%`,
-      width: `${(adjustedDuration / zoomDays) * 100}%`,
-    };
-  };
+  // Memoised position resolver keyed to current view
+  const getPos = useCallback(
+    (task: CalendarTask) => getTaskPos(task, viewStart, zoomDays),
+    [viewStart, zoomDays],
+  );
 
-  const hasDependencyWarning = (task: CalendarTask) => {
-    if (!task.dependsOn) return false;
-    for (const depId of task.dependsOn) {
-      const depTask = tasks.find(t => t.id === depId);
-      if (depTask && depTask.status !== 'complete') {
-        if (new Date(task.startDate) < new Date(depTask.endDate)) return true;
+  // Y-centre of each task row (for SVG dep arrows)
+  const rowYMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    let y = 0;
+    Object.entries(groupedTasks).forEach(([name, ptasks]) => {
+      y += ROW_H;
+      if (!collapsedProjects.has(name)) {
+        ptasks.forEach(t => { m[t.id] = y + ROW_H / 2; y += ROW_H; });
       }
-    }
-    return false;
-  };
+    });
+    return m;
+  }, [groupedTasks, collapsedProjects]);
 
-  const handleDragStart = (e: React.DragEvent, taskId: string) => {
-    setDraggedTask(taskId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
+  const totalBodyH = useMemo(() =>
+    Object.entries(groupedTasks).reduce(
+      (h, [name, ptasks]) => h + ROW_H + (collapsedProjects.has(name) ? 0 : ptasks.length * ROW_H),
+      0,
+    ),
+  [groupedTasks, collapsedProjects]);
 
-  const handleDragEnd = (e: React.DragEvent) => {
-    if (!draggedTask || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const dayIndex = Math.floor((x / rect.width) * zoomDays);
+  // Pre-compute dependency arrow segments
+  const depArrows = useMemo(() => {
+    const out: { key: string; x1: number; y1: number; x2: number; y2: number; type: string }[] = [];
+    tasks.forEach(task => {
+      (task.dependencies || []).forEach(dep => {
+        const from = tasks.find(t => t.id === dep.taskId);
+        if (!from) return;
+        const fp = getPos(from);
+        const tp = getPos(task);
+        const fy = rowYMap[dep.taskId];
+        const ty = rowYMap[task.id];
+        if (!fp || !tp || fy == null || ty == null) return;
+        const tw = timelineWidth;
+        let x1: number, x2: number;
+        switch (dep.type) {
+          case 'SS': x1 = fp.leftPct / 100 * tw;                     x2 = tp.leftPct / 100 * tw; break;
+          case 'FF': x1 = (fp.leftPct + fp.widthPct) / 100 * tw;     x2 = (tp.leftPct + tp.widthPct) / 100 * tw; break;
+          case 'SF': x1 = fp.leftPct / 100 * tw;                     x2 = (tp.leftPct + tp.widthPct) / 100 * tw; break;
+          default:   x1 = (fp.leftPct + fp.widthPct) / 100 * tw;     x2 = tp.leftPct / 100 * tw; // FS
+        }
+        out.push({ key: `${task.id}-${dep.taskId}`, x1, y1: fy, x2, y2: ty, type: dep.type || 'FS' });
+      });
+    });
+    return out;
+  }, [tasks, getPos, rowYMap, timelineWidth]);
+
+  // ─── helpers ──────────────────────────────────────────────────────────────
+
+  const isMilestone = (t: CalendarTask) =>
+    differenceInDays(new Date(t.endDate), new Date(t.startDate)) === 0 ||
+    getCategoryGroup(t.eventCategory || '') === 'milestones';
+
+  const barBg = (t: CalendarTask) =>
+    GROUP_BG[getCategoryGroup(t.eventCategory || 'due_diligence')] ?? 'bg-slate-500';
+
+  const hasDependencyWarning = (t: CalendarTask) =>
+    (t.dependencies || []).some(dep => {
+      const d = tasks.find(x => x.id === dep.taskId);
+      return d && d.status !== 'complete' && new Date(t.startDate) <= new Date(d.endDate);
+    });
+
+  const toggleProject = (name: string) =>
+    setCollapsedProjects(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+
+  const handleTimelineDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!draggedTask) return;
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const dayIdx = Math.floor(((e.clientX - rect.left) / rect.width) * zoomDays);
     const task = tasks.find(t => t.id === draggedTask);
     if (!task) return;
-    const duration = differenceInDays(new Date(task.endDate), new Date(task.startDate));
-    const newStart = addDays(startDate, Math.max(0, Math.min(zoomDays - 1 - duration, dayIndex)));
-    const newEnd = addDays(newStart, duration);
-    onTaskMove(draggedTask, newStart, newEnd);
+    const dur = differenceInDays(new Date(task.endDate), new Date(task.startDate));
+    const ns = addDays(viewStart, Math.max(0, Math.min(zoomDays - 1 - dur, dayIdx)));
+    onTaskMove(draggedTask, ns, addDays(ns, dur));
     setDraggedTask(null);
   };
 
-  const groupedTasks = useMemo(() => {
-    const groups: Record<string, CalendarTask[]> = {};
-    tasks.forEach(task => {
-      if (!groups[task.projectName]) groups[task.projectName] = [];
-      groups[task.projectName].push(task);
-    });
-    return groups;
-  }, [tasks]);
+  const summaryPos = (ptasks: CalendarTask[]) => {
+    const vis = ptasks.filter(t => getPos(t));
+    if (!vis.length) return null;
+    const syn = { ...vis[0], startDate: new Date(Math.min(...vis.map(t => +new Date(t.startDate)))), endDate: new Date(Math.max(...vis.map(t => +new Date(t.endDate)))) };
+    return getPos(syn);
+  };
+
+  const colStyle: React.CSSProperties = { flex: '1 0 0', minWidth: COL_MIN };
+
+  // ─── render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-4">
+    <div className="p-4 space-y-3">
       {/* Zoom toolbar */}
-      <div className="flex items-center gap-3 mb-4 bg-secondary/50 rounded-lg p-2 flex-wrap">
+      <div className="flex items-center gap-3 bg-secondary/50 rounded-lg p-2 flex-wrap">
         <ZoomIn className="h-4 w-4 text-muted-foreground shrink-0" />
         <div className="flex items-center gap-1.5 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              'h-7 px-2.5 text-xs rounded-full',
-              zoomDays === 7 && 'bg-primary text-primary-foreground border-primary'
-            )}
-            onClick={() => setZoomDays(7)}
-          >
-            7d
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              'h-7 px-2.5 text-xs rounded-full',
-              zoomDays === 14 && 'bg-primary text-primary-foreground border-primary'
-            )}
-            onClick={() => setZoomDays(14)}
-          >
-            14d
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              'h-7 px-2.5 text-xs rounded-full',
-              zoomDays === 21 && 'bg-primary text-primary-foreground border-primary'
-            )}
-            onClick={() => setZoomDays(21)}
-          >
-            21d
-          </Button>
+          {[7, 14, 21].map(d => (
+            <Button
+              key={d}
+              variant="outline"
+              size="sm"
+              className={cn('h-7 px-2.5 text-xs rounded-full transition-colors', zoomDays === d && 'bg-primary text-primary-foreground border-primary')}
+              onClick={() => setZoomDays(d)}
+            >{d}d</Button>
+          ))}
         </div>
         <div className="flex items-center gap-2 flex-1 min-w-[120px] max-w-[200px]">
-          <Slider
-            value={[zoomDays]}
-            onValueChange={([v]) => setZoomDays(v)}
-            min={7}
-            max={21}
-            step={1}
-            className="flex-1"
-          />
+          <Slider value={[zoomDays]} onValueChange={([v]) => setZoomDays(v)} min={7} max={21} step={1} className="flex-1" />
         </div>
-        <span className="text-xs text-muted-foreground shrink-0">
-          {zoomDays} days
-        </span>
+        <span className="text-xs text-muted-foreground shrink-0">{zoomDays} days</span>
       </div>
 
-      {/* Scrollable chart area */}
-      <div
-        ref={scrollRef}
-        className={cn(isZoomed && 'overflow-x-auto')}
-        style={{ scrollBehavior: 'smooth' }}
-      >
-        <div style={{ minWidth: colMinWidth ? colMinWidth * zoomDays + 192 : undefined }}>
-          {/* Header with days */}
-          <div className="flex border-b border-border pb-2 mb-4">
-            <div className="w-48 shrink-0 text-xs font-medium text-muted-foreground">
-              Project / Task
+      {/* Chart container — horizontal scroll on overflow, frozen left col */}
+      <div className="overflow-x-auto rounded-lg border border-border" style={{ scrollBehavior: 'smooth' }}>
+        <div ref={innerRef} style={{ minWidth: CHART_MIN }}>
+
+          {/* ── Day header ── */}
+          <div className="flex border-b-2 border-border sticky top-0 z-30 bg-background">
+            <div
+              className="shrink-0 sticky left-0 z-30 bg-background border-r border-border px-3 flex items-end pb-2"
+              style={{ width: FROZEN_W }}
+            >
+              <span className="text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">Project / Task</span>
             </div>
-            <div className="flex-1 flex">
+            <div className="flex flex-1">
               {days.map((day, i) => (
                 <div
                   key={i}
-                  className={cn(
-                    'flex-1 text-center text-[10px]',
-                    isToday(day) ? 'text-primary font-bold' : 'text-muted-foreground'
-                  )}
-                  style={colMinWidth ? { minWidth: colMinWidth } : undefined}
+                  style={colStyle}
+                  className={cn('text-center border-r border-border/40 py-1', isToday(day) && 'bg-primary/5')}
                 >
-                  <div>{format(day, 'EEE')}</div>
-                  <div className={cn(
-                    'font-medium',
-                    isToday(day) ? 'text-primary' : 'text-muted-foreground'
-                  )}>
+                  <div className="text-[10px] text-muted-foreground/60">{format(day, 'EEE')}</div>
+                  <div className={cn('text-[12px] font-semibold', isToday(day) ? 'text-primary' : 'text-foreground/80')}>
                     {format(day, 'd')}
                   </div>
+                  <div className="text-[9px] text-muted-foreground/40">{format(day, 'MMM')}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Gantt chart body */}
-          <div>
-            {Object.entries(groupedTasks).map(([projectName, projectTasks]) => (
-              <div key={projectName}>
-                <div className="flex items-center py-2 border-b border-border">
-                  <div className="w-48 shrink-0">
-                    <span className="text-sm font-semibold text-foreground">{projectName}</span>
-                  </div>
+          {/* ── Body ── */}
+          <div className="relative" style={{ minHeight: Math.max(totalBodyH, 80) }}>
+
+            {/* Vertical gridlines (behind bars) */}
+            <div className="absolute inset-0 pointer-events-none" style={{ left: FROZEN_W }}>
+              {days.map((day, i) => (
+                <div
+                  key={i}
+                  className={cn('absolute inset-y-0 border-r', isToday(day) ? 'border-primary/25' : 'border-border/20')}
+                  style={{ left: `${(i / zoomDays) * 100}%`, width: 0 }}
+                />
+              ))}
+            </div>
+
+            {/* Today red vertical line */}
+            {todayIdx !== -1 && (
+              <div
+                className="absolute inset-y-0 z-20 pointer-events-none"
+                style={{
+                  left: FROZEN_W + ((todayIdx + 0.5) / zoomDays) * timelineWidth,
+                  width: 2,
+                  background: 'hsl(0 84% 60% / 0.80)',
+                }}
+              >
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 bg-red-500 text-white rounded px-1.5 py-0.5 whitespace-nowrap shadow-sm font-medium"
+                  style={{ fontSize: 9, top: 0 }}
+                >
+                  {format(new Date(), 'MMM d')}
                 </div>
+              </div>
+            )}
 
-                {projectTasks.map(task => {
-                  const position = getTaskPosition(task);
-                  if (!position) return null;
-
+            {/* Dependency arrows SVG overlay */}
+            {depArrows.length > 0 && (
+              <svg
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: FROZEN_W,
+                  width: timelineWidth,
+                  height: totalBodyH,
+                  pointerEvents: 'none',
+                  overflow: 'visible',
+                  zIndex: 5,
+                }}
+              >
+                <defs>
+                  {Object.entries(DEP_COLORS).map(([type, color]) => (
+                    <marker
+                      key={type}
+                      id={`gm-${type}`}
+                      viewBox="0 0 8 8"
+                      refX="7"
+                      refY="4"
+                      markerWidth="5"
+                      markerHeight="5"
+                      orient="auto"
+                    >
+                      <path d="M0,0 L8,4 L0,8 Z" fill={color} />
+                    </marker>
+                  ))}
+                </defs>
+                {depArrows.map(({ key, x1, y1, x2, y2, type }) => {
+                  const color = DEP_COLORS[type] ?? DEP_COLORS.FS;
+                  const mx = (x1 + x2) / 2;
                   return (
-                    <div key={task.id} className="flex items-center py-1.5 group">
-                      <div className="w-48 shrink-0 pr-2">
-                        <button
-                          onClick={() => onTaskClick(task)}
-                          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {getCategoryIcon(task.eventCategory || 'due_diligence', 12, 'text-muted-foreground')}
-                          <span className="truncate">{task.title}</span>
-                          {hasDependencyWarning(task) && (
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <AlertTriangle className="h-3 w-3 text-amber-500" />
-                              </TooltipTrigger>
-                              <TooltipContent className="bg-amber-900 border-amber-700">
-                                <p className="text-xs">Dependency not complete!</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </button>
-                      </div>
-                      
-                      <div 
-                        ref={containerRef}
-                        className="flex-1 relative h-7"
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={handleDragEnd}
-                      >
-                        {todayIndex !== -1 && (
-                          <div
-                            className="absolute top-0 bottom-0 bg-foreground/[0.03] pointer-events-none"
-                            style={{
-                              left: `${(todayIndex / zoomDays) * 100}%`,
-                              width: `${(1 / zoomDays) * 100}%`,
-                            }}
-                          />
-                        )}
-
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, task.id)}
-                              onClick={() => onTaskClick(task)}
-                              className={cn(
-                                'absolute top-0.5 h-6 rounded cursor-grab active:cursor-grabbing transition-all',
-                                'hover:ring-2 hover:ring-white/20',
-                                getBarColor(task),
-                                draggedTask === task.id && 'opacity-50'
-                              )}
-                              style={position}
-                            >
-                              <div className="flex items-center h-full gap-1 px-1.5 overflow-hidden">
-                                {getCategoryIcon(task.eventCategory || 'due_diligence', 12, 'text-white shrink-0')}
-                                {isZoomed && (
-                                  <span className="text-[10px] text-white truncate leading-none">
-                                    {task.title}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-card border-border">
-                            <div className="text-xs">
-                              <p className="font-medium text-foreground">{task.title}</p>
-                              <p className="text-muted-foreground">
-                                {format(new Date(task.startDate), 'MMM d')} - {format(new Date(task.endDate), 'MMM d')}
-                              </p>
-                              <p className="text-muted-foreground">
-                                {task.checklist.filter(c => c.completed).length}/{task.checklist.length} tasks complete
-                              </p>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </div>
+                    <path
+                      key={key}
+                      d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
+                      stroke={color}
+                      strokeWidth="1.5"
+                      fill="none"
+                      strokeDasharray={type === 'FS' ? undefined : '4 3'}
+                      markerEnd={`url(#gm-${type})`}
+                      opacity={0.75}
+                    />
                   );
                 })}
+              </svg>
+            )}
+
+            {/* ── Project groups ── */}
+            {Object.entries(groupedTasks).map(([projectName, projectTasks]) => {
+              const collapsed = collapsedProjects.has(projectName);
+              const sp = summaryPos(projectTasks);
+              const projectId = projectTasks[0]?.projectId;
+
+              return (
+                <div key={projectName}>
+                  {/* Project summary row */}
+                  <div className="flex items-center border-b border-border bg-secondary/25" style={{ height: ROW_H }}>
+                    {/* Frozen: name + collapse + add button */}
+                    <div
+                      className="shrink-0 sticky left-0 z-10 bg-secondary/50 border-r border-border flex items-center gap-1 px-2"
+                      style={{ width: FROZEN_W, height: ROW_H }}
+                    >
+                      <button
+                        onClick={() => toggleProject(projectName)}
+                        className="flex items-center gap-1 text-sm font-semibold text-foreground hover:text-primary transition-colors min-w-0 flex-1"
+                      >
+                        <ChevronDown
+                          className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200', collapsed && '-rotate-90')}
+                        />
+                        <span className="truncate">{projectName}</span>
+                      </button>
+                      {onAddEvent && projectId && (
+                        <button
+                          onClick={() => onAddEvent(projectId)}
+                          title={`Add event to ${projectName}`}
+                          className="shrink-0 text-muted-foreground hover:text-primary rounded transition-colors p-0.5 ml-1"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                    {/* Timeline: summary chevron bar */}
+                    <div className="flex-1 relative" style={{ height: ROW_H }}>
+                      {sp && (
+                        <div
+                          className="absolute"
+                          style={{
+                            left: `${sp.leftPct}%`,
+                            width: `max(${sp.widthPct}%, 6px)`,
+                            top: '50%',
+                            height: 8,
+                            transform: 'translateY(-50%)',
+                            background: 'hsl(var(--foreground) / 0.20)',
+                            clipPath: 'polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%)',
+                            borderRadius: '2px 0 0 2px',
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Task rows — collapsible with smooth max-height animation */}
+                  <div
+                    className="overflow-hidden transition-[max-height] duration-200 ease-out"
+                    style={{ maxHeight: collapsed ? 0 : projectTasks.length * (ROW_H + 1) + 4 }}
+                  >
+                    {projectTasks.map(task => {
+                      const pos = getPos(task);
+                      const ms = isMilestone(task);
+                      const barPx = pos ? (pos.widthPct / 100) * timelineWidth : 0;
+                      const showLabel = !ms && barPx > 52;
+                      const depWarn = hasDependencyWarning(task);
+                      const done = task.isCompleted || task.status === 'complete';
+                      const durDays = differenceInDays(new Date(task.endDate), new Date(task.startDate));
+
+                      return (
+                        <div
+                          key={task.id}
+                          className="flex items-center border-b border-border/30 group"
+                          style={{ height: ROW_H }}
+                        >
+                          {/* Frozen: icon + title */}
+                          <div
+                            className="shrink-0 sticky left-0 z-10 bg-background/95 border-r border-border/40 flex items-center gap-1.5 px-3"
+                            style={{ width: FROZEN_W, height: ROW_H }}
+                          >
+                            <span className="shrink-0 text-muted-foreground/50">
+                              {categoryIcon(task.eventCategory || 'due_diligence', 11)}
+                            </span>
+                            <button
+                              onClick={() => onTaskClick(task)}
+                              className="flex-1 min-w-0 text-left text-xs text-muted-foreground hover:text-foreground transition-colors truncate"
+                            >
+                              {task.title}
+                            </button>
+                            {depWarn && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-amber-950 border-amber-800 text-amber-200 text-xs">
+                                  Predecessor incomplete
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+
+                          {/* Timeline: bar or milestone diamond */}
+                          <div
+                            className="flex-1 relative"
+                            style={{ height: ROW_H }}
+                            onDragOver={e => e.preventDefault()}
+                            onDrop={handleTimelineDrop}
+                          >
+                            {pos && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  {ms ? (
+                                    // Diamond shape for milestone/zero-duration tasks
+                                    <div
+                                      onClick={() => onTaskClick(task)}
+                                      className={cn(
+                                        'absolute cursor-pointer hover:scale-125 transition-transform shadow-sm z-10',
+                                        barBg(task),
+                                        task.isCriticalPath && 'ring-1 ring-rose-400',
+                                        done && 'opacity-50',
+                                      )}
+                                      style={{
+                                        width: 14,
+                                        height: 14,
+                                        left: `calc(${pos.leftPct + pos.widthPct / 2}% - 7px)`,
+                                        top: 'calc(50% - 7px)',
+                                        transform: 'rotate(45deg)',
+                                      }}
+                                    />
+                                  ) : (
+                                    // Regular task bar
+                                    <div
+                                      draggable
+                                      onDragStart={e => { setDraggedTask(task.id); e.dataTransfer.effectAllowed = 'move'; }}
+                                      onDragEnd={() => setDraggedTask(null)}
+                                      onClick={() => onTaskClick(task)}
+                                      className={cn(
+                                        'absolute rounded shadow-sm cursor-grab active:cursor-grabbing z-10',
+                                        'hover:brightness-110 hover:ring-2 hover:ring-white/25 transition-all',
+                                        barBg(task),
+                                        task.isCriticalPath && 'ring-1 ring-rose-400 ring-inset',
+                                        done && 'opacity-55',
+                                        draggedTask === task.id && 'opacity-40 cursor-grabbing',
+                                      )}
+                                      style={{
+                                        left: `${pos.leftPct}%`,
+                                        width: `max(${pos.widthPct}%, 4px)`,
+                                        top: '50%',
+                                        height: 22,
+                                        transform: 'translateY(-50%)',
+                                      }}
+                                    >
+                                      <div className="flex items-center h-full gap-1 px-1.5 overflow-hidden">
+                                        <span className="shrink-0">
+                                          {categoryIcon(task.eventCategory || 'due_diligence', 10, 'text-white')}
+                                        </span>
+                                        {showLabel && (
+                                          <span className="text-[10px] text-white font-medium truncate leading-none">
+                                            {task.title}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </TooltipTrigger>
+                                {/* Rich tooltip */}
+                                <TooltipContent side="top" className="bg-card border-border max-w-[220px]">
+                                  <div className="text-xs space-y-1 py-0.5">
+                                    <p className="font-semibold text-foreground leading-tight">{task.title}</p>
+                                    <p className="text-muted-foreground">
+                                      {format(new Date(task.startDate), 'MMM d')} → {format(new Date(task.endDate), 'MMM d, yyyy')}
+                                    </p>
+                                    <p className="text-muted-foreground">{durDays + 1} {durDays === 0 ? 'day' : 'days'}</p>
+                                    <p className="text-muted-foreground">{getCategoryLabel(task.eventCategory || 'due_diligence')}</p>
+                                    {task.owner && (
+                                      <p className="flex items-center gap-1 text-muted-foreground">
+                                        <User className="h-3 w-3 shrink-0" />
+                                        {task.owner}
+                                      </p>
+                                    )}
+                                    {(task.dependencies?.length ?? 0) > 0 && (
+                                      <p className="text-muted-foreground">
+                                        {task.dependencies!.length} dep{task.dependencies!.length > 1 ? 's' : ''}:{' '}
+                                        {task.dependencies!.map(d => d.type).join(', ')}
+                                      </p>
+                                    )}
+                                    {task.isCriticalPath && (
+                                      <p className="text-rose-400 font-medium">⚡ Critical Path</p>
+                                    )}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {tasks.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+                No events in this date range
               </div>
-            ))}
+            )}
           </div>
+        </div>
+      </div>
+
+      {/* Legend — always visible */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 pt-2 border-t border-border text-xs text-muted-foreground">
+        {Object.entries(CATEGORY_GROUPS).map(([key, group]) => (
+          <div key={key} className="flex items-center gap-1.5">
+            <div className={cn('w-3 h-2.5 rounded-sm shrink-0', GROUP_BG[key])} />
+            <span>{group.label}</span>
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 bg-amber-500 rotate-45 shrink-0" />
+          <span>Milestone</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div
+            className="w-5 h-2.5 shrink-0"
+            style={{ background: 'hsl(var(--foreground)/0.22)', clipPath: 'polygon(0 0,calc(100% - 5px) 0,100% 50%,calc(100% - 5px) 100%,0 100%)', borderRadius: 2 }}
+          />
+          <span>Project span</span>
+        </div>
+        {/* Dependency arrow types */}
+        <div className="flex items-center gap-3 ml-auto">
+          {Object.entries(DEP_COLORS).map(([type, color]) => (
+            <div key={type} className="flex items-center gap-1">
+              <svg width="20" height="10">
+                <line x1="0" y1="5" x2="14" y2="5" stroke={color} strokeWidth="1.5" strokeDasharray={type === 'FS' ? undefined : '3 2'} />
+                <polygon points="11,2 20,5 11,8" fill={color} />
+              </svg>
+              <span className="text-[10px]">{type}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
