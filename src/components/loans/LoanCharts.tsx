@@ -262,8 +262,12 @@ export function LoanCharts({ loans }: LoanChartsProps) {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 4, columnGap: 16, fontSize: 12, color: 'hsl(var(--popover-foreground))' }}>
                         <span style={{ opacity: 0.75 }}>Principal</span>
                         <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(agg.principal)}</span>
-                        <span style={{ opacity: 0.75 }}>Interest Accrued</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(agg.interest)}</span>
+                        {agg.interest > 0 && (
+                          <>
+                            <span style={{ opacity: 0.75 }}>Interest Accrued</span>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(agg.interest)}</span>
+                          </>
+                        )}
                       </div>
                       <div
                         style={{
