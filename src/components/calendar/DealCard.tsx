@@ -70,33 +70,7 @@ export function DealCard({ task, compact = false, onClick }: DealCardProps) {
   const categoryStyles = getCategoryStyles(task.eventCategory || 'due_diligence');
   const categoryLabel = getCategoryLabel(task.eventCategory || 'due_diligence');
 
-  const isMilestone =
-    getCategoryGroup(task.eventCategory || '') === 'milestones' ||
-    new Date(task.endDate).getTime() === new Date(task.startDate).getTime();
-
   if (compact) {
-    if (isMilestone) {
-      return (
-        <button
-          onClick={onClick}
-          className="w-full text-left px-1 py-0.5 flex items-center gap-1.5 text-xs hover:bg-muted/40 rounded transition-colors cursor-grab active:cursor-grabbing"
-          title={task.title}
-        >
-          <span
-            className={cn(
-              'shrink-0 inline-block',
-              categoryStyles.bgClass,
-              task.isCriticalPath && !task.isCompleted && 'ring-1 ring-rose-500',
-              task.isCompleted && 'opacity-60',
-            )}
-            style={{ width: 9, height: 9, transform: 'rotate(45deg)' }}
-          />
-          <span className="line-clamp-1 min-w-0 text-foreground">{task.title}</span>
-          {task.isCompleted && <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />}
-        </button>
-      );
-    }
-
     return (
       <button
         onClick={onClick}
