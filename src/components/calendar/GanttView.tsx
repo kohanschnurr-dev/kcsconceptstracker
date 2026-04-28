@@ -154,6 +154,22 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     return out;
   }, [groupedTasks]);
 
+  /**
+   * Effective project order: user-saved order first (filtered to existing projects),
+   * then any new projects not yet ordered, alphabetically.
+   */
+  const orderedProjectNames = useMemo(() => {
+    const names = Object.keys(mergedTasksByProject);
+    const inSaved = projectOrder.filter(n => names.includes(n));
+    const remaining = names.filter(n => !inSaved.includes(n)).sort((a, b) => a.localeCompare(b));
+    return [...inSaved, ...remaining];
+  }, [mergedTasksByProject, projectOrder]);
+
+  const orderedProjectEntries = useMemo(
+    () => orderedProjectNames.map(name => [name, mergedTasksByProject[name]] as const),
+    [orderedProjectNames, mergedTasksByProject],
+  );
+
   // Memoised position resolver keyed to current view
   const getPos = useCallback(
     (task: CalendarTask) => getTaskPos(task, viewStart, zoomDays),
