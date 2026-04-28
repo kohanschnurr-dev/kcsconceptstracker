@@ -637,6 +637,16 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
             </Button>
           )}
           <div className="flex-1" />
+          {/* Edit mode: expose Save & Exit on every step so quick fixes don't require clicking through all 5 steps. */}
+          {initialData?.id && step < STEPS.length - 1 && (
+            <Button
+              variant="outline"
+              onClick={handleSubmit}
+              disabled={saving || !form.lender_name || form.original_amount <= 0}
+            >
+              {saving ? 'Saving…' : 'Save & Exit'}
+            </Button>
+          )}
           {step < STEPS.length - 1 ? (
             <Button onClick={() => setStep(s => s + 1)}>
               Next <ChevronRight className="h-4 w-4 ml-1" />
