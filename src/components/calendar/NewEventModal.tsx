@@ -704,28 +704,6 @@ export function NewEventModal({ projects, onEventCreated, defaultProjectId, exte
             </div>
           )}
 
-          {/* Critical Path Checkbox */}
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-card/50 border border-border">
-            <Checkbox
-              id="criticalPath"
-              checked={isCriticalPath}
-              onCheckedChange={(checked) => setIsCriticalPath(checked === true)}
-              className="border-muted-foreground data-[state=checked]:bg-muted-foreground"
-            />
-            <div className="flex-1">
-              <label
-                htmlFor="criticalPath"
-                className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-2"
-              >
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                Critical Path
-              </label>
-              <p className="text-xs text-muted-foreground">
-                Highlight this event in red on the calendar
-              </p>
-            </div>
-          </div>
-
           {/* Checklist */}
           <div className="space-y-2">
             <Label className="text-muted-foreground">Checklist</Label>
