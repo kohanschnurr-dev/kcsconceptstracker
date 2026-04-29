@@ -49,7 +49,7 @@ const FROZEN_W = 192; // px — w-48
 const ROW_H = 36;     // px — uniform row height
 const TYPE_HEADER_H = 26; // px — type group header row height
 
-const TYPE_ORDER = ['fix_flip', 'new_construction', 'rental', 'other'] as const;
+const TYPE_ORDER: string[] = ['fix_flip', 'new_construction', 'rental', 'other'];
 const TYPE_LABEL: Record<string, string> = {
   fix_flip: 'Fix & Flip',
   new_construction: 'New Construction',
