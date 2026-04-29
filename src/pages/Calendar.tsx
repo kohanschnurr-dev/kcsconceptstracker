@@ -5,7 +5,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarLegend } from '@/components/calendar/CalendarLegend';
 import { MonthlyView } from '@/components/calendar/MonthlyView';
-import { WeeklyView } from '@/components/calendar/WeeklyView';
+
 import { GanttView } from '@/components/calendar/GanttView';
 import { TaskDetailPanel } from '@/components/calendar/TaskDetailPanel';
 import { NewEventModal } from '@/components/calendar/NewEventModal';
@@ -17,7 +17,7 @@ import { useProfile } from '@/hooks/useProfile';
 
 const DEFAULT_PROJECT_TYPE_ORDER = ['fix_flip', 'new_construction', 'rental'];
 
-export type CalendarView = 'monthly' | 'weekly' | 'gantt';
+export type CalendarView = 'monthly' | 'gantt';
 
 export interface CalendarTask {
   id: string;
@@ -307,18 +307,6 @@ export default function Calendar() {
               onDayDoubleClick={(date) => {
                 setQuickCreateDate(date);
                 // Use setTimeout to ensure state is set before modal reads it
-                setTimeout(() => setQuickCreateOpen(true), 0);
-              }}
-            />
-          )}
-          {view === 'weekly' && (
-            <WeeklyView
-              currentDate={currentDate}
-              tasks={filteredTasks}
-              onTaskClick={handleTaskClick}
-              onTaskMove={handleTaskMove}
-              onDayDoubleClick={(date) => {
-                setQuickCreateDate(date);
                 setTimeout(() => setQuickCreateOpen(true), 0);
               }}
             />
