@@ -487,7 +487,6 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
               return orderedProjectEntries.map(([projectName, rows], projectIdx) => {
               const collapsed = collapsedProjects.has(projectName);
               const projectTasks = groupedTasks[projectName] ?? [];
-              const sp = summaryPos(projectTasks);
               const projectId = projectTasks[0]?.projectId;
               const isFirst = projectIdx === 0;
               const isLast = projectIdx === orderedProjectEntries.length - 1;
