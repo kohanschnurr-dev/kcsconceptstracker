@@ -268,10 +268,35 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     </button>
   );
 
-  // 9 cols when compare checkbox is present, 8 otherwise
-  const colCount = compareMode ? 9 : 8;
+  // 10 cols when compare checkbox is present, 9 otherwise
+  // (Project, Purpose, Original, Draws/Payoffs, Interest, Balance, Next, Maturity, Status)
+  const colCount = compareMode ? 10 : 9;
 
-  const renderLoanRow = ({ loan, balance, interest }: EnrichedLoan) => {
+  const renderNetActivity = (drawn: number, paidDown: number, netActivity: number) => {
+    if (drawn === 0 && paidDown === 0) {
+      return <span className="text-muted-foreground">—</span>;
+    }
+    const sign = netActivity > 0 ? '+' : netActivity < 0 ? '−' : '';
+    const tone =
+      netActivity > 0 ? 'text-warning' : netActivity < 0 ? 'text-success' : 'text-muted-foreground';
+    return (
+      <TooltipProvider delayDuration={150}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={cn('font-medium tabular-nums cursor-help underline decoration-dotted decoration-muted-foreground/40 underline-offset-4', tone)}>
+              {sign}{fmt(Math.abs(netActivity))}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            <div>Drawn: <span className="text-warning">+{fmt(drawn)}</span></div>
+            <div>Paid down: <span className="text-success">−{fmt(paidDown)}</span></div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  const renderLoanRow = ({ loan, balance, interest, drawn, paidDown, netActivity, payoff }: EnrichedLoan) => {
     const isSelected = selectedIds.includes(loan.id);
     const first = loan.first_payment_date || calcFirstPaymentDate(loan.start_date, loan.payment_frequency);
     const next = calcNextPaymentDate(first, loan.payment_frequency);
@@ -295,38 +320,22 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         <TableCell className="max-w-40 text-center">
           <div className="flex justify-center"><LoanPurposeBadge purpose={loan.nickname ?? loan.lender_name} loanType={loan.loan_type} /></div>
         </TableCell>
-        <TableCell className="text-center">
-          {(() => {
-            const isExpanded = expandedBalances.has(loan.id);
-            const hasDetails = loan.original_amount != null || (interest != null && interest > 0);
-            return (
-              <div className="flex flex-col items-center">
-                <div className="inline-flex items-center gap-1.5">
-                  <span className="font-medium">{fmt(balance)}</span>
-                  {hasDetails && (
-                    <button
-                      type="button"
-                      aria-label={isExpanded ? 'Hide details' : 'Show details'}
-                      onClick={(e) => { e.stopPropagation(); toggleBalanceExpand(loan.id); }}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                    </button>
-                  )}
-                </div>
-                {isExpanded && hasDetails && (
-                  <div className="text-xs text-muted-foreground mt-0.5 leading-tight">
-                    of {fmt(loan.original_amount)}
-                    {interest != null && interest > 0 && (
-                      <span className="ml-1.5 text-warning">· ↑{fmt(interest)} accrued</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+        <TableCell className="text-right tabular-nums">{fmt(loan.original_amount)}</TableCell>
+        <TableCell className="text-right tabular-nums" onClick={e => e.stopPropagation()}>
+          {renderNetActivity(drawn, paidDown, netActivity)}
         </TableCell>
-        <TableCell className="text-center">{fmt(loan.monthly_payment)}</TableCell>
+        <TableCell className="text-right tabular-nums">
+          {interest == null ? (
+            <span className="text-muted-foreground">—</span>
+          ) : interest > 0 ? (
+            <span className="text-warning">{fmt(interest)}</span>
+          ) : (
+            <span className="text-muted-foreground">{fmt(0)}</span>
+          )}
+        </TableCell>
+        <TableCell className="text-right tabular-nums font-semibold border-l border-border/60">
+          {fmt(payoff)}
+        </TableCell>
         <TableCell className="text-sm text-center">{formatDisplayDate(next)}</TableCell>
         <TableCell className="text-sm text-center">{formatDisplayDate(loan.maturity_date)}</TableCell>
         <TableCell className="text-center"><div className="flex justify-center"><LoanStatusBadge status={loan.status} /></div></TableCell>
