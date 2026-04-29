@@ -17,7 +17,7 @@ import { useProfile } from '@/hooks/useProfile';
 
 const DEFAULT_PROJECT_TYPE_ORDER = ['fix_flip', 'new_construction', 'rental'];
 
-export type CalendarView = 'monthly' | 'weekly' | 'gantt';
+export type CalendarView = 'monthly' | 'gantt';
 
 export interface CalendarTask {
   id: string;
