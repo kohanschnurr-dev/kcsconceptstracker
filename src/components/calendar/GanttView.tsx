@@ -147,10 +147,13 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
         if (existing) existing.instances.push(t);
         else buckets.set(k, { key: k, representative: t, instances: [t] });
       });
-      out[projectName] = Array.from(buckets.values()).map(r => ({
-        ...r,
-        instances: [...r.instances].sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate)),
-      }));
+      out[projectName] = Array.from(buckets.values())
+        .map(r => ({
+          ...r,
+          instances: [...r.instances].sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate)),
+        }))
+        // Newest tasks at the top, oldest at the bottom (by earliest instance start date)
+        .sort((a, b) => +new Date(b.instances[0].startDate) - +new Date(a.instances[0].startDate));
     });
     return out;
   }, [groupedTasks]);
