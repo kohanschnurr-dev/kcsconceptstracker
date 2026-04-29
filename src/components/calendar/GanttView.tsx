@@ -256,8 +256,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     orderedProjectEntries.reduce(
       (h, [name, rows]) => h + ROW_H + (collapsedProjects.has(name) ? 0 : rows.length * ROW_H),
       0,
-    ),
-  [orderedProjectEntries, collapsedProjects]);
+    ) + distinctTypeCount * TYPE_HEADER_H,
+  [orderedProjectEntries, collapsedProjects, distinctTypeCount]);
 
   // Pre-compute dependency arrow segments
   const depArrows = useMemo(() => {
