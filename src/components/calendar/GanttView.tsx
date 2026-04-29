@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import type { CalendarTask } from '@/pages/Calendar';
 import { getCategoryGroup, CATEGORY_GROUPS, getCategoryLabel } from '@/lib/calendarCategories';
@@ -102,6 +101,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(900);
   const innerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Track the rendered width of the inner chart div for SVG arrow coordinates
   useEffect(() => {
@@ -112,18 +112,35 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     return () => obs.disconnect();
   }, []);
 
-  const lookbackDays = Math.max(7, Math.floor(zoomDays * 0.25));
-  const viewStart = startOfWeek(addDays(currentDate, -lookbackDays));
-  // Timeline pixel width = total inner width minus the frozen column
-  const timelineWidth = Math.max(containerWidth - FROZEN_W, 200);
-  const COL_MIN = zoomDays <= 7 ? 70 : zoomDays <= 14 ? 76 : 64;
-  const CHART_MIN = FROZEN_W + COL_MIN * zoomDays;
+  // Pan range: ~6 months back, ~6 months forward (~1 year window)
+  const PAN_RANGE_DAYS = 365;
+  const PAN_LOOKBACK = 180;
+  const viewStart = useMemo(
+    () => startOfWeek(addDays(currentDate, -PAN_LOOKBACK)),
+    [currentDate],
+  );
+
+  // Day-cell width derived from the zoom preset
+  const COL_W = zoomDays <= 7 ? 110 : zoomDays <= 14 ? 76 : 52;
+  // Inner chart width spans the full pan range; native horizontal scrollbar pans
+  const timelineWidth = COL_W * PAN_RANGE_DAYS;
+  const CHART_MIN = FROZEN_W + timelineWidth;
 
   const days = useMemo(
-    () => Array.from({ length: zoomDays }, (_, i) => addDays(viewStart, i)),
-    [viewStart, zoomDays],
+    () => Array.from({ length: PAN_RANGE_DAYS }, (_, i) => addDays(viewStart, i)),
+    [viewStart],
   );
   const todayIdx = days.findIndex(isToday);
+
+  // Auto-center scroll on today (mount + when zoom or currentDate changes)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || todayIdx < 0) return;
+    const todayLeft = FROZEN_W + todayIdx * COL_W;
+    // Place today ~30% from the left edge of the visible viewport
+    el.scrollLeft = Math.max(0, todayLeft - el.clientWidth * 0.3);
+  }, [todayIdx, COL_W]);
+
 
   const groupedTasks = useMemo(() => {
     const g: Record<string, CalendarTask[]> = {};
@@ -174,10 +191,10 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     [orderedProjectNames, mergedTasksByProject],
   );
 
-  // Memoised position resolver keyed to current view
+  // Memoised position resolver keyed to current view (% of full pan range)
   const getPos = useCallback(
-    (task: CalendarTask) => getTaskPos(task, viewStart, zoomDays),
-    [viewStart, zoomDays],
+    (task: CalendarTask) => getTaskPos(task, viewStart, PAN_RANGE_DAYS),
+    [viewStart],
   );
 
   // Y-centre of each task row (for SVG dep arrows). All instances within a merged
@@ -252,11 +269,11 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     e.preventDefault();
     if (!draggedTask) return;
     const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-    const dayIdx = Math.floor(((e.clientX - rect.left) / rect.width) * zoomDays);
+    const dayIdx = Math.floor(((e.clientX - rect.left) / rect.width) * PAN_RANGE_DAYS);
     const task = tasks.find(t => t.id === draggedTask);
     if (!task) return;
     const dur = differenceInDays(new Date(task.endDate), new Date(task.startDate));
-    const ns = addDays(viewStart, Math.max(0, Math.min(zoomDays - 1 - dur, dayIdx)));
+    const ns = addDays(viewStart, Math.max(0, Math.min(PAN_RANGE_DAYS - 1 - dur, dayIdx)));
     onTaskMove(draggedTask, ns, addDays(ns, dur));
     setDraggedTask(null);
   };
@@ -268,34 +285,44 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     return getPos(syn);
   };
 
-  const colStyle: React.CSSProperties = { flex: '1 0 0', minWidth: COL_MIN };
+  const colStyle: React.CSSProperties = { width: COL_W, flex: '0 0 auto' };
+
+  const scrollToToday = () => {
+    const el = scrollRef.current;
+    if (!el || todayIdx < 0) return;
+    const todayLeft = FROZEN_W + todayIdx * COL_W;
+    el.scrollTo({ left: Math.max(0, todayLeft - el.clientWidth * 0.3), behavior: 'smooth' });
+  };
 
   // ─── render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="p-4 space-y-3">
       {/* Zoom toolbar */}
-      <div className="flex items-center gap-3 bg-secondary/50 rounded-lg p-2 flex-wrap">
+      <div className="flex items-center gap-3 bg-secondary/50 rounded-lg p-2">
         <ZoomIn className="h-4 w-4 text-muted-foreground shrink-0" />
         <div className="flex items-center gap-1.5 shrink-0">
-          {[7, 14, 21, 30, 60, 90].map(d => (
+          {[7, 14, 21].map(d => (
             <Button
               key={d}
               variant="outline"
               size="sm"
-              className={cn('h-7 px-2.5 text-xs rounded-full transition-colors', zoomDays === d && 'bg-primary text-primary-foreground border-primary')}
+              className={cn('h-7 px-3 text-xs rounded-full transition-colors', zoomDays === d && 'bg-primary text-primary-foreground border-primary')}
               onClick={() => setZoomDays(d)}
             >{d}d</Button>
           ))}
         </div>
-        <div className="flex items-center gap-2 flex-1 min-w-[120px] max-w-[200px]">
-          <Slider value={[zoomDays]} onValueChange={([v]) => setZoomDays(v)} min={7} max={180} step={1} className="flex-1" />
-        </div>
-        <span className="text-xs text-muted-foreground shrink-0">{zoomDays} days</span>
+        <div className="flex-1" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-3 text-xs rounded-full shrink-0"
+          onClick={scrollToToday}
+        >Today</Button>
       </div>
 
       {/* Chart container — horizontal scroll on overflow, frozen left col */}
-      <div className="overflow-x-auto rounded-lg border border-border" style={{ scrollBehavior: 'smooth' }}>
+      <div ref={scrollRef} className="overflow-x-auto rounded-lg border border-border">
         <div ref={innerRef} style={{ minWidth: CHART_MIN }}>
 
           {/* ── Day header ── */}
@@ -332,7 +359,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                 <div
                   key={i}
                   className={cn('absolute inset-y-0 border-r', isToday(day) ? 'border-primary/25' : 'border-border/20')}
-                  style={{ left: `${(i / zoomDays) * 100}%`, width: 0 }}
+                  style={{ left: `${(i / PAN_RANGE_DAYS) * 100}%`, width: 0 }}
                 />
               ))}
             </div>
@@ -342,7 +369,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
               <div
                 className="absolute inset-y-0 z-20 pointer-events-none"
                 style={{
-                  left: FROZEN_W + ((todayIdx + 0.5) / zoomDays) * timelineWidth,
+                  left: FROZEN_W + ((todayIdx + 0.5) / PAN_RANGE_DAYS) * timelineWidth,
                   width: 2,
                   background: 'hsl(0 84% 60% / 0.80)',
                 }}
