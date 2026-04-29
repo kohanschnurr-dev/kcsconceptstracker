@@ -311,18 +311,6 @@ export default function Calendar() {
               }}
             />
           )}
-          {view === 'weekly' && (
-            <WeeklyView
-              currentDate={currentDate}
-              tasks={filteredTasks}
-              onTaskClick={handleTaskClick}
-              onTaskMove={handleTaskMove}
-              onDayDoubleClick={(date) => {
-                setQuickCreateDate(date);
-                setTimeout(() => setQuickCreateOpen(true), 0);
-              }}
-            />
-          )}
           {view === 'gantt' && (
             <GanttView
               currentDate={currentDate}
