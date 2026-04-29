@@ -536,7 +536,6 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   {compareMode && <TableHead className="w-10" />}
                   <TableHead className="text-center">Project <SortBtn col="project_name" /></TableHead>
                   <TableHead className="text-center">Loan Purpose <SortBtn col="lender_name" /></TableHead>
-                  <TableHead className="text-center">Type <SortBtn col="loan_type" /></TableHead>
                   <TableHead className="text-center">Balance <SortBtn col="balance_calc" /></TableHead>
                   <TableHead className="text-center">Monthly Pmt <SortBtn col="monthly_payment" /></TableHead>
                   <TableHead className="text-center">Next Payment <SortBtn col="next_payment" /></TableHead>
