@@ -270,12 +270,39 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
                   setTouched({ principal: false, interest: false });
                 }} />
               </div>
+              <div className="col-span-2 flex items-center gap-2 rounded-md border border-border bg-secondary/30 px-3 py-2">
+                <Checkbox
+                  id="principal-only"
+                  checked={principalOnly}
+                  onCheckedChange={(v) => {
+                    const checked = v === true;
+                    setPrincipalOnly(checked);
+                    if (checked) {
+                      // Force-route everything to principal immediately.
+                      const usable = Math.max(0, (form.amount ?? 0) - (form.late_fee ?? 0));
+                      setForm(f => ({
+                        ...f,
+                        interest_portion: 0,
+                        principal_portion: Math.round(usable * 100) / 100,
+                      }));
+                      setTouched({ principal: true, interest: true });
+                    } else {
+                      // Let auto-split recompute.
+                      setTouched({ principal: false, interest: false });
+                    }
+                  }}
+                />
+                <Label htmlFor="principal-only" className="text-sm cursor-pointer">
+                  Apply entire payment to principal (skip interest)
+                </Label>
+              </div>
               <div>
                 <Label>Interest Portion</Label>
                 <Input
                   className="mt-1"
                   type="number"
                   step="0.01"
+                  disabled={principalOnly}
                   value={form.interest_portion ?? ''}
                   onChange={e => {
                     set('interest_portion', e.target.value === '' ? null : parseFloat(e.target.value));
@@ -289,6 +316,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
                   className="mt-1"
                   type="number"
                   step="0.01"
+                  disabled={principalOnly}
                   value={form.principal_portion ?? ''}
                   onChange={e => {
                     set('principal_portion', e.target.value === '' ? null : parseFloat(e.target.value));
@@ -302,12 +330,14 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
               </div>
             </div>
 
-            <div className="flex items-start gap-2 text-xs text-muted-foreground">
-              <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-              <span>Interest is applied first, the rest pays down principal. Edit either field to override.</span>
-            </div>
+            {!principalOnly && (
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                <span>Interest is applied first, the rest pays down principal. Edit either field to override.</span>
+              </div>
+            )}
 
-            {form.amount > 0 && !splitMatches && (
+            {!principalOnly && form.amount > 0 && !splitMatches && (
               <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
                 Split doesn't match amount — off by {fmt(Math.abs(splitDelta))}.
               </div>
