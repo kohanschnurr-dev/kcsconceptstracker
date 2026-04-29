@@ -76,6 +76,15 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
     const usable = Math.max(0, amount - lateFee);
     if (usable <= 0) return;
 
+    if (principalOnly) {
+      setForm(f => ({
+        ...f,
+        interest_portion: 0,
+        principal_portion: Math.round(usable * 100) / 100,
+      }));
+      return;
+    }
+
     const suggestedInterest = accruesUnpaidInterest
       ? Math.min(unpaidInterest, usable)
       : 0;
@@ -87,11 +96,11 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
       principal_portion: touched.principal ? f.principal_portion : Math.round(suggestedPrincipal * 100) / 100,
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.amount, form.late_fee, open, unpaidInterest, accruesUnpaidInterest]);
+  }, [form.amount, form.late_fee, open, unpaidInterest, accruesUnpaidInterest, principalOnly]);
 
   const splitTotal = (form.principal_portion ?? 0) + (form.interest_portion ?? 0) + (form.late_fee ?? 0);
   const splitDelta = Math.round((splitTotal - (form.amount ?? 0)) * 100) / 100;
-  const splitMatches = Math.abs(splitDelta) < 0.01;
+  const splitMatches = principalOnly ? true : Math.abs(splitDelta) < 0.01;
 
   const handleSubmit = () => {
     if (!form.amount || !splitMatches) return;
