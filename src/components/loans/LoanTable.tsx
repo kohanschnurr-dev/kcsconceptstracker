@@ -585,7 +585,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   <TableHead className="text-center">Loan Purpose <SortBtn col="lender_name" /></TableHead>
                   <TableHead className="text-right">Original <SortBtn col="original_amount" /></TableHead>
                   <TableHead className="text-right">Draws / Payoffs <SortBtn col="net_activity" /></TableHead>
-                  <TableHead className="text-right">Interest <SortBtn col="interest_accrued" /></TableHead>
+                  <TableHead className="text-right">Interest Balance <SortBtn col="interest_accrued" /></TableHead>
                   <TableHead className="text-right border-l border-border/60">Balance <SortBtn col="payoff" /></TableHead>
                   <TableHead className="text-center">Next Payment <SortBtn col="next_payment" /></TableHead>
                   <TableHead className="text-center">Maturity <SortBtn col="maturity_date" /></TableHead>
