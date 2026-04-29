@@ -207,11 +207,20 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
     // Walk dates chronologically simulating remaining principal & accrued
     // interest after each prior bulk row, so the suggested split is realistic
     // for sequential payments.
-    const sorted = [...dates].sort((a, b) => a.date.localeCompare(b.date));
+    // Apply per-row date overrides FIRST (by index), then sort. This way
+    // editing a row's date in the preview survives regeneration.
+    const withOverrides = dates.map((d, idx) => {
+      const key = `row-${idx}`;
+      const ov = rowOverrides[key] as (Partial<BulkRow> & { date?: string }) | undefined;
+      const date = ov?.date ?? d.date;
+      const adjusted = ov?.date ? false : d.adjusted;
+      return { date, adjusted, key };
+    });
+    const sorted = [...withOverrides].sort((a, b) => a.date.localeCompare(b.date));
     const prior: LoanPayment[] = [...payments.filter(p => !isAutoPayment(p))];
 
-    const built: BulkRow[] = sorted.map((d, idx) => {
-      const key = `${d.date}-${idx}`;
+    const built: BulkRow[] = sorted.map((d) => {
+      const key = d.key;
       const overlap = classifyOverlap(d.date, payments);
       const ov = rowOverrides[key];
 
