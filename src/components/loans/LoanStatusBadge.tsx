@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { LOAN_STATUS_CONFIG, LOAN_TYPE_LABELS, LOAN_TYPE_COLORS } from '@/types/loans';
+import { LOAN_STATUS_CONFIG, LOAN_TYPE_LABELS, LOAN_TYPE_COLORS, getLoanPurposeColor } from '@/types/loans';
 import type { LoanStatus, LoanType } from '@/types/loans';
 
 export function LoanStatusBadge({ status }: { status: LoanStatus }) {
@@ -20,3 +20,14 @@ export function LoanTypeBadge({ type }: { type: LoanType }) {
     </Badge>
   );
 }
+
+export function LoanPurposeBadge({ purpose }: { purpose: string | null | undefined }) {
+  const c = getLoanPurposeColor(purpose);
+  const label = purpose?.trim() || '—';
+  return (
+    <Badge variant="outline" className={cn('text-xs font-medium whitespace-nowrap', c.badge)}>
+      {label}
+    </Badge>
+  );
+}
+

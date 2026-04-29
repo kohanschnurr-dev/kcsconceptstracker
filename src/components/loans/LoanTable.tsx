@@ -7,13 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
+import { LoanStatusBadge, LoanPurposeBadge } from './LoanStatusBadge';
 import {
   currentAccruedInterest,
   calcFirstPaymentDate,
   calcNextPaymentDate,
   effectiveOutstandingBalance,
-  LOAN_TYPE_COLORS,
+  getLoanPurposeColor,
 } from '@/types/loans';
 import { getEffectivePayments } from '@/lib/loanPayments';
 import type { Loan, LoanStatus, LoanPayment, LoanDraw } from '@/types/loans';
@@ -271,8 +271,9 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
           </TableCell>
         )}
         <TableCell className="font-medium max-w-32 truncate text-center">{loan.project_name ?? '—'}</TableCell>
-        <TableCell className="max-w-32 truncate text-center">{loan.nickname ?? loan.lender_name}</TableCell>
-        <TableCell className="text-center"><div className="flex justify-center"><LoanTypeBadge type={loan.loan_type} /></div></TableCell>
+        <TableCell className="max-w-40 text-center">
+          <div className="flex justify-center"><LoanPurposeBadge purpose={loan.nickname ?? loan.lender_name} /></div>
+        </TableCell>
         <TableCell className="text-center">
           {(() => {
             const isExpanded = expandedBalances.has(loan.id);
@@ -462,7 +463,8 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {enrichedFiltered.map(({ loan, balance, interest }) => {
-              const typeColor = LOAN_TYPE_COLORS[loan.loan_type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
+              const purpose = loan.nickname ?? loan.lender_name;
+              const purposeColor = getLoanPurposeColor(purpose).hsl;
               const first = loan.first_payment_date || calcFirstPaymentDate(loan.start_date, loan.payment_frequency);
               const next = calcNextPaymentDate(first, loan.payment_frequency);
 
@@ -474,7 +476,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                     borderWidth: '1px',
                     borderStyle: 'solid',
                     borderColor: 'hsl(var(--border))',
-                    borderLeftColor: typeColor,
+                    borderLeftColor: purposeColor,
                     borderLeftWidth: '4px',
                   }}
                   onClick={() => navigate(`/loans/${loan.id}`)}
@@ -484,14 +486,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                       <div className="min-w-0">
                         <div className="text-xs text-muted-foreground truncate">{loan.project_name ?? 'No Project'}</div>
                         <div className="font-semibold text-sm mt-0.5 leading-tight truncate">
-                          {loan.nickname ?? loan.lender_name}
+                          {loan.lender_name}
                         </div>
                       </div>
                       <LoanStatusBadge status={loan.status} />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <LoanTypeBadge type={loan.loan_type} />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <LoanPurposeBadge purpose={purpose} />
                       <span className="text-xs text-muted-foreground">{loan.interest_rate}%</span>
                     </div>
 
@@ -535,7 +537,6 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   {compareMode && <TableHead className="w-10" />}
                   <TableHead className="text-center">Project <SortBtn col="project_name" /></TableHead>
                   <TableHead className="text-center">Loan Purpose <SortBtn col="lender_name" /></TableHead>
-                  <TableHead className="text-center">Type <SortBtn col="loan_type" /></TableHead>
                   <TableHead className="text-center">Balance <SortBtn col="balance_calc" /></TableHead>
                   <TableHead className="text-center">Monthly Pmt <SortBtn col="monthly_payment" /></TableHead>
                   <TableHead className="text-center">Next Payment <SortBtn col="next_payment" /></TableHead>
