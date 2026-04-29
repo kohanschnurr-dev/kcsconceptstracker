@@ -13,7 +13,7 @@ import {
   calcFirstPaymentDate,
   calcNextPaymentDate,
   effectiveOutstandingBalance,
-  LOAN_TYPE_COLORS,
+  getLoanPurposeColor,
 } from '@/types/loans';
 import { getEffectivePayments } from '@/lib/loanPayments';
 import type { Loan, LoanStatus, LoanPayment, LoanDraw } from '@/types/loans';
