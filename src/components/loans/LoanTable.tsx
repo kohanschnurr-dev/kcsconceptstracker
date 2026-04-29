@@ -183,6 +183,20 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         const next = calcNextPaymentDate(first, l.payment_frequency);
         return next ? new Date(next).getTime() : null;
       }
+      if (sortKey === 'net_activity' || sortKey === 'payoff') {
+        const lps = paymentsByLoan[l.id] ?? [];
+        const lds = drawsByLoan[l.id] ?? [];
+        const effPayments = getEffectivePayments(l, lps);
+        const bal = effectiveOutstandingBalance(l, effPayments);
+        const intr = l.loan_type === 'dscr' ? 0 : currentAccruedInterest(l, lps, lds);
+        if (sortKey === 'payoff') return bal + intr;
+        const drawn = (l as any).has_draws ? ((l as any).funded_draws_total ?? 0) : 0;
+        const paid = effPayments.reduce((s, p: any) => {
+          if (p.principal_portion != null) return s + p.principal_portion;
+          return s + Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
+        }, 0);
+        return drawn - paid;
+      }
       return (l as any)[sortKey];
     };
 
