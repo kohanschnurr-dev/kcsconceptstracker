@@ -1,22 +1,24 @@
-## Goal
+## Add "Apply entire payment to principal" toggle
 
-Clean up the Gantt view by removing the "Project span" chevron bar and widening the frozen left column so project titles like "2808 Old N…" are no longer cut off.
+In the **Log Payment** modal (`src/components/loans/PaymentHistoryTab.tsx`), add a checkbox near the Interest/Principal split that, when checked, sends the full amount to principal and ignores accrued interest.
 
-## Changes
+### UX
+- New checkbox above the Interest Portion / Principal Portion fields:
+  **☐ Apply entire payment to principal (skip interest)**
+- When checked:
+  - Interest Portion input becomes disabled and forced to `0`.
+  - Principal Portion input becomes disabled and forced to the full `amount` (minus late fee, if any).
+  - The "Interest is applied first…" hint is hidden.
+  - Split-mismatch warning is suppressed.
+- When unchecked: current auto-split behavior resumes (touched flags reset so suggestions recompute).
 
-### 1. Remove "Project span" chevron bar (`src/components/calendar/GanttView.tsx`)
-- Remove the summary chevron bar rendered at lines ~562–579 (the gray polygon-clipped bar shown next to the project name row).
-- Remove the now-unused `summaryPos` helper (line 335) and the `sp` variable at the call site (~line 495).
-- Keep the project name row container itself — only the gray chevron disappears, so collapsed/expanded chevron toggle behavior is unaffected.
+### Technical changes (single file)
+`src/components/loans/PaymentHistoryTab.tsx`:
+1. Add state `const [principalOnly, setPrincipalOnly] = useState(false);` and reset it whenever the modal opens/closes alongside the existing form reset.
+2. In the auto-split effect (around lines 80–90), when `principalOnly` is true: set `interest_portion = 0`, `principal_portion = amount - (late_fee ?? 0)`, and skip the suggested-split logic.
+3. Render a `<Checkbox>` (already imported pattern available via `@/components/ui/checkbox`) + label inside the dialog, placed right above the Interest/Principal grid cells (or spanning `col-span-2` at the top of the grid).
+4. Pass `disabled={principalOnly}` to both the Interest Portion and Principal Portion `<Input>`s.
+5. Wrap the "Interest is applied first…" hint and the split-mismatch warning in `{!principalOnly && …}`.
+6. In `handleSubmit`, no logic change needed since the form fields will already hold the correct values; just ensure `splitMatches` is treated as true when `principalOnly` is on (e.g. `disabled={!form.amount || (!principalOnly && !splitMatches)}`).
 
-### 2. Remove "Project span" legend chip (`src/components/calendar/CalendarLegend.tsx`)
-- Delete the legend entry that renders the gray chevron + "Project span" label (lines ~25–35). Keep "Key Event" and "Critical Path".
-
-### 3. Widen the frozen project/task label column (`src/components/calendar/GanttView.tsx`)
-- Increase `FROZEN_W` from `192` (w-48) to `256` (w-64). This gives ~64px more room so names like "2808 Old Northern Pkwy" and "534 St John's…" fully fit on the current 1812px viewport while still leaving plenty of timeline space.
-- The header label, project rows, and task rows all read from `FROZEN_W`, so this single constant change widens every row's left section consistently.
-- The existing `truncate` class stays as a safety net for extremely long names, but standard project titles will now display in full.
-
-## Out of Scope
-- No changes to colors, category groups, Gantt row heights, zoom behavior, or task bars.
-- No data/schema changes.
+No DB / schema changes — values persist exactly the same way (interest=0, principal=amount).
