@@ -1,29 +1,29 @@
-## Goal
+## Root cause
 
-The Gantt's visible window starts at `startOfWeek(currentDate)` and extends `zoomDays` forward, so today is always at the far left and any event before today is off-screen with no way to scroll back. Shift the window so today sits ~1/4 from the left edge, leaving room to see past events while still keeping today prominent and visible.
-
-## Change
-
-**File: `src/components/calendar/GanttView.tsx`** (line 115)
-
-Replace:
+`NewEventModal` inserts a `dependencies` field into `calendar_events`:
 ```ts
-const viewStart = startOfWeek(currentDate);
+dependencies: dependencies.length > 0 ? dependencies : null,
 ```
-with:
-```ts
-const lookbackDays = Math.max(7, Math.floor(zoomDays * 0.25));
-const viewStart = startOfWeek(addDays(currentDate, -lookbackDays));
+But `calendar_events` has no `dependencies` column (verified against the live schema — columns: title, project_id, user_id, start_date, end_date, event_category, trade, is_critical_path, lead_time_days, expected_date, notes, checklist, recurrence_*, is_completed, completed_at, linked_task_id). Supabase rejects the insert → "Failed to create event".
+
+## Fix
+
+**Migration: add `dependencies` column to `calendar_events`**
+
+```sql
+ALTER TABLE public.calendar_events
+ADD COLUMN IF NOT EXISTS dependencies jsonb;
 ```
 
-This places ~25% of the visible window before today (minimum one week), and ~75% after — so users see recent past events alongside upcoming ones. The existing `<` `>` arrows in `CalendarHeader` continue to page further in either direction.
+- `jsonb` matches the array-of-objects shape `[{ taskId, type }]` already serialized by the modal and read back in `Calendar.tsx`.
+- Nullable, no default — preserves existing rows.
+- No RLS changes needed; existing row policies cover the new column.
 
-## Why
+## Why this approach over stripping the field
 
-- "Starts at the current date" preserved in spirit — today remains visible and the red "today" line is on screen.
-- Past events (e.g., Apr 26-27 diamonds in the user's screenshot when today is Apr 28) become reachable without paging.
-- Scales with zoom: a 90-day window shows ~22 days back / ~68 forward, a 14-day window shows ~7 back / ~7 forward.
+- Predecessor links are real product data shown in the Gantt and TaskDetailPanel; persisting them is required for the feature to function across sessions.
+- Codebase already reads/writes `dependencies` end-to-end; the schema gap is the only missing piece.
 
 ## Out of scope
 
-No changes to navigation arrows, default zoom, or task data.
+No code changes — `NewEventModal.tsx` and `Calendar.tsx` already handle the field correctly.

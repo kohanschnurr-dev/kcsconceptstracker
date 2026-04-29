@@ -126,6 +126,7 @@ export type Database = {
           checklist: Json | null
           completed_at: string | null
           created_at: string
+          dependencies: Json | null
           end_date: string
           event_category: string
           expected_date: string | null
@@ -149,6 +150,7 @@ export type Database = {
           checklist?: Json | null
           completed_at?: string | null
           created_at?: string
+          dependencies?: Json | null
           end_date: string
           event_category: string
           expected_date?: string | null
@@ -172,6 +174,7 @@ export type Database = {
           checklist?: Json | null
           completed_at?: string | null
           created_at?: string
+          dependencies?: Json | null
           end_date?: string
           event_category?: string
           expected_date?: string | null
