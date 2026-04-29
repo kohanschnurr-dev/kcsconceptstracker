@@ -108,6 +108,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
   const [zoomDays, setZoomDays] = useState(14);
   const { collapsedProjects, toggleCollapsed, projectOrder, moveProject } = useGanttPreferences();
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
+  const grabOffsetRef = useRef(0);
   const [containerWidth, setContainerWidth] = useState(900);
   const innerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);

@@ -1,45 +1,44 @@
-## Problem
+## Goal
+Make every event on the Gantt view draggable to a new date — including milestone diamonds — and make drags feel precise (the bar lands where you drop it, not jumped to the cursor).
 
-In the Gantt view's frozen left column (project / task names), the project summary row and individual event rows use semi-transparent backgrounds. This lets the timeline's vertical gridlines and the red "today" indicator bleed visually through the name column, producing the grey/red lines crossing through "534 St John…", "718 Chaparr…", and the task labels in the screenshot.
+## Current behavior
+- Non-milestone bars in `GanttView.tsx` are HTML5-draggable and the row's timeline div accepts drops.
+- Milestone diamonds (single-day events like "Sale Closing") are **not** draggable — no `draggable` / `onDragStart` on the diamond element.
+- When dropping a multi-day bar, the start date snaps to wherever the cursor lands, ignoring where on the bar the user originally grabbed it. This makes drags feel jumpy.
 
-Current backgrounds (in `src/components/calendar/GanttView.tsx`):
+## Changes (single file: `src/components/calendar/GanttView.tsx`)
 
-- **Project summary row outer** (line 502): `bg-secondary/25` — 25% opacity
-- **Project summary frozen-left cell** (line 505): `bg-secondary/50` — 50% opacity
-- **Task row outer** (line 576): no background — fully transparent
-- **Task row frozen-left cell** (line 581): `bg-background/95` — 95% opacity (still transparent)
+1. **Make milestones draggable**
+   - Add `draggable`, `onDragStart`, `onDragEnd` to the diamond `<div>` (mirrors the bar branch).
+   - Use `cursor-grab active:cursor-grabbing`, plus `opacity-40` while dragging.
 
-Because the frozen left cells use `position: sticky`, anything painted underneath them in the scrolling timeline (gridlines, today line, bars from other rows) shows through.
+2. **Preserve grab-offset on drop**
+   - On `onDragStart`, capture the day-offset between the cursor and the task's start (in days) and stash it on the dataTransfer (`text/plain`) and a ref.
+   - In `handleTimelineDrop`, subtract that offset from the computed day index before calling `onTaskMove`. Milestones use offset 0.
+   - Clamp result to `[0, PAN_RANGE_DAYS - 1 - duration]` (already done).
 
-## Fix
+3. **Use a custom drag image so the row doesn't ghost the whole element awkwardly**
+   - Optional polish: `e.dataTransfer.setDragImage(e.currentTarget, e.nativeEvent.offsetX, e.nativeEvent.offsetY)` so the bar follows the cursor cleanly.
 
-Make the frozen left column fully opaque on every row type. The timeline area on the right keeps its current transparency so gridlines remain visible there (that's correct Gantt behavior).
-
-In `src/components/calendar/GanttView.tsx`:
-
-1. **Project summary frozen-left cell** (line 505): `bg-secondary/50` → `bg-secondary` (solid).
-2. **Project summary outer row** (line 502): `bg-secondary/25` → keep transparent on the timeline side. Leave the outer row class as-is — only the frozen cell needs to be opaque, since gridlines should still be visible behind the project span chevron.
-3. **Task row frozen-left cell** (line 581): `bg-background/95` → `bg-background` (solid).
-
-That's all that's needed — the timeline portion of each row stays transparent so date gridlines and the today indicator remain visible across bars, but the name column on the left becomes a solid, clean panel with nothing bleeding through.
-
-### Resulting snippets
-
+## Technical detail
 ```tsx
-// Project summary frozen-left (line 505)
-className="shrink-0 sticky left-0 z-10 bg-secondary border-r border-border flex items-center gap-1 px-2"
+const grabOffsetRef = useRef(0);
 
-// Task row frozen-left (line 581)
-className="shrink-0 sticky left-0 z-10 bg-background border-r border-border/40 flex items-center gap-1.5 px-3"
+const onBarDragStart = (e, task) => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const cursorPctOfBar = (e.clientX - rect.left) / rect.width;
+  const dur = differenceInDays(new Date(task.endDate), new Date(task.startDate));
+  grabOffsetRef.current = Math.round(cursorPctOfBar * (dur + 1) - 0.5); // days from start
+  setDraggedTask(task.id);
+  e.dataTransfer.effectAllowed = 'move';
+};
+
+// in handleTimelineDrop:
+const dayIdx = Math.floor(((e.clientX - rect.left) / rect.width) * PAN_RANGE_DAYS) - grabOffsetRef.current;
 ```
 
-## Files
+For milestones, `grabOffsetRef.current = 0` on dragStart.
 
-- `src/components/calendar/GanttView.tsx` — two className opacity changes (lines 505 and 581). No layout, sizing, or logic changes.
-
-## Verification
-
-- Frozen left column (project + task names) is a clean, solid panel.
-- No vertical gridlines, no red today line, and no bar shadows show through any name row.
-- Gridlines and the today indicator still display correctly across the timeline area to the right.
-- Section headers, chevrons, hover buttons, and bars are unchanged.
+## Out of scope
+- Resizing bars by dragging the edges (separate feature).
+- Touch drag on mobile (HTML5 DnD only).
