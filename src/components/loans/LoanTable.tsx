@@ -493,7 +493,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                      <LoanPurposeBadge purpose={purpose} />
+                      <LoanPurposeBadge purpose={purpose} loanType={loan.loan_type} />
                       <span className="text-xs text-muted-foreground">{loan.interest_rate}%</span>
                     </div>
 
