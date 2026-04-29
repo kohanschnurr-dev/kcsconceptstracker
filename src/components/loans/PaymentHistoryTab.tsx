@@ -108,6 +108,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
     setOpen(false);
     setForm(emptyPayment(loanId));
     setTouched({ principal: false, interest: false });
+    setPrincipalOnly(false);
   };
 
   const handleOpenChange = (v: boolean) => {
@@ -115,6 +116,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
     if (!v) {
       setForm(emptyPayment(loanId));
       setTouched({ principal: false, interest: false });
+      setPrincipalOnly(false);
     }
   };
 
