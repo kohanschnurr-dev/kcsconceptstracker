@@ -360,9 +360,12 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       projectGroups.forEach((items, projectName) => {
         const sub = {
           original: items.reduce((s, { loan }) => s + (loan.original_amount ?? 0), 0),
-          balance: items.reduce((s, { balance }) => s + balance, 0),
-          monthly: items.reduce((s, { loan }) => s + (loan.monthly_payment ?? 0), 0),
+          netActivity: items.reduce((s, { netActivity }) => s + netActivity, 0),
+          interest: items.reduce((s, { interest }) => s + (interest ?? 0), 0),
+          payoff: items.reduce((s, { payoff }) => s + payoff, 0),
         };
+        const subDrawn = items.reduce((s, { drawn }) => s + drawn, 0);
+        const subPaid = items.reduce((s, { paidDown }) => s + paidDown, 0);
 
         rows.push(
           <TableRow key={`grp-${projectName}`} className="bg-muted/40 hover:bg-muted/40 border-t border-border">
@@ -387,14 +390,19 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             className="bg-muted/20 hover:bg-muted/20 border-t border-dashed border-border/60"
           >
             {compareMode && <TableCell />}
-            <TableCell colSpan={3} className="text-center text-xs text-muted-foreground italic py-2">
+            <TableCell colSpan={2} className="text-center text-xs text-muted-foreground italic py-2">
               Subtotal — {projectName}
             </TableCell>
-            <TableCell className="text-center py-2">
-              <div className="text-xs font-semibold">{fmt(sub.balance)}</div>
-              <div className="text-xs text-muted-foreground">of {fmt(sub.original)}</div>
+            <TableCell className="text-right text-xs font-semibold tabular-nums py-2">{fmt(sub.original)}</TableCell>
+            <TableCell className="text-right text-xs font-semibold tabular-nums py-2">
+              {renderNetActivity(subDrawn, subPaid, sub.netActivity)}
             </TableCell>
-            <TableCell className="text-center text-xs font-semibold py-2">{fmt(sub.monthly)}</TableCell>
+            <TableCell className="text-right text-xs font-semibold tabular-nums py-2">
+              {sub.interest > 0 ? <span className="text-warning">{fmt(sub.interest)}</span> : <span className="text-muted-foreground">{fmt(0)}</span>}
+            </TableCell>
+            <TableCell className="text-right text-xs font-bold tabular-nums py-2 border-l border-border/60">
+              {fmt(sub.payoff)}
+            </TableCell>
             <TableCell colSpan={3} />
           </TableRow>,
         );
