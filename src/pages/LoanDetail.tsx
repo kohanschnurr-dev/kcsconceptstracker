@@ -360,7 +360,7 @@ export default function LoanDetail() {
                       {cardContent}
                     </Card>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80 p-3">
+                  <PopoverContent className="w-96 p-3 max-h-[80vh] overflow-y-auto">
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{loanAmountLabel}</span>
@@ -368,7 +368,7 @@ export default function LoanDetail() {
                       </div>
 
                       {sortedPmts.length > 0 && (
-                        <div className="border-t border-border pt-2 space-y-2 max-h-48 overflow-y-auto">
+                        <div className="border-t border-border pt-2 space-y-2">
                           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Payments Applied</div>
                           {sortedPmts.map((p) => {
                             const interest = p.interest_portion ?? 0;
