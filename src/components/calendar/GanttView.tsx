@@ -359,7 +359,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                 <div
                   key={i}
                   className={cn('absolute inset-y-0 border-r', isToday(day) ? 'border-primary/25' : 'border-border/20')}
-                  style={{ left: `${(i / zoomDays) * 100}%`, width: 0 }}
+                  style={{ left: `${(i / PAN_RANGE_DAYS) * 100}%`, width: 0 }}
                 />
               ))}
             </div>
@@ -369,7 +369,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
               <div
                 className="absolute inset-y-0 z-20 pointer-events-none"
                 style={{
-                  left: FROZEN_W + ((todayIdx + 0.5) / zoomDays) * timelineWidth,
+                  left: FROZEN_W + ((todayIdx + 0.5) / PAN_RANGE_DAYS) * timelineWidth,
                   width: 2,
                   background: 'hsl(0 84% 60% / 0.80)',
                 }}
