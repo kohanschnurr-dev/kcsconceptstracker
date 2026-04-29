@@ -197,22 +197,31 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     return list;
   }, [loans, search, statusFilter, projectFilter, sortKey, sortAsc, paymentsByLoan, drawsByLoan]);
 
-  // Enrich every filtered loan with computed balance and interest
+  // Enrich every filtered loan with computed balance, interest, and net activity
   const enrichedFiltered = useMemo<EnrichedLoan[]>(() => {
     return filtered.map(loan => {
       const lps = paymentsByLoan[loan.id] ?? [];
       const lds = drawsByLoan[loan.id] ?? [];
-      const balance = effectiveOutstandingBalance(loan, getEffectivePayments(loan, lps));
+      const effPayments = getEffectivePayments(loan, lps);
+      const balance = effectiveOutstandingBalance(loan, effPayments);
       const interest = loan.loan_type === 'dscr' ? null : currentAccruedInterest(loan, lps, lds);
-      return { loan, balance, interest };
+      const drawn = (loan as any).has_draws ? ((loan as any).funded_draws_total ?? 0) : 0;
+      const paidDown = effPayments.reduce((s, p: any) => {
+        if (p.principal_portion != null) return s + p.principal_portion;
+        return s + Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
+      }, 0);
+      const netActivity = drawn - paidDown;
+      const payoff = balance + (interest ?? 0);
+      return { loan, balance, interest, drawn, paidDown, netActivity, payoff };
     });
   }, [filtered, paymentsByLoan, drawsByLoan]);
 
   // Grand totals across all filtered loans
   const totals = useMemo(() => ({
     original: enrichedFiltered.reduce((s, { loan }) => s + (loan.original_amount ?? 0), 0),
-    balance: enrichedFiltered.reduce((s, { balance }) => s + balance, 0),
-    monthly: enrichedFiltered.reduce((s, { loan }) => s + (loan.monthly_payment ?? 0), 0),
+    netActivity: enrichedFiltered.reduce((s, { netActivity }) => s + netActivity, 0),
+    interest: enrichedFiltered.reduce((s, { interest }) => s + (interest ?? 0), 0),
+    payoff: enrichedFiltered.reduce((s, { payoff }) => s + payoff, 0),
   }), [enrichedFiltered]);
 
   // Stable ordered map of project → loans (preserves sort order within each group)
