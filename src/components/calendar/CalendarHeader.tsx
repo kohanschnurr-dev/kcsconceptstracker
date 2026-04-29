@@ -93,10 +93,7 @@ export function CalendarHeader({
               </SelectTrigger>
               <SelectContent className="bg-popover border-border z-50">
                 <SelectItem value="monthly">
-                  <span className="flex items-center gap-1.5"><LayoutGrid className="h-3.5 w-3.5" />Month</span>
-                </SelectItem>
-                <SelectItem value="weekly">
-                  <span className="flex items-center gap-1.5"><List className="h-3.5 w-3.5" />Week</span>
+                  <span className="flex items-center gap-1.5"><LayoutGrid className="h-3.5 w-3.5" />Calendar</span>
                 </SelectItem>
                 <SelectItem value="gantt">
                   <span className="flex items-center gap-1.5"><GanttChart className="h-3.5 w-3.5" />Gantt</span>
