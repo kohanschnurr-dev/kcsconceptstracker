@@ -45,7 +45,7 @@ const DEP_COLORS: Record<string, string> = {
   SF: '#fbbf24',
 };
 
-const FROZEN_W = 192; // px — w-48
+const FROZEN_W = 256; // px — w-64
 const ROW_H = 36;     // px — uniform row height
 const TYPE_HEADER_H = 26; // px — type group header row height
 
