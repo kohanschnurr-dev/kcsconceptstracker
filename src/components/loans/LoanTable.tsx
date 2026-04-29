@@ -271,8 +271,9 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
           </TableCell>
         )}
         <TableCell className="font-medium max-w-32 truncate text-center">{loan.project_name ?? '—'}</TableCell>
-        <TableCell className="max-w-32 truncate text-center">{loan.nickname ?? loan.lender_name}</TableCell>
-        <TableCell className="text-center"><div className="flex justify-center"><LoanTypeBadge type={loan.loan_type} /></div></TableCell>
+        <TableCell className="max-w-40 text-center">
+          <div className="flex justify-center"><LoanPurposeBadge purpose={loan.nickname ?? loan.lender_name} /></div>
+        </TableCell>
         <TableCell className="text-center">
           {(() => {
             const isExpanded = expandedBalances.has(loan.id);
