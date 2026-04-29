@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Loan, LoanPayment, LoanDraw } from '@/types/loans';
@@ -44,6 +45,8 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
   const [form, setForm] = useState(() => emptyPayment(loanId));
   // Track which fields the user has manually overridden so we don't fight them.
   const [touched, setTouched] = useState<{ principal: boolean; interest: boolean }>({ principal: false, interest: false });
+  // When true, the entire payment amount is routed to principal (interest = 0).
+  const [principalOnly, setPrincipalOnly] = useState(false);
 
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
   const totalPrincipal = payments.reduce((s, p) => {
@@ -73,6 +76,15 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
     const usable = Math.max(0, amount - lateFee);
     if (usable <= 0) return;
 
+    if (principalOnly) {
+      setForm(f => ({
+        ...f,
+        interest_portion: 0,
+        principal_portion: Math.round(usable * 100) / 100,
+      }));
+      return;
+    }
+
     const suggestedInterest = accruesUnpaidInterest
       ? Math.min(unpaidInterest, usable)
       : 0;
@@ -84,11 +96,11 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
       principal_portion: touched.principal ? f.principal_portion : Math.round(suggestedPrincipal * 100) / 100,
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.amount, form.late_fee, open, unpaidInterest, accruesUnpaidInterest]);
+  }, [form.amount, form.late_fee, open, unpaidInterest, accruesUnpaidInterest, principalOnly]);
 
   const splitTotal = (form.principal_portion ?? 0) + (form.interest_portion ?? 0) + (form.late_fee ?? 0);
   const splitDelta = Math.round((splitTotal - (form.amount ?? 0)) * 100) / 100;
-  const splitMatches = Math.abs(splitDelta) < 0.01;
+  const splitMatches = principalOnly ? true : Math.abs(splitDelta) < 0.01;
 
   const handleSubmit = () => {
     if (!form.amount || !splitMatches) return;
@@ -96,6 +108,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
     setOpen(false);
     setForm(emptyPayment(loanId));
     setTouched({ principal: false, interest: false });
+    setPrincipalOnly(false);
   };
 
   const handleOpenChange = (v: boolean) => {
@@ -103,6 +116,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
     if (!v) {
       setForm(emptyPayment(loanId));
       setTouched({ principal: false, interest: false });
+      setPrincipalOnly(false);
     }
   };
 
@@ -256,12 +270,39 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
                   setTouched({ principal: false, interest: false });
                 }} />
               </div>
+              <div className="col-span-2 flex items-center gap-2 rounded-md border border-border bg-secondary/30 px-3 py-2">
+                <Checkbox
+                  id="principal-only"
+                  checked={principalOnly}
+                  onCheckedChange={(v) => {
+                    const checked = v === true;
+                    setPrincipalOnly(checked);
+                    if (checked) {
+                      // Force-route everything to principal immediately.
+                      const usable = Math.max(0, (form.amount ?? 0) - (form.late_fee ?? 0));
+                      setForm(f => ({
+                        ...f,
+                        interest_portion: 0,
+                        principal_portion: Math.round(usable * 100) / 100,
+                      }));
+                      setTouched({ principal: true, interest: true });
+                    } else {
+                      // Let auto-split recompute.
+                      setTouched({ principal: false, interest: false });
+                    }
+                  }}
+                />
+                <Label htmlFor="principal-only" className="text-sm cursor-pointer">
+                  Apply entire payment to principal (skip interest)
+                </Label>
+              </div>
               <div>
                 <Label>Interest Portion</Label>
                 <Input
                   className="mt-1"
                   type="number"
                   step="0.01"
+                  disabled={principalOnly}
                   value={form.interest_portion ?? ''}
                   onChange={e => {
                     set('interest_portion', e.target.value === '' ? null : parseFloat(e.target.value));
@@ -275,6 +316,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
                   className="mt-1"
                   type="number"
                   step="0.01"
+                  disabled={principalOnly}
                   value={form.principal_portion ?? ''}
                   onChange={e => {
                     set('principal_portion', e.target.value === '' ? null : parseFloat(e.target.value));
@@ -288,12 +330,14 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
               </div>
             </div>
 
-            <div className="flex items-start gap-2 text-xs text-muted-foreground">
-              <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-              <span>Interest is applied first, the rest pays down principal. Edit either field to override.</span>
-            </div>
+            {!principalOnly && (
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                <span>Interest is applied first, the rest pays down principal. Edit either field to override.</span>
+              </div>
+            )}
 
-            {form.amount > 0 && !splitMatches && (
+            {!principalOnly && form.amount > 0 && !splitMatches && (
               <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
                 Split doesn't match amount — off by {fmt(Math.abs(splitDelta))}.
               </div>
