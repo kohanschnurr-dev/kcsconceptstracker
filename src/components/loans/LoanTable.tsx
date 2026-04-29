@@ -575,8 +575,10 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   {compareMode && <TableHead className="w-10" />}
                   <TableHead className="text-center">Project <SortBtn col="project_name" /></TableHead>
                   <TableHead className="text-center">Loan Purpose <SortBtn col="lender_name" /></TableHead>
-                  <TableHead className="text-center">Balance <SortBtn col="balance_calc" /></TableHead>
-                  <TableHead className="text-center">Monthly Pmt <SortBtn col="monthly_payment" /></TableHead>
+                  <TableHead className="text-right">Original <SortBtn col="original_amount" /></TableHead>
+                  <TableHead className="text-right">Draws / Payoffs <SortBtn col="net_activity" /></TableHead>
+                  <TableHead className="text-right">Interest <SortBtn col="interest_accrued" /></TableHead>
+                  <TableHead className="text-right border-l border-border/60">Balance <SortBtn col="payoff" /></TableHead>
                   <TableHead className="text-center">Next Payment <SortBtn col="next_payment" /></TableHead>
                   <TableHead className="text-center">Maturity <SortBtn col="maturity_date" /></TableHead>
                   <TableHead className="text-center">Status <SortBtn col="status" /></TableHead>
@@ -586,20 +588,27 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 {renderTableBody()}
 
                 {/* Grand totals row */}
-                {enrichedFiltered.length > 0 && (
-                  <TableRow className="bg-muted/30 border-t-2 border-border hover:bg-muted/30">
-                    {compareMode && <TableCell />}
-                    <TableCell colSpan={3} className="py-3 font-bold text-sm text-center">
-                      Total ({enrichedFiltered.length} {enrichedFiltered.length === 1 ? 'loan' : 'loans'})
-                    </TableCell>
-                    <TableCell className="text-center py-3">
-                      <div className="font-bold text-sm">{fmt(totals.balance)}</div>
-                      <div className="text-xs text-muted-foreground">of {fmt(totals.original)}</div>
-                    </TableCell>
-                    <TableCell className="text-center font-bold text-sm py-3">{fmt(totals.monthly)}</TableCell>
-                    <TableCell colSpan={3} />
-                  </TableRow>
-                )}
+                {enrichedFiltered.length > 0 && (() => {
+                  const totalDrawn = enrichedFiltered.reduce((s, { drawn }) => s + drawn, 0);
+                  const totalPaid = enrichedFiltered.reduce((s, { paidDown }) => s + paidDown, 0);
+                  return (
+                    <TableRow className="bg-muted/30 border-t-2 border-border hover:bg-muted/30">
+                      {compareMode && <TableCell />}
+                      <TableCell colSpan={2} className="py-3 font-bold text-sm text-center">
+                        Total ({enrichedFiltered.length} {enrichedFiltered.length === 1 ? 'loan' : 'loans'})
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-sm tabular-nums py-3">{fmt(totals.original)}</TableCell>
+                      <TableCell className="text-right font-bold text-sm tabular-nums py-3">
+                        {renderNetActivity(totalDrawn, totalPaid, totals.netActivity)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-sm tabular-nums py-3">
+                        {totals.interest > 0 ? <span className="text-warning">{fmt(totals.interest)}</span> : <span className="text-muted-foreground">{fmt(0)}</span>}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-sm tabular-nums py-3 border-l border-border/60">{fmt(totals.payoff)}</TableCell>
+                      <TableCell colSpan={3} />
+                    </TableRow>
+                  );
+                })()}
               </TableBody>
             </Table>
           </div>
