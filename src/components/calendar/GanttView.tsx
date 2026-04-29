@@ -45,7 +45,7 @@ const DEP_COLORS: Record<string, string> = {
   SF: '#fbbf24',
 };
 
-const FROZEN_W = 192; // px — w-48
+const FROZEN_W = 256; // px — w-64
 const ROW_H = 36;     // px — uniform row height
 const TYPE_HEADER_H = 26; // px — type group header row height
 
@@ -332,12 +332,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     try { e.dataTransfer.setData('text/plain', task.id); } catch { /* noop */ }
   };
 
-  const summaryPos = (ptasks: CalendarTask[]) => {
-    const vis = ptasks.filter(t => getPos(t));
-    if (!vis.length) return null;
-    const syn = { ...vis[0], startDate: new Date(Math.min(...vis.map(t => +new Date(t.startDate)))), endDate: new Date(Math.max(...vis.map(t => +new Date(t.endDate)))) };
-    return getPos(syn);
-  };
+
 
   const colStyle: React.CSSProperties = { width: COL_W, flex: '0 0 auto' };
 
@@ -492,7 +487,6 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
               return orderedProjectEntries.map(([projectName, rows], projectIdx) => {
               const collapsed = collapsedProjects.has(projectName);
               const projectTasks = groupedTasks[projectName] ?? [];
-              const sp = summaryPos(projectTasks);
               const projectId = projectTasks[0]?.projectId;
               const isFirst = projectIdx === 0;
               const isLast = projectIdx === orderedProjectEntries.length - 1;
@@ -559,24 +553,9 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                         </button>
                       )}
                     </div>
-                    {/* Timeline: summary chevron bar */}
-                    <div className="flex-1 relative" style={{ height: ROW_H }}>
-                      {sp && (
-                        <div
-                          className="absolute"
-                          style={{
-                            left: `${sp.leftPct}%`,
-                            width: `max(${sp.widthPct}%, 6px)`,
-                            top: '50%',
-                            height: 8,
-                            transform: 'translateY(-50%)',
-                            background: 'hsl(var(--foreground) / 0.20)',
-                            clipPath: 'polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%)',
-                            borderRadius: '2px 0 0 2px',
-                          }}
-                        />
-                      )}
-                    </div>
+                    {/* Timeline area (summary span removed) */}
+                    <div className="flex-1 relative" style={{ height: ROW_H }} />
+
                   </div>
 
                   {/* Task rows — instantly hidden when collapsed (no animation on mount) */}
