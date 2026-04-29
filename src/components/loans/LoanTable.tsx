@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpDown, Search, LayoutGrid, List, FolderOpen, Layers, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowUpDown, Search, LayoutGrid, List, FolderOpen, Layers, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { LoanStatusBadge, LoanPurposeBadge } from './LoanStatusBadge';
 import {
   currentAccruedInterest,
@@ -27,7 +28,7 @@ const fmt = (v: number | null | undefined) =>
     ? '—'
     : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
-type SortKey = keyof Loan | 'balance_calc' | 'interest_accrued' | 'next_payment';
+type SortKey = keyof Loan | 'balance_calc' | 'interest_accrued' | 'next_payment' | 'net_activity' | 'payoff';
 type ViewMode = 'table' | 'cards';
 type ToggleView = 'table' | 'cards' | 'group';
 
@@ -41,8 +42,12 @@ interface LoanTableProps {
 
 interface EnrichedLoan {
   loan: Loan;
-  balance: number;
+  balance: number;        // principal-only payoff
   interest: number | null;
+  drawn: number;          // sum of funded draws
+  paidDown: number;       // sum of principal portions
+  netActivity: number;    // drawn - paidDown
+  payoff: number;         // balance + (interest ?? 0)
 }
 
 const DEFAULT_VIEW_KEY = 'loans:defaultView';
@@ -84,7 +89,6 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
   const [viewMode, setViewMode] = useState<ViewMode>(initialState.viewMode);
   const [groupByProject, setGroupByProject] = useState(initialState.groupByProject);
   const [defaultView, setDefaultView] = useState<ToggleView>(initialDefault);
-  const [expandedBalances, setExpandedBalances] = useState<Set<string>>(new Set());
   const PER_PAGE = 15;
 
   const currentView: ToggleView = groupByProject ? 'group' : viewMode === 'cards' ? 'cards' : 'table';
@@ -95,13 +99,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     setGroupByProject(s.groupByProject);
   };
 
-  const toggleBalanceExpand = (id: string) => {
-    setExpandedBalances(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
+
 
   const saveDefaultView = (v: ToggleView, label: string) => {
     setDefaultView(v);
@@ -185,6 +183,20 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         const next = calcNextPaymentDate(first, l.payment_frequency);
         return next ? new Date(next).getTime() : null;
       }
+      if (sortKey === 'net_activity' || sortKey === 'payoff') {
+        const lps = paymentsByLoan[l.id] ?? [];
+        const lds = drawsByLoan[l.id] ?? [];
+        const effPayments = getEffectivePayments(l, lps);
+        const bal = effectiveOutstandingBalance(l, effPayments);
+        const intr = l.loan_type === 'dscr' ? 0 : currentAccruedInterest(l, lps, lds);
+        if (sortKey === 'payoff') return bal + intr;
+        const drawn = (l as any).has_draws ? ((l as any).funded_draws_total ?? 0) : 0;
+        const paid = effPayments.reduce((s, p: any) => {
+          if (p.principal_portion != null) return s + p.principal_portion;
+          return s + Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
+        }, 0);
+        return drawn - paid;
+      }
       return (l as any)[sortKey];
     };
 
@@ -199,22 +211,31 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     return list;
   }, [loans, search, statusFilter, projectFilter, sortKey, sortAsc, paymentsByLoan, drawsByLoan]);
 
-  // Enrich every filtered loan with computed balance and interest
+  // Enrich every filtered loan with computed balance, interest, and net activity
   const enrichedFiltered = useMemo<EnrichedLoan[]>(() => {
     return filtered.map(loan => {
       const lps = paymentsByLoan[loan.id] ?? [];
       const lds = drawsByLoan[loan.id] ?? [];
-      const balance = effectiveOutstandingBalance(loan, getEffectivePayments(loan, lps));
+      const effPayments = getEffectivePayments(loan, lps);
+      const balance = effectiveOutstandingBalance(loan, effPayments);
       const interest = loan.loan_type === 'dscr' ? null : currentAccruedInterest(loan, lps, lds);
-      return { loan, balance, interest };
+      const drawn = (loan as any).has_draws ? ((loan as any).funded_draws_total ?? 0) : 0;
+      const paidDown = effPayments.reduce((s, p: any) => {
+        if (p.principal_portion != null) return s + p.principal_portion;
+        return s + Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
+      }, 0);
+      const netActivity = drawn - paidDown;
+      const payoff = balance + (interest ?? 0);
+      return { loan, balance, interest, drawn, paidDown, netActivity, payoff };
     });
   }, [filtered, paymentsByLoan, drawsByLoan]);
 
   // Grand totals across all filtered loans
   const totals = useMemo(() => ({
     original: enrichedFiltered.reduce((s, { loan }) => s + (loan.original_amount ?? 0), 0),
-    balance: enrichedFiltered.reduce((s, { balance }) => s + balance, 0),
-    monthly: enrichedFiltered.reduce((s, { loan }) => s + (loan.monthly_payment ?? 0), 0),
+    netActivity: enrichedFiltered.reduce((s, { netActivity }) => s + netActivity, 0),
+    interest: enrichedFiltered.reduce((s, { interest }) => s + (interest ?? 0), 0),
+    payoff: enrichedFiltered.reduce((s, { payoff }) => s + payoff, 0),
   }), [enrichedFiltered]);
 
   // Stable ordered map of project → loans (preserves sort order within each group)
@@ -247,10 +268,35 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
     </button>
   );
 
-  // 9 cols when compare checkbox is present, 8 otherwise
-  const colCount = compareMode ? 9 : 8;
+  // 10 cols when compare checkbox is present, 9 otherwise
+  // (Project, Purpose, Original, Draws/Payoffs, Interest, Balance, Next, Maturity, Status)
+  const colCount = compareMode ? 10 : 9;
 
-  const renderLoanRow = ({ loan, balance, interest }: EnrichedLoan) => {
+  const renderNetActivity = (drawn: number, paidDown: number, netActivity: number) => {
+    if (drawn === 0 && paidDown === 0) {
+      return <span className="text-muted-foreground">—</span>;
+    }
+    const sign = netActivity > 0 ? '+' : netActivity < 0 ? '−' : '';
+    const tone =
+      netActivity > 0 ? 'text-warning' : netActivity < 0 ? 'text-success' : 'text-muted-foreground';
+    return (
+      <TooltipProvider delayDuration={150}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={cn('font-medium tabular-nums cursor-help underline decoration-dotted decoration-muted-foreground/40 underline-offset-4', tone)}>
+              {sign}{fmt(Math.abs(netActivity))}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            <div>Drawn: <span className="text-warning">+{fmt(drawn)}</span></div>
+            <div>Paid down: <span className="text-success">−{fmt(paidDown)}</span></div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  const renderLoanRow = ({ loan, balance, interest, drawn, paidDown, netActivity, payoff }: EnrichedLoan) => {
     const isSelected = selectedIds.includes(loan.id);
     const first = loan.first_payment_date || calcFirstPaymentDate(loan.start_date, loan.payment_frequency);
     const next = calcNextPaymentDate(first, loan.payment_frequency);
@@ -274,38 +320,22 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         <TableCell className="max-w-40 text-center">
           <div className="flex justify-center"><LoanPurposeBadge purpose={loan.nickname ?? loan.lender_name} loanType={loan.loan_type} /></div>
         </TableCell>
-        <TableCell className="text-center">
-          {(() => {
-            const isExpanded = expandedBalances.has(loan.id);
-            const hasDetails = loan.original_amount != null || (interest != null && interest > 0);
-            return (
-              <div className="flex flex-col items-center">
-                <div className="inline-flex items-center gap-1.5">
-                  <span className="font-medium">{fmt(balance)}</span>
-                  {hasDetails && (
-                    <button
-                      type="button"
-                      aria-label={isExpanded ? 'Hide details' : 'Show details'}
-                      onClick={(e) => { e.stopPropagation(); toggleBalanceExpand(loan.id); }}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                    </button>
-                  )}
-                </div>
-                {isExpanded && hasDetails && (
-                  <div className="text-xs text-muted-foreground mt-0.5 leading-tight">
-                    of {fmt(loan.original_amount)}
-                    {interest != null && interest > 0 && (
-                      <span className="ml-1.5 text-warning">· ↑{fmt(interest)} accrued</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+        <TableCell className="text-right tabular-nums">{fmt(loan.original_amount)}</TableCell>
+        <TableCell className="text-right tabular-nums" onClick={e => e.stopPropagation()}>
+          {renderNetActivity(drawn, paidDown, netActivity)}
         </TableCell>
-        <TableCell className="text-center">{fmt(loan.monthly_payment)}</TableCell>
+        <TableCell className="text-right tabular-nums">
+          {interest == null ? (
+            <span className="text-muted-foreground">—</span>
+          ) : interest > 0 ? (
+            <span className="text-warning">{fmt(interest)}</span>
+          ) : (
+            <span className="text-muted-foreground">{fmt(0)}</span>
+          )}
+        </TableCell>
+        <TableCell className="text-right tabular-nums font-semibold border-l border-border/60">
+          {fmt(payoff)}
+        </TableCell>
         <TableCell className="text-sm text-center">{formatDisplayDate(next)}</TableCell>
         <TableCell className="text-sm text-center">{formatDisplayDate(loan.maturity_date)}</TableCell>
         <TableCell className="text-center"><div className="flex justify-center"><LoanStatusBadge status={loan.status} /></div></TableCell>
@@ -330,9 +360,12 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
       projectGroups.forEach((items, projectName) => {
         const sub = {
           original: items.reduce((s, { loan }) => s + (loan.original_amount ?? 0), 0),
-          balance: items.reduce((s, { balance }) => s + balance, 0),
-          monthly: items.reduce((s, { loan }) => s + (loan.monthly_payment ?? 0), 0),
+          netActivity: items.reduce((s, { netActivity }) => s + netActivity, 0),
+          interest: items.reduce((s, { interest }) => s + (interest ?? 0), 0),
+          payoff: items.reduce((s, { payoff }) => s + payoff, 0),
         };
+        const subDrawn = items.reduce((s, { drawn }) => s + drawn, 0);
+        const subPaid = items.reduce((s, { paidDown }) => s + paidDown, 0);
 
         rows.push(
           <TableRow key={`grp-${projectName}`} className="bg-muted/40 hover:bg-muted/40 border-t border-border">
@@ -357,14 +390,19 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             className="bg-muted/20 hover:bg-muted/20 border-t border-dashed border-border/60"
           >
             {compareMode && <TableCell />}
-            <TableCell colSpan={3} className="text-center text-xs text-muted-foreground italic py-2">
+            <TableCell colSpan={2} className="text-center text-xs text-muted-foreground italic py-2">
               Subtotal — {projectName}
             </TableCell>
-            <TableCell className="text-center py-2">
-              <div className="text-xs font-semibold">{fmt(sub.balance)}</div>
-              <div className="text-xs text-muted-foreground">of {fmt(sub.original)}</div>
+            <TableCell className="text-right text-xs font-semibold tabular-nums py-2">{fmt(sub.original)}</TableCell>
+            <TableCell className="text-right text-xs font-semibold tabular-nums py-2">
+              {renderNetActivity(subDrawn, subPaid, sub.netActivity)}
             </TableCell>
-            <TableCell className="text-center text-xs font-semibold py-2">{fmt(sub.monthly)}</TableCell>
+            <TableCell className="text-right text-xs font-semibold tabular-nums py-2">
+              {sub.interest > 0 ? <span className="text-warning">{fmt(sub.interest)}</span> : <span className="text-muted-foreground">{fmt(0)}</span>}
+            </TableCell>
+            <TableCell className="text-right text-xs font-bold tabular-nums py-2 border-l border-border/60">
+              {fmt(sub.payoff)}
+            </TableCell>
             <TableCell colSpan={3} />
           </TableRow>,
         );
@@ -462,7 +500,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
           <div className="text-center py-12 text-muted-foreground">No loans match your filters.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {enrichedFiltered.map(({ loan, balance, interest }) => {
+            {enrichedFiltered.map(({ loan, balance, interest, netActivity }) => {
               const purpose = loan.nickname ?? loan.lender_name;
               const purposeColor = (LOAN_TYPE_COLORS[loan.loan_type] ?? LOAN_TYPE_COLORS.other).hsl;
               const first = loan.first_payment_date || calcFirstPaymentDate(loan.start_date, loan.payment_frequency);
@@ -505,6 +543,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                         {interest != null && interest > 0 && (
                           <div className="text-xs text-warning mt-0.5">↑ {fmt(interest)} accrued</div>
                         )}
+                        {netActivity !== 0 && (
+                          <div className={cn(
+                            'text-xs mt-0.5 tabular-nums',
+                            netActivity > 0 ? 'text-warning' : 'text-success',
+                          )}>
+                            Net activity: {netActivity > 0 ? '+' : '−'}{fmt(Math.abs(netActivity))}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">Monthly Pmt</div>
@@ -537,8 +583,10 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                   {compareMode && <TableHead className="w-10" />}
                   <TableHead className="text-center">Project <SortBtn col="project_name" /></TableHead>
                   <TableHead className="text-center">Loan Purpose <SortBtn col="lender_name" /></TableHead>
-                  <TableHead className="text-center">Balance <SortBtn col="balance_calc" /></TableHead>
-                  <TableHead className="text-center">Monthly Pmt <SortBtn col="monthly_payment" /></TableHead>
+                  <TableHead className="text-right">Original <SortBtn col="original_amount" /></TableHead>
+                  <TableHead className="text-right">Draws / Payoffs <SortBtn col="net_activity" /></TableHead>
+                  <TableHead className="text-right">Interest <SortBtn col="interest_accrued" /></TableHead>
+                  <TableHead className="text-right border-l border-border/60">Balance <SortBtn col="payoff" /></TableHead>
                   <TableHead className="text-center">Next Payment <SortBtn col="next_payment" /></TableHead>
                   <TableHead className="text-center">Maturity <SortBtn col="maturity_date" /></TableHead>
                   <TableHead className="text-center">Status <SortBtn col="status" /></TableHead>
@@ -548,20 +596,27 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                 {renderTableBody()}
 
                 {/* Grand totals row */}
-                {enrichedFiltered.length > 0 && (
-                  <TableRow className="bg-muted/30 border-t-2 border-border hover:bg-muted/30">
-                    {compareMode && <TableCell />}
-                    <TableCell colSpan={3} className="py-3 font-bold text-sm text-center">
-                      Total ({enrichedFiltered.length} {enrichedFiltered.length === 1 ? 'loan' : 'loans'})
-                    </TableCell>
-                    <TableCell className="text-center py-3">
-                      <div className="font-bold text-sm">{fmt(totals.balance)}</div>
-                      <div className="text-xs text-muted-foreground">of {fmt(totals.original)}</div>
-                    </TableCell>
-                    <TableCell className="text-center font-bold text-sm py-3">{fmt(totals.monthly)}</TableCell>
-                    <TableCell colSpan={3} />
-                  </TableRow>
-                )}
+                {enrichedFiltered.length > 0 && (() => {
+                  const totalDrawn = enrichedFiltered.reduce((s, { drawn }) => s + drawn, 0);
+                  const totalPaid = enrichedFiltered.reduce((s, { paidDown }) => s + paidDown, 0);
+                  return (
+                    <TableRow className="bg-muted/30 border-t-2 border-border hover:bg-muted/30">
+                      {compareMode && <TableCell />}
+                      <TableCell colSpan={2} className="py-3 font-bold text-sm text-center">
+                        Total ({enrichedFiltered.length} {enrichedFiltered.length === 1 ? 'loan' : 'loans'})
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-sm tabular-nums py-3">{fmt(totals.original)}</TableCell>
+                      <TableCell className="text-right font-bold text-sm tabular-nums py-3">
+                        {renderNetActivity(totalDrawn, totalPaid, totals.netActivity)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-sm tabular-nums py-3">
+                        {totals.interest > 0 ? <span className="text-warning">{fmt(totals.interest)}</span> : <span className="text-muted-foreground">{fmt(0)}</span>}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-sm tabular-nums py-3 border-l border-border/60">{fmt(totals.payoff)}</TableCell>
+                      <TableCell colSpan={3} />
+                    </TableRow>
+                  );
+                })()}
               </TableBody>
             </Table>
           </div>
