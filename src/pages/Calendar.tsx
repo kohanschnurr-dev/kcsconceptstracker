@@ -5,7 +5,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarLegend } from '@/components/calendar/CalendarLegend';
 import { MonthlyView } from '@/components/calendar/MonthlyView';
-import { WeeklyView } from '@/components/calendar/WeeklyView';
+
 import { GanttView } from '@/components/calendar/GanttView';
 import { TaskDetailPanel } from '@/components/calendar/TaskDetailPanel';
 import { NewEventModal } from '@/components/calendar/NewEventModal';
