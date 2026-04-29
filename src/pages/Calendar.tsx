@@ -42,6 +42,7 @@ export interface CalendarTask {
   linkedTaskId?: string | null;
   owner?: string | null;
   dependencies?: { taskId: string; type: 'FS' | 'SS' | 'FF' | 'SF' }[];
+  projectType?: 'fix_flip' | 'rental' | 'new_construction';
 }
 
 interface Project {
@@ -179,6 +180,7 @@ export default function Calendar() {
           id: event.id,
           projectId: event.project_id,
           projectName: project?.name || 'Unknown Project',
+          projectType: (project as any)?.project_type ?? (project as any)?.projectType,
           title: event.title,
           startDate: parseDateString(event.start_date),
           endDate: parseDateString(event.end_date),
