@@ -463,7 +463,8 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {enrichedFiltered.map(({ loan, balance, interest }) => {
-              const typeColor = LOAN_TYPE_COLORS[loan.loan_type]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
+              const purpose = loan.nickname ?? loan.lender_name;
+              const purposeColor = getLoanPurposeColor(purpose).hsl;
               const first = loan.first_payment_date || calcFirstPaymentDate(loan.start_date, loan.payment_frequency);
               const next = calcNextPaymentDate(first, loan.payment_frequency);
 
@@ -475,7 +476,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                     borderWidth: '1px',
                     borderStyle: 'solid',
                     borderColor: 'hsl(var(--border))',
-                    borderLeftColor: typeColor,
+                    borderLeftColor: purposeColor,
                     borderLeftWidth: '4px',
                   }}
                   onClick={() => navigate(`/loans/${loan.id}`)}
@@ -485,14 +486,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                       <div className="min-w-0">
                         <div className="text-xs text-muted-foreground truncate">{loan.project_name ?? 'No Project'}</div>
                         <div className="font-semibold text-sm mt-0.5 leading-tight truncate">
-                          {loan.nickname ?? loan.lender_name}
+                          {loan.lender_name}
                         </div>
                       </div>
                       <LoanStatusBadge status={loan.status} />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <LoanTypeBadge type={loan.loan_type} />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <LoanPurposeBadge purpose={purpose} />
                       <span className="text-xs text-muted-foreground">{loan.interest_rate}%</span>
                     </div>
 
