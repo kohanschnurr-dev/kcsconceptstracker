@@ -211,18 +211,7 @@ export function CalendarHeader({
                 : 'h-8 text-muted-foreground hover:text-foreground hover:bg-secondary'}
             >
               <LayoutGrid className="h-4 w-4 mr-1" />
-              Month
-            </Button>
-            <Button
-              variant={view === 'weekly' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => onViewChange('weekly')}
-              className={view === 'weekly'
-                ? 'h-8 bg-primary hover:bg-primary/90 text-primary-foreground'
-                : 'h-8 text-muted-foreground hover:text-foreground hover:bg-secondary'}
-            >
-              <List className="h-4 w-4 mr-1" />
-              Week
+              Calendar
             </Button>
             <Button
               variant={view === 'gantt' ? 'default' : 'ghost'}
