@@ -269,11 +269,11 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     e.preventDefault();
     if (!draggedTask) return;
     const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-    const dayIdx = Math.floor(((e.clientX - rect.left) / rect.width) * zoomDays);
+    const dayIdx = Math.floor(((e.clientX - rect.left) / rect.width) * PAN_RANGE_DAYS);
     const task = tasks.find(t => t.id === draggedTask);
     if (!task) return;
     const dur = differenceInDays(new Date(task.endDate), new Date(task.startDate));
-    const ns = addDays(viewStart, Math.max(0, Math.min(zoomDays - 1 - dur, dayIdx)));
+    const ns = addDays(viewStart, Math.max(0, Math.min(PAN_RANGE_DAYS - 1 - dur, dayIdx)));
     onTaskMove(draggedTask, ns, addDays(ns, dur));
     setDraggedTask(null);
   };
@@ -285,34 +285,44 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     return getPos(syn);
   };
 
-  const colStyle: React.CSSProperties = { flex: '1 0 0', minWidth: COL_MIN };
+  const colStyle: React.CSSProperties = { width: COL_W, flex: '0 0 auto' };
+
+  const scrollToToday = () => {
+    const el = scrollRef.current;
+    if (!el || todayIdx < 0) return;
+    const todayLeft = FROZEN_W + todayIdx * COL_W;
+    el.scrollTo({ left: Math.max(0, todayLeft - el.clientWidth * 0.3), behavior: 'smooth' });
+  };
 
   // ─── render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="p-4 space-y-3">
       {/* Zoom toolbar */}
-      <div className="flex items-center gap-3 bg-secondary/50 rounded-lg p-2 flex-wrap">
+      <div className="flex items-center gap-3 bg-secondary/50 rounded-lg p-2">
         <ZoomIn className="h-4 w-4 text-muted-foreground shrink-0" />
         <div className="flex items-center gap-1.5 shrink-0">
-          {[7, 14, 21, 30, 60, 90].map(d => (
+          {[7, 14, 21].map(d => (
             <Button
               key={d}
               variant="outline"
               size="sm"
-              className={cn('h-7 px-2.5 text-xs rounded-full transition-colors', zoomDays === d && 'bg-primary text-primary-foreground border-primary')}
+              className={cn('h-7 px-3 text-xs rounded-full transition-colors', zoomDays === d && 'bg-primary text-primary-foreground border-primary')}
               onClick={() => setZoomDays(d)}
             >{d}d</Button>
           ))}
         </div>
-        <div className="flex items-center gap-2 flex-1 min-w-[120px] max-w-[200px]">
-          <Slider value={[zoomDays]} onValueChange={([v]) => setZoomDays(v)} min={7} max={180} step={1} className="flex-1" />
-        </div>
-        <span className="text-xs text-muted-foreground shrink-0">{zoomDays} days</span>
+        <div className="flex-1" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-3 text-xs rounded-full shrink-0"
+          onClick={scrollToToday}
+        >Today</Button>
       </div>
 
       {/* Chart container — horizontal scroll on overflow, frozen left col */}
-      <div className="overflow-x-auto rounded-lg border border-border" style={{ scrollBehavior: 'smooth' }}>
+      <div ref={scrollRef} className="overflow-x-auto rounded-lg border border-border">
         <div ref={innerRef} style={{ minWidth: CHART_MIN }}>
 
           {/* ── Day header ── */}
