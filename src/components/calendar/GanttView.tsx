@@ -470,16 +470,34 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
             )}
 
             {/* ── Project groups ── */}
-            {orderedProjectEntries.map(([projectName, rows], projectIdx) => {
+            {(() => {
+              let prevType: string | null = null;
+              return orderedProjectEntries.map(([projectName, rows], projectIdx) => {
               const collapsed = collapsedProjects.has(projectName);
               const projectTasks = groupedTasks[projectName] ?? [];
               const sp = summaryPos(projectTasks);
               const projectId = projectTasks[0]?.projectId;
               const isFirst = projectIdx === 0;
               const isLast = projectIdx === orderedProjectEntries.length - 1;
+              const currType = projectTypeMap[projectName] || 'other';
+              const showHeader = currType !== prevType;
+              prevType = currType;
 
               return (
                 <div key={projectName} className="group/project">
+                  {showHeader && (
+                    <div
+                      className="flex items-center border-b border-border/40 bg-background sticky left-0 z-[15]"
+                      style={{ height: TYPE_HEADER_H }}
+                    >
+                      <div
+                        className="px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
+                        style={{ minWidth: FROZEN_W }}
+                      >
+                        {TYPE_LABEL[currType] ?? 'Other'}
+                      </div>
+                    </div>
+                  )}
                   {/* Project summary row */}
                   <div className="flex items-center border-b border-border bg-secondary/25" style={{ height: ROW_H }}>
                     {/* Frozen: name + collapse + reorder + add button */}
