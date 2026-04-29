@@ -108,6 +108,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
   const [zoomDays, setZoomDays] = useState(14);
   const { collapsedProjects, toggleCollapsed, projectOrder, moveProject } = useGanttPreferences();
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
+  const grabOffsetRef = useRef(0);
   const [containerWidth, setContainerWidth] = useState(900);
   const innerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -306,13 +307,29 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     e.preventDefault();
     if (!draggedTask) return;
     const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-    const dayIdx = Math.floor(((e.clientX - rect.left) / rect.width) * PAN_RANGE_DAYS);
+    const rawDayIdx = Math.floor(((e.clientX - rect.left) / rect.width) * PAN_RANGE_DAYS);
+    const dayIdx = rawDayIdx - grabOffsetRef.current;
     const task = tasks.find(t => t.id === draggedTask);
     if (!task) return;
     const dur = differenceInDays(new Date(task.endDate), new Date(task.startDate));
     const ns = addDays(viewStart, Math.max(0, Math.min(PAN_RANGE_DAYS - 1 - dur, dayIdx)));
     onTaskMove(draggedTask, ns, addDays(ns, dur));
     setDraggedTask(null);
+    grabOffsetRef.current = 0;
+  };
+
+  const startBarDrag = (e: React.DragEvent, task: CalendarTask, isMs: boolean) => {
+    if (isMs) {
+      grabOffsetRef.current = 0;
+    } else {
+      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+      const dur = differenceInDays(new Date(task.endDate), new Date(task.startDate)) + 1;
+      const cursorPct = (e.clientX - rect.left) / Math.max(rect.width, 1);
+      grabOffsetRef.current = Math.max(0, Math.min(dur - 1, Math.floor(cursorPct * dur)));
+    }
+    setDraggedTask(task.id);
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', task.id); } catch { /* noop */ }
   };
 
   const summaryPos = (ptasks: CalendarTask[]) => {
@@ -623,12 +640,16 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                                   <TooltipTrigger asChild>
                                     {ms ? (
                                       <div
+                                        draggable
+                                        onDragStart={e => startBarDrag(e, task, true)}
+                                        onDragEnd={() => { setDraggedTask(null); grabOffsetRef.current = 0; }}
                                         onClick={() => onTaskClick(task)}
                                         className={cn(
-                                          'absolute cursor-pointer hover:scale-125 transition-transform shadow-sm z-10',
+                                          'absolute cursor-grab active:cursor-grabbing hover:scale-125 transition-transform shadow-sm z-10',
                                           barBg(task),
                                           task.isCriticalPath && 'ring-1 ring-rose-400',
                                           done && 'opacity-50',
+                                          draggedTask === task.id && 'opacity-40',
                                         )}
                                         style={{
                                           width: 14,
@@ -641,8 +662,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                                     ) : (
                                       <div
                                         draggable
-                                        onDragStart={e => { setDraggedTask(task.id); e.dataTransfer.effectAllowed = 'move'; }}
-                                        onDragEnd={() => setDraggedTask(null)}
+                                        onDragStart={e => startBarDrag(e, task, false)}
+                                        onDragEnd={() => { setDraggedTask(null); grabOffsetRef.current = 0; }}
                                         onClick={() => onTaskClick(task)}
                                         className={cn(
                                           'absolute rounded shadow-sm cursor-grab active:cursor-grabbing z-10',
