@@ -89,7 +89,6 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
   const [viewMode, setViewMode] = useState<ViewMode>(initialState.viewMode);
   const [groupByProject, setGroupByProject] = useState(initialState.groupByProject);
   const [defaultView, setDefaultView] = useState<ToggleView>(initialDefault);
-  const [expandedBalances, setExpandedBalances] = useState<Set<string>>(new Set());
   const PER_PAGE = 15;
 
   const currentView: ToggleView = groupByProject ? 'group' : viewMode === 'cards' ? 'cards' : 'table';
