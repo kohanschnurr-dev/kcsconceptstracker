@@ -149,7 +149,7 @@ export function CalendarHeader({
 
         {/* Integrated legend on mobile */}
         <div className="pt-1 border-t border-border">
-          <CalendarLegend />
+          <CalendarLegend variant={view === 'gantt' ? 'gantt' : 'calendar'} />
         </div>
       </div>
 
