@@ -487,11 +487,11 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                 <div key={projectName} className="group/project">
                   {showHeader && (
                     <div
-                      className="flex items-center bg-secondary/40 border-y border-border"
+                      className="flex items-center bg-secondary border-y border-border"
                       style={{ height: TYPE_HEADER_H }}
                     >
                       <div
-                        className="sticky left-0 z-[15] px-3 bg-secondary/40 text-[11px] font-bold uppercase tracking-[0.14em] text-foreground/80 flex items-center"
+                        className="sticky left-0 z-[15] px-3 bg-secondary text-[11px] font-bold uppercase tracking-[0.14em] text-foreground/80 flex items-center"
                         style={{ minWidth: FROZEN_W, height: TYPE_HEADER_H }}
                       >
                         {TYPE_LABEL[currType] ?? 'Other'}
