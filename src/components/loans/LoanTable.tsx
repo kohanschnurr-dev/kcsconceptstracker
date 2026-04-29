@@ -13,7 +13,7 @@ import {
   calcFirstPaymentDate,
   calcNextPaymentDate,
   effectiveOutstandingBalance,
-  getLoanPurposeColor,
+  LOAN_TYPE_COLORS,
 } from '@/types/loans';
 import { getEffectivePayments } from '@/lib/loanPayments';
 import type { Loan, LoanStatus, LoanPayment, LoanDraw } from '@/types/loans';
@@ -272,7 +272,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         )}
         <TableCell className="font-medium max-w-32 truncate text-center">{loan.project_name ?? '—'}</TableCell>
         <TableCell className="max-w-40 text-center">
-          <div className="flex justify-center"><LoanPurposeBadge purpose={loan.nickname ?? loan.lender_name} /></div>
+          <div className="flex justify-center"><LoanPurposeBadge purpose={loan.nickname ?? loan.lender_name} loanType={loan.loan_type} /></div>
         </TableCell>
         <TableCell className="text-center">
           {(() => {
@@ -464,7 +464,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {enrichedFiltered.map(({ loan, balance, interest }) => {
               const purpose = loan.nickname ?? loan.lender_name;
-              const purposeColor = getLoanPurposeColor(purpose).hsl;
+              const purposeColor = (LOAN_TYPE_COLORS[loan.loan_type] ?? LOAN_TYPE_COLORS.other).hsl;
               const first = loan.first_payment_date || calcFirstPaymentDate(loan.start_date, loan.payment_frequency);
               const next = calcNextPaymentDate(first, loan.payment_frequency);
 
@@ -493,7 +493,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                      <LoanPurposeBadge purpose={purpose} />
+                      <LoanPurposeBadge purpose={purpose} loanType={loan.loan_type} />
                       <span className="text-xs text-muted-foreground">{loan.interest_rate}%</span>
                     </div>
 

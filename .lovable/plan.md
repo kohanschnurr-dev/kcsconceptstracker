@@ -1,37 +1,43 @@
 ## Goal
-On the Loans list, drop the separate "Type" column/badge and instead make the **Loan Purpose** itself render as a colored pill — each purpose gets its own stable color (e.g. Working Capital = purple, Construction = orange, Bridge = pink).
+
+Color the Loan Purpose pill by the loan's **type** instead of by the purpose string. So all hard-money loans look green, private-money purple, DSCR blue, etc. — regardless of what their purpose label says.
+
+The existing `LOAN_TYPE_COLORS` palette already encodes this:
+
+| Loan type        | Color  |
+|------------------|--------|
+| hard_money       | green  |
+| private_money    | purple |
+| dscr             | blue   |
+| construction     | orange |
+| conventional     | red    |
+| seller_financing | yellow |
+| heloc            | teal   |
+| bridge           | pink   |
+| portfolio        | indigo |
+| other            | gray   |
+
+The label inside the pill stays the purpose text (Working Capital, Construction, Purchase, etc.) — only the color changes.
 
 ## Changes
 
-### 1. `src/types/loans.ts` — add purpose color map
-Add a `LOAN_PURPOSE_COLORS` map (one entry per `LOAN_PURPOSE_OPTIONS` value) plus a `getLoanPurposeColor(purpose)` helper that falls back to a neutral muted style for custom purposes. Colors use the same HSL pill convention as `LOAN_TYPE_COLORS` (`bg-[hsl]/15 text-[hsl] border-[hsl]/40`).
+**`src/components/loans/LoanStatusBadge.tsx`**
+- Update `LoanPurposeBadge` to accept `loanType: LoanType` (and keep `purpose` for the label). Look up the badge classes from `LOAN_TYPE_COLORS[loanType]` instead of `LOAN_PURPOSE_COLORS`.
+- Remove the now-unused `getLoanPurposeColor` import in this file.
 
-Proposed palette:
-- Acquisition / Purchase — blue
-- Construction — orange
-- Purchase & Construction — burnt orange
-- Renovation / Rehab — gold
-- Land Acquisition — green
-- Refinance — teal
-- Cash-Out Refinance — cyan
-- Bridge — pink
-- DSCR / Long-Term Hold — sky blue
-- **Working Capital — purple**
-- (unknown / custom) — muted
+**`src/components/loans/LoanTable.tsx`**
+- Both call sites (table cell + card view) — pass `loanType={loan.loan_type}` alongside the existing `purpose` prop.
+- Card view's left-border color: switch from `getLoanPurposeColor(...).hsl` to `LOAN_TYPE_COLORS[loan.loan_type].hsl` so the border matches the pill.
 
-### 2. `src/components/loans/LoanStatusBadge.tsx` — add `LoanPurposeBadge`
-New component that renders the purpose string as an outline `Badge` using `getLoanPurposeColor`. Keeps `LoanTypeBadge` exported (still used in `LoanDetail.tsx` and `ProjectLoanTab.tsx`).
+**Other call sites**
+- Search for any other `LoanPurposeBadge` usage and update those too (likely loan detail page header, comparison view).
 
-### 3. `src/components/loans/LoanTable.tsx`
-- **Table view**: remove the "Type" column (header at line 538 + body cell at line 275). Replace the plain text cell at line 274 with `<LoanPurposeBadge purpose={loan.nickname ?? loan.lender_name} />`.
-- **Card view**: 
-  - Remove the `<LoanTypeBadge>` row at line 494 (the interest-rate text moves up to that row alone, or stays as-is).
-  - Use the **purpose** color (not type) for the 4px left border at line 477.
-  - Render the purpose name as the colored pill above the project line for instant recognition.
+## Cleanup
 
-### 4. Out of scope
-- No changes to `LoanDetail.tsx` or `ProjectLoanTab.tsx` — Type badge still useful in detail context.
-- No DB changes; purpose remains a free-form string in `loans.nickname`.
+- `LOAN_PURPOSE_COLORS` and `getLoanPurposeColor` in `src/types/loans.ts` become dead code. Leave them for now (a one-line removal) unless nothing else references them — will check during implementation and remove if orphaned.
 
-## Result
-The Loans table reads cleaner — one less column — and each row's purpose is instantly identifiable by color, matching the screenshot reference (purple "Working Capital" pill style).
+## Files
+
+- `src/components/loans/LoanStatusBadge.tsx`
+- `src/components/loans/LoanTable.tsx`
+- Any other file rendering `<LoanPurposeBadge />` (verified during implementation)
