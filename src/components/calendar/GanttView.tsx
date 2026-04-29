@@ -101,6 +101,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(900);
   const innerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Track the rendered width of the inner chart div for SVG arrow coordinates
   useEffect(() => {
@@ -111,18 +112,35 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     return () => obs.disconnect();
   }, []);
 
-  const lookbackDays = Math.max(7, Math.floor(zoomDays * 0.25));
-  const viewStart = startOfWeek(addDays(currentDate, -lookbackDays));
-  // Timeline pixel width = total inner width minus the frozen column
-  const timelineWidth = Math.max(containerWidth - FROZEN_W, 200);
-  const COL_MIN = zoomDays <= 7 ? 70 : zoomDays <= 14 ? 76 : 64;
-  const CHART_MIN = FROZEN_W + COL_MIN * zoomDays;
+  // Pan range: ~6 months back, ~6 months forward (~1 year window)
+  const PAN_RANGE_DAYS = 365;
+  const PAN_LOOKBACK = 180;
+  const viewStart = useMemo(
+    () => startOfWeek(addDays(currentDate, -PAN_LOOKBACK)),
+    [currentDate],
+  );
+
+  // Day-cell width derived from the zoom preset
+  const COL_W = zoomDays <= 7 ? 110 : zoomDays <= 14 ? 76 : 52;
+  // Inner chart width spans the full pan range; native horizontal scrollbar pans
+  const timelineWidth = COL_W * PAN_RANGE_DAYS;
+  const CHART_MIN = FROZEN_W + timelineWidth;
 
   const days = useMemo(
-    () => Array.from({ length: zoomDays }, (_, i) => addDays(viewStart, i)),
-    [viewStart, zoomDays],
+    () => Array.from({ length: PAN_RANGE_DAYS }, (_, i) => addDays(viewStart, i)),
+    [viewStart],
   );
   const todayIdx = days.findIndex(isToday);
+
+  // Auto-center scroll on today (mount + when zoom or currentDate changes)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || todayIdx < 0) return;
+    const todayLeft = FROZEN_W + todayIdx * COL_W;
+    // Place today ~30% from the left edge of the visible viewport
+    el.scrollLeft = Math.max(0, todayLeft - el.clientWidth * 0.3);
+  }, [todayIdx, COL_W]);
+
 
   const groupedTasks = useMemo(() => {
     const g: Record<string, CalendarTask[]> = {};
