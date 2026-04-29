@@ -805,8 +805,17 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
                               )}
                             >
                               <TableCell className="text-xs">
-                                <div className="flex flex-col">
-                                  <span>{formatDisplayDate(r.date)}</span>
+                                <div className="flex flex-col gap-1">
+                                  <Input
+                                    type="date"
+                                    className="h-8 text-xs w-[140px]"
+                                    disabled={blocked || skipped}
+                                    value={r.date}
+                                    onChange={e => {
+                                      const newDate = e.target.value;
+                                      if (newDate) updateRow(r.key, { date: newDate } as Partial<BulkRow>);
+                                    }}
+                                  />
                                   {r.adjusted && (
                                     <span className="text-[9px] text-warning flex items-center gap-1">
                                       <AlertTriangle className="h-2.5 w-2.5" /> adjusted
