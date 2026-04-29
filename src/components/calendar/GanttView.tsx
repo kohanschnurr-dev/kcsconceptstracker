@@ -175,21 +175,49 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     return out;
   }, [groupedTasks]);
 
+  // Map: project name -> projectType (from first task encountered)
+  const projectTypeMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    tasks.forEach(t => {
+      if (!m[t.projectName]) m[t.projectName] = (t.projectType as string) || 'other';
+    });
+    return m;
+  }, [tasks]);
+
   /**
-   * Effective project order: user-saved order first (filtered to existing projects),
-   * then any new projects not yet ordered, alphabetically.
+   * Effective project order: group by project type (canonical order), then within
+   * each group respect user-saved order, then alphabetical for unsaved.
    */
   const orderedProjectNames = useMemo(() => {
     const names = Object.keys(mergedTasksByProject);
     const inSaved = projectOrder.filter(n => names.includes(n));
     const remaining = names.filter(n => !inSaved.includes(n)).sort((a, b) => a.localeCompare(b));
-    return [...inSaved, ...remaining];
-  }, [mergedTasksByProject, projectOrder]);
+    const combined = [...inSaved, ...remaining];
+    return combined
+      .map((name, idx) => ({ name, idx, t: projectTypeMap[name] || 'other' }))
+      .sort((a, b) => {
+        const ai = TYPE_ORDER.indexOf(a.t);
+        const bi = TYPE_ORDER.indexOf(b.t);
+        const an = ai === -1 ? TYPE_ORDER.length : ai;
+        const bn = bi === -1 ? TYPE_ORDER.length : bi;
+        if (an !== bn) return an - bn;
+        return a.idx - b.idx;
+      })
+      .map(x => x.name);
+  }, [mergedTasksByProject, projectOrder, projectTypeMap]);
 
   const orderedProjectEntries = useMemo(
     () => orderedProjectNames.map(name => [name, mergedTasksByProject[name]] as const),
     [orderedProjectNames, mergedTasksByProject],
   );
+
+  // Distinct project types present (in canonical order) — used for header row count
+  const distinctTypeCount = useMemo(() => {
+    const seen = new Set<string>();
+    orderedProjectNames.forEach(n => seen.add(projectTypeMap[n] || 'other'));
+    return seen.size;
+  }, [orderedProjectNames, projectTypeMap]);
+
 
   // Memoised position resolver keyed to current view (% of full pan range)
   const getPos = useCallback(
