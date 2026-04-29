@@ -462,7 +462,7 @@ export function ProjectCalendar({ projectId, projectName, projectAddress }: Proj
         )}
 
         <div className="pt-3 mt-2 border-t border-border">
-          <CalendarLegend />
+          <CalendarLegend variant={view === 'gantt' ? 'gantt' : 'calendar'} />
         </div>
 
         {tasks.length === 0 && (

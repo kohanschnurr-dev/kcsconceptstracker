@@ -329,7 +329,7 @@ export default function Calendar() {
 
         {/* Category Legend below the grid */}
         <div className="hidden sm:block bg-background rounded-lg p-4 border border-border">
-          <CalendarLegend />
+          <CalendarLegend variant={view === 'gantt' ? 'gantt' : 'calendar'} />
         </div>
 
         {filteredTasks.length === 0 && (
