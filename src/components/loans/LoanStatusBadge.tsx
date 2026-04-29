@@ -21,8 +21,14 @@ export function LoanTypeBadge({ type }: { type: LoanType }) {
   );
 }
 
-export function LoanPurposeBadge({ purpose }: { purpose: string | null | undefined }) {
-  const c = getLoanPurposeColor(purpose);
+export function LoanPurposeBadge({
+  purpose,
+  loanType,
+}: {
+  purpose: string | null | undefined;
+  loanType?: LoanType;
+}) {
+  const c = LOAN_TYPE_COLORS[loanType ?? 'other'] ?? LOAN_TYPE_COLORS.other;
   const label = purpose?.trim() || '—';
   return (
     <Badge variant="outline" className={cn('text-xs font-medium whitespace-nowrap', c.badge)}>
