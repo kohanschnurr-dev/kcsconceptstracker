@@ -28,7 +28,7 @@ const fmt = (v: number | null | undefined) =>
     ? '—'
     : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
-type SortKey = keyof Loan | 'balance_calc' | 'interest_accrued' | 'next_payment';
+type SortKey = keyof Loan | 'balance_calc' | 'interest_accrued' | 'next_payment' | 'net_activity' | 'payoff';
 type ViewMode = 'table' | 'cards';
 type ToggleView = 'table' | 'cards' | 'group';
 
@@ -42,8 +42,12 @@ interface LoanTableProps {
 
 interface EnrichedLoan {
   loan: Loan;
-  balance: number;
+  balance: number;        // principal-only payoff
   interest: number | null;
+  drawn: number;          // sum of funded draws
+  paidDown: number;       // sum of principal portions
+  netActivity: number;    // drawn - paidDown
+  payoff: number;         // balance + (interest ?? 0)
 }
 
 const DEFAULT_VIEW_KEY = 'loans:defaultView';
