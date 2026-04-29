@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { LoanStatusBadge, LoanTypeBadge } from './LoanStatusBadge';
+import { LoanStatusBadge, LoanTypeBadge, LoanPurposeBadge } from './LoanStatusBadge';
 import {
   currentAccruedInterest,
   calcFirstPaymentDate,
