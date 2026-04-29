@@ -320,11 +320,11 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         <TableCell className="max-w-40 text-center">
           <div className="flex justify-center"><LoanPurposeBadge purpose={loan.nickname ?? loan.lender_name} loanType={loan.loan_type} /></div>
         </TableCell>
-        <TableCell className="text-right tabular-nums">{fmt(loan.original_amount)}</TableCell>
-        <TableCell className="text-right tabular-nums" onClick={e => e.stopPropagation()}>
+        <TableCell className="text-center tabular-nums">{fmt(loan.original_amount)}</TableCell>
+        <TableCell className="text-center tabular-nums" onClick={e => e.stopPropagation()}>
           {renderNetActivity(drawn, paidDown, netActivity)}
         </TableCell>
-        <TableCell className="text-right tabular-nums">
+        <TableCell className="text-center tabular-nums">
           {interest == null ? (
             <span className="text-muted-foreground">—</span>
           ) : interest > 0 ? (
@@ -333,7 +333,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             <span className="text-muted-foreground">{fmt(0)}</span>
           )}
         </TableCell>
-        <TableCell className="text-right tabular-nums font-semibold border-l border-border/60">
+        <TableCell className="text-center tabular-nums font-semibold border-l border-border/60">
           {fmt(payoff)}
         </TableCell>
         <TableCell className="text-sm text-center">{formatDisplayDate(next)}</TableCell>
@@ -393,14 +393,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
             <TableCell colSpan={2} className="text-center text-xs text-muted-foreground italic py-2">
               Subtotal — {projectName}
             </TableCell>
-            <TableCell className="text-right text-xs font-semibold tabular-nums py-2">{fmt(sub.original)}</TableCell>
-            <TableCell className="text-right text-xs font-semibold tabular-nums py-2">
+            <TableCell className="text-center text-xs font-semibold tabular-nums py-2">{fmt(sub.original)}</TableCell>
+            <TableCell className="text-center text-xs font-semibold tabular-nums py-2">
               {renderNetActivity(subDrawn, subPaid, sub.netActivity)}
             </TableCell>
-            <TableCell className="text-right text-xs font-semibold tabular-nums py-2">
+            <TableCell className="text-center text-xs font-semibold tabular-nums py-2">
               {sub.interest > 0 ? <span className="text-warning">{fmt(sub.interest)}</span> : <span className="text-muted-foreground">{fmt(0)}</span>}
             </TableCell>
-            <TableCell className="text-right text-xs font-bold tabular-nums py-2 border-l border-border/60">
+            <TableCell className="text-center text-xs font-bold tabular-nums py-2 border-l border-border/60">
               {fmt(sub.payoff)}
             </TableCell>
             <TableCell colSpan={3} />
@@ -605,14 +605,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                       <TableCell colSpan={2} className="py-3 font-bold text-sm text-center">
                         Total ({enrichedFiltered.length} {enrichedFiltered.length === 1 ? 'loan' : 'loans'})
                       </TableCell>
-                      <TableCell className="text-right font-bold text-sm tabular-nums py-3">{fmt(totals.original)}</TableCell>
-                      <TableCell className="text-right font-bold text-sm tabular-nums py-3">
+                      <TableCell className="text-center font-bold text-sm tabular-nums py-3">{fmt(totals.original)}</TableCell>
+                      <TableCell className="text-center font-bold text-sm tabular-nums py-3">
                         {renderNetActivity(totalDrawn, totalPaid, totals.netActivity)}
                       </TableCell>
-                      <TableCell className="text-right font-bold text-sm tabular-nums py-3">
+                      <TableCell className="text-center font-bold text-sm tabular-nums py-3">
                         {totals.interest > 0 ? <span className="text-warning">{fmt(totals.interest)}</span> : <span className="text-muted-foreground">{fmt(0)}</span>}
                       </TableCell>
-                      <TableCell className="text-right font-bold text-sm tabular-nums py-3 border-l border-border/60">{fmt(totals.payoff)}</TableCell>
+                      <TableCell className="text-center font-bold text-sm tabular-nums py-3 border-l border-border/60">{fmt(totals.payoff)}</TableCell>
                       <TableCell colSpan={3} />
                     </TableRow>
                   );
