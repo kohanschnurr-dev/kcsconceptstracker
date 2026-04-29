@@ -58,6 +58,27 @@ export const LOAN_TYPE_COLORS: Record<LoanType, { hsl: string; badge: string }> 
   other:            { hsl: 'hsl(240, 5%, 55%)',  badge: 'bg-muted text-muted-foreground border-border' },
 };
 
+// Stable color per loan purpose. Used as a colored pill in the loan list so
+// purpose is identifiable at a glance (e.g. Working Capital = purple).
+export const LOAN_PURPOSE_COLORS: Record<string, { hsl: string; badge: string }> = {
+  'Acquisition / Purchase':  { hsl: 'hsl(220, 70%, 55%)', badge: 'bg-[hsl(220,70%,55%)]/15 text-[hsl(220,70%,70%)] border-[hsl(220,70%,55%)]/40' },
+  'Construction':            { hsl: 'hsl(32, 95%, 55%)',  badge: 'bg-[hsl(32,95%,55%)]/15 text-[hsl(32,95%,65%)] border-[hsl(32,95%,55%)]/40' },
+  'Purchase & Construction': { hsl: 'hsl(15, 85%, 55%)',  badge: 'bg-[hsl(15,85%,55%)]/15 text-[hsl(15,85%,65%)] border-[hsl(15,85%,55%)]/40' },
+  'Renovation / Rehab':      { hsl: 'hsl(45, 93%, 47%)',  badge: 'bg-[hsl(45,93%,47%)]/15 text-[hsl(45,93%,60%)] border-[hsl(45,93%,47%)]/40' },
+  'Land Acquisition':        { hsl: 'hsl(95, 50%, 45%)',  badge: 'bg-[hsl(95,50%,45%)]/15 text-[hsl(95,50%,60%)] border-[hsl(95,50%,45%)]/40' },
+  'Refinance':               { hsl: 'hsl(180, 70%, 45%)', badge: 'bg-[hsl(180,70%,45%)]/15 text-[hsl(180,70%,60%)] border-[hsl(180,70%,45%)]/40' },
+  'Cash-Out Refinance':      { hsl: 'hsl(195, 80%, 50%)', badge: 'bg-[hsl(195,80%,50%)]/15 text-[hsl(195,80%,65%)] border-[hsl(195,80%,50%)]/40' },
+  'Bridge':                  { hsl: 'hsl(320, 70%, 50%)', badge: 'bg-[hsl(320,70%,50%)]/15 text-[hsl(320,70%,65%)] border-[hsl(320,70%,50%)]/40' },
+  'DSCR / Long-Term Hold':   { hsl: 'hsl(200, 80%, 50%)', badge: 'bg-[hsl(200,80%,50%)]/15 text-[hsl(200,80%,65%)] border-[hsl(200,80%,50%)]/40' },
+  'Working Capital':         { hsl: 'hsl(270, 60%, 55%)', badge: 'bg-[hsl(270,60%,55%)]/15 text-[hsl(270,60%,70%)] border-[hsl(270,60%,55%)]/40' },
+  __default:                 { hsl: 'hsl(240, 5%, 55%)',  badge: 'bg-muted text-muted-foreground border-border' },
+};
+
+export function getLoanPurposeColor(purpose: string | null | undefined) {
+  if (!purpose) return LOAN_PURPOSE_COLORS.__default;
+  return LOAN_PURPOSE_COLORS[purpose] ?? LOAN_PURPOSE_COLORS.__default;
+}
+
 export const LOAN_STATUS_CONFIG: Record<LoanStatus, { label: string; className: string }> = {
   active: { label: 'Active', className: 'bg-success/20 text-success border-success/30' },
   paid_off: { label: 'Paid Off', className: 'bg-muted text-muted-foreground border-border' },
