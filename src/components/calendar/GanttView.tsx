@@ -191,10 +191,10 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     [orderedProjectNames, mergedTasksByProject],
   );
 
-  // Memoised position resolver keyed to current view
+  // Memoised position resolver keyed to current view (% of full pan range)
   const getPos = useCallback(
-    (task: CalendarTask) => getTaskPos(task, viewStart, zoomDays),
-    [viewStart, zoomDays],
+    (task: CalendarTask) => getTaskPos(task, viewStart, PAN_RANGE_DAYS),
+    [viewStart],
   );
 
   // Y-centre of each task row (for SVG dep arrows). All instances within a merged
