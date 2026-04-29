@@ -543,6 +543,14 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
                         {interest != null && interest > 0 && (
                           <div className="text-xs text-warning mt-0.5">↑ {fmt(interest)} accrued</div>
                         )}
+                        {netActivity !== 0 && (
+                          <div className={cn(
+                            'text-xs mt-0.5 tabular-nums',
+                            netActivity > 0 ? 'text-warning' : 'text-success',
+                          )}>
+                            Net activity: {netActivity > 0 ? '+' : '−'}{fmt(Math.abs(netActivity))}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">Monthly Pmt</div>
