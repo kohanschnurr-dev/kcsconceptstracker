@@ -1,42 +1,45 @@
-## Root Cause
+## Problem
 
-The Gantt section dividers display "OTHER" instead of "Fix & Flip" / "New Construction" / "Rentals" because `projectType` is silently dropped from every calendar task before it reaches the Gantt.
+In the Gantt view's frozen left column (project / task names), the project summary row and individual event rows use semi-transparent backgrounds. This lets the timeline's vertical gridlines and the red "today" indicator bleed visually through the name column, producing the grey/red lines crossing through "534 St John…", "718 Chaparr…", and the task labels in the screenshot.
 
-In `src/pages/Calendar.tsx`, two separate Supabase queries fetch projects:
+Current backgrounds (in `src/components/calendar/GanttView.tsx`):
 
-1. **Line 116–121** — fetches `id, name, address, project_type` for the projects list. Correct.
-2. **Line 135–138** — fetches a second copy (`allProjectsData`) used at line 177 to look up the project for each calendar event:
-   ```ts
-   .select('id, name, total_budget')   // <-- project_type missing
-   ```
+- **Project summary row outer** (line 502): `bg-secondary/25` — 25% opacity
+- **Project summary frozen-left cell** (line 505): `bg-secondary/50` — 50% opacity
+- **Task row outer** (line 576): no background — fully transparent
+- **Task row frozen-left cell** (line 581): `bg-background/95` — 95% opacity (still transparent)
 
-Then at line 183, when building each `CalendarTask`:
-```ts
-projectType: (project as any)?.project_type ?? (project as any)?.projectType,
-```
-`project` here is from `allProjectsData`, which never contained `project_type` → every task gets `projectType: undefined` → `GanttView`'s `projectTypeMap` falls back to `'other'` for every project → all projects bucket under the "OTHER" header.
-
-The DB confirms the underlying data is correct: every project has a real `project_type` (`fix_flip`, `rental`, or `new_construction`).
+Because the frozen left cells use `position: sticky`, anything painted underneath them in the scrolling timeline (gridlines, today line, bars from other rows) shows through.
 
 ## Fix
 
-One-line change in `src/pages/Calendar.tsx`, line 137: add `project_type` to the `allProjectsData` select:
+Make the frozen left column fully opaque on every row type. The timeline area on the right keeps its current transparency so gridlines remain visible there (that's correct Gantt behavior).
 
-```ts
-const { data: allProjectsData } = await supabase
-  .from('projects')
-  .select('id, name, total_budget, project_type')
-  .eq('user_id', user.id);
+In `src/components/calendar/GanttView.tsx`:
+
+1. **Project summary frozen-left cell** (line 505): `bg-secondary/50` → `bg-secondary` (solid).
+2. **Project summary outer row** (line 502): `bg-secondary/25` → keep transparent on the timeline side. Leave the outer row class as-is — only the frozen cell needs to be opaque, since gridlines should still be visible behind the project span chevron.
+3. **Task row frozen-left cell** (line 581): `bg-background/95` → `bg-background` (solid).
+
+That's all that's needed — the timeline portion of each row stays transparent so date gridlines and the today indicator remain visible across bars, but the name column on the left becomes a solid, clean panel with nothing bleeding through.
+
+### Resulting snippets
+
+```tsx
+// Project summary frozen-left (line 505)
+className="shrink-0 sticky left-0 z-10 bg-secondary border-r border-border flex items-center gap-1 px-2"
+
+// Task row frozen-left (line 581)
+className="shrink-0 sticky left-0 z-10 bg-background border-r border-border/40 flex items-center gap-1.5 px-3"
 ```
-
-That's it. Once the field is included, line 183's existing `(project as any)?.project_type` resolves correctly, tasks carry the right `projectType`, and `GanttView` renders proper "Fix & Flip" / "New Construction" / "Rentals" section headers in the configured `TYPE_ORDER`.
 
 ## Files
 
-- `src/pages/Calendar.tsx` — single select-clause edit on line 137. No other logic, types, or component changes.
+- `src/components/calendar/GanttView.tsx` — two className opacity changes (lines 505 and 581). No layout, sizing, or logic changes.
 
 ## Verification
 
-- Reload the Calendar page → switch to Gantt view.
-- Section headers above project groups now read "FIX & FLIP", "NEW CONSTRUCTION", "RENTALS" (matching `TYPE_LABEL` in `GanttView.tsx`).
-- "OTHER" only appears if a project genuinely has no `project_type` set in the DB.
+- Frozen left column (project + task names) is a clean, solid panel.
+- No vertical gridlines, no red today line, and no bar shadows show through any name row.
+- Gridlines and the today indicator still display correctly across the timeline area to the right.
+- Section headers, chevrons, hover buttons, and bars are unchanged.

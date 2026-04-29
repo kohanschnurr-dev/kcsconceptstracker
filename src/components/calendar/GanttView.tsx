@@ -502,7 +502,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                   <div className="flex items-center border-b border-border bg-secondary/25" style={{ height: ROW_H }}>
                     {/* Frozen: name + collapse + reorder + add button */}
                     <div
-                      className="shrink-0 sticky left-0 z-10 bg-secondary/50 border-r border-border flex items-center gap-1 px-2"
+                      className="shrink-0 sticky left-0 z-10 bg-secondary border-r border-border flex items-center gap-1 px-2"
                       style={{ width: FROZEN_W, height: ROW_H }}
                     >
                       <button
@@ -578,7 +578,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                         >
                           {/* Frozen: icon + title (one entry per merged row) */}
                           <div
-                            className="shrink-0 sticky left-0 z-10 bg-background/95 border-r border-border/40 flex items-center gap-1.5 px-3"
+                            className="shrink-0 sticky left-0 z-10 bg-background border-r border-border/40 flex items-center gap-1.5 px-3"
                             style={{ width: FROZEN_W, height: ROW_H }}
                           >
                             <span className="shrink-0 text-muted-foreground/50">
