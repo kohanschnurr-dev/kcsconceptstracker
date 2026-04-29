@@ -640,12 +640,16 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                                   <TooltipTrigger asChild>
                                     {ms ? (
                                       <div
+                                        draggable
+                                        onDragStart={e => startBarDrag(e, task, true)}
+                                        onDragEnd={() => { setDraggedTask(null); grabOffsetRef.current = 0; }}
                                         onClick={() => onTaskClick(task)}
                                         className={cn(
-                                          'absolute cursor-pointer hover:scale-125 transition-transform shadow-sm z-10',
+                                          'absolute cursor-grab active:cursor-grabbing hover:scale-125 transition-transform shadow-sm z-10',
                                           barBg(task),
                                           task.isCriticalPath && 'ring-1 ring-rose-400',
                                           done && 'opacity-50',
+                                          draggedTask === task.id && 'opacity-40',
                                         )}
                                         style={{
                                           width: 14,
@@ -658,8 +662,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                                     ) : (
                                       <div
                                         draggable
-                                        onDragStart={e => { setDraggedTask(task.id); e.dataTransfer.effectAllowed = 'move'; }}
-                                        onDragEnd={() => setDraggedTask(null)}
+                                        onDragStart={e => startBarDrag(e, task, false)}
+                                        onDragEnd={() => { setDraggedTask(null); grabOffsetRef.current = 0; }}
                                         onClick={() => onTaskClick(task)}
                                         className={cn(
                                           'absolute rounded shadow-sm cursor-grab active:cursor-grabbing z-10',
