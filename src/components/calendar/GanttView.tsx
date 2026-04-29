@@ -332,12 +332,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     try { e.dataTransfer.setData('text/plain', task.id); } catch { /* noop */ }
   };
 
-  const summaryPos = (ptasks: CalendarTask[]) => {
-    const vis = ptasks.filter(t => getPos(t));
-    if (!vis.length) return null;
-    const syn = { ...vis[0], startDate: new Date(Math.min(...vis.map(t => +new Date(t.startDate)))), endDate: new Date(Math.max(...vis.map(t => +new Date(t.endDate)))) };
-    return getPos(syn);
-  };
+
 
   const colStyle: React.CSSProperties = { width: COL_W, flex: '0 0 auto' };
 
