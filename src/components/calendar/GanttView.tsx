@@ -47,6 +47,15 @@ const DEP_COLORS: Record<string, string> = {
 
 const FROZEN_W = 192; // px — w-48
 const ROW_H = 36;     // px — uniform row height
+const TYPE_HEADER_H = 26; // px — type group header row height
+
+const TYPE_ORDER: string[] = ['fix_flip', 'new_construction', 'rental', 'other'];
+const TYPE_LABEL: Record<string, string> = {
+  fix_flip: 'Fix & Flip',
+  new_construction: 'New Construction',
+  rental: 'Rentals',
+  other: 'Other',
+};
 
 function categoryIcon(cat: string, size = 11, cls = ''): ReactNode {
   const p = { size, className: cls, strokeWidth: 2 };
@@ -175,21 +184,49 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     return out;
   }, [groupedTasks]);
 
+  // Map: project name -> projectType (from first task encountered)
+  const projectTypeMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    tasks.forEach(t => {
+      if (!m[t.projectName]) m[t.projectName] = (t.projectType as string) || 'other';
+    });
+    return m;
+  }, [tasks]);
+
   /**
-   * Effective project order: user-saved order first (filtered to existing projects),
-   * then any new projects not yet ordered, alphabetically.
+   * Effective project order: group by project type (canonical order), then within
+   * each group respect user-saved order, then alphabetical for unsaved.
    */
   const orderedProjectNames = useMemo(() => {
     const names = Object.keys(mergedTasksByProject);
     const inSaved = projectOrder.filter(n => names.includes(n));
     const remaining = names.filter(n => !inSaved.includes(n)).sort((a, b) => a.localeCompare(b));
-    return [...inSaved, ...remaining];
-  }, [mergedTasksByProject, projectOrder]);
+    const combined = [...inSaved, ...remaining];
+    return combined
+      .map((name, idx) => ({ name, idx, t: projectTypeMap[name] || 'other' }))
+      .sort((a, b) => {
+        const ai = TYPE_ORDER.indexOf(a.t);
+        const bi = TYPE_ORDER.indexOf(b.t);
+        const an = ai === -1 ? TYPE_ORDER.length : ai;
+        const bn = bi === -1 ? TYPE_ORDER.length : bi;
+        if (an !== bn) return an - bn;
+        return a.idx - b.idx;
+      })
+      .map(x => x.name);
+  }, [mergedTasksByProject, projectOrder, projectTypeMap]);
 
   const orderedProjectEntries = useMemo(
     () => orderedProjectNames.map(name => [name, mergedTasksByProject[name]] as const),
     [orderedProjectNames, mergedTasksByProject],
   );
+
+  // Distinct project types present (in canonical order) — used for header row count
+  const distinctTypeCount = useMemo(() => {
+    const seen = new Set<string>();
+    orderedProjectNames.forEach(n => seen.add(projectTypeMap[n] || 'other'));
+    return seen.size;
+  }, [orderedProjectNames, projectTypeMap]);
+
 
   // Memoised position resolver keyed to current view (% of full pan range)
   const getPos = useCallback(
@@ -219,8 +256,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     orderedProjectEntries.reduce(
       (h, [name, rows]) => h + ROW_H + (collapsedProjects.has(name) ? 0 : rows.length * ROW_H),
       0,
-    ),
-  [orderedProjectEntries, collapsedProjects]);
+    ) + distinctTypeCount * TYPE_HEADER_H,
+  [orderedProjectEntries, collapsedProjects, distinctTypeCount]);
 
   // Pre-compute dependency arrow segments
   const depArrows = useMemo(() => {
@@ -433,16 +470,34 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
             )}
 
             {/* ── Project groups ── */}
-            {orderedProjectEntries.map(([projectName, rows], projectIdx) => {
+            {(() => {
+              let prevType: string | null = null;
+              return orderedProjectEntries.map(([projectName, rows], projectIdx) => {
               const collapsed = collapsedProjects.has(projectName);
               const projectTasks = groupedTasks[projectName] ?? [];
               const sp = summaryPos(projectTasks);
               const projectId = projectTasks[0]?.projectId;
               const isFirst = projectIdx === 0;
               const isLast = projectIdx === orderedProjectEntries.length - 1;
+              const currType = projectTypeMap[projectName] || 'other';
+              const showHeader = currType !== prevType;
+              prevType = currType;
 
               return (
                 <div key={projectName} className="group/project">
+                  {showHeader && (
+                    <div
+                      className="flex items-center border-b border-border/40 bg-background sticky left-0 z-[15]"
+                      style={{ height: TYPE_HEADER_H }}
+                    >
+                      <div
+                        className="px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
+                        style={{ minWidth: FROZEN_W }}
+                      >
+                        {TYPE_LABEL[currType] ?? 'Other'}
+                      </div>
+                    </div>
+                  )}
                   {/* Project summary row */}
                   <div className="flex items-center border-b border-border bg-secondary/25" style={{ height: ROW_H }}>
                     {/* Frozen: name + collapse + reorder + add button */}
@@ -654,7 +709,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                   )}
                 </div>
               );
-            })}
+              });
+            })()}
 
             {tasks.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
