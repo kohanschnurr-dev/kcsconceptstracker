@@ -1,38 +1,42 @@
-## Problem
+## Root Cause
 
-The Gantt project-type section header (e.g. "OTHER", "FIX & FLIP") uses a transparent `bg-secondary/40` background. This lets the timeline column gridlines and the red "today" indicator line show through, making the header look broken and visually noisy.
+The Gantt section dividers display "OTHER" instead of "Fix & Flip" / "New Construction" / "Rentals" because `projectType` is silently dropped from every calendar task before it reaches the Gantt.
+
+In `src/pages/Calendar.tsx`, two separate Supabase queries fetch projects:
+
+1. **Line 116–121** — fetches `id, name, address, project_type` for the projects list. Correct.
+2. **Line 135–138** — fetches a second copy (`allProjectsData`) used at line 177 to look up the project for each calendar event:
+   ```ts
+   .select('id, name, total_budget')   // <-- project_type missing
+   ```
+
+Then at line 183, when building each `CalendarTask`:
+```ts
+projectType: (project as any)?.project_type ?? (project as any)?.projectType,
+```
+`project` here is from `allProjectsData`, which never contained `project_type` → every task gets `projectType: undefined` → `GanttView`'s `projectTypeMap` falls back to `'other'` for every project → all projects bucket under the "OTHER" header.
+
+The DB confirms the underlying data is correct: every project has a real `project_type` (`fix_flip`, `rental`, or `new_construction`).
 
 ## Fix
 
-In `src/components/calendar/GanttView.tsx` (lines 488–500), make the section header fully opaque so nothing bleeds through it.
+One-line change in `src/pages/Calendar.tsx`, line 137: add `project_type` to the `allProjectsData` select:
 
-- Outer header strip: change `bg-secondary/40` → `bg-secondary` (solid). Keep `border-y border-border` for clean top/bottom separation.
-- Inner sticky label cell: change `bg-secondary/40` → `bg-secondary` so the frozen "OTHER" / "FIX & FLIP" label cell matches the rest of the band with no transparency seam.
-
-### Resulting markup
-
-```tsx
-{showHeader && (
-  <div
-    className="flex items-center bg-secondary border-y border-border"
-    style={{ height: TYPE_HEADER_H }}
-  >
-    <div
-      className="sticky left-0 z-[15] px-3 bg-secondary text-[11px] font-bold uppercase tracking-[0.14em] text-foreground/80 flex items-center"
-      style={{ minWidth: FROZEN_W, height: TYPE_HEADER_H }}
-    >
-      {TYPE_LABEL[currType] ?? 'Other'}
-    </div>
-  </div>
-)}
+```ts
+const { data: allProjectsData } = await supabase
+  .from('projects')
+  .select('id, name, total_budget, project_type')
+  .eq('user_id', user.id);
 ```
+
+That's it. Once the field is included, line 183's existing `(project as any)?.project_type` resolves correctly, tasks carry the right `projectType`, and `GanttView` renders proper "Fix & Flip" / "New Construction" / "Rentals" section headers in the configured `TYPE_ORDER`.
 
 ## Files
 
-- `src/components/calendar/GanttView.tsx` — opacity change only on the two header `<div>` className strings. No layout, sizing, or logic changes.
+- `src/pages/Calendar.tsx` — single select-clause edit on line 137. No other logic, types, or component changes.
 
 ## Verification
 
-- The "OTHER" / "FIX & FLIP" / "RENTAL" / "NEW CONSTRUCTION" header bands appear as a solid horizontal strip across the full Gantt width.
-- No vertical gridlines, day separators, or the red today line show through the header.
-- Project rows below remain unchanged.
+- Reload the Calendar page → switch to Gantt view.
+- Section headers above project groups now read "FIX & FLIP", "NEW CONSTRUCTION", "RENTALS" (matching `TYPE_LABEL` in `GanttView.tsx`).
+- "OTHER" only appears if a project genuinely has no `project_type` set in the DB.

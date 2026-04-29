@@ -134,7 +134,7 @@ export default function Calendar() {
 
       const { data: allProjectsData } = await supabase
         .from('projects')
-        .select('id, name, total_budget')
+        .select('id, name, total_budget, project_type')
         .eq('user_id', user.id);
 
       const { data: eventsData, error } = await supabase
