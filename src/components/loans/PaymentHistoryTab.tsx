@@ -45,6 +45,8 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
   const [form, setForm] = useState(() => emptyPayment(loanId));
   // Track which fields the user has manually overridden so we don't fight them.
   const [touched, setTouched] = useState<{ principal: boolean; interest: boolean }>({ principal: false, interest: false });
+  // When true, the entire payment amount is routed to principal (interest = 0).
+  const [principalOnly, setPrincipalOnly] = useState(false);
 
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
   const totalPrincipal = payments.reduce((s, p) => {
