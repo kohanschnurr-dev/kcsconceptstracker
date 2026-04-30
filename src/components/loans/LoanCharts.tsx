@@ -300,7 +300,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
 
       <Card className="glass-card lg:col-span-3">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Capital Stack by Project</CardTitle>
+          <CardTitle className="text-base">Active Capital Stack by Project</CardTitle>
           <span className="text-xs text-muted-foreground">Lighter shade = accrued interest</span>
         </CardHeader>
         <CardContent>
