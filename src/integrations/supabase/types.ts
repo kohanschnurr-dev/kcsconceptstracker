@@ -136,6 +136,7 @@ export type Database = {
           lead_time_days: number | null
           linked_task_id: string | null
           notes: string | null
+          owner: string | null
           project_id: string
           recurrence_group_id: string | null
           recurrence_rule: string | null
@@ -160,6 +161,7 @@ export type Database = {
           lead_time_days?: number | null
           linked_task_id?: string | null
           notes?: string | null
+          owner?: string | null
           project_id: string
           recurrence_group_id?: string | null
           recurrence_rule?: string | null
@@ -184,6 +186,7 @@ export type Database = {
           lead_time_days?: number | null
           linked_task_id?: string | null
           notes?: string | null
+          owner?: string | null
           project_id?: string
           recurrence_group_id?: string | null
           recurrence_rule?: string | null
