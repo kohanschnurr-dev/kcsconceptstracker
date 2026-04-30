@@ -252,6 +252,11 @@ export default function Calendar() {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
+    // No-op guard — same start day means nothing to do
+    const oldStart = new Date(task.startDate); oldStart.setHours(0, 0, 0, 0);
+    const newStart = new Date(newStartDate); newStart.setHours(0, 0, 0, 0);
+    if (oldStart.getTime() === newStart.getTime()) return;
+
     const { error } = await supabase
       .from('calendar_events')
       .update({
@@ -274,7 +279,11 @@ export default function Calendar() {
       )
     );
 
-    toast({ title: 'Event Updated', description: `Moved "${task.title}" to new dates.` });
+    toast({
+      title: 'Event Updated',
+      description: `Moved "${task.title}"`,
+      duration: 1500,
+    });
   };
 
   return (
