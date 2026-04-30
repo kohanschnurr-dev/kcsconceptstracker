@@ -108,7 +108,15 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
   const [zoomDays, setZoomDays] = useState(14);
   const { collapsedProjects, toggleCollapsed, projectOrder, moveProject } = useGanttPreferences();
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
+  const [dragHoverDayIdx, setDragHoverDayIdx] = useState<number | null>(null);
   const grabOffsetRef = useRef(0);
+  const transparentImgRef = useRef<HTMLImageElement | null>(null);
+  if (typeof window !== 'undefined' && !transparentImgRef.current) {
+    const img = new Image();
+    img.src =
+      'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    transparentImgRef.current = img;
+  }
   const [containerWidth, setContainerWidth] = useState(900);
   const innerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -305,6 +313,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
 
   const handleTimelineDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    setDragHoverDayIdx(null);
     if (!draggedTask) return;
     const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
     const rawDayIdx = Math.floor(((e.clientX - rect.left) / rect.width) * PAN_RANGE_DAYS);
@@ -313,9 +322,23 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     if (!task) return;
     const dur = differenceInDays(new Date(task.endDate), new Date(task.startDate));
     const ns = addDays(viewStart, Math.max(0, Math.min(PAN_RANGE_DAYS - 1 - dur, dayIdx)));
+    const oldStart = new Date(task.startDate); oldStart.setHours(0, 0, 0, 0);
+    if (ns.getTime() === oldStart.getTime()) {
+      setDraggedTask(null);
+      grabOffsetRef.current = 0;
+      return;
+    }
     onTaskMove(draggedTask, ns, addDays(ns, dur));
     setDraggedTask(null);
     grabOffsetRef.current = 0;
+  };
+
+  const handleTimelineDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!draggedTask) return;
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const rawIdx = Math.floor(((e.clientX - rect.left) / rect.width) * PAN_RANGE_DAYS);
+    setDragHoverDayIdx(rawIdx - grabOffsetRef.current);
   };
 
   const startBarDrag = (e: React.DragEvent, task: CalendarTask, isMs: boolean) => {
@@ -330,6 +353,11 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
     setDraggedTask(task.id);
     e.dataTransfer.effectAllowed = 'move';
     try { e.dataTransfer.setData('text/plain', task.id); } catch { /* noop */ }
+    // Hide the browser's default drag ghost for a cleaner feel — our bar
+    // already has a clear "isDragging" style and we render a date guide.
+    if (transparentImgRef.current) {
+      try { e.dataTransfer.setDragImage(transparentImgRef.current, 0, 0); } catch { /* noop */ }
+    }
   };
 
 
