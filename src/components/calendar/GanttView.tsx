@@ -687,6 +687,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                                           top: '50%',
                                           height: 22,
                                           transform: 'translateY(-50%)',
+                                          transition: draggedTask ? 'none' : 'left 180ms cubic-bezier(0.22, 1, 0.36, 1), width 180ms cubic-bezier(0.22, 1, 0.36, 1)',
                                         }}
                                       >
                                         <div className="flex items-center h-full gap-1 px-1.5 overflow-hidden">
