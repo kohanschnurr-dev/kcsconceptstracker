@@ -9,6 +9,7 @@ import {
   isToday,
   format,
   startOfDay,
+  isWithinInterval,
   differenceInDays,
   addDays,
   addMonths,
@@ -26,10 +27,8 @@ import {
   PointerSensor,
 } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { DealCard } from './DealCard';
-import { EventBar } from './EventBar';
-import { computeWeekLaneLayout, eventOverlapsDay } from '@/lib/calendarLaneLayout';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import type { CalendarTask } from '@/pages/Calendar';
 
 interface MonthlyViewProps {
@@ -41,55 +40,50 @@ interface MonthlyViewProps {
   onDayDoubleClick?: (date: Date) => void;
 }
 
-const MAX_LANES = 3;
-const LANE_HEIGHT = 22;
-const LANE_GAP = 2;
-const HEADER_RESERVE = 22; // space at top of cell for date number
-
 interface DragData {
   task: CalendarTask;
-  /** Day-offset within the bar that the user grabbed. */
+  /** Day-offset within the event that the user grabbed. */
   grabOffset: number;
 }
 
-function DraggableBar({
+function DraggableCard({
   task,
   grabOffset,
-  children,
+  onTaskClick,
 }: {
   task: CalendarTask;
   grabOffset: number;
-  children: React.ReactNode;
+  onTaskClick: () => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: task.id,
+    id: `${task.id}::${grabOffset}`,
     data: { task, grabOffset } satisfies DragData,
   });
+
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      style={{ opacity: isDragging ? 0 : 1 }}
-      className="w-full"
+      style={{ opacity: isDragging ? 0.4 : 1 }}
     >
-      {children}
+      <DealCard task={task} compact onClick={onTaskClick} />
     </div>
   );
 }
 
 function DroppableDay({
   day,
-  inRange,
-  isCurrentMonth,
-  onDoubleClick,
   children,
+  isCurrentMonth,
+  inRange,
+  onDoubleClick,
 }: {
   day: Date;
-  inRange: boolean;
-  isCurrentMonth: boolean;
-  onDoubleClick?: () => void;
   children: React.ReactNode;
+  isCurrentMonth: boolean;
+  inRange: boolean;
+  onDoubleClick?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: day.toISOString(),
@@ -101,12 +95,14 @@ function DroppableDay({
       ref={setNodeRef}
       onDoubleClick={onDoubleClick}
       className={cn(
-        'relative border transition-colors',
-        'min-h-[120px] sm:min-h-[150px]',
-        isCurrentMonth ? 'bg-card/40 border-border' : 'bg-background/60 border-border/50',
-        isToday(day) && 'ring-1 ring-primary/40',
+        'p-0.5 sm:p-2 rounded-lg border transition-colors',
+        'min-h-[60px] sm:min-h-[140px]',
+        isCurrentMonth
+          ? 'bg-card/50 border-border'
+          : 'bg-background/50 border-border/50',
+        isToday(day) && 'ring-1 sm:ring-2 ring-primary/50',
         inRange && 'bg-primary/10 ring-1 ring-primary/40',
-        isOver && 'ring-2 ring-primary/60',
+        isOver && 'ring-2 ring-primary/60 bg-primary/5',
       )}
     >
       {children}
@@ -134,32 +130,19 @@ export function MonthlyView({
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
-    return eachDayOfInterval({
-      start: startOfWeek(monthStart),
-      end: endOfWeek(monthEnd),
-    });
+    const calendarStart = startOfWeek(monthStart);
+    const calendarEnd = endOfWeek(monthEnd);
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentDate]);
 
-  // Group days into weeks of 7
-  const weeks = useMemo(() => {
-    const out: Date[][] = [];
-    for (let i = 0; i < days.length; i += 7) out.push(days.slice(i, i + 7));
-    return out;
-  }, [days]);
-
-  // Pre-compute lane layout per week
-  const weekLayouts = useMemo(() => {
-    return weeks.map((week) => {
-      const weekStart = week[0];
-      const weekEnd = week[6];
-      const laneItems = tasks.map((t) => ({
-        event: t,
-        startDate: t.startDate,
-        endDate: t.endDate,
-      }));
-      return computeWeekLaneLayout(laneItems, weekStart, weekEnd, MAX_LANES);
+  const getTasksForDay = (date: Date) => {
+    const dayStart = startOfDay(date);
+    return tasks.filter(task => {
+      const taskStart = startOfDay(task.startDate);
+      const taskEnd = startOfDay(task.endDate);
+      return isWithinInterval(dayStart, { start: taskStart, end: taskEnd });
     });
-  }, [weeks, tasks]);
+  };
 
   // Range that the active drag would cover (for highlight)
   const previewRange = useMemo(() => {
@@ -207,6 +190,7 @@ export function MonthlyView({
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
+
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null || !onDateChange) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
@@ -232,200 +216,129 @@ export function MonthlyView({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="grid grid-cols-7 gap-px mb-1">
+        <div className="grid grid-cols-7 gap-1 mb-2">
           {weekDays.map((day, i) => (
-            <div
-              key={day}
-              className="text-center text-xs font-medium text-muted-foreground py-2"
-            >
+            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
               <span className="hidden sm:inline">{day}</span>
               <span className="sm:hidden">{weekDaysShort[i]}</span>
             </div>
           ))}
         </div>
 
-        <div className="flex-1 flex flex-col gap-px">
-          {weeks.map((week, wIdx) => {
-            const layout = weekLayouts[wIdx];
+        <div className="grid grid-cols-7 gap-1 flex-1">
+          {days.map(day => {
+            const dayTasks = getTasksForDay(day);
+            const isCurrentMonth = isSameMonth(day, currentDate);
+
             return (
-              <div key={wIdx} className="relative grid grid-cols-7 gap-px">
-                {/* Day cells */}
-                {week.map((day) => {
-                  const inRange = isDayInPreview(day);
-                  const isCurrentMonth = isSameMonth(day, currentDate);
-                  // Mobile fallback: render compact list of events overlapping this day
-                  const dayEvents = tasks.filter((t) => eventOverlapsDay(t, day));
-
-                  return (
-                    <DroppableDay
-                      key={day.toISOString()}
-                      day={day}
-                      inRange={inRange}
-                      isCurrentMonth={isCurrentMonth}
-                      onDoubleClick={() => onDayDoubleClick?.(day)}
-                    >
-                      <div
-                        className={cn(
-                          'px-1.5 pt-1 text-[10px] sm:text-xs font-medium',
-                          isToday(day)
-                            ? 'text-primary'
-                            : isCurrentMonth
-                              ? 'text-foreground'
-                              : 'text-muted-foreground/50',
-                        )}
-                      >
-                        {format(day, 'd')}
-                      </div>
-
-                      {/* Mobile fallback */}
-                      <div className="sm:hidden px-1 pb-1">
-                        {dayEvents.length > 0 && (
-                          <Popover
-                            open={openPopoverDay === `m-${day.toISOString()}`}
-                            onOpenChange={(o) =>
-                              setOpenPopoverDay(o ? `m-${day.toISOString()}` : null)
-                            }
-                          >
-                            <PopoverTrigger asChild>
-                              <button className="text-[9px] font-medium text-primary/80 hover:text-primary w-full text-center rounded hover:bg-primary/10 px-0.5 py-0.5 leading-tight">
-                                {dayEvents.length}
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-72 p-0 overflow-hidden z-50"
-                              align="center"
-                            >
-                              <div className="px-3 py-2 border-b border-border bg-muted/30">
-                                <p className="text-xs font-semibold">
-                                  {format(day, 'EEEE, MMM d')}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground">
-                                  {dayEvents.length} event
-                                  {dayEvents.length !== 1 ? 's' : ''}
-                                </p>
-                              </div>
-                              <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
-                                {dayEvents.map((task) => (
-                                  <DealCard
-                                    key={task.id}
-                                    task={task}
-                                    compact
-                                    onClick={() => onTaskClick(task)}
-                                  />
-                                ))}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        )}
-                      </div>
-                    </DroppableDay>
-                  );
-                })}
-
-                {/* Spanning bars layer (desktop) */}
-                <div
-                  className="hidden sm:block absolute inset-0 pointer-events-none"
-                  style={{ top: HEADER_RESERVE }}
-                >
-                  {layout.placed.map((bar) => {
-                    const widthCols = bar.endCol - bar.startCol + 1;
-                    const leftPct = (bar.startCol / 7) * 100;
-                    const widthPct = (widthCols / 7) * 100;
-                    const top = bar.lane * (LANE_HEIGHT + LANE_GAP);
-                    // Grab offset: cursor lands on a column within this bar.
-                    // Use the bar's start column relative to its true start day.
-                    const barTrueStart = startOfDay(bar.event.startDate);
-                    const weekStart = startOfDay(week[0]);
-                    const offsetFromTrueStart = differenceInDays(
-                      addDays(weekStart, bar.startCol),
-                      barTrueStart,
-                    );
-                    return (
-                      <div
-                        key={bar.event.id + '-' + wIdx}
-                        className="absolute pointer-events-auto px-0.5"
-                        style={{
-                          left: `${leftPct}%`,
-                          width: `${widthPct}%`,
-                          top,
-                          height: LANE_HEIGHT,
-                        }}
-                      >
-                        <DraggableBar
-                          task={bar.event}
-                          // The user grabs roughly the middle of the visible
-                          // segment; offset from the event's true start.
-                          grabOffset={offsetFromTrueStart}
-                        >
-                          <EventBar
-                            task={bar.event}
-                            continuesLeft={bar.continuesLeft}
-                            continuesRight={bar.continuesRight}
-                            onClick={() => onTaskClick(bar.event)}
-                          />
-                        </DraggableBar>
-                      </div>
-                    );
-                  })}
-
-                  {/* +N more pills per column */}
-                  {layout.overflowByCol.map((items, col) => {
-                    if (items.length === 0) return null;
-                    const leftPct = (col / 7) * 100;
-                    const widthPct = (1 / 7) * 100;
-                    const top = MAX_LANES * (LANE_HEIGHT + LANE_GAP);
-                    const day = week[col];
-                    return (
-                      <div
-                        key={`more-${wIdx}-${col}`}
-                        className="absolute pointer-events-auto px-0.5"
-                        style={{
-                          left: `${leftPct}%`,
-                          width: `${widthPct}%`,
-                          top,
-                        }}
-                      >
-                        <Popover
-                          open={openPopoverDay === `more-${day.toISOString()}`}
-                          onOpenChange={(o) =>
-                            setOpenPopoverDay(o ? `more-${day.toISOString()}` : null)
-                          }
-                        >
-                          <PopoverTrigger asChild>
-                            <button className="w-full text-[10px] text-primary hover:underline text-center px-1 py-0.5">
-                              +{items.length} more
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent
-                            className="w-72 p-0 overflow-hidden"
-                            align="start"
-                          >
-                            <div className="px-3 py-2 border-b border-border bg-muted/30">
-                              <p className="text-xs font-semibold">
-                                {format(day, 'EEEE, MMM d')}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {items.length} more event
-                                {items.length !== 1 ? 's' : ''}
-                              </p>
-                            </div>
-                            <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
-                              {items.map((task) => (
-                                <DealCard
-                                  key={task.id}
-                                  task={task}
-                                  compact
-                                  onClick={() => onTaskClick(task)}
-                                />
-                              ))}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    );
-                  })}
+              <DroppableDay
+                key={day.toISOString()}
+                day={day}
+                isCurrentMonth={isCurrentMonth}
+                inRange={isDayInPreview(day)}
+                onDoubleClick={() => onDayDoubleClick?.(day)}
+              >
+                <div className={cn(
+                  'font-medium mb-0.5',
+                  'text-[10px] sm:text-sm',
+                  isToday(day)
+                    ? 'text-primary'
+                    : isCurrentMonth
+                      ? 'text-foreground'
+                      : 'text-muted-foreground/60',
+                )}>
+                  {format(day, 'd')}
                 </div>
-              </div>
+
+                {/* Mobile: compact badge → popover */}
+                <div className="sm:hidden">
+                  {dayTasks.length > 0 && (
+                    <Popover
+                      open={openPopoverDay === `m-${day.toISOString()}`}
+                      onOpenChange={(o) => setOpenPopoverDay(o ? `m-${day.toISOString()}` : null)}
+                    >
+                      <PopoverTrigger asChild>
+                        <button className="text-[9px] font-medium text-primary/80 hover:text-primary w-full text-center rounded hover:bg-primary/10 px-0.5 py-0.5 leading-tight">
+                          {dayTasks.length}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-0 overflow-hidden z-50" align="center">
+                        <div className="px-3 py-2 border-b border-border bg-muted/30">
+                          <p className="text-xs font-semibold text-foreground">
+                            {format(day, 'EEEE, MMM d')}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
+                          {dayTasks.map(task => {
+                            const offset = differenceInDays(startOfDay(day), startOfDay(task.startDate));
+                            return (
+                              <DraggableCard
+                                key={task.id}
+                                task={task}
+                                grabOffset={offset}
+                                onTaskClick={() => onTaskClick(task)}
+                              />
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+
+                {/* Desktop: full DealCard rendering */}
+                <div className="hidden sm:block space-y-1">
+                  {dayTasks.slice(0, 3).map(task => {
+                    const offset = differenceInDays(startOfDay(day), startOfDay(task.startDate));
+                    return (
+                      <DraggableCard
+                        key={task.id}
+                        task={task}
+                        grabOffset={offset}
+                        onTaskClick={() => onTaskClick(task)}
+                      />
+                    );
+                  })}
+                  {dayTasks.length > 3 && (
+                    <Popover
+                      open={openPopoverDay === `d-${day.toISOString()}`}
+                      onOpenChange={(o) => setOpenPopoverDay(o ? `d-${day.toISOString()}` : null)}
+                    >
+                      <PopoverTrigger asChild>
+                        <button className="text-[10px] text-primary cursor-pointer hover:underline w-full text-center">
+                          +{dayTasks.length - 3} more
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-0 overflow-hidden" align="start">
+                        <div className="px-3 py-2 border-b border-border bg-muted/30">
+                          <p className="text-xs font-semibold text-foreground">
+                            {format(day, 'EEEE, MMM d')}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {dayTasks.length} event{dayTasks.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        <div className="p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
+                          {dayTasks.map(task => {
+                            const offset = differenceInDays(startOfDay(day), startOfDay(task.startDate));
+                            return (
+                              <DraggableCard
+                                key={task.id}
+                                task={task}
+                                grabOffset={offset}
+                                onTaskClick={() => onTaskClick(task)}
+                              />
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+              </DroppableDay>
             );
           })}
         </div>
@@ -433,15 +346,15 @@ export function MonthlyView({
 
       <DragOverlay dropAnimation={null}>
         {activeDrag ? (
-          <div className="pointer-events-none">
-            <div className="rounded-md border border-primary bg-card shadow-2xl px-2 py-1.5 text-xs font-medium text-foreground min-w-[160px]">
-              <div className="truncate">{activeDrag.task.title}</div>
-              {previewRange && (
-                <div className="text-[10px] text-primary mt-0.5">
-                  {format(previewRange.start, 'MMM d')} → {format(previewRange.end, 'MMM d')}
-                </div>
-              )}
-            </div>
+          <div className="pointer-events-none scale-105 opacity-95">
+            <DealCard task={activeDrag.task} compact />
+            {previewRange && (
+              <div className="mt-1 inline-block bg-primary text-primary-foreground text-[10px] font-semibold px-2 py-0.5 rounded shadow-md">
+                {format(previewRange.start, 'MMM d')}
+                {differenceInDays(previewRange.end, previewRange.start) > 0 &&
+                  ` → ${format(previewRange.end, 'MMM d')}`}
+              </div>
+            )}
           </div>
         ) : null}
       </DragOverlay>
