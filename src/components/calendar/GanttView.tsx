@@ -460,6 +460,43 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
               </div>
             )}
 
+            {/* Drag candidate-date cursor guide */}
+            {draggedTask && dragHoverDayIdx !== null && (() => {
+              const t = tasks.find(x => x.id === draggedTask);
+              if (!t) return null;
+              const dur = differenceInDays(new Date(t.endDate), new Date(t.startDate));
+              const clampedIdx = Math.max(0, Math.min(PAN_RANGE_DAYS - 1 - dur, dragHoverDayIdx));
+              const candidateStart = addDays(viewStart, clampedIdx);
+              const candidateEnd = addDays(candidateStart, dur);
+              const leftPx = FROZEN_W + ((clampedIdx + 0.5) / PAN_RANGE_DAYS) * timelineWidth;
+              const widthPx = ((dur + 1) / PAN_RANGE_DAYS) * timelineWidth;
+              return (
+                <>
+                  {/* Range highlight band */}
+                  <div
+                    className="absolute inset-y-0 z-[15] pointer-events-none"
+                    style={{
+                      left: FROZEN_W + (clampedIdx / PAN_RANGE_DAYS) * timelineWidth,
+                      width: widthPx,
+                      background: 'hsl(var(--primary) / 0.12)',
+                      borderLeft: '1px dashed hsl(var(--primary) / 0.6)',
+                      borderRight: '1px dashed hsl(var(--primary) / 0.6)',
+                    }}
+                  />
+                  {/* Date tooltip */}
+                  <div
+                    className="absolute z-30 pointer-events-none"
+                    style={{ left: leftPx, top: 0, transform: 'translateX(-50%)' }}
+                  >
+                    <div className="bg-primary text-primary-foreground text-[10px] font-semibold px-2 py-0.5 rounded shadow-md whitespace-nowrap">
+                      {format(candidateStart, 'MMM d')}
+                      {dur > 0 && ` → ${format(candidateEnd, 'MMM d')}`}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+
             {/* Dependency arrows SVG overlay */}
             {depArrows.length > 0 && (
               <svg
