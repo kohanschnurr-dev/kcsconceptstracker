@@ -630,7 +630,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                           <div
                             className="flex-1 relative"
                             style={{ height: ROW_H }}
-                            onDragOver={e => e.preventDefault()}
+                            onDragOver={handleTimelineDragOver}
+                            onDragLeave={() => setDragHoverDayIdx(null)}
                             onDrop={handleTimelineDrop}
                           >
                             {row.instances.map(task => {
@@ -649,7 +650,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                                       <div
                                         draggable
                                         onDragStart={e => startBarDrag(e, task, true)}
-                                        onDragEnd={() => { setDraggedTask(null); grabOffsetRef.current = 0; }}
+                                        onDragEnd={() => { setDraggedTask(null); setDragHoverDayIdx(null); grabOffsetRef.current = 0; }}
                                         onClick={() => onTaskClick(task)}
                                         className={cn(
                                           'absolute cursor-grab active:cursor-grabbing hover:scale-125 transition-transform shadow-sm z-10',
@@ -670,7 +671,7 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
                                       <div
                                         draggable
                                         onDragStart={e => startBarDrag(e, task, false)}
-                                        onDragEnd={() => { setDraggedTask(null); grabOffsetRef.current = 0; }}
+                                        onDragEnd={() => { setDraggedTask(null); setDragHoverDayIdx(null); grabOffsetRef.current = 0; }}
                                         onClick={() => onTaskClick(task)}
                                         className={cn(
                                           'absolute rounded shadow-sm cursor-grab active:cursor-grabbing z-10',
