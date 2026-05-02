@@ -326,6 +326,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
     setTouched({ principal: false, interest: false });
     setPrincipalOnly(false);
     setMode('single');
+    setEditingId(null);
     setDateMode('recurring');
     setBulkStart(formatDateString(new Date()));
     setBulkCount(3);
