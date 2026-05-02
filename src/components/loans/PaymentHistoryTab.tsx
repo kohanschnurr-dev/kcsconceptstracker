@@ -541,7 +541,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
           onEscapeKeyDown={(e) => { if (mode === 'bulk') e.preventDefault(); }}
         >
           <DialogHeader>
-            <DialogTitle>Log Payment{mode === 'bulk' ? 's' : ''}</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit Payment' : `Log Payment${mode === 'bulk' ? 's' : ''}`}</DialogTitle>
           </DialogHeader>
 
           {/* Mode switcher */}
