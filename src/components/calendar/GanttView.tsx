@@ -418,8 +418,8 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
       {/* Top horizontal scrollbar — mirrors the chart's scroll for easy access */}
       <div
         ref={topScrollRef}
-        className="overflow-x-auto rounded-lg border border-border"
-        style={{ height: 14 }}
+        className="overflow-x-scroll overflow-y-hidden rounded-lg border border-border bg-secondary/30 sticky top-0 z-40"
+        style={{ height: 18 }}
       >
         <div style={{ width: CHART_MIN, height: 1 }} />
       </div>
