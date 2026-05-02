@@ -121,9 +121,10 @@ function computeSplit(
   };
 }
 
-export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draws = [], extensions = [], onAdd, onDelete }: PaymentHistoryTabProps) {
+export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draws = [], extensions = [], onAdd, onUpdate, onDelete }: PaymentHistoryTabProps) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('single');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // ── Single-payment state ─────────────────────────────────────────
   const [form, setForm] = useState(() => emptyPayment(loanId));
