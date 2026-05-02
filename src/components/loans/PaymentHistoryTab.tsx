@@ -506,9 +506,24 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
                           <Pencil className="h-4 w-4" />
                         </button>
                       ) : (
-                        <button onClick={() => onDelete(p.id)} className="text-muted-foreground hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          {onUpdate && (
+                            <button
+                              onClick={() => handleEdit(p)}
+                              className="text-muted-foreground hover:text-primary p-1"
+                              title="Edit payment"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => onDelete(p.id)}
+                            className="text-muted-foreground hover:text-destructive p-1"
+                            title="Delete payment"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
