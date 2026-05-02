@@ -588,6 +588,7 @@ export default function LoanDetail() {
                 draws={draws}
                 extensions={extensions}
                 onAdd={p => addPayment.mutate(p)}
+                onUpdate={(pid, p) => updatePayment.mutate({ id: pid, ...p })}
                 onDelete={id => deletePayment.mutate(id)}
               />
             </div>
