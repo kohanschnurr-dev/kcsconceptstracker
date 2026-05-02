@@ -56,7 +56,7 @@ export default function LoanDetail() {
   const { deleteLoan } = useLoans();
   
 
-  const { loan, draws, payments, extensions, isLoading, upsertDraw, deleteDraw, addPayment, deletePayment, addExtension, deleteExtension, updateLoan } = useLoanDetail(id!);
+  const { loan, draws, payments, extensions, isLoading, upsertDraw, deleteDraw, addPayment, updatePayment, deletePayment, addExtension, deleteExtension, updateLoan } = useLoanDetail(id!);
 
   if (isLoading) {
     return (
