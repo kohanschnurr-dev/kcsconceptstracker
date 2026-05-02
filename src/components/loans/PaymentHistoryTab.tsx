@@ -28,6 +28,7 @@ interface PaymentHistoryTabProps {
   draws?: LoanDraw[];
   extensions?: { extended_to: string }[];
   onAdd: (p: Omit<LoanPayment, 'id' | 'created_at'>) => void;
+  onUpdate?: (id: string, p: Omit<LoanPayment, 'id' | 'created_at'>) => void;
   onDelete: (id: string) => void;
 }
 
@@ -120,9 +121,10 @@ function computeSplit(
   };
 }
 
-export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draws = [], extensions = [], onAdd, onDelete }: PaymentHistoryTabProps) {
+export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draws = [], extensions = [], onAdd, onUpdate, onDelete }: PaymentHistoryTabProps) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('single');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // ── Single-payment state ─────────────────────────────────────────
   const [form, setForm] = useState(() => emptyPayment(loanId));
@@ -280,7 +282,11 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
   // ── Single-payment submit
   const handleSubmit = () => {
     if (!form.amount || !splitMatches) return;
-    onAdd(form);
+    if (editingId && onUpdate) {
+      onUpdate(editingId, form);
+    } else {
+      onAdd(form);
+    }
     resetAll();
     setOpen(false);
   };
@@ -320,6 +326,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
     setTouched({ principal: false, interest: false });
     setPrincipalOnly(false);
     setMode('single');
+    setEditingId(null);
     setDateMode('recurring');
     setBulkStart(formatDateString(new Date()));
     setBulkCount(3);
@@ -380,6 +387,24 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
     });
     setTouched({ principal: true, interest: true });
     setMode('single');
+    setEditingId(null);
+    setOpen(true);
+  };
+
+  const handleEdit = (p: LoanPayment) => {
+    setForm({
+      loan_id: loanId,
+      payment_date: p.payment_date,
+      amount: p.amount ?? 0,
+      principal_portion: p.principal_portion ?? null,
+      interest_portion: p.interest_portion ?? null,
+      late_fee: p.late_fee ?? null,
+      notes: p.notes ?? null,
+    });
+    setTouched({ principal: true, interest: true });
+    setPrincipalOnly((p.interest_portion ?? 0) === 0 && (p.principal_portion ?? 0) > 0 && (p.amount ?? 0) > 0);
+    setMode('single');
+    setEditingId(p.id);
     setOpen(true);
   };
 
@@ -481,9 +506,24 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
                           <Pencil className="h-4 w-4" />
                         </button>
                       ) : (
-                        <button onClick={() => onDelete(p.id)} className="text-muted-foreground hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          {onUpdate && (
+                            <button
+                              onClick={() => handleEdit(p)}
+                              className="text-muted-foreground hover:text-primary p-1"
+                              title="Edit payment"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => onDelete(p.id)}
+                            className="text-muted-foreground hover:text-destructive p-1"
+                            title="Delete payment"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -501,7 +541,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
           onEscapeKeyDown={(e) => { if (mode === 'bulk') e.preventDefault(); }}
         >
           <DialogHeader>
-            <DialogTitle>Log Payment{mode === 'bulk' ? 's' : ''}</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit Payment' : `Log Payment${mode === 'bulk' ? 's' : ''}`}</DialogTitle>
           </DialogHeader>
 
           {/* Mode switcher */}
@@ -635,7 +675,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
 
               <DialogFooter>
                 <Button variant="outline" onClick={forceClose}>Cancel</Button>
-                <Button onClick={handleSubmit} disabled={!form.amount || !splitMatches}>Log Payment</Button>
+                <Button onClick={handleSubmit} disabled={!form.amount || !splitMatches}>{editingId ? 'Save Changes' : 'Log Payment'}</Button>
               </DialogFooter>
             </div>
           ) : (

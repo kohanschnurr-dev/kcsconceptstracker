@@ -56,7 +56,7 @@ export default function LoanDetail() {
   const { deleteLoan } = useLoans();
   
 
-  const { loan, draws, payments, extensions, isLoading, upsertDraw, deleteDraw, addPayment, deletePayment, addExtension, deleteExtension, updateLoan } = useLoanDetail(id!);
+  const { loan, draws, payments, extensions, isLoading, upsertDraw, deleteDraw, addPayment, updatePayment, deletePayment, addExtension, deleteExtension, updateLoan } = useLoanDetail(id!);
 
   if (isLoading) {
     return (
@@ -588,6 +588,7 @@ export default function LoanDetail() {
                 draws={draws}
                 extensions={extensions}
                 onAdd={p => addPayment.mutate(p)}
+                onUpdate={(pid, p) => updatePayment.mutate({ id: pid, ...p })}
                 onDelete={id => deletePayment.mutate(id)}
               />
             </div>
