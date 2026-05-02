@@ -14,6 +14,7 @@ import {
   Bell,
   Landmark,
   Phone,
+  ShieldAlert,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -55,6 +56,7 @@ export function Sidebar() {
     { icon: ShoppingCart, label: 'Procurement', path: '/procurement', matchPaths: ['/procurement', '/bundles'] },
     { icon: Users, label: 'Contractors', path: '/vendors' },
     { icon: Phone, label: 'CRM', path: '/crm' },
+    { icon: ShieldAlert, label: 'FW Leads', path: '/fw-leads' },
     { icon: Briefcase, label: companyName, path: '/business-expenses' },
   ];
 

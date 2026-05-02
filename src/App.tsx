@@ -42,6 +42,7 @@ import Loans from "./pages/Loans";
 import LoanDetail from "./pages/LoanDetail";
 import CRM from "./pages/CRM";
 import CRMContactDetail from "./pages/CRMContactDetail";
+import FWLeads from "./pages/FWLeads";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 
@@ -92,6 +93,7 @@ const App = () => (
             <Route path="/loans/:id" element={<ProtectedRoute><LoanDetail /></ProtectedRoute>} />
             <Route path="/crm" element={<ProtectedRoute><CRM /></ProtectedRoute>} />
             <Route path="/crm/:id" element={<ProtectedRoute><CRMContactDetail /></ProtectedRoute>} />
+            <Route path="/fw-leads" element={<ProtectedRoute><FWLeads /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
             {/* Admin — email-gated, no nav links */}

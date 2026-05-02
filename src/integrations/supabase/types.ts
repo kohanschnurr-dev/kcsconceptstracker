@@ -59,6 +59,54 @@ export type Database = {
         }
         Relationships: []
       }
+      fw_code_leads: {
+        Row: {
+          id: string
+          address: string
+          type: string | null
+          open_date: string | null
+          status: string | null
+          case_number: string | null
+          notes: string | null
+          skipped: boolean | null
+          pipeline: boolean | null
+          checked: boolean | null
+          lat: number | null
+          lng: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          address: string
+          type?: string | null
+          open_date?: string | null
+          status?: string | null
+          case_number?: string | null
+          notes?: string | null
+          skipped?: boolean | null
+          pipeline?: boolean | null
+          checked?: boolean | null
+          lat?: number | null
+          lng?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          address?: string
+          type?: string | null
+          open_date?: string | null
+          status?: string | null
+          case_number?: string | null
+          notes?: string | null
+          skipped?: boolean | null
+          pipeline?: boolean | null
+          checked?: boolean | null
+          lat?: number | null
+          lng?: number | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       business_expenses: {
         Row: {
           amount: number
