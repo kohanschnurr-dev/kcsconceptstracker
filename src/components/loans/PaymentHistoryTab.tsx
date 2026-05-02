@@ -282,7 +282,11 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
   // ── Single-payment submit
   const handleSubmit = () => {
     if (!form.amount || !splitMatches) return;
-    onAdd(form);
+    if (editingId && onUpdate) {
+      onUpdate(editingId, form);
+    } else {
+      onAdd(form);
+    }
     resetAll();
     setOpen(false);
   };
