@@ -292,6 +292,64 @@ export function useLoanDetail(loanId: string) {
     },
   });
 
+  const updatePayment = useMutation({
+    mutationFn: async ({ id, ...payment }: Omit<LoanPayment, 'created_at'>) => {
+      // Fetch existing row to compute principal delta
+      const { data: existing } = await paymentsTable()
+        .select('principal_portion, interest_portion, amount, late_fee, loan_id')
+        .eq('id', id)
+        .single();
+      const e = (existing as any) ?? {};
+      const oldPrincipal =
+        e.principal_portion != null
+          ? e.principal_portion
+          : Math.max(0, (e.amount ?? 0) - (e.interest_portion ?? 0) - (e.late_fee ?? 0));
+
+      const { payment_date, loan_id, ...rest } = payment as any;
+      const updateRow: Record<string, any> = {
+        ...rest,
+        date: payment_date,
+      };
+      const { error } = await paymentsTable().update(updateRow).eq('id', id);
+      if (error) throw error;
+
+      const newLateFee = (payment as any).late_fee ?? 0;
+      const newInterest = payment.interest_portion ?? 0;
+      const newPrincipal =
+        payment.principal_portion != null
+          ? payment.principal_portion
+          : Math.max(0, (payment.amount ?? 0) - newInterest - newLateFee);
+
+      const delta = newPrincipal - oldPrincipal; // positive = more principal paid
+      const targetLoanId = loan_id ?? e.loan_id;
+      if (delta !== 0 && targetLoanId) {
+        const { data: currentLoan } = await loansTable()
+          .select('outstanding_balance, status, original_amount')
+          .eq('id', targetLoanId)
+          .single();
+        if (currentLoan) {
+          const cap = (currentLoan as any).original_amount ?? Infinity;
+          const prev = (currentLoan as any).outstanding_balance ?? 0;
+          const newBalance = Math.min(cap, Math.max(0, prev - delta));
+          const update: Record<string, any> = { outstanding_balance: newBalance };
+          if (newBalance === 0 && (currentLoan as any).status !== 'paid_off') {
+            update.status = 'paid_off';
+          } else if (newBalance > 0 && (currentLoan as any).status === 'paid_off') {
+            update.status = 'active';
+          }
+          await loansTable().update(update).eq('id', targetLoanId);
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loan_payments', loanId] });
+      queryClient.invalidateQueries({ queryKey: ['loan', loanId] });
+      queryClient.invalidateQueries({ queryKey: ['loans'] });
+      toast({ title: 'Payment updated' });
+    },
+    onError: (e: Error) => toast({ title: 'Error updating payment', description: e.message, variant: 'destructive' }),
+  });
+
   // Extensions
   const { data: extensions = [], isLoading: extensionsLoading } = useQuery<any[]>({
     queryKey: ['loan_extensions', loanId],
