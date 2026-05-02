@@ -415,6 +415,15 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
         >Today</Button>
       </div>
 
+      {/* Top horizontal scrollbar — mirrors the chart's scroll for easy access */}
+      <div
+        ref={topScrollRef}
+        className="overflow-x-auto rounded-lg border border-border"
+        style={{ height: 14 }}
+      >
+        <div style={{ width: CHART_MIN, height: 1 }} />
+      </div>
+
       {/* Chart container — horizontal scroll on overflow, frozen left col */}
       <div ref={scrollRef} className="overflow-x-auto rounded-lg border border-border">
         <div ref={innerRef} style={{ minWidth: CHART_MIN }}>
