@@ -411,6 +411,7 @@ export function useLoanDetail(loanId: string) {
     upsertDraw,
     deleteDraw,
     addPayment,
+    updatePayment,
     deletePayment,
     addExtension,
     deleteExtension,
