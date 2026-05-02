@@ -387,6 +387,24 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
     });
     setTouched({ principal: true, interest: true });
     setMode('single');
+    setEditingId(null);
+    setOpen(true);
+  };
+
+  const handleEdit = (p: LoanPayment) => {
+    setForm({
+      loan_id: loanId,
+      payment_date: p.payment_date,
+      amount: p.amount ?? 0,
+      principal_portion: p.principal_portion ?? null,
+      interest_portion: p.interest_portion ?? null,
+      late_fee: p.late_fee ?? null,
+      notes: p.notes ?? null,
+    });
+    setTouched({ principal: true, interest: true });
+    setPrincipalOnly((p.interest_portion ?? 0) === 0 && (p.principal_portion ?? 0) > 0 && (p.amount ?? 0) > 0);
+    setMode('single');
+    setEditingId(p.id);
     setOpen(true);
   };
 
