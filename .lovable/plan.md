@@ -1,12 +1,27 @@
-## Fix: Top Gantt scrollbar not visible
+## Add Edit to Loan Payments
 
-The mirror scrollbar div is rendered, but it uses `overflow-x-auto` with only a 1px-tall inner spacer. WebKit may not paint the scrollbar reliably in that case, and the 14px height is shorter than the global 10px-thumb + 2px borders. It also lacks contrast against the page background.
+Currently, manual payments in the Payment History table only have a Delete button. Auto-derived payments have a "Pencil" (Override) button that opens the Log Payment modal pre-filled. We'll add the same edit affordance to manual payments and properly persist updates.
 
-### Changes (single file: `src/components/calendar/GanttView.tsx`)
+### Changes
 
-1. Force the scrollbar to always render: change `overflow-x-auto` → `overflow-x-scroll` and add `overflow-y-hidden`.
-2. Bump height from 14px → 18px so the themed thumb (10px + 2px border) has room.
-3. Give the strip a visible track using `bg-secondary/30` and make it `sticky top-0 z-40` so it stays in view as the user scrolls the page vertically through long project lists (which was the original goal).
-4. Keep the existing scroll-sync effect between `topScrollRef` and `scrollRef` — no logic changes.
+**1. `src/hooks/useLoans.ts` — new `updatePayment` mutation**
+- Accepts `{ id, ...fields }`.
+- Fetches the existing payment row to know its prior `principal_portion` (with the same fallback used by `addPayment`/`deletePayment`).
+- Updates the row in `loan_payments` (date, amount, principal_portion, interest_portion, late_fee, notes).
+- Adjusts the loan's `outstanding_balance` by the **delta** between old and new principal paid (clamped at 0, capped at `original_amount`), and flips `status` between `active`/`paid_off` accordingly — matching existing add/delete logic.
+- Invalidates `loan_payments`, `loan`, `loans` queries; toast "Payment updated".
 
-No other files touched. No new dependencies.
+**2. `src/components/loans/PaymentHistoryTab.tsx`**
+- Add optional prop `onUpdate?: (id: string, p: Omit<LoanPayment,'id'|'created_at'>) => void`.
+- Track an `editingId: string | null` state. Add `handleEdit(p)` (mirrors `handleOverride` but stores the id).
+- In the manual-row action cell, render both a Pencil (calls `handleEdit(p)`) and the existing Trash button.
+- In `handleSubmit`, if `editingId` is set call `onUpdate(editingId, form)`, else `onAdd(form)`. Clear `editingId` in `resetAll`.
+- Update `DialogTitle` to show "Edit Payment" when `editingId` is set.
+- Keep the bulk mode unaffected (force `mode='single'` when editing).
+
+**3. `src/pages/LoanDetail.tsx`**
+- Pass `onUpdate={(id, p) => updatePayment.mutate({ id, ...p })}` into `<PaymentHistoryTab />`.
+
+### Notes
+- Auto-payment rows continue to use the existing "Override" flow (which inserts a new manual payment for that month). No change there.
+- Validation rules (split must equal amount unless principal-only) already apply since we reuse the same single-payment form.
