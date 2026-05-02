@@ -28,6 +28,7 @@ interface PaymentHistoryTabProps {
   draws?: LoanDraw[];
   extensions?: { extended_to: string }[];
   onAdd: (p: Omit<LoanPayment, 'id' | 'created_at'>) => void;
+  onUpdate?: (id: string, p: Omit<LoanPayment, 'id' | 'created_at'>) => void;
   onDelete: (id: string) => void;
 }
 
