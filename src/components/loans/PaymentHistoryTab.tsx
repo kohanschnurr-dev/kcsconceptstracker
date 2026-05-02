@@ -675,7 +675,7 @@ export function PaymentHistoryTab({ payments, manualPayments, loanId, loan, draw
 
               <DialogFooter>
                 <Button variant="outline" onClick={forceClose}>Cancel</Button>
-                <Button onClick={handleSubmit} disabled={!form.amount || !splitMatches}>Log Payment</Button>
+                <Button onClick={handleSubmit} disabled={!form.amount || !splitMatches}>{editingId ? 'Save Changes' : 'Log Payment'}</Button>
               </DialogFooter>
             </div>
           ) : (
