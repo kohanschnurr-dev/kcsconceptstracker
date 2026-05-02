@@ -120,6 +120,23 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
   const [containerWidth, setContainerWidth] = useState(900);
   const innerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+
+  // Sync top and bottom horizontal scrollbars
+  useEffect(() => {
+    const top = topScrollRef.current;
+    const bot = scrollRef.current;
+    if (!top || !bot) return;
+    let lock = false;
+    const onTop = () => { if (lock) return; lock = true; bot.scrollLeft = top.scrollLeft; lock = false; };
+    const onBot = () => { if (lock) return; lock = true; top.scrollLeft = bot.scrollLeft; lock = false; };
+    top.addEventListener('scroll', onTop);
+    bot.addEventListener('scroll', onBot);
+    return () => {
+      top.removeEventListener('scroll', onTop);
+      bot.removeEventListener('scroll', onBot);
+    };
+  }, []);
 
   // Track the rendered width of the inner chart div for SVG arrow coordinates
   useEffect(() => {
@@ -396,6 +413,15 @@ export function GanttView({ currentDate, tasks, onTaskClick, onTaskMove, onAddEv
           className="h-7 px-3 text-xs rounded-full shrink-0"
           onClick={scrollToToday}
         >Today</Button>
+      </div>
+
+      {/* Top horizontal scrollbar — mirrors the chart's scroll for easy access */}
+      <div
+        ref={topScrollRef}
+        className="overflow-x-auto rounded-lg border border-border"
+        style={{ height: 14 }}
+      >
+        <div style={{ width: CHART_MIN, height: 1 }} />
       </div>
 
       {/* Chart container — horizontal scroll on overflow, frozen left col */}
