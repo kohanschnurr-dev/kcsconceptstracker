@@ -54,6 +54,7 @@ export default function LoanDetail() {
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [paidOffOpen, setPaidOffOpen] = useState(false);
   const { deleteLoan } = useLoans();
   
 
