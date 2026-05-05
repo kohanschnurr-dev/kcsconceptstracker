@@ -280,9 +280,13 @@ export default function LoanDetail() {
                 <DropdownMenuItem onClick={() => setEditOpen(true)}>
                   <Edit2 className="h-4 w-4 mr-2" /> Edit
                 </DropdownMenuItem>
-                {loan.status === 'active' && (
+                {loan.status === 'active' ? (
                   <DropdownMenuItem onClick={handleMarkPaidOff}>
                     <CheckCircle2 className="h-4 w-4 mr-2" /> Mark Paid Off
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => updateLoan.mutate({ id: loan.id, status: 'active' })}>
+                    <RotateCcw className="h-4 w-4 mr-2" /> Reopen as Active
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
