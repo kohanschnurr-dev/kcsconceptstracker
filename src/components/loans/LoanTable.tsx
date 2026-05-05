@@ -81,7 +81,7 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
   const initialDefault = useMemo(readDefaultView, []);
   const initialState = useMemo(() => toggleToState(initialDefault), [initialDefault]);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('active');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
