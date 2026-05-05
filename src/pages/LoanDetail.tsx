@@ -113,7 +113,29 @@ export default function LoanDetail() {
   const liveAccruedInterest = currentAccruedInterest(loan, payments, draws, extensions);
 
   const handleMarkPaidOff = () => {
-    updateLoan.mutate({ id: loan.id, status: 'paid_off', outstanding_balance: 0 });
+    setPaidOffOpen(true);
+  };
+
+  const handlePaidOffConfirm = async (params: {
+    mode: 'log_payment' | 'silent';
+    payoffDate: string;
+    principal: number;
+    interest: number;
+    lateFee: number;
+    notes: string;
+  }) => {
+    if (params.mode === 'log_payment' && (params.principal + params.interest + params.lateFee) > 0) {
+      await addPayment.mutateAsync({
+        loan_id: loan.id,
+        payment_date: params.payoffDate,
+        amount: params.principal + params.interest + params.lateFee,
+        principal_portion: params.principal,
+        interest_portion: params.interest,
+        late_fee: params.lateFee || null,
+        notes: params.notes || 'Loan payoff',
+      } as any);
+    }
+    await updateLoan.mutateAsync({ id: loan.id, status: 'paid_off', outstanding_balance: 0 });
   };
 
   const handleEdit = async (
