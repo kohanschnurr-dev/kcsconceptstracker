@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, CheckCircle2, DollarSign, Percent,
-  CreditCard, Calendar, CalendarClock, TrendingDown, Landmark, Info, ChevronDown, Trash2, MoreVertical,
+  CreditCard, Calendar, CalendarClock, TrendingDown, Landmark, Info, ChevronDown, Trash2, MoreVertical, RotateCcw,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
@@ -280,9 +280,13 @@ export default function LoanDetail() {
                 <DropdownMenuItem onClick={() => setEditOpen(true)}>
                   <Edit2 className="h-4 w-4 mr-2" /> Edit
                 </DropdownMenuItem>
-                {loan.status === 'active' && (
+                {loan.status === 'active' ? (
                   <DropdownMenuItem onClick={handleMarkPaidOff}>
                     <CheckCircle2 className="h-4 w-4 mr-2" /> Mark Paid Off
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => updateLoan.mutate({ id: loan.id, status: 'active' })}>
+                    <RotateCcw className="h-4 w-4 mr-2" /> Reopen as Active
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
