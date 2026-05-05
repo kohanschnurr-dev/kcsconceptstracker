@@ -210,11 +210,13 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center gap-1 flex-1">
               <button
-                onClick={() => i < step || i === step ? setStep(i) : undefined}
+                type="button"
+                onClick={() => (initialData?.id || i <= step) && setStep(i)}
                 className={cn(
                   'h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 transition-colors',
-                  i < step ? 'bg-success text-success-foreground cursor-pointer' :
+                  i < step ? 'bg-success text-success-foreground cursor-pointer hover:opacity-80' :
                   i === step ? 'bg-primary text-primary-foreground' :
+                  initialData?.id ? 'bg-muted text-muted-foreground cursor-pointer hover:bg-muted/80' :
                   'bg-muted text-muted-foreground',
                 )}
               >
