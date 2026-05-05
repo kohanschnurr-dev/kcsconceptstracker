@@ -186,10 +186,8 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
       <Dialog open={drill !== null} onOpenChange={(o) => !o && setDrill(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-baseline justify-between gap-3">
-              <span>{current?.title}</span>
-              <span className="text-base font-semibold text-muted-foreground">{current?.total}</span>
-            </DialogTitle>
+            <DialogTitle>{current?.title}</DialogTitle>
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{current?.total}</p>
           </DialogHeader>
 
           <ScrollArea className="max-h-[60vh] pr-2">
