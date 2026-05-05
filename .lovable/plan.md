@@ -1,27 +1,53 @@
-## Add Edit to Loan Payments
+## Mark Paid Off — Reconciliation Dialog
 
-Currently, manual payments in the Payment History table only have a Delete button. Auto-derived payments have a "Pencil" (Override) button that opens the Log Payment modal pre-filled. We'll add the same edit affordance to manual payments and properly persist updates.
+Today, clicking "Mark Paid Off" silently sets `status='paid_off'` and `outstanding_balance=0`. Result (visible in the screenshot): the loan shows **Paid Off** but **Balance $114,888**, **Interest Accrued $4,888**, and zero payments — books are out of sync.
 
-### Changes
+### Goal
+When a user marks a loan paid off, surface a clean reconciliation modal that accounts for the remaining principal + accrued interest by writing a real payoff payment, so all stats (Balance, Interest Paid, Payment History, Total Cost) stay in line.
 
-**1. `src/hooks/useLoans.ts` — new `updatePayment` mutation**
-- Accepts `{ id, ...fields }`.
-- Fetches the existing payment row to know its prior `principal_portion` (with the same fallback used by `addPayment`/`deletePayment`).
-- Updates the row in `loan_payments` (date, amount, principal_portion, interest_portion, late_fee, notes).
-- Adjusts the loan's `outstanding_balance` by the **delta** between old and new principal paid (clamped at 0, capped at `original_amount`), and flips `status` between `active`/`paid_off` accordingly — matching existing add/delete logic.
-- Invalidates `loan_payments`, `loan`, `loans` queries; toast "Payment updated".
+### New component: `MarkPaidOffDialog`
+File: `src/components/loans/MarkPaidOffDialog.tsx`
 
-**2. `src/components/loans/PaymentHistoryTab.tsx`**
-- Add optional prop `onUpdate?: (id: string, p: Omit<LoanPayment,'id'|'created_at'>) => void`.
-- Track an `editingId: string | null` state. Add `handleEdit(p)` (mirrors `handleOverride` but stores the id).
-- In the manual-row action cell, render both a Pencil (calls `handleEdit(p)`) and the existing Trash button.
-- In `handleSubmit`, if `editingId` is set call `onUpdate(editingId, form)`, else `onAdd(form)`. Clear `editingId` in `resetAll`.
-- Update `DialogTitle` to show "Edit Payment" when `editingId` is set.
-- Keep the bulk mode unaffected (force `mode='single'` when editing).
+Pre-fills from current loan state:
+- **Payoff Date** — date picker, defaults to today
+- **Remaining Principal** — `effectiveBalance` (read-only, with edit toggle)
+- **Accrued Interest** — `liveAccruedInterest` (read-only, with edit toggle)
+- **Late Fee / Other** — optional
+- **Total Payoff** — auto-sum, big bold number
+- **Notes** — optional ("Refi proceeds", "Sale at closing", etc.)
 
-**3. `src/pages/LoanDetail.tsx`**
-- Pass `onUpdate={(id, p) => updatePayment.mutate({ id, ...p })}` into `<PaymentHistoryTab />`.
+Three action choices (radio):
+1. **Log final payoff payment** (default, recommended) — creates a `loan_payments` row and sets status to `paid_off`. This zeroes principal AND records interest.
+2. **Mark paid off without recording payment** — keeps current "silent" behavior, but with an inline warning: *"Balance and interest will not appear in payment history. Use only if already tracked elsewhere."*
+3. **Cancel**
 
-### Notes
-- Auto-payment rows continue to use the existing "Override" flow (which inserts a new manual payment for that month). No change there.
-- Validation rules (split must equal amount unless principal-only) already apply since we reuse the same single-payment form.
+If principal + interest = 0 (already fully paid via prior payments), skip the dialog entirely and just flip status — no friction.
+
+### Wiring in `LoanDetail.tsx`
+Replace the current `handleMarkPaidOff` with a state-controlled dialog open. On confirm with option 1:
+```ts
+addPayment.mutate({
+  payment_date: payoffDate,
+  amount: principal + interest + lateFee,
+  principal_portion: principal,
+  interest_portion: interest,
+  late_fee: lateFee || null,
+  notes: notes || 'Loan payoff',
+});
+// after success:
+updateLoan.mutate({ id: loan.id, status: 'paid_off', outstanding_balance: 0 });
+```
+
+The existing `addPayment` mutation already adjusts `outstanding_balance` by principal delta, so the second `updateLoan` call only needs to set status — but we'll explicitly set balance to 0 as a safety net.
+
+### Empty / edge-case handling
+- **No accrued interest, no balance** → confirm-only toast, no payoff form fields shown.
+- **Has draws but loan_type doesn't accrue** → only show principal field.
+- **Amortizing loan (DSCR/conventional) with auto-derived payments** → use `effectiveBalance` (which already nets auto rows) so we don't double-count.
+- All numbers use the same `fmt()` and breakdown logic already in `LoanDetail.tsx` so the dialog's totals match the header cards exactly.
+
+### Files touched
+- **NEW** `src/components/loans/MarkPaidOffDialog.tsx`
+- `src/pages/LoanDetail.tsx` — replace `handleMarkPaidOff`, mount dialog, pass `addPayment` + `updateLoan`.
+
+No DB migration needed — uses existing `loan_payments` insert path.
