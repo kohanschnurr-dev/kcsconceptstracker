@@ -630,6 +630,16 @@ export default function LoanDetail() {
         }}
       />
 
+      {/* Mark Paid Off reconciliation */}
+      <MarkPaidOffDialog
+        open={paidOffOpen}
+        onOpenChange={setPaidOffOpen}
+        remainingPrincipal={effectiveBalance}
+        accruedInterest={liveAccruedInterest}
+        loanType={loan.loan_type}
+        onConfirm={handlePaidOffConfirm}
+      />
+
       {/* Delete confirmation */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
