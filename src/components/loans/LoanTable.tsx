@@ -336,7 +336,12 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
         <TableCell className="text-center tabular-nums font-semibold border-l border-border/60">
           {fmt(payoff)}
         </TableCell>
-        <TableCell className="text-sm text-center">{formatDisplayDate(next)}</TableCell>
+        <TableCell className="text-sm text-center">
+          <div>{formatDisplayDate(next)}</div>
+          {loan.monthly_payment != null && loan.monthly_payment > 0 && (
+            <div className="text-xs text-muted-foreground tabular-nums mt-0.5">{fmt(loan.monthly_payment)}</div>
+          )}
+        </TableCell>
         <TableCell className="text-sm text-center">{formatDisplayDate(loan.maturity_date)}</TableCell>
         <TableCell className="text-center"><div className="flex justify-center"><LoanStatusBadge status={loan.status} /></div></TableCell>
       </TableRow>
