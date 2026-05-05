@@ -23,6 +23,7 @@ import { AmortizationTable } from '@/components/loans/AmortizationTable';
 import { InterestScheduleTable } from '@/components/loans/InterestScheduleTable';
 import { PaymentHistoryTab } from '@/components/loans/PaymentHistoryTab';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
+import { MarkPaidOffDialog } from '@/components/loans/MarkPaidOffDialog';
 import { useLoanDetail, useLoans } from '@/hooks/useLoans';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
