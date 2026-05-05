@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, CheckCircle2, DollarSign, Percent,
-  CreditCard, Calendar, CalendarClock, TrendingDown, Landmark, Info, ChevronDown, Trash2, MoreVertical,
+  CreditCard, Calendar, CalendarClock, TrendingDown, Landmark, Info, ChevronDown, Trash2, MoreVertical, RotateCcw,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
