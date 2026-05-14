@@ -14,7 +14,8 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, onClick, isStarred, onToggleStar }: ProjectCardProps) {
-  const totalSpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
+  const categorySpent = project.categories.reduce((sum, cat) => sum + cat.actualSpent, 0);
+  const totalSpent = project.constructionSpent ?? categorySpent;
   const isRental = project.projectType === 'rental';
   const showBudgetProgress = !isRental && project.totalBudget > 0;
   const percentSpent = showBudgetProgress ? (totalSpent / project.totalBudget) * 100 : 0;
