@@ -1,17 +1,13 @@
-## Plan: Auto-unstar projects on completion
+## Plan: Project card budget progress uses construction spent
 
-When a project is marked complete, automatically remove its star so completed projects fall to the back of the list (instead of staying pinned to the front via the star sort).
+The project card's "Budget Progress" currently sums every category's `actualSpent` (showing $175,379 / 114.5%), which doesn't match the project's own "Construction Budget" tile ($157,677.65 / 102.9%).
 
-### Changes
-
-**`src/pages/ProjectDetail.tsx` — `handleCompleteWithDate`**
-- After successfully updating the project to `status: 'complete'`, also remove its ID from the user's `starredProjects` list.
-- Starred projects are stored in `localStorage` under the same key the Projects page reads (`starredProjects`). Update the array in localStorage and dispatch a storage event (or rely on the Projects page re-reading on mount) so the Projects grid reflects the change on next view.
-
-**`src/pages/Projects.tsx` — defensive sort tweak**
-- Treat starred-but-complete projects as unstarred for sort purposes, so any historical starred-complete entries also fall to the back without requiring the user to manually unstar them.
+### Change
+**`src/components/dashboard/ProjectCard.tsx`**
+- Replace `totalSpent = sum(categories.actualSpent)` with `project.constructionSpent` (the same value already piped in from `Projects.tsx` and used in the profit calc below).
+- Fall back to the category sum only when `constructionSpent` is undefined (defensive, for any caller that doesn't supply it).
+- The `Budget Progress` bar, `% used`, and `$X spent` line all read from this new value, so they'll match the construction tile on the detail page.
 
 ### Result
-- Marking a project complete immediately demotes it below all active/on-hold projects.
-- Existing starred-complete projects (like "2808 Old North Rd") drop to the back automatically.
-- The star icon is preserved on the card if the user re-opens the project, but no longer affects ordering once complete.
+- The card on `/projects` will read **$157,678 spent / 102.9%** for 2808 Old North Rd, in sync with the project detail page.
+- No backend / data changes; this is presentation-only.
