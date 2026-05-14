@@ -228,12 +228,13 @@ export default function Projects() {
       return matchesType && matchesSearch && project.status === statusTab;
     });
 
-    // Sort: starred first (in saved order), then by start date descending
+    // Sort: starred (non-complete) first, then by status (active, on-hold, complete), then by start date desc
     return filtered.sort((a, b) => {
       const aStarIdx = starredProjects.indexOf(a.id);
       const bStarIdx = starredProjects.indexOf(b.id);
-      const aStarred = aStarIdx >= 0;
-      const bStarred = bStarIdx >= 0;
+      // Treat complete projects as unstarred for ordering so they sink to the back
+      const aStarred = aStarIdx >= 0 && a.status !== 'complete';
+      const bStarred = bStarIdx >= 0 && b.status !== 'complete';
       if (aStarred && !bStarred) return -1;
       if (!aStarred && bStarred) return 1;
       if (aStarred && bStarred) return aStarIdx - bStarIdx;

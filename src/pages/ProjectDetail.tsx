@@ -534,6 +534,17 @@ export default function ProjectDetail() {
       });
     } else {
       setProject({ ...project, status: 'complete', completed_date: completedDate });
+      // Auto-unstar so completed projects fall to the back of the projects list
+      const starred = Array.isArray((profile as any)?.starred_projects)
+        ? ((profile as any).starred_projects as string[])
+        : [];
+      if (starred.includes(project.id)) {
+        const next = starred.filter((pid) => pid !== project.id);
+        await supabase
+          .from('profiles')
+          .update({ starred_projects: next } as any)
+          .eq('user_id', (profile as any).user_id);
+      }
       toast({
         title: 'Project completed',
         description: `Marked complete on ${format(date, 'MMM d, yyyy')}`,
