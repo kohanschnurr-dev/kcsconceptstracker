@@ -878,8 +878,10 @@ export default function ProjectDetail() {
                   </DialogHeader>
                   <CalendarComponent
                     mode="single"
-                    selected={new Date()}
+                    required
+                    selected={project.completed_date ? parseDateString(project.completed_date) : new Date()}
                     onSelect={(date) => date && handleCompleteWithDate(date)}
+                    defaultMonth={new Date()}
                     className={cn("p-3 pointer-events-auto")}
                   />
                 </DialogContent>
