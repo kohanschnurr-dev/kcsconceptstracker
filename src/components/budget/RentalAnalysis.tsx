@@ -37,17 +37,22 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
   const totalCostBasis = purchasePrice + totalBudget;
   const capRate = totalCostBasis > 0 ? (noi / totalCostBasis) * 100 : 0;
 
-  // Mortgage P&I (amortizing)
+  // Mortgage P&I (amortizing or interest-only)
+  const isInterestOnly = rentalFields.loanType === 'interest_only';
   const monthlyRate = refiRate / 12;
   let monthlyPI = 0;
-  if (refiLoanAmount > 0 && monthlyRate > 0 && refiTerm > 0) {
-    monthlyPI = refiLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, refiTerm)) / (Math.pow(1 + monthlyRate, refiTerm) - 1);
+  if (refiLoanAmount > 0 && monthlyRate > 0) {
+    if (isInterestOnly) {
+      monthlyPI = refiLoanAmount * monthlyRate;
+    } else if (refiTerm > 0) {
+      monthlyPI = refiLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, refiTerm)) / (Math.pow(1 + monthlyRate, refiTerm) - 1);
+    }
   }
 
-  // First-year P&I breakdown (monthly averages)
+  // First-year P&I breakdown (monthly averages) — amortizing only
   let year1Interest = 0;
   let year1Principal = 0;
-  if (refiLoanAmount > 0 && monthlyPI > 0) {
+  if (!isInterestOnly && refiLoanAmount > 0 && monthlyPI > 0) {
     let balance = refiLoanAmount;
     for (let i = 0; i < 12; i++) {
       const interestM = balance * monthlyRate;
