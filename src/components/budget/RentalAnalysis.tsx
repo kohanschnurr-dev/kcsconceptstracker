@@ -44,6 +44,22 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
     monthlyPI = refiLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, refiTerm)) / (Math.pow(1 + monthlyRate, refiTerm) - 1);
   }
 
+  // First-year P&I breakdown (monthly averages)
+  let year1Interest = 0;
+  let year1Principal = 0;
+  if (refiLoanAmount > 0 && monthlyPI > 0) {
+    let balance = refiLoanAmount;
+    for (let i = 0; i < 12; i++) {
+      const interestM = balance * monthlyRate;
+      const principalM = monthlyPI - interestM;
+      year1Interest += interestM;
+      year1Principal += principalM;
+      balance -= principalM;
+    }
+  }
+  const avgInterest = year1Interest / 12;
+  const avgPrincipal = year1Principal / 12;
+
   const monthlyCashFlow = effectiveMonthlyRent - monthlyOpex - monthlyPI;
   const annualCashFlow = monthlyCashFlow * 12;
 
@@ -95,10 +111,20 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
                 <span className="font-mono">{formatCurrency(monthlyOpex)}</span>
               </div>
               {refiLoanAmount > 0 && (
-                <div className="flex justify-between">
-                  <span>Mortgage P&I</span>
-                  <span className="font-mono">{formatCurrency(monthlyPI)}</span>
-                </div>
+                <>
+                  <div className="flex justify-between">
+                    <span>Principal (Yr 1 avg)</span>
+                    <span className="font-mono">{formatCurrency(avgPrincipal)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Interest (Yr 1 avg)</span>
+                    <span className="font-mono text-destructive">{formatCurrency(avgInterest)}</span>
+                  </div>
+                  <div className="flex justify-between font-medium border-t pt-1">
+                    <span>Total P&I</span>
+                    <span className="font-mono">{formatCurrency(monthlyPI)}</span>
+                  </div>
+                </>
               )}
             </div>
           </div>
