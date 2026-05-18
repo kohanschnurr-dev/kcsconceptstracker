@@ -111,10 +111,20 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
                 <span className="font-mono">{formatCurrency(monthlyOpex)}</span>
               </div>
               {refiLoanAmount > 0 && (
-                <div className="flex justify-between">
-                  <span>Mortgage P&I</span>
-                  <span className="font-mono">{formatCurrency(monthlyPI)}</span>
-                </div>
+                <>
+                  <div className="flex justify-between">
+                    <span>Principal (Yr 1 avg)</span>
+                    <span className="font-mono">{formatCurrency(avgPrincipal)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Interest (Yr 1 avg)</span>
+                    <span className="font-mono text-destructive">{formatCurrency(avgInterest)}</span>
+                  </div>
+                  <div className="flex justify-between font-medium border-t pt-1">
+                    <span>Total P&I</span>
+                    <span className="font-mono">{formatCurrency(monthlyPI)}</span>
+                  </div>
+                </>
               )}
             </div>
           </div>
