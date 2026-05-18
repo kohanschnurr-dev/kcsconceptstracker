@@ -155,9 +155,31 @@ export function RentalFields({ values, onChange, arv, purchasePrice }: RentalFie
 
       {/* Loan Section */}
       <Separator />
-      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        Loan
-      </h4>
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Loan
+        </h4>
+        <div className="flex rounded border border-input overflow-hidden">
+          <button
+            type="button"
+            className={`text-[10px] font-mono font-medium px-2 py-0.5 transition-colors ${
+              values.loanType !== 'interest_only' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent'
+            }`}
+            onClick={() => onChange('loanType', 'amortizing')}
+          >
+            AMORTIZING
+          </button>
+          <button
+            type="button"
+            className={`text-[10px] font-mono font-medium px-2 py-0.5 transition-colors ${
+              values.loanType === 'interest_only' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent'
+            }`}
+            onClick={() => onChange('loanType', 'interest_only')}
+          >
+            INTEREST-ONLY
+          </button>
+        </div>
+      </div>
 
       <div className="space-y-3">
         <div className="space-y-2">
