@@ -20,6 +20,7 @@ export interface RentalFieldValues {
   refiPoints: string;
   refiPointsMode: 'pct' | 'flat';
   refiLtvBase: 'arv' | 'purchase';
+  loanType: 'amortizing' | 'interest_only';
 }
 
 interface RentalFieldsProps {
