@@ -54,6 +54,7 @@ const defaultRentalFields: RentalFieldValues = {
   refiRate: '',
   refiTerm: '',
   refiLtvBase: 'arv' as const,
+  loanType: 'amortizing' as const,
 };
 
 export default function BudgetCalculator() {
