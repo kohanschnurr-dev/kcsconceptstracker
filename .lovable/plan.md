@@ -1,13 +1,30 @@
-## Plan: Project card budget progress uses construction spent
+## Plan: Break out P&I in Cash Flow Analysis
 
-The project card's "Budget Progress" currently sums every category's `actualSpent` (showing $175,379 / 114.5%), which doesn't match the project's own "Construction Budget" tile ($157,677.65 / 102.9%).
+In `src/components/budget/RentalAnalysis.tsx`, replace the single "Mortgage P&I" row in the Monthly Expenses column with three rows showing the **first-year averages** of an amortization schedule:
 
-### Change
-**`src/components/dashboard/ProjectCard.tsx`**
-- Replace `totalSpent = sum(categories.actualSpent)` with `project.constructionSpent` (the same value already piped in from `Projects.tsx` and used in the profit calc below).
-- Fall back to the category sum only when `constructionSpent` is undefined (defensive, for any caller that doesn't supply it).
-- The `Budget Progress` bar, `% used`, and `$X spent` line all read from this new value, so they'll match the construction tile on the detail page.
+- **Principal (Yr 1 avg)** — average monthly principal across payments 1–12
+- **Interest (Yr 1 avg)** — average monthly interest across payments 1–12
+- **Total P&I** — sum (= existing `monthlyPI`), kept as a bold subtotal row so the cash-flow math stays unchanged
 
-### Result
-- The card on `/projects` will read **$157,678 spent / 102.9%** for 2808 Old North Rd, in sync with the project detail page.
-- No backend / data changes; this is presentation-only.
+### Calculation
+
+Standard amortization, no new inputs:
+```
+balance = refiLoanAmount
+for month 1..12:
+  interest_m = balance * monthlyRate
+  principal_m = monthlyPI - interest_m
+  balance -= principal_m
+year1Interest = sum(interest_m)
+year1Principal = sum(principal_m)
+avgInterest = year1Interest / 12
+avgPrincipal = year1Principal / 12
+```
+
+Only render the breakdown when `refiLoanAmount > 0` (same guard as today). Interest shown in `text-destructive`, principal in default, total in `font-medium` with a top border — matches the styling pattern already used in the Income column.
+
+### Scope
+
+- Single file: `src/components/budget/RentalAnalysis.tsx`
+- Presentation-only; no changes to cash flow, NOI, or returns math
+- No new props, no schema changes

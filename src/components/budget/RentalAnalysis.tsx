@@ -44,6 +44,22 @@ export function RentalAnalysis({ purchasePrice, arv, totalBudget, rentalFields, 
     monthlyPI = refiLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, refiTerm)) / (Math.pow(1 + monthlyRate, refiTerm) - 1);
   }
 
+  // First-year P&I breakdown (monthly averages)
+  let year1Interest = 0;
+  let year1Principal = 0;
+  if (refiLoanAmount > 0 && monthlyPI > 0) {
+    let balance = refiLoanAmount;
+    for (let i = 0; i < 12; i++) {
+      const interestM = balance * monthlyRate;
+      const principalM = monthlyPI - interestM;
+      year1Interest += interestM;
+      year1Principal += principalM;
+      balance -= principalM;
+    }
+  }
+  const avgInterest = year1Interest / 12;
+  const avgPrincipal = year1Principal / 12;
+
   const monthlyCashFlow = effectiveMonthlyRent - monthlyOpex - monthlyPI;
   const annualCashFlow = monthlyCashFlow * 12;
 
