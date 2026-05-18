@@ -237,13 +237,19 @@ export function RentalFields({ values, onChange, arv, purchasePrice }: RentalFie
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="refiTerm" className="text-xs">Term (yrs)</Label>
+            <Label htmlFor="refiTerm" className="text-xs">
+              Term (yrs)
+              {values.loanType === 'interest_only' && (
+                <span className="ml-1 text-[10px] text-muted-foreground">n/a</span>
+              )}
+            </Label>
             <Input
               id="refiTerm"
               type="number"
               placeholder="30"
               className="font-mono text-xs h-9"
-              value={values.refiTerm}
+              value={values.loanType === 'interest_only' ? '' : values.refiTerm}
+              disabled={values.loanType === 'interest_only'}
               onChange={(e) => onChange('refiTerm', e.target.value)}
             />
           </div>
