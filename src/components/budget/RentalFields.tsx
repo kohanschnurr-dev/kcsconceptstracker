@@ -20,6 +20,7 @@ export interface RentalFieldValues {
   refiPoints: string;
   refiPointsMode: 'pct' | 'flat';
   refiLtvBase: 'arv' | 'purchase';
+  loanType: 'amortizing' | 'interest_only';
 }
 
 interface RentalFieldsProps {
@@ -154,9 +155,31 @@ export function RentalFields({ values, onChange, arv, purchasePrice }: RentalFie
 
       {/* Loan Section */}
       <Separator />
-      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        Loan
-      </h4>
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Loan
+        </h4>
+        <div className="flex rounded border border-input overflow-hidden">
+          <button
+            type="button"
+            className={`text-[10px] font-mono font-medium px-2 py-0.5 transition-colors ${
+              values.loanType !== 'interest_only' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent'
+            }`}
+            onClick={() => onChange('loanType', 'amortizing')}
+          >
+            AMORTIZING
+          </button>
+          <button
+            type="button"
+            className={`text-[10px] font-mono font-medium px-2 py-0.5 transition-colors ${
+              values.loanType === 'interest_only' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent'
+            }`}
+            onClick={() => onChange('loanType', 'interest_only')}
+          >
+            INTEREST-ONLY
+          </button>
+        </div>
+      </div>
 
       <div className="space-y-3">
         <div className="space-y-2">
@@ -214,13 +237,19 @@ export function RentalFields({ values, onChange, arv, purchasePrice }: RentalFie
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="refiTerm" className="text-xs">Term (yrs)</Label>
+            <Label htmlFor="refiTerm" className="text-xs">
+              Term (yrs)
+              {values.loanType === 'interest_only' && (
+                <span className="ml-1 text-[10px] text-muted-foreground">n/a</span>
+              )}
+            </Label>
             <Input
               id="refiTerm"
               type="number"
               placeholder="30"
               className="font-mono text-xs h-9"
-              value={values.refiTerm}
+              value={values.loanType === 'interest_only' ? '' : values.refiTerm}
+              disabled={values.loanType === 'interest_only'}
               onChange={(e) => onChange('refiTerm', e.target.value)}
             />
           </div>
