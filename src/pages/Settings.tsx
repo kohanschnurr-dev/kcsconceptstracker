@@ -43,6 +43,7 @@ import DashboardPreferencesCard from '@/components/settings/DashboardPreferences
 import FinancialPresetsCard from '@/components/settings/FinancialPresetsCard';
 import NotificationPreferencesCard from '@/components/settings/NotificationPreferencesCard';
 import QuickBooksConnectionCard from '@/components/settings/QuickBooksConnectionCard';
+import RecycleBinSection from '@/components/settings/RecycleBinSection';
 
 export default function Settings() {
   const { user } = useAuth();
