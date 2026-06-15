@@ -602,6 +602,54 @@ export type Database = {
           },
         ]
       }
+      demo_bookings: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          role: string | null
+          slot_at: string
+          slot_duration_minutes: number
+          status: string
+          timezone: string | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          slot_at: string
+          slot_duration_minutes?: number
+          status?: string
+          timezone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          slot_at?: string
+          slot_duration_minutes?: number
+          status?: string
+          timezone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       document_folders: {
         Row: {
           color: string | null
