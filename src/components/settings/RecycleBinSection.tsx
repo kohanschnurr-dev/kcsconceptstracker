@@ -41,13 +41,24 @@ export default function RecycleBinSection() {
     setLoading(true);
     const { data, error } = await supabase
       .from('projects')
-      .select('id, name, address, project_type, deleted_at, photo_url')
+      .select('id, name, address, project_type, deleted_at')
       .not('deleted_at', 'is', null)
       .order('deleted_at', { ascending: false });
     if (error) {
       toast.error('Failed to load Recycle Bin');
     } else {
-      setItems((data ?? []) as BinProject[]);
+      const ids = (data ?? []).map((p: any) => p.id);
+      let photoMap: Record<string, string> = {};
+      if (ids.length > 0) {
+        const { data: photos } = await supabase
+          .from('project_photos')
+          .select('project_id, photo_url')
+          .in('project_id', ids);
+        for (const ph of (photos ?? []) as any[]) {
+          if (!photoMap[ph.project_id]) photoMap[ph.project_id] = ph.photo_url;
+        }
+      }
+      setItems(((data ?? []) as any[]).map((p) => ({ ...p, photo_url: photoMap[p.id] ?? null })) as BinProject[]);
     }
     setLoading(false);
   }, []);
