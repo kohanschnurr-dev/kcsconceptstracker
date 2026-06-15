@@ -592,17 +592,24 @@ export default function ProjectDetail() {
     if (!project || !id) return;
     setDeleting(true);
     try {
-      // Reset QB expenses back to pending queue
-      await supabase
-        .from('quickbooks_expenses')
-        .update({ project_id: null, category_id: null, is_imported: false, cost_type: 'construction' })
-        .eq('project_id', id);
-
-      // Delete project (cascades to all child tables)
-      const { error } = await supabase.from('projects').delete().eq('id', id);
+      // Soft delete: move to Recycle Bin (restorable from Settings)
+      const { error } = await supabase
+        .from('projects')
+        .update({ deleted_at: new Date().toISOString() } as any)
+        .eq('id', id);
       if (error) throw error;
 
-      toast({ title: 'Project deleted', description: `${project.name} has been permanently removed.` });
+      const projectId = id;
+      sonnerToast.success('Moved to Recycle Bin', {
+        description: `${project.name} can be restored from Settings → Recycle Bin.`,
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            await supabase.from('projects').update({ deleted_at: null } as any).eq('id', projectId);
+            sonnerToast.success('Project restored');
+          },
+        },
+      });
       navigate('/projects');
     } catch (err: any) {
       toast({ title: 'Failed to delete project', description: err.message, variant: 'destructive' });
