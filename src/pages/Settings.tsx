@@ -402,6 +402,10 @@ export default function Settings() {
           {/* Financial Presets */}
           <FinancialPresetsCard />
 
+          {/* Recycle Bin */}
+          <RecycleBinSection />
+
+
           {/* Legal Section */}
           <Card>
             <CardHeader>
