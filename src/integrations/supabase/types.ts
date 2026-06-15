@@ -1984,6 +1984,7 @@ export type Database = {
           cover_photo_path: string | null
           cover_photo_position: string | null
           created_at: string
+          deleted_at: string | null
           est_labor_budget: number | null
           est_materials_budget: number | null
           hm_closing_costs: number | null
@@ -2034,6 +2035,7 @@ export type Database = {
           cover_photo_path?: string | null
           cover_photo_position?: string | null
           created_at?: string
+          deleted_at?: string | null
           est_labor_budget?: number | null
           est_materials_budget?: number | null
           hm_closing_costs?: number | null
@@ -2084,6 +2086,7 @@ export type Database = {
           cover_photo_path?: string | null
           cover_photo_position?: string | null
           created_at?: string
+          deleted_at?: string | null
           est_labor_budget?: number | null
           est_materials_budget?: number | null
           hm_closing_costs?: number | null
