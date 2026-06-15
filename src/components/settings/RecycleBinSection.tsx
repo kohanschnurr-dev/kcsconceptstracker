@@ -18,7 +18,7 @@ type BinProject = {
   address: string | null;
   project_type: string | null;
   deleted_at: string;
-  photo_url: string | null;
+  photo_url?: string | null;
 };
 
 const typeLabel = (t: string | null) =>
