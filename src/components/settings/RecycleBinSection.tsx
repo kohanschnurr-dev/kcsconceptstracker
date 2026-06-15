@@ -52,10 +52,13 @@ export default function RecycleBinSection() {
       if (ids.length > 0) {
         const { data: photos } = await supabase
           .from('project_photos')
-          .select('project_id, photo_url')
+          .select('project_id, file_path')
           .in('project_id', ids);
         for (const ph of (photos ?? []) as any[]) {
-          if (!photoMap[ph.project_id]) photoMap[ph.project_id] = ph.photo_url;
+          if (!photoMap[ph.project_id]) {
+            const { data } = supabase.storage.from('project-photos').getPublicUrl(ph.file_path);
+            photoMap[ph.project_id] = data.publicUrl;
+          }
         }
       }
       setItems(((data ?? []) as any[]).map((p) => ({ ...p, photo_url: photoMap[p.id] ?? null })) as BinProject[]);
