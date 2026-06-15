@@ -116,7 +116,7 @@ export default function ProfitBreakdown() {
   const fetchData = async () => {
     try {
       const [projectsRes, categoriesRes, expensesRes, qbRes, loanRes] = await Promise.all([
-        supabase.from('projects').select('*').order('created_at', { ascending: false }),
+        supabase.from('projects').select('*').is('deleted_at', null).order('created_at', { ascending: false }),
         supabase.from('project_categories').select('*'),
         supabase.from('expenses').select('*'),
         supabase.from('quickbooks_expenses').select('*').eq('is_imported', true),

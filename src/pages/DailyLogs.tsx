@@ -255,6 +255,7 @@ export default function DailyLogs() {
         .from('projects')
         .select('id, name')
         .neq('status', 'complete')
+        .is('deleted_at', null)
         .order('name');
 
       if (error) throw error;

@@ -44,7 +44,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
 
   useEffect(() => {
     if (!open) return;
-    supabase.from('projects').select('id, name, address, status, project_type').then(({ data }) => {
+    supabase.from('projects').select('id, name, address, status, project_type').is('deleted_at', null).then(({ data }) => {
       if (data) {
         setProjects(data.map(p => ({ id: p.id, name: p.name, address: p.address ?? undefined, status: p.status, projectType: p.project_type })));
       }

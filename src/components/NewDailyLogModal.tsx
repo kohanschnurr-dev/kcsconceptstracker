@@ -47,6 +47,7 @@ export function NewDailyLogModal({ open, onOpenChange, onLogCreated }: NewDailyL
       .from('projects')
       .select('id, name, address')
       .eq('status', 'active')
+      .is('deleted_at', null)
       .order('name');
     
     setProjects(data || []);

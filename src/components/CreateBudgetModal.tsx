@@ -142,6 +142,7 @@ export function CreateBudgetModal({
           .from('projects')
           .select('id, name, address, project_type')
           .eq('status', 'active')
+          .is('deleted_at', null)
           .order('name');
         
         if (error) throw error;

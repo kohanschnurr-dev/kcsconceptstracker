@@ -126,6 +126,7 @@ export function AddLoanModal({ open, onOpenChange, onSubmit, initialData }: Prop
       .select('id, name')
       .eq('user_id', user.id)
       .eq('status', 'active')
+      .is('deleted_at', null)
       .order('name')
       .then(({ data }) => setProjects(data ?? []));
   }, [user]);

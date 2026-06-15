@@ -51,6 +51,7 @@ export default function Loans() {
       const { data, error } = await supabase
         .from('projects')
         .select('name, project_type')
+        .is('deleted_at', null)
         .in('name', projectNames);
       if (error) throw error;
       return (data ?? []) as any;
