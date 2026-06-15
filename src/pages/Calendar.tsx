@@ -118,6 +118,7 @@ export default function Calendar() {
         .select('id, name, address, project_type')
         .eq('status', 'active')
         .eq('user_id', user.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (projectsData) {
@@ -135,7 +136,8 @@ export default function Calendar() {
       const { data: allProjectsData } = await supabase
         .from('projects')
         .select('id, name, total_budget, project_type')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .is('deleted_at', null);
 
       const { data: eventsData, error } = await supabase
         .from('calendar_events')

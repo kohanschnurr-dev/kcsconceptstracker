@@ -16,6 +16,7 @@ export function useProjectOptions() {
     supabase
       .from('projects')
       .select('id, name, address, status, project_type')
+      .is('deleted_at', null)
       .order('name')
       .then(({ data }) => {
         if (data) {

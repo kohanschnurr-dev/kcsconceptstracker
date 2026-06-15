@@ -104,6 +104,7 @@ import { ProjectReport } from '@/components/project/ProjectReport';
 import { LeaseTab } from '@/components/project/LeaseTab';
 
 import { useToast } from '@/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
 import { useProfile } from '@/hooks/useProfile';
 import { Input } from '@/components/ui/input';
 import { MessageOwnerButton } from '@/components/project/MessageOwnerButton';
@@ -591,17 +592,24 @@ export default function ProjectDetail() {
     if (!project || !id) return;
     setDeleting(true);
     try {
-      // Reset QB expenses back to pending queue
-      await supabase
-        .from('quickbooks_expenses')
-        .update({ project_id: null, category_id: null, is_imported: false, cost_type: 'construction' })
-        .eq('project_id', id);
-
-      // Delete project (cascades to all child tables)
-      const { error } = await supabase.from('projects').delete().eq('id', id);
+      // Soft delete: move to Recycle Bin (restorable from Settings)
+      const { error } = await supabase
+        .from('projects')
+        .update({ deleted_at: new Date().toISOString() } as any)
+        .eq('id', id);
       if (error) throw error;
 
-      toast({ title: 'Project deleted', description: `${project.name} has been permanently removed.` });
+      const projectId = id;
+      sonnerToast.success('Moved to Recycle Bin', {
+        description: `${project.name} can be restored from Settings → Recycle Bin.`,
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            await supabase.from('projects').update({ deleted_at: null } as any).eq('id', projectId);
+            sonnerToast.success('Project restored');
+          },
+        },
+      });
       navigate('/projects');
     } catch (err: any) {
       toast({ title: 'Failed to delete project', description: err.message, variant: 'destructive' });
@@ -716,56 +724,28 @@ export default function ProjectDetail() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Delete Project - Step 1 */}
+        {/* Move to Recycle Bin */}
         <AlertDialog open={deleteStep === 1} onOpenChange={(open) => { if (!open) setDeleteStep(0); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Project</AlertDialogTitle>
+              <AlertDialogTitle>Move to Recycle Bin?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete <strong>{project.name}</strong>? All project data (expenses, tasks, documents, photos, logs) will be permanently removed. Any categorized QuickBooks expenses will be sent back to the queue.
+                <strong>{project.name}</strong> will be hidden from the app. You can restore it anytime from <strong>Settings → Recycle Bin</strong>, or permanently delete it from there.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={(e) => { e.preventDefault(); setDeleteStep(2); }}
+                disabled={deleting}
+                onClick={(e) => { e.preventDefault(); handleDeleteProject(); }}
               >
-                Continue
+                {deleting ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Moving...</> : 'Move to Bin'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Delete Project - Step 2: Type to confirm */}
-        <AlertDialog open={deleteStep === 2} onOpenChange={(open) => { if (!open) { setDeleteStep(0); setDeleteConfirmName(''); } }}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>This action cannot be undone</AlertDialogTitle>
-              <AlertDialogDescription asChild>
-                <div className="space-y-3">
-                  <p>Type <strong>{project.name}</strong> to confirm deletion.</p>
-                  <Input
-                    value={deleteConfirmName}
-                    onChange={(e) => setDeleteConfirmName(e.target.value)}
-                    placeholder="Type project name..."
-                    autoFocus
-                  />
-                </div>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setDeleteConfirmName('')}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                disabled={deleteConfirmName !== project.name || deleting}
-                onClick={(e) => { e.preventDefault(); handleDeleteProject(); }}
-              >
-                {deleting ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Deleting...</> : 'Permanently Delete'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
 
         {/* Header */}
         <div className="flex flex-col gap-4">
@@ -877,7 +857,7 @@ export default function ProjectDetail() {
                         className="text-destructive focus:text-destructive focus:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Project
+                        Move to Bin
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

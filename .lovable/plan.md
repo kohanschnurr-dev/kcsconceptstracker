@@ -1,53 +1,58 @@
-## Plan: Add Interest-Only Loan Mode to Rental Cash Flow
+## Recycle Bin for Projects
 
-Let users toggle the loan between **Amortizing** (current behavior) and **Interest-Only**. Interest-only mode pays just `loanAmount × rate / 12` each month — no principal — which usually boosts monthly cash flow.
+Convert project deletion into a two-stage flow: "Move to Bin" (soft delete) → "Permanently Delete" from a Recycle Bin in Settings. Restoring brings everything back automatically.
 
-### UI changes — `src/components/budget/RentalFields.tsx`
+### How it works
+- Clicking **Delete Project** now moves the project to the bin. It disappears from Projects, Dashboard, Calendar, Budget, Expenses, Loans, Procurement, CRM, etc.
+- A new **Recycle Bin** section in **Settings** lists every binned project with: thumbnail, name, address, type, date deleted, and two actions: **Restore** and **Delete Forever**.
+- A top-level **Empty Bin** button permanently purges everything (with type-to-confirm).
+- Sidebar shows a small badge with bin count on the Settings icon when items exist.
 
-Add a compact segmented toggle right under the "Loan" heading, matching the existing ARV/PP pill style:
+### Technical details
 
-```
-Loan                              [ Amortizing | Interest-Only ]
-```
+**Schema**
+- Add `deleted_at timestamptz NULL` to `public.projects`.
+- Partial index: `CREATE INDEX projects_deleted_at_idx ON projects (deleted_at) WHERE deleted_at IS NOT NULL;`
+- No cascade changes needed — all child rows stay intact because we no longer hard-delete.
 
-- Same `bg-primary text-primary-foreground` active state used elsewhere
-- When Interest-Only is active, the **Term (yrs)** input is disabled and dimmed (term doesn't affect I/O payment), with a tiny helper "n/a for I/O"
-- Rate, LTV slider, Points all stay enabled and behave identically
+**Data filter (every existing query)**
+Audit every `from('projects')` select across hooks/pages and append `.is('deleted_at', null)`:
+- `src/pages/Projects.tsx`, `Index.tsx`, `Calendar.tsx`, `Expenses.tsx`, `BusinessExpenses.tsx`, `Loans.tsx`, `Procurement.tsx`, `DailyLogs.tsx`, `Vendors.tsx`, `BundleDetail.tsx`, `Bundles.tsx`, `ProfitBreakdown.tsx`, `ProjectBudget.tsx`
+- Hooks: `useProjectOptions.ts`, `useLoans.ts`, `useCRM.ts`, `useQuickBooks.ts`, `useTeam.ts`, `admin/useAdminEvents.ts`
+- Modals/components that fetch projects: `NewProjectModal`, `NewVendorModal`, `NewDailyLogModal`, `CreateBudgetModal`, `*DetailModal` (when listing project options)
+- `ProjectDetail.tsx`: if the loaded project has `deleted_at`, render a "This project is in the Recycle Bin" banner with **Restore** + **Delete Forever** instead of normal content.
 
-### State — `RentalFieldValues`
+**Delete flow rewrite (`src/pages/ProjectDetail.tsx`)**
+- Replace `supabase.from('projects').delete()` with `.update({ deleted_at: new Date().toISOString() })`.
+- Step-1 dialog copy: "Move **{name}** to Recycle Bin? It will be hidden from the app. You can restore it anytime from Settings → Recycle Bin."
+- Remove the type-to-confirm step for soft delete (one-click move to bin is safe since it's reversible). Type-to-confirm is reserved for permanent delete in the bin.
+- Toast: "Moved to Recycle Bin" with an inline **Undo** action that flips `deleted_at` back to null.
 
-Add one field: `loanType: 'amortizing' | 'interest_only'` (default `'amortizing'`). Wire it through `BudgetCalculator` / `ProjectBudget` defaults so existing saved budgets fall back to `'amortizing'`.
+**New: `src/components/settings/RecycleBinSection.tsx`**
+- Renders inside existing Settings page (append as a new card section).
+- Header row: title "Recycle Bin", subtitle "{n} item(s) waiting to be restored or permanently deleted", right-side **Empty Bin** destructive button (disabled when empty).
+- List rows (semantic tokens, `bg-card border border-border` sharp 2px corners):
+  ```text
+  [thumb] Name · Address · Type · Deleted 3 days ago      [Restore] [Delete Forever]
+  ```
+- **Restore**: `update({ deleted_at: null })` → toast "Project restored".
+- **Delete Forever**: opens AlertDialog with type-to-confirm name → `delete().eq('id', ...)` (cascade purges children as today).
+- **Empty Bin**: type "DELETE" to confirm → bulk delete all rows where `deleted_at IS NOT NULL` for the team.
 
-### Calculation — `src/components/budget/RentalAnalysis.tsx`
+**Settings badge**
+- `src/components/AppSidebar.tsx`: query bin count (lightweight `count` head request, refetched on focus). Show a small `bg-destructive` numeric pill on the Settings icon when > 0.
 
-```ts
-const isIO = rentalFields.loanType === 'interest_only';
-const monthlyInterestOnly = refiLoanAmount * monthlyRate;
-const monthlyPI = isIO ? monthlyInterestOnly : amortizedPayment;
-```
+**Counts elsewhere**
+- Anywhere the UI shows "Projects (N)" tabs (Projects.tsx tab counts for New Construction / Fix & Flips / Rentals), exclude binned rows — the `.is('deleted_at', null)` filter handles it automatically since the same query backs the counts.
 
-Monthly Expenses column adapts:
-- **Amortizing** — keeps current 3-row breakdown (Principal Yr1 avg / Interest Yr1 avg / Total P&I)
-- **Interest-Only** — single row: **Interest-Only Payment** (in `text-destructive`), no principal row, no "Yr 1 avg" subtitle. A muted caption underneath: "Principal not paid down"
+### Files touched
+- Migration: add `deleted_at` column + index on `projects`.
+- `src/pages/ProjectDetail.tsx` — soft delete + banner-when-binned.
+- `src/components/settings/RecycleBinSection.tsx` — new.
+- `src/pages/Settings.tsx` (or whichever file renders settings sections) — mount the new section.
+- `src/components/AppSidebar.tsx` — bin count badge on Settings.
+- All files listed under "Data filter" — append `.is('deleted_at', null)` to `from('projects')` selects.
 
-Cash flow math is unchanged — it already subtracts `monthlyPI`, which now correctly reflects whichever mode is active.
-
-### Equity Gain note
-
-Equity Gain currently = `ARV − Purchase − Budget − closing − holding − sale closing`. It does **not** include principal paydown, so it's already correct for both modes — no change needed.
-
-### Scope
-
-- 2 files: `RentalFields.tsx`, `RentalAnalysis.tsx`
-- 1 new field on `RentalFieldValues` with a safe default
-- No schema/migration changes (rental fields live in the existing JSONB column)
-- No changes to `rentalCashFlow.ts` unless you also want project-level cards to honor I/O — see question below
-
-### Question before I build
-
-The shared helper `src/lib/rentalCashFlow.ts` (used by dashboard project cards) currently always amortizes. Two options:
-
-1. **Calculator-only** — Interest-Only toggle affects only the Cash Flow Analysis panel on `/calculator`. Dashboard/Project cards keep using amortizing math. Simpler, isolated.
-2. **Project-wide** — Persist `loanType` on the project and have project cards / `RentalAnalysis` everywhere reflect it. Requires a small `projects` column + plumbing.
-
-I'll go with **(1) Calculator-only** unless you tell me otherwise — it matches the scope of your other recent calculator changes and avoids a schema migration.
+### Out of scope
+- No auto-purge timer (manual only, per your choice).
+- No soft-delete for non-project entities (vendors, loans, etc.) — projects only for now.

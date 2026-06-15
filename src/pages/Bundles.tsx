@@ -70,6 +70,7 @@ export default function Bundles() {
       supabase
         .from('projects')
         .select('id, name, address')
+        .is('deleted_at', null)
         .order('name'),
       supabase
         .from('project_photos')

@@ -153,6 +153,7 @@ export default function Procurement() {
       supabase
         .from('projects')
         .select('id, name, address, status')
+        .is('deleted_at', null)
         .order('name'),
       supabase
         .from('procurement_item_bundles')

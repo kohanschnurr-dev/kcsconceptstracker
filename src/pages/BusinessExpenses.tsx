@@ -169,6 +169,7 @@ export default function BusinessExpenses() {
         supabase
           .from('projects')
           .select('id, name, address, project_type')
+           .is('deleted_at', null)
            .order('name'),
          supabase
            .from('quarterly_goals')
