@@ -104,6 +104,7 @@ import { ProjectReport } from '@/components/project/ProjectReport';
 import { LeaseTab } from '@/components/project/LeaseTab';
 
 import { useToast } from '@/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
 import { useProfile } from '@/hooks/useProfile';
 import { Input } from '@/components/ui/input';
 import { MessageOwnerButton } from '@/components/project/MessageOwnerButton';
