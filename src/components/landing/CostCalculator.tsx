@@ -8,7 +8,7 @@ export default function CostCalculator() {
 
   const monthlyCost = rate * hours * 4.33 * projects;
   const annualCost = monthlyCost * 12;
-  const annualSavings = annualCost - 89 * 12;
+  const annualSavings = annualCost - 77 * 12;
 
   return (
     <section className="py-16 sm:py-28 bg-muted/20 border-y border-border/40">
@@ -98,7 +98,7 @@ export default function CostCalculator() {
           {/* Savings banner */}
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-5 text-center">
             <p className="text-sm italic text-muted-foreground/80 mb-1">
-              psst.. GroundWorks only costs $89/mo
+              psst.. GroundWorks only costs $77/mo
             </p>
             <p className="font-heading text-xl font-bold text-primary">
               Get back $
