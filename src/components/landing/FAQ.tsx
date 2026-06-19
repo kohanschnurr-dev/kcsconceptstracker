@@ -11,8 +11,8 @@ const faqs = [
     a: "GroundWorks is built for residential construction — fix & flips, rental rehabs (BRRR), new builds, and remodels. If you're tracking budgets, managing subs, and hitting timelines on construction projects, it's built for you.",
   },
   {
-    q: "How does QuickBooks integration work?",
-    a: "Connect your QuickBooks account and GroundWorks syncs your expenses automatically. Categorize them, split costs across multiple projects, and batch-import with one click. Built-in duplicate detection ensures nothing gets counted twice.",
+    q: "Can I connect accounting software?",
+    a: "Yes. GroundWorks connects to QuickBooks, Xero, and other accounting software to sync your expenses automatically. Categorize them, split costs across multiple projects, and batch-import with one click. Built-in duplicate detection ensures nothing gets counted twice.",
   },
   {
     q: "Can my project managers use the app too?",
