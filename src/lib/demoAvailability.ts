@@ -81,7 +81,7 @@ export function getNextDays(now: Date = new Date()): DayOption[] {
       date: dayDate,
       label: dow,
       dateLabel: new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TZ, month: "short", day: "numeric" }).format(dayDate),
-      disabled: isWeekend,
+      disabled: false,
     });
   }
   return days;
@@ -91,6 +91,35 @@ export interface Slot {
   utc: Date;     // exact UTC instant
   iso: string;   // utc.toISOString()
   label: string; // in the prospect's timezone (or CT)
+}
+
+/** All slots for a given CT day (returns even past slots — caller filters). */
+export function getSlotsForDay(dayIso: string, displayTz: string): Slot[] {
+  const [y, m, d] = dayIso.split("-").map(Number);
+  // Determine CT day-of-week for this date (use noon to avoid DST edges).
+  const probe = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const dowName = new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TZ, weekday: "short" }).format(probe);
+  const dowMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const dow = dowMap[dowName] ?? 1;
+  const windows = windowsForDow(dow);
+  const slots: Slot[] = [];
+  for (const [startMin, endMin] of windows) {
+    for (let mins = startMin; mins < endMin; mins += SLOT_MINUTES) {
+      const h = Math.floor(mins / 60);
+      const min = mins % 60;
+      const utc = ctWallClockToUtc(y, m - 1, d, h, min);
+      slots.push({
+        utc,
+        iso: utc.toISOString(),
+        label: new Intl.DateTimeFormat("en-US", {
+          timeZone: displayTz,
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(utc),
+      });
+    }
+  }
+  return slots;
 }
 
 /** All slots for a given CT day (returns even past slots — caller filters). */
