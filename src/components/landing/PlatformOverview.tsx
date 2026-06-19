@@ -240,50 +240,6 @@ export default function PlatformOverview() {
         </div>
       </div>
 
-      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-3xl">
-          {selected && (() => {
-            const Icon = selected.icon;
-            return (
-              <>
-                <DialogHeader>
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className={`w-10 h-10 rounded-lg ${selected.bg} flex items-center justify-center`}>
-                      <Icon className={`w-5 h-5 ${selected.color}`} />
-                    </div>
-                    <DialogTitle className="text-xl font-heading">{selected.title}</DialogTitle>
-                  </div>
-                  {selected.headline && (
-                    <DialogDescription className="text-base text-foreground/80 font-medium pt-1">
-                      {selected.headline}
-                    </DialogDescription>
-                  )}
-                </DialogHeader>
-
-                {/* Video placeholder */}
-                <div className="aspect-video bg-muted rounded-lg flex flex-col items-center justify-center border border-border">
-                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                    <Play className="w-6 h-6 text-primary ml-0.5" />
-                  </div>
-                  <p className="text-sm text-muted-foreground font-medium">Demo Video Coming Soon</p>
-                </div>
-
-                {/* Bullet points */}
-                {selected.bullets && selected.bullets.length > 0 && (
-                  <ul className="space-y-3 pt-2">
-                    {selected.bullets.map((b) => (
-                      <li key={b} className="flex items-start gap-3 text-sm text-muted-foreground">
-                        <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                        <span>{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
     </section>
   );
 }
