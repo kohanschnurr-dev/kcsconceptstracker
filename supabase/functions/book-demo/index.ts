@@ -99,6 +99,28 @@ Deno.serve(async (req) => {
   if (slotDate.getUTCMinutes() % 30 !== 0 || slotDate.getUTCSeconds() !== 0) {
     return bad("Slot must align with a 30-minute boundary.");
   }
+  // Must be inside an allowed CT business-hours window
+  {
+    const dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago",
+      hour12: false,
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const parts = dtf.formatToParts(slotDate).reduce<Record<string, string>>((a, p) => { a[p.type] = p.value; return a; }, {});
+    const dowMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    const dow = dowMap[parts.weekday] ?? -1;
+    const hour = parseInt(parts.hour, 10) % 24;
+    const minute = parseInt(parts.minute, 10);
+    const mins = hour * 60 + minute;
+    const windows: Array<[number, number]> =
+      dow === 0 || dow === 6
+        ? [[9 * 60, 21 * 60]]
+        : [[7 * 60, 8 * 60], [17 * 60 + 30, 21 * 60]];
+    const allowed = windows.some(([s, e]) => mins >= s && mins < e);
+    if (!allowed) return bad("That slot is outside our walkthrough hours.");
+  }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

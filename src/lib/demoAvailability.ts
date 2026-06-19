@@ -2,10 +2,27 @@
 // converted to UTC ISO timestamps for storage and comparison.
 
 const BUSINESS_TZ = "America/Chicago";
-const BUSINESS_START_HOUR = 9; // 9 AM CT
-const BUSINESS_END_HOUR = 17;  // 5 PM CT (last start = 16:30)
 const SLOT_MINUTES = 30;
 export const DAYS_AHEAD = 14;
+
+/** Returns [startMinutes, endMinutes) windows for a given day-of-week (0=Sun..6=Sat). */
+function windowsForDow(dow: number): Array<[number, number]> {
+  // Sat (6) or Sun (0): 9:00 AM – 9:00 PM CT
+  if (dow === 0 || dow === 6) {
+    return [[9 * 60, 21 * 60]];
+  }
+  // Mon–Fri: 7:00–8:00 AM and 5:30–9:00 PM CT
+  return [
+    [7 * 60, 8 * 60],
+    [17 * 60 + 30, 21 * 60],
+  ];
+}
+
+/** Server-safe check: does this CT wall time fall inside an allowed window? */
+export function isAllowedCtWallTime(dow: number, hour: number, minute: number): boolean {
+  const m = hour * 60 + minute;
+  return windowsForDow(dow).some(([s, e]) => m >= s && m < e);
+}
 
 /**
  * Returns a Date that represents `year/month/day at hh:mm` in BUSINESS_TZ
@@ -64,7 +81,7 @@ export function getNextDays(now: Date = new Date()): DayOption[] {
       date: dayDate,
       label: dow,
       dateLabel: new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TZ, month: "short", day: "numeric" }).format(dayDate),
-      disabled: isWeekend,
+      disabled: false,
     });
   }
   return days;
@@ -79,9 +96,17 @@ export interface Slot {
 /** All slots for a given CT day (returns even past slots — caller filters). */
 export function getSlotsForDay(dayIso: string, displayTz: string): Slot[] {
   const [y, m, d] = dayIso.split("-").map(Number);
+  // Determine CT day-of-week for this date (use noon to avoid DST edges).
+  const probe = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const dowName = new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TZ, weekday: "short" }).format(probe);
+  const dowMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const dow = dowMap[dowName] ?? 1;
+  const windows = windowsForDow(dow);
   const slots: Slot[] = [];
-  for (let h = BUSINESS_START_HOUR; h < BUSINESS_END_HOUR; h++) {
-    for (let min = 0; min < 60; min += SLOT_MINUTES) {
+  for (const [startMin, endMin] of windows) {
+    for (let mins = startMin; mins < endMin; mins += SLOT_MINUTES) {
+      const h = Math.floor(mins / 60);
+      const min = mins % 60;
       const utc = ctWallClockToUtc(y, m - 1, d, h, min);
       slots.push({
         utc,
@@ -96,6 +121,7 @@ export function getSlotsForDay(dayIso: string, displayTz: string): Slot[] {
   }
   return slots;
 }
+
 
 export function detectTimezone(): string {
   try {

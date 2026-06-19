@@ -229,7 +229,7 @@ export default function DemoScheduler() {
               })}
             </div>
             <p className="text-xs text-muted-foreground mt-4 text-center">
-              Weekdays only · Times shown in <strong>{tz.replace(/_/g, " ")}</strong>
+              Times shown in <strong>{tz.replace(/_/g, " ")}</strong>
             </p>
           </div>
         )}
