@@ -122,26 +122,6 @@ export function getSlotsForDay(dayIso: string, displayTz: string): Slot[] {
   return slots;
 }
 
-/** All slots for a given CT day (returns even past slots — caller filters). */
-export function getSlotsForDay(dayIso: string, displayTz: string): Slot[] {
-  const [y, m, d] = dayIso.split("-").map(Number);
-  const slots: Slot[] = [];
-  for (let h = BUSINESS_START_HOUR; h < BUSINESS_END_HOUR; h++) {
-    for (let min = 0; min < 60; min += SLOT_MINUTES) {
-      const utc = ctWallClockToUtc(y, m - 1, d, h, min);
-      slots.push({
-        utc,
-        iso: utc.toISOString(),
-        label: new Intl.DateTimeFormat("en-US", {
-          timeZone: displayTz,
-          hour: "numeric",
-          minute: "2-digit",
-        }).format(utc),
-      });
-    }
-  }
-  return slots;
-}
 
 export function detectTimezone(): string {
   try {
