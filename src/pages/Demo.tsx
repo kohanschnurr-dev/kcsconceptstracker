@@ -7,7 +7,7 @@ const covers = [
   "Set up your first project's budget — live",
   "Track expenses & lender-ready draw requests",
   "Manage subs, vendors, and daily logs",
-  "Connect your QuickBooks (optional)",
+  "Walk through project dashboards, timelines, and reports",
 ];
 
 export default function Demo() {
