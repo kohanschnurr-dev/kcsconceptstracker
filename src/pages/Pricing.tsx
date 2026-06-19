@@ -133,11 +133,6 @@ export default function Pricing() {
                   ${annual ? "77" : "89"}
                 </span>
                 <span className="text-muted-foreground">/mo</span>
-                {annual && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Billed $924/yr
-                  </p>
-                )}
               </div>
               <Button
                 className="w-full min-h-[48px] gold-glow mb-6"
