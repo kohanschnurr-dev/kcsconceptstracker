@@ -2,10 +2,27 @@
 // converted to UTC ISO timestamps for storage and comparison.
 
 const BUSINESS_TZ = "America/Chicago";
-const BUSINESS_START_HOUR = 9; // 9 AM CT
-const BUSINESS_END_HOUR = 17;  // 5 PM CT (last start = 16:30)
 const SLOT_MINUTES = 30;
 export const DAYS_AHEAD = 14;
+
+/** Returns [startMinutes, endMinutes) windows for a given day-of-week (0=Sun..6=Sat). */
+function windowsForDow(dow: number): Array<[number, number]> {
+  // Sat (6) or Sun (0): 9:00 AM – 9:00 PM CT
+  if (dow === 0 || dow === 6) {
+    return [[9 * 60, 21 * 60]];
+  }
+  // Mon–Fri: 7:00–8:00 AM and 5:30–9:00 PM CT
+  return [
+    [7 * 60, 8 * 60],
+    [17 * 60 + 30, 21 * 60],
+  ];
+}
+
+/** Server-safe check: does this CT wall time fall inside an allowed window? */
+export function isAllowedCtWallTime(dow: number, hour: number, minute: number): boolean {
+  const m = hour * 60 + minute;
+  return windowsForDow(dow).some(([s, e]) => m >= s && m < e);
+}
 
 /**
  * Returns a Date that represents `year/month/day at hh:mm` in BUSINESS_TZ
