@@ -186,8 +186,6 @@ const modules: Module[] = [
 ];
 
 export default function PlatformOverview() {
-  const [selected, setSelected] = useState<Module | null>(null);
-
   return (
     <section id="platform" className="py-16 sm:py-28 bg-secondary/30">
       <div className="max-w-[1400px] mx-auto px-5 sm:px-8">
@@ -206,8 +204,7 @@ export default function PlatformOverview() {
               <div
                 key={m.title}
                 data-reveal
-                onClick={() => setSelected(m)}
-                className={`scroll-hidden stagger-${(modules.indexOf(m) % 12) + 1} group bg-card border border-border rounded-xl p-5 hover:border-primary/30 hover-gold-glow transition-all cursor-pointer`}
+                className={`scroll-hidden stagger-${(modules.indexOf(m) % 12) + 1} group bg-card border border-border rounded-xl p-5 hover:border-primary/30 hover-gold-glow transition-all`}
               >
                 <div className="flex items-start gap-3">
                   <div className={`shrink-0 w-10 h-10 rounded-lg ${m.bg} flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg`}>
