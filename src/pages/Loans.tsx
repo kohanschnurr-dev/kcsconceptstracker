@@ -85,9 +85,10 @@ export default function Loans() {
       if (purposeFilter !== 'all') {
         if ((l.nickname ?? '') !== purposeFilter) return false;
       }
+      if (statusFilter !== 'all' && l.status !== statusFilter) return false;
       return true;
     });
-  }, [loans, projectTypeFilter, purposeFilter, projectTypeByName]);
+  }, [loans, projectTypeFilter, purposeFilter, statusFilter, projectTypeByName]);
 
   const availablePurposes = useMemo(() => {
     const set = new Set<string>();
