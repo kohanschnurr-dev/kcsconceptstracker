@@ -31,6 +31,7 @@ export default function Loans() {
   const [compareMode, setCompareMode] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType | 'all'>('all');
+  const [purposeFilter, setPurposeFilter] = useState<string>('all');
 
   const toggleCompare = useCallback((id: string) => {
     setCompareIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 3 ? [...prev, id] : prev);
