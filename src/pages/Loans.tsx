@@ -9,7 +9,7 @@ import { LoanCharts } from '@/components/loans/LoanCharts';
 import { LoanComparePanel } from '@/components/loans/LoanComparePanel';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoans } from '@/hooks/useLoans';
-import type { Loan, LoanDraw } from '@/types/loans';
+import type { Loan, LoanDraw, LoanStatus } from '@/types/loans';
 import { getLoanPurposeColor } from '@/types/loans';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,14 @@ const PROJECT_TYPE_PILLS: { value: ProjectType | 'all'; label: string }[] = [
   { value: 'new_construction', label: 'New Construction' },
 ];
 
+const STATUS_PILLS: { value: LoanStatus | 'all'; label: string }[] = [
+  { value: 'all', label: 'All Status' },
+  { value: 'active', label: 'Active' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'paid_off', label: 'Paid Off' },
+  { value: 'default', label: 'Default' },
+];
+
 export default function Loans() {
   const { loans, isLoading, createLoan } = useLoans();
   const { toast } = useToast();
@@ -32,6 +40,7 @@ export default function Loans() {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType | 'all'>('all');
   const [purposeFilter, setPurposeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('active');
 
   const toggleCompare = useCallback((id: string) => {
     setCompareIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 3 ? [...prev, id] : prev);
