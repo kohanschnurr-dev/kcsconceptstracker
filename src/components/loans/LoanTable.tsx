@@ -77,13 +77,21 @@ const toggleToState = (v: ToggleView): { viewMode: ViewMode; groupByProject: boo
   groupByProject: v === 'group',
 });
 
-export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], onToggleSelect }: LoanTableProps) {
+export function LoanTable({
+  loans,
+  projectNames,
+  compareMode,
+  selectedIds = [],
+  onToggleSelect,
+  statusFilter: controlledStatusFilter,
+  onStatusFilterChange,
+}: LoanTableProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const initialDefault = useMemo(readDefaultView, []);
   const initialState = useMemo(() => toggleToState(initialDefault), [initialDefault]);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('active');
+  const [internalStatusFilter, setInternalStatusFilter] = useState<LoanStatus | 'all'>('active');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
@@ -92,6 +100,12 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
   const [groupByProject, setGroupByProject] = useState(initialState.groupByProject);
   const [defaultView, setDefaultView] = useState<ToggleView>(initialDefault);
   const PER_PAGE = 15;
+
+  const statusFilter = controlledStatusFilter ?? internalStatusFilter;
+  const setStatusFilter = (value: LoanStatus | 'all') => {
+    onStatusFilterChange?.(value);
+    setInternalStatusFilter(value);
+  };
 
   const currentView: ToggleView = groupByProject ? 'group' : viewMode === 'cards' ? 'cards' : 'table';
 
