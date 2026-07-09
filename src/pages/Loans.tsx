@@ -68,12 +68,25 @@ export default function Loans() {
   }, [projectTypesRows]);
 
   const visibleLoans = useMemo(() => {
-    if (projectTypeFilter === 'all') return loans;
     return loans.filter(l => {
-      const pn = l.project_name;
-      return !!pn && projectTypeByName.get(pn) === projectTypeFilter;
+      if (projectTypeFilter !== 'all') {
+        const pn = l.project_name;
+        if (!pn || projectTypeByName.get(pn) !== projectTypeFilter) return false;
+      }
+      if (purposeFilter !== 'all') {
+        if ((l.nickname ?? '') !== purposeFilter) return false;
+      }
+      return true;
     });
-  }, [loans, projectTypeFilter, projectTypeByName]);
+  }, [loans, projectTypeFilter, purposeFilter, projectTypeByName]);
+
+  const availablePurposes = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of loans) {
+      if (l.nickname) set.add(l.nickname);
+    }
+    return [...set].sort();
+  }, [loans]);
 
   const handleAddLoan = async (
     payload: Omit<Loan, 'id' | 'created_at' | 'updated_at' | 'project_name'>,
