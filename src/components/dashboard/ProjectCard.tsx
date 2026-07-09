@@ -157,13 +157,16 @@ export function ProjectCard({ project, onClick, isStarred, onToggleStar }: Proje
                 <p className="text-xs text-muted-foreground">Cash Flow</p>
                 {(() => {
                   const annualCF = calcAnnualCashFlow(project);
+                  const monthlyCF = annualCF / 12;
                   const hasData = (project.monthlyRent || 0) > 0;
-                  return (
-                    <p className={cn('font-mono font-semibold',
-                      !hasData ? '' : annualCF < 0 ? 'text-destructive' : 'text-success'
-                    )}>
-                      {hasData ? `${formatCurrency(annualCF)}/yr` : '—'}
-                    </p>
+                  const colorClass = !hasData ? '' : annualCF < 0 ? 'text-destructive' : 'text-success';
+                  return hasData ? (
+                    <div className="font-mono font-semibold leading-tight">
+                      <p className={colorClass}>{formatCurrency(monthlyCF)}/mo</p>
+                      <p className={cn(colorClass, 'text-xs opacity-80')}>{formatCurrency(annualCF)}/yr</p>
+                    </div>
+                  ) : (
+                    <p className="font-mono font-semibold">—</p>
                   );
                 })()}
               </div>
