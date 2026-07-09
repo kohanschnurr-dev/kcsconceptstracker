@@ -38,6 +38,8 @@ interface LoanTableProps {
   compareMode?: boolean;
   selectedIds?: string[];
   onToggleSelect?: (id: string) => void;
+  statusFilter?: LoanStatus | 'all';
+  onStatusFilterChange?: (value: LoanStatus | 'all') => void;
 }
 
 interface EnrichedLoan {
