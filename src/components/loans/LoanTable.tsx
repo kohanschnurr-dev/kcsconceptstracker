@@ -494,16 +494,6 @@ export function LoanTable({
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={v => { setStatusFilter(v as LoanStatus | 'all'); setPage(0); }}>
-          <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="paid_off">Paid Off</SelectItem>
-            <SelectItem value="default">Default</SelectItem>
-          </SelectContent>
-        </Select>
         {projectNames.length > 0 && (
           <Select value={projectFilter} onValueChange={v => { setProjectFilter(v); setPage(0); }}>
             <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
