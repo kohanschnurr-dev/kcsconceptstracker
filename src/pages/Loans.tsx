@@ -267,6 +267,8 @@ export default function Loans() {
               compareMode={compareMode}
               selectedIds={compareIds}
               onToggleSelect={toggleCompare}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
             />
 
             {/* Charts */}
