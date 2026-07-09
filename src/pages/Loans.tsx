@@ -153,6 +153,45 @@ export default function Loans() {
           </div>
         )}
 
+        {/* Loan-purpose filter — composes with project-type filter */}
+        {loans.length > 0 && availablePurposes.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-xs text-muted-foreground mr-1">Purpose:</span>
+            <button
+              type="button"
+              onClick={() => setPurposeFilter('all')}
+              className={cn(
+                'px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors',
+                purposeFilter === 'all'
+                  ? 'bg-primary/15 text-primary border-primary/40'
+                  : 'bg-card text-muted-foreground border-border hover:text-foreground',
+              )}
+            >
+              All Purposes
+            </button>
+            {availablePurposes.map(purpose => {
+              const active = purposeFilter === purpose;
+              const color = getLoanPurposeColor(purpose).hsl;
+              return (
+                <button
+                  key={purpose}
+                  type="button"
+                  onClick={() => setPurposeFilter(purpose)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors',
+                    active
+                      ? 'bg-primary/15 text-primary border-primary/40'
+                      : 'bg-card text-muted-foreground border-border hover:text-foreground',
+                  )}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                  {purpose}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Stats */}
         <LoanStatsRow loans={visibleLoans} />
 
