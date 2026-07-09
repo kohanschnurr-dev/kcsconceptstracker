@@ -202,6 +202,31 @@ export default function Loans() {
           </div>
         )}
 
+        {/* Status filter — drives stats, table totals, and charts */}
+        {loans.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-xs text-muted-foreground mr-1">Status:</span>
+            {STATUS_PILLS.map(pill => {
+              const active = statusFilter === pill.value;
+              return (
+                <button
+                  key={pill.value}
+                  type="button"
+                  onClick={() => setStatusFilter(pill.value)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors',
+                    active
+                      ? 'bg-primary/15 text-primary border-primary/40'
+                      : 'bg-card text-muted-foreground border-border hover:text-foreground',
+                  )}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Stats */}
         <LoanStatsRow loans={visibleLoans} />
 
