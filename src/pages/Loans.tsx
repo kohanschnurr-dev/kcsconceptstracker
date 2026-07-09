@@ -10,6 +10,7 @@ import { LoanComparePanel } from '@/components/loans/LoanComparePanel';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoans } from '@/hooks/useLoans';
 import type { Loan, LoanDraw } from '@/types/loans';
+import { getLoanPurposeColor } from '@/types/loans';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
