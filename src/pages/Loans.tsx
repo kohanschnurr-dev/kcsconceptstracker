@@ -9,7 +9,7 @@ import { LoanCharts } from '@/components/loans/LoanCharts';
 import { LoanComparePanel } from '@/components/loans/LoanComparePanel';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoans } from '@/hooks/useLoans';
-import type { Loan, LoanDraw } from '@/types/loans';
+import type { Loan, LoanDraw, LoanStatus } from '@/types/loans';
 import { getLoanPurposeColor } from '@/types/loans';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,14 @@ const PROJECT_TYPE_PILLS: { value: ProjectType | 'all'; label: string }[] = [
   { value: 'new_construction', label: 'New Construction' },
 ];
 
+const STATUS_PILLS: { value: LoanStatus | 'all'; label: string }[] = [
+  { value: 'all', label: 'All Status' },
+  { value: 'active', label: 'Active' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'paid_off', label: 'Paid Off' },
+  { value: 'default', label: 'Default' },
+];
+
 export default function Loans() {
   const { loans, isLoading, createLoan } = useLoans();
   const { toast } = useToast();
@@ -32,6 +40,7 @@ export default function Loans() {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType | 'all'>('all');
   const [purposeFilter, setPurposeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('active');
 
   const toggleCompare = useCallback((id: string) => {
     setCompareIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 3 ? [...prev, id] : prev);
@@ -76,9 +85,10 @@ export default function Loans() {
       if (purposeFilter !== 'all') {
         if ((l.nickname ?? '') !== purposeFilter) return false;
       }
+      if (statusFilter !== 'all' && l.status !== statusFilter) return false;
       return true;
     });
-  }, [loans, projectTypeFilter, purposeFilter, projectTypeByName]);
+  }, [loans, projectTypeFilter, purposeFilter, statusFilter, projectTypeByName]);
 
   const availablePurposes = useMemo(() => {
     const set = new Set<string>();
@@ -192,6 +202,31 @@ export default function Loans() {
           </div>
         )}
 
+        {/* Status filter — drives stats, table totals, and charts */}
+        {loans.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-xs text-muted-foreground mr-1">Status:</span>
+            {STATUS_PILLS.map(pill => {
+              const active = statusFilter === pill.value;
+              return (
+                <button
+                  key={pill.value}
+                  type="button"
+                  onClick={() => setStatusFilter(pill.value)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors',
+                    active
+                      ? 'bg-primary/15 text-primary border-primary/40'
+                      : 'bg-card text-muted-foreground border-border hover:text-foreground',
+                  )}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Stats */}
         <LoanStatsRow loans={visibleLoans} />
 
@@ -232,6 +267,8 @@ export default function Loans() {
               compareMode={compareMode}
               selectedIds={compareIds}
               onToggleSelect={toggleCompare}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
             />
 
             {/* Charts */}

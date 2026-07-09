@@ -38,6 +38,8 @@ interface LoanTableProps {
   compareMode?: boolean;
   selectedIds?: string[];
   onToggleSelect?: (id: string) => void;
+  statusFilter?: LoanStatus | 'all';
+  onStatusFilterChange?: (value: LoanStatus | 'all') => void;
 }
 
 interface EnrichedLoan {
@@ -75,13 +77,21 @@ const toggleToState = (v: ToggleView): { viewMode: ViewMode; groupByProject: boo
   groupByProject: v === 'group',
 });
 
-export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], onToggleSelect }: LoanTableProps) {
+export function LoanTable({
+  loans,
+  projectNames,
+  compareMode,
+  selectedIds = [],
+  onToggleSelect,
+  statusFilter: controlledStatusFilter,
+  onStatusFilterChange,
+}: LoanTableProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const initialDefault = useMemo(readDefaultView, []);
   const initialState = useMemo(() => toggleToState(initialDefault), [initialDefault]);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('active');
+  const [internalStatusFilter, setInternalStatusFilter] = useState<LoanStatus | 'all'>('active');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
@@ -90,6 +100,12 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
   const [groupByProject, setGroupByProject] = useState(initialState.groupByProject);
   const [defaultView, setDefaultView] = useState<ToggleView>(initialDefault);
   const PER_PAGE = 15;
+
+  const statusFilter = controlledStatusFilter ?? internalStatusFilter;
+  const setStatusFilter = (value: LoanStatus | 'all') => {
+    onStatusFilterChange?.(value);
+    setInternalStatusFilter(value);
+  };
 
   const currentView: ToggleView = groupByProject ? 'group' : viewMode === 'cards' ? 'cards' : 'table';
 
@@ -478,16 +494,6 @@ export function LoanTable({ loans, projectNames, compareMode, selectedIds = [], 
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={v => { setStatusFilter(v as any); setPage(0); }}>
-          <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="paid_off">Paid Off</SelectItem>
-            <SelectItem value="default">Default</SelectItem>
-          </SelectContent>
-        </Select>
         {projectNames.length > 0 && (
           <Select value={projectFilter} onValueChange={v => { setProjectFilter(v); setPage(0); }}>
             <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
