@@ -10,6 +10,7 @@ import { LoanComparePanel } from '@/components/loans/LoanComparePanel';
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoans } from '@/hooks/useLoans';
 import type { Loan, LoanDraw } from '@/types/loans';
+import { getLoanPurposeColor } from '@/types/loans';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ export default function Loans() {
   const [compareMode, setCompareMode] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType | 'all'>('all');
+  const [purposeFilter, setPurposeFilter] = useState<string>('all');
 
   const toggleCompare = useCallback((id: string) => {
     setCompareIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 3 ? [...prev, id] : prev);
@@ -66,12 +68,25 @@ export default function Loans() {
   }, [projectTypesRows]);
 
   const visibleLoans = useMemo(() => {
-    if (projectTypeFilter === 'all') return loans;
     return loans.filter(l => {
-      const pn = l.project_name;
-      return !!pn && projectTypeByName.get(pn) === projectTypeFilter;
+      if (projectTypeFilter !== 'all') {
+        const pn = l.project_name;
+        if (!pn || projectTypeByName.get(pn) !== projectTypeFilter) return false;
+      }
+      if (purposeFilter !== 'all') {
+        if ((l.nickname ?? '') !== purposeFilter) return false;
+      }
+      return true;
     });
-  }, [loans, projectTypeFilter, projectTypeByName]);
+  }, [loans, projectTypeFilter, purposeFilter, projectTypeByName]);
+
+  const availablePurposes = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of loans) {
+      if (l.nickname) set.add(l.nickname);
+    }
+    return [...set].sort();
+  }, [loans]);
 
   const handleAddLoan = async (
     payload: Omit<Loan, 'id' | 'created_at' | 'updated_at' | 'project_name'>,
@@ -132,6 +147,45 @@ export default function Loans() {
                   )}
                 >
                   {pill.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Loan-purpose filter — composes with project-type filter */}
+        {loans.length > 0 && availablePurposes.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-xs text-muted-foreground mr-1">Purpose:</span>
+            <button
+              type="button"
+              onClick={() => setPurposeFilter('all')}
+              className={cn(
+                'px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors',
+                purposeFilter === 'all'
+                  ? 'bg-primary/15 text-primary border-primary/40'
+                  : 'bg-card text-muted-foreground border-border hover:text-foreground',
+              )}
+            >
+              All Purposes
+            </button>
+            {availablePurposes.map(purpose => {
+              const active = purposeFilter === purpose;
+              const color = getLoanPurposeColor(purpose).hsl;
+              return (
+                <button
+                  key={purpose}
+                  type="button"
+                  onClick={() => setPurposeFilter(purpose)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors',
+                    active
+                      ? 'bg-primary/15 text-primary border-primary/40'
+                      : 'bg-card text-muted-foreground border-border hover:text-foreground',
+                  )}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                  {purpose}
                 </button>
               );
             })}
