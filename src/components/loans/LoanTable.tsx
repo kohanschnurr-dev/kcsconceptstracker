@@ -494,7 +494,7 @@ export function LoanTable({
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={v => { setStatusFilter(v as any); setPage(0); }}>
+        <Select value={statusFilter} onValueChange={v => { setStatusFilter(v as LoanStatus | 'all'); setPage(0); }}>
           <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
