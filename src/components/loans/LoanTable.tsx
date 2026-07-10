@@ -40,6 +40,7 @@ interface LoanTableProps {
   onToggleSelect?: (id: string) => void;
   statusFilter?: LoanStatus | 'all';
   onStatusFilterChange?: (value: LoanStatus | 'all') => void;
+  includeInterest?: boolean;
 }
 
 interface EnrichedLoan {
@@ -85,6 +86,7 @@ export function LoanTable({
   onToggleSelect,
   statusFilter: controlledStatusFilter,
   onStatusFilterChange,
+  includeInterest = false,
 }: LoanTableProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -205,7 +207,7 @@ export function LoanTable({
         const effPayments = getEffectivePayments(l, lps);
         const bal = effectiveOutstandingBalance(l, effPayments);
         const intr = l.loan_type === 'dscr' ? 0 : currentAccruedInterest(l, lps, lds);
-        if (sortKey === 'payoff') return bal + intr;
+        if (sortKey === 'payoff') return bal + (includeInterest ? intr : 0);
         const drawn = (l as any).has_draws ? ((l as any).funded_draws_total ?? 0) : 0;
         const paid = effPayments.reduce((s, p: any) => {
           if (p.principal_portion != null) return s + p.principal_portion;
@@ -241,10 +243,10 @@ export function LoanTable({
         return s + Math.max(0, (p.amount ?? 0) - (p.interest_portion ?? 0) - (p.late_fee ?? 0));
       }, 0);
       const netActivity = drawn - paidDown;
-      const payoff = balance + (interest ?? 0);
+      const payoff = balance + (includeInterest ? (interest ?? 0) : 0);
       return { loan, balance, interest, drawn, paidDown, netActivity, payoff };
     });
-  }, [filtered, paymentsByLoan, drawsByLoan]);
+  }, [filtered, paymentsByLoan, drawsByLoan, includeInterest]);
 
   // Grand totals across all filtered loans
   const totals = useMemo(() => ({
@@ -597,7 +599,9 @@ export function LoanTable({
                   <TableHead className="text-center">Original <SortBtn col="original_amount" /></TableHead>
                   <TableHead className="text-center">Draws / Payoffs <SortBtn col="net_activity" /></TableHead>
                   <TableHead className="text-center">Interest Balance <SortBtn col="interest_accrued" /></TableHead>
-                  <TableHead className="text-center border-l border-border/60">Balance <SortBtn col="payoff" /></TableHead>
+                  <TableHead className="text-center border-l border-border/60">
+                    Balance{includeInterest ? ' (incl. interest)' : ''} <SortBtn col="payoff" />
+                  </TableHead>
                   <TableHead className="text-center">Next Payment <SortBtn col="next_payment" /></TableHead>
                   <TableHead className="text-center">Maturity <SortBtn col="maturity_date" /></TableHead>
                   <TableHead className="text-center">Status <SortBtn col="status" /></TableHead>
