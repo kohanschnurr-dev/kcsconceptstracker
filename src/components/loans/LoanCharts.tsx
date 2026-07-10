@@ -39,9 +39,10 @@ const TOOLTIP_TEXT_STYLE = {
 
 interface LoanChartsProps {
   loans: Loan[];
+  includeInterest?: boolean;
 }
 
-export function LoanCharts({ loans }: LoanChartsProps) {
+export function LoanCharts({ loans, includeInterest = false }: LoanChartsProps) {
   const active = useMemo(() => loans.filter(l => l.status === 'active'), [loans]);
 
   // Fetch payments for active loans so the capital stack reflects paydowns
@@ -124,11 +125,19 @@ export function LoanCharts({ loans }: LoanChartsProps) {
 
     const rows: PieRow[] = [];
     Object.values(aggByType).forEach(a => {
-      if (a.principal > 0) {
-        rows.push({ key: `${a.label}|principal`, label: a.label, kind: 'principal', value: a.principal, color: a.color, agg: a });
-      }
-      if (a.interest > 0) {
-        rows.push({ key: `${a.label}|interest`, label: a.label, kind: 'interest', value: a.interest, color: lightenHsl(a.color, 22), agg: a });
+      if (includeInterest) {
+        // Combine principal + interest into a single segment per loan type.
+        const total = a.principal + a.interest;
+        if (total > 0) {
+          rows.push({ key: `${a.label}|total`, label: a.label, kind: 'principal', value: total, color: a.color, agg: a });
+        }
+      } else {
+        if (a.principal > 0) {
+          rows.push({ key: `${a.label}|principal`, label: a.label, kind: 'principal', value: a.principal, color: a.color, agg: a });
+        }
+        if (a.interest > 0) {
+          rows.push({ key: `${a.label}|interest`, label: a.label, kind: 'interest', value: a.interest, color: lightenHsl(a.color, 22), agg: a });
+        }
       }
     });
 
@@ -140,7 +149,7 @@ export function LoanCharts({ loans }: LoanChartsProps) {
     }));
 
     return { pieRows: rows, legendPayload: legend };
-  }, [active, paymentsByLoan, drawsByLoan]);
+  }, [active, paymentsByLoan, drawsByLoan, includeInterest]);
 
   // Stack each project's balance by loan type + per-type accrued interest.
   // Each loan type gets two stacked segments: principal (base color) and
@@ -155,26 +164,33 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       const lp = getEffectivePayments(l, paymentsByLoan[l.id] ?? []);
       // Payment-aware principal so the bar shrinks after a payment.
       const bal = effectiveOutstandingBalance(l, lp);
-      map[key][l.loan_type] = (map[key][l.loan_type] ?? 0) + bal;
-      map[key].__total += bal;
-      typesSet.add(l.loan_type);
-
       // Per-type accrued interest stacked directly on top of its own principal.
       // Skip for amortizing loans — interest is paid monthly, not accrued.
       const accrued = isAmortizingLoan(l)
         ? 0
         : currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], drawsByLoan[l.id] ?? []);
-      if (accrued > 0) {
-        const ik = interestKey(l.loan_type);
-        map[key][ik] = (map[key][ik] ?? 0) + accrued;
+
+      if (includeInterest) {
+        // Combine principal + interest into one stacked segment per loan type.
+        const total = bal + accrued;
+        map[key][l.loan_type] = (map[key][l.loan_type] ?? 0) + total;
+        map[key].__total += total;
+      } else {
+        map[key][l.loan_type] = (map[key][l.loan_type] ?? 0) + bal;
+        map[key].__total += bal;
+        if (accrued > 0) {
+          const ik = interestKey(l.loan_type);
+          map[key][ik] = (map[key][ik] ?? 0) + accrued;
+        }
       }
+      typesSet.add(l.loan_type);
     });
     const rows = Object.entries(map)
       .map(([name, vals]) => ({ name, ...vals }))
       .sort((a, b) => (b as any).__total - (a as any).__total)
       .slice(0, 8);
     return { byProject: rows, presentTypes: Array.from(typesSet) };
-  }, [active, paymentsByLoan, drawsByLoan]);
+  }, [active, paymentsByLoan, drawsByLoan, includeInterest]);
 
   // Custom legend: one entry per loan type (base color), with a single
   // muted "Lighter shade = accrued interest" hint shown in the header.
@@ -301,7 +317,9 @@ export function LoanCharts({ loans }: LoanChartsProps) {
       <Card className="glass-card lg:col-span-3">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-base">Active Capital Stack by Project</CardTitle>
-          <span className="text-xs text-muted-foreground">Lighter shade = accrued interest</span>
+          {!includeInterest && (
+            <span className="text-xs text-muted-foreground">Lighter shade = accrued interest</span>
+          )}
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={520}>
@@ -349,24 +367,29 @@ export function LoanCharts({ loans }: LoanChartsProps) {
               {presentTypes.flatMap((t, idx) => {
                 const base = LOAN_TYPE_COLORS[t]?.hsl ?? LOAN_TYPE_COLORS.other.hsl;
                 const isLast = idx === presentTypes.length - 1;
-                return [
+                const bars = [
                   <Bar
                     key={`${t}-principal`}
                     dataKey={t}
                     stackId="capital"
                     fill={base}
-                    radius={0}
+                    radius={isLast ? [4, 4, 0, 0] : 0}
                     name={t}
                   />,
-                  <Bar
-                    key={`${t}-interest`}
-                    dataKey={`${t}__interest`}
-                    stackId="capital"
-                    fill={lightenHsl(base, 22)}
-                    radius={isLast ? [4, 4, 0, 0] : 0}
-                    name={`${t}__interest`}
-                  />,
                 ];
+                if (!includeInterest) {
+                  bars.push(
+                    <Bar
+                      key={`${t}-interest`}
+                      dataKey={`${t}__interest`}
+                      stackId="capital"
+                      fill={lightenHsl(base, 22)}
+                      radius={isLast ? [4, 4, 0, 0] : 0}
+                      name={`${t}__interest`}
+                    />,
+                  );
+                }
+                return bars;
               })}
             </BarChart>
           </ResponsiveContainer>

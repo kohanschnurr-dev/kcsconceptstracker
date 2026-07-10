@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-import { effectiveOutstandingBalance, ACCRUES_INTEREST_TYPES, LOAN_TYPE_LABELS } from '@/types/loans';
+import { effectiveOutstandingBalance, currentAccruedInterest, ACCRUES_INTEREST_TYPES, LOAN_TYPE_LABELS } from '@/types/loans';
 import { getEffectivePayments } from '@/lib/loanPayments';
-import type { Loan, LoanPayment, LoanType } from '@/types/loans';
+import type { Loan, LoanPayment, LoanType, LoanDraw } from '@/types/loans';
 import { supabase } from '@/integrations/supabase/client';
 
 const fmt = (v: number) =>
@@ -28,17 +28,18 @@ export function loanBalanceWithDraws(l: Loan, payments: LoanPayment[] = []): num
 
 interface LoanStatsRowProps {
   loans: Loan[];
+  includeInterest?: boolean;
 }
 
 type DrillKey = 'project' | 'rental' | 'rate' | 'debt' | null;
 
-export function LoanStatsRow({ loans }: LoanStatsRowProps) {
+export function LoanStatsRow({ loans, includeInterest = false }: LoanStatsRowProps) {
   const [drill, setDrill] = useState<DrillKey>(null);
   const active = useMemo(() => loans.filter(l => l.status === 'active'), [loans]);
   const shortTermLoans = useMemo(() => active.filter(isShortTerm), [active]);
   const longTermLoans = useMemo(() => active.filter(l => !isShortTerm(l)), [active]);
 
-  const activeIds = useMemo(() => active.map(l => l.id).sort(), [active]);
+  const activeIds = useMemo(() => active.map(l => l.id).filter(Boolean).sort(), [active]);
   const { data: payments = [] } = useQuery<LoanPayment[]>({
     queryKey: ['loan_payments_for_stats', activeIds],
     enabled: activeIds.length > 0,
@@ -47,7 +48,18 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
         .select('loan_id, date, amount, principal_portion, interest_portion, late_fee')
         .in('loan_id', activeIds);
       if (error) throw error;
-      return (data ?? []) as LoanPayment[];
+      return (data ?? []).map((p: any) => ({ ...p, payment_date: p.date })) as LoanPayment[];
+    },
+  });
+  const { data: draws = [] } = useQuery<LoanDraw[]>({
+    queryKey: ['loan_draws_for_stats', activeIds],
+    enabled: activeIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from('loan_draws' as any) as any)
+        .select('id, loan_id, draw_amount, draw_number, status, date_funded, expected_date, interest_rate_override, fee_amount, fee_percentage, milestone_name')
+        .in('loan_id', activeIds);
+      if (error) throw error;
+      return (data ?? []) as LoanDraw[];
     },
   });
   const paymentsByLoan = useMemo(() => {
@@ -59,26 +71,37 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
     }
     return m;
   }, [payments]);
+  const drawsByLoan = useMemo(() => {
+    const m: Record<string, LoanDraw[]> = {};
+    for (const d of draws) {
+      const key = (d as any).loan_id;
+      if (!key) continue;
+      (m[key] = m[key] ?? []).push(d);
+    }
+    return m;
+  }, [draws]);
 
   const balanceFor = (l: Loan) => effectiveOutstandingBalance(l, getEffectivePayments(l, paymentsByLoan[l.id] ?? []));
+  const interestFor = (l: Loan) => currentAccruedInterest(l, paymentsByLoan[l.id] ?? [], drawsByLoan[l.id] ?? []);
+  const basisFor = (l: Loan) => balanceFor(l) + (includeInterest ? interestFor(l) : 0);
 
   const shortTermBalance = useMemo(
-    () => shortTermLoans.reduce((s, l) => s + balanceFor(l), 0),
+    () => shortTermLoans.reduce((s, l) => s + basisFor(l), 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shortTermLoans, paymentsByLoan],
+    [shortTermLoans, paymentsByLoan, drawsByLoan, includeInterest],
   );
   const longTermBalance = useMemo(
-    () => longTermLoans.reduce((s, l) => s + balanceFor(l), 0),
+    () => longTermLoans.reduce((s, l) => s + basisFor(l), 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [longTermLoans, paymentsByLoan],
+    [longTermLoans, paymentsByLoan, drawsByLoan, includeInterest],
   );
   const totalBalance = shortTermBalance + longTermBalance;
 
   const weightedRate = useMemo(() => {
     if (totalBalance === 0) return 0;
-    return active.reduce((s, l) => s + l.interest_rate * balanceFor(l), 0) / totalBalance;
+    return active.reduce((s, l) => s + l.interest_rate * basisFor(l), 0) / totalBalance;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, totalBalance, paymentsByLoan]);
+  }, [active, totalBalance, paymentsByLoan, drawsByLoan, includeInterest]);
 
   const totalMonthlyDebt = useMemo(
     () => active.reduce((s, l) => s + (l.monthly_payment ?? 0), 0),
@@ -101,8 +124,8 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
       value: fmt(shortTermBalance),
       subtitle: shortTermLoans.length === 0
         ? 'No active short-term loans'
-        : `${shortTermLoans.length} short-term loan${shortTermLoans.length !== 1 ? 's' : ''}`,
-      tooltip: 'Hard money, private money, bridge, and construction loans — the debt actively in play on live projects.',
+        : `${shortTermLoans.length} short-term loan${shortTermLoans.length !== 1 ? 's' : ''}${includeInterest ? ' incl. interest' : ''}`,
+      tooltip: `Hard money, private money, bridge, and construction loans — ${includeInterest ? 'including accrued interest.' : 'principal only.'}`,
       icon: Hammer,
       color: 'text-primary',
       bg: 'bg-primary/10',
@@ -113,8 +136,8 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
       value: fmt(longTermBalance),
       subtitle: longTermLoans.length === 0
         ? 'No active long-term loans'
-        : `${longTermLoans.length} long-term loan${longTermLoans.length !== 1 ? 's' : ''}`,
-      tooltip: 'DSCR, conventional, HELOC, portfolio, and seller-financed loans on stabilized rentals.',
+        : `${longTermLoans.length} long-term loan${longTermLoans.length !== 1 ? 's' : ''}${includeInterest ? ' incl. interest' : ''}`,
+      tooltip: `DSCR, conventional, HELOC, portfolio, and seller-financed loans on stabilized rentals — ${includeInterest ? 'including accrued interest.' : 'principal only.'}`,
       icon: Building2,
       color: 'text-blue-400',
       bg: 'bg-blue-500/10',
@@ -123,7 +146,7 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
       key: 'rate',
       title: 'Weighted Avg. Rate',
       value: `${weightedRate.toFixed(2)}%`,
-      subtitle: 'Across active loans',
+      subtitle: `Across active loans${includeInterest ? ' (incl. interest basis)' : ' (principal basis)'}`,
       icon: Percent,
       color: 'text-purple-400',
       bg: 'bg-purple-500/10',
@@ -196,24 +219,26 @@ export function LoanStatsRow({ loans }: LoanStatsRowProps) {
                 <p className="text-sm text-muted-foreground py-6 text-center">No loans in this bucket.</p>
               )}
               {current?.loans.map(loan => {
+                const basis = basisFor(loan);
                 const balance = balanceFor(loan);
+                const interest = interestFor(loan);
                 const drawn = loan.has_draws
                   ? Math.max(loan.total_draw_amount ?? 0, loan.funded_draws_total ?? 0)
                   : 0;
                 let primary = '';
                 let secondary = '';
                 if (drill === 'project' || drill === 'rental') {
-                  primary = fmt(balance);
+                  primary = fmt(basis);
                   secondary = drawn > 0
-                    ? `Principal ${fmt(loan.outstanding_balance)} + Draws ${fmt(drawn)}`
-                    : LOAN_TYPE_LABELS[loan.loan_type];
+                    ? `Principal ${fmt(loan.outstanding_balance)} + Draws ${fmt(drawn)}${includeInterest && interest > 0 ? ` + Interest ${fmt(interest)}` : ''}`
+                    : `${LOAN_TYPE_LABELS[loan.loan_type]}${includeInterest && interest > 0 ? ` · Interest ${fmt(interest)}` : ''}`;
                 } else if (drill === 'rate') {
-                  const weight = totalBalance > 0 ? (balance / totalBalance) * 100 : 0;
+                  const weight = totalBalance > 0 ? (basis / totalBalance) * 100 : 0;
                   primary = `${loan.interest_rate.toFixed(2)}%`;
-                  secondary = `${weight.toFixed(1)}% of total balance · ${fmt(balance)}`;
+                  secondary = `${weight.toFixed(1)}% of total balance · ${fmt(basis)}${includeInterest ? ' (incl. interest)' : ''}`;
                 } else if (drill === 'debt') {
                   primary = fmt(loan.monthly_payment ?? 0);
-                  secondary = `${loan.interest_rate.toFixed(2)}% · ${fmt(balance)} balance`;
+                  secondary = `${loan.interest_rate.toFixed(2)}% · ${fmt(basis)} balance${includeInterest ? ' (incl. interest)' : ''}`;
                 }
                 return (
                   <Link

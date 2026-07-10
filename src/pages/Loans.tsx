@@ -3,6 +3,7 @@ import { Landmark, Plus, GitCompareArrows } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { LoanStatsRow } from '@/components/loans/LoanStatsRow';
 import { LoanTable } from '@/components/loans/LoanTable';
 import { LoanCharts } from '@/components/loans/LoanCharts';
@@ -41,6 +42,7 @@ export default function Loans() {
   const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType | 'all'>('all');
   const [purposeFilter, setPurposeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<LoanStatus | 'all'>('active');
+  const [includeInterest, setIncludeInterest] = useState(false);
 
   const toggleCompare = useCallback((id: string) => {
     setCompareIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 3 ? [...prev, id] : prev);
@@ -227,8 +229,27 @@ export default function Loans() {
           </div>
         )}
 
+        {/* Interest toggle — unifies stats, table totals, and charts */}
+        {loans.length > 0 && (
+          <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 w-fit">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="include-interest"
+                checked={includeInterest}
+                onCheckedChange={setIncludeInterest}
+              />
+              <label htmlFor="include-interest" className="text-xs font-medium cursor-pointer select-none">
+                Include accrued interest
+              </label>
+            </div>
+            <span className="text-[11px] text-muted-foreground">
+              {includeInterest ? 'Showing principal + interest' : 'Showing principal only'}
+            </span>
+          </div>
+        )}
+
         {/* Stats */}
-        <LoanStatsRow loans={visibleLoans} />
+        <LoanStatsRow loans={visibleLoans} includeInterest={includeInterest} />
 
         {/* Empty state */}
         {!isLoading && loans.length === 0 ? (
@@ -269,10 +290,11 @@ export default function Loans() {
               onToggleSelect={toggleCompare}
               statusFilter={statusFilter}
               onStatusFilterChange={setStatusFilter}
+              includeInterest={includeInterest}
             />
 
             {/* Charts */}
-            <LoanCharts loans={visibleLoans} />
+            <LoanCharts loans={visibleLoans} includeInterest={includeInterest} />
           </>
         )}
       </div>

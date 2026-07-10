@@ -1,24 +1,52 @@
-# Filter Loans by Loan Purpose
+## Goal
+Add a single page-level toggle on `/loans` that lets the user switch the "active project data" view between **principal-only** and **principal + accrued interest**. When toggled, the change propagates to the stat cards, the table totals row, and the charts.
 
-Add a second filter row on the Loans page so users can narrow the entire page (stats row, table, and charts) by loan purpose (e.g. Working Capital, DSCR / Long-Term Hold, Purchase & Construction) — in addition to the existing project-type filter.
+## Why
+Right now the "Active Project Debt" stat card shows principal-only, while the table's Balance column and totals row already include accrued interest. A unified toggle removes that ambiguity and lets the user decide which basis to view across all surfaces.
 
-## UX
+## Changes
 
-Under the existing "All Projects / Fix & Flips / Rentals / New Construction" pill row, add a second pill row: **Loan Purpose**.
+### 1. Page-level state and toggle (`src/pages/Loans.tsx`)
+- Add `includeInterest` boolean state (default `false` — principal-only, matching the current stat card).
+- Render a toggle/switch in the filter area labeled **"Include accrued interest"**.
+- Pass `includeInterest` down to `LoanStatsRow`, `LoanTable`, and `LoanCharts`.
 
-- First pill: `All Purposes` (default).
-- Additional pills: only the purposes actually present in the current loan set (dynamic, sorted). Each pill uses its stable purpose color (from `LOAN_PURPOSE_COLORS`) as a small color dot so it visually matches the table pill and chart legend.
-- Both filters compose (AND): e.g. "Rentals" + "DSCR / Long-Term Hold".
-- Filter row hides when there are no loans, matching the existing project-type row.
+### 2. Stat cards (`src/components/loans/LoanStatsRow.tsx`)
+- Accept new `includeInterest: boolean` prop.
+- Compute accrued interest for active short-term loans (using `currentAccruedInterest` and already-fetched payments/draws).
+- When `includeInterest` is true, add accrued interest to:
+  - **Active Project Debt**
+  - **Long-Term Rental Debt**
+  - **Weighted Avg. Rate** denominator/value (balance basis)
+- Subtitle/tooltip updates slightly to indicate when interest is included.
+- Drill-down modal also reflects the same basis.
 
-The filter drives `visibleLoans`, which already feeds `LoanStatsRow`, `LoanTable`, and `LoanCharts` — so the pie/bar charts and totals update automatically.
+### 3. Table (`src/components/loans/LoanTable.tsx`)
+- Accept new `includeInterest: boolean` prop.
+- Update the enriched `payoff` value:
+  - `includeInterest === true` → `balance + interest` (current behavior)
+  - `includeInterest === false` → `balance` (principal-only)
+- Keep the **Interest Balance** column visible so users still see the interest amount separately.
+- Update the bottom totals row and project subtotal rows to use the same basis.
+- Optionally update the Balance column header to "Balance (w/ interest)" when the toggle is on, or keep it as "Balance" with a tooltip.
 
-## Technical Notes
+### 4. Charts (`src/components/loans/LoanCharts.tsx`)
+- Accept new `includeInterest: boolean` prop.
+- **Pie chart** (`Debt by Loan Type`):
+  - Off: one segment per loan type = principal only; hide interest segments.
+  - On: one segment per loan type = principal + accrued interest combined.
+- **Bar chart** (`Active Capital Stack by Project`):
+  - Off: stacked bars per loan type = principal only.
+  - On: stacked bars per loan type = principal + accrued interest combined.
+- Hide the "Lighter shade = accrued interest" hint when interest is excluded.
 
-- Loan purpose is stored in `loans.nickname` (string). No schema changes needed.
-- File touched: `src/pages/Loans.tsx` only.
-  - Add `purposeFilter` state (`string | 'all'`, default `'all'`).
-  - Derive `availablePurposes` from `loans.map(l => l.nickname)` (unique, non-null, sorted).
-  - Extend `visibleLoans` memo to also filter by `l.nickname === purposeFilter` when not `'all'`.
-  - Render the new pill row below the existing project-type pills, reusing the same pill styling; add a colored dot per pill via `getLoanPurposeColor(purpose).hsl`.
-- No changes to `LoanCharts`, `LoanTable`, `LoanStatsRow` — they already accept a filtered `loans` array.
+## UX details
+- Toggle lives near the existing Status/Purpose filter pills so it feels like a page-level view control.
+- Default state is **off** so existing behavior is preserved.
+- No database changes; all data is already available via existing queries.
+- No changes to individual loan detail pages.
+
+## Verification
+- Open `/loans`, confirm the toggle defaults off and the "Active Project Debt" stat matches the principal-only total.
+- Toggle on, confirm the stat increases by the accrued-interest amount and the table totals row + charts update to include interest.
+- Switch Status/Purpose/Project-Type filters and confirm the toggle still applies to the filtered set.
