@@ -229,59 +229,82 @@ export function generateBudgetPdf(data: BudgetPdfData) {
 <meta charset="utf-8"/>
 <title>Deal Analysis – ${esc(data.dealName)}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:#1a1a1a; background:#fff; padding:44px 52px; }
-  .header { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin-bottom:24px; padding-bottom:18px; border-bottom:2px solid #c9a96e; }
-  .header h1 { font-size:22px; font-weight:700; }
-  .header .subtitle { font-size:13px; color:#666; margin-top:4px; }
-  .header .mode { display:inline-block; margin-top:8px; font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#8a6d2f; background:#f6efe1; border-radius:4px; padding:3px 8px; }
-  .header-right { text-align:right; }
-  .header-right .company { font-size:14px; font-weight:600; margin-top:6px; }
-  .header-right .date { font-size:11px; color:#888; margin-top:2px; }
-  .snapshot { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:20px; }
-  .snap-card { background:#f8f6f3; border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; justify-content:space-between; min-height:62px; }
-  .snap-card .label { font-size:9.5px; line-height:1.3; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; min-height:25px; }
-  .snap-card .value { font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; }
-  .mao { display:flex; justify-content:space-between; align-items:center; gap:16px; border-radius:8px; padding:14px 18px; margin-bottom:8px; }
-  .mao.ok { background:#f0f7f0; border:1px solid #cfe6cf; }
-  .mao.warn { background:#fdf1f0; border:1px solid #f0cdc9; }
-  .mao-label { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:#777; }
-  .mao-value { font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; }
-  .mao-right { font-size:12.5px; font-weight:600; text-align:right; }
-  .mao.ok .mao-right { color:#27713a; }
-  .mao.warn .mao-right { color:#b03a2e; }
-  .section-title { page-break-after:avoid; break-after:avoid; font-size:12.5px; font-weight:700; color:#c9a96e; text-transform:uppercase; letter-spacing:1px; margin:24px 0 10px; }
-  table { width:100%; border-collapse:collapse; }
+  :root { --gold:#b8892b; --gold-soft:#f4ecdd; --ink:#15171a; --muted:#6b7280; --line:#e7e5e1; }
+  html, body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--ink); background:#fff; padding:40px 44px; font-size:12px; line-height:1.4; }
+  .sheet { max-width:7.5in; margin:0 auto; }
+
+  .header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; padding-bottom:14px; }
+  .header h1 { font-size:24px; font-weight:800; letter-spacing:-.5px; }
+  .header .deal { font-size:14px; font-weight:600; color:#333; margin-top:3px; }
+  .header .desc { font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .header .mode { display:inline-block; margin-top:9px; font-size:9px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#7a5b18; background:var(--gold-soft); border:1px solid #e6d7b8; border-radius:3px; padding:3px 9px; }
+  .header-right { width:2.3in; flex:0 0 2.3in; text-align:right; }
+  .header-right img { max-height:44px; max-width:100%; object-fit:contain; display:inline-block; }
+  .header-right .company { font-size:13px; font-weight:700; margin-top:6px; word-break:break-word; }
+  .header-right .date { font-size:10.5px; color:var(--muted); margin-top:3px; }
+  .rule { height:3px; background:linear-gradient(90deg,var(--gold) 0%,var(--gold) 28%,#e2d6bd 28%,#e2d6bd 100%); border-radius:2px; margin-bottom:18px; }
+
+  .snapshot { display:flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:14px; page-break-inside:avoid; }
+  .snap-card { flex:1; padding:11px 12px; border-right:1px solid var(--line); }
+  .snap-card:last-child { border-right:none; }
+  .snap-card .label { font-size:8.5px; font-weight:600; line-height:1.2; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; height:20px; }
+  .snap-card .value { font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:5px; white-space:nowrap; }
+
+  .mao { display:flex; justify-content:space-between; align-items:center; gap:16px; border-radius:6px; padding:12px 16px; page-break-inside:avoid; }
+  .mao.ok { background:#f2f8f3; border:1px solid #cfe6d3; }
+  .mao.warn { background:#fdf3f1; border:1px solid #f2d3cd; }
+  .mao-label { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.7px; color:var(--muted); }
+  .mao-value { font-size:21px; font-weight:800; font-variant-numeric:tabular-nums; margin-top:2px; }
+  .mao-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+  .badge { font-size:9px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; border-radius:3px; padding:3px 8px; color:#fff; }
+  .mao.ok .badge { background:#2b7a44; }
+  .mao.warn .badge { background:#b53a2c; }
+  .mao-delta { font-size:11.5px; font-weight:600; }
+  .mao.ok .mao-delta { color:#2b7a44; }
+  .mao.warn .mao-delta { color:#b53a2c; }
+  .mao-delta.muted { color:var(--muted); font-weight:500; }
+
+  .section-title { page-break-after:avoid; break-after:avoid; font-size:10.5px; font-weight:800; color:var(--ink); text-transform:uppercase; letter-spacing:1.2px; margin:22px 0 8px; padding-left:8px; border-left:3px solid var(--gold); }
+  table { width:100%; border-collapse:collapse; page-break-inside:auto; }
   thead { display:table-header-group; }
-  th { text-align:left; font-size:10px; color:#888; text-transform:uppercase; letter-spacing:.5px; padding:7px 10px; border-bottom:1px solid #e5e5e5; }
+  th { text-align:left; font-size:8.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.7px; padding:6px 8px; border-bottom:1.5px solid #ddd9d2; background:#faf9f7; }
   th:last-child, td:last-child { text-align:right; }
-  td { padding:7.5px 10px; font-size:12.5px; border-bottom:1px solid #f2f2f2; }
-  td:last-child { font-variant-numeric:tabular-nums; }
-  td.pct { text-align:right; color:#999; font-size:11.5px; width:80px; }
-  th.pct { text-align:right; }
+  td { padding:5.5px 8px; font-size:11.5px; border-bottom:1px solid #f1efec; }
+  tbody tr:nth-child(even) td { background:#fbfaf8; }
+  td.amt, td:last-child { font-variant-numeric:tabular-nums; font-weight:600; }
+  td.cat { font-weight:500; }
+  td.pct, th.pct { text-align:right; color:var(--muted); font-size:10.5px; width:62px; font-weight:500; }
+  th.bar-cell, td.bar-cell { width:110px; padding-right:4px; }
+  .bar { display:block; height:5px; width:100%; background:#f0ede8; border-radius:3px; overflow:hidden; }
+  .bar-fill { display:block; height:100%; background:var(--gold); border-radius:3px; }
   tr { page-break-inside:avoid; }
   tr.bold td { font-weight:700; }
-  tr.divider td { border-bottom:2px solid #e0e0e0; }
-  tr.total td { font-weight:700; border-top:2px solid #e0e0e0; border-bottom:none; font-size:13.5px; }
+  tr.divider td { border-bottom:1.5px solid #ddd9d2; }
+  tr.total td { font-weight:800; border-top:1.5px solid #cfcac1; border-bottom:none; font-size:12.5px; background:#fff !important; padding-top:8px; }
   td.empty { color:#aaa; font-style:italic; text-align:center; }
-  .negative { color:#c0392b; }
-  .positive { color:#27ae60; }
-  .summary-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:20px; page-break-inside:avoid; }
-  .summary-card { background:#f8f6f3; border-radius:8px; padding:14px; text-align:center; }
-  .summary-card .label { font-size:9.5px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
-  .summary-card .value { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; }
-  .footer { margin-top:34px; padding-top:14px; border-top:1px solid #e5e5e5; font-size:10.5px; color:#aaa; text-align:center; }
-  @page { margin:0.5in; }
-  @media print { body { padding:0; } }
+  .negative { color:#b53a2c; }
+  .positive { color:#2b7a44; }
+
+  .summary-grid { display:flex; gap:8px; margin-top:16px; page-break-inside:avoid; }
+  .summary-card { flex:1; background:#faf9f7; border:1px solid var(--line); border-radius:6px; padding:12px 10px; text-align:center; }
+  .summary-card .label { font-size:8.5px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; height:20px; }
+  .summary-card .value { font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; margin-top:4px; white-space:nowrap; }
+
+  .footer { margin-top:28px; padding-top:12px; border-top:1px solid var(--line); font-size:9.5px; color:#9a968f; text-align:center; }
+  @page { size:Letter portrait; margin:0.45in; }
+  @media print { body { padding:0; font-size:11.5px; } .sheet { max-width:none; } }
 </style>
 </head>
 <body>
+ <div class="sheet">
   <div class="header">
     <div>
       <h1>Deal Analysis</h1>
-      <div class="subtitle">${esc(data.dealName)}</div>
-      ${data.dealDescription ? `<div class="subtitle">${esc(data.dealDescription)}</div>` : ''}
+      <div class="deal">${esc(data.dealName)}</div>
+      ${data.dealDescription ? `<div class="desc">${esc(data.dealDescription)}</div>` : ''}
       <div class="mode">${esc(modeLabel)}</div>
     </div>
     <div class="header-right">
@@ -290,6 +313,7 @@ export function generateBudgetPdf(data: BudgetPdfData) {
       <div class="date">Prepared ${esc(today)}</div>
     </div>
   </div>
+  <div class="rule"></div>
 
   <div class="snapshot">
     ${snapshotCards.map(c => `<div class="snap-card"><div class="label">${esc(c.label)}</div><div class="value">${esc(c.value)}</div></div>`).join('')}
@@ -299,12 +323,13 @@ export function generateBudgetPdf(data: BudgetPdfData) {
 
   <div class="section-title">Construction Budget</div>
   <table>
-    <thead><tr><th>Category</th><th class="pct">% of Total</th><th>Amount</th></tr></thead>
+    <thead><tr><th>Category</th><th class="bar-cell"></th><th class="pct">% of Total</th><th>Amount</th></tr></thead>
     <tbody>
       ${lineItemRows}
-      <tr class="total"><td>Total Construction Budget</td><td class="pct"></td><td>${fmt(data.totalBudget)}</td></tr>
+      <tr class="total"><td>Total Construction Budget</td><td class="bar-cell"></td><td class="pct"></td><td>${fmt(data.totalBudget)}</td></tr>
     </tbody>
   </table>
+
 
   ${analysisHtml}
 
