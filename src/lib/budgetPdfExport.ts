@@ -128,13 +128,17 @@ export function generateBudgetPdf(data: BudgetPdfData) {
     { label: 'Budget / Sqft', value: psf > 0 ? `$${psf.toFixed(2)}` : '—' },
   ];
 
+  const maxLineItem = data.lineItems.reduce((mx, li) => Math.max(mx, li.amount), 0);
   const lineItemRows = data.lineItems.length
     ? data.lineItems
-        .map(
-          (li) => `<tr><td>${esc(li.label)}</td><td class="pct">${data.totalBudget > 0 ? fmtPct((li.amount / data.totalBudget) * 100) : '—'}</td><td>${fmt(li.amount)}</td></tr>`
-        )
+        .map((li) => {
+          const share = data.totalBudget > 0 ? (li.amount / data.totalBudget) * 100 : 0;
+          const barW = maxLineItem > 0 ? Math.max(2, (li.amount / maxLineItem) * 100) : 0;
+          return `<tr><td class="cat">${esc(li.label)}</td><td class="bar-cell"><span class="bar"><span class="bar-fill" style="width:${barW.toFixed(1)}%"></span></span></td><td class="pct">${data.totalBudget > 0 ? fmtPct(share) : '—'}</td><td class="amt">${fmt(li.amount)}</td></tr>`;
+        })
         .join('')
-    : `<tr><td colspan="3" class="empty">No category budgets entered.</td></tr>`;
+    : `<tr><td colspan="4" class="empty">No category budgets entered.</td></tr>`;
+
 
   let analysisHtml = '';
 
