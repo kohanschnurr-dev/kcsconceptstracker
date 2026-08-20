@@ -363,7 +363,10 @@ export function generateBudgetPdf(data: BudgetPdfData) {
     }, 1000);
   };
 
+  let printed = false;
   const doPrint = () => {
+    if (printed) return;
+    printed = true;
     const win = iframe.contentWindow;
     if (!win) return cleanup();
     const imgs = Array.from(win.document.images);
