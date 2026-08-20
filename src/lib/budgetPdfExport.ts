@@ -341,20 +341,58 @@ export function generateBudgetPdf(data: BudgetPdfData) {
   </div>
  </div>
 
-<script>
-  var imgs=document.querySelectorAll('img');
-  var total=imgs.length;
-  if(total===0){setTimeout(function(){window.print();},500);}
-  else{
-    var loaded=0;
-    function tryPrint(){loaded++;if(loaded>=total)setTimeout(function(){window.print();},500);}
-    imgs.forEach(function(img){if(img.complete){tryPrint();}else{img.onload=tryPrint;img.onerror=tryPrint;}});
-  }
-</script>
 </body>
 </html>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  // Render in a hidden same-page iframe so the browser's print header/footer
+  // doesn't stamp a blob: URL onto the PDF.
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.style.opacity = '0';
+  document.body.appendChild(iframe);
+
+  const cleanup = () => {
+    setTimeout(() => {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    }, 1000);
+  };
+
+  let printed = false;
+  const doPrint = () => {
+    if (printed) return;
+    printed = true;
+    const win = iframe.contentWindow;
+    if (!win) return cleanup();
+    const imgs = Array.from(win.document.images);
+    const start = () => setTimeout(() => {
+      try {
+        win.focus();
+        win.print();
+      } catch { /* noop */ }
+      cleanup();
+    }, 300);
+    if (imgs.length === 0) return start();
+    let loaded = 0;
+    const tick = () => { loaded++; if (loaded >= imgs.length) start(); };
+    imgs.forEach(img => {
+      if (img.complete) tick();
+      else { img.onload = tick; img.onerror = tick; }
+    });
+  };
+
+  iframe.onload = doPrint;
+  const doc = iframe.contentWindow?.document;
+  if (doc) {
+    doc.open();
+    doc.write(html);
+    doc.close();
+    if (doc.readyState === 'complete') doPrint();
+  }
 }
+
