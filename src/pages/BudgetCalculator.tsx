@@ -3,7 +3,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calculator, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ChevronDown, RotateCcw, Upload } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ChevronDown, RotateCcw, Upload, FileDown } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -19,6 +19,9 @@ import type { RentalFieldValues } from '@/components/budget/RentalFields';
 import { getBudgetCategories } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { generateBudgetPdf } from '@/lib/budgetPdfExport';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Project {
   id: string;
@@ -58,6 +61,7 @@ const defaultRentalFields: RentalFieldValues = {
 };
 
 export default function BudgetCalculator() {
+  const { settings: companySettings } = useCompanySettings();
   const [purchasePrice, setPurchasePrice] = useState<string>('');
   const [arv, setArv] = useState<string>('');
   const [budgetName, setBudgetName] = useState<string>('');
@@ -520,6 +524,43 @@ export default function BudgetCalculator() {
     }
   };
 
+  const canExport = totalBudget > 0 || purchasePriceNum > 0 || arvNum > 0;
+
+  const handleExportPdf = () => {
+    const lineItems = getBudgetCategories()
+      .map(cat => ({ label: cat.label, amount: parseFloat(categoryBudgets[cat.value]) || 0 }))
+      .filter(li => li.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+
+    generateBudgetPdf({
+      dealName: currentTemplateName || budgetName || 'Untitled Deal',
+      dealDescription: budgetDescription || undefined,
+      companyName: companySettings?.company_name ?? undefined,
+      logoUrl: companySettings?.logo_url ?? undefined,
+      calculatorType,
+      purchasePrice: purchasePriceNum,
+      arv: arvNum,
+      sqft: parseFloat(sqft) || 0,
+      totalBudget,
+      maoPercentage,
+      maxOffer,
+      closingCostsBuy,
+      holdingCosts,
+      closingCostsSell,
+      includeSellClosingCosts,
+      closingLabel: closingMode === 'pct' ? `(${closingPct}%)` : '(flat)',
+      holdingLabel: holdingMode === 'pct' ? `(${holdingPct}%)` : '(flat)',
+      sellClosingLabel: sellClosingMode === 'pct' ? `(${sellClosingPct}%)` : '(flat)',
+      totalInvestment,
+      totalCosts,
+      grossProfit,
+      roi,
+      lineItems,
+      rentalFields,
+    });
+    toast.success('Deal sheet generated — use your print dialog to save as PDF');
+  };
+
   const subtitleText = calculatorType === 'fix_flip'
     ? 'Build and manage construction budgets with real-time MAO tracking'
     : 'Analyze rental income, expenses, and cash flow projections';
@@ -552,6 +593,29 @@ export default function BudgetCalculator() {
             <Button variant="outline" size="icon" onClick={() => setImportModalOpen(true)} title="Import budget">
               <Upload className="h-4 w-4" />
             </Button>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportPdf}
+                      disabled={!canExport}
+                      className="gap-1.5"
+                    >
+                      <FileDown className="h-4 w-4" />
+                      <span className="hidden sm:inline">Export PDF</span>
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {canExport
+                    ? 'Export a branded deal sheet to share'
+                    : 'Enter a purchase price, ARV, or budget first'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <Button variant="outline" size="icon" onClick={handleClearAll} title="Clear all">
               <RotateCcw className="h-4 w-4" />
             </Button>
