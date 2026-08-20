@@ -117,7 +117,7 @@ export function generateBudgetPdf(data: BudgetPdfData) {
     data.calculatorType === 'new_construction' ? 'New Construction' : 'Fix & Flip';
 
   const logoBlock = data.logoUrl
-    ? `<img src="${esc(data.logoUrl)}" style="max-height:48px;max-width:170px;object-fit:contain;margin-left:auto;" crossorigin="anonymous" />`
+    ? `<img src="${esc(data.logoUrl)}" alt="" crossorigin="anonymous" />`
     : '';
 
   const snapshotCards = [
