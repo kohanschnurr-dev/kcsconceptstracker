@@ -211,18 +211,17 @@ export function generateBudgetPdf(data: BudgetPdfData) {
       ? `
   <div class="mao ${meetsMao ? 'ok' : 'warn'}">
     <div class="mao-left">
-      <div class="mao-label">Max Allowable Offer (${data.maoPercentage}% Rule)</div>
+      <div class="mao-label">Max Allowable Offer · ${data.maoPercentage}% Rule</div>
       <div class="mao-value">${fmt(data.maxOffer)}</div>
     </div>
     <div class="mao-right">
       ${data.purchasePrice > 0
-        ? meetsMao
-          ? `Offer is ${fmt(overUnder)} under the max`
-          : `Offer is ${fmt(-overUnder)} over the max`
-        : 'No purchase price entered'}
+        ? `<span class="badge">${meetsMao ? 'Under max' : 'Over max'}</span><span class="mao-delta">${fmt(Math.abs(overUnder))} ${meetsMao ? 'below' : 'above'} target</span>`
+        : `<span class="mao-delta muted">No purchase price entered</span>`}
     </div>
   </div>`
       : '';
+
 
   const html = `<!DOCTYPE html>
 <html>
