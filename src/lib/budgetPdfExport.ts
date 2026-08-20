@@ -270,13 +270,14 @@ export function generateBudgetPdf(data: BudgetPdfData) {
   .section-title { page-break-after:avoid; break-after:avoid; font-size:10.5px; font-weight:800; color:var(--ink); text-transform:uppercase; letter-spacing:1.2px; margin:22px 0 8px; padding-left:8px; border-left:3px solid var(--gold); }
   table { width:100%; border-collapse:collapse; page-break-inside:auto; }
   thead { display:table-header-group; }
+  tfoot { display:table-row-group; }
   th { text-align:left; font-size:8.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.7px; padding:6px 8px; border-bottom:1.5px solid #ddd9d2; background:#faf9f7; }
   th:last-child, td:last-child { text-align:right; }
   td { padding:5.5px 8px; font-size:11.5px; border-bottom:1px solid #f1efec; }
   tbody tr:nth-child(even) td { background:#fbfaf8; }
   td.amt, td:last-child { font-variant-numeric:tabular-nums; font-weight:600; }
   td.cat { font-weight:500; }
-  td.pct, th.pct { text-align:right; color:var(--muted); font-size:10.5px; width:62px; font-weight:500; }
+  td.pct, th.pct { text-align:right; color:var(--muted); font-size:10.5px; width:70px; white-space:nowrap; font-weight:500; }
   th.bar-cell, td.bar-cell { width:110px; padding-right:4px; }
   .bar { display:block; height:5px; width:100%; background:#f0ede8; border-radius:3px; overflow:hidden; }
   .bar-fill { display:block; height:100%; background:var(--gold); border-radius:3px; }
@@ -323,11 +324,13 @@ export function generateBudgetPdf(data: BudgetPdfData) {
 
   <div class="section-title">Construction Budget</div>
   <table>
-    <thead><tr><th>Category</th><th class="bar-cell"></th><th class="pct">% of Total</th><th>Amount</th></tr></thead>
+    <thead><tr><th>Category</th><th class="bar-cell"></th><th class="pct">% Share</th><th>Amount</th></tr></thead>
     <tbody>
       ${lineItemRows}
-      <tr class="total"><td>Total Construction Budget</td><td class="bar-cell"></td><td class="pct"></td><td>${fmt(data.totalBudget)}</td></tr>
     </tbody>
+    <tfoot>
+      <tr class="total"><td>Total Construction Budget</td><td class="bar-cell"></td><td class="pct"></td><td>${fmt(data.totalBudget)}</td></tr>
+    </tfoot>
   </table>
 
 
