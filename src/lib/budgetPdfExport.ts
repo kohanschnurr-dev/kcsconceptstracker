@@ -336,6 +336,8 @@ export function generateBudgetPdf(data: BudgetPdfData) {
   <div class="footer">
     Generated ${esc(today)}${data.companyName ? ` by ${esc(data.companyName)}` : ''} · Estimates are for informational purposes only and do not constitute financial advice.
   </div>
+ </div>
+
 <script>
   var imgs=document.querySelectorAll('img');
   var total=imgs.length;
