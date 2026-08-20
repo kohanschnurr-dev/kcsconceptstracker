@@ -237,8 +237,8 @@ export function generateBudgetPdf(data: BudgetPdfData) {
   .header-right .company { font-size:14px; font-weight:600; margin-top:6px; }
   .header-right .date { font-size:11px; color:#888; margin-top:2px; }
   .snapshot { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:20px; }
-  .snap-card { background:#f8f6f3; border-radius:8px; padding:12px 14px; }
-  .snap-card .label { font-size:9.5px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+  .snap-card { background:#f8f6f3; border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; justify-content:space-between; min-height:62px; }
+  .snap-card .label { font-size:9.5px; line-height:1.3; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; min-height:25px; }
   .snap-card .value { font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; }
   .mao { display:flex; justify-content:space-between; align-items:center; gap:16px; border-radius:8px; padding:14px 18px; margin-bottom:8px; }
   .mao.ok { background:#f0f7f0; border:1px solid #cfe6cf; }
@@ -248,7 +248,7 @@ export function generateBudgetPdf(data: BudgetPdfData) {
   .mao-right { font-size:12.5px; font-weight:600; text-align:right; }
   .mao.ok .mao-right { color:#27713a; }
   .mao.warn .mao-right { color:#b03a2e; }
-  .section-title { font-size:12.5px; font-weight:700; color:#c9a96e; text-transform:uppercase; letter-spacing:1px; margin:24px 0 10px; }
+  .section-title { page-break-after:avoid; break-after:avoid; font-size:12.5px; font-weight:700; color:#c9a96e; text-transform:uppercase; letter-spacing:1px; margin:24px 0 10px; }
   table { width:100%; border-collapse:collapse; }
   thead { display:table-header-group; }
   th { text-align:left; font-size:10px; color:#888; text-transform:uppercase; letter-spacing:.5px; padding:7px 10px; border-bottom:1px solid #e5e5e5; }
