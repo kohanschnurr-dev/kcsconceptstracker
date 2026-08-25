@@ -159,7 +159,18 @@ export default function ProjectBudget() {
   
   // Expanded categories
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [categorySectionOpen, setCategorySectionOpen] = useState(false);
+  const categorySectionStorageKey = `project-budget-categories-open:${id ?? 'unknown'}`;
+  const [categorySectionOpen, setCategorySectionOpen] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(`project-budget-categories-open:${id ?? 'unknown'}`);
+      if (saved !== null) return saved === 'true';
+    } catch {}
+    return true;
+  });
+  const handleCategorySectionOpenChange = (open: boolean) => {
+    setCategorySectionOpen(open);
+    try { localStorage.setItem(categorySectionStorageKey, String(open)); } catch {}
+  };
   
   // Edit/Delete modals
   const [editingExpense, setEditingExpense] = useState<DBExpense | null>(null);
