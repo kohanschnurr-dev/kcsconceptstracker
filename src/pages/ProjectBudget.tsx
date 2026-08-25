@@ -207,6 +207,16 @@ export default function ProjectBudget() {
   // Ref for scrolling to expenses table
   const expensesTableRef = useRef<HTMLDivElement>(null);
 
+  // Ref for scrolling to the category breakdown section
+  const categorySectionRef = useRef<HTMLDivElement>(null);
+
+  const scrollToCategories = () => {
+    handleCategorySectionOpenChange(true);
+    setTimeout(() => {
+      categorySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  };
+
   const handleCategoryBreakdownClick = (categoryValue: string) => {
     const matchedCat = categories.find(c => c.category === categoryValue);
     const filterValue = matchedCat ? matchedCat.id : categoryValue;
