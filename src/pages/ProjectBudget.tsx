@@ -1078,8 +1078,9 @@ export default function ProjectBudget() {
         )}
 
         {/* Category Breakdown - Collapsible Section */}
-        <Collapsible open={categorySectionOpen} onOpenChange={setCategorySectionOpen}>
-          <Card className="glass-card">
+        <Collapsible open={categorySectionOpen} onOpenChange={handleCategorySectionOpenChange}>
+          <Card className="glass-card scroll-mt-24" ref={categorySectionRef}>
+
             <CollapsibleTrigger asChild>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
                 <div className="flex items-center gap-2">
