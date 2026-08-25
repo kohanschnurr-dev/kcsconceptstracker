@@ -784,9 +784,30 @@ export default function ProjectBudget() {
                             <span className="text-sm text-muted-foreground">Total Budget</span>
                           </div>
                           <p className="text-2xl font-bold font-mono">{formatCurrency(totalBudget)}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {hasManualBudget ? "Manual override" : `${categories.length} categories`}
-                          </p>
+                          {(() => {
+                            const allocatedCount = categories.filter(c => Number(c.estimated_budget) > 0).length;
+                            const unallocated = totalBudget - categoryTotal;
+                            return (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); scrollToCategories(); }}
+                                className="mt-1 text-left group/alloc"
+                              >
+                                <span className="block text-xs text-muted-foreground group-hover/alloc:text-foreground transition-colors">
+                                  {allocatedCount > 0
+                                    ? `${allocatedCount} of ${categories.length} categories allocated · ${formatCurrency(categoryTotal)} assigned`
+                                    : hasManualBudget ? 'Manual override · nothing allocated yet' : `${categories.length} categories`}
+                                </span>
+                                {Math.abs(unallocated) >= 1 && (
+                                  <span className={cn("block text-xs font-mono", unallocated > 0 ? "text-warning" : "text-destructive")}>
+                                    {unallocated > 0
+                                      ? `${formatCurrency(unallocated)} unallocated`
+                                      : `${formatCurrency(Math.abs(unallocated))} over total`}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })()}
                         </>
                       ) : (
                         <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
