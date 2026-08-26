@@ -22,6 +22,11 @@ import { toast } from 'sonner';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { generateBudgetPdf } from '@/lib/budgetPdfExport';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import type { CategorySplit } from '@/components/budget/BudgetCategoryCard';
+
+const SPLIT_MODE_KEY = 'budget-split-mode';
 
 interface Project {
   id: string;
@@ -99,6 +104,10 @@ export default function BudgetCalculator() {
   const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
   const [autoRevealCategory, setAutoRevealCategory] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [splitMode, setSplitMode] = useState<boolean>(() => {
+    try { return localStorage.getItem(SPLIT_MODE_KEY) === 'true'; } catch { return false; }
+  });
+  const [categorySplits, setCategorySplits] = useState<Record<string, CategorySplit>>({});
   // Category budgets state
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
@@ -190,6 +199,11 @@ export default function BudgetCalculator() {
         if (meta?.rentalFields) {
           setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
         }
+        setCategorySplits(meta?.splits ?? {});
+        if (typeof meta?.splitMode === 'boolean') {
+          setSplitMode(meta.splitMode);
+          try { localStorage.setItem(SPLIT_MODE_KEY, String(meta.splitMode)); } catch {}
+        }
         // contractor fields ignored (removed feature)
 
         const newBudgets: Record<string, string> = {};
@@ -273,6 +287,33 @@ export default function BudgetCalculator() {
     }));
   };
 
+  const handleSplitChange = (category: string, split: CategorySplit) => {
+    setCategorySplits(prev => ({ ...prev, [category]: split }));
+  };
+
+  const handleSplitModeChange = (enabled: boolean) => {
+    setSplitMode(enabled);
+    try { localStorage.setItem(SPLIT_MODE_KEY, String(enabled)); } catch {}
+    if (enabled) {
+      // Seed labor with the existing total for categories that have no split yet
+      setCategorySplits(prev => {
+        const next = { ...prev };
+        Object.entries(categoryBudgets).forEach(([cat, val]) => {
+          const total = parseFloat(val) || 0;
+          const existing = next[cat];
+          const existingTotal = (parseFloat(existing?.labor || '') || 0) + (parseFloat(existing?.material || '') || 0);
+          if (total > 0 && existingTotal !== total) {
+            next[cat] = { labor: String(total), material: '' };
+          }
+        });
+        return next;
+      });
+    }
+  };
+
+  const laborTotal = Object.values(categorySplits).reduce((sum, s) => sum + (parseFloat(s?.labor || '') || 0), 0);
+  const materialTotal = Object.values(categorySplits).reduce((sum, s) => sum + (parseFloat(s?.material || '') || 0), 0);
+
   const handleSelectTemplate = (template: BudgetTemplate | null) => {
     if (!template) {
       handleClearAll();
@@ -313,6 +354,11 @@ export default function BudgetCalculator() {
     if (meta?.rentalFields) {
       setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
     }
+    setCategorySplits(meta?.splits ?? {});
+    if (typeof meta?.splitMode === 'boolean') {
+      setSplitMode(meta.splitMode);
+      try { localStorage.setItem(SPLIT_MODE_KEY, String(meta.splitMode)); } catch {}
+    }
 
     const newBudgets: Record<string, string> = {};
     getBudgetCategories().forEach(cat => {
@@ -345,6 +391,8 @@ export default function BudgetCalculator() {
     setSellClosingFlat('');
     setIncludeSellClosingCosts(true);
     
+    setCategorySplits({});
+
     const cleared: Record<string, string> = {};
     getBudgetCategories().forEach(cat => {
       cleared[cat.value] = '';
@@ -407,6 +455,8 @@ export default function BudgetCalculator() {
       sellClosingFlat,
       includeSellClosingCosts,
       rentalFields,
+      splitMode,
+      splits: categorySplits,
     };
     return budgets;
   };
@@ -528,7 +578,12 @@ export default function BudgetCalculator() {
 
   const handleExportPdf = () => {
     const lineItems = getBudgetCategories()
-      .map(cat => ({ label: cat.label, amount: parseFloat(categoryBudgets[cat.value]) || 0 }))
+      .map(cat => ({
+        label: cat.label,
+        amount: parseFloat(categoryBudgets[cat.value]) || 0,
+        labor: parseFloat(categorySplits[cat.value]?.labor || '') || 0,
+        material: parseFloat(categorySplits[cat.value]?.material || '') || 0,
+      }))
       .filter(li => li.amount > 0)
       .sort((a, b) => b.amount - a.amount);
 
@@ -557,6 +612,9 @@ export default function BudgetCalculator() {
       roi,
       lineItems,
       rentalFields,
+      splitMode,
+      laborTotal,
+      materialTotal,
     });
     toast.success('Deal sheet generated — use your print dialog to save as PDF');
   };
@@ -590,6 +648,12 @@ export default function BudgetCalculator() {
               onSqftChange={setSqft}
               refreshKey={templateRefreshKey}
             />
+            <div className="hidden md:flex items-center gap-2 rounded-md border border-border px-2.5 h-9">
+              <Label htmlFor="split-mode" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+                Labor / Material
+              </Label>
+              <Switch id="split-mode" checked={splitMode} onCheckedChange={handleSplitModeChange} />
+            </div>
             <Button variant="outline" size="icon" onClick={() => setImportModalOpen(true)} title="Import budget">
               <Upload className="h-4 w-4" />
             </Button>
@@ -695,6 +759,9 @@ export default function BudgetCalculator() {
                   onExpandHandled={() => setTemplateJustApplied(false)}
                   autoRevealCategory={autoRevealCategory}
                   onRevealHandled={() => setAutoRevealCategory(null)}
+                  splitMode={splitMode}
+                  splits={categorySplits}
+                  onSplitChange={handleSplitChange}
                 />
 
                 {/* Analysis Section - Collapsible */}
