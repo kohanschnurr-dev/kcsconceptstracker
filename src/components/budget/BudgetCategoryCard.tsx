@@ -110,6 +110,68 @@ export function BudgetCategoryCard({
     label.toLowerCase().includes('financing') ||
     label.toLowerCase().includes('interest');
 
+  if (splitMode) {
+    const labor = split?.labor ?? '';
+    const material = split?.material ?? '';
+    const laborNum = parseFloat(labor) || 0;
+    const materialNum = parseFloat(material) || 0;
+    const splitTotal = laborNum + materialNum;
+
+    const updateSplit = (field: 'labor' | 'material', raw: string) => {
+      const next: CategorySplit = { labor, material, [field]: raw };
+      onSplitChange?.(category, next);
+      const total = (parseFloat(next.labor) || 0) + (parseFloat(next.material) || 0);
+      onChange(total > 0 ? String(total) : '');
+    };
+
+    return (
+      <div
+        className={cn(
+          "rounded-md border border-border/30 bg-background/50 p-1.5 transition-all hover:border-primary/50",
+          splitTotal > 0 && "border-primary/40 bg-primary/5"
+        )}
+      >
+        <div className="flex items-center gap-1.5 mb-1">
+          {icon && <div className="flex-shrink-0 text-muted-foreground">{icon}</div>}
+          <span className="text-xs truncate flex-1 min-w-0" title={label}>
+            {label}
+            {hasPreset && <span className="ml-1 text-primary/60 text-[8px]">●</span>}
+          </span>
+          <span className={cn(
+            "text-[10px] font-mono flex-shrink-0",
+            splitTotal > 0 ? "text-primary font-semibold" : "text-muted-foreground"
+          )}>
+            ${splitTotal.toLocaleString()}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-1">
+          {(['labor', 'material'] as const).map((field) => (
+            <div key={field} className="relative">
+              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[8px] uppercase tracking-wide text-muted-foreground font-semibold pointer-events-none">
+                {field === 'labor' ? 'L' : 'M'}
+              </span>
+              <FormulaInput
+                type="number"
+                placeholder="0"
+                value={field === 'labor' ? labor : material}
+                onChange={(e) => updateSplit(field, e.target.value)}
+                className="pl-4 pr-1 font-mono text-right h-7 w-full text-xs bg-transparent border border-border/40 focus-visible:ring-1"
+                showHint={false}
+                title={field === 'labor' ? 'Labor' : 'Material'}
+              />
+            </div>
+          ))}
+        </div>
+        {hasSqft && splitTotal > 0 && (
+          <div className="text-[9px] text-muted-foreground font-mono text-right pr-1 leading-none mt-1">
+            {`$${(Math.round((splitTotal / sqftNum) * 100) / 100).toFixed(2)}/sf`}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+
   return (
     <div 
       className={cn(
