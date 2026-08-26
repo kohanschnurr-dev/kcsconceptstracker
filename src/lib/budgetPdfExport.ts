@@ -283,6 +283,9 @@ export function generateBudgetPdf(data: BudgetPdfData) {
   .mao.warn .mao-delta { color:#b53a2c; }
   .mao-delta.muted { color:var(--muted); font-weight:500; }
 
+  .split-summary { display:flex; align-items:center; gap:10px; justify-content:center; margin:10px 0 2px; font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .split-summary b { color:var(--ink); font-weight:700; }
+  .split-summary .sep { color:var(--gold); font-weight:700; }
   .section-title { page-break-after:avoid; break-after:avoid; font-size:10.5px; font-weight:800; color:var(--ink); text-transform:uppercase; letter-spacing:1.2px; margin:22px 0 8px; padding-left:8px; border-left:3px solid var(--gold); }
   table { width:100%; border-collapse:collapse; page-break-inside:auto; }
   thead { display:table-header-group; }
@@ -338,6 +341,8 @@ export function generateBudgetPdf(data: BudgetPdfData) {
   <div class="snapshot">
     ${snapshotCards.map(c => `<div class="snap-card"><div class="label">${esc(c.label)}</div><div class="value">${esc(c.value)}</div></div>`).join('')}
   </div>
+
+  ${split ? `<div class="split-summary"><span>Labor <b>${fmt(data.laborTotal || 0)}</b> (${data.totalBudget > 0 ? fmtPct(((data.laborTotal || 0) / data.totalBudget) * 100) : '—'})</span><span class="sep">·</span><span>Material <b>${fmt(data.materialTotal || 0)}</b> (${data.totalBudget > 0 ? fmtPct(((data.materialTotal || 0) / data.totalBudget) * 100) : '—'})</span></div>` : ''}
 
   ${maoBlock}
 
