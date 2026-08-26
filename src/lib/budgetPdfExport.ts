@@ -28,8 +28,11 @@ export interface BudgetPdfData {
   grossProfit: number;
   roi: number;
 
-  lineItems: { label: string; amount: number }[];
+  lineItems: { label: string; amount: number; labor?: number; material?: number }[];
   rentalFields: RentalFieldValues;
+  splitMode?: boolean;
+  laborTotal?: number;
+  materialTotal?: number;
 }
 
 const esc = (s: string) =>
@@ -128,16 +131,29 @@ export function generateBudgetPdf(data: BudgetPdfData) {
     { label: 'Budget / Sqft', value: psf > 0 ? `$${psf.toFixed(2)}` : '—' },
   ];
 
+  const split = !!data.splitMode;
+  const colCount = split ? 5 : 4;
   const maxLineItem = data.lineItems.reduce((mx, li) => Math.max(mx, li.amount), 0);
   const lineItemRows = data.lineItems.length
     ? data.lineItems
         .map((li) => {
           const share = data.totalBudget > 0 ? (li.amount / data.totalBudget) * 100 : 0;
           const barW = maxLineItem > 0 ? Math.max(2, (li.amount / maxLineItem) * 100) : 0;
-          return `<tr><td class="cat">${esc(li.label)}</td><td class="bar-cell"><span class="bar"><span class="bar-fill" style="width:${barW.toFixed(1)}%"></span></span></td><td class="pct">${data.totalBudget > 0 ? fmtPct(share) : '—'}</td><td class="amt">${fmt(li.amount)}</td></tr>`;
+          const splitCells = split
+            ? `<td class="amt sub">${li.labor ? fmt(li.labor) : '—'}</td><td class="amt sub">${li.material ? fmt(li.material) : '—'}</td>`
+            : `<td class="bar-cell"><span class="bar"><span class="bar-fill" style="width:${barW.toFixed(1)}%"></span></span></td>`;
+          return `<tr><td class="cat">${esc(li.label)}</td>${splitCells}<td class="pct">${data.totalBudget > 0 ? fmtPct(share) : '—'}</td><td class="amt">${fmt(li.amount)}</td></tr>`;
         })
         .join('')
-    : `<tr><td colspan="4" class="empty">No category budgets entered.</td></tr>`;
+    : `<tr><td colspan="${colCount}" class="empty">No category budgets entered.</td></tr>`;
+
+  const budgetHead = split
+    ? `<tr><th>Category</th><th class="sub-h">Labor</th><th class="sub-h">Material</th><th class="pct">% Share</th><th>Amount</th></tr>`
+    : `<tr><th>Category</th><th class="bar-cell"></th><th class="pct">% Share</th><th>Amount</th></tr>`;
+
+  const budgetFoot = split
+    ? `<tr class="total"><td>Total Construction Budget</td><td class="amt">${fmt(data.laborTotal || 0)}</td><td class="amt">${fmt(data.materialTotal || 0)}</td><td class="pct"></td><td>${fmt(data.totalBudget)}</td></tr>`
+    : `<tr class="total"><td>Total Construction Budget</td><td class="bar-cell"></td><td class="pct"></td><td>${fmt(data.totalBudget)}</td></tr>`;
 
 
   let analysisHtml = '';
@@ -277,6 +293,9 @@ export function generateBudgetPdf(data: BudgetPdfData) {
   tbody tr:nth-child(even) td { background:#fbfaf8; }
   td.amt, td:last-child { font-variant-numeric:tabular-nums; font-weight:600; }
   td.cat { font-weight:500; }
+  td.sub, th.sub-h { text-align:right; font-size:10.5px; width:78px; white-space:nowrap; }
+  td.sub { color:#5a564f; font-weight:500; }
+  th.sub-h { text-align:right; }
   td.pct, th.pct { text-align:right; color:var(--muted); font-size:10.5px; width:70px; white-space:nowrap; font-weight:500; }
   th.bar-cell, td.bar-cell { width:110px; padding-right:4px; }
   .bar { display:block; height:5px; width:100%; background:#f0ede8; border-radius:3px; overflow:hidden; }
@@ -324,12 +343,12 @@ export function generateBudgetPdf(data: BudgetPdfData) {
 
   <div class="section-title">Construction Budget</div>
   <table>
-    <thead><tr><th>Category</th><th class="bar-cell"></th><th class="pct">% Share</th><th>Amount</th></tr></thead>
+    <thead>${budgetHead}</thead>
     <tbody>
       ${lineItemRows}
     </tbody>
     <tfoot>
-      <tr class="total"><td>Total Construction Budget</td><td class="bar-cell"></td><td class="pct"></td><td>${fmt(data.totalBudget)}</td></tr>
+      ${budgetFoot}
     </tfoot>
   </table>
 

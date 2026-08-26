@@ -697,6 +697,28 @@ export default function BudgetCalculator() {
               onPercentageChange={setMaoPercentage}
               onBudgetTargetChange={handleBudgetTargetChange}
             />
+            {splitMode && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs border-t border-border/50 pt-2">
+                <span className="text-muted-foreground uppercase tracking-wide text-[10px] font-semibold">Labor / Material Split</span>
+                <span className="font-mono">
+                  Labor <span className="font-semibold text-primary">{formatCurrency(laborTotal)}</span>
+                  <span className="text-muted-foreground ml-1">
+                    ({totalBudget > 0 ? ((laborTotal / totalBudget) * 100).toFixed(0) : 0}%)
+                  </span>
+                </span>
+                <span className="font-mono">
+                  Material <span className="font-semibold text-primary">{formatCurrency(materialTotal)}</span>
+                  <span className="text-muted-foreground ml-1">
+                    ({totalBudget > 0 ? ((materialTotal / totalBudget) * 100).toFixed(0) : 0}%)
+                  </span>
+                </span>
+                {Math.abs(totalBudget - (laborTotal + materialTotal)) > 0.5 && (
+                  <span className="text-muted-foreground">
+                    {formatCurrency(Math.max(0, totalBudget - (laborTotal + materialTotal)))} unsplit
+                  </span>
+                )}
+              </div>
+            )}
         </div>
 
         {/* Main Content Area */}
