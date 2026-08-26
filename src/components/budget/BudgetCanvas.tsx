@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { BudgetCategoryCard } from './BudgetCategoryCard';
+import { BudgetCategoryCard, type CategorySplit } from './BudgetCategoryCard';
 import {
   ChevronRight, ChevronsUpDown, ChevronsDownUp,
   Settings, X, Plus, Eye, EyeOff, GripVertical, Minus, Star, Trash2, Pencil
@@ -32,6 +32,9 @@ interface BudgetCanvasProps {
   onExpandHandled?: () => void;
   autoRevealCategory?: string | null;
   onRevealHandled?: () => void;
+  splitMode?: boolean;
+  splits?: Record<string, CategorySplit>;
+  onSplitChange?: (category: string, split: CategorySplit) => void;
 }
 
 /** Sortable row for drag-reorder in timeline settings */
@@ -113,7 +116,7 @@ function SortablePhaseItem({
   );
 }
 
-export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled, autoRevealCategory, onRevealHandled }: BudgetCanvasProps) {
+export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baselineActive, expandAll, onExpandHandled, autoRevealCategory, onRevealHandled, splitMode = false, splits, onSplitChange }: BudgetCanvasProps) {
   const { user } = useAuth();
   const [favoriteMode, setFavoriteMode] = useState<'category' | 'timeline' | 'costtype'>(() => {
     try {
@@ -582,6 +585,19 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
     return categories.reduce((sum, cat) => {
       return sum + (parseFloat(categoryBudgets[cat]) || 0);
     }, 0);
+  };
+
+  const getGroupSplit = (categories: string[]) => {
+    return categories.reduce(
+      (acc, cat) => {
+        const s = splits?.[cat];
+        return {
+          labor: acc.labor + (parseFloat(s?.labor || '') || 0),
+          material: acc.material + (parseFloat(s?.material || '') || 0),
+        };
+      },
+      { labor: 0, material: 0 }
+    );
   };
 
   const toggleGroup = (groupName: string) => {
@@ -1109,6 +1125,7 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
           const groupCategories = group.categories;
           const visibleCategories = groupCategories.filter(cat => !hiddenCategories.has(cat));
           const groupTotal = getGroupTotal(visibleCategories);
+          const groupSplit = splitMode ? getGroupSplit(visibleCategories) : null;
           const isOpen = openGroups.includes(group.name);
           const hasValue = groupTotal > 0;
           const hiddenCount = groupCategories.length - visibleCategories.length;
@@ -1138,12 +1155,19 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
                   )}
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className={cn(
-                    "text-sm font-mono",
-                    hasValue ? "text-primary font-semibold" : "text-muted-foreground"
-                  )}>
-                    {formatCurrency(groupTotal)}
-                  </span>
+                  <div className="flex flex-col items-end leading-tight">
+                    <span className={cn(
+                      "text-sm font-mono",
+                      hasValue ? "text-primary font-semibold" : "text-muted-foreground"
+                    )}>
+                      {formatCurrency(groupTotal)}
+                    </span>
+                    {groupSplit && (groupSplit.labor > 0 || groupSplit.material > 0) && (
+                      <span className="text-[9px] font-mono text-muted-foreground">
+                        L {formatCurrency(groupSplit.labor)} · M {formatCurrency(groupSplit.material)}
+                      </span>
+                    )}
+                  </div>
                   <button
                     onClick={(e) => openGroupSettings(group.key, e)}
                     className="ml-1 p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
@@ -1165,6 +1189,9 @@ export function BudgetCanvas({ categoryBudgets, onCategoryChange, sqft, baseline
                         onChange={(value) => onCategoryChange(category, value)}
                         hasPreset={presetCategories.has(category)}
                         sqft={sqft}
+                        splitMode={splitMode}
+                        split={splits?.[category]}
+                        onSplitChange={onSplitChange}
                       />
                     ))}
                   </div>
