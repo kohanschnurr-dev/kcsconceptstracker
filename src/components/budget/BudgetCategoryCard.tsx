@@ -25,6 +25,11 @@ function savePsfMode(category: string, isPsf: boolean) {
   localStorage.setItem(PSF_MODES_KEY, JSON.stringify(modes));
 }
 
+export interface CategorySplit {
+  labor: string;
+  material: string;
+}
+
 interface BudgetCategoryCardProps {
   category: string;
   label: string;
@@ -33,6 +38,9 @@ interface BudgetCategoryCardProps {
   icon?: React.ReactNode;
   hasPreset?: boolean;
   sqft?: string;
+  splitMode?: boolean;
+  split?: CategorySplit;
+  onSplitChange?: (category: string, split: CategorySplit) => void;
 }
 
 export function BudgetCategoryCard({ 
@@ -43,7 +51,11 @@ export function BudgetCategoryCard({
   icon,
   hasPreset,
   sqft,
+  splitMode = false,
+  split,
+  onSplitChange,
 }: BudgetCategoryCardProps) {
+
   const sqftNum = parseFloat(sqft || '') || 0;
   const hasSqft = sqftNum > 0;
 
