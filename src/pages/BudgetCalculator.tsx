@@ -199,7 +199,7 @@ export default function BudgetCalculator() {
         if (meta?.rentalFields) {
           setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
         }
-        setCategorySplits(meta?.splits ?? {});
+        const savedSplits: Record<string, CategorySplit> = meta?.splits ?? {};
         if (typeof meta?.splitMode === 'boolean') {
           setSplitMode(meta.splitMode);
           try { localStorage.setItem(SPLIT_MODE_KEY, String(meta.splitMode)); } catch {}
@@ -211,6 +211,7 @@ export default function BudgetCalculator() {
           newBudgets[cat.value] = template.category_budgets[cat.value]?.toString() || '';
         });
         setCategoryBudgets(newBudgets);
+        setCategorySplits(seedMaterialSplits(savedSplits, newBudgets, typeof meta?.splitMode === 'boolean' ? meta.splitMode : splitMode));
       }
     };
 
@@ -264,6 +265,7 @@ export default function BudgetCalculator() {
       ...prev,
       rehab_filler: fillerAmount > 0 ? fillerAmount.toString() : '',
     }));
+    syncFillerSplit(fillerAmount);
     if (fillerAmount > 0) {
       setAutoRevealCategory('rehab_filler');
       const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format;
@@ -291,11 +293,41 @@ export default function BudgetCalculator() {
     setCategorySplits(prev => ({ ...prev, [category]: split }));
   };
 
+  // Seed auto-populated amounts into Material for categories that have no saved split
+  const seedMaterialSplits = (
+    savedSplits: Record<string, CategorySplit>,
+    budgets: Record<string, string>,
+    splitModeOn: boolean
+  ): Record<string, CategorySplit> => {
+    if (!splitModeOn) return savedSplits;
+    const next = { ...savedSplits };
+    Object.entries(budgets).forEach(([cat, val]) => {
+      const total = parseFloat(val) || 0;
+      if (total > 0 && !next[cat]) {
+        next[cat] = { labor: '', material: String(total) };
+      }
+    });
+    return next;
+  };
+
+  // Keep the auto-filled Contingency split tracking Material until the user sets Labor manually
+  const syncFillerSplit = (fillerAmount: number) => {
+    if (!splitMode) return;
+    setCategorySplits(prev => {
+      const existing = prev.rehab_filler;
+      if ((parseFloat(existing?.labor || '') || 0) > 0) return prev;
+      return {
+        ...prev,
+        rehab_filler: { labor: '', material: fillerAmount > 0 ? String(fillerAmount) : '' },
+      };
+    });
+  };
+
   const handleSplitModeChange = (enabled: boolean) => {
     setSplitMode(enabled);
     try { localStorage.setItem(SPLIT_MODE_KEY, String(enabled)); } catch {}
     if (enabled) {
-      // Seed labor with the existing total for categories that have no split yet
+      // Seed material with the existing total for categories that have no split yet
       setCategorySplits(prev => {
         const next = { ...prev };
         Object.entries(categoryBudgets).forEach(([cat, val]) => {
@@ -303,7 +335,7 @@ export default function BudgetCalculator() {
           const existing = next[cat];
           const existingTotal = (parseFloat(existing?.labor || '') || 0) + (parseFloat(existing?.material || '') || 0);
           if (total > 0 && existingTotal !== total) {
-            next[cat] = { labor: String(total), material: '' };
+            next[cat] = { labor: '', material: String(total) };
           }
         });
         return next;
@@ -354,7 +386,7 @@ export default function BudgetCalculator() {
     if (meta?.rentalFields) {
       setRentalFields({ ...defaultRentalFields, ...meta.rentalFields });
     }
-    setCategorySplits(meta?.splits ?? {});
+    const savedSplits: Record<string, CategorySplit> = meta?.splits ?? {};
     if (typeof meta?.splitMode === 'boolean') {
       setSplitMode(meta.splitMode);
       try { localStorage.setItem(SPLIT_MODE_KEY, String(meta.splitMode)); } catch {}
@@ -365,6 +397,7 @@ export default function BudgetCalculator() {
       newBudgets[cat.value] = template.category_budgets[cat.value]?.toString() || '';
     });
     setCategoryBudgets(newBudgets);
+    setCategorySplits(seedMaterialSplits(savedSplits, newBudgets, typeof meta?.splitMode === 'boolean' ? meta.splitMode : splitMode));
 
     setTemplateJustApplied(true);
     setProfitBreakdownOpen(true);
@@ -409,6 +442,18 @@ export default function BudgetCalculator() {
       }
       return next;
     });
+    // Imported amounts land in Material when split mode is on (labor preserved)
+    if (splitMode) {
+      setCategorySplits(prev => {
+        const next = { ...prev };
+        for (const [key, val] of Object.entries(budgets)) {
+          const existing = next[key];
+          const materialNum = (parseFloat(existing?.material || '') || 0) + val;
+          next[key] = { labor: existing?.labor || '', material: String(materialNum) };
+        }
+        return next;
+      });
+    }
     setTemplateJustApplied(true);
   };
 
@@ -418,6 +463,7 @@ export default function BudgetCalculator() {
       const sqftNum = parseFloat(sqft) || 0;
       if (sqftNum <= 0) {
         setCategoryBudgets(prev => ({ ...prev, rehab_filler: '' }));
+        syncFillerSplit(0);
         return;
       }
       const baselineTotal = sqftNum * activeBaselineRate;
@@ -431,8 +477,9 @@ export default function BudgetCalculator() {
         ...prev,
         rehab_filler: fillerValue.toString(),
       }));
+      syncFillerSplit(fillerValue);
     }
-  }, [sqft, activeBaselineRate]);
+  }, [sqft, activeBaselineRate, splitMode]);
 
   const getCategoryBudgetsObject = () => {
     const budgets: Record<string, number | any> = {};
