@@ -853,7 +853,7 @@ export function buildInterestSchedule({
       sublabel: 'Hypothetical hold-until date',
       sortKey: 'zz',
     });
-    scenarioIndex = events.length - 1;
+    
   }
 
 
