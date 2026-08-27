@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { RentalFields, type RentalFieldValues } from '@/components/budget/RentalFields';
+import { computeHoldingCosts, holdingCostLabel, monthlyCarryAmount, type HoldingMode, type MonthlyRateMode } from '@/lib/holdingCosts';
 
 export type CalculatorType = 'fix_flip' | 'rental' | 'new_construction';
 
