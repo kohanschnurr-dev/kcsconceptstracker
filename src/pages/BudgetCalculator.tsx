@@ -198,9 +198,6 @@ export default function BudgetCalculator() {
         setSellClosingMode(meta?.sellClosingMode ?? 'pct');
         setClosingFlat(meta?.closingFlat ?? '');
         setHoldingFlat(meta?.holdingFlat ?? '');
-    setHoldingMonthlyRate(meta?.holdingMonthlyRate ?? '');
-    setHoldingMonthlyRateMode(meta?.holdingMonthlyRateMode ?? 'dollar');
-    setHoldingMonths(meta?.holdingMonths ?? '6');
         setHoldingMonthlyRate(meta?.holdingMonthlyRate ?? '');
         setHoldingMonthlyRateMode(meta?.holdingMonthlyRateMode ?? 'dollar');
         setHoldingMonths(meta?.holdingMonths ?? '6');
