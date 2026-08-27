@@ -61,10 +61,10 @@ interface DealSidebarProps {
   sellClosingPct: string;
   onSellClosingPctChange: (value: string) => void;
   closingMode: CostMode;
-  holdingMode: CostMode;
+  holdingMode: HoldingMode;
   sellClosingMode: CostMode;
   onClosingModeChange: (mode: CostMode) => void;
-  onHoldingModeChange: (mode: CostMode) => void;
+  onHoldingModeChange: (mode: HoldingMode) => void;
   onSellClosingModeChange: (mode: CostMode) => void;
   closingFlat: string;
   holdingFlat: string;
@@ -72,6 +72,12 @@ interface DealSidebarProps {
   onClosingFlatChange: (value: string) => void;
   onHoldingFlatChange: (value: string) => void;
   onSellClosingFlatChange: (value: string) => void;
+  holdingMonthlyRate: string;
+  onHoldingMonthlyRateChange: (value: string) => void;
+  holdingMonthlyRateMode: MonthlyRateMode;
+  onHoldingMonthlyRateModeChange: (mode: MonthlyRateMode) => void;
+  holdingMonths: string;
+  onHoldingMonthsChange: (value: string) => void;
 }
 
 function ModeToggle({ mode, onChange }: { mode: CostMode; onChange: (m: CostMode) => void }) {
@@ -84,6 +90,34 @@ function ModeToggle({ mode, onChange }: { mode: CostMode; onChange: (m: CostMode
     >
       {mode === 'pct' ? '%' : '$'}
     </button>
+  );
+}
+
+const HOLDING_MODES: { value: HoldingMode; label: string; title: string }[] = [
+  { value: 'pct', label: '%', title: 'Percentage of purchase price' },
+  { value: 'flat', label: '$', title: 'Flat dollar amount' },
+  { value: 'monthly', label: '/mo', title: 'Monthly carry x months held' },
+];
+
+function HoldingModeToggle({ mode, onChange }: { mode: HoldingMode; onChange: (m: HoldingMode) => void }) {
+  return (
+    <div className="ml-1 inline-flex rounded border border-border overflow-hidden leading-none">
+      {HOLDING_MODES.map(m => (
+        <button
+          key={m.value}
+          type="button"
+          title={m.title}
+          onClick={() => onChange(m.value)}
+          className={`px-1.5 py-0.5 text-[10px] font-mono transition-colors ${
+            mode === m.value
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
