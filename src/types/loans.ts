@@ -835,6 +835,28 @@ export function buildInterestSchedule({
     });
   }
 
+  // Scenario horizon: trim/extend the ledger to a hypothetical payoff date.
+  // Purely projective — nothing here is persisted.
+  let scenarioIndex = -1;
+  if (scenario?.payoffDate) {
+    const payoffDate = scenario.payoffDate;
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      const dropPending = e.kind === 'pending_draw' && !scenario.includePendingDraws;
+      const beyondHorizon = e.date > payoffDate;
+      if (dropPending || beyondHorizon) events.splice(i, 1);
+    }
+    events.push({
+      date: payoffDate,
+      kind: 'scenario_payoff',
+      label: 'Scenario Payoff',
+      sublabel: 'Hypothetical hold-until date',
+      sortKey: 'zz',
+    });
+    scenarioIndex = events.length - 1;
+  }
+
+
   // Walk and compute
   const rows: InterestLedgerRow[] = [];
   let balance = 0;
