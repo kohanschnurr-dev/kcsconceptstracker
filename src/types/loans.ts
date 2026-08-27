@@ -903,6 +903,33 @@ export function buildInterestSchedule({
 
   const todayRow = rows.find(r => r.kind === 'today');
   const maturityRow = rows.find(r => r.kind === 'maturity');
+  const scenarioRow = rows.find(r => r.kind === 'scenario_payoff');
+
+  let scenarioSummary: ScenarioPayoffSummary | undefined;
+  if (scenario?.payoffDate && scenarioRow) {
+    const extensionFee = scenario.extensionFee ?? 0;
+    const payoffTotal = scenarioRow.balance + scenarioRow.unpaidInterest + extensionFee;
+    const currentUnpaid = todayRow ? todayRow.unpaidInterest : 0;
+    const daysHeld = Math.max(
+      0,
+      Math.round((parseLocal(scenario.payoffDate).getTime() - parseLocal(todayStr).getTime()) / MS_DAY),
+    );
+    const additionalInterest = Math.max(0, scenarioRow.unpaidInterest - currentUnpaid);
+    const basis = scenarioRow.balance || loan.original_amount || 0;
+    const years = daysHeld / 365;
+    scenarioSummary = {
+      payoffDate: scenario.payoffDate,
+      daysHeld,
+      principal: scenarioRow.balance,
+      unpaidInterest: scenarioRow.unpaidInterest,
+      extensionFee,
+      payoffTotal,
+      additionalInterest,
+      effectiveAnnualRate:
+        basis > 0 && years > 0 ? ((scenarioRow.unpaidInterest + extensionFee) / basis / years) * 100 : 0,
+      pastMaturity: scenario.payoffDate > effectiveMaturity,
+    };
+  }
 
   return {
     rows,
@@ -913,6 +940,8 @@ export function buildInterestSchedule({
     currentBalance: todayRow ? todayRow.balance : balance,
     currentUnpaidInterest: todayRow ? todayRow.unpaidInterest : 0,
     projectedPayoff: maturityRow ? maturityRow.balance + maturityRow.unpaidInterest : balance,
+    effectiveMaturity,
+    scenario: scenarioSummary,
   };
 }
 
