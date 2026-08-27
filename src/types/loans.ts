@@ -725,6 +725,7 @@ export function buildInterestSchedule({
   payments,
   extensions = [],
   asOf = new Date(),
+  scenario,
 }: BuildInterestScheduleArgs): InterestLedgerResult {
   const dayBasis = loan.interest_calc_method === 'actual_365' ? 365 : 360;
   const dailyRate = (loan.interest_rate / 100) / dayBasis;
