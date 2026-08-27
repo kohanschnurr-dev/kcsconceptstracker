@@ -87,7 +87,8 @@ export const CALENDAR_CATEGORIES: CalendarCategory[] = [
   { value: 'exterior_paint', label: 'Exterior Paint', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   
   // Rough-ins (Orange)
-  { value: 'plumbing_rough', label: 'Plumbing (Cast Iron/PVC)', group: 'rough_ins', groupLabel: 'Rough-ins' },
+  { value: 'plumbing', label: 'Plumbing', group: 'rough_ins', groupLabel: 'Rough-ins' },
+  { value: 'cast_iron', label: 'Cast Iron', group: 'rough_ins', groupLabel: 'Rough-ins' },
   { value: 'electrical_rough', label: 'Electrical', group: 'rough_ins', groupLabel: 'Rough-ins' },
   { value: 'hvac_rough', label: 'HVAC', group: 'rough_ins', groupLabel: 'Rough-ins' },
   { value: 'framing', label: 'Framing', group: 'rough_ins', groupLabel: 'Rough-ins' },
@@ -177,7 +178,8 @@ export const CATEGORY_CHECKLIST_PRESETS: Record<string, string[]> = {
   windows: ['Windows ordered', 'Old windows removed', 'New windows installed', 'Flashing/trim', 'Caulked/sealed'],
   exterior_paint: ['Power wash', 'Scrape/prep', 'Prime', 'Paint', 'Touch-up'],
   // Rough-ins
-  plumbing_rough: ['Water lines', 'Drain lines', 'Gas lines', 'Pressure test', 'Stub-outs'],
+  plumbing: ['Water lines', 'Drain lines', 'Gas lines', 'Pressure test', 'Stub-outs'],
+  cast_iron: ['Cut/fit cast iron', 'Hang horizontal drains', 'Vertical stacks', 'Hubs/gaskets', 'Pressure test'],
   electrical_rough: ['Panel installed', 'Wiring run', 'Boxes set', 'Low voltage', 'Label circuits'],
   hvac_rough: ['Ductwork', 'Line set', 'Condensate drain', 'Thermostat wire', 'Equipment set'],
   framing: ['Layout', 'Walls framed', 'Headers set', 'Blocking', 'Sheathing'],
