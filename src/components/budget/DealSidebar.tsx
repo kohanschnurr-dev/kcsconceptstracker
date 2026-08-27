@@ -162,6 +162,12 @@ export function DealSidebar({
   onClosingFlatChange,
   onHoldingFlatChange,
   onSellClosingFlatChange,
+  holdingMonthlyRate,
+  onHoldingMonthlyRateChange,
+  holdingMonthlyRateMode,
+  onHoldingMonthlyRateModeChange,
+  holdingMonths,
+  onHoldingMonthsChange,
 }: DealSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(isMobile);
   const [isEditingCosts, setIsEditingCosts] = useState(false);
