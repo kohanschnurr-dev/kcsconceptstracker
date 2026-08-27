@@ -675,6 +675,18 @@ export interface InterestLedgerRow {
   isFuture: boolean;
 }
 
+export interface ScenarioPayoffSummary {
+  payoffDate: string;
+  daysHeld: number;              // days from today to payoff date
+  principal: number;             // outstanding principal at payoff
+  unpaidInterest: number;        // accrued unpaid interest at payoff
+  extensionFee: number;
+  payoffTotal: number;           // principal + unpaid interest + fee
+  additionalInterest: number;    // interest accrued between today and payoff
+  effectiveAnnualRate: number;   // total cost annualized over the hold period, %
+  pastMaturity: boolean;
+}
+
 export interface InterestLedgerResult {
   rows: InterestLedgerRow[];
   totalDisbursed: number;
@@ -684,6 +696,18 @@ export interface InterestLedgerResult {
   currentBalance: number;       // principal as of today
   currentUnpaidInterest: number;
   projectedPayoff: number;      // balance + unpaid interest at maturity
+  effectiveMaturity: string;
+  scenario?: ScenarioPayoffSummary;
+}
+
+/**
+ * Read-only "what if I hold this loan until X" inputs. Purely projective — the
+ * builder never mutates or persists anything.
+ */
+export interface InterestScheduleScenario {
+  payoffDate: string;                 // YYYY-MM-DD
+  includePendingDraws?: boolean;      // assume pending draws fund on expected dates
+  extensionFee?: number;              // assumed extension fee in dollars
 }
 
 interface BuildInterestScheduleArgs {
@@ -692,6 +716,7 @@ interface BuildInterestScheduleArgs {
   payments: LoanPayment[];
   extensions?: { extended_to: string }[];
   asOf?: Date;
+  scenario?: InterestScheduleScenario;
 }
 
 export function buildInterestSchedule({
