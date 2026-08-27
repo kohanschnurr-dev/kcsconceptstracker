@@ -494,7 +494,7 @@ export function DealSidebar({
                       <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{costLabel('Holding', holdingMode, holdingPct)}</span>
+                      <span className="text-muted-foreground">Holding {holdingCostLabel(holdingInputs)}</span>
                       <span className="font-mono">{formatCurrency(holdingCosts)}</span>
                     </div>
                     {includeSellClosingCosts && (
