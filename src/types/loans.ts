@@ -657,7 +657,7 @@ export function buildAmortizationSchedule(
 
 /* ── Event-based interest schedule ──────────────────────── */
 
-export type InterestLedgerKind = 'start' | 'draw' | 'payment' | 'today' | 'pending_draw' | 'maturity';
+export type InterestLedgerKind = 'start' | 'draw' | 'payment' | 'today' | 'pending_draw' | 'maturity' | 'scenario_payoff';
 
 export interface InterestLedgerRow {
   date: string;                 // YYYY-MM-DD
