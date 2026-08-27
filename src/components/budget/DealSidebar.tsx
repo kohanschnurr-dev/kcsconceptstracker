@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { RentalFields, type RentalFieldValues } from '@/components/budget/RentalFields';
+import { computeHoldingCosts, holdingCostLabel, monthlyCarryAmount, type HoldingMode, type MonthlyRateMode } from '@/lib/holdingCosts';
 
 export type CalculatorType = 'fix_flip' | 'rental' | 'new_construction';
 
@@ -60,10 +61,10 @@ interface DealSidebarProps {
   sellClosingPct: string;
   onSellClosingPctChange: (value: string) => void;
   closingMode: CostMode;
-  holdingMode: CostMode;
+  holdingMode: HoldingMode;
   sellClosingMode: CostMode;
   onClosingModeChange: (mode: CostMode) => void;
-  onHoldingModeChange: (mode: CostMode) => void;
+  onHoldingModeChange: (mode: HoldingMode) => void;
   onSellClosingModeChange: (mode: CostMode) => void;
   closingFlat: string;
   holdingFlat: string;
@@ -71,6 +72,12 @@ interface DealSidebarProps {
   onClosingFlatChange: (value: string) => void;
   onHoldingFlatChange: (value: string) => void;
   onSellClosingFlatChange: (value: string) => void;
+  holdingMonthlyRate: string;
+  onHoldingMonthlyRateChange: (value: string) => void;
+  holdingMonthlyRateMode: MonthlyRateMode;
+  onHoldingMonthlyRateModeChange: (mode: MonthlyRateMode) => void;
+  holdingMonths: string;
+  onHoldingMonthsChange: (value: string) => void;
 }
 
 function ModeToggle({ mode, onChange }: { mode: CostMode; onChange: (m: CostMode) => void }) {
@@ -83,6 +90,34 @@ function ModeToggle({ mode, onChange }: { mode: CostMode; onChange: (m: CostMode
     >
       {mode === 'pct' ? '%' : '$'}
     </button>
+  );
+}
+
+const HOLDING_MODES: { value: HoldingMode; label: string; title: string }[] = [
+  { value: 'pct', label: '%', title: 'Percentage of purchase price' },
+  { value: 'flat', label: '$', title: 'Flat dollar amount' },
+  { value: 'monthly', label: '/mo', title: 'Monthly carry x months held' },
+];
+
+function HoldingModeToggle({ mode, onChange }: { mode: HoldingMode; onChange: (m: HoldingMode) => void }) {
+  return (
+    <div className="ml-1 inline-flex rounded border border-border overflow-hidden leading-none">
+      {HOLDING_MODES.map(m => (
+        <button
+          key={m.value}
+          type="button"
+          title={m.title}
+          onClick={() => onChange(m.value)}
+          className={`px-1.5 py-0.5 text-[10px] font-mono transition-colors ${
+            mode === m.value
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -127,6 +162,12 @@ export function DealSidebar({
   onClosingFlatChange,
   onHoldingFlatChange,
   onSellClosingFlatChange,
+  holdingMonthlyRate,
+  onHoldingMonthlyRateChange,
+  holdingMonthlyRateMode,
+  onHoldingMonthlyRateModeChange,
+  holdingMonths,
+  onHoldingMonthsChange,
 }: DealSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(isMobile);
   const [isEditingCosts, setIsEditingCosts] = useState(false);
@@ -161,9 +202,17 @@ export function DealSidebar({
   const closingCostsSell = includeSellClosingCosts
     ? (sellClosingMode === 'pct' ? arvNum * ((parseFloat(sellClosingPct) || 0) / 100) : (parseFloat(sellClosingFlat) || 0))
     : 0;
-  const holdingCosts = holdingMode === 'pct'
-    ? purchasePriceNum * ((parseFloat(holdingPct) || 0) / 100)
-    : (parseFloat(holdingFlat) || 0);
+  const holdingInputs = {
+    mode: holdingMode,
+    pct: holdingPct,
+    flat: holdingFlat,
+    monthlyRate: holdingMonthlyRate,
+    monthlyRateMode: holdingMonthlyRateMode,
+    months: holdingMonths,
+    purchasePrice: purchasePriceNum,
+  };
+  const holdingCosts = computeHoldingCosts(holdingInputs);
+  const holdingMonthly = monthlyCarryAmount(holdingMonthlyRate, holdingMonthlyRateMode, purchasePriceNum);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -355,16 +404,66 @@ export function DealSidebar({
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1">
                         <Label className="text-xs">Holding Costs</Label>
-                        <ModeToggle mode={holdingMode} onChange={onHoldingModeChange} />
+                        <HoldingModeToggle mode={holdingMode} onChange={onHoldingModeChange} />
                       </div>
-                      <Input
-                        type="number"
-                        className="font-mono h-8"
-                        value={holdingMode === 'pct' ? holdingPct : holdingFlat}
-                        onChange={(e) => holdingMode === 'pct' ? onHoldingPctChange(e.target.value) : onHoldingFlatChange(e.target.value)}
-                        placeholder={holdingMode === 'pct' ? '3' : '0'}
-                      />
+                      {holdingMode === 'monthly' ? (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              type="number"
+                              className="font-mono h-8 flex-1"
+                              value={holdingMonthlyRate}
+                              onChange={(e) => onHoldingMonthlyRateChange(e.target.value)}
+                              placeholder={holdingMonthlyRateMode === 'pct' ? '0.5' : '1800'}
+                            />
+                            <div className="inline-flex rounded border border-border overflow-hidden leading-none shrink-0">
+                              {(['dollar', 'pct'] as MonthlyRateMode[]).map(m => (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  title={m === 'dollar' ? 'Dollars per month' : 'Percent of purchase price per month'}
+                                  onClick={() => onHoldingMonthlyRateModeChange(m)}
+                                  className={`px-1.5 py-1 text-[10px] font-mono transition-colors ${
+                                    holdingMonthlyRateMode === m
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                                  }`}
+                                >
+                                  {m === 'dollar' ? '$/mo' : '%/mo'}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Label className="text-[11px] text-muted-foreground w-20 shrink-0">Months held</Label>
+                            <Input
+                              type="number"
+                              step="0.5"
+                              min="0"
+                              className="font-mono h-8"
+                              value={holdingMonths}
+                              onChange={(e) => onHoldingMonthsChange(e.target.value)}
+                              placeholder="6"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between border-t border-border pt-1.5 text-[11px] font-mono text-muted-foreground">
+                            <span>
+                              {formatCurrency(holdingMonthly)}/mo &times; {parseFloat(holdingMonths) || 0} mo
+                            </span>
+                            <span className="text-foreground">{formatCurrency(holdingCosts)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <Input
+                          type="number"
+                          className="font-mono h-8"
+                          value={holdingMode === 'pct' ? holdingPct : holdingFlat}
+                          onChange={(e) => holdingMode === 'pct' ? onHoldingPctChange(e.target.value) : onHoldingFlatChange(e.target.value)}
+                          placeholder={holdingMode === 'pct' ? '3' : '0'}
+                        />
+                      )}
                     </div>
+
 
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
@@ -395,7 +494,7 @@ export function DealSidebar({
                       <span className="font-mono">{formatCurrency(closingCostsBuy)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{costLabel('Holding', holdingMode, holdingPct)}</span>
+                      <span className="text-muted-foreground">Holding {holdingCostLabel(holdingInputs)}</span>
                       <span className="font-mono">{formatCurrency(holdingCosts)}</span>
                     </div>
                     {includeSellClosingCosts && (
