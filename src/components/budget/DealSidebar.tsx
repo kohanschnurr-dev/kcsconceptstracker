@@ -404,16 +404,66 @@ export function DealSidebar({
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1">
                         <Label className="text-xs">Holding Costs</Label>
-                        <ModeToggle mode={holdingMode} onChange={onHoldingModeChange} />
+                        <HoldingModeToggle mode={holdingMode} onChange={onHoldingModeChange} />
                       </div>
-                      <Input
-                        type="number"
-                        className="font-mono h-8"
-                        value={holdingMode === 'pct' ? holdingPct : holdingFlat}
-                        onChange={(e) => holdingMode === 'pct' ? onHoldingPctChange(e.target.value) : onHoldingFlatChange(e.target.value)}
-                        placeholder={holdingMode === 'pct' ? '3' : '0'}
-                      />
+                      {holdingMode === 'monthly' ? (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              type="number"
+                              className="font-mono h-8 flex-1"
+                              value={holdingMonthlyRate}
+                              onChange={(e) => onHoldingMonthlyRateChange(e.target.value)}
+                              placeholder={holdingMonthlyRateMode === 'pct' ? '0.5' : '1800'}
+                            />
+                            <div className="inline-flex rounded border border-border overflow-hidden leading-none shrink-0">
+                              {(['dollar', 'pct'] as MonthlyRateMode[]).map(m => (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  title={m === 'dollar' ? 'Dollars per month' : 'Percent of purchase price per month'}
+                                  onClick={() => onHoldingMonthlyRateModeChange(m)}
+                                  className={`px-1.5 py-1 text-[10px] font-mono transition-colors ${
+                                    holdingMonthlyRateMode === m
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                                  }`}
+                                >
+                                  {m === 'dollar' ? '$/mo' : '%/mo'}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Label className="text-[11px] text-muted-foreground w-20 shrink-0">Months held</Label>
+                            <Input
+                              type="number"
+                              step="0.5"
+                              min="0"
+                              className="font-mono h-8"
+                              value={holdingMonths}
+                              onChange={(e) => onHoldingMonthsChange(e.target.value)}
+                              placeholder="6"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between border-t border-border pt-1.5 text-[11px] font-mono text-muted-foreground">
+                            <span>
+                              {formatCurrency(holdingMonthly)}/mo &times; {parseFloat(holdingMonths) || 0} mo
+                            </span>
+                            <span className="text-foreground">{formatCurrency(holdingCosts)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <Input
+                          type="number"
+                          className="font-mono h-8"
+                          value={holdingMode === 'pct' ? holdingPct : holdingFlat}
+                          onChange={(e) => holdingMode === 'pct' ? onHoldingPctChange(e.target.value) : onHoldingFlatChange(e.target.value)}
+                          placeholder={holdingMode === 'pct' ? '3' : '0'}
+                        />
+                      )}
                     </div>
+
 
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
