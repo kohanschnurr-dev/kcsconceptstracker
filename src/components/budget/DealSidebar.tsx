@@ -202,9 +202,17 @@ export function DealSidebar({
   const closingCostsSell = includeSellClosingCosts
     ? (sellClosingMode === 'pct' ? arvNum * ((parseFloat(sellClosingPct) || 0) / 100) : (parseFloat(sellClosingFlat) || 0))
     : 0;
-  const holdingCosts = holdingMode === 'pct'
-    ? purchasePriceNum * ((parseFloat(holdingPct) || 0) / 100)
-    : (parseFloat(holdingFlat) || 0);
+  const holdingInputs = {
+    mode: holdingMode,
+    pct: holdingPct,
+    flat: holdingFlat,
+    monthlyRate: holdingMonthlyRate,
+    monthlyRateMode: holdingMonthlyRateMode,
+    months: holdingMonths,
+    purchasePrice: purchasePriceNum,
+  };
+  const holdingCosts = computeHoldingCosts(holdingInputs);
+  const holdingMonthly = monthlyCarryAmount(holdingMonthlyRate, holdingMonthlyRateMode, purchasePriceNum);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
