@@ -87,7 +87,8 @@ export const CALENDAR_CATEGORIES: CalendarCategory[] = [
   { value: 'exterior_paint', label: 'Exterior Paint', group: 'structural_exterior', groupLabel: 'Structural/Exterior' },
   
   // Rough-ins (Orange)
-  { value: 'plumbing_rough', label: 'Plumbing (Cast Iron/PVC)', group: 'rough_ins', groupLabel: 'Rough-ins' },
+  { value: 'plumbing', label: 'Plumbing', group: 'rough_ins', groupLabel: 'Rough-ins' },
+  { value: 'cast_iron', label: 'Cast Iron', group: 'rough_ins', groupLabel: 'Rough-ins' },
   { value: 'electrical_rough', label: 'Electrical', group: 'rough_ins', groupLabel: 'Rough-ins' },
   { value: 'hvac_rough', label: 'HVAC', group: 'rough_ins', groupLabel: 'Rough-ins' },
   { value: 'framing', label: 'Framing', group: 'rough_ins', groupLabel: 'Rough-ins' },
