@@ -11,6 +11,7 @@ import { MAOGauge } from '@/components/budget/MAOGauge';
 import { BudgetCanvas } from '@/components/budget/BudgetCanvas';
 import { TemplatePicker } from '@/components/budget/TemplatePicker';
 import { DealSidebar, type CalculatorType } from '@/components/budget/DealSidebar';
+import { computeHoldingCosts, holdingCostLabel, type HoldingMode, type MonthlyRateMode } from '@/lib/holdingCosts';
 import { RentalAnalysis } from '@/components/budget/RentalAnalysis';
 import { BRRRAnalysis } from '@/components/budget/BRRRAnalysis';
 import { ImportBudgetModal } from '@/components/budget/ImportBudgetModal';
@@ -96,10 +97,13 @@ export default function BudgetCalculator() {
   const [holdingPct, setHoldingPct] = useState<string>('3');
   const [sellClosingPct, setSellClosingPct] = useState<string>('6');
   const [closingMode, setClosingMode] = useState<'pct' | 'flat'>('pct');
-  const [holdingMode, setHoldingMode] = useState<'pct' | 'flat'>('pct');
+  const [holdingMode, setHoldingMode] = useState<HoldingMode>('pct');
   const [sellClosingMode, setSellClosingMode] = useState<'pct' | 'flat'>('pct');
   const [closingFlat, setClosingFlat] = useState<string>('');
   const [holdingFlat, setHoldingFlat] = useState<string>('');
+  const [holdingMonthlyRate, setHoldingMonthlyRate] = useState<string>('');
+  const [holdingMonthlyRateMode, setHoldingMonthlyRateMode] = useState<MonthlyRateMode>('dollar');
+  const [holdingMonths, setHoldingMonths] = useState<string>('6');
   const [sellClosingFlat, setSellClosingFlat] = useState<string>('');
   const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
   const [autoRevealCategory, setAutoRevealCategory] = useState<string | null>(null);
@@ -194,6 +198,12 @@ export default function BudgetCalculator() {
         setSellClosingMode(meta?.sellClosingMode ?? 'pct');
         setClosingFlat(meta?.closingFlat ?? '');
         setHoldingFlat(meta?.holdingFlat ?? '');
+    setHoldingMonthlyRate(meta?.holdingMonthlyRate ?? '');
+    setHoldingMonthlyRateMode(meta?.holdingMonthlyRateMode ?? 'dollar');
+    setHoldingMonths(meta?.holdingMonths ?? '6');
+        setHoldingMonthlyRate(meta?.holdingMonthlyRate ?? '');
+        setHoldingMonthlyRateMode(meta?.holdingMonthlyRateMode ?? 'dollar');
+        setHoldingMonths(meta?.holdingMonths ?? '6');
         setSellClosingFlat(meta?.sellClosingFlat ?? '');
         setIncludeSellClosingCosts(meta?.includeSellClosingCosts ?? true);
         if (meta?.rentalFields) {
@@ -241,9 +251,16 @@ export default function BudgetCalculator() {
   const closingCostsSell = includeSellClosingCosts
     ? (sellClosingMode === 'pct' ? arvNum * ((parseFloat(sellClosingPct) || 0) / 100) : (parseFloat(sellClosingFlat) || 0))
     : 0;
-  const holdingCosts = holdingMode === 'pct'
-    ? purchasePriceNum * ((parseFloat(holdingPct) || 0) / 100)
-    : (parseFloat(holdingFlat) || 0);
+  const holdingInputs = {
+    mode: holdingMode,
+    pct: holdingPct,
+    flat: holdingFlat,
+    monthlyRate: holdingMonthlyRate,
+    monthlyRateMode: holdingMonthlyRateMode,
+    months: holdingMonths,
+    purchasePrice: purchasePriceNum,
+  };
+  const holdingCosts = computeHoldingCosts(holdingInputs);
   
   const totalInvestment = purchasePriceNum + totalBudget + closingCostsBuy + holdingCosts;
   const totalCosts = totalInvestment + closingCostsSell;
@@ -499,6 +516,9 @@ export default function BudgetCalculator() {
       sellClosingMode,
       closingFlat,
       holdingFlat,
+      holdingMonthlyRate,
+      holdingMonthlyRateMode,
+      holdingMonths,
       sellClosingFlat,
       includeSellClosingCosts,
       rentalFields,
@@ -651,7 +671,7 @@ export default function BudgetCalculator() {
       closingCostsSell,
       includeSellClosingCosts,
       closingLabel: closingMode === 'pct' ? `(${closingPct}%)` : '(flat)',
-      holdingLabel: holdingMode === 'pct' ? `(${holdingPct}%)` : '(flat)',
+      holdingLabel: holdingCostLabel(holdingInputs),
       sellClosingLabel: sellClosingMode === 'pct' ? `(${sellClosingPct}%)` : '(flat)',
       totalInvestment,
       totalCosts,
@@ -811,6 +831,12 @@ export default function BudgetCalculator() {
             sellClosingFlat={sellClosingFlat}
             onClosingFlatChange={setClosingFlat}
             onHoldingFlatChange={setHoldingFlat}
+            holdingMonthlyRate={holdingMonthlyRate}
+            onHoldingMonthlyRateChange={setHoldingMonthlyRate}
+            holdingMonthlyRateMode={holdingMonthlyRateMode}
+            onHoldingMonthlyRateModeChange={setHoldingMonthlyRateMode}
+            holdingMonths={holdingMonths}
+            onHoldingMonthsChange={setHoldingMonths}
             onSellClosingFlatChange={setSellClosingFlat}
           />
           
@@ -882,7 +908,7 @@ export default function BudgetCalculator() {
                                     <span className="font-mono">{formatCurrency(totalBudget)}</span>
                                   </div>
                                   <div className="flex justify-between text-sm">
-                                    <span>Holding Costs {holdingMode === 'pct' ? `(${holdingPct}%)` : '(flat)'}</span>
+                                    <span>Holding Costs {holdingCostLabel(holdingInputs)}</span>
                                     <span className="font-mono">{formatCurrency(holdingCosts)}</span>
                                   </div>
                                 </div>
