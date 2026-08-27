@@ -60,7 +60,8 @@ const TYPE_LABEL: Record<string, string> = {
 function categoryIcon(cat: string, size = 11, cls = ''): ReactNode {
   const p = { size, className: cls, strokeWidth: 2 };
   switch (cat) {
-    case 'plumbing_rough': return <Wrench {...p} />;
+    case 'plumbing':
+    case 'cast_iron': return <Wrench {...p} />;
     case 'electrical_rough': return <Zap {...p} />;
     case 'hvac_rough': return <Snowflake {...p} />;
     case 'framing': case 'demo': return <Hammer {...p} />;
