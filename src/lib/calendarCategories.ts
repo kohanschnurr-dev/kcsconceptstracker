@@ -114,6 +114,8 @@ export const CALENDAR_CATEGORIES: CalendarCategory[] = [
   { value: 'sale_closing', label: 'Sale Closing', group: 'milestones', groupLabel: 'Milestones' },
   // Rental milestones
   { value: 'refinancing', label: 'Refinancing', group: 'milestones', groupLabel: 'Milestones' },
+  // Catch-all for anything without a specific category
+  { value: 'important_date', label: 'Important Date', group: 'milestones', groupLabel: 'Milestones' },
 ];
 
 // Dynamic getter that checks localStorage first
