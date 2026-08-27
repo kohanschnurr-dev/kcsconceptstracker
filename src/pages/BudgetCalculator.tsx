@@ -395,6 +395,9 @@ export default function BudgetCalculator() {
     setSellClosingMode(meta?.sellClosingMode ?? 'pct');
     setClosingFlat(meta?.closingFlat ?? '');
     setHoldingFlat(meta?.holdingFlat ?? '');
+    setHoldingMonthlyRate(meta?.holdingMonthlyRate ?? '');
+    setHoldingMonthlyRateMode(meta?.holdingMonthlyRateMode ?? 'dollar');
+    setHoldingMonths(meta?.holdingMonths ?? '6');
     setSellClosingFlat(meta?.sellClosingFlat ?? '');
     setIncludeSellClosingCosts(meta?.includeSellClosingCosts ?? true);
     if (meta?.rentalFields) {
@@ -435,6 +438,9 @@ export default function BudgetCalculator() {
     setSellClosingMode('pct');
     setClosingFlat('');
     setHoldingFlat('');
+    setHoldingMonthlyRate('');
+    setHoldingMonthlyRateMode('dollar');
+    setHoldingMonths('6');
     setSellClosingFlat('');
     setIncludeSellClosingCosts(true);
     
