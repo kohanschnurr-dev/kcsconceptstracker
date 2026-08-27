@@ -657,7 +657,7 @@ export function buildAmortizationSchedule(
 
 /* ── Event-based interest schedule ──────────────────────── */
 
-export type InterestLedgerKind = 'start' | 'draw' | 'payment' | 'today' | 'pending_draw' | 'maturity';
+export type InterestLedgerKind = 'start' | 'draw' | 'payment' | 'today' | 'pending_draw' | 'maturity' | 'scenario_payoff';
 
 export interface InterestLedgerRow {
   date: string;                 // YYYY-MM-DD
@@ -675,6 +675,18 @@ export interface InterestLedgerRow {
   isFuture: boolean;
 }
 
+export interface ScenarioPayoffSummary {
+  payoffDate: string;
+  daysHeld: number;              // days from today to payoff date
+  principal: number;             // outstanding principal at payoff
+  unpaidInterest: number;        // accrued unpaid interest at payoff
+  extensionFee: number;
+  payoffTotal: number;           // principal + unpaid interest + fee
+  additionalInterest: number;    // interest accrued between today and payoff
+  effectiveAnnualRate: number;   // total cost annualized over the hold period, %
+  pastMaturity: boolean;
+}
+
 export interface InterestLedgerResult {
   rows: InterestLedgerRow[];
   totalDisbursed: number;
@@ -684,6 +696,18 @@ export interface InterestLedgerResult {
   currentBalance: number;       // principal as of today
   currentUnpaidInterest: number;
   projectedPayoff: number;      // balance + unpaid interest at maturity
+  effectiveMaturity: string;
+  scenario?: ScenarioPayoffSummary;
+}
+
+/**
+ * Read-only "what if I hold this loan until X" inputs. Purely projective — the
+ * builder never mutates or persists anything.
+ */
+export interface InterestScheduleScenario {
+  payoffDate: string;                 // YYYY-MM-DD
+  includePendingDraws?: boolean;      // assume pending draws fund on expected dates
+  extensionFee?: number;              // assumed extension fee in dollars
 }
 
 interface BuildInterestScheduleArgs {
@@ -692,6 +716,7 @@ interface BuildInterestScheduleArgs {
   payments: LoanPayment[];
   extensions?: { extended_to: string }[];
   asOf?: Date;
+  scenario?: InterestScheduleScenario;
 }
 
 export function buildInterestSchedule({
@@ -700,6 +725,7 @@ export function buildInterestSchedule({
   payments,
   extensions = [],
   asOf = new Date(),
+  scenario,
 }: BuildInterestScheduleArgs): InterestLedgerResult {
   const dayBasis = loan.interest_calc_method === 'actual_365' ? 365 : 360;
   const dailyRate = (loan.interest_rate / 100) / dayBasis;
@@ -809,6 +835,28 @@ export function buildInterestSchedule({
     });
   }
 
+  // Scenario horizon: trim/extend the ledger to a hypothetical payoff date.
+  // Purely projective — nothing here is persisted.
+  
+  if (scenario?.payoffDate) {
+    const payoffDate = scenario.payoffDate;
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      const dropPending = e.kind === 'pending_draw' && !scenario.includePendingDraws;
+      const beyondHorizon = e.date > payoffDate;
+      if (dropPending || beyondHorizon) events.splice(i, 1);
+    }
+    events.push({
+      date: payoffDate,
+      kind: 'scenario_payoff',
+      label: 'Scenario Payoff',
+      sublabel: 'Hypothetical hold-until date',
+      sortKey: 'zz',
+    });
+    
+  }
+
+
   // Walk and compute
   const rows: InterestLedgerRow[] = [];
   let balance = 0;
@@ -855,6 +903,33 @@ export function buildInterestSchedule({
 
   const todayRow = rows.find(r => r.kind === 'today');
   const maturityRow = rows.find(r => r.kind === 'maturity');
+  const scenarioRow = rows.find(r => r.kind === 'scenario_payoff');
+
+  let scenarioSummary: ScenarioPayoffSummary | undefined;
+  if (scenario?.payoffDate && scenarioRow) {
+    const extensionFee = scenario.extensionFee ?? 0;
+    const payoffTotal = scenarioRow.balance + scenarioRow.unpaidInterest + extensionFee;
+    const currentUnpaid = todayRow ? todayRow.unpaidInterest : 0;
+    const daysHeld = Math.max(
+      0,
+      Math.round((parseLocal(scenario.payoffDate).getTime() - parseLocal(todayStr).getTime()) / MS_DAY),
+    );
+    const additionalInterest = Math.max(0, scenarioRow.unpaidInterest - currentUnpaid);
+    const basis = scenarioRow.balance || loan.original_amount || 0;
+    const years = daysHeld / 365;
+    scenarioSummary = {
+      payoffDate: scenario.payoffDate,
+      daysHeld,
+      principal: scenarioRow.balance,
+      unpaidInterest: scenarioRow.unpaidInterest,
+      extensionFee,
+      payoffTotal,
+      additionalInterest,
+      effectiveAnnualRate:
+        basis > 0 && years > 0 ? ((scenarioRow.unpaidInterest + extensionFee) / basis / years) * 100 : 0,
+      pastMaturity: scenario.payoffDate > effectiveMaturity,
+    };
+  }
 
   return {
     rows,
@@ -865,6 +940,8 @@ export function buildInterestSchedule({
     currentBalance: todayRow ? todayRow.balance : balance,
     currentUnpaidInterest: todayRow ? todayRow.unpaidInterest : 0,
     projectedPayoff: maturityRow ? maturityRow.balance + maturityRow.unpaidInterest : balance,
+    effectiveMaturity,
+    scenario: scenarioSummary,
   };
 }
 

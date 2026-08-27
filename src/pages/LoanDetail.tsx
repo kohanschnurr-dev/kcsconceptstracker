@@ -583,7 +583,22 @@ export default function LoanDetail() {
                   draws={draws}
                   payments={payments}
                   extensions={extensions}
+                  onApplyScenario={async ({ mode, payoffDate, fee }) => {
+                    if (mode === 'maturity') {
+                      await updateLoan.mutateAsync({ id: loan.id, maturity_date: payoffDate });
+                    } else {
+                      await addExtension.mutateAsync({
+                        loan_id: loan.id,
+                        extension_number: extensions.length + 1,
+                        extended_from: effectiveMaturity,
+                        extended_to: payoffDate,
+                        extension_fee: fee || undefined,
+                        notes: 'Created from payoff scenario',
+                      });
+                    }
+                  }}
                 />
+
               )}
             </div>
           </TabsContent>
