@@ -7,7 +7,6 @@ export interface CostHistoryProject {
   status: string;
   projectType?: string;
   address?: string;
-  sqft?: number | null;
 }
 
 export interface CategoryProjectStat {
@@ -16,7 +15,6 @@ export interface CategoryProjectStat {
   status: string;
   budgeted: number;
   actual: number;
-  sqft?: number | null;
 }
 
 export interface CategoryStat {
@@ -122,7 +120,6 @@ export function useCostHistory(enabled: boolean) {
           status: proj.status,
           budgeted: 0,
           actual: 0,
-          sqft: proj.sqft ?? null,
         };
         cell.set(key, entry);
       }
