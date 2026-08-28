@@ -41,7 +41,6 @@ const sel = (s: string): string => s;
 
 export function useCostHistory(enabled: boolean) {
   const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [projects, setProjects] = useState<CostHistoryProject[]>([]);
   const [categories, setCategories] = useState<RawCategory[]>([]);
   const [expenses, setExpenses] = useState<RawExpense[]>([]);
@@ -94,7 +93,7 @@ export function useCostHistory(enabled: boolean) {
       setExpenses(expRes.data || []);
       setQbExpenses(qbRes.data || []);
       setLoading(false);
-      setLoaded(true);
+
     })();
   }, [enabled]);
 
