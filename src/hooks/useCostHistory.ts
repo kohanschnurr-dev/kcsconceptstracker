@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface CostHistoryProject {
@@ -47,9 +47,11 @@ export function useCostHistory(enabled: boolean) {
   const [expenses, setExpenses] = useState<RawExpense[]>([]);
   const [qbExpenses, setQbExpenses] = useState<RawExpense[]>([]);
 
+  const fetchedRef = useRef(false);
+
   useEffect(() => {
-    if (!enabled || loaded || loading) return;
-    let cancelled = false;
+    if (!enabled || fetchedRef.current) return;
+    fetchedRef.current = true;
     setLoading(true);
 
     (async () => {
@@ -79,7 +81,6 @@ export function useCostHistory(enabled: boolean) {
           .returns<RawExpense[]>(),
       ]);
 
-      if (cancelled) return;
       setProjects(
         (projRes.data || []).map((p) => ({
           id: p.id,
@@ -95,11 +96,7 @@ export function useCostHistory(enabled: boolean) {
       setLoading(false);
       setLoaded(true);
     })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, loaded, loading]);
+  }, [enabled]);
 
   const stats = useMemo(() => {
     const projectById = new Map(projects.map((p) => [p.id, p]));
