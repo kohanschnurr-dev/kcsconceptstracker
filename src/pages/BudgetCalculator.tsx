@@ -1077,6 +1077,13 @@ export default function BudgetCalculator() {
       onOpenChange={setImportModalOpen}
       onImport={handleImportBudgets}
     />
+
+    <CostHistoryPanel
+      open={costHistoryOpen}
+      onOpenChange={setCostHistoryOpen}
+      onUseAmount={handleUseHistoricalAmount}
+    />
+
     </>
   );
 }
