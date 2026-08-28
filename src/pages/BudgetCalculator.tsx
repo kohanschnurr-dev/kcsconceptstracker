@@ -3,7 +3,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calculator, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ChevronDown, RotateCcw, Upload, FileDown } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ChevronDown, RotateCcw, Upload, FileDown, History } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,6 +15,7 @@ import { computeHoldingCosts, holdingCostLabel, type HoldingMode, type MonthlyRa
 import { RentalAnalysis } from '@/components/budget/RentalAnalysis';
 import { BRRRAnalysis } from '@/components/budget/BRRRAnalysis';
 import { ImportBudgetModal } from '@/components/budget/ImportBudgetModal';
+import { CostHistoryPanel } from '@/components/budget/CostHistoryPanel';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import type { RentalFieldValues } from '@/components/budget/RentalFields';
 import { getBudgetCategories } from '@/types';
@@ -108,6 +109,7 @@ export default function BudgetCalculator() {
   const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
   const [autoRevealCategory, setAutoRevealCategory] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [costHistoryOpen, setCostHistoryOpen] = useState(false);
   const [splitMode, setSplitMode] = useState<boolean>(() => {
     try { return localStorage.getItem(SPLIT_MODE_KEY) === 'true'; } catch { return false; }
   });
@@ -305,6 +307,20 @@ export default function BudgetCalculator() {
 
   const handleSplitChange = (category: string, split: CategorySplit) => {
     setCategorySplits(prev => ({ ...prev, [category]: split }));
+  };
+
+  // Pull a historical average cost into the current budget
+  const handleUseHistoricalAmount = (category: string, amount: number) => {
+    setCategoryBudgets(prev => ({ ...prev, [category]: String(amount) }));
+    if (splitMode) {
+      setCategorySplits(prev => ({
+        ...prev,
+        [category]: { labor: prev[category]?.labor || '', material: String(amount) },
+      }));
+    }
+    setAutoRevealCategory(category);
+    const label = getBudgetCategories().find(c => c.value === category)?.label || category;
+    toast.success(`Applied historical average to ${label}`);
   };
 
   // Seed auto-populated amounts into Material for categories that have no saved split
@@ -724,6 +740,16 @@ export default function BudgetCalculator() {
               </Label>
               <Switch id="split-mode" checked={splitMode} onCheckedChange={handleSplitModeChange} />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCostHistoryOpen(true)}
+              className="gap-1.5"
+              title="Cost history from past projects"
+            >
+              <History className="h-4 w-4" />
+              <span className="hidden lg:inline">Cost History</span>
+            </Button>
             <Button variant="outline" size="icon" onClick={() => setImportModalOpen(true)} title="Import budget">
               <Upload className="h-4 w-4" />
             </Button>
@@ -1051,6 +1077,13 @@ export default function BudgetCalculator() {
       onOpenChange={setImportModalOpen}
       onImport={handleImportBudgets}
     />
+
+    <CostHistoryPanel
+      open={costHistoryOpen}
+      onOpenChange={setCostHistoryOpen}
+      onUseAmount={handleUseHistoricalAmount}
+    />
+
     </>
   );
 }
