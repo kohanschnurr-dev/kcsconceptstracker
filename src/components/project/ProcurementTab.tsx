@@ -580,12 +580,18 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
             <ShoppingCart className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
             <p className="text-muted-foreground mb-2">No procurement items assigned</p>
             <p className="text-sm text-muted-foreground mb-4">
-              Add items from your procurement library to this project
+              Create a new item here, or pull one from your procurement library
             </p>
-            <Button onClick={() => setPickerOpen(true)}>
-              <Library className="h-4 w-4 mr-2" />
-              Add from Library
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button onClick={() => setNewItemOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Item
+              </Button>
+              <Button variant="outline" onClick={() => setPickerOpen(true)}>
+                <Library className="h-4 w-4 mr-2" />
+                Add from Library
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : showByPhase ? (
