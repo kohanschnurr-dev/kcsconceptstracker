@@ -37,6 +37,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { getBudgetCategories } from '@/types';
+import { ProcurementItemModal } from '@/components/procurement/ProcurementItemModal';
 
 // Types
 type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'other';
@@ -124,6 +125,8 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
   const [assignments, setAssignments] = useState<ProjectItemAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [newItemOpen, setNewItemOpen] = useState(false);
+  const [bundles, setBundles] = useState<{ id: string; name: string; description: string | null; project_id: string | null }[]>([]);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -187,6 +190,14 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
   useEffect(() => {
     fetchItems();
   }, [projectId]);
+
+  useEffect(() => {
+    supabase
+      .from('procurement_bundles')
+      .select('id, name, description, project_id')
+      .order('name')
+      .then(({ data }) => setBundles((data as any) || []));
+  }, []);
 
   // Format helpers
   const formatCurrency = (value: number) => `${currency}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -536,9 +547,13 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
             <SelectItem value="price_desc">Price: High to Low</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={() => setPickerOpen(true)}>
+        <Button variant="outline" onClick={() => setPickerOpen(true)}>
           <Library className="h-4 w-4 mr-2" />
           Add from Library
+        </Button>
+        <Button onClick={() => setNewItemOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Item
         </Button>
       </div>
 
@@ -565,12 +580,18 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
             <ShoppingCart className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
             <p className="text-muted-foreground mb-2">No procurement items assigned</p>
             <p className="text-sm text-muted-foreground mb-4">
-              Add items from your procurement library to this project
+              Create a new item here, or pull one from your procurement library
             </p>
-            <Button onClick={() => setPickerOpen(true)}>
-              <Library className="h-4 w-4 mr-2" />
-              Add from Library
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button onClick={() => setNewItemOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Item
+              </Button>
+              <Button variant="outline" onClick={() => setPickerOpen(true)}>
+                <Library className="h-4 w-4 mr-2" />
+                Add from Library
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : showByPhase ? (
@@ -661,6 +682,18 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
         existingItemIds={items.map(i => i.id)}
         onItemsAdded={fetchItems}
       />
+
+      {/* Create a brand new item straight from this project */}
+      {newItemOpen && (
+        <ProcurementItemModal
+          open={newItemOpen}
+          onOpenChange={setNewItemOpen}
+          item={null}
+          bundles={bundles}
+          assignToProjectId={projectId}
+          onSave={fetchItems}
+        />
+      )}
     </div>
   );
 }

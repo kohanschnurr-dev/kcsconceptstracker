@@ -41,6 +41,7 @@
     "https://deno.land/x/media_types@v2.9.0/deps.ts": "364b24c35845cfd5c6903ab22b8ba9873bf1022bbbf6bf3d001695332d4bbb4f",
     "https://deno.land/x/media_types@v2.9.0/mod.ts": "d63583b978d32eff8b76e1ae5d83cba2fb27baa90cc1bcb0ad15a06122ea8c19",
     "https://deno.land/x/xhr@0.1.0/mod.ts": "5200325d879e571961f0927e8e32e66fd33f4ba0d29a219560cf9e0fe9bc6cdf",
+    "https://esm.sh/@supabase/supabase-js@2.45.0": "36ae57c3f2dc3f94fd122a846b40a87114d29bb2f47e910cb46bee5575febf2e",
     "https://esm.sh/@supabase/supabase-js@2.98.0": "7c91584aa8d7c3b272be04122a907e00a7028a20d0eaf5e40b2eb1eed10f06b3"
   },
   "workspace": {
@@ -48,9 +49,10 @@
       "dependencies": [
         "npm:@dnd-kit/core@^6.3.1",
         "npm:@dnd-kit/sortable@10",
+        "npm:@dnd-kit/utilities@^3.2.2",
         "npm:@eslint/js@^9.32.0",
         "npm:@hookform/resolvers@^3.10.0",
-        "npm:@lovable.dev/cloud-auth-js@^0.0.2",
+        "npm:@lovable.dev/cloud-auth-js@1",
         "npm:@playwright/test@^1.57.0",
         "npm:@radix-ui/react-accordion@^1.2.11",
         "npm:@radix-ui/react-alert-dialog@^1.1.14",

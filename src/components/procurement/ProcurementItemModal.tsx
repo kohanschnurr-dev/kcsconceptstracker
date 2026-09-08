@@ -367,6 +367,8 @@ interface Props {
   item: ProcurementItem | null;
   bundles: Bundle[];
   onSave: () => void;
+  /** When set, a newly created item is automatically assigned to this project */
+  assignToProjectId?: string;
 }
 
 type Step = 'url' | 'screenshot' | 'category' | 'details';
@@ -384,7 +386,7 @@ interface ScrapedData {
   image_url: string | null;
 }
 
-export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave }: Props) {
+export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave, assignToProjectId }: Props) {
   const { user } = useAuth();
   const { stores, addStore, removeStore, resetToDefaults } = useCustomStores();
   const [loading, setLoading] = useState(false);
@@ -940,8 +942,24 @@ export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave
       }
     }
 
+    // Auto-assign brand new items to the project we were opened from
+    if (!item && itemId && assignToProjectId) {
+      const { error: assignError } = await supabase
+        .from('project_procurement_items')
+        .insert({
+          project_id: assignToProjectId,
+          item_id: itemId,
+          quantity: parseInt(formData.quantity) || 1,
+          status: formData.status,
+        });
+      if (assignError) {
+        console.error('Failed to assign item to project:', assignError);
+        toast.error('Item saved, but could not be added to this project');
+      }
+    }
+
     setLoading(false);
-    toast.success(item ? 'Item updated' : 'Item added');
+    toast.success(item ? 'Item updated' : assignToProjectId ? 'Item added to project' : 'Item added');
     onOpenChange(false);
     onSave();
   };
