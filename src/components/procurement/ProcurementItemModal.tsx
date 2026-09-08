@@ -386,7 +386,7 @@ interface ScrapedData {
   image_url: string | null;
 }
 
-export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave }: Props) {
+export function ProcurementItemModal({ open, onOpenChange, item, bundles, onSave, assignToProjectId }: Props) {
   const { user } = useAuth();
   const { stores, addStore, removeStore, resetToDefaults } = useCustomStores();
   const [loading, setLoading] = useState(false);
