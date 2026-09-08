@@ -191,6 +191,14 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
     fetchItems();
   }, [projectId]);
 
+  useEffect(() => {
+    supabase
+      .from('procurement_bundles')
+      .select('id, name, description, project_id')
+      .order('name')
+      .then(({ data }) => setBundles((data as any) || []));
+  }, []);
+
   // Format helpers
   const formatCurrency = (value: number) => `${currency}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
