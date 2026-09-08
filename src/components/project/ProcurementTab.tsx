@@ -37,6 +37,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { getBudgetCategories } from '@/types';
+import { ProcurementItemModal } from '@/components/procurement/ProcurementItemModal';
 
 // Types
 type SourceStore = 'amazon' | 'home_depot' | 'lowes' | 'floor_decor' | 'build' | 'ferguson' | 'other';
