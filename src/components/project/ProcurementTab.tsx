@@ -682,6 +682,18 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
         existingItemIds={items.map(i => i.id)}
         onItemsAdded={fetchItems}
       />
+
+      {/* Create a brand new item straight from this project */}
+      {newItemOpen && (
+        <ProcurementItemModal
+          open={newItemOpen}
+          onOpenChange={setNewItemOpen}
+          item={null}
+          bundles={bundles}
+          assignToProjectId={projectId}
+          onSave={fetchItems}
+        />
+      )}
     </div>
   );
 }
