@@ -125,6 +125,8 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
   const [assignments, setAssignments] = useState<ProjectItemAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [newItemOpen, setNewItemOpen] = useState(false);
+  const [bundles, setBundles] = useState<{ id: string; name: string; description: string | null; project_id: string | null }[]>([]);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
