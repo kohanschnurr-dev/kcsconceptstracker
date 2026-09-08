@@ -547,9 +547,13 @@ export function ProcurementTab({ projectId, categories, currency = '$' }: Procur
             <SelectItem value="price_desc">Price: High to Low</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={() => setPickerOpen(true)}>
+        <Button variant="outline" onClick={() => setPickerOpen(true)}>
           <Library className="h-4 w-4 mr-2" />
           Add from Library
+        </Button>
+        <Button onClick={() => setNewItemOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Item
         </Button>
       </div>
 
