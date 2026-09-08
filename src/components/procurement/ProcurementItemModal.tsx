@@ -367,6 +367,8 @@ interface Props {
   item: ProcurementItem | null;
   bundles: Bundle[];
   onSave: () => void;
+  /** When set, a newly created item is automatically assigned to this project */
+  assignToProjectId?: string;
 }
 
 type Step = 'url' | 'screenshot' | 'category' | 'details';
