@@ -65,6 +65,8 @@ export function SplitExpenseModal({
 }: SplitExpenseModalProps) {
   const [splits, setSplits] = useState<SplitLine[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
+
 
   // Initialize with two split lines when modal opens
   useEffect(() => {
@@ -236,13 +238,27 @@ export function SplitExpenseModal({
                       </SelectTrigger>
                       <SelectContent className="pointer-events-auto">
                       {projects
-                        .filter(p => p.status !== 'complete')
+                        .filter(p => showCompletedProjects || p.status !== 'complete')
                         .sort((a, b) => a.name.localeCompare(b.name))
                         .map((p) => (
                           <SelectItem key={p.id} value={p.id}>
                             {p.name}
+                            {p.status === 'complete' && (
+                              <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">Completed</span>
+                            )}
                           </SelectItem>
                         ))}
+                      {projects.some(p => p.status === 'complete') && (
+                        <div className="border-t border-border mt-1 pt-1">
+                          <button
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); setShowCompletedProjects(v => !v); }}
+                            className="w-full text-left text-xs px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            {showCompletedProjects ? 'Hide completed projects' : 'Show completed projects'}
+                          </button>
+                        </div>
+                      )}
                       </SelectContent>
                     </Select>
                   </div>
