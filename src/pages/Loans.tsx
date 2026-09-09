@@ -94,6 +94,20 @@ export default function Loans() {
     });
   }, [loans, projectTypeFilter, purposeFilter, statusFilter, projectTypeByName]);
 
+  // Payment history ignores the status filter so payoffs on closed loans still appear.
+  const activityLoans = useMemo(() => {
+    return loans.filter(l => {
+      if (projectTypeFilter !== 'all') {
+        const pn = l.project_name;
+        if (!pn || projectTypeByName.get(pn) !== projectTypeFilter) return false;
+      }
+      if (purposeFilter !== 'all') {
+        if ((l.nickname ?? '') !== purposeFilter) return false;
+      }
+      return true;
+    });
+  }, [loans, projectTypeFilter, purposeFilter, projectTypeByName]);
+
   const availablePurposes = useMemo(() => {
     const set = new Set<string>();
     for (const l of loans) {
