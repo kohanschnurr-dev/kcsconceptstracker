@@ -8,6 +8,8 @@ import { LoanStatsRow } from '@/components/loans/LoanStatsRow';
 import { LoanTable } from '@/components/loans/LoanTable';
 import { LoanCharts } from '@/components/loans/LoanCharts';
 import { LoanComparePanel } from '@/components/loans/LoanComparePanel';
+import { RecentLoanActivity } from '@/components/loans/RecentLoanActivity';
+
 import { AddLoanModal } from '@/components/loans/AddLoanModal';
 import { useLoans } from '@/hooks/useLoans';
 import type { Loan, LoanDraw, LoanStatus } from '@/types/loans';
@@ -293,8 +295,12 @@ export default function Loans() {
               includeInterest={includeInterest}
             />
 
+            {/* Recent payments & payoffs */}
+            <RecentLoanActivity loans={visibleLoans} />
+
             {/* Charts */}
             <LoanCharts loans={visibleLoans} includeInterest={includeInterest} />
+
           </>
         )}
       </div>
