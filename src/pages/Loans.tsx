@@ -295,11 +295,11 @@ export default function Loans() {
               includeInterest={includeInterest}
             />
 
-            {/* Recent payments & payoffs */}
-            <RecentLoanActivity loans={visibleLoans} />
-
             {/* Charts */}
             <LoanCharts loans={visibleLoans} includeInterest={includeInterest} />
+
+            {/* Recent payments & payoffs */}
+            <RecentLoanActivity loans={visibleLoans} />
 
           </>
         )}
