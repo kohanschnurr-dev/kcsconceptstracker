@@ -45,14 +45,24 @@ export function ProjectAutocomplete({
 }: ProjectAutocompleteProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCompleted, setShowCompleted] = useState(false);
 
-  // Filter out completed projects and sort alphabetically
+  const hasCompleted = useMemo(
+    () => projects.some(p => p.status === 'complete'),
+    [projects]
+  );
+
+  // Filter out completed projects (unless toggled on) and sort alphabetically
   const filteredByStatus = useMemo(() => {
-    const filtered = filterActive
+    const base = filterActive
       ? projects.filter(p => p.status === 'active')
       : projects.filter(p => p.status !== 'complete');
+    const filtered = showCompleted
+      ? [...base, ...projects.filter(p => p.status === 'complete')]
+      : base;
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
-  }, [projects, filterActive]);
+  }, [projects, filterActive, showCompleted]);
+
 
   // Filter projects based on search query
   const filteredProjects = useMemo(() => {
