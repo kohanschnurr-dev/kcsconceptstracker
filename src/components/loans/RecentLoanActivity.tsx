@@ -166,8 +166,9 @@ export function RecentLoanActivity({ loans, limit = 8 }: Props) {
               );
             })}
           </div>
-        )}
-      </CardContent>
+          )}
+        </CardContent>
+      )}
     </Card>
   );
 }
