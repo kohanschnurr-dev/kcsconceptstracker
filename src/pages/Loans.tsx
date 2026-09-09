@@ -313,7 +313,7 @@ export default function Loans() {
             <LoanCharts loans={visibleLoans} includeInterest={includeInterest} />
 
             {/* Recent payments & payoffs */}
-            <RecentLoanActivity loans={visibleLoans} />
+            <RecentLoanActivity loans={activityLoans} />
 
           </>
         )}
