@@ -65,6 +65,8 @@ export function SplitExpenseModal({
 }: SplitExpenseModalProps) {
   const [splits, setSplits] = useState<SplitLine[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
+
 
   // Initialize with two split lines when modal opens
   useEffect(() => {
