@@ -78,6 +78,7 @@ export function GroupedPendingExpenseCard({
   const [selectedExpenseType, setSelectedExpenseType] = useState<'product' | 'labor'>('product');
   const [expenseNotes, setExpenseNotes] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
+  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
   const [selectedCostType, setSelectedCostType] = useState<string>('construction');
 
   const isSplitGroup = expenses.length > 1;
@@ -226,13 +227,27 @@ export function GroupedPendingExpenseCard({
               </SelectTrigger>
               <SelectContent>
                 {projects
-                  .filter(p => p.status !== 'complete')
+                  .filter(p => showCompletedProjects || p.status !== 'complete')
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
+                      {project.status === 'complete' && (
+                        <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">Completed</span>
+                      )}
                     </SelectItem>
                   ))}
+                {projects.some(p => p.status === 'complete') && (
+                  <div className="border-t border-border mt-1 pt-1">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); setShowCompletedProjects(v => !v); }}
+                      className="w-full text-left text-xs px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                    >
+                      {showCompletedProjects ? 'Hide completed projects' : 'Show completed projects'}
+                    </button>
+                  </div>
+                )}
               </SelectContent>
             </Select>
             <Select
@@ -444,13 +459,27 @@ export function GroupedPendingExpenseCard({
                 </SelectTrigger>
                 <SelectContent>
                   {projects
-                    .filter(p => p.status !== 'complete')
+                    .filter(p => showCompletedProjects || p.status !== 'complete')
                     .sort((a, b) => a.name.localeCompare(b.name))
                     .map((project) => (
                       <SelectItem key={project.id} value={project.id}>
                         {project.name}
+                        {project.status === 'complete' && (
+                          <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">Completed</span>
+                        )}
                       </SelectItem>
                     ))}
+                  {projects.some(p => p.status === 'complete') && (
+                    <div className="border-t border-border mt-1 pt-1">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); setShowCompletedProjects(v => !v); }}
+                        className="w-full text-left text-xs px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                      >
+                        {showCompletedProjects ? 'Hide completed projects' : 'Show completed projects'}
+                      </button>
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
               <Button
