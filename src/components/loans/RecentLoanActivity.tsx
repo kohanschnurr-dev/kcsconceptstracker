@@ -78,11 +78,26 @@ export function RecentLoanActivity({ loans, limit = 8 }: Props) {
           <Receipt className="h-4 w-4 text-primary" />
           Recent Payments &amp; Payoffs
         </CardTitle>
-        <span className="text-[11px] text-muted-foreground">
-          Latest {rows.length} across the loans shown
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground">
+            Latest {rows.length} across the loans shown
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            onClick={() => setCollapsed(c => !c)}
+            aria-label={collapsed ? 'Expand recent payments' : 'Collapse recent payments'}
+          >
+            {collapsed ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+        </div>
       </CardHeader>
-      <CardContent className="pt-0">
+      {!collapsed && <CardContent className="pt-0">
         {isLoading ? (
           <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
         ) : rows.length === 0 ? (
