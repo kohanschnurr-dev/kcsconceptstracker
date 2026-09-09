@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Receipt, StickyNote } from 'lucide-react';
+import { Receipt, StickyNote, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDisplayDate } from '@/lib/dateUtils';
@@ -28,7 +29,26 @@ interface Props {
   limit?: number;
 }
 
+const STORAGE_KEY = 'recent-loan-activity-collapsed';
+
 export function RecentLoanActivity({ loans, limit = 8 }: Props) {
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, String(collapsed));
+    } catch {
+      // ignore
+    }
+  }, [collapsed]);
+
   const loanIds = useMemo(() => loans.map(l => l.id).sort(), [loans]);
 
   const { data: payments = [], isLoading } = useQuery<PaymentRow[]>({
@@ -58,19 +78,35 @@ export function RecentLoanActivity({ loans, limit = 8 }: Props) {
           <Receipt className="h-4 w-4 text-primary" />
           Recent Payments &amp; Payoffs
         </CardTitle>
-        <span className="text-[11px] text-muted-foreground">
-          Latest {rows.length} across the loans shown
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground">
+            Latest {rows.length} across the loans shown
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            onClick={() => setCollapsed(c => !c)}
+            aria-label={collapsed ? 'Expand recent payments' : 'Collapse recent payments'}
+          >
+            {collapsed ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+        </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
-        ) : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">
-            No payments recorded yet for these loans.
-          </p>
-        ) : (
-          <div className="divide-y divide-border/60">
+      {!collapsed && (
+        <CardContent className="pt-0">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
+          ) : rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              No payments recorded yet for these loans.
+            </p>
+          ) : (
+            <div className="divide-y divide-border/60">
             {rows.map(p => {
               const loan = loanById.get(p.loan_id);
               const label = [loan?.project_name, loan?.nickname || loan?.lender_name]
@@ -130,8 +166,9 @@ export function RecentLoanActivity({ loans, limit = 8 }: Props) {
               );
             })}
           </div>
-        )}
-      </CardContent>
+          )}
+        </CardContent>
+      )}
     </Card>
   );
 }
