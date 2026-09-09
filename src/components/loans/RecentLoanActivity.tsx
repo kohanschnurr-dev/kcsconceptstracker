@@ -29,7 +29,26 @@ interface Props {
   limit?: number;
 }
 
+const STORAGE_KEY = 'recent-loan-activity-collapsed';
+
 export function RecentLoanActivity({ loans, limit = 8 }: Props) {
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, String(collapsed));
+    } catch {
+      // ignore
+    }
+  }, [collapsed]);
+
   const loanIds = useMemo(() => loans.map(l => l.id).sort(), [loans]);
 
   const { data: payments = [], isLoading } = useQuery<PaymentRow[]>({
