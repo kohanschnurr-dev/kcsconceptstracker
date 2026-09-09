@@ -97,15 +97,16 @@ export function RecentLoanActivity({ loans, limit = 8 }: Props) {
           </Button>
         </div>
       </CardHeader>
-      {!collapsed && <CardContent className="pt-0">
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
-        ) : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">
-            No payments recorded yet for these loans.
-          </p>
-        ) : (
-          <div className="divide-y divide-border/60">
+      {!collapsed && (
+        <CardContent className="pt-0">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
+          ) : rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              No payments recorded yet for these loans.
+            </p>
+          ) : (
+            <div className="divide-y divide-border/60">
             {rows.map(p => {
               const loan = loanById.get(p.loan_id);
               const label = [loan?.project_name, loan?.nickname || loan?.lender_name]
