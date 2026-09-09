@@ -183,7 +183,14 @@ export function ProjectAutocomplete({
                       )}
                     />
                     <div className="flex flex-col min-w-0 flex-1">
-                      <span className="font-medium truncate">{project.name}</span>
+                      <span className="font-medium truncate">
+                        {project.name}
+                        {project.status === 'complete' && (
+                          <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground border border-border px-1 py-0.5">
+                            Completed
+                          </span>
+                        )}
+                      </span>
                       {project.address && (
                         <span className="text-xs opacity-70 truncate">
                           {project.address}
@@ -195,8 +202,20 @@ export function ProjectAutocomplete({
               </CommandGroup>
             ))}
           </CommandList>
+          {hasCompleted && (
+            <div className="border-t border-border p-1">
+              <button
+                type="button"
+                onClick={() => setShowCompleted(v => !v)}
+                className="w-full text-left text-xs px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                {showCompleted ? 'Hide completed projects' : 'Show completed projects'}
+              </button>
+            </div>
+          )}
         </Command>
       </PopoverContent>
     </Popover>
   );
 }
+
