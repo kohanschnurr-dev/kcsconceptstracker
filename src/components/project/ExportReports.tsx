@@ -47,8 +47,18 @@ interface ExportReportsProps {
 export function ExportReports({ project, categories, expenses, filteredExpenses }: ExportReportsProps) {
   const resolvedFiltered = filteredExpenses ?? expenses;
   const isFiltered = resolvedFiltered.length !== expenses.length;
-  const [exportType, setExportType] = useState<string>('expenses-csv');
+  const [exportType, setExportType] = useState<string>(isFiltered ? 'filtered-csv' : 'expenses-csv');
   const [isExporting, setIsExporting] = useState(false);
+
+  // Keep the selection in sync with the active filters so a filtered view
+  // never silently exports the full expense history.
+  useEffect(() => {
+    if (isFiltered) {
+      setExportType(prev => (prev === 'expenses-csv' ? 'filtered-csv' : prev));
+    } else {
+      setExportType(prev => (prev === 'filtered-csv' ? 'expenses-csv' : prev));
+    }
+  }, [isFiltered]);
 
   const getCategoryLabel = (categoryId: string) => {
     const cat = categories.find(c => c.id === categoryId);
