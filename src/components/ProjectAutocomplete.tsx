@@ -202,18 +202,19 @@ export function ProjectAutocomplete({
               </CommandGroup>
             ))}
           </CommandList>
-          {hasCompleted && (
-            <div className="border-t border-border p-1">
-              <button
-                type="button"
-                onClick={() => setShowCompleted(v => !v)}
-                className="w-full text-left text-xs px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              >
-                {showCompleted ? 'Hide completed projects' : 'Show completed projects'}
-              </button>
-            </div>
-          )}
         </Command>
+        {hasCompleted && (
+          <div className="border-t border-border p-1">
+            <button
+              type="button"
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onClick={(e) => { e.stopPropagation(); setShowCompleted(v => !v); }}
+              className="w-full text-left text-xs px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              {showCompleted ? 'Hide completed projects' : 'Show completed projects'}
+            </button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

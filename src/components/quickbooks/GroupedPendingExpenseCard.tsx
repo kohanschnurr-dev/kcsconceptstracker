@@ -238,10 +238,13 @@ export function GroupedPendingExpenseCard({
                     </SelectItem>
                   ))}
                 {projects.some(p => p.status === 'complete') && (
-                  <div className="border-t border-border mt-1 pt-1">
+                  <div
+                    className="border-t border-border mt-1 pt-1"
+                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  >
                     <button
                       type="button"
-                      onMouseDown={(e) => { e.preventDefault(); setShowCompletedProjects(v => !v); }}
+                      onClick={(e) => { e.stopPropagation(); setShowCompletedProjects(v => !v); }}
                       className="w-full text-left text-xs px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                     >
                       {showCompletedProjects ? 'Hide completed projects' : 'Show completed projects'}
@@ -470,10 +473,13 @@ export function GroupedPendingExpenseCard({
                       </SelectItem>
                     ))}
                   {projects.some(p => p.status === 'complete') && (
-                    <div className="border-t border-border mt-1 pt-1">
+                    <div
+                      className="border-t border-border mt-1 pt-1"
+                      onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    >
                       <button
                         type="button"
-                        onMouseDown={(e) => { e.preventDefault(); setShowCompletedProjects(v => !v); }}
+                        onClick={(e) => { e.stopPropagation(); setShowCompletedProjects(v => !v); }}
                         className="w-full text-left text-xs px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                       >
                         {showCompletedProjects ? 'Hide completed projects' : 'Show completed projects'}
