@@ -340,7 +340,7 @@ export function ExportReports({ project, categories, expenses, filteredExpenses 
             <span className="text-sm font-medium">Expenses CSV</span>
           </div>
           <p className="text-xs text-muted-foreground leading-tight">
-            All expenses with dates, vendors, amounts, and tax details
+            All {expenses.length} expenses{isFiltered ? ' — ignores your current filters' : ''}
           </p>
         </div>
 
