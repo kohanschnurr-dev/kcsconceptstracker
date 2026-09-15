@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, FileSpreadsheet, FileText, Filter, Loader2 } from 'lucide-react';
 import { getBudgetCategories } from '@/types';
