@@ -1518,6 +1518,28 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                     <h4 className="text-sm font-medium">
                       Suggested Split ({selectedMatch.receipt.line_items.length + (selectedMatch.receipt.tax_amount > 0 ? 1 : 0)} items)
                     </h4>
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">All:</span>
+                      <Select
+                        value=""
+                        onValueChange={(value) => {
+                          const bulk: Record<number, string> = {};
+                          selectedMatch.receipt.line_items.forEach((_, i) => { bulk[i] = value; });
+                          setEditableCategories(prev => ({ ...prev, ...bulk }));
+                        }}
+                      >
+                        <SelectTrigger className="w-[130px] h-7 text-xs">
+                          <SelectValue placeholder="Assign all…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categoryOptions.map((cat) => (
+                            <SelectItem key={cat} value={cat} className="text-xs">
+                              {getCategoryLabelDynamic(cat)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {selectedMatch.receipt.line_items.map((item, idx) => {
