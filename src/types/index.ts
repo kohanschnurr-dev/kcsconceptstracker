@@ -298,12 +298,23 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   return fallback;
 }
 
+// Merge stored custom categories with defaults so newly added default
+// categories always appear even when a custom list was saved earlier.
+function mergeWithDefaults<T extends { value: string }>(stored: T[], defaults: T[]): T[] {
+  const storedValues = new Set(stored.map(c => c.value));
+  return [...stored, ...defaults.filter(d => !storedValues.has(d.value))];
+}
+
 export function getBudgetCategories(): typeof BUDGET_CATEGORIES {
-  return loadFromStorage('custom-budget-categories', BUDGET_CATEGORIES).sort((a, b) => a.label.localeCompare(b.label));
+  const stored = loadFromStorage<typeof BUDGET_CATEGORIES | null>('custom-budget-categories', null);
+  const merged = stored ? mergeWithDefaults(stored, BUDGET_CATEGORIES) : BUDGET_CATEGORIES;
+  return merged.sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function getBusinessExpenseCategories(): typeof BUSINESS_EXPENSE_CATEGORIES {
-  return loadFromStorage('custom-business-categories', BUSINESS_EXPENSE_CATEGORIES).sort((a, b) => a.label.localeCompare(b.label));
+  const stored = loadFromStorage<typeof BUSINESS_EXPENSE_CATEGORIES | null>('custom-business-categories', null);
+  const merged = stored ? mergeWithDefaults(stored, BUSINESS_EXPENSE_CATEGORIES) : BUSINESS_EXPENSE_CATEGORIES;
+  return merged.sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function getAllCategories() {
