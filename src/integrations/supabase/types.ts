@@ -2872,6 +2872,7 @@ export type Database = {
         | "survey"
         | "structural_engineer"
         | "sitework"
+        | "delivery_fee"
       expense_status: "estimate" | "actual"
       payment_method: "cash" | "check" | "card" | "transfer" | "financed"
       pricing_model: "flat" | "hourly"
@@ -3141,6 +3142,7 @@ export const Constants = {
         "survey",
         "structural_engineer",
         "sitework",
+        "delivery_fee",
       ],
       expense_status: ["estimate", "actual"],
       payment_method: ["cash", "check", "card", "transfer", "financed"],
