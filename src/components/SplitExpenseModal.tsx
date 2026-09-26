@@ -122,6 +122,15 @@ export function SplitExpenseModal({
     ));
   };
 
+  const addRemainingToSplit = (id: string) => {
+    if (remaining <= 0) return;
+    setSplits(prevSplits => prevSplits.map(s => {
+      if (s.id !== id) return s;
+      const current = parseFloat(s.amount) || 0;
+      return { ...s, amount: (current + remaining).toFixed(2) };
+    }));
+  };
+
   const allSplitsValid = splits.every(s => 
     parseFloat(s.amount) > 0 && s.projectId && s.categoryValue
   );
@@ -185,16 +194,29 @@ export function SplitExpenseModal({
               <div key={split.id} className="p-3 rounded-lg border border-border bg-card space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-muted-foreground">Split #{index + 1}</span>
-                  {splits.length > 2 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeSplitLine(split.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {remaining > 0.004 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1 text-primary border-primary/40 hover:bg-primary/10"
+                        onClick={() => addRemainingToSplit(split.id)}
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add {formatCurrency(remaining)}
+                      </Button>
+                    )}
+                    {splits.length > 2 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeSplitLine(split.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
