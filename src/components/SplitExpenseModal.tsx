@@ -122,6 +122,15 @@ export function SplitExpenseModal({
     ));
   };
 
+  const addRemainingToSplit = (id: string) => {
+    if (remaining <= 0) return;
+    setSplits(prevSplits => prevSplits.map(s => {
+      if (s.id !== id) return s;
+      const current = parseFloat(s.amount) || 0;
+      return { ...s, amount: (current + remaining).toFixed(2) };
+    }));
+  };
+
   const allSplitsValid = splits.every(s => 
     parseFloat(s.amount) > 0 && s.projectId && s.categoryValue
   );
