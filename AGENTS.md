@@ -1,0 +1,2 @@
+# Architecture rules
+- Parse Excel receipt workbooks locally using ExcelJS, then commit reviewed receipts and items through a SECURITY INVOKER atomic RPC; this preserves queue matching, RLS, and prevents partial or repeated imports.
