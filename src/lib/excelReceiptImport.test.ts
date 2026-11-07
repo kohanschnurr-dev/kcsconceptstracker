@@ -1,3 +1,4 @@
+/// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import ExcelJS from 'exceljs';
 import { parseExcelReceipts, receiptTotal, selectedReceipts } from './excelReceiptImport';
