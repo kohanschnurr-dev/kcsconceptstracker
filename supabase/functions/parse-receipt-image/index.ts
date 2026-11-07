@@ -60,7 +60,9 @@ CRITICAL RULES:
 - SUBTOTAL/TAX/TOTAL go in top-level fields, NOT as line items.
 - Use the RIGHTMOST dollar amount on each line as the price.
 - Do NOT duplicate items. Each physical product = exactly one item.
-- Categories: plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, light_fixtures, hardware, appliances, windows, doors, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, landscaping, garage, cleaning, misc
+- Categories: plumbing, electrical, hvac, flooring, painting, cabinets, countertops, tile, light_fixtures, hardware, appliances, windows, doors, trims, roofing, framing, insulation, drywall, bathroom, carpentry, fencing, railing, landscaping, garage, cleaning, water_heater, driveway_concrete, brick_siding_stucco, dumpsters_trash, pest_control, delivery_fee, food, misc
+- Pick the category from what the item IS. Examples: "Prehung Front Door" → doors; "Baseboard"/"Casing" → trims; "PEX"/"Cast iron pipe" → plumbing; "Delivery charge" → delivery_fee; "Romex"/"Breaker" → electrical.
+- Use "misc" ONLY as a last resort when nothing else fits.
 
 DISCOUNT RECOGNITION — these are discount lines, NOT products:
 - Pro Xtra Preferred Pricing, Pro Xtra Savings, Instant Savings, Pro Savings
