@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Check, ChevronsUpDown, Search, Building2 } from 'lucide-react';
+import { Check, ChevronsUpDown, Search, Building2, History } from 'lucide-react';
+
+const LAST_PROJECT_KEY = 'last-selected-project-id';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -96,13 +98,23 @@ export function ProjectAutocomplete({
   // Get selected project details
   const selectedProject = projects.find(p => p.id === value);
 
+  const [lastId, setLastId] = useState<string | null>(() => {
+    try { return localStorage.getItem(LAST_PROJECT_KEY); } catch { return null; }
+  });
+  const lastProject = lastId ? projects.find(p => p.id === lastId) : undefined;
+
   const handleSelect = (projectId: string) => {
+    try { localStorage.setItem(LAST_PROJECT_KEY, projectId); } catch { /* ignore */ }
+    setLastId(projectId);
     onSelect(projectId);
     setOpen(false);
     setSearchQuery('');
   };
 
+  const showQuickPick = !!lastProject && lastProject.id !== value;
+
   return (
+    <div className="w-full">
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
@@ -151,6 +163,18 @@ export function ProjectAutocomplete({
                 No projects found
               </div>
             </CommandEmpty>
+            {lastProject && !searchQuery.trim() && (
+              <CommandGroup heading="Last used">
+                <CommandItem
+                  value={`last-${lastProject.id}`}
+                  onSelect={() => handleSelect(lastProject.id)}
+                  className="cursor-pointer"
+                >
+                  <History className="mr-2 h-4 w-4 flex-shrink-0 text-primary" />
+                  <span className="font-medium truncate">{lastProject.name}</span>
+                </CommandItem>
+              </CommandGroup>
+            )}
             {filteredProjects.filter(p => !p.projectType).map((project) => (
               <CommandItem
                 key={project.id}
@@ -217,6 +241,19 @@ export function ProjectAutocomplete({
         )}
       </PopoverContent>
     </Popover>
+    {showQuickPick && (
+      <button
+        type="button"
+        onClick={() => handleSelect(lastProject!.id)}
+        className="mt-1.5 inline-flex max-w-full items-center gap-1.5 border border-border bg-secondary px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+        title="Use the last selected project"
+      >
+        <History className="h-3 w-3 flex-shrink-0 text-primary" />
+        <span className="flex-shrink-0">Last:</span>
+        <span className="truncate font-medium text-foreground">{lastProject!.name}</span>
+      </button>
+    )}
+    </div>
   );
 }
 
