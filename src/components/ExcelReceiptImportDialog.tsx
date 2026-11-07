@@ -40,7 +40,7 @@ export function ExcelReceiptImportDialog({ open, onOpenChange, initialFile, onIm
       const {data:{user}} = await supabase.auth.getUser();
       if (!user) throw new Error('Sign in before uploading receipts.');
       // Include already matched and imported receipts when detecting repeated uploads.
-      const {data, error: dbError} = await supabase.from('pending_receipts').select('spreadsheet_import_key').eq('user_id',user.id).in('spreadsheet_import_key', parsed.map(r=>r.import_key));
+      const {data, error: dbError} = await supabase.from('pending_receipts').select('spreadsheet_import_key').eq('user_id',user.id).not('spreadsheet_import_key','is',null);
       if (dbError) throw dbError;
       const existing = new Set((data || []).map(r=>r.spreadsheet_import_key).filter((k): k is string => Boolean(k)));
       setReceipts(parsed); setDuplicates(existing);
