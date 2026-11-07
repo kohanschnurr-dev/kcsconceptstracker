@@ -66,7 +66,7 @@ export function ExcelReceiptImportDialog({ open, onOpenChange, initialFile, onIm
     if (!chosen.length || saving) return;
     setSaving(true); setError('');
     try {
-      const {data,error: saveError} = await supabase.rpc('import_spreadsheet_receipts', {p_receipts: chosen.map(({isReturn,job,store,receipt_number,...r})=>r)});
+      const {data,error: saveError} = await supabase.rpc('import_spreadsheet_receipts', {p_receipts: chosen.map(({isReturn,job,store,receipt_number,...r})=>({...r, items:r.items.map(i=>({...i}))}))});
       if (saveError) throw saveError;
       const result = data as {imported:number; skipped:number};
       toast({title: `${result.imported} receipts added to queue`, description: result.skipped ? `${result.skipped} duplicates skipped.` : 'Ready for bank transaction matching.'});
