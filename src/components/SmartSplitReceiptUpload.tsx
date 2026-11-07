@@ -733,8 +733,9 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     const initialCategories: Record<number, string> = {};
     const initialQuantities: Record<number, number> = {};
     const initialPrices: Record<number, number> = {};
+    const learned = loadCorrections();
     (match.receipt.line_items || []).forEach((item, idx) => {
-      initialCategories[idx] = item.suggested_category || 'misc';
+      initialCategories[idx] = refineCategory(item.item_name, item.suggested_category, learned);
       initialQuantities[idx] = item.quantity || 1;
       initialPrices[idx] = item.unit_price;
     });
@@ -788,6 +789,10 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     // Validate: need project for project assignment, or just proceed for business
     if (!selectedMatch) return;
     if (assignmentType === 'project' && !selectedProject) return;
+    saveCorrections((selectedMatch.receipt.line_items || []).map((item, idx) => ({
+      name: item.item_name,
+      category: editableCategories[idx] || item.suggested_category || 'misc',
+    })).filter(e => e.category !== 'misc'));
 
     setIsImporting(true);
     
@@ -1611,7 +1616,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                             value={editableCategories[idx] || item.suggested_category || 'misc'}
                             onValueChange={(value) => setEditableCategories(prev => ({ ...prev, [idx]: value }))}
                           >
-                            <SelectTrigger className="w-[140px] h-7 text-xs">
+                            <SelectTrigger className={`w-[140px] h-7 text-xs ${(editableCategories[idx] || item.suggested_category || 'misc') === 'misc' ? 'border-primary/60' : ''}`}>
                               <SelectValue>{getCategoryLabelDynamic(editableCategories[idx] || item.suggested_category || 'misc')}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>

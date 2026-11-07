@@ -56,15 +56,7 @@ function date(v: ExcelJS.CellValue): string {
   return s;
 }
 function category(description: string): string {
-  const d = description.toLowerCase();
-  const rules: [RegExp, string][] = [
-    [/delivery|shipping|freight/, 'delivery_fee'], [/drywall|sheetrock|joint compound|corner bead/, 'drywall'],
-    [/pvc|pipe|plumb|drain|trap adapter|bath waste|toilet|faucet/, 'plumbing'], [/tile|thinset|grout|kerdi|cement board/, 'tile'],
-    [/paint|caulk|masking|sandpaper/, 'painting'], [/hardwood|laminate|underlayment|flooring|wall cove/, 'flooring'],
-    [/stud|2x4|lumber/, 'framing'], [/cabinet/, 'cabinets'], [/screw|nail|bit holder|blade|drive pin/, 'hardware'],
-    [/energy drink|red bull|monster|gatorade/, 'food'], [/insulation|spray foam/, 'insulation'], [/contractor bag/, 'dumpsters_trash'],
-  ];
-  return rules.find(([pattern]) => pattern.test(d))?.[1] || 'misc';
+  return refineCategory(description, null, loadCorrections());
 }
 
 export async function parseExcelReceipts(buffer: ArrayBuffer, filename: string): Promise<SpreadsheetReceipt[]> {
