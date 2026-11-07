@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794089581014,
+      "tag": "0000_excel_receipt_queue_import",
+      "breakpoints": true
+    }
+  ]
+}

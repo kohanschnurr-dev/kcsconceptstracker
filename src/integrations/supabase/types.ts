@@ -1281,6 +1281,7 @@ export type Database = {
           purchase_date: string
           raw_text: string | null
           receipt_image_url: string | null
+          spreadsheet_import_key: string | null
           status: string
           subtotal: number | null
           tax_amount: number | null
@@ -1298,6 +1299,7 @@ export type Database = {
           purchase_date: string
           raw_text?: string | null
           receipt_image_url?: string | null
+          spreadsheet_import_key?: string | null
           status?: string
           subtotal?: number | null
           tax_amount?: number | null
@@ -1315,6 +1317,7 @@ export type Database = {
           purchase_date?: string
           raw_text?: string | null
           receipt_image_url?: string | null
+          spreadsheet_import_key?: string | null
           status?: string
           subtotal?: number | null
           tax_amount?: number | null
@@ -2775,6 +2778,7 @@ export type Database = {
       get_actor_display_name: { Args: { p_user_id: string }; Returns: string }
       get_team_owner_id: { Args: { p_user_id: string }; Returns: string }
       get_user_team_id: { Args: { p_user_id: string }; Returns: string }
+      import_spreadsheet_receipts: { Args: { p_receipts: Json }; Returns: Json }
       is_team_member: {
         Args: { p_team_id: string; p_user_id: string }
         Returns: boolean
