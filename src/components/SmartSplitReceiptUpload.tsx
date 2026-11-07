@@ -18,6 +18,8 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { getBudgetCategories, getBusinessExpenseCategories, type BudgetCategory } from '@/types';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { ExcelReceiptImportDialog } from '@/components/ExcelReceiptImportDialog';
+import { FileSpreadsheet } from 'lucide-react';
 
 interface SimpleProject {
   id: string;
@@ -79,6 +81,8 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const { companyName } = useCompanySettings();
   const isMobile = useIsMobile();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [excelOpen, setExcelOpen] = useState(false);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
@@ -354,6 +358,11 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
   // Handle file upload — fire-and-forget background parsing
   const handleFileUpload = async (file: File) => {
+    if (/\.xlsx$/i.test(file.name)) {
+      setExcelFile(file);
+      setExcelOpen(true);
+      return;
+    }
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
       toast({
         title: 'Invalid file type',
@@ -462,8 +471,12 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const files = Array.from(e.dataTransfer.files).filter(
-        file => file.type.startsWith('image/') || file.type === 'application/pdf'
+        file => file.type.startsWith('image/') || file.type === 'application/pdf' || /\.xlsx$/i.test(file.name)
       );
+      if (files.some(file => /\.xlsx$/i.test(file.name)) && files.length > 1) {
+        toast({title:'Upload one Excel workbook at a time', description:'Each workbook has its own receipt review.', variant:'destructive'});
+        return;
+      }
       if (files.length === 1) {
         handleFileUpload(files[0]);
       } else if (files.length > 1) {
@@ -475,6 +488,11 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
+      if (files.some(file => /\.xlsx$/i.test(file.name)) && files.length > 1) {
+        toast({title:'Upload one Excel workbook at a time', description:'Each workbook has its own receipt review.', variant:'destructive'});
+        e.target.value = '';
+        return;
+      }
       if (files.length === 1) {
         handleFileUpload(files[0]);
       } else {
@@ -1034,6 +1052,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
   return (
     <>
+      <ExcelReceiptImportDialog open={excelOpen} onOpenChange={setExcelOpen} initialFile={excelFile} onImported={() => { void fetchPendingReceipts(); onReceiptProcessed?.(); }} />
 
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <div className="glass-card overflow-hidden border-2 border-dashed border-primary/20">
@@ -1085,6 +1104,9 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
           <CollapsibleContent>
             <div className="border-t border-border p-4 space-y-4">
+              <div className="flex justify-end">
+                <Button variant="outline" size="sm" className="gap-2" disabled={isUploading} onClick={() => { setExcelFile(null); setExcelOpen(true); }}><FileSpreadsheet className="h-4 w-4" />Upload Excel receipts</Button>
+              </div>
               {/* Upload Area */}
               <div
                 className={cn(
@@ -1099,7 +1121,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
               >
               <input
                   type="file"
-                  accept="image/*,.pdf"
+                  accept="image/*,.pdf,.xlsx"
                   multiple
                   onChange={handleFileInput}
                   className="hidden"
@@ -1128,6 +1150,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                         <Upload className="h-6 w-6 text-muted-foreground" />
                       </div>
                       <p className="text-sm font-medium">Drop receipts here or click to upload</p>
+                      <p className="text-xs text-muted-foreground">Photos, PDFs, or Excel (.xlsx)</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clipboard className="h-3 w-3" />
                         Tip: Paste with Ctrl+V • Select multiple files
