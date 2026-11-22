@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  detectDuplicates, pairKey, qbBase, topFlag, findLikelyDuplicates,
-  type DupFlag, type DupRecord,
+  detectDuplicates, detectReceiptChargePairs, pairKey, qbBase, topFlag, findLikelyDuplicates,
+  type DupFlag, type DupRecord, type PairFlag,
 } from '@/lib/duplicateDetection';
 
 const REFRESH_EVENT = 'duplicates:refresh';
@@ -23,14 +23,25 @@ export const expenseKey = (e: { id: string; source?: string; qb_id?: string | nu
   e.source === 'quickbooks' && e.qb_id ? `qb:${qbBase(e.qb_id)}` : `exp:${e.id}`;
 export const qbKey = (qb: { qb_id: string }) => `qb:${qbBase(qb.qb_id)}`;
 export const businessKey = (b: { id: string }) => `biz:${b.id}`;
+export const receiptKey = (r: { id: string }) => `rcpt:${r.id}`;
+
+export const OPEN_PAIR_EVENT = 'smartsplit:open-pair';
+export interface OpenPairDetail { receiptId: string; qbBase: string; handled?: boolean }
+export const openReceiptPair = (receiptId: string, qbBase: string) => {
+  const detail: OpenPairDetail = { receiptId, qbBase };
+  window.dispatchEvent(new CustomEvent(OPEN_PAIR_EVENT, { detail }));
+  return !!detail.handled;
+};
 
 export async function loadDuplicateRecords(): Promise<{ records: DupRecord[]; dismissed: Set<string> }> {
-  const [projects, expenses, qb, biz, dism] = await Promise.all([
+  const [projects, expenses, qb, biz, dism, rcpts, rItems] = await Promise.all([
     fetchAll<any>((a, b) => supabase.from('projects').select('id, name, deleted_at').range(a, b)),
     fetchAll<any>((a, b) => supabase.from('expenses').select('id, project_id, amount, date, vendor_name, description, qb_expense_id, is_hidden').range(a, b)),
     fetchAll<any>((a, b) => supabase.from('quickbooks_expenses').select('id, qb_id, project_id, amount, original_amount, date, vendor_name, description, is_imported, is_hidden').range(a, b)),
     fetchAll<any>((a, b) => supabase.from('business_expenses').select('id, amount, date, vendor_name, description').range(a, b)),
     fetchAll<any>((a, b) => supabase.from('duplicate_dismissals').select('record_a, record_b').range(a, b)),
+    fetchAll<any>((a, b) => supabase.from('pending_receipts').select('id, vendor_name, total_amount, purchase_date').eq('status', 'pending').range(a, b)),
+    fetchAll<any>((a, b) => supabase.from('receipt_line_items').select('receipt_id').range(a, b)),
   ]);
   const live = new Map(projects.filter(p => !p.deleted_at).map(p => [p.id, p.name as string]));
   const records: DupRecord[] = [];
@@ -69,6 +80,14 @@ export async function loadDuplicateRecords(): Promise<{ records: DupRecord[]; di
     records.push({
       key: businessKey(b), source: 'business', amount: Number(b.amount), date: b.date,
       vendor: b.vendor_name, description: b.description, location: 'KCS Concepts', ids: [b.id],
+    });
+  }
+  const itemCounts = new Map<string, number>();
+  for (const it of rItems) itemCounts.set(it.receipt_id, (itemCounts.get(it.receipt_id) || 0) + 1);
+  for (const r of rcpts) {
+    records.push({
+      key: receiptKey(r), source: 'receipt', amount: Number(r.total_amount), date: r.purchase_date,
+      vendor: r.vendor_name, description: null, location: 'Receipt queue', ids: [r.id], itemCount: itemCounts.get(r.id) || 0,
     });
   }
   const dismissed = new Set(dism.map(d => pairKey(d.record_a, d.record_b)));
@@ -112,13 +131,20 @@ export function useDuplicateFlags() {
     return () => window.removeEventListener(REFRESH_EVENT, h);
   }, [refresh]);
 
-  const flags = useMemo(() => detectDuplicates(records, dismissed), [records, dismissed]);
+  const flags = useMemo(() => detectDuplicates(records.filter(r => r.source !== 'receipt'), dismissed), [records, dismissed]);
+  const pairs = useMemo(() => detectReceiptChargePairs(
+    records.filter(r => r.source === 'receipt'),
+    records.filter(r => r.source === 'qb_pending' || r.source === 'qb_project'),
+    dismissed,
+  ), [records, dismissed]);
+  const pairFor = useCallback((key: string): PairFlag | undefined => pairs.get(key), [pairs]);
+  const isFlagged = useCallback((key: string) => flags.has(key) || pairs.has(key), [flags, pairs]);
   const byKey = useMemo(() => new Map(records.map(r => [r.key, r])), [records]);
 
   const flagFor = useCallback((key: string): DupFlag | undefined => topFlag(flags.get(key)), [flags]);
 
   const countWhere = useCallback((pred: (r: DupRecord) => boolean) =>
-    records.filter(r => pred(r) && flags.has(r.key)).length, [records, flags]);
+    records.filter(r => pred(r) && (flags.has(r.key) || pairs.has(r.key))).length, [records, flags, pairs]);
 
   const dismiss = useCallback(async (key: string, otherKey: string) => {
     const [a, b] = key < otherKey ? [key, otherKey] : [otherKey, key];
@@ -150,7 +176,7 @@ export function useDuplicateFlags() {
     refreshDuplicateFlags();
   }, []);
 
-  return { loading, flags, byKey, flagFor, countWhere, dismiss, deleteRecord, removeFromPending, refresh };
+  return { loading, flags, pairs, byKey, flagFor, pairFor, isFlagged, countWhere, dismiss, deleteRecord, removeFromPending, refresh };
 }
 
 export type DuplicateFlagsApi = ReturnType<typeof useDuplicateFlags>;

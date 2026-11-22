@@ -431,7 +431,7 @@ export default function BusinessExpenses() {
         }
       }
 
-      const matchesDup = !dupOnly || !!dupApi.flagFor(businessKey(expense));
+      const matchesDup = !dupOnly || dupApi.isFlagged(businessKey(expense));
       return matchesSearch && matchesCategory && matchesDateRange && matchesDup;
     });
   }, [expenses, search, categoryFilter, dateRange, getCategoryLabel, dupOnly, dupApi]);

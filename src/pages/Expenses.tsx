@@ -413,7 +413,7 @@ export default function Expenses() {
         }
       }
 
-      const matchesDup = !dupOnly || !!dupApi.flagFor(expenseKey(expense));
+      const matchesDup = !dupOnly || dupApi.isFlagged(expenseKey(expense));
       return matchesSearch && matchesProject && matchesCategory && matchesDateRange && matchesDup;
     });
   }, [expenses, search, projectFilter, categoryFilter, dateRange, projects, getProjectName, getCategoryLabel, showHidden, dupOnly, dupApi]);

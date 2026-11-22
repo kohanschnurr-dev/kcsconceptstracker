@@ -1,7 +1,7 @@
 // Duplicate transaction detection across project expenses, KCS Concepts business
 // expenses and pending QuickBooks charges. Pure functions — no database access.
 
-export type DupSource = 'expense' | 'qb_project' | 'business' | 'qb_pending';
+export type DupSource = 'expense' | 'qb_project' | 'business' | 'qb_pending' | 'receipt';
 export type DupLevel = 'high' | 'medium' | 'imported';
 
 export interface DupRecord {
@@ -13,6 +13,7 @@ export interface DupRecord {
   description: string | null;
   location: string; // project name or "KCS Concepts" or "Pending"
   ids: string[]; // underlying row ids (all split rows for QuickBooks)
+  itemCount?: number; // receipts only
 }
 
 export interface DupFlag {
@@ -102,4 +103,47 @@ export function findLikelyDuplicates(candidate: Pick<DupRecord, 'key' | 'amount'
     cents(r.amount) === cents(candidate.amount) &&
     r.date.slice(0, 10) === candidate.date.slice(0, 10) &&
     d !== '' && normDesc(r.description) === d);
+}
+
+// ---------- Pending/imported bank charge vs queued receipt pairing ----------
+
+export type PairLevel = 'receipt_exact' | 'receipt_close';
+export interface PairFlag {
+  level: PairLevel;
+  other: DupRecord;
+}
+
+/**
+ * Pair queued receipts (source 'receipt') with bank charges (qb_pending / qb_project).
+ * Exact: same cents + similar vendor; Close: same vendor, within $1.00 or 2%.
+ * Receipt date must fall 2 days before to 7 days after the charge. Each receipt and
+ * each charge gets at most one pair (exact first, then nearest date).
+ */
+export function detectReceiptChargePairs(receipts: DupRecord[], charges: DupRecord[], dismissed: Set<string> = new Set()) {
+  const cands: { r: DupRecord; c: DupRecord; level: PairLevel; dist: number; diff: number }[] = [];
+  for (const r of receipts) {
+    const vr = normalizeVendor(r.vendor);
+    if (!vr || !r.amount) continue;
+    for (const c of charges) {
+      if (c.source !== 'qb_pending' && c.source !== 'qb_project') continue;
+      if (normalizeVendor(c.vendor) !== vr) continue;
+      if (dismissed.has(pairKey(r.key, c.key))) continue;
+      const delta = dayNum(r.date) - dayNum(c.date);
+      if (delta < -2 || delta > 7) continue;
+      const diff = Math.abs(cents(r.amount) - cents(c.amount));
+      const level: PairLevel | null = diff === 0 ? 'receipt_exact'
+        : diff <= Math.max(100, Math.round(Math.abs(c.amount) * 2)) ? 'receipt_close' : null; // 2% of dollars in cents = amount*2
+      if (!level) continue;
+      cands.push({ r, c, level, dist: Math.abs(delta), diff });
+    }
+  }
+  cands.sort((a, b) => (a.level === b.level ? 0 : a.level === 'receipt_exact' ? -1 : 1) || a.diff - b.diff || a.dist - b.dist
+    || (a.c.source === b.c.source ? 0 : a.c.source === 'qb_pending' ? -1 : 1));
+  const pairs = new Map<string, PairFlag>();
+  for (const x of cands) {
+    if (pairs.has(x.r.key) || pairs.has(x.c.key)) continue;
+    pairs.set(x.r.key, { level: x.level, other: x.c });
+    pairs.set(x.c.key, { level: x.level, other: x.r });
+  }
+  return pairs;
 }

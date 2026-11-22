@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { formatDisplayDate } from '@/lib/dateUtils';
-import type { DuplicateFlagsApi } from '@/hooks/useDuplicateFlags';
+import { openReceiptPair, type DuplicateFlagsApi } from '@/hooks/useDuplicateFlags';
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -19,7 +19,92 @@ interface Props {
   className?: string;
 }
 
-export function DuplicateBadge({ recordKey, api, onChanged, className }: Props) {
+export function DuplicateBadge(props: Props) {
+  return (
+    <>
+      <DupFlagBadge {...props} />
+      <ReceiptPairBadge {...props} />
+    </>
+  );
+}
+
+function ReceiptPairBadge({ recordKey, api, onChanged, className }: Props) {
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+  const pair = api.pairFor(recordKey);
+  const self = api.byKey.get(recordKey);
+  if (!pair || !self) return null;
+  const other = pair.other;
+  const isReceipt = self.source === 'receipt';
+  const receipt = isReceipt ? self : other;
+  const charge = isReceipt ? other : self;
+  const close = pair.level === 'receipt_close';
+  const label = close ? 'Close match' : isReceipt ? 'Bank charge pending' : 'Receipt in queue';
+  const chargeImported = charge.source === 'qb_project';
+  const tip = isReceipt
+    ? `${close ? 'Close match: ' : ''}Bank charge ${other.vendor || 'Unknown'}, ${formatDisplayDate(other.date)}, ${money(other.amount)}${chargeImported ? ` (already on ${other.location})` : ' (pending)'}`
+    : `${close ? 'Close match: ' : ''}Receipt in queue: ${other.vendor || 'Unknown'}, ${formatDisplayDate(other.date)}, ${money(other.amount)}, ${other.itemCount ?? 0} ${other.itemCount === 1 ? 'item' : 'items'}`;
+
+  const link = () => {
+    const base = charge.key.replace(/^qb:/, '');
+    if (!openReceiptPair(receipt.ids[0], base)) {
+      toast({ title: 'Open the receipt panel', description: 'Open Expenses or KCS Concepts with the SmartSplit receipt panel to link this receipt.' });
+    }
+  };
+  const notSame = async () => {
+    setBusy(true);
+    try {
+      await api.dismiss(recordKey, other.key);
+      toast({ title: 'Marked as not the same' });
+      onChanged?.();
+    } catch (e: any) {
+      toast({ title: 'Action failed', description: e?.message, variant: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                className={cn('inline-flex shrink-0', className)}
+                aria-label={tip}
+              >
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'gap-1 text-[10px] px-1.5 py-0 cursor-pointer whitespace-nowrap',
+                    close ? 'border-warning text-warning bg-warning/10' : 'border-destructive text-destructive bg-destructive/10',
+                  )}
+                >
+                  <Receipt className="h-3 w-3" />
+                  {label}
+                </Badge>
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs text-xs">{tip}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()} className="z-[210]">
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground max-w-[260px]">{tip}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={link}>{chargeImported ? 'Attach to existing expense' : 'Link receipt'}</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => void notSame()}>Not the same</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function DupFlagBadge({ recordKey, api, onChanged, className }: Props) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
   const flag = api.flagFor(recordKey);

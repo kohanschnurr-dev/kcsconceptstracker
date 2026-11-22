@@ -21,6 +21,8 @@ import { getBudgetCategories, getBusinessExpenseCategories, type BudgetCategory 
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { ExcelReceiptImportDialog } from '@/components/ExcelReceiptImportDialog';
 import { FileSpreadsheet } from 'lucide-react';
+import { DuplicateBadge } from '@/components/DuplicateBadge';
+import { useDuplicateFlags, refreshDuplicateFlags, receiptKey, OPEN_PAIR_EVENT, type OpenPairDetail } from '@/hooks/useDuplicateFlags';
 
 interface SimpleProject {
   id: string;
@@ -76,6 +78,7 @@ interface MatchedExpense {
   matchType?: 'new' | 'existing' | 'split';
   charges?: QBExpense[]; // all linked bank charges (split shipments)
   projectName?: string;
+  isPaired?: boolean; // opened from a 'Receipt in queue' / 'Bank charge pending' pair
 }
 
 interface SmartSplitReceiptUploadProps {
@@ -112,6 +115,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
   const [assignmentType, setAssignmentType] = useState<'project' | 'business'>('project');
   const [includeTax, setIncludeTax] = useState(true);
   const [isReparsing, setIsReparsing] = useState(false);
+  const dupApi = useDuplicateFlags();
   const [uploadProgress, setUploadProgress] = useState<{
     current: number;
     total: number;
@@ -800,6 +804,58 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     acceptMatch(manualMatch);
   };
 
+  // Open the review window for a receipt/charge pair flagged by duplicate detection
+  const openPairRef = useRef<(d: OpenPairDetail) => void>(() => {});
+  openPairRef.current = async ({ receiptId, qbBase }: OpenPairDetail) => {
+    try {
+      const [{ data: receipt, error: rErr }, { data: items }, { data: rows, error: qErr }] = await Promise.all([
+        supabase.from('pending_receipts').select('*').eq('id', receiptId).maybeSingle(),
+        supabase.from('receipt_line_items').select('*').eq('receipt_id', receiptId),
+        supabase.from('quickbooks_expenses').select('*').or(`qb_id.eq.${qbBase},qb_id.like.${qbBase}_split_%`),
+      ]);
+      if (rErr || qErr) throw rErr || qErr;
+      if (!receipt || receipt.status !== 'pending') throw new Error('This receipt is no longer waiting in the queue.');
+      const charges = ((rows || []) as any[]).filter(r => !r.is_hidden) as QBExpense[];
+      if (!charges.length) throw new Error('That bank charge could not be found.');
+      const fullReceipt = { ...receipt, line_items: items || [] } as PendingReceipt;
+      const imported = charges.some(c => c.is_imported || c.project_id);
+      setIsExpanded(true);
+      if (imported) {
+        const pid = charges.find(c => c.project_id)?.project_id;
+        const projectName = pid ? (projects.find(p => p.id === pid)?.name
+          || (await supabase.from('projects').select('name').eq('id', pid).maybeSingle()).data?.name) : undefined;
+        acceptMatch({
+          receipt: fullReceipt,
+          matchType: 'existing',
+          charges,
+          projectName: projectName || undefined,
+          isPaired: true,
+          qbExpense: { ...charges[0], amount: Number(charges[0].original_amount ?? charges.reduce((s, c) => s + Number(c.amount), 0)) },
+        });
+      } else {
+        const c = charges[0];
+        acceptMatch({
+          receipt: fullReceipt,
+          isManual: true,
+          isPaired: true,
+          qbExpense: { id: c.id, qb_id: c.qb_id, vendor_name: c.vendor_name, amount: c.amount, date: c.date, description: c.description, payment_method: c.payment_method },
+        });
+      }
+    } catch (e: any) {
+      toast({ title: 'Could not open this pair', description: e?.message, variant: 'destructive' });
+    }
+  };
+  useEffect(() => {
+    const h = (e: Event) => {
+      const d = (e as CustomEvent<OpenPairDetail>).detail;
+      if (!d || d.handled) return;
+      d.handled = true;
+      void openPairRef.current(d);
+    };
+    window.addEventListener(OPEN_PAIR_EVENT, h);
+    return () => window.removeEventListener(OPEN_PAIR_EVENT, h);
+  }, []);
+
   // Helper to group line items by category with editable quantities/prices
   const groupByCategory = (lineItems: LineItem[], categories: Record<number, string>, quantities: Record<number, number>, prices: Record<number, number>) => {
     const groups: Record<string, { items: (LineItem & { editedQuantity: number; editedTotal: number })[], total: number }> = {};
@@ -867,6 +923,16 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         if (!fresh || fresh.length !== charges.length || fresh.some(f => f.receipt_url)) {
           throw new Error('One of these bank charges already has a receipt attached. Nothing was changed.');
         }
+      } else if (selectedMatch.isPaired) {
+        // Never create two expenses: the paired pending charge must still be unhandled
+        const { data: fresh } = await supabase
+          .from('quickbooks_expenses')
+          .select('id, is_imported, project_id, receipt_url, is_hidden')
+          .eq('id', selectedMatch.qbExpense.id)
+          .maybeSingle();
+        if (!fresh || fresh.is_imported || fresh.project_id || fresh.receipt_url || fresh.is_hidden) {
+          throw new Error('This bank charge was already handled. Nothing was changed.');
+        }
       }
 
       // Already split by category across several rows: keep their amounts/categories, just attach the receipt
@@ -885,6 +951,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         setShowMatchModal(false);
         setSelectedMatch(null);
         await fetchPendingReceipts();
+        refreshDuplicateFlags();
         onRefreshQBExpenses?.();
         onReceiptProcessed?.();
         return;
@@ -1188,6 +1255,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       
       // Refresh both lists
       await fetchPendingReceipts();
+      refreshDuplicateFlags();
       onRefreshQBExpenses?.();
       onReceiptProcessed?.();
     } catch (error: any) {
@@ -1448,6 +1516,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                             <div className="flex items-center gap-2">
                               <FileImage className="h-4 w-4 text-warning shrink-0" />
                               <span className="font-medium truncate">{receipt.vendor_name}</span>
+                              <DuplicateBadge recordKey={receiptKey(receipt)} api={dupApi} />
                             </div>
                             <div className="text-sm text-muted-foreground mt-1">
                               {formatCurrency(receipt.total_amount)} • {formatDate(receipt.purchase_date)}
