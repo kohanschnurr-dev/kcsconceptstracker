@@ -126,94 +126,113 @@ serve(async (req) => {
 
     console.log(`Found ${pendingReceipts.length} pending receipts to match`);
 
-    // Fetch unimported QuickBooks expenses
-    const { data: qbExpenses, error: qbError } = await supabase
-      .from("quickbooks_expenses")
-      .select("*")
-      .eq("is_imported", false)
-      .is("project_id", null);
-
-    if (qbError) {
-      console.error("Error fetching QB expenses:", qbError);
+    // Pool A: pending bank charges. Pool B: already-imported charges with no receipt yet.
+    const [{ data: pendingQb, error: qbError }, { data: importedQb, error: impError }] = await Promise.all([
+      supabase.from("quickbooks_expenses").select("*").eq("is_imported", false).is("project_id", null).eq("is_hidden", false),
+      supabase.from("quickbooks_expenses").select("*").eq("is_imported", true).is("receipt_url", null).eq("is_hidden", false),
+    ]);
+    if (qbError || impError) {
+      console.error("Error fetching QB expenses:", qbError || impError);
       throw new Error("Failed to fetch QuickBooks expenses");
     }
 
-    if (!qbExpenses || qbExpenses.length === 0) {
-      return new Response(JSON.stringify({ 
-        success: true, 
-        matches: [],
-        message: "No unmatched QuickBooks transactions available" 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Charges already claimed by other matched receipts are off limits
+    const { data: alreadyMatched } = await supabase
+      .from("pending_receipts").select("matched_qb_id, matched_qb_ids").eq("status", "matched");
+    const claimed = new Set<string>();
+    for (const r of alreadyMatched || []) {
+      if (r.matched_qb_id) claimed.add(r.matched_qb_id);
+      for (const id of r.matched_qb_ids || []) claimed.add(id);
     }
 
-    console.log(`Checking against ${qbExpenses.length} QB expenses`);
+    const pendingPool = (pendingQb || []).map((q: any) => ({ ...q, _existing: false }));
+    // Imported charges split by category share a base qb_id ("<base>_split_<cat>"); treat each group as one bank charge
+    const { data: withReceipt } = await supabase
+      .from("quickbooks_expenses").select("qb_id").eq("is_imported", true).not("receipt_url", "is", null);
+    const basesWithReceipt = new Set((withReceipt || []).map((q: any) => String(q.qb_id).split("_split_")[0]));
+    const groups = new Map<string, any[]>();
+    for (const q of importedQb || []) {
+      const base = String(q.qb_id).split("_split_")[0];
+      if (basesWithReceipt.has(base)) continue;
+      if (!groups.has(base)) groups.set(base, []);
+      groups.get(base)!.push(q);
+    }
+    const importedPool = [...groups.values()].map(rows => {
+      const first = rows[0];
+      const total = first.original_amount != null
+        ? parseFloat(first.original_amount)
+        : rows.reduce((s: number, r: any) => s + parseFloat(r.amount), 0);
+      return { ...first, original_amount: total, _existing: true, _rowQbIds: rows.map((r: any) => r.qb_id) };
+    });
+    const idsOf = (q: any): string[] => q._rowQbIds || [q.qb_id];
 
-    const matches: Match[] = [];
+    const matches: any[] = [];
+    const cents = (v: any) => Math.round(parseFloat(v) * 100);
+    const dayDiff = (a: string, b: string) => Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 86400000;
 
-    // Try to match each pending receipt
+    const saveMatch = async (receiptId: string, type: string, qbIds: string[], confidence: number) => {
+      qbIds.forEach(id => claimed.add(id));
+      matches.push({ receipt_id: receiptId, match_type: type, qb_ids: qbIds, confidence });
+      await serviceSupabase.from("pending_receipts").update({
+        status: "matched",
+        matched_qb_id: qbIds[0],
+        matched_qb_ids: qbIds,
+        match_type: type,
+        matched_at: new Date().toISOString(),
+        match_confidence: confidence,
+      }).eq("id", receiptId).eq("user_id", user.id);
+    };
+
     for (const receipt of pendingReceipts) {
-      let bestMatch: Match | null = null;
-      let bestConfidence = 0;
+      const target = cents(receipt.total_amount);
+      const inWindow = (q: any) => !idsOf(q).some(id => claimed.has(id)) && isDateInRange(receipt.purchase_date, q.date);
 
-      for (const qbExpense of qbExpenses) {
-        // Exact amount match is required
-        const receiptAmount = parseFloat(receipt.total_amount);
-        const qbAmount = parseFloat(qbExpense.amount);
-        
-        if (Math.abs(receiptAmount - qbAmount) > 0.01) {
-          continue; // Amount must match exactly
-        }
-
-        // Check date range
-        const dateMatch = isDateInRange(receipt.purchase_date, qbExpense.date);
-        if (!dateMatch) {
-          continue; // Date must be within range
-        }
-
-        // Calculate vendor similarity (bonus only, doesn't block)
-        const vendorScore = vendorSimilarity(receipt.vendor_name, qbExpense.vendor_name);
-        
-        // Debug logging
-        console.log(`Receipt ${receipt.id}: amount=${receiptAmount}, date=${receipt.purchase_date}, vendor="${receipt.vendor_name}"`);
-        console.log(`  vs QB ${qbExpense.qb_id}: amount=${qbAmount}, date=${qbExpense.date}, vendor="${qbExpense.vendor_name}"`);
-        console.log(`  → Amount diff: ${Math.abs(receiptAmount - qbAmount)}, Date in range: ${dateMatch}, Vendor score: ${vendorScore}`);
-
-        // Calculate overall confidence
-        // Amount match = 60%, Date in range = 30%, Vendor similarity = 10% (bonus)
-        const confidence = 0.6 + 0.3 + (vendorScore * 0.1);
-
-        if (confidence > bestConfidence) {
-          bestConfidence = confidence;
-          bestMatch = {
-            receipt_id: receipt.id,
-            qb_expense_id: qbExpense.id,
-            qb_id: qbExpense.qb_id,
-            confidence: Math.round(confidence * 100),
-            vendor_match: Math.round(vendorScore * 100),
-            amount_match: true,
-            date_in_range: true,
-          };
-        }
+      // Pass 1: pending charge, exact amount (unchanged rules)
+      let best: any = null; let bestScore = -1;
+      for (const q of pendingPool) {
+        if (!inWindow(q) || Math.abs(cents(q.amount) - target) > 1) continue;
+        const v = vendorSimilarity(receipt.vendor_name, q.vendor_name);
+        if (v > bestScore) { bestScore = v; best = q; }
       }
+      if (best) { await saveMatch(receipt.id, "new", [best.qb_id], Math.round((0.9 + bestScore * 0.1) * 100)); continue; }
 
-      // 85% threshold: Amount + Date = 90% base, so this will match
-      if (bestMatch && bestConfidence >= 0.85) {
-        matches.push(bestMatch);
+      // Pass 2: already-imported charge, exact amount, similar vendor, no receipt
+      best = null; bestScore = -1;
+      for (const q of importedPool) {
+        if (!inWindow(q)) continue;
+        const amt = cents(q.original_amount ?? q.amount);
+        if (Math.abs(amt - target) > 1) continue;
+        const v = vendorSimilarity(receipt.vendor_name, q.vendor_name);
+        if (v < 0.5) continue;
+        if (v > bestScore) { bestScore = v; best = q; }
+      }
+      if (best) { await saveMatch(receipt.id, "existing", idsOf(best), Math.round((0.9 + bestScore * 0.1) * 100)); continue; }
 
-        // Update the receipt status to matched
-        await serviceSupabase
-          .from("pending_receipts")
-          .update({
-            status: "matched",
-            matched_qb_id: bestMatch.qb_id,
-            matched_at: new Date().toISOString(),
-            match_confidence: bestMatch.confidence,
-          })
-          .eq("id", receipt.id);
-
-        console.log(`Matched receipt ${receipt.id} to QB expense ${bestMatch.qb_id} with ${bestMatch.confidence}% confidence`);
+      // Pass 3: 2-5 charges from the same vendor summing to the receipt total
+      const cands = [...pendingPool, ...importedPool]
+        .filter(q => idsOf(q).length === 1 && inWindow(q) && vendorSimilarity(receipt.vendor_name, q.vendor_name) >= 0.5)
+        .filter(q => cents(q.original_amount ?? q.amount) > 0 && cents(q.original_amount ?? q.amount) < target)
+        .slice(0, 25);
+      let bestCombo: any[] | null = null; let bestDist = Infinity;
+      const pick: any[] = [];
+      const search = (start: number, sum: number) => {
+        if (pick.length >= 2 && Math.abs(sum - target) <= 1) {
+          const dist = pick.reduce((s, q) => s + dayDiff(receipt.purchase_date, q.date), 0) / pick.length;
+          if (dist < bestDist) { bestDist = dist; bestCombo = [...pick]; }
+          return;
+        }
+        if (pick.length >= 5 || sum > target + 1) return;
+        for (let i = start; i < cands.length; i++) {
+          // Skip duplicate copies of the same bank charge (same amount + same date)
+          if (pick.some(q => q.date === cands[i].date && cents(q.original_amount ?? q.amount) === cents(cands[i].original_amount ?? cands[i].amount))) continue;
+          pick.push(cands[i]);
+          search(i + 1, sum + cents(cands[i].original_amount ?? cands[i].amount));
+          pick.pop();
+        }
+      };
+      search(0, 0);
+      if (bestCombo) {
+        await saveMatch(receipt.id, "split", (bestCombo as any[]).map(q => q.qb_id), 90);
       }
     }
 

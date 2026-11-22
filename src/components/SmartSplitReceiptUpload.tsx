@@ -49,6 +49,8 @@ interface PendingReceipt {
   status: string;
   receipt_image_url?: string;
   matched_qb_id?: string;
+  matched_qb_ids?: string[] | null;
+  match_type?: string | null;
   match_confidence?: number;
   warnings?: string[];
   line_items?: LineItem[];
@@ -63,12 +65,17 @@ interface QBExpense {
   description?: string | null;
   payment_method?: string | null;
   is_imported?: boolean;
+  project_id?: string | null;
+  original_amount?: number | null;
 }
 
 interface MatchedExpense {
   receipt: PendingReceipt;
   qbExpense: QBExpense;
   isManual?: boolean; // Track if this was a manual link
+  matchType?: 'new' | 'existing' | 'split';
+  charges?: QBExpense[]; // all linked bank charges (split shipments)
+  projectName?: string;
 }
 
 interface SmartSplitReceiptUploadProps {
@@ -313,21 +320,44 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         // Check for matched receipts and fetch QB expenses
         const matchedReceiptsData = receiptsWithItems.filter(r => r.status === 'matched' && r.matched_qb_id);
         if (matchedReceiptsData.length > 0) {
-          const qbIds = matchedReceiptsData.map(r => r.matched_qb_id);
+          const qbIds = Array.from(new Set(matchedReceiptsData.flatMap(r =>
+            [r.matched_qb_id, ...((r as any).matched_qb_ids || [])].filter(Boolean) as string[])));
           const { data: qbExpenses } = await supabase
             .from('quickbooks_expenses')
             .select('*')
             .in('qb_id', qbIds);
+          const projIds = Array.from(new Set((qbExpenses || []).map(q => q.project_id).filter(Boolean) as string[]));
+          const { data: projRows } = projIds.length
+            ? await supabase.from('projects').select('id, name').in('id', projIds)
+            : { data: [] as { id: string; name: string }[] };
 
-          const matches: MatchedExpense[] = matchedReceiptsData.map(receipt => ({
-            receipt,
-            qbExpense: qbExpenses?.find(qb => qb.qb_id === receipt.matched_qb_id) || {
-              id: '',
-              vendor_name: 'Unknown',
-              amount: receipt.total_amount,
-              date: receipt.purchase_date,
-            },
-          }));
+          const matches: MatchedExpense[] = matchedReceiptsData.map(receipt => {
+            const r = receipt as any;
+            const ids: string[] = r.matched_qb_ids?.length ? r.matched_qb_ids : [receipt.matched_qb_id];
+            const charges = ids.map(id => qbExpenses?.find(qb => qb.qb_id === id)).filter(Boolean) as QBExpense[];
+            const matchType = (r.match_type || 'new') as 'new' | 'existing' | 'split';
+            const projectIdsInMatch = Array.from(new Set(charges.map(c => c.project_id).filter(Boolean)));
+            const projectName = projectIdsInMatch.map(id => projRows?.find(p => p.id === id)?.name).filter(Boolean).join(', ');
+            return {
+              receipt,
+              matchType,
+              charges,
+              projectName: projectName || undefined,
+              qbExpense: charges[0] ? {
+                ...charges[0],
+                amount: matchType === 'split'
+                  ? charges.reduce((sum, c) => sum + Number(c.amount), 0)
+                  : matchType === 'existing'
+                    ? Number(charges[0].original_amount ?? charges.reduce((sum, c) => sum + Number(c.amount), 0))
+                    : charges[0].amount,
+              } : {
+                id: '',
+                vendor_name: 'Unknown',
+                amount: receipt.total_amount,
+                date: receipt.purchase_date,
+              },
+            };
+          });
 
           setMatchedReceipts(matches);
         } else {
@@ -744,6 +774,11 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
     setIncludeTax(true); // Reset tax toggle when opening modal
     setEditableQuantities(initialQuantities);
     setEditablePrices(initialPrices);
+    if (match.matchType === 'existing' || match.matchType === 'split') {
+      setAssignmentType('project');
+      const existingProject = match.charges?.find(c => c.project_id)?.project_id;
+      if (existingProject) setSelectedProject(existingProject);
+    }
     setShowMatchModal(true);
   };
 
@@ -810,7 +845,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         .select('id, qb_id')
         .like('qb_id', `${originalQbId}_split_%`);
 
-      if (existingSplits && existingSplits.length > 0) {
+      if (!(selectedMatch.matchType === 'existing' || selectedMatch.matchType === 'split') && existingSplits && existingSplits.length > 0) {
         // Warn user that this receipt may have been imported before
         const confirmed = window.confirm(
           `This QuickBooks transaction appears to have been split-imported before (${existingSplits.length} existing splits found). Continuing will update those records. Proceed?`
@@ -819,6 +854,41 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
           setIsImporting(false);
           return;
         }
+      }
+
+      const charges: QBExpense[] = selectedMatch.charges?.length ? selectedMatch.charges : [selectedMatch.qbExpense];
+      const attachesExisting = selectedMatch.matchType === 'existing' || selectedMatch.matchType === 'split';
+      if (attachesExisting) {
+        if (assignmentType !== 'project') throw new Error('This receipt attaches to project expenses. Choose Project.');
+        // Never attach twice: re-check each charge still has no receipt
+        const { data: fresh } = await supabase
+          .from('quickbooks_expenses')
+          .select('id, receipt_url, qb_id')
+          .in('id', charges.map(c => c.id));
+        if (!fresh || fresh.length !== charges.length || fresh.some(f => f.receipt_url)) {
+          throw new Error('One of these bank charges already has a receipt attached. Nothing was changed.');
+        }
+      }
+
+      // Already split by category across several rows: keep their amounts/categories, just attach the receipt
+      if (selectedMatch.matchType === 'existing' && charges.length > 1) {
+        const allNotes = (selectedMatch.receipt.line_items || [])
+          .map((item, idx) => `${item.item_name} (${editableQuantities[idx] ?? item.quantity ?? 1}x)`).join(', ');
+        for (const c of charges) {
+          const { error } = await supabase.from('quickbooks_expenses')
+            .update({ receipt_url: selectedMatch.receipt.receipt_image_url || null, notes: allNotes })
+            .eq('id', c.id).is('receipt_url', null);
+          if (error) throw error;
+        }
+        const { error: rErr } = await supabase.from('pending_receipts').update({ status: 'imported' }).eq('id', selectedMatch.receipt.id);
+        if (rErr) throw rErr;
+        toast({ title: 'Receipt attached', description: `Attached to the existing expense${selectedMatch.projectName ? ` on ${selectedMatch.projectName}` : ''}.` });
+        setShowMatchModal(false);
+        setSelectedMatch(null);
+        await fetchPendingReceipts();
+        onRefreshQBExpenses?.();
+        onReceiptProcessed?.();
+        return;
       }
 
       // Group line items by category with user-edited quantities/prices
@@ -838,7 +908,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       
       // BUSINESS ASSIGNMENT - Insert into business_expenses table
       if (assignmentType === 'business') {
-        const qbTransactionAmount = selectedMatch.qbExpense.amount;
+        const qbTransactionAmount = charges.reduce((sum, c) => sum + Number(c.amount), 0);
         
         for (const category of categoryKeys) {
           const group = categoryGroups[category];
@@ -872,7 +942,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
         await supabase
           .from('quickbooks_expenses')
           .update({ is_imported: true })
-          .eq('id', originalQbExpenseId);
+          .in('id', charges.map(c => c.id));
 
         // Mark receipt as imported
         const { error: receiptError } = await supabase
@@ -887,13 +957,15 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
           description: `Split into ${categoryKeys.length} ${categoryKeys.length === 1 ? 'category' : 'categories'} for ${companyName}.`,
         });
       } else {
-        // PROJECT ASSIGNMENT - Existing flow
+        // PROJECT ASSIGNMENT - runs once per linked bank charge (split shipments have several)
+        for (const charge of charges) {
+        const chargeQbId = String((charge as any).qb_id || charge.id).split('_split_')[0];
         for (let i = 0; i < categoryKeys.length; i++) {
           const category = categoryKeys[i];
           const group = categoryGroups[category];
 
           const proportion = subtotal > 0 ? group.total / subtotal : 0;
-          const qbTransactionAmount = selectedMatch.qbExpense.amount;
+          const qbTransactionAmount = Number(charge.original_amount ?? charge.amount);
           const categoryAmount = Math.round(qbTransactionAmount * proportion * 100) / 100;
 
           const itemNotes = group.items
@@ -929,9 +1001,9 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
 
           // First category updates original QB expense with _split_ suffix, rest use check-then-upsert
           if (i === 0) {
-            const splitQbId = `${originalQbId}_split_${category}`;
+            const splitQbId = `${chargeQbId}_split_${category}`;
             console.log('Updating original QB expense with split suffix:', {
-              id: originalQbExpenseId,
+              id: charge.id,
               newQbId: splitQbId,
               newAmount: categoryAmount,
               category,
@@ -941,7 +1013,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
             await supabase
               .from('quickbooks_expenses')
               .update({ original_amount: qbTransactionAmount })
-              .eq('id', originalQbExpenseId)
+              .eq('id', charge.id)
               .is('original_amount', null);
             
             const { data: updateResult, error: qbError } = await supabase
@@ -956,9 +1028,9 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 category_id: categoryId,
                 expense_type: expenseType,
                 cost_type: costType,
-                payment_method: selectedMatch.qbExpense.payment_method || null,
+                payment_method: charge.payment_method || null,
               })
-              .eq('id', originalQbExpenseId)
+              .eq('id', charge.id)
               .select('id, amount');
 
             if (qbError) {
@@ -968,7 +1040,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
             
             console.log('Original QB expense updated:', updateResult);
           } else {
-            const splitQbId = `${originalQbId}_split_${category}`;
+            const splitQbId = `${chargeQbId}_split_${category}`;
             const { data: existingSplit } = await supabase
               .from('quickbooks_expenses')
               .select('id')
@@ -986,7 +1058,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                   cost_type: costType,
                   notes: itemNotes,
                   receipt_url: selectedMatch.receipt.receipt_image_url || null,
-                  payment_method: selectedMatch.qbExpense.payment_method || null,
+                  payment_method: charge.payment_method || null,
                 })
                 .eq('id', existingSplit.id);
 
@@ -997,10 +1069,10 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                 .insert({
                   user_id: user.id,
                   qb_id: splitQbId,
-                  vendor_name: selectedMatch.qbExpense.vendor_name,
+                  vendor_name: charge.vendor_name,
                   amount: categoryAmount,
-                  date: selectedMatch.qbExpense.date,
-                  description: selectedMatch.qbExpense.description,
+                  date: charge.date,
+                  description: charge.description,
                   is_imported: true,
                   project_id: selectedProject,
                   category_id: categoryId,
@@ -1008,12 +1080,13 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                   cost_type: costType,
                   notes: itemNotes,
                   receipt_url: selectedMatch.receipt.receipt_image_url || null,
-                  payment_method: selectedMatch.qbExpense.payment_method || null,
+                  payment_method: charge.payment_method || null,
                 });
 
               if (insertError) throw insertError;
             }
           }
+        }
         }
 
         // Mark receipt as imported
@@ -1183,6 +1256,21 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                               <span className="font-medium">{match.receipt.vendor_name}</span>
                               <MatchIndicators receipt={match.receipt} qbExpense={match.qbExpense} />
                             </div>
+                            {match.matchType === 'existing' && (
+                              <div className="text-xs mt-1 inline-flex items-center gap-1 border border-primary/40 bg-primary/10 text-primary px-1.5 py-0.5">
+                                Attach to existing expense{match.projectName ? ` • ${match.projectName}` : ''}
+                              </div>
+                            )}
+                            {match.matchType === 'split' && (
+                              <div className="mt-1 space-y-0.5">
+                                <div className="text-xs inline-flex items-center gap-1 border border-primary/40 bg-primary/10 text-primary px-1.5 py-0.5">
+                                  Split shipment: {match.charges?.length || 0} charges{match.projectName ? ` • ${match.projectName}` : ''}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {(match.charges || []).map(c => `${formatCurrency(Number(c.amount))} (${formatDate(c.date)})`).join(' + ')}
+                                </div>
+                              </div>
+                            )}
                             <div className="text-sm text-muted-foreground mt-1">
                               {formatCurrency(match.receipt.total_amount)} • {formatDate(match.receipt.purchase_date)}
                               {match.receipt.line_items && match.receipt.line_items.length > 0 && (
@@ -1204,7 +1292,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
                             )}
                             <Button size="sm" onClick={() => acceptMatch(match)} className="gap-1">
                               <Check className="h-4 w-4" />
-                              Import
+                              {match.matchType === 'existing' || match.matchType === 'split' ? 'Review & Attach' : 'Import'}
                             </Button>
                             <Button
                               size="sm"
@@ -1710,7 +1798,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
               ) : (
                 <Check className="h-4 w-4" />
               )}
-              {assignmentType === 'business' ? 'Import to Business' : 'Match & Import'}
+              {assignmentType === 'business' ? 'Import to Business' : (selectedMatch?.matchType === 'existing' || selectedMatch?.matchType === 'split' ? 'Attach Receipt' : 'Match & Import')}
             </Button>
           </DialogFooter>
         </DialogContent>

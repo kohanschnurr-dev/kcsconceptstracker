@@ -1,0 +1,1 @@
+ALTER TABLE public.pending_receipts ADD COLUMN IF NOT EXISTS match_type text, ADD COLUMN IF NOT EXISTS matched_qb_ids text[];

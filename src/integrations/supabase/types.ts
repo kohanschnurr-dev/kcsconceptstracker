@@ -1276,8 +1276,10 @@ export type Database = {
           created_at: string
           id: string
           match_confidence: number | null
+          match_type: string | null
           matched_at: string | null
           matched_qb_id: string | null
+          matched_qb_ids: string[] | null
           purchase_date: string
           raw_text: string | null
           receipt_image_url: string | null
@@ -1294,8 +1296,10 @@ export type Database = {
           created_at?: string
           id?: string
           match_confidence?: number | null
+          match_type?: string | null
           matched_at?: string | null
           matched_qb_id?: string | null
+          matched_qb_ids?: string[] | null
           purchase_date: string
           raw_text?: string | null
           receipt_image_url?: string | null
@@ -1312,8 +1316,10 @@ export type Database = {
           created_at?: string
           id?: string
           match_confidence?: number | null
+          match_type?: string | null
           matched_at?: string | null
           matched_qb_id?: string | null
+          matched_qb_ids?: string[] | null
           purchase_date?: string
           raw_text?: string | null
           receipt_image_url?: string | null
