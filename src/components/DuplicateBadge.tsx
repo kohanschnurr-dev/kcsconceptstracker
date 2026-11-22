@@ -31,7 +31,7 @@ export function DuplicateBadge(props: Props) {
 function ReceiptPairBadge({ recordKey, api, onChanged, className }: Props) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
-  const pair = api.pairFor(recordKey);
+  const pair = typeof api.pairFor === "function" ? api.pairFor(recordKey) : undefined;
   const self = api.byKey.get(recordKey);
   if (!pair || !self) return null;
   const other = pair.other;
