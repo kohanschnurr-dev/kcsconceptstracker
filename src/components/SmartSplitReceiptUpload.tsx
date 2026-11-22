@@ -859,7 +859,6 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       const charges: QBExpense[] = selectedMatch.charges?.length ? selectedMatch.charges : [selectedMatch.qbExpense];
       const attachesExisting = selectedMatch.matchType === 'existing' || selectedMatch.matchType === 'split';
       if (attachesExisting) {
-        if (assignmentType !== 'project') throw new Error('This receipt attaches to project expenses. Choose Project.');
         // Never attach twice: re-check each charge still has no receipt
         const { data: fresh } = await supabase
           .from('quickbooks_expenses')
@@ -871,7 +870,7 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       }
 
       // Already split by category across several rows: keep their amounts/categories, just attach the receipt
-      if (selectedMatch.matchType === 'existing' && charges.length > 1) {
+      if (assignmentType === 'project' && selectedMatch.matchType === 'existing' && charges.length > 1) {
         const allNotes = (selectedMatch.receipt.line_items || [])
           .map((item, idx) => `${item.item_name} (${editableQuantities[idx] ?? item.quantity ?? 1}x)`).join(', ');
         for (const c of charges) {
@@ -907,7 +906,84 @@ export function SmartSplitReceiptUpload({ projects = [], pendingQBExpenses = [],
       const categoryKeys = Object.keys(categoryGroups);
       
       // BUSINESS ASSIGNMENT - Insert into business_expenses table
-      if (assignmentType === 'business') {
+      if (assignmentType === 'business' && attachesExisting) {
+        // One bank charge per base qb_id (category splits share "<base>_split_<cat>")
+        const baseOf = (q: string) => String(q).split('_split_')[0];
+        const bases = Array.from(new Set(charges.map(c => baseOf((c as any).qb_id || c.id))));
+        const baseRows: Record<string, any[]> = {};
+        for (const base of bases) {
+          const { data: rows, error } = await supabase
+            .from('quickbooks_expenses')
+            .select('*')
+            .or(`qb_id.eq.${base},qb_id.like.${base}_split_%`);
+          if (error) throw error;
+          baseRows[base] = rows || [];
+        }
+        const chargeTotal = (rows: any[]) => rows[0]?.original_amount != null
+          ? Number(rows[0].original_amount)
+          : rows.reduce((sum, r) => sum + Number(r.amount), 0);
+
+        // Confirm before moving anything off a project
+        const projIds = Array.from(new Set(Object.values(baseRows).flat().map(r => r.project_id).filter(Boolean)));
+        if (projIds.length) {
+          const { data: projRows } = await supabase.from('projects').select('id, name').in('id', projIds);
+          const lines = bases.filter(b => baseRows[b].some(r => r.project_id)).map(b => {
+            const pid = baseRows[b].find(r => r.project_id)?.project_id;
+            const name = projRows?.find(p => p.id === pid)?.name || 'its project';
+            return `Move ${formatCurrency(chargeTotal(baseRows[b]))} from ${name} to ${companyName}?`;
+          });
+          if (!window.confirm(lines.join('\n'))) { setIsImporting(false); return; }
+        }
+
+        for (const base of bases) {
+          const rows = baseRows[base];
+          if (!rows.length) continue;
+          const amount = chargeTotal(rows);
+          const ref = rows[0];
+          for (const category of categoryKeys) {
+            const group = categoryGroups[category];
+            const proportion = subtotal > 0 ? group.total / subtotal : 0;
+            const { error: insertError } = await supabase.from('business_expenses').insert({
+              user_id: user.id,
+              category,
+              amount: Math.round(amount * proportion * 100) / 100,
+              date: ref.date,
+              vendor_name: ref.vendor_name,
+              description: ref.description || selectedMatch.receipt.vendor_name,
+              notes: group.items.map(item => `${item.item_name} (${item.editedQuantity}x)`).join(', '),
+              receipt_url: selectedMatch.receipt.receipt_image_url || null,
+              payment_method: (ref.payment_method as any) || null,
+              includes_tax: true,
+            });
+            if (insertError) throw insertError;
+          }
+          // Keep one handled marker row (the sync skips bases with a _split_ row), remove the rest from the project
+          const [keep, ...rest] = rows;
+          const { error: keepErr } = await supabase.from('quickbooks_expenses').update({
+            qb_id: `${base}_split_business`,
+            project_id: null,
+            category_id: null,
+            is_imported: true,
+            amount,
+            original_amount: amount,
+            receipt_url: selectedMatch.receipt.receipt_image_url || null,
+          }).eq('id', keep.id);
+          if (keepErr) throw keepErr;
+          if (rest.length) {
+            const { error: delErr } = await supabase.from('quickbooks_expenses').delete().in('id', rest.map(r => r.id));
+            if (delErr) throw delErr;
+          }
+        }
+
+        const { error: receiptError } = await supabase
+          .from('pending_receipts').update({ status: 'imported' }).eq('id', selectedMatch.receipt.id);
+        if (receiptError) throw receiptError;
+
+        toast({
+          title: 'Business expenses imported!',
+          description: `${bases.length} ${bases.length === 1 ? 'charge' : 'charges'} moved to ${companyName}.`,
+        });
+      } else if (assignmentType === 'business') {
         const qbTransactionAmount = charges.reduce((sum, c) => sum + Number(c.amount), 0);
         
         for (const category of categoryKeys) {
