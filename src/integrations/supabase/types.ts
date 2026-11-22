@@ -695,6 +695,30 @@ export type Database = {
           },
         ]
       }
+      duplicate_dismissals: {
+        Row: {
+          created_at: string
+          id: string
+          record_a: string
+          record_b: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          record_a: string
+          record_b: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          record_a?: string
+          record_b?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number

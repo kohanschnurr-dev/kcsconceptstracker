@@ -15,6 +15,13 @@
       "when": 1795375666537,
       "tag": "0001_receipt_match_types",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795385288127,
+      "tag": "0002_duplicate_dismissals",
+      "breakpoints": true
     }
   ]
 }

@@ -62,6 +62,8 @@ import { ProjectAutocomplete } from '@/components/ProjectAutocomplete';
 import { formatDisplayDate, formatDateString } from '@/lib/dateUtils';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useProfile } from '@/hooks/useProfile';
+import { DuplicateBadge, DuplicateBanner } from '@/components/DuplicateBadge';
+import { useDuplicateFlags, businessKey, refreshDuplicateFlags } from '@/hooks/useDuplicateFlags';
 const BACKUP_KEY = 'dfw_project_expenses_backup';
 
 interface DBBusinessExpense {
@@ -93,6 +95,8 @@ export default function BusinessExpenses() {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [backupData, setBackupData] = useState<DBBusinessExpense[] | null>(null);
   const [expensesTableOpen, setExpensesTableOpen] = useState(true);
+  const dupApi = useDuplicateFlags();
+  const [dupOnly, setDupOnly] = useState(false);
   const { toast } = useToast();
   const { companyName } = useCompanySettings();
   const { starredProjects } = useProfile();
@@ -427,9 +431,11 @@ export default function BusinessExpenses() {
         }
       }
 
-      return matchesSearch && matchesCategory && matchesDateRange;
+      const matchesDup = !dupOnly || !!dupApi.flagFor(businessKey(expense));
+      return matchesSearch && matchesCategory && matchesDateRange && matchesDup;
     });
-  }, [expenses, search, categoryFilter, dateRange, getCategoryLabel]);
+  }, [expenses, search, categoryFilter, dateRange, getCategoryLabel, dupOnly, dupApi]);
+  const dupCount = dupApi.countWhere(r => r.source === 'business' || r.source === 'qb_pending');
 
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
@@ -559,7 +565,8 @@ export default function BusinessExpenses() {
         </div>
 
         {/* QuickBooks Integration */}
-        <BusinessQuickBooksIntegration onExpenseImported={fetchData} projects={projects} />
+        <DuplicateBanner count={dupCount} active={dupOnly} onToggle={() => setDupOnly(v => !v)} />
+        <BusinessQuickBooksIntegration onExpenseImported={() => { void fetchData(); refreshDuplicateFlags(); }} projects={projects} />
 
 
          {/* Compact Command Center Widgets */}
@@ -770,7 +777,7 @@ export default function BusinessExpenses() {
                           <td className="whitespace-nowrap">{formatDate(expense.date)}</td>
                           <td>
                             <div>
-                              <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
+                              <p className="font-medium flex items-center gap-2">{expense.vendor_name || 'Unknown'}<DuplicateBadge recordKey={businessKey(expense)} api={dupApi} onChanged={() => void fetchData()} /></p>
                               <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                                 {expense.description}
                               </p>

@@ -21,6 +21,8 @@ import type { Project } from '@/types';
 import { SplitExpenseModal } from './SplitExpenseModal';
 import { SmartSplitReceiptUpload } from './SmartSplitReceiptUpload';
 import { GroupedPendingExpenseCard } from './quickbooks/GroupedPendingExpenseCard';
+import { DuplicateBadge } from './DuplicateBadge';
+import { useDuplicateFlags, qbKey, confirmNoLikelyDuplicate, refreshDuplicateFlags } from '@/hooks/useDuplicateFlags';
 
 interface QuickBooksIntegrationProps {
   projects: Project[];
@@ -50,6 +52,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
     enableDemoMode,
     importAllSplits,
   } = useQuickBooks();
+  const dupApi = useDuplicateFlags();
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
@@ -98,14 +101,23 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
 
   const handleCategorize = async (expenseId: string, projectId: string, categoryValue: string, expenseType: 'product' | 'labor', notes?: string, costType?: string) => {
     if (!projectId || !categoryValue) return;
+    const pend = pendingExpenses.find(e => e.id === expenseId);
+    if (pend && !(await confirmNoLikelyDuplicate(pend as any))) return;
 
     const success = await categorizeExpense(expenseId, projectId, categoryValue, expenseType, notes, costType);
+    if (success) refreshDuplicateFlags();
     if (success && onExpenseImported) {
       onExpenseImported();
     }
   };
 
   const handleImportAll = async (expenseIds: string[], projectId: string) => {
+    const first = pendingExpenses.find(e => expenseIds.includes(e.id));
+    if (first) {
+      const total = pendingExpenses.filter(e => expenseIds.includes(e.id)).reduce((s, e) => s + Number(e.amount), 0);
+      const orig = (first as any).original_amount;
+      if (!(await confirmNoLikelyDuplicate({ ...(first as any), amount: orig != null ? Number(orig) : total }))) return;
+    }
     const success = await importAllSplits(expenseIds, projectId);
     if (success && onExpenseImported) {
       onExpenseImported();
@@ -315,6 +327,7 @@ export function QuickBooksIntegration({ projects, onExpenseImported }: QuickBook
                           onImportAll={handleImportAll}
                           onOpenSplitModal={handleOpenSplitModal}
                           formatCurrency={formatCurrency}
+                          badge={<DuplicateBadge recordKey={qbKey(expenseGroup[0])} api={dupApi} onChanged={() => { void fetchPendingExpenses(); onExpenseImported?.(); }} />}
                         />
                       ))}
                     </div>

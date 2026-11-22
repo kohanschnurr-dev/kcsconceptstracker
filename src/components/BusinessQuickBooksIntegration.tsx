@@ -24,6 +24,8 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { DuplicateBadge } from './DuplicateBadge';
+import { useDuplicateFlags, qbKey, confirmNoLikelyDuplicate, refreshDuplicateFlags } from '@/hooks/useDuplicateFlags';
 import { useQuickBooks } from '@/hooks/useQuickBooks';
 import { getBusinessExpenseCategories } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,6 +57,7 @@ export function BusinessQuickBooksIntegration({ onExpenseImported, projects = []
     enableDemoMode,
     fetchPendingExpenses,
   } = useQuickBooks();
+  const dupApi = useDuplicateFlags();
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
@@ -74,6 +77,7 @@ export function BusinessQuickBooksIntegration({ onExpenseImported, projects = []
   const handleImport = async (expenseId: string, expense: any) => {
     const category = selectedCategory[expenseId];
     if (!category) return;
+    if (!(await confirmNoLikelyDuplicate(expense))) return;
 
     setImporting(prev => ({ ...prev, [expenseId]: true }));
 
@@ -149,6 +153,7 @@ export function BusinessQuickBooksIntegration({ onExpenseImported, projects = []
 
       // Refresh the pending expenses list to remove the imported item
       await fetchPendingExpenses();
+      refreshDuplicateFlags();
       
       onExpenseImported?.();
     } catch (error: any) {
@@ -332,7 +337,7 @@ export function BusinessQuickBooksIntegration({ onExpenseImported, projects = []
                           <div className="flex items-start gap-3">
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
-                                <p className="font-medium">{expense.vendor_name || 'Unknown Contractor'}</p>
+                                <p className="font-medium flex items-center gap-2">{expense.vendor_name || 'Unknown Contractor'}<DuplicateBadge recordKey={qbKey(expense)} api={dupApi} onChanged={() => { void fetchPendingExpenses(); onExpenseImported?.(); }} /></p>
                                 <div className="flex items-center gap-1">
                                   <p className="font-mono font-semibold">
                                     {formatCurrency(expense.amount)}

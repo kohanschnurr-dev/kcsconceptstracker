@@ -1,3 +1,4 @@
+import type React from 'react';
 import { useState, useMemo } from 'react';
 import { formatDisplayDate } from '@/lib/dateUtils';
 import { ChevronDown, ChevronUp, Check, Trash2, Receipt, Package, Wrench, StickyNote, Split, EyeOff } from 'lucide-react';
@@ -59,6 +60,7 @@ interface GroupedPendingExpenseCardProps {
   onImportAll: (expenseIds: string[], projectId: string) => Promise<void>;
   onOpenSplitModal?: (expense: PendingExpense) => void;
   formatCurrency: (amount: number) => string;
+  badge?: React.ReactNode;
 }
 
 export function GroupedPendingExpenseCard({
@@ -70,6 +72,7 @@ export function GroupedPendingExpenseCard({
   onImportAll,
   onOpenSplitModal,
   formatCurrency,
+  badge,
 }: GroupedPendingExpenseCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSingleExpanded, setIsSingleExpanded] = useState(false);
@@ -149,6 +152,7 @@ export function GroupedPendingExpenseCard({
                   <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                 )}
                 <p className="font-medium">{primaryExpense.vendor_name || 'Unknown Contractor'}</p>
+                {badge}
                 {hasReceipt && (
                   <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30 gap-1">
                     <Receipt className="h-3 w-3" />
@@ -373,6 +377,7 @@ export function GroupedPendingExpenseCard({
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               )}
               <p className="font-medium">{primaryExpense.vendor_name || 'Unknown Contractor'}</p>
+                {badge}
               {hasReceipt && (
                 <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30 gap-1">
                   <Receipt className="h-3 w-3" />

@@ -28,6 +28,8 @@ import { QuickBooksIntegration } from '@/components/QuickBooksIntegration';
 import { ExpenseDetailModal } from '@/components/ExpenseDetailModal';
 import { GroupedExpenseDetailModal } from '@/components/GroupedExpenseDetailModal';
 import { GroupedExpenseRow } from '@/components/expenses/GroupedExpenseRow';
+import { DuplicateBadge, DuplicateBanner } from '@/components/DuplicateBadge';
+import { useDuplicateFlags, expenseKey, refreshDuplicateFlags } from '@/hooks/useDuplicateFlags';
 import { StaleHiddenExpensesDialog } from '@/components/StaleHiddenExpensesDialog';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,6 +105,8 @@ export default function Expenses() {
   const [groupDetailModalOpen, setGroupDetailModalOpen] = useState(false);
   const [expensesTableOpen, setExpensesTableOpen] = useState(true);
   const [showHidden, setShowHidden] = useState(false);
+  const dupApi = useDuplicateFlags();
+  const [dupOnly, setDupOnly] = useState(false);
   const { toast } = useToast();
   const { profile } = useProfile();
   const [staleDialogOpen, setStaleDialogOpen] = useState(false);
@@ -409,9 +413,11 @@ export default function Expenses() {
         }
       }
 
-      return matchesSearch && matchesProject && matchesCategory && matchesDateRange;
+      const matchesDup = !dupOnly || !!dupApi.flagFor(expenseKey(expense));
+      return matchesSearch && matchesProject && matchesCategory && matchesDateRange && matchesDup;
     });
-  }, [expenses, search, projectFilter, categoryFilter, dateRange, projects, getProjectName, getCategoryLabel, showHidden]);
+  }, [expenses, search, projectFilter, categoryFilter, dateRange, projects, getProjectName, getCategoryLabel, showHidden, dupOnly, dupApi]);
+  const dupCount = dupApi.countWhere(r => r.source === 'expense' || r.source === 'qb_project' || r.source === 'qb_pending');
 
   // Group expenses by parent QB transaction ID (for split expenses)
   const groupedExpenses = useMemo(() => {
@@ -553,7 +559,9 @@ export default function Expenses() {
         </div>
 
         {/* QuickBooks Integration */}
-        <QuickBooksIntegration projects={projects} onExpenseImported={fetchData} />
+        <DuplicateBanner count={dupCount} active={dupOnly} onToggle={() => setDupOnly(v => !v)} />
+
+        <QuickBooksIntegration projects={projects} onExpenseImported={() => { void fetchData(); refreshDuplicateFlags(); }} />
 
         {/* Expenses Table */}
         <Collapsible open={expensesTableOpen} onOpenChange={setExpensesTableOpen}>
@@ -709,6 +717,7 @@ export default function Expenses() {
                         onHide={showHidden ? undefined : handleHideExpense}
                         onUnhide={showHidden ? handleUnhideExpense : undefined}
                         isHiddenView={showHidden}
+                        renderBadge={(e) => <DuplicateBadge recordKey={expenseKey(e)} api={dupApi} onChanged={() => void fetchData()} />}
                       />
                     ))}
                   </tbody>

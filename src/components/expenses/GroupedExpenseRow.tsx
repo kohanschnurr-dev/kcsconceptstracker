@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, Paperclip, EyeOff, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,7 @@ interface GroupedExpenseRowProps {
   onHide?: (expenseId: string) => void;
   onUnhide?: (expenseId: string) => void;
   isHiddenView?: boolean;
+  renderBadge?: (expense: DBExpense) => ReactNode;
 }
 
 export function GroupedExpenseRow({
@@ -46,6 +47,7 @@ export function GroupedExpenseRow({
   onHide,
   onUnhide,
   isHiddenView,
+  renderBadge,
 }: GroupedExpenseRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
@@ -82,7 +84,7 @@ export function GroupedExpenseRow({
         <td>
           <div className="flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <p className="font-medium">{expense.vendor_name || 'Unknown'}</p>
+              <p className="font-medium flex items-center gap-2">{expense.vendor_name || 'Unknown'}{renderBadge?.(expense)}</p>
               <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                 {expense.description}
               </p>
@@ -176,7 +178,7 @@ export function GroupedExpenseRow({
         <td>
           <div className="flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <p className="font-medium">{parentExpense.vendor_name || 'Unknown'}</p>
+              <p className="font-medium flex items-center gap-2">{parentExpense.vendor_name || 'Unknown'}{renderBadge?.(parentExpense)}</p>
               <p className="text-xs text-muted-foreground">
                 {sortedExpenses.length} items • Click arrow to expand
               </p>
